@@ -1,0 +1,3255 @@
+{
+  "generatedAt": "2026-05-24T00:51:47.509Z",
+  "feature": 116,
+  "status": "pass",
+  "runs": [
+    {
+      "runId": "360x800-light",
+      "viewport": "360x800",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "360x800-light-production.png",
+        "hover": "360x800-light-hover.png",
+        "selected": "360x800-light-selected.png",
+        "videoShot": "360x800-light-video-shot.png",
+        "axeReport": "360x800-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "360x800-dark",
+      "viewport": "360x800",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "360x800-dark-production.png",
+        "hover": "360x800-dark-hover.png",
+        "selected": "360x800-dark-selected.png",
+        "videoShot": "360x800-dark-video-shot.png",
+        "axeReport": "360x800-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "390x844-light",
+      "viewport": "390x844",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "390x844-light-production.png",
+        "hover": "390x844-light-hover.png",
+        "selected": "390x844-light-selected.png",
+        "videoShot": "390x844-light-video-shot.png",
+        "axeReport": "390x844-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "390x844-dark",
+      "viewport": "390x844",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "390x844-dark-production.png",
+        "hover": "390x844-dark-hover.png",
+        "selected": "390x844-dark-selected.png",
+        "videoShot": "390x844-dark-video-shot.png",
+        "axeReport": "390x844-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "768x1024-light",
+      "viewport": "768x1024",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "768x1024-light-production.png",
+        "hover": "768x1024-light-hover.png",
+        "selected": "768x1024-light-selected.png",
+        "videoShot": "768x1024-light-video-shot.png",
+        "axeReport": "768x1024-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "768x1024-dark",
+      "viewport": "768x1024",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "768x1024-dark-production.png",
+        "hover": "768x1024-dark-hover.png",
+        "selected": "768x1024-dark-selected.png",
+        "videoShot": "768x1024-dark-video-shot.png",
+        "axeReport": "768x1024-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1024x768-light",
+      "viewport": "1024x768",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1024x768-light-production.png",
+        "hover": "1024x768-light-hover.png",
+        "selected": "1024x768-light-selected.png",
+        "videoShot": "1024x768-light-video-shot.png",
+        "axeReport": "1024x768-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1024x768-dark",
+      "viewport": "1024x768",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1024x768-dark-production.png",
+        "hover": "1024x768-dark-hover.png",
+        "selected": "1024x768-dark-selected.png",
+        "videoShot": "1024x768-dark-video-shot.png",
+        "axeReport": "1024x768-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1280x800-light",
+      "viewport": "1280x800",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1280x800-light-production.png",
+        "hover": "1280x800-light-hover.png",
+        "selected": "1280x800-light-selected.png",
+        "videoShot": "1280x800-light-video-shot.png",
+        "axeReport": "1280x800-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 164,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1280x800-dark",
+      "viewport": "1280x800",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1280x800-dark-production.png",
+        "hover": "1280x800-dark-hover.png",
+        "selected": "1280x800-dark-selected.png",
+        "videoShot": "1280x800-dark-video-shot.png",
+        "axeReport": "1280x800-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 164,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1440x900-light",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1440x900-light-production.png",
+        "hover": "1440x900-light-hover.png",
+        "selected": "1440x900-light-selected.png",
+        "videoShot": "1440x900-light-video-shot.png",
+        "axeReport": "1440x900-light-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 64,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1440x900-dark",
+      "viewport": "1440x900",
+      "theme": "dark",
+      "reducedMotion": false,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1440x900-dark-production.png",
+        "hover": "1440x900-dark-hover.png",
+        "selected": "1440x900-dark-selected.png",
+        "videoShot": "1440x900-dark-video-shot.png",
+        "axeReport": "1440x900-dark-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(2, 6, 23)",
+        "bodyText": "rgb(226, 232, 240)",
+        "workspaceBg": "rgb(15, 23, 42)",
+        "workspaceText": "rgb(248, 250, 252)",
+        "panelBg": "rgb(30, 41, 59)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 64,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "360x800-light-reduced-motion",
+      "viewport": "360x800",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "360x800-light-reduced-motion-production.png",
+        "hover": "360x800-light-reduced-motion-hover.png",
+        "selected": "360x800-light-reduced-motion-selected.png",
+        "videoShot": "360x800-light-reduced-motion-video-shot.png",
+        "axeReport": "360x800-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "390x844-light-reduced-motion",
+      "viewport": "390x844",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "390x844-light-reduced-motion-production.png",
+        "hover": "390x844-light-reduced-motion-hover.png",
+        "selected": "390x844-light-reduced-motion-selected.png",
+        "videoShot": "390x844-light-reduced-motion-video-shot.png",
+        "axeReport": "390x844-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "768x1024-light-reduced-motion",
+      "viewport": "768x1024",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "768x1024-light-reduced-motion-production.png",
+        "hover": "768x1024-light-reduced-motion-hover.png",
+        "selected": "768x1024-light-reduced-motion-selected.png",
+        "videoShot": "768x1024-light-reduced-motion-video-shot.png",
+        "axeReport": "768x1024-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1024x768-light-reduced-motion",
+      "viewport": "1024x768",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1024x768-light-reduced-motion-production.png",
+        "hover": "1024x768-light-reduced-motion-hover.png",
+        "selected": "1024x768-light-reduced-motion-selected.png",
+        "videoShot": "1024x768-light-reduced-motion-video-shot.png",
+        "axeReport": "1024x768-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 360,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1280x800-light-reduced-motion",
+      "viewport": "1280x800",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1280x800-light-reduced-motion-production.png",
+        "hover": "1280x800-light-reduced-motion-hover.png",
+        "selected": "1280x800-light-reduced-motion-selected.png",
+        "videoShot": "1280x800-light-reduced-motion-video-shot.png",
+        "axeReport": "1280x800-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 164,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    },
+    {
+      "runId": "1440x900-light-reduced-motion",
+      "viewport": "1440x900",
+      "theme": "light",
+      "reducedMotion": true,
+      "status": "pass",
+      "checks": {
+        "console": true,
+        "overflow": true,
+        "overlap": true,
+        "focus": true,
+        "selectedState": true,
+        "hoverState": true,
+        "readability": true,
+        "reducedMotion": true,
+        "axeNoViolations": true,
+        "advancedStates": true,
+        "iconAccessibleNames": true,
+        "canvasAllowsPageScroll": true
+      },
+      "artifacts": {
+        "production": "1440x900-light-reduced-motion-production.png",
+        "hover": "1440x900-light-reduced-motion-hover.png",
+        "selected": "1440x900-light-reduced-motion-selected.png",
+        "videoShot": "1440x900-light-reduced-motion-video-shot.png",
+        "axeReport": "1440x900-light-reduced-motion-axe.json"
+      },
+      "focusOrder": {
+        "afterFirstTab": "Production goal",
+        "afterSecondTab": "Save Draft"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          }
+        ],
+        "overlapping": []
+      },
+      "readability": {
+        "bodyBg": "rgb(248, 250, 252)",
+        "bodyText": "rgb(15, 23, 42)",
+        "workspaceBg": "rgb(255, 255, 255)",
+        "workspaceText": "rgb(15, 23, 42)",
+        "panelBg": "rgb(226, 232, 240)"
+      },
+      "pageScroll": {
+        "before": 0,
+        "after": 64,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 13,
+        "incomplete": 1,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      },
+      "advancedStates": [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied"
+      ],
+      "iconControls": [
+        {
+          "label": "Configure selected node",
+          "text": "⚙"
+        },
+        {
+          "label": "Run selected node",
+          "text": "▶"
+        },
+        {
+          "label": "Delete selected node",
+          "text": "×"
+        },
+        {
+          "label": "Open output preview",
+          "text": "↗"
+        }
+      ],
+      "actionCount": 5
+    }
+  ],
+  "liveRouteRuns": [
+    {
+      "runId": "360x800-media-studio-live-auth",
+      "viewport": "360x800",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "360x800-media-studio-live-auth.png",
+        "axeReport": "360x800-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": true,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 2666,
+        "after": 3386,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    {
+      "runId": "390x844-media-studio-live-auth",
+      "viewport": "390x844",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "390x844-media-studio-live-auth.png",
+        "axeReport": "390x844-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": true,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 2630,
+        "after": 3350,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    {
+      "runId": "768x1024-media-studio-live-auth",
+      "viewport": "768x1024",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "768x1024-media-studio-live-auth.png",
+        "axeReport": "768x1024-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": true,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 1359,
+        "after": 2079,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    {
+      "runId": "1024x768-media-studio-live-auth",
+      "viewport": "1024x768",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "1024x768-media-studio-live-auth.png",
+        "axeReport": "1024x768-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 1204,
+        "after": 1924,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    {
+      "runId": "1280x800-media-studio-live-auth",
+      "viewport": "1280x800",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "1280x800-media-studio-live-auth.png",
+        "axeReport": "1280x800-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1280,
+          "height": 800
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 1116,
+        "after": 1797,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    },
+    {
+      "runId": "1440x900-media-studio-live-auth",
+      "viewport": "1440x900",
+      "status": "pass",
+      "route": "/media-studio",
+      "authenticated": true,
+      "checks": {
+        "console": true,
+        "noPageErrors": true,
+        "productionWorkspaceVisible": true,
+        "productionTabSelected": true,
+        "selectedNodeDetailVisible": true,
+        "rightPanelDestinationVisible": true,
+        "overflow": true,
+        "overlap": true,
+        "canvasAllowsPageScroll": true,
+        "axeNoViolations": true
+      },
+      "artifacts": {
+        "screenshot": "1440x900-media-studio-live-auth.png",
+        "axeReport": "1440x900-media-studio-live-auth-axe.json"
+      },
+      "layout": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "entries": [
+          {
+            "label": "flow-canvas",
+            "selector": "[data-testid='production-flow-canvas']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "context-asset-board",
+            "selector": "[data-testid='context-asset-board']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": true,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": false
+          },
+          {
+            "label": "product-evidence-tray",
+            "selector": "[data-testid='product-evidence-tray']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          },
+          {
+            "label": "node-config-panel",
+            "selector": "[data-testid='node-config-panel']",
+            "missing": false,
+            "scrollOverflow": 0,
+            "textOverflow": false,
+            "overflow": {
+              "bottom": false,
+              "top": false,
+              "left": false,
+              "right": false
+            },
+            "hidden": true
+          }
+        ],
+        "overlapping": []
+      },
+      "pageScroll": {
+        "before": 1018,
+        "after": 1735,
+        "moved": true
+      },
+      "axe": {
+        "violationCount": 0,
+        "passes": 27,
+        "incomplete": 2,
+        "violations": []
+      },
+      "console": {
+        "consoleErrors": [],
+        "pageErrors": []
+      }
+    }
+  ]
+}
