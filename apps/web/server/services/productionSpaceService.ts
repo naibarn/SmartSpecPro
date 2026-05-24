@@ -9,6 +9,7 @@ import {
   buildProductionStableHash,
   computeProductionSpaceReadiness,
   deriveProductionHandoffPayload,
+  getProductionNodeCatalogEntry,
   getProductionLayerVersions,
   getDefaultProductionMetrics,
   resolveProductionFeatureGates,
@@ -314,9 +315,85 @@ function getScopedNodeIds(space: ProductionSpace, scope: ProductionExecutionScop
   if (scope === "shot") {
     const shot = space.shots.find((item) => item.id === targetId);
     if (!shot) throw new TRPCError({ code: "NOT_FOUND", message: "Production shot not found" });
-    return { nodeIds: shot.nodeIds, shotIds: [shot.id] };
+    const executableNodeIds = shot.nodeIds.filter((nodeId) => {
+      const node = space.flowNodes.find((item) => item.id === nodeId);
+      const catalogEntry = node ? getProductionNodeCatalogEntry(node.kind) : null;
+      return Boolean(node?.configSnapshot && catalogEntry?.adapterStatus === "mvp_enabled");
+    });
+    return { nodeIds: executableNodeIds, shotIds: [shot.id] };
   }
-  return { nodeIds: space.flowNodes.map((node) => node.id), shotIds: space.shots.map((shot) => shot.id) };
+  const executableNodeIds = space.flowNodes
+    .filter((node) => {
+      const catalogEntry = getProductionNodeCatalogEntry(node.kind);
+      return Boolean(node.configSnapshot && catalogEntry?.adapterStatus === "mvp_enabled");
+    })
+    .map((node) => node.id);
+  const executableNodeSet = new Set(executableNodeIds);
+  return {
+    nodeIds: executableNodeIds,
+    shotIds: space.shots.filter((shot) => shot.nodeIds.some((nodeId) => executableNodeSet.has(nodeId))).map((shot) => shot.id),
+  };
+}
+
+function hasUsableProductionNodeOutput(node: ProductionSpace["flowNodes"][number]): boolean {
+  return (node.outputRefs ?? []).some((ref) => Boolean(ref.url || ref.storageKey || ref.libraryItemId || ref.mediaTaskId || ref.mediaId || ref.providerTaskId));
+}
+
+function orderProductionNodeIdsByDependencies(space: ProductionSpace, nodeIds: string[]): string[] {
+  const selected = new Set(nodeIds);
+  const incoming = new Map<string, Set<string>>();
+  const outgoing = new Map<string, Set<string>>();
+  for (const nodeId of nodeIds) {
+    incoming.set(nodeId, new Set());
+    outgoing.set(nodeId, new Set());
+  }
+  for (const edge of space.flowEdges) {
+    if (!selected.has(edge.source) || !selected.has(edge.target)) continue;
+    if (edge.kind && ["fallback_to"].includes(edge.kind)) continue;
+    outgoing.get(edge.source)?.add(edge.target);
+    incoming.get(edge.target)?.add(edge.source);
+  }
+  const nodeOrder = new Map(space.flowNodes.map((node, index) => [node.id, index]));
+  const ready = nodeIds
+    .filter((nodeId) => (incoming.get(nodeId)?.size ?? 0) === 0)
+    .sort((a, b) => (nodeOrder.get(a) ?? 0) - (nodeOrder.get(b) ?? 0));
+  const ordered: string[] = [];
+  while (ready.length) {
+    const nodeId = ready.shift()!;
+    ordered.push(nodeId);
+    for (const target of outgoing.get(nodeId) ?? []) {
+      const remainingIncoming = incoming.get(target);
+      remainingIncoming?.delete(nodeId);
+      if (remainingIncoming && remainingIncoming.size === 0) {
+        ready.push(target);
+        ready.sort((a, b) => (nodeOrder.get(a) ?? 0) - (nodeOrder.get(b) ?? 0));
+      }
+    }
+  }
+  const orderedSet = new Set(ordered);
+  return [
+    ...ordered,
+    ...nodeIds.filter((nodeId) => !orderedSet.has(nodeId)),
+  ];
+}
+
+function getExecutableProductionNodeIds(space: ProductionSpace, scope: ProductionExecutionScope, nodeIds: string[], retryOfAttemptId?: string): string[] {
+  if (scope === "node") {
+    return orderProductionNodeIdsByDependencies(space, nodeIds);
+  }
+  const retryAttempt = retryOfAttemptId
+    ? (space.actionAttempts ?? []).find((attempt) => attempt.attemptId === retryOfAttemptId)
+    : null;
+  const retryNodeIds = new Set(retryAttempt?.nodeIds ?? nodeIds);
+  const executable = nodeIds.filter((nodeId) => {
+    const node = space.flowNodes.find((item) => item.id === nodeId);
+    if (!node || !retryNodeIds.has(node.id)) return false;
+    const catalogEntry = getProductionNodeCatalogEntry(node.kind);
+    if (!node.configSnapshot || catalogEntry?.adapterStatus !== "mvp_enabled") return false;
+    if (node.status === "completed" && hasUsableProductionNodeOutput(node)) return false;
+    return true;
+  });
+  return orderProductionNodeIdsByDependencies(space, executable);
 }
 
 function getExecutionGateKey(scope: ProductionExecutionScope): keyof ReturnType<typeof resolveProductionFeatureGates> {
@@ -1212,7 +1289,14 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "production_execution_requires_confirmation" });
   }
   const scoped = getScopedNodeIds(current.space, params.scope, params.targetId);
-  const selectedNodes = current.space.flowNodes.filter((node) => scoped.nodeIds.includes(node.id));
+  const executableNodeIds = getExecutableProductionNodeIds(current.space, params.scope, scoped.nodeIds, params.retryOfAttemptId);
+  const executableNodeIdSet = new Set(executableNodeIds);
+  const selectedNodes = executableNodeIds
+    .map((nodeId) => current.space.flowNodes.find((node) => node.id === nodeId))
+    .filter((node): node is ProductionSpace["flowNodes"][number] => Boolean(node));
+  if (selectedNodes.length === 0) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "production_execution_no_runnable_nodes" });
+  }
   for (const node of selectedNodes) {
     const catalogValidation = validateProductionExecutableNodeAgainstCatalog(node);
     if (!catalogValidation.ok) {
@@ -1253,8 +1337,8 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
     status: "queued",
     actorUserId: params.userId,
     creditOwnerUserId: params.userId,
-    nodeIds: scoped.nodeIds,
-    shotIds: scoped.shotIds,
+    nodeIds: executableNodeIds,
+    shotIds: scoped.shotIds.filter((shotId) => current.space.shots.find((shot) => shot.id === shotId)?.nodeIds.some((nodeId) => executableNodeIdSet.has(nodeId))),
     idempotencyKey: [params.tenantId, params.productionRunId, current.version, params.scope, params.targetId ?? "batch", attemptNumber].join(":"),
     expectedSpaceVersion: params.expectedVersion,
     creditEstimate,
@@ -1271,7 +1355,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
   const creditLedger = params.creditLedger ?? defaultCreditLedger;
   const mediaDispatcher = params.mediaDispatcher ?? defaultMediaDispatcher;
   let nextAttempt: ProductionActionAttempt = attempt;
-  let nextNodes = current.space.flowNodes.map((node) => scoped.nodeIds.includes(node.id) ? { ...node, status: providerDispatchEnabled ? "reserving_credits" as const : "running" as const } : node);
+  let nextNodes = current.space.flowNodes.map((node) => executableNodeIdSet.has(node.id) ? { ...node, status: providerDispatchEnabled ? "reserving_credits" as const : "running" as const } : node);
   const metrics = ensureMetrics(current.space);
 
   if (providerDispatchEnabled) {
@@ -1317,7 +1401,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
         outputRefsByNode.set(nodeId, [...(outputRefsByNode.get(nodeId) ?? []), outputRef]);
       });
       nextNodes = current.space.flowNodes.map((node) => {
-        if (!scoped.nodeIds.includes(node.id)) return node;
+        if (!executableNodeIdSet.has(node.id)) return node;
         return {
           ...node,
           status: "running" as const,
@@ -1346,7 +1430,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
         errorMessage: error instanceof Error ? error.message : "Provider submission failed",
         updatedAt: nowIso(),
       };
-      nextNodes = current.space.flowNodes.map((node) => scoped.nodeIds.includes(node.id) ? { ...node, status: "failed" as const } : node);
+      nextNodes = current.space.flowNodes.map((node) => executableNodeIdSet.has(node.id) ? { ...node, status: "failed" as const } : node);
     }
   }
   return saveProductionSpace({

@@ -262,11 +262,25 @@ app.use(
   createVoiceAgentsElevenLabsCallbackRouter(),
 );
 
+// Generated full-slide presentation imports can carry provider-returned data URLs
+// before the media asset is persisted behind a storage URL.
+app.use("/trpc/presentation.addSlide", express.json({ limit: "50mb" }));
+
 // Default JSON body limit — 10MB covers all normal API requests.
 // Upload routes use raw body or multipart, not JSON, so they're unaffected.
 // Media/storage uploads bypass this via Nginx streaming (proxy_request_buffering off).
 app.use(express.json({ limit: "10mb" }));
 app.use((err: any, req: any, res: any, next: any) => {
+  if (err?.type === "entity.too.large") {
+    debugError("Request Body", `Payload too large for ${req.url}`, err);
+    return res.status(413).json({
+      error: {
+        message: "Request body too large. Generated presentation media should be saved as storage URLs before importing slides.",
+        code: "REQUEST_BODY_TOO_LARGE",
+      },
+    });
+  }
+
   // Catch JSON parse errors (SyntaxError from body-parser)
   if (err instanceof SyntaxError && 'body' in err) {
     debugError("JSON Parse", `Failed to parse JSON body for ${req.url}`, err);

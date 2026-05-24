@@ -73,7 +73,7 @@ export const localInsightTypes = [
   "storytelling_handoff",
 ] as const;
 
-export const localAIProviders = ["chrome_prompt_api", "server_ai", "noop", "manual"] as const;
+export const localAIProviders = ["chrome_prompt_api", "ollama", "lm_studio", "localai", "llama_cpp", "custom_http", "native_messaging", "server_ai", "noop", "manual"] as const;
 export const promptAPIAvailabilities = ["available", "downloadable", "downloading", "unavailable", "unknown"] as const;
 export const marketplaceInsightStatuses = ["draft", "ready", "needs_review", "synced", "stale", "failed"] as const;
 export const storytellingReadinessStates = ["ready_for_storytelling", "ready_with_warnings", "needs_user_review", "insufficient_evidence"] as const;
@@ -168,6 +168,15 @@ const marketplaceInsightSyncMetadataSchema = z.object({
     externalShopId: z.string().max(120).nullable().optional(),
     canonicalSourceUrl: z.string().url().nullable().optional(),
   }).optional(),
+  sourceIdentity: z.object({
+    platform: z.enum(marketplacePlatforms),
+    canonicalSourceUrl: z.string().url().optional(),
+    externalProductId: z.string().max(120).nullable().optional(),
+    externalShopId: z.string().max(120).nullable().optional(),
+  }).optional(),
+  sourceIdentityHash: z.string().max(80).optional(),
+  semanticKey: z.string().max(160).optional(),
+  semanticPayloadHash: z.string().max(80).optional(),
   selectedImageQuality: z.array(z.object({
     evidenceId: z.string().max(120).optional(),
     url: z.string().max(4096),
@@ -180,6 +189,8 @@ const marketplaceInsightSyncMetadataSchema = z.object({
     warning: z.string().max(240).optional(),
   })).max(30).default([]),
   dataQualityWarnings: z.array(z.string().max(300)).max(50).default([]),
+  storyOptionCount: z.number().int().min(0).max(12).optional(),
+  storyOptionVideoBriefCount: z.number().int().min(0).max(12).optional(),
 }).default({});
 
 export const productBriefSchema = z.object({
@@ -265,6 +276,26 @@ export const videoBriefSchema = z.object({
   confidence: z.number().min(0).max(1),
 }).strict();
 
+export const storyOptionVideoShotSchema = z.object({
+  order: z.number().int().min(1).max(3),
+  startSec: z.number().min(0).max(30),
+  endSec: z.number().min(0).max(30),
+  title: z.string().max(240),
+  videoPrompt: z.string().max(1400),
+  subShots: z.array(z.string().max(500)).length(3),
+  thaiVoiceover: z.string().max(600),
+}).refine((shot) => shot.endSec > shot.startSec, "Shot endSec must be after startSec");
+
+export const storyOptionVideoBriefSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  durationSec: z.literal(30),
+  aspectRatio: z.literal("9:16"),
+  language: z.literal("th"),
+  structureLabel: z.string().max(120),
+  noOnScreenText: z.literal(true),
+  shots: z.array(storyOptionVideoShotSchema).length(3),
+}).strict();
+
 export const combinedOpportunityBriefSchema = z.object({
   schemaVersion: z.literal("1.0"),
   shopeeCaptureId: z.string().max(64).optional(),
@@ -285,6 +316,35 @@ export const evidenceBackedClaimSchema = z.object({
   confidence: z.number().min(0).max(1).default(0),
 });
 
+export const storytellingOptionSchema = z.object({
+  id: z.string().min(1).max(120),
+  title: z.string().max(160),
+  audience: z.string().max(300),
+  customerNeed: z.string().max(500),
+  problemToSolve: z.string().max(500),
+  useCase: z.string().max(500),
+  angle: z.string().max(500),
+  storyFormat: z.enum(["product_review", "sales_demo", "brand_awareness", "before_after", "customer_journey", "tiktok_shop_trend", "shopee_support", "ugc_review", "cinematic_brand_story"]),
+  journeyStages: z.array(z.enum(customerJourneyStages)).min(1).max(12),
+  hook: z.string().max(300),
+  storyboardOutline: boundedStringArray(8, 320),
+  primaryClaimIds: z.array(z.string().max(120)).max(20).default([]),
+  evidenceIds: z.array(z.string().max(120)).max(80).default([]),
+  confidence: z.number().min(0).max(1).default(0),
+  autoSelected: z.boolean().default(false),
+  decisionReason: z.string().max(300).optional(),
+  source: z.enum(["ai_detected", "user_confirmed", "mixed"]).optional(),
+  userAdditions: z.array(z.object({
+    category: z.enum(["audience_pain_problem", "selling_points", "hooks", "objections_trust", "example_use_case"]),
+    values: z.array(z.string().max(300)).max(8).default([]),
+    rawText: z.string().max(1400),
+    source: z.literal("user_confirmed"),
+    confirmedAt: z.string().max(80),
+    confidence: z.number().min(0).max(1).default(0),
+  })).max(20).default([]),
+  videoBrief: storyOptionVideoBriefSchema.optional(),
+}).strict();
+
 export const marketplaceStorytellingHandoffSchema = z.object({
   schemaVersion: z.literal("1.0"),
   sourceCaptureIds: z.array(z.string().max(64)).max(10).default([]),
@@ -296,6 +356,7 @@ export const marketplaceStorytellingHandoffSchema = z.object({
   readiness: z.enum(storytellingReadinessStates),
   blockers: boundedStringArray(20, 240),
   customerJourneyStages: z.array(z.enum(customerJourneyStages)).min(1).max(20),
+  storyOptions: z.array(storytellingOptionSchema).max(12).default([]),
   claims: z.array(evidenceBackedClaimSchema).max(80).default([]),
   selectedImages: z.array(z.object({
     url: z.string().max(4096),
@@ -341,7 +402,11 @@ export const marketplaceCaptureInsightSyncSchema = z.object({
   const schema = localInsightPayloadSchemas[value.insightType];
   const parsed = schema.safeParse(value.payload);
   if (!parsed.success) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Invalid ${value.insightType} payload` });
+    const detail = parsed.error.issues
+      .slice(0, 5)
+      .map((issue) => `${issue.path.join(".") || "payload"}: ${issue.message}`)
+      .join("; ");
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Invalid ${value.insightType} payload${detail ? ` (${detail})` : ""}` });
   }
 });
 
@@ -524,6 +589,7 @@ export type ReviewInsight = z.infer<typeof reviewInsightSchema>;
 export type TikTokShopTrendBrief = z.infer<typeof tiktokShopTrendBriefSchema>;
 export type VideoBrief = z.infer<typeof videoBriefSchema>;
 export type CombinedOpportunityBrief = z.infer<typeof combinedOpportunityBriefSchema>;
+export type StorytellingOption = z.infer<typeof storytellingOptionSchema>;
 export type MarketplaceStorytellingHandoff = z.infer<typeof marketplaceStorytellingHandoffSchema>;
 export type MarketplaceCaptureInsightSyncInput = z.infer<typeof marketplaceCaptureInsightSyncSchema>;
 export type MarketplaceServerInsightGenerationInput = z.infer<typeof marketplaceServerInsightGenerationSchema>;

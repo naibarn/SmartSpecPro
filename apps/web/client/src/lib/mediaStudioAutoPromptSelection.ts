@@ -9,6 +9,8 @@ export interface MediaStudioVisionModelOption {
   providerId?: number | null;
   isDefault?: boolean;
   supportsVision?: boolean;
+  supportsThinking?: boolean;
+  contextLength?: number | null;
 }
 
 export interface MediaStudioProviderAutoOption {

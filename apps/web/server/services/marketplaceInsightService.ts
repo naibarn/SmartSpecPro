@@ -1,4 +1,5 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import crypto from "node:crypto";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { marketplaceCaptureInsights, marketplaceCaptureSessions, marketplaceProducts } from "../../drizzle/schema";
 import {
@@ -39,6 +40,91 @@ function getStorytellingReadiness(payload: unknown): string | null {
   return parsed.success ? parsed.data.readiness : null;
 }
 
+function stableJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+  return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${stableJsonStringify((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+
+function sha256Short(value: unknown, length = 32) {
+  return crypto.createHash("sha256").update(stableJsonStringify(value)).digest("hex").slice(0, length);
+}
+
+function md5Text(value: string) {
+  return crypto.createHash("md5").update(value).digest("hex");
+}
+
+function normalizeSourceIdentityUrl(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return raw.replace(/[?#].*$/, "").replace(/\/$/, "");
+  }
+}
+
+function removeVolatilePayloadFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(removeVolatilePayloadFields);
+  if (!value || typeof value !== "object") return value;
+  const output: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (["__syncMetadata", "captureId", "sourceCaptureIds", "insightIds"].includes(key)) continue;
+    if (key === "source" && raw && typeof raw === "object") {
+      const sourceValue = { ...(raw as Record<string, unknown>) };
+      delete sourceValue.captureId;
+      output[key] = removeVolatilePayloadFields(sourceValue);
+      continue;
+    }
+    output[key] = removeVolatilePayloadFields(raw);
+  }
+  return output;
+}
+
+function insightSemanticPayloadHash(payload: unknown) {
+  return sha256Short(removeVolatilePayloadFields(payload), 20);
+}
+
+function insightSourceIdentity(input: MarketplaceCaptureInsightSyncInput) {
+  const metadata = input.metadata ?? {};
+  const sourceIdentity = (metadata.sourceIdentity ?? {}) as {
+    canonicalSourceUrl?: string | null;
+    externalProductId?: string | null;
+    externalShopId?: string | null;
+  };
+  const sourceIds = metadata.sourceIds ?? {};
+  return {
+    platform: input.source.platform,
+    canonicalSourceUrl: normalizeSourceIdentityUrl(
+      sourceIdentity.canonicalSourceUrl
+        ?? sourceIds.canonicalSourceUrl
+        ?? input.source.url,
+    ),
+    externalProductId: sourceIdentity.externalProductId ?? sourceIds.externalProductId ?? null,
+    externalShopId: sourceIdentity.externalShopId ?? sourceIds.externalShopId ?? null,
+  };
+}
+
+function buildInsightSemanticKey(input: MarketplaceCaptureInsightSyncInput, normalizedPayload: unknown) {
+  const source = insightSourceIdentity(input);
+  const payloadHash = typeof input.metadata?.semanticPayloadHash === "string" && input.metadata.semanticPayloadHash.trim()
+    ? input.metadata.semanticPayloadHash.trim()
+    : insightSemanticPayloadHash(normalizedPayload);
+  return `insight:${md5Text([
+    source.platform,
+    source.canonicalSourceUrl,
+    source.externalProductId ?? "",
+    source.externalShopId ?? "",
+    input.insightType,
+    input.provider,
+    input.schemaVersion,
+    payloadHash,
+  ].join("|"))}`;
+}
+
 function cleanText(value: unknown, max: number): string {
   return String(value ?? "")
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -60,6 +146,29 @@ function clampConfidence(value: unknown, fallback = 0.55): number {
   return Math.max(0, Math.min(1, n));
 }
 
+function parseMoneyFromText(value: string | undefined) {
+  if (!value) return null;
+  const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  const parsed = match ? Number(match[0]) : NaN;
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null;
+}
+
+function textHasPriceSignal(value: string) {
+  return /(ราคา|฿|บาท|thb)/i.test(value);
+}
+
+function priceClaimMatchesSource(value: string, sourcePrice: number | null) {
+  if (!textHasPriceSignal(value) || sourcePrice == null) return true;
+  const claimPrice = parseMoneyFromText(value);
+  if (claimPrice == null) return true;
+  return Math.abs(claimPrice - sourcePrice) < 0.01;
+}
+
+function normalizePriceSensitiveList(values: string[], source: SanitizedLocalAIInput) {
+  const sourcePrice = parseMoneyFromText(source.product.price);
+  return values.filter((value) => priceClaimMatchesSource(value, sourcePrice));
+}
+
 function parseLlmJson(content: string): Record<string, unknown> {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const raw = (fenced || content).trim();
@@ -76,23 +185,27 @@ function parseLlmJson(content: string): Record<string, unknown> {
 function normalizeProductBriefFromServer(value: unknown, source: SanitizedLocalAIInput): ProductBrief {
   const evidenceIds = new Set(source.evidence.map((item) => item.id));
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
-  return productBriefSchema.parse({
+  const normalized = productBriefSchema.parse({
     schemaVersion: "1.0",
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl },
     productName: cleanText(raw.productName || source.product.title || source.pageTitle, 300) || "Untitled product",
     category: cleanText(raw.category || source.product.category, 200) || undefined,
     shortSummary: cleanText(raw.shortSummary, 800) || cleanText(source.product.description || source.product.title, 500),
-    keySellingPoints: arrayOfStrings(raw.keySellingPoints, 12),
+    keySellingPoints: normalizePriceSensitiveList(arrayOfStrings(raw.keySellingPoints, 12), source),
     targetAudiences: arrayOfStrings(raw.targetAudiences, 12),
     buyerPainPoints: arrayOfStrings(raw.buyerPainPoints, 12),
     buyerObjections: arrayOfStrings(raw.buyerObjections, 12),
-    trustSignals: arrayOfStrings(raw.trustSignals, 12),
+    trustSignals: normalizePriceSensitiveList(arrayOfStrings(raw.trustSignals, 12), source),
     contentAngles: arrayOfStrings(raw.contentAngles, 12),
     suggestedHooks: arrayOfStrings(raw.suggestedHooks, 12),
     suggestedCTAs: arrayOfStrings(raw.suggestedCTAs, 12),
     confidence: clampConfidence(raw.confidence),
     evidenceIds: arrayOfStrings(raw.evidenceIds, 80).filter((id) => evidenceIds.has(id)),
   });
+  if (source.product.price && !normalized.keySellingPoints.some((item) => item.includes(source.product.price ?? ""))) {
+    return { ...normalized, keySellingPoints: [`ราคา ${source.product.price}`, ...normalized.keySellingPoints].slice(0, 12) };
+  }
+  return normalized;
 }
 
 function createServerDeterministicProductBrief(source: SanitizedLocalAIInput): ProductBrief {
@@ -124,6 +237,7 @@ function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePr
     "Task: create a ProductBrief JSON object from sanitized marketplace evidence.",
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
     "Rules: use only provided data, do not invent claims, return JSON only, include evidenceIds that exist in the evidence list.",
+    "Price rule: if you mention price, use only source.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
     `Sanitized input:\n${JSON.stringify(source, null, 2).slice(0, 25_000)}`,
   ].join("\n\n");
 }
@@ -205,6 +319,8 @@ export async function syncMarketplaceInsight(input: unknown, auth: MarketplaceIn
   if (parsed.rawCaptureIncluded || parsed.rawCapture) {
     throw marketplaceCaptureError("raw_capture_sync_disabled", "Raw capture sync is disabled for structured insights", 400);
   }
+  const normalizedPayload = normalizeInsightPayloadForPersistence(parsed.payload, parsed.insightType, parsed.metadata);
+  const semanticKey = buildInsightSemanticKey(parsed, normalizedPayload);
   const captureId = await resolveCaptureId(parsed, auth);
   if (captureId) await getMarketplaceCaptureForUser(captureId, auth);
   const productId = await resolveProductId(parsed, auth);
@@ -212,29 +328,45 @@ export async function syncMarketplaceInsight(input: unknown, auth: MarketplaceIn
   const now = new Date();
   const readiness = getStorytellingReadiness(parsed.payload);
   const [existing] = await db.select().from(marketplaceCaptureInsights)
-    .where(and(tenantScope(marketplaceCaptureInsights, auth), eq(marketplaceCaptureInsights.idempotencyKey, parsed.idempotencyKey)))
+    .where(and(
+      tenantScope(marketplaceCaptureInsights, auth),
+      or(
+        eq(marketplaceCaptureInsights.idempotencyKey, parsed.idempotencyKey),
+        eq(marketplaceCaptureInsights.semanticKey, semanticKey),
+      ),
+    ))
+    .orderBy(desc(marketplaceCaptureInsights.createdAt))
     .limit(1);
   if (existing) {
-    const samePayload = existing.payloadHash === parsed.payloadHash
-      && existing.insightType === parsed.insightType
+    const sameRequest = existing.insightType === parsed.insightType
       && existing.provider === parsed.provider
-      && existing.sourceUrl === parsed.source.url;
-    if (!samePayload) {
+      && (existing.idempotencyKey === parsed.idempotencyKey || existing.semanticKey === semanticKey);
+    if (!sameRequest) {
       throw marketplaceCaptureError("insight_idempotency_conflict", "Idempotency key already exists with a different insight payload", 409);
+    }
+    const patch: Partial<typeof marketplaceCaptureInsights.$inferInsert> = {};
+    if (!existing.captureId && captureId) patch.captureId = captureId;
+    if (!existing.productId && productId) patch.productId = productId;
+    if (!existing.semanticKey) patch.semanticKey = semanticKey;
+    if (existing.payloadHash !== parsed.payloadHash) patch.payloadHash = parsed.payloadHash;
+    if (existing.extensionVersion !== parsed.extensionVersion) patch.extensionVersion = parsed.extensionVersion;
+    if (Object.keys(patch).length > 0) {
+      patch.updatedAt = now;
+      await db.update(marketplaceCaptureInsights)
+        .set(patch)
+        .where(and(eq(marketplaceCaptureInsights.id, existing.id), tenantScope(marketplaceCaptureInsights, auth)));
     }
     return {
       ok: true,
       insightId: existing.id,
-      captureId: existing.captureId,
-      productId: existing.productId,
+      captureId: patch.captureId ?? existing.captureId,
+      productId: patch.productId ?? existing.productId,
       status: existing.status,
       openUrl: `/marketplace-capture/insights/${existing.id}`,
       storytellingReadiness: existing.storytellingReadiness,
       idempotent: true,
     };
   }
-
-  const normalizedPayload = normalizeInsightPayloadForPersistence(parsed.payload, parsed.insightType, parsed.metadata);
 
   const values = {
     tenantId: auth.tenantId ?? null,
@@ -248,6 +380,7 @@ export async function syncMarketplaceInsight(input: unknown, auth: MarketplaceIn
     schemaVersion: parsed.schemaVersion,
     payloadHash: parsed.payloadHash,
     idempotencyKey: parsed.idempotencyKey,
+    semanticKey,
     parentInsightIdsJson: parsed.parentInsightIds ?? [],
     payloadJson: normalizedPayload,
     rawCaptureJson: null,
@@ -299,12 +432,25 @@ export async function listMarketplaceInsightsByCapture(captureId: string, auth: 
 
 export async function listMarketplaceInsightsByProduct(productId: string, auth: MarketplaceInsightAuth) {
   const db = getDb();
-  const [product] = await db.select({ id: marketplaceProducts.id }).from(marketplaceProducts)
+  const [product] = await db.select({
+    id: marketplaceProducts.id,
+    platform: marketplaceProducts.platform,
+    sourceUrl: marketplaceProducts.sourceUrl,
+  }).from(marketplaceProducts)
     .where(and(eq(marketplaceProducts.id, productId), tenantScope(marketplaceProducts, auth)))
     .limit(1);
   if (!product) throw marketplaceCaptureError("marketplace_product_not_found", "Marketplace product not found", 404);
   const rows = await db.select().from(marketplaceCaptureInsights)
-    .where(and(eq(marketplaceCaptureInsights.productId, productId), tenantScope(marketplaceCaptureInsights, auth)))
+    .where(and(
+      tenantScope(marketplaceCaptureInsights, auth),
+      or(
+        eq(marketplaceCaptureInsights.productId, productId),
+        and(
+          eq(marketplaceCaptureInsights.platform, product.platform),
+          eq(marketplaceCaptureInsights.sourceUrl, product.sourceUrl),
+        ),
+      ),
+    ))
     .orderBy(desc(marketplaceCaptureInsights.createdAt));
   return rows.map(sanitizeInsightRow);
 }
@@ -356,6 +502,7 @@ function attachSyncMetadata(payload: Record<string, unknown>, metadata: Marketpl
     && (metadata.inputEvidenceIds.length > 0
       || metadata.selectedImageQuality.length > 0
       || metadata.dataQualityWarnings.length > 0
+      || Boolean(metadata.storyOptionCount || metadata.storyOptionVideoBriefCount)
       || Boolean(metadata.providerDecision || metadata.sanitizerVersion || metadata.generationRunId || metadata.sourceIds));
   return hasUsefulMetadata ? { ...payload, __syncMetadata: metadata } : payload;
 }

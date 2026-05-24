@@ -1,7 +1,9 @@
 import type { ImageCandidate, MarketplacePlatform, ProductCapturePayload } from "./types";
 
 export type PromptAPIAvailability = "available" | "downloadable" | "downloading" | "unavailable" | "unknown";
-export type LocalAIProviderId = "chrome_prompt_api" | "server_ai" | "noop" | "manual";
+export type LocalAIProviderId = "chrome_prompt_api" | "ollama" | "lm_studio" | "localai" | "llama_cpp" | "custom_http" | "native_messaging" | "server_ai" | "noop" | "manual";
+export type LocalAIProviderMode = "auto" | "chrome_prompt_api" | "ollama" | "lm_studio" | "localai" | "llama_cpp" | "custom_http" | "native_messaging";
+export type LocalVisionImageTransport = "base64" | "url";
 export type LocalInsightType = "product_brief" | "review_insight" | "tiktok_shop_trend" | "video_brief" | "combined_opportunity" | "storytelling_handoff";
 export type AnalysisLanguagePreference = "auto" | "th" | "en" | "mixed";
 export type LocalAIWorkflowState =
@@ -42,7 +44,15 @@ export interface LocalAIProviderDecision {
 }
 
 export interface LocalAISettings {
+  autoGenerateInsights: boolean;
   preferLocalAI: boolean;
+  localProviderMode: LocalAIProviderMode;
+  localEndpointUrl: string;
+  localModel: string;
+  nativeHostName: string;
+  localVisionEnabled: boolean;
+  localVisionImageLimit: number;
+  localVisionImageTransport: LocalVisionImageTransport;
   sendStructuredInsightsOnly: boolean;
   includeRawCaptureOnSync: boolean;
   includeReviewsOnSync: boolean;
@@ -160,6 +170,58 @@ export interface VideoBrief {
   confidence: number;
 }
 
+export interface StoryOptionVideoShot {
+  order: number;
+  startSec: number;
+  endSec: number;
+  title: string;
+  videoPrompt: string;
+  subShots: string[];
+  thaiVoiceover: string;
+}
+
+export interface StoryOptionVideoBrief {
+  schemaVersion: "1.0";
+  durationSec: 30;
+  aspectRatio: "9:16";
+  language: "th";
+  structureLabel: "30 วินาที | 3 Shot | Shot ละ 10 วินาที";
+  noOnScreenText: true;
+  shots: StoryOptionVideoShot[];
+}
+
+export type UserStoryInsightCategory =
+  | "audience_pain_problem"
+  | "selling_points"
+  | "hooks"
+  | "objections_trust"
+  | "example_use_case";
+
+export interface UserStoryInsightAddition {
+  category: UserStoryInsightCategory;
+  values: string[];
+  rawText: string;
+  source: "user_confirmed";
+  confirmedAt: string;
+  confidence: number;
+}
+
+export interface UserStoryInsightDraft {
+  schemaVersion: "1.0";
+  rawText: string;
+  summary: string;
+  targetOptionId: string;
+  targetOptionTitle: string;
+  additions: Array<{
+    category: UserStoryInsightCategory;
+    label: string;
+    values: string[];
+    confidence: number;
+  }>;
+  confidence: number;
+  needsUserConfirmation: true;
+}
+
 export interface MarketplaceStorytellingHandoff {
   schemaVersion: "1.0";
   sourceCaptureIds: string[];
@@ -171,6 +233,27 @@ export interface MarketplaceStorytellingHandoff {
   readiness: "ready_for_storytelling" | "ready_with_warnings" | "needs_user_review" | "insufficient_evidence";
   blockers: string[];
   customerJourneyStages: Array<"awareness" | "problem_recognition" | "consideration" | "proof_review_demo" | "objection_handling" | "trust_building" | "conversion_cta" | "retention_brand_recall">;
+  storyOptions: Array<{
+    id: string;
+    title: string;
+    audience: string;
+    customerNeed: string;
+    problemToSolve: string;
+    useCase: string;
+    angle: string;
+    storyFormat: MarketplaceStorytellingHandoff["storyFormat"];
+    journeyStages: MarketplaceStorytellingHandoff["customerJourneyStages"];
+    hook: string;
+    storyboardOutline: string[];
+    primaryClaimIds: string[];
+    evidenceIds: string[];
+    confidence: number;
+    autoSelected: boolean;
+    decisionReason?: string;
+    source?: "ai_detected" | "user_confirmed" | "mixed";
+    userAdditions?: UserStoryInsightAddition[];
+    videoBrief?: StoryOptionVideoBrief;
+  }>;
   claims: Array<{ id: string; text: string; evidenceIds: string[]; status: "supported" | "needs_review" | "user_approved" | "removed"; confidence: number }>;
   selectedImages: Array<{ url: string; role: "hero" | "detail" | "review" | "proof" | "background"; fidelity: "confirmed_product" | "likely_product" | "unknown" | "mismatch_risk" }>;
   videoBrief?: VideoBrief;
@@ -196,7 +279,15 @@ export interface ServerProductBriefGenerationResponse {
 }
 
 export const defaultLocalAISettings: LocalAISettings = {
+  autoGenerateInsights: true,
   preferLocalAI: true,
+  localProviderMode: "auto",
+  localEndpointUrl: "http://localhost:11434/api/chat",
+  localModel: "llama3.1",
+  nativeHostName: "",
+  localVisionEnabled: false,
+  localVisionImageLimit: 3,
+  localVisionImageTransport: "base64",
   sendStructuredInsightsOnly: true,
   includeRawCaptureOnSync: false,
   includeReviewsOnSync: false,
@@ -234,12 +325,13 @@ function addEvidence(items: EvidenceItem[], type: EvidenceItem["type"], seed: st
 }
 
 function selectedUrls(images: ImageCandidate[]) {
-  return images.filter((image) => image.selected !== false && image.kind !== "related").map((image) => image.url).slice(0, 30);
+  return Array.from(new Set(images.filter((image) => image.selected !== false && image.kind !== "related").map((image) => image.url))).slice(0, 30);
 }
 
 function selectedImageEvidence(images: ImageCandidate[]) {
-  return images
+  return Array.from(new Map(images
     .filter((image) => image.selected !== false && image.kind !== "related")
+    .map((image) => [image.url, image])).values())
     .slice(0, 30)
     .map((image, index) => ({
       id: cleanText(image.metadata?.evidenceId || image.evidenceId || `image:selected_${index + 1}`, 120),
@@ -294,6 +386,15 @@ export async function hashLocalAIInput(value: unknown): Promise<string> {
   const encoded = new TextEncoder().encode(JSON.stringify(value));
   const digest = await crypto.subtle.digest("SHA-256", encoded);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function stableSanitizedInputHash(value: Record<string, unknown>): Promise<string> {
+  const stable = {
+    ...value,
+    captureId: undefined,
+    capturedAt: undefined,
+  };
+  return hashLocalAIInput(stable);
 }
 
 export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, captureId?: string): Promise<SanitizedLocalAIInput> {
@@ -354,7 +455,7 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
     },
     sanitizerVersion: "2026-05-23",
   };
-  return { ...base, payloadHash: await hashLocalAIInput(base) };
+  return { ...base, payloadHash: await stableSanitizedInputHash(base) };
 }
 
 export function decideLocalAIProvider(input: {
@@ -362,6 +463,18 @@ export function decideLocalAIProvider(input: {
   settings: LocalAISettings;
   hasToken: boolean;
 }): LocalAIProviderDecision {
+  if (input.settings.preferLocalAI && input.settings.localProviderMode !== "auto" && input.settings.localProviderMode !== "chrome_prompt_api") {
+    const mode = input.settings.localProviderMode;
+    const ready = mode === "native_messaging"
+      ? Boolean(input.settings.nativeHostName.trim())
+      : Boolean(input.settings.localEndpointUrl.trim());
+    return {
+      provider: mode,
+      state: ready ? "local_ai_ready" : "raw_capture_only",
+      canAnalyze: ready,
+      reason: ready ? `Using configured local AI provider: ${mode}` : "Configured local AI provider is missing endpoint/host config",
+    };
+  }
   if (input.settings.preferLocalAI && input.capability.available) {
     return { provider: "chrome_prompt_api", state: "local_ai_ready" as LocalAIWorkflowState, canAnalyze: true, reason: "Local AI ready" };
   }
@@ -421,6 +534,7 @@ export function buildProductBriefPrompt(payload: SanitizedLocalAIInput, language
     "Task: Create a structured product marketing brief from the captured page data.",
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
     "Rules: use only the provided data; do not invent claims; return JSON only; include evidenceIds whenever possible.",
+    "Price rule: if you mention price, use only Captured data.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
     "Return a ProductBrief JSON object with schemaVersion 1.0.",
     `Captured data:\n${JSON.stringify(payload, null, 2).slice(0, TEXT_LIMITS.promptPayload)}`,
   ].join("\n\n");
@@ -453,7 +567,9 @@ export function buildVideoBriefFromProduct(productBrief: ProductBrief, source: S
 export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief: VideoBrief, source: SanitizedLocalAIInput): MarketplaceStorytellingHandoff {
   const imageMeta = Array.isArray((source.product as any).selectedImages) ? (source.product as any).selectedImages as Array<{ url: string; role?: string; kind?: string; quality?: string }> : [];
   const fallbackImages: Array<{ url: string; role?: string; kind?: string; quality?: string }> = source.product.selectedImageUrls.map((url, index) => ({ url, role: index === 0 ? "hero" : "detail", kind: index === 0 ? "main" : "description", quality: "unknown" }));
-  const selectedImages = (imageMeta.length > 0 ? imageMeta : fallbackImages)
+  const selectedImages = Array.from(new Map((imageMeta.length > 0 ? imageMeta : fallbackImages)
+    .filter((image) => image.url)
+    .map((image) => [image.url, image])).values())
     .map((image, index) => ({
       url: image.url,
       role: (image.role === "hero" || index === 0 ? "hero" : image.kind === "review" ? "review" : image.kind === "description" ? "detail" : "detail") as "hero" | "detail" | "review" | "proof" | "background",
@@ -466,10 +582,13 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
     status: productBrief.evidenceIds.length > 0 ? "supported" as const : "needs_review" as const,
     confidence: productBrief.confidence,
   }));
+  const storyOptions = buildStoryOptions(productBrief, videoBrief, claims);
+  const storyQuality = storyOptionsQuality(storyOptions);
   const blockers = [
     ...(selectedImages.length === 0 ? ["missing_selected_product_image"] : []),
     ...(selectedImages.some((image) => image.fidelity === "mismatch_risk") ? ["low_resolution_or_mismatch_risk_image"] : []),
     ...(claims.some((claim) => claim.status === "needs_review") ? ["unsupported_claims_need_review"] : []),
+    ...(storyQuality.ok ? [] : ["story_options_need_more_specific_input"]),
   ];
   return {
     schemaVersion: "1.0",
@@ -482,11 +601,614 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
     readiness: blockers.length === 0 ? "ready_for_storytelling" : "needs_user_review",
     blockers,
     customerJourneyStages: ["awareness", "consideration", "proof_review_demo", "conversion_cta"],
+    storyOptions,
     claims,
     selectedImages,
-    videoBrief,
     evidenceIds: productBrief.evidenceIds,
-    confidence: Math.min(productBrief.confidence, selectedImages.length > 0 ? 0.8 : 0.5),
+    confidence: Math.min(productBrief.confidence, selectedImages.length > 0 && storyQuality.ok ? 0.8 : 0.5),
+  };
+}
+
+function includesAny(text: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function distinctList(values: string[], limit = 8) {
+  return Array.from(new Set(values.map((value) => cleanText(value, 240)).filter(Boolean))).slice(0, limit);
+}
+
+function tokenSet(value: string) {
+  return new Set(cleanText(value, 1200).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((token) => token.length >= 3));
+}
+
+function jaccardSimilarity(left: string, right: string) {
+  const a = tokenSet(left);
+  const b = tokenSet(right);
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const token of a) if (b.has(token)) intersection += 1;
+  return intersection / Math.max(1, new Set([...a, ...b]).size);
+}
+
+function storyOptionComparisonText(option: MarketplaceStorytellingHandoff["storyOptions"][number]) {
+  return [
+    option.title,
+    option.audience,
+    option.customerNeed,
+    option.problemToSolve,
+    option.useCase,
+    option.angle,
+    option.hook,
+    ...option.storyboardOutline,
+  ].join(" ");
+}
+
+function storyOptionsQuality(options: MarketplaceStorytellingHandoff["storyOptions"]) {
+  if (options.length < 4) return { ok: false, reason: "too_few_options" };
+  const optionTexts = options.map(storyOptionComparisonText);
+  if (optionTexts.some((text) => tokenSet(text).size < 12)) return { ok: false, reason: "thin_outline" };
+  const weakOutlineCount = options.filter((option) => option.storyboardOutline.length < 2).length;
+  if (weakOutlineCount > 0) return { ok: false, reason: "thin_outline" };
+  const weakVideoBriefCount = options.filter((option) =>
+    !option.videoBrief
+    || option.videoBrief.shots.length !== 3
+    || option.videoBrief.shots.some((shot) => shot.subShots.length !== 3 || !shot.thaiVoiceover.includes("พูดเป็นภาษาไทยว่า"))
+  ).length;
+  if (weakVideoBriefCount > 0) return { ok: false, reason: "missing_option_video_brief" };
+  const genericPattern = /ต้องการเห็น(ประโยชน์|จุดเด่น)|ใช้เมื่อลูกค้าต้องการแก้ปัญหาหลัก/i;
+  const genericCount = optionTexts.filter((text) => genericPattern.test(text)).length;
+  let highSimilarityPairs = 0;
+  for (let i = 0; i < optionTexts.length; i += 1) {
+    for (let j = i + 1; j < optionTexts.length; j += 1) {
+      if (jaccardSimilarity(optionTexts[i], optionTexts[j]) >= 0.58) highSimilarityPairs += 1;
+    }
+  }
+  return {
+    ok: highSimilarityPairs <= 1 && genericCount <= 1,
+    reason: highSimilarityPairs > 1 ? "duplicate_options" : genericCount > 1 ? "too_generic" : "ok",
+  };
+}
+
+function inferStoryOptionDetails(productBrief: ProductBrief) {
+  const text = [
+    productBrief.productName,
+    productBrief.shortSummary,
+    ...productBrief.keySellingPoints,
+    ...productBrief.buyerPainPoints,
+    ...productBrief.buyerObjections,
+    ...productBrief.trustSignals,
+    ...productBrief.contentAngles,
+  ].join(" ");
+  const isBasket = includesAny(text, [/ตะกร้า|basket|laundry basket|เก็บของ|storage|container/i]);
+  const isApparel = includesAny(text, [/เสื้อ|กางเกง|ชุด|แฟชั่น|สวมใส่|ใส่สบาย|ผ้า|รองเท้า|apparel|fashion|pants|shirt|dress|shoe/i]);
+  const isBeauty = includesAny(text, [/ครีม|เซรั่ม|สกินแคร์|ผิว|สิว|กันแดด|เครื่องสำอาง|beauty|skincare|serum|cream|makeup|sunscreen/i]);
+  const isElectronics = includesAny(text, [/ไฟฟ้า|เครื่อง|แบต|ชาร์จ|ไร้สาย|usb|power|electric|wireless|charger|battery|device/i]);
+  const isFoodSupplement = includesAny(text, [/อาหาร|ขนม|เครื่องดื่ม|วิตามิน|เสริม|สมุนไพร|สุขภาพ|food|snack|drink|supplement|vitamin/i]);
+  const isFitness = includesAny(text, [/ออกกำลังกาย|ฟิตเนส|บริหาร|กล้ามเนื้อ|stepper|ลู่วิ่ง|จักรยาน|fitness|exercise|workout|gym/i]);
+  const isHomeDecor = includesAny(text, [/วอลเปเปอร์|แผ่นปู|แต่งห้อง|ตกแต่ง|บ้าน|ห้องน้ำ|ห้องนอน|kitchen|home|decor|wallpaper|mat|tile/i]);
+  const hasFold = includesAny(text, [/พับ|fold|ประหยัดพื้นที่|พื้นที่จำกัด|คอนโด|หอพัก/i]);
+  const hasWheel = includesAny(text, [/ล้อ|ลาก|เข็น|เคลื่อนย้าย|wheel|caster/i]);
+  const hasVent = includesAny(text, [/ระบาย|อากาศ|โปร่ง|อับ|กลิ่น|vent/i]);
+  const hasPP = includesAny(text, [/polypropylene|\bPP\b|พลาสติก|วัสดุ/i]);
+  const hasSize = includesAny(text, [/\b(M|L|XL|2808)\b|หลายขนาด|ขนาด|size/i]);
+  const hasNeutralColor = includesAny(text, [/ขาว|ครีม|มินิมอล|white|cream|minimal/i]);
+  const hasSocialProof = productBrief.trustSignals.some((item) => /rating|รีวิว|ขายแล้ว|sold|คะแนน|\d/i.test(item))
+    || includesAny(text, [/rating|รีวิว|ขายแล้ว|sold|คะแนน/i]);
+
+  const problemSolutions = distinctList([
+    isBasket ? "ปัญหา: บ้าน/ห้องน้ำ/ห้องซักผ้ารก เสื้อผ้าและของใช้กระจัดกระจาย → ทางออก: ใช้ตะกร้าเก็บของอเนกประสงค์รวมของให้เป็นที่เดียว ดูเป็นระเบียบขึ้น" : "",
+    hasFold ? "ปัญหา: พื้นที่จำกัด วางตะกร้าถาวรแล้วเกะกะ → ทางออก: ตะกร้าพับเก็บได้ ประหยัดพื้นที่เมื่อไม่ใช้งาน" : "",
+    hasWheel ? "ปัญหา: ยกตะกร้าผ้าหนักหรือย้ายของลำบาก → ทางออก: มีล้อ ช่วยลากไปซักผ้าหรือย้ายของในบ้านได้สะดวกขึ้น" : "",
+    hasVent ? "ปัญหา: ตะกร้าทึบ อับชื้น มีกลิ่น → ทางออก: ดีไซน์ระบายอากาศได้ดี เหมาะกับเสื้อผ้า ผ้าขนหนู และของใช้ทั่วไป" : "",
+    isApparel ? "ปัญหา: กลัวใส่แล้วไม่พอดีหรือไม่เข้ากับรูปร่าง → ทางออก: สื่อขนาด ทรง และภาพใส่จริงให้เห็นก่อนตัดสินใจ" : "",
+    isBeauty ? "ปัญหา: ไม่แน่ใจว่าสูตรเหมาะกับสภาพผิวหรือปัญหาผิวของตัวเองไหม → ทางออก: แยกสรรพคุณ วิธีใช้ และข้อควรระวังตามข้อมูลหน้าสินค้าอย่างชัดเจน" : "",
+    isElectronics ? "ปัญหา: กลัวใช้งานยากหรือสเปกไม่ตรงความต้องการ → ทางออก: เดโมขั้นตอนใช้งานจริง พร้อมชี้สเปกสำคัญที่ตรวจจากหน้าสินค้าได้" : "",
+    isFoodSupplement ? "ปัญหา: ไม่แน่ใจเรื่องรสชาติ ส่วนผสม หรือความเหมาะสมกับผู้ใช้ → ทางออก: สรุปส่วนผสม วิธีรับประทาน/ใช้งาน และคำเตือนว่าให้ตรวจฉลากก่อนซื้อ" : "",
+    isFitness ? "ปัญหา: อยากออกกำลังกายที่บ้านแต่พื้นที่จำกัดหรือไม่รู้จะเริ่มอย่างไร → ทางออก: โชว์ท่าใช้งานง่าย ระดับแรง และพื้นที่ที่ต้องใช้จริง" : "",
+    isHomeDecor ? "ปัญหา: อยากให้บ้าน/ห้องดูดีขึ้นแต่กลัวติดตั้งยากหรือไม่เข้ากับพื้นที่ → ทางออก: โชว์ before/after วิธีติดตั้ง และมุมใช้งานจริง" : "",
+    ...productBrief.buyerPainPoints.map((pain, index) => `ปัญหา: ${pain} → ทางออก: ${productBrief.keySellingPoints[index] || productBrief.keySellingPoints[0] || productBrief.shortSummary}`),
+  ], 8);
+
+  const objectionsTrust = distinctList([
+    hasPP ? "ข้อกังวล: ไม่แน่ใจว่าสินค้าแข็งแรงไหม → ความมั่นใจ: วัสดุ Polypropylene/PP หรือพลาสติกสำหรับของใช้ในบ้าน ช่วยสื่อความทนทานได้" : "",
+    hasSize ? "ข้อกังวล: กลัวเลือกขนาดผิด → ความมั่นใจ: มีหลายขนาดให้เลือก ควรเพิ่มตารางเทียบขนาดและคำแนะนำว่าแต่ละขนาดเหมาะกับใคร" : "",
+    hasNeutralColor ? "ข้อกังวล: สีจะเข้ากับบ้านไหม → ความมั่นใจ: โทนขาว/ครีม/มินิมอล เข้ากับห้องน้ำ ห้องซักผ้า หอพัก และคอนโดได้ง่าย" : "",
+    hasSocialProof ? `ข้อกังวล: ซื้อแล้วใช้งานจริงดีไหม → ความมั่นใจ: ใช้คะแนน/รีวิว/ยอดขายจากหน้าสินค้าเป็น proof เช่น ${productBrief.trustSignals[0] || "rating และรีวิว"}` : "",
+    isApparel ? "ข้อกังวล: กลัวไซซ์หรือทรงไม่ตรงใจ → ความมั่นใจ: แนะนำให้โชว์ตารางไซซ์ ภาพใส่จริง และวิธีวัดก่อนซื้อ" : "",
+    isBeauty ? "ข้อกังวล: กลัวแพ้หรือคาดหวังผลเกินจริง → ความมั่นใจ: ใช้คำอธิบายตามฉลาก/หน้าสินค้า และหลีกเลี่ยง claim รักษาโรคหรือผลลัพธ์เกินหลักฐาน" : "",
+    isElectronics ? "ข้อกังวล: กลัวเสียเร็ว ใช้กับอุปกรณ์ตัวเองไม่ได้ หรือไม่มีประกัน → ความมั่นใจ: ชี้สเปก ความเข้ากันได้ รีวิว และเงื่อนไขร้าน/ประกันที่พบ" : "",
+    isFoodSupplement ? "ข้อกังวล: กลัวส่วนผสมไม่เหมาะกับเด็ก ผู้สูงอายุ หรือคนมีโรคประจำตัว → ความมั่นใจ: แนะนำให้ตรวจฉลาก ข้อห้าม และหลีกเลี่ยงคำตอบเชิงการแพทย์เกินหลักฐาน" : "",
+    isFitness ? "ข้อกังวล: กลัวรับน้ำหนักไม่ไหวหรือใช้แล้วไม่ปลอดภัย → ความมั่นใจ: ชี้น้ำหนักรองรับ วัสดุ พื้นกันลื่น และรีวิวการใช้งานจริง" : "",
+    isHomeDecor ? "ข้อกังวล: กลัวสี/ขนาดไม่ตรงพื้นที่หรือติดตั้งแล้วไม่สวย → ความมั่นใจ: ให้เทียบขนาดจริง สีจริง และภาพก่อนหลังจากหน้าสินค้า/รีวิว" : "",
+    ...productBrief.buyerObjections.map((objection, index) => `ข้อกังวล: ${objection} → ความมั่นใจ: ${productBrief.trustSignals[index] || productBrief.trustSignals[0] || "ใช้หลักฐานจากหน้าสินค้าและภาพจริงช่วยยืนยัน"}`),
+  ], 8);
+
+  const demoSteps = distinctList([
+    hasFold ? "กางสินค้าออกมาใช้งาน แล้วพับเก็บให้เห็นว่าบางและประหยัดพื้นที่" : "",
+    isBasket ? "ใส่เสื้อผ้า ผ้าขนหนู ของเล่น หรือของใช้ในบ้านให้เห็นการเก็บของเป็นหมวดหมู่" : "",
+    hasWheel ? "ลากด้วยล้อให้เห็นว่าเคลื่อนย้ายง่าย ไม่ต้องยกหนัก" : "",
+    hasVent ? "ซูมดีไซน์ช่องระบายอากาศเพื่อลดความอับ" : "",
+    hasNeutralColor ? "วางเทียบในห้องน้ำ ห้องซักผ้า หรือข้างตู้ให้เห็นว่าเข้ากับบ้านง่าย" : "",
+    isApparel ? "โชว์ภาพใส่จริงด้านหน้า/ด้านข้าง พร้อมซูมเนื้อผ้า ทรง และรายละเอียดตะเข็บ" : "",
+    isBeauty ? "โชว์ texture วิธีใช้ ปริมาณที่ใช้ และผลลัพธ์ที่อ้างได้จากหน้าสินค้าเท่านั้น" : "",
+    isElectronics ? "เปิดเครื่อง/เชื่อมต่อ/ใช้งานจริง 1 รอบ แล้วซูมปุ่ม พอร์ต หรือหน้าจอที่สำคัญ" : "",
+    isFoodSupplement ? "โชว์แพ็กเกจ ฉลาก ส่วนผสม วิธีชง/กิน/ใช้ และขนาดบรรจุให้เห็นชัด" : "",
+    isFitness ? "โชว์ท่าเริ่มต้น ท่าใช้งานจริง การพับ/เก็บ และพื้นที่ที่ต้องใช้" : "",
+    isHomeDecor ? "โชว์ก่อนใช้ ระหว่างติดตั้ง/จัดวาง และภาพหลังใช้ในห้องจริง" : "",
+    ...productBrief.keySellingPoints.slice(0, 5).map((point) => `โชว์ประโยชน์หลัก: ${point}`),
+  ], 8);
+
+  const useCases = distinctList([
+    isBasket ? "ห้องน้ำ: ใช้ใส่ผ้าใช้แล้วหรือผ้าขนหนู รอซักได้เป็นระเบียบ" : "",
+    isBasket || hasWheel ? "ห้องซักผ้า: ลากตะกร้าไปหน้าเครื่องซักผ้าได้สะดวก ไม่ต้องยกหนัก" : "",
+    isBasket ? "ห้องนอน: ใช้เก็บเสื้อผ้า ผ้าห่ม หรือของใช้ส่วนตัว" : "",
+    hasFold ? "หอพัก/คอนโด: เหมาะกับพื้นที่เล็ก เพราะพับเก็บได้เมื่อไม่ใช้งาน" : "",
+    isBasket ? "บ้านที่มีเด็ก: ใช้เก็บของเล่น ตุ๊กตา หรือของใช้เด็กให้เป็นที่" : "",
+    isBasket ? "มุมเก็บของในบ้าน: ใช้แยกหมวดหมู่ของ เช่น ผ้าสะอาด ผ้ารอซัก หรือของใช้เบ็ดเตล็ด" : "",
+    isApparel ? "ใส่ไปทำงาน/เรียน/เที่ยว: เลือกเล่า occasion ที่ตรงกับทรง สี และเนื้อผ้าที่เห็นในสินค้า" : "",
+    isBeauty ? "รูทีนเช้า/ก่อนนอน/ก่อนแต่งหน้า: เลือกใช้ตามวิธีใช้ที่หน้าสินค้าระบุ" : "",
+    isElectronics ? "โต๊ะทำงาน รถ บ้าน หรือเดินทาง: เลือกบริบทที่ตรงกับสเปกและขนาดสินค้า" : "",
+    isFoodSupplement ? "ใช้ในมื้อเช้า หลังออกกำลังกาย หรือเป็นของฝาก: ต้องอิงฉลากและคำเตือนของสินค้า" : "",
+    isFitness ? "บ้าน/คอนโด/มุมออกกำลังกายเล็ก ๆ: เหมาะกับคนที่อยากขยับร่างกายโดยไม่ใช้อุปกรณ์ใหญ่" : "",
+    isHomeDecor ? "ห้องน้ำ ห้องครัว ห้องนอน หรือคอนโด: ใช้สื่อ before/after และการจับคู่สี/ขนาดกับพื้นที่จริง" : "",
+    ...productBrief.contentAngles.slice(0, 5),
+  ], 8);
+
+  let positioning = productBrief.contentAngles[0] || productBrief.shortSummary;
+  if (isBasket) positioning = "ตะกร้าเก็บของมินิมอลสำหรับบ้านพื้นที่จำกัด ช่วยให้บ้านเป็นระเบียบ เคลื่อนย้ายง่าย และพับเก็บได้เมื่อไม่ใช้งาน";
+  else if (isApparel) positioning = "สินค้าแฟชั่นที่ควรเล่าด้วย fit, occasion, comfort และภาพใส่จริงเพื่อช่วยให้ลูกค้าตัดสินใจเรื่องไซซ์และสไตล์";
+  else if (isBeauty) positioning = "สินค้าบิวตี้/สกินแคร์ที่ควรเล่าด้วยปัญหาผิว วิธีใช้ ส่วนผสม และ trust signal โดยไม่กล่าวอ้างเกินหลักฐาน";
+  else if (isElectronics) positioning = "สินค้าอุปกรณ์ไฟฟ้า/อิเล็กทรอนิกส์ที่ควรเล่าด้วยเดโมใช้งานจริง สเปกสำคัญ ความเข้ากันได้ และความคุ้มค่า";
+  else if (isFoodSupplement) positioning = "สินค้าอาหาร/อาหารเสริมที่ควรเล่าด้วยส่วนผสม วิธีใช้ รสชาติ และข้อควรระวังตามฉลาก";
+  else if (isFitness) positioning = "สินค้าออกกำลังกายที่ควรเล่าด้วยสถานการณ์ใช้งานจริง ความปลอดภัย พื้นที่ใช้ และผลลัพธ์ที่ไม่เกินหลักฐาน";
+  else if (isHomeDecor) positioning = "สินค้าบ้านและตกแต่งที่ควรเล่าด้วย before/after วิธีติดตั้ง ขนาดจริง และความเข้ากับพื้นที่";
+
+  return { problemSolutions, objectionsTrust, demoSteps, useCases, positioning };
+}
+
+function buildVideoPrompt(setting: string) {
+  return [
+    "Vertical video 9:16, realistic product lifestyle video, soft natural light, clean composition, no text on screen, no subtitles.",
+    setting,
+    "Use natural hand movement, practical product demo, and marketplace-safe visuals. Keep product identity faithful to selected product images.",
+  ].join(" ");
+}
+
+function voiceover(text: string) {
+  const line = cleanText(text, 260).replace(/^พูดเป็นภาษาไทยว่า\s*/i, "");
+  return `พูดเป็นภาษาไทยว่า “${line.replace(/[“”"]/g, "")}”`;
+}
+
+function buildStoryOptionVideoBrief(
+  option: Omit<MarketplaceStorytellingHandoff["storyOptions"][number], "videoBrief">,
+  productBrief: ProductBrief,
+): StoryOptionVideoBrief {
+  const productName = productBrief.productName || "สินค้านี้";
+  const outline = option.storyboardOutline.length ? option.storyboardOutline : [option.problemToSolve, option.angle, option.useCase];
+  const first = outline[0] || option.problemToSolve;
+  const second = outline[1] || option.angle;
+  const third = outline[2] || option.useCase;
+  const cta = productBrief.suggestedCTAs[0] || "ดูรายละเอียดสินค้า";
+  const shotsByType: Record<string, StoryOptionVideoShot[]> = {
+    "story_option:problem_solution": [
+      {
+        order: 1,
+        startSec: 0,
+        endSec: 10,
+        title: "เปิดด้วยปัญหาที่ลูกค้ากำลังเจอ",
+        videoPrompt: buildVideoPrompt("Show the customer's everyday problem in a real home or lifestyle context before the product appears."),
+        subShots: [
+          `เห็นสถานการณ์ปัญหา: ${first}`,
+          "ลูกค้าหยุดมองหรือแสดงสีหน้ากังวลกับปัญหานั้น",
+          "Close-up รายละเอียดของปัญหาให้รู้สึกว่าเป็นเรื่องที่พบได้จริง",
+        ],
+        thaiVoiceover: voiceover(`${first} ถ้าเจอแบบนี้ ${productName} อาจช่วยแก้ปัญหาให้เป็นเรื่องง่ายขึ้น`),
+      },
+      {
+        order: 2,
+        startSec: 10,
+        endSec: 20,
+        title: "โชว์สินค้าเป็นทางออก",
+        videoPrompt: buildVideoPrompt("Realistic product demo, hands introduce the product naturally, no text overlays."),
+        subShots: [
+          `หยิบหรือวาง ${productName} เข้ามาในเฟรมให้เห็นชัด`,
+          `โชว์วิธีใช้หรือจุดเด่นหลัก: ${second}`,
+          "เชื่อมปัญหากับการใช้งานสินค้าให้เห็นทางออกในภาพ",
+        ],
+        thaiVoiceover: voiceover(`จุดเด่นของ ${productName} คือ ${second} ช่วยเปลี่ยนปัญหาเดิมให้จัดการได้ง่ายขึ้น`),
+      },
+      {
+        order: 3,
+        startSec: 20,
+        endSec: 30,
+        title: "ผลลัพธ์หลังใช้และ CTA",
+        videoPrompt: buildVideoPrompt("Show the after state, clean and satisfying result, realistic product placement, no text overlays."),
+        subShots: [
+          "โชว์สภาพหลังใช้ที่ดูดีขึ้นหรือเป็นระเบียบขึ้น",
+          `ซูมสินค้าและบริบทการใช้งานจริง: ${option.useCase}`,
+          `ปิดด้วยภาพสินค้าและจังหวะชวน ${cta}`,
+        ],
+        thaiVoiceover: voiceover(`ใช้ในสถานการณ์แบบนี้ได้จริง ${option.useCase} สนใจดูรายละเอียดสินค้าเพิ่มเติมได้เลย`),
+      },
+    ],
+    "story_option:objection_trust": [
+      {
+        order: 1,
+        startSec: 0,
+        endSec: 10,
+        title: "ลูกค้าลังเลก่อนซื้อ",
+        videoPrompt: buildVideoPrompt("Realistic online shopping scene, customer compares product details on phone, no text overlays."),
+        subShots: [
+          "คนถือมือถือดูหน้าสินค้าหรือดูรูปสินค้าอย่างลังเล",
+          `มองบริบทที่ทำให้เกิดความกังวล: ${option.problemToSolve}`,
+          "Close-up การเลื่อนดูรายละเอียดสินค้า รีวิว หรือรูปสินค้า",
+        ],
+        thaiVoiceover: voiceover(`ก่อนซื้อ หลายคนอาจกังวลเรื่อง ${option.problemToSolve}`),
+      },
+      {
+        order: 2,
+        startSec: 10,
+        endSec: 20,
+        title: "ตอบข้อกังวลด้วยหลักฐาน",
+        videoPrompt: buildVideoPrompt("Close-up product detail and proof signals from the product page context, no text overlays."),
+        subShots: [
+          `ซูมรายละเอียดสินค้าหรือวัสดุที่เกี่ยวข้องกับความมั่นใจ`,
+          `โชว์ proof หรือ trust signal: ${second}`,
+          "โชว์การใช้งานจริงแบบสั้นเพื่อยืนยันว่าข้อกังวลนั้นตรวจได้",
+        ],
+        thaiVoiceover: voiceover(`ให้มั่นใจขึ้นด้วยข้อมูลที่ตรวจได้จากหน้าสินค้า เช่น ${second}`),
+      },
+      {
+        order: 3,
+        startSec: 20,
+        endSec: 30,
+        title: "สรุปความมั่นใจก่อนตัดสินใจ",
+        videoPrompt: buildVideoPrompt("Customer uses the product with a satisfied expression, clean trustworthy product shot, no text overlays."),
+        subShots: [
+          `โชว์สินค้าในบริบทใช้งานจริง: ${option.useCase}`,
+          "ลูกค้าลองใช้หรือหยิบจับสินค้าอย่างมั่นใจ",
+          `ปิดด้วยภาพสินค้าชัด ๆ พร้อมจังหวะชวน ${cta}`,
+        ],
+        thaiVoiceover: voiceover(`${productName} เหมาะกับคนที่อยากมั่นใจก่อนซื้อ และควรตรวจรายละเอียดสินค้าให้ตรงกับการใช้งานของตัวเอง`),
+      },
+    ],
+    "story_option:quick_demo": [
+      {
+        order: 1,
+        startSec: 0,
+        endSec: 10,
+        title: "เริ่มเดโมให้เห็นว่าใช้งานง่าย",
+        videoPrompt: buildVideoPrompt("Fast satisfying product demo, clean home or lifestyle setup, no text overlays."),
+        subShots: [
+          `หยิบ ${productName} เข้ามาในเฟรม`,
+          `เริ่มใช้งานขั้นแรก: ${first}`,
+          "ซูมภาพสินค้าให้เห็นรูปทรง รายละเอียด หรือส่วนใช้งานหลัก",
+        ],
+        thaiVoiceover: voiceover(`${productName} ใช้งานง่าย เริ่มจาก ${first}`),
+      },
+      {
+        order: 2,
+        startSec: 10,
+        endSec: 20,
+        title: "รวมประโยชน์หลักแบบเร็ว",
+        videoPrompt: buildVideoPrompt("Fast-cut montage of product benefits and practical uses, no text overlays."),
+        subShots: [
+          `โชว์ประโยชน์ที่หนึ่ง: ${second}`,
+          `โชว์ประโยชน์ที่สอง: ${third}`,
+          `สลับภาพใช้งานจริงให้เห็นความคุ้มค่า: ${option.angle}`,
+        ],
+        thaiVoiceover: voiceover(`จุดที่น่าสนใจคือ ${second} และ ${third}`),
+      },
+      {
+        order: 3,
+        startSec: 20,
+        endSec: 30,
+        title: "จบด้วยภาพใช้งานจริงและ CTA",
+        videoPrompt: buildVideoPrompt("Smooth final demo shot, product in real context, clear ending product beauty shot, no text overlays."),
+        subShots: [
+          `ใช้งานสินค้าในบริบทจริง: ${option.useCase}`,
+          "โชว์ผลลัพธ์หลังใช้แบบรวดเร็วและเข้าใจง่าย",
+          `ปิดด้วยภาพสินค้าเด่น พร้อมจังหวะชวน ${cta}`,
+        ],
+        thaiVoiceover: voiceover(`ถ้าต้องการตัวช่วยที่ใช้งานง่ายและเห็นประโยชน์เร็ว ลองดู ${productName} ได้เลย`),
+      },
+    ],
+    "story_option:use_case_moment": [
+      {
+        order: 1,
+        startSec: 0,
+        endSec: 10,
+        title: "สถานการณ์ใช้งานที่หนึ่ง",
+        videoPrompt: buildVideoPrompt("Realistic lifestyle context, show where and when the customer would use the product, no text overlays."),
+        subShots: [
+          `เปิดด้วยสถานการณ์จริง: ${first}`,
+          "คนในฉากเริ่มใช้งานสินค้าอย่างเป็นธรรมชาติ",
+          "ซูมสินค้าในบริบทนั้นให้เห็นว่าเข้ากับพื้นที่หรือชีวิตประจำวัน",
+        ],
+        thaiVoiceover: voiceover(`${productName} ใช้ได้ในสถานการณ์แบบนี้: ${first}`),
+      },
+      {
+        order: 2,
+        startSec: 10,
+        endSec: 20,
+        title: "สถานการณ์ใช้งานที่สอง",
+        videoPrompt: buildVideoPrompt("Second practical lifestyle context, different angle and setting, no text overlays."),
+        subShots: [
+          `เปลี่ยนไปอีกบริบทการใช้งาน: ${second}`,
+          "โชว์การหยิบ ใช้ วาง หรือจัดเก็บสินค้าในบริบทนั้น",
+          "ให้เห็นประโยชน์ที่ต่างจาก shot แรกอย่างชัดเจน",
+        ],
+        thaiVoiceover: voiceover(`อีกมุมที่ใช้ได้คือ ${second}`),
+      },
+      {
+        order: 3,
+        startSec: 20,
+        endSec: 30,
+        title: "สรุปว่าเหมาะกับใคร",
+        videoPrompt: buildVideoPrompt("Montage of realistic use cases, final product hero shot in clean environment, no text overlays."),
+        subShots: [
+          `โชว์บริบทใช้งานเพิ่มเติม: ${third}`,
+          `สรุปกลุ่มคนหรือสถานการณ์ที่เหมาะ: ${option.audience}`,
+          `ปิดด้วยภาพสินค้าในบริบทจริงและจังหวะชวน ${cta}`,
+        ],
+        thaiVoiceover: voiceover(`โดยรวมแล้วเหมาะกับ ${option.audience} และคนที่ต้องการ ${option.customerNeed}`),
+      },
+    ],
+  };
+  return {
+    schemaVersion: "1.0",
+    durationSec: 30,
+    aspectRatio: "9:16",
+    language: "th",
+    structureLabel: "30 วินาที | 3 Shot | Shot ละ 10 วินาที",
+    noOnScreenText: true,
+    shots: shotsByType[option.id] ?? shotsByType["story_option:quick_demo"],
+  };
+}
+
+function buildStoryOptions(
+  productBrief: ProductBrief,
+  videoBrief: VideoBrief,
+  claims: MarketplaceStorytellingHandoff["claims"],
+): MarketplaceStorytellingHandoff["storyOptions"] {
+  const claimIds = claims.map((claim) => claim.id).slice(0, 4);
+  const evidenceIds = productBrief.evidenceIds.slice(0, 20);
+  const audience = productBrief.targetAudiences[0] || "ผู้ซื้อที่กำลังเปรียบเทียบสินค้า";
+  const pain = productBrief.buyerPainPoints[0] || "ต้องการเห็นประโยชน์และความน่าเชื่อถืออย่างรวดเร็ว";
+  const objection = productBrief.buyerObjections[0] || "ยังลังเลเรื่องความคุ้มค่าและคุณภาพ";
+  const sellingPoint = productBrief.keySellingPoints[0] || productBrief.shortSummary || productBrief.productName;
+  const secondarySellingPoint = productBrief.keySellingPoints[1] || productBrief.contentAngles[1] || sellingPoint;
+  const trust = productBrief.trustSignals[0] || "มีข้อมูลจากหน้าสินค้าเป็นหลักฐาน";
+  const inferred = inferStoryOptionDetails(productBrief);
+  const hooks = productBrief.suggestedHooks.length > 0
+    ? productBrief.suggestedHooks
+    : [videoBrief.hook, `ทำไม ${productBrief.productName} ถึงน่าสนใจ`].filter(Boolean);
+  const baseConfidence = clamp01(productBrief.confidence);
+  const evidenceBoost = evidenceIds.length > 0 ? 0.04 : -0.08;
+  const options: MarketplaceStorytellingHandoff["storyOptions"] = [
+    {
+      id: "story_option:problem_solution",
+      title: "ปัญหา → ทางออก",
+      audience,
+      customerNeed: pain,
+      problemToSolve: inferred.problemSolutions[0] || pain,
+      useCase: inferred.positioning || productBrief.contentAngles[0] || "ใช้เมื่อลูกค้าต้องการแก้ปัญหาหลักของสินค้า",
+      angle: sellingPoint,
+      storyFormat: "customer_journey" as const,
+      journeyStages: ["problem_recognition", "consideration", "proof_review_demo", "conversion_cta"] as MarketplaceStorytellingHandoff["customerJourneyStages"],
+      hook: hooks[0] || sellingPoint,
+      storyboardOutline: inferred.problemSolutions.length ? inferred.problemSolutions : [
+        `เปิดด้วย pain point: ${pain}`,
+        `โชว์สินค้าและจุดเด่น: ${sellingPoint}`,
+        `เสริม proof/trust: ${trust}`,
+        `ปิดด้วย CTA: ${productBrief.suggestedCTAs[0] || videoBrief.cta}`,
+      ],
+      primaryClaimIds: claimIds,
+      evidenceIds,
+      confidence: clamp01(Math.min(baseConfidence + evidenceBoost, 0.86)),
+      autoSelected: false,
+    },
+    {
+      id: "story_option:objection_trust",
+      title: "ข้อกังวล → ความมั่นใจ",
+      audience,
+      customerNeed: inferred.objectionsTrust[0] || `ต้องการมั่นใจก่อนซื้อ: ${objection}`,
+      problemToSolve: objection,
+      useCase: "ใช้เมื่อลูกค้าลังเลเรื่องราคา คุณภาพ รีวิว หรือความน่าเชื่อถือ",
+      angle: trust,
+      storyFormat: "product_review" as const,
+      journeyStages: ["awareness", "objection_handling", "trust_building", "conversion_cta"] as MarketplaceStorytellingHandoff["customerJourneyStages"],
+      hook: hooks[1] || hooks[0] || objection,
+      storyboardOutline: inferred.objectionsTrust.length ? inferred.objectionsTrust : [
+        `เริ่มจากข้อกังวล: ${objection}`,
+        `ตอบด้วยจุดขาย/รายละเอียดที่ตรวจได้`,
+        `โชว์ trust signal: ${trust}`,
+        `จบด้วยเหตุผลว่าทำไมควรลอง`,
+      ],
+      primaryClaimIds: claimIds,
+      evidenceIds,
+      confidence: clamp01(Math.min(baseConfidence * 0.95 + evidenceBoost, 0.82)),
+      autoSelected: false,
+    },
+    {
+      id: "story_option:quick_demo",
+      title: "เดโมเร็ว / รวมประโยชน์",
+      audience,
+      customerNeed: "อยากเห็นเดโมและประโยชน์หลักแบบรวดเร็ว",
+      problemToSolve: inferred.demoSteps[0] || pain,
+      useCase: "ใช้ทำคลิปสั้นเน้นภาพสินค้า จุดเด่น และ CTA แบบเร็ว",
+      angle: secondarySellingPoint,
+      storyFormat: "sales_demo" as const,
+      journeyStages: ["awareness", "consideration", "proof_review_demo", "conversion_cta"] as MarketplaceStorytellingHandoff["customerJourneyStages"],
+      hook: hooks[2] || hooks[0] || sellingPoint,
+      storyboardOutline: inferred.demoSteps.length ? inferred.demoSteps : videoBrief.scenes.slice(0, 4).map((scene) => `${scene.startSec}-${scene.endSec}s: ${scene.sceneGoal} / ${scene.onScreenText}`),
+      primaryClaimIds: claimIds,
+      evidenceIds,
+      confidence: clamp01(Math.min(baseConfidence * 0.9 + evidenceBoost, 0.78)),
+      autoSelected: false,
+    },
+    {
+      id: "story_option:use_case_moment",
+      title: "สถานการณ์ใช้งานจริง",
+      audience,
+      customerNeed: `อยากรู้ว่า ${productBrief.productName} เหมาะกับสถานการณ์ไหน`,
+      problemToSolve: inferred.useCases[0] || pain,
+      useCase: inferred.useCases[0] || productBrief.contentAngles[2] || "ใช้เมื่อต้องการเล่าให้เห็นบริบทการใช้งานจริงก่อนตัดสินใจซื้อ",
+      angle: secondarySellingPoint,
+      storyFormat: "customer_journey" as const,
+      journeyStages: ["awareness", "problem_recognition", "consideration", "conversion_cta"] as MarketplaceStorytellingHandoff["customerJourneyStages"],
+      hook: hooks[3] || `ถ้าเจอสถานการณ์นี้ ${productBrief.productName} อาจช่วยได้`,
+      storyboardOutline: inferred.useCases.length ? inferred.useCases : [
+        `เปิดด้วยสถานการณ์ของกลุ่มเป้าหมาย: ${audience}`,
+        `ชี้ปัญหาหรือความต้องการ: ${pain}`,
+        `โยงเข้ากับประโยชน์สินค้า: ${secondarySellingPoint}`,
+        `สรุปว่าเหมาะกับใครและควรซื้อเมื่อไร`,
+      ],
+      primaryClaimIds: claimIds.slice(0, 3),
+      evidenceIds,
+      confidence: clamp01(Math.min(baseConfidence * 0.88 + evidenceBoost, 0.76)),
+      autoSelected: false,
+    },
+  ];
+  const candidates = options.filter((option) => option.storyboardOutline.length > 0).slice(0, 4);
+  if (candidates.length === 0) return [];
+  const bestIndex = candidates.reduce((best, option, index) => (
+    option.confidence > candidates[best].confidence ? index : best
+  ), 0);
+  return candidates.map((option, index) => {
+    const nextOption = {
+      ...option,
+      autoSelected: index === bestIndex,
+      decisionReason: index === bestIndex
+        ? "ระบบเลือกเป็นตัวเลือกแนะนำอัตโนมัติจาก confidence, evidence และความพร้อมของ claim"
+        : "เก็บเป็นทางเลือกสำหรับสร้าง storytelling/storyboard ภายหลัง",
+    };
+    return {
+      ...nextOption,
+      videoBrief: buildStoryOptionVideoBrief(nextOption, productBrief),
+    };
+  });
+}
+
+const USER_STORY_CATEGORY_LABELS: Record<UserStoryInsightCategory, string> = {
+  audience_pain_problem: "Audience / Pain point / Problem",
+  selling_points: "Selling points",
+  hooks: "Hooks",
+  objections_trust: "Objections / trust",
+  example_use_case: "Example use case",
+};
+
+function splitUserInsightLines(rawText: string): string[] {
+  return rawText
+    .split(/[\n\r]+|[•\-]+|[.!?。]+/g)
+    .map((item) => cleanText(item, 220))
+    .filter((item) => item.length >= 3)
+    .slice(0, 12);
+}
+
+function classifyUserInsightLine(line: string): UserStoryInsightCategory {
+  const lower = line.toLowerCase();
+  if (/(hook|เปิด|คำโปรย|ดึงดูด|สะดุด|เริ่มคลิป|headline)/i.test(line)) return "hooks";
+  if (/(กังวล|ลังเล|แพง|กลัว|ไม่มั่นใจ|เชื่อ|รีวิว|rating|ยอดขาย|รับประกัน|ของแท้|trust|proof)/i.test(line)) return "objections_trust";
+  if (/(ใช้|เวลา|ตอน|กรณี|สถานการณ์|ตัวอย่าง|เหมาะกับ|สำหรับ|use case)/i.test(line)) return "example_use_case";
+  if (/(จุดเด่น|ขาย|ดี|ช่วย|ประโยชน์|วัสดุ|ทน|คุ้ม|เร็ว|ง่าย|ประหยัด|selling|benefit)/i.test(line)) return "selling_points";
+  if (/(ลูกค้า|คนที่|กลุ่ม|ปัญหา|pain|problem|ต้องการ|ไม่อยาก|อยาก)/i.test(line)) return "audience_pain_problem";
+  return "selling_points";
+}
+
+function optionScoreForUserInsight(
+  option: MarketplaceStorytellingHandoff["storyOptions"][number],
+  categories: UserStoryInsightCategory[],
+): number {
+  let score = option.autoSelected ? 0.2 : 0;
+  if (categories.includes("objections_trust") && /trust|proof|กังวล|มั่นใจ/i.test(`${option.title} ${option.useCase}`)) score += 1;
+  if (categories.includes("example_use_case") && /use|case|สถานการณ์|customer_journey/i.test(`${option.title} ${option.storyFormat} ${option.useCase}`)) score += 1;
+  if (categories.includes("hooks") && option.hook) score += 0.5;
+  if (categories.includes("audience_pain_problem") && /problem|ปัญหา|ทางออก|customer_journey/i.test(`${option.title} ${option.storyFormat}`)) score += 1;
+  if (categories.includes("selling_points") && /demo|ประโยชน์|sales_demo/i.test(`${option.title} ${option.storyFormat}`)) score += 0.8;
+  return score + option.confidence;
+}
+
+export function createUserStoryInsightDraft(
+  rawText: string,
+  handoff: MarketplaceStorytellingHandoff,
+): UserStoryInsightDraft {
+  const cleanRaw = cleanText(rawText, 1400);
+  const lines = splitUserInsightLines(cleanRaw);
+  const additions = new Map<UserStoryInsightCategory, string[]>();
+  for (const line of lines) {
+    const category = classifyUserInsightLine(line);
+    const current = additions.get(category) || [];
+    if (!current.includes(line)) additions.set(category, [...current, line].slice(0, 5));
+  }
+  const categories = Array.from(additions.keys());
+  const fallbackOption = handoff.storyOptions.find((option) => option.autoSelected) || handoff.storyOptions[0];
+  const targetOption = handoff.storyOptions
+    .slice()
+    .sort((a, b) => optionScoreForUserInsight(b, categories) - optionScoreForUserInsight(a, categories))[0] || fallbackOption;
+  const draftAdditions = Array.from(additions.entries()).map(([category, values]) => ({
+    category,
+    label: USER_STORY_CATEGORY_LABELS[category],
+    values,
+    confidence: Math.min(0.9, 0.55 + values.length * 0.08),
+  }));
+  return {
+    schemaVersion: "1.0",
+    rawText: cleanRaw,
+    summary: draftAdditions
+      .map((item) => `${item.label}: ${item.values.slice(0, 2).join(" / ")}`)
+      .join(" | ")
+      .slice(0, 700),
+    targetOptionId: targetOption?.id || "",
+    targetOptionTitle: targetOption?.title || "Recommended story option",
+    additions: draftAdditions,
+    confidence: draftAdditions.length > 0 ? Math.min(0.9, 0.5 + draftAdditions.length * 0.1) : 0.35,
+    needsUserConfirmation: true,
+  };
+}
+
+export function applyUserStoryInsightDraft(
+  handoff: MarketplaceStorytellingHandoff,
+  draft: UserStoryInsightDraft,
+): MarketplaceStorytellingHandoff {
+  const confirmedAt = new Date().toISOString();
+  const targetOptionId = draft.targetOptionId || handoff.storyOptions.find((option) => option.autoSelected)?.id || handoff.storyOptions[0]?.id;
+  return {
+    ...handoff,
+    storyOptions: handoff.storyOptions.map((option) => {
+      if (option.id !== targetOptionId) return option;
+      const additions: UserStoryInsightAddition[] = draft.additions.map((addition) => ({
+        category: addition.category,
+        values: addition.values,
+        rawText: draft.rawText,
+        source: "user_confirmed",
+        confirmedAt,
+        confidence: addition.confidence,
+      }));
+      const audience = draft.additions.find((item) => item.category === "audience_pain_problem")?.values[0] || option.audience;
+      const selling = draft.additions.find((item) => item.category === "selling_points")?.values[0] || option.angle;
+      const hook = draft.additions.find((item) => item.category === "hooks")?.values[0] || option.hook;
+      const objection = draft.additions.find((item) => item.category === "objections_trust")?.values[0];
+      const useCase = draft.additions.find((item) => item.category === "example_use_case")?.values[0] || option.useCase;
+      return {
+        ...option,
+        audience,
+        customerNeed: audience,
+        problemToSolve: objection || option.problemToSolve,
+        useCase,
+        angle: selling,
+        hook,
+        storyboardOutline: [
+          ...draft.additions.flatMap((addition) => addition.values.map((value) => `${USER_STORY_CATEGORY_LABELS[addition.category]}: ${value}`)),
+          ...option.storyboardOutline,
+        ].slice(0, 8),
+        confidence: Math.min(0.95, option.confidence + 0.06),
+        source: "mixed",
+        userAdditions: [...(option.userAdditions || []), ...additions].slice(-20),
+        decisionReason: "มีข้อมูลเพิ่มเติมจาก user ที่ confirm แล้ว จึงใช้เป็น option ที่ควรพิจารณาใน storytelling/storyboard",
+      };
+    }),
+    confidence: Math.min(0.95, handoff.confidence + 0.04),
   };
 }
 
@@ -498,17 +1220,20 @@ export function normalizeProductBrief(value: any, source: SanitizedLocalAIInput)
     productName: cleanText(value?.productName || source.product.title, 300) || "Untitled product",
     category: cleanText(value?.category || source.product.category, 200) || undefined,
     shortSummary: cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300),
-    keySellingPoints: toStringList(value?.keySellingPoints, 12),
+    keySellingPoints: normalizePriceSensitiveList(toStringList(value?.keySellingPoints, 12), source),
     targetAudiences: toStringList(value?.targetAudiences, 12),
     buyerPainPoints: toStringList(value?.buyerPainPoints, 12),
     buyerObjections: toStringList(value?.buyerObjections, 12),
-    trustSignals: toStringList(value?.trustSignals, 12),
+    trustSignals: normalizePriceSensitiveList(toStringList(value?.trustSignals, 12), source),
     contentAngles: toStringList(value?.contentAngles, 12),
     suggestedHooks: toStringList(value?.suggestedHooks, 12),
     suggestedCTAs: toStringList(value?.suggestedCTAs, 12),
     confidence: clamp01(value?.confidence ?? 0.55),
     evidenceIds: toStringList(value?.evidenceIds, 80).filter((id) => evidenceIds.has(id)),
   };
+  if (source.product.price && !brief.keySellingPoints.some((item) => item.includes(source.product.price ?? ""))) {
+    brief.keySellingPoints = [`ราคา ${source.product.price}`, ...brief.keySellingPoints].slice(0, 12);
+  }
   if (brief.evidenceIds.length === 0 && source.evidence[0]) brief.evidenceIds = [source.evidence[0].id];
   return brief;
 }
@@ -553,9 +1278,80 @@ function toStringList(value: unknown, max: number) {
   return (Array.isArray(value) ? value : []).map((item) => cleanText(item, 220)).filter(Boolean).slice(0, max);
 }
 
+function parseMoneyFromText(value: string | undefined) {
+  if (!value) return null;
+  const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  const parsed = match ? Number(match[0]) : NaN;
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : null;
+}
+
+function textHasPriceSignal(value: string) {
+  return /(ราคา|฿|บาท|thb)/i.test(value);
+}
+
+function priceClaimMatchesSource(value: string, sourcePrice: number | null) {
+  if (!textHasPriceSignal(value) || sourcePrice == null) return true;
+  const claimPrice = parseMoneyFromText(value);
+  if (claimPrice == null) return true;
+  return Math.abs(claimPrice - sourcePrice) < 0.01;
+}
+
+function normalizePriceSensitiveList(values: string[], source: SanitizedLocalAIInput) {
+  const sourcePrice = parseMoneyFromText(source.product.price);
+  return values.filter((value) => priceClaimMatchesSource(value, sourcePrice));
+}
+
 function clamp01(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+}
+
+function stableJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableJsonStringify(item)).join(",")}]`;
+  return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${stableJsonStringify((value as Record<string, unknown>)[key])}`).join(",")}}`;
+}
+
+function shortSyncHash(value: unknown) {
+  const text = stableJsonStringify(value);
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function normalizeSourceIdentityUrl(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return raw.replace(/[?#].*$/, "").replace(/\/$/, "");
+  }
+}
+
+function buildInsightSourceIdentity(input: {
+  platform: MarketplacePlatform;
+  sourceUrl: string;
+  sourceIds?: SanitizedLocalAIInput["sourceIds"];
+  rawCapture?: ProductCapturePayload;
+}) {
+  const canonicalSourceUrl = normalizeSourceIdentityUrl(
+    input.rawCapture?.canonicalSourceUrl
+      ?? input.sourceIds?.canonicalSourceUrl
+      ?? input.sourceUrl,
+  );
+  return {
+    platform: input.platform,
+    canonicalSourceUrl,
+    externalProductId: input.rawCapture?.externalProductId ?? input.sourceIds?.externalProductId ?? undefined,
+    externalShopId: input.rawCapture?.externalShopId ?? input.sourceIds?.externalShopId ?? undefined,
+  };
 }
 
 export async function createPromptAPISession(onProgress?: (progress: number) => void, signal?: AbortSignal) {
@@ -637,6 +1433,7 @@ export function createDeterministicProductBrief(source: SanitizedLocalAIInput): 
 export async function generateProductBriefWithServerAI(input: {
   serverBaseUrl: string;
   token: string;
+  deviceId?: string;
   extensionVersion: string;
   source: SanitizedLocalAIInput;
   languagePreference: AnalysisLanguagePreference;
@@ -647,6 +1444,7 @@ export async function generateProductBriefWithServerAI(input: {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${input.token}`,
+        ...(input.deviceId ? { "X-Marketplace-Device-Id": input.deviceId } : {}),
       },
       body: JSON.stringify({
         extensionVersion: input.extensionVersion,
@@ -684,6 +1482,11 @@ export function buildInsightSyncRequest(input: {
   settings: LocalAISettings;
 }) {
   const generationRunId = `${input.insightType}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+  const storyOptions = input.insightType === "storytelling_handoff" && input.payload && typeof input.payload === "object" && Array.isArray((input.payload as any).storyOptions)
+    ? (input.payload as any).storyOptions as Array<{ videoBrief?: unknown }>
+    : [];
+  const idempotencySchema = input.insightType === "storytelling_handoff" ? "story_options_video_v1" : "v1";
+  const payloadSyncHash = shortSyncHash(input.payload);
   const selectedImageQuality = (input.source.product.selectedImages ?? []).map((image) => ({
     evidenceId: typeof image.id === "string" ? image.id : undefined,
     url: String(image.url ?? ""),
@@ -703,9 +1506,17 @@ export function buildInsightSyncRequest(input: {
     externalShopId: input.rawCapture?.externalShopId ?? input.source.sourceIds?.externalShopId,
     canonicalSourceUrl: input.rawCapture?.canonicalSourceUrl ?? input.source.sourceIds?.canonicalSourceUrl,
   };
+  const sourceIdentity = buildInsightSourceIdentity({
+    platform: input.source.platform,
+    sourceUrl: input.source.sourceUrl,
+    sourceIds: input.source.sourceIds,
+    rawCapture: input.rawCapture,
+  });
+  const sourceIdentityHash = shortSyncHash(sourceIdentity);
+  const semanticKey = `${input.source.platform}:${sourceIdentityHash}:${input.insightType}:${input.provider}:${idempotencySchema}:${payloadSyncHash}`;
   return {
     extensionVersion: input.extensionVersion,
-    idempotencyKey: `${input.source.platform}:${input.source.payloadHash}:${input.insightType}:${input.provider}`,
+    idempotencyKey: semanticKey,
     schemaVersion: "1.0",
     insightCreatedAt: new Date().toISOString(),
     payloadHash: input.source.payloadHash,
@@ -723,8 +1534,14 @@ export function buildInsightSyncRequest(input: {
       generationRunId,
       inputEvidenceIds: input.source.evidence.map((item) => item.id),
       sourceIds,
+      sourceIdentity,
+      sourceIdentityHash,
+      semanticKey,
+      semanticPayloadHash: payloadSyncHash,
       selectedImageQuality,
       dataQualityWarnings,
+      storyOptionCount: storyOptions.length,
+      storyOptionVideoBriefCount: storyOptions.filter((option) => option.videoBrief).length,
     },
     payload: input.payload,
     rawCaptureIncluded: false,

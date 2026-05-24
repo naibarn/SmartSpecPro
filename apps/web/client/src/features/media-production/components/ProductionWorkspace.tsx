@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
-import { AlertCircle, AlertTriangle, Archive, CheckCircle, Clock, Film, Layers, ListTree, Loader2, Lock, MoreHorizontal, RotateCcw, Route, Save, Search, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { AlertCircle, AlertTriangle, Archive, ArrowRight, CheckCircle, Clock, Eye, Film, Image as ImageIcon, Layers, ListTree, Loader2, Lock, MoreHorizontal, Music, PackagePlus, Paperclip, Play, RotateCcw, Route, Save, Search, Settings2, ShieldCheck, Sparkles, Trash2, Video, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ProductionEvidenceStatus, ProductionFlowNode, ProductionGoal, ProductionPlanningSelection, ProductionSpace } from "@shared/mediaProduction";
+import type { ProductionContextAssetZone, ProductionEvidenceStatus, ProductionFlowNode, ProductionGoal, ProductionPlanningSelection, ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
 import { ContextAssetBoard } from "./ContextAssetBoard";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import { ProductEvidenceTray } from "./ProductEvidenceTray";
@@ -24,6 +24,11 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   onProjectSearchOpen?: () => void;
   onNewProject?: () => void;
   onCreateFixturePlan: () => void;
+  storyConceptWizard?: ProductionStoryConceptWizardState | null;
+  onSelectStoryConcept?: (conceptId: string) => void;
+  onConfirmStoryConceptPlan?: (conceptId: string) => void;
+  onRegenerateStoryConcepts?: () => void;
+  onResetStoryConcepts?: () => void;
   onOpenVideoShot: () => void;
   isSaving?: boolean;
   isPlanning?: boolean;
@@ -57,8 +62,49 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   onSetClaimStatus?: (productId: string, claimId: string, nextStatus: ProductionEvidenceStatus) => void;
   onOpenEvidence?: (evidenceId: string) => void;
   onRemoveEvidenceFromClaim?: (productId: string, claimId: string, evidenceId: string) => void;
-  onCancelExecution?: () => void;
+  onAddPlanningAsset?: (asset: ProductionReferenceInput) => void;
+  onCancelExecution?: (attemptId?: string) => void;
   onRepairOutputRefs?: () => void;
+  onSendStoryboardReview?: () => void;
+  onSendVideoEdit?: () => void;
+  isHandoffDisabled?: boolean;
+}
+
+export interface ProductionStoryConceptOption {
+  id: string;
+  title: string;
+  angle: string;
+  audience: string;
+  painPoint: string;
+  hook: string;
+  sellingPoints: string[];
+  objectionsTrust: string[];
+  useCase: string;
+  storyOptionId?: string;
+  storyDimension?: "problem_solution" | "objection_trust" | "quick_demo" | "use_case_moment";
+  narrativeStructure?: string;
+  emotionalTone?: string;
+  hookTechnique?: string;
+  hookFormula?: string;
+  source?: "marketplace_insight" | "llm_synthesized" | "local_fallback";
+  videoBrief?: Record<string, unknown>;
+  sceneTimeline: Array<{
+    timeRange: string;
+    title: string;
+    detail: string;
+  }>;
+  risks: string[];
+  sourceSignals: string[];
+}
+
+export interface ProductionStoryConceptWizardState {
+  status: "idle" | "options_ready";
+  options: ProductionStoryConceptOption[];
+  selectedId?: string | null;
+  contextSummary?: string;
+  generatedAt?: string;
+  generationSeed?: string;
+  source?: "marketplace_insight" | "llm_synthesized" | "local_fallback";
 }
 
 const fallbackSpace: ProductionSpace = {
@@ -91,11 +137,54 @@ const fallbackSpace: ProductionSpace = {
     { id: "shot-2", title: "Proof", order: 2, durationSeconds: 6, nodeIds: ["proof-video", "handoff"] },
   ],
   flowNodes: [
-    { id: "brief", kind: "planning", title: "Goal Brief", status: "ready", position: { x: 0, y: 80 } },
-    { id: "hero-image", kind: "image", title: "Hero Product Image", status: "warning", position: { x: 240, y: 20 }, readinessIssues: ["Product evidence review pending"] },
-    { id: "shot-1-node", kind: "video_shot", title: "Shot 1 Group", status: "ready", position: { x: 240, y: 160 }, shotId: "shot-1" },
-    { id: "proof-video", kind: "video", title: "Proof Clip", status: "blocked", position: { x: 520, y: 100 }, readinessIssues: ["Missing approved source video"] },
-    { id: "handoff", kind: "video_edit", title: "Video Edit Preview", status: "disabled", position: { x: 800, y: 100 } },
+    {
+      id: "brief",
+      kind: "planning",
+      title: "Goal Brief",
+      status: "ready",
+      position: { x: 0, y: 80 },
+      metadata: {
+        objective: "Create a short product story from approved evidence.",
+        concept: "Hook with the hero product, prove the claim, then hand off for final review.",
+        plan: ["Confirm product truth", "Generate hero image", "Build proof clip", "Review before edit"],
+        expectedOutput: "A reviewable production graph.",
+      },
+    },
+    {
+      id: "hero-image",
+      kind: "image",
+      title: "Hero Product Image",
+      status: "warning",
+      position: { x: 280, y: 20 },
+      readinessIssues: ["Product evidence review pending"],
+      metadata: { objective: "Create the visual anchor for the product hook.", expectedOutput: "Hero image output attached to this node." },
+    },
+    {
+      id: "shot-1-node",
+      kind: "video_shot",
+      title: "Shot 1 Group",
+      status: "ready",
+      position: { x: 280, y: 180 },
+      shotId: "shot-1",
+      metadata: { objective: "Hold the shot-level script, cast, product use, and child node plan.", expectedOutput: "Editable Video Shot record." },
+    },
+    {
+      id: "proof-video",
+      kind: "video",
+      title: "Proof Clip",
+      status: "blocked",
+      position: { x: 600, y: 100 },
+      readinessIssues: ["Missing approved source video"],
+      metadata: { objective: "Generate the proof clip once source evidence is ready.", plan: "Blocked until source video is approved." },
+    },
+    {
+      id: "handoff",
+      kind: "video_edit",
+      title: "Video Edit Preview",
+      status: "disabled",
+      position: { x: 920, y: 100 },
+      metadata: { objective: "Preview downstream Video Edit handoff after generation and QA." },
+    },
   ],
   flowEdges: [
     { id: "brief-hero", source: "brief", target: "hero-image" },
@@ -174,13 +263,130 @@ const languageOptions = [
   { value: "ko", en: "Korean", th: "เกาหลี" },
   { value: "zh", en: "Chinese", th: "จีน" },
 ];
+const maxPlanningAttachments = 10;
+
+function inferPlanningAssetZone(asset: ProductionReferenceInput): ProductionContextAssetZone {
+  if (asset.zone) return asset.zone;
+  if (asset.kind === "marketplace_product" || asset.kind === "product_image") return "products";
+  if (asset.kind === "character_asset") return "cast";
+  if (asset.kind === "audio_asset") return "audio";
+  if (asset.kind === "generated_media") return "generated";
+  if (asset.kind === "source_video") return "targets";
+  return "scene_mood";
+}
+
+function planningAttachmentLabel(zone: ProductionContextAssetZone, isThai: boolean): string {
+  const labels: Record<ProductionContextAssetZone, { en: string; th: string }> = {
+    cast: { en: "Characters", th: "ตัวละคร" },
+    products: { en: "Products", th: "สินค้า" },
+    scene_mood: { en: "Scenes", th: "ฉาก" },
+    audio: { en: "Audio", th: "เสียง" },
+    generated: { en: "Generated", th: "ภาพ/สื่อประกอบ" },
+    targets: { en: "Video / target", th: "วิดีโอ / ปลายทาง" },
+  };
+  return isThai ? labels[zone].th : labels[zone].en;
+}
+
+function planningAttachmentIcon(asset: ProductionReferenceInput) {
+  if (asset.kind === "audio_asset") return Music;
+  if (asset.kind === "source_video") return Video;
+  if (asset.kind === "marketplace_product" || asset.kind === "product_image") return PackagePlus;
+  return ImageIcon;
+}
+
+function workspaceNodeSurface(node: ProductionFlowNode): string {
+  return node.configSnapshot?.toolSurface ?? (node.kind.includes("image") ? "image" : node.kind.includes("video") ? "video" : node.kind.includes("audio") || node.kind.includes("tts") ? "audio" : "production");
+}
+
+function workspaceNodeCanRun(node: ProductionFlowNode | null): boolean {
+  if (!node) return false;
+  const surface = workspaceNodeSurface(node);
+  if (surface === "production") return ["ready", "approved", "qa_passed", "completed", "warning"].includes(node.status);
+  return Boolean(node.configSnapshot) && ["ready", "approved", "qa_passed", "completed"].includes(node.status);
+}
+
+function workspaceNodeOutputCount(node: ProductionFlowNode | null): number {
+  return (node?.outputRefs ?? []).filter((ref) => ref.url || ref.thumbnailUrl || ref.storageKey || ref.libraryItemId || ref.mediaTaskId || ref.mediaId || ref.providerTaskId || ref.metadata?.text || ref.metadata?.prompt || ref.metadata?.generatedPrompt).length;
+}
+
+function nextActionForWorkspace(params: {
+  selectedNode: ProductionFlowNode | null;
+  activeStepIndex: number;
+  hasAssets: boolean;
+  hasProductEvidence: boolean;
+  isPlanning?: boolean;
+  isThai: boolean;
+}): { title: string; body: string; label: string; action: "plan" | "run" | "output" | "configure" | "attach"; disabled?: boolean } {
+  const { selectedNode, activeStepIndex, hasAssets, hasProductEvidence, isPlanning, isThai } = params;
+  if (isPlanning) {
+    return {
+      title: isThai ? "กำลังสร้างแผน" : "Planning is running",
+      body: isThai ? "รอ planner สร้าง flow และตรวจความพร้อมก่อน run generation" : "Wait for the planner to create the flow and readiness checks before generation.",
+      label: isThai ? "กำลังสร้างแผน" : "Planning in progress",
+      action: "plan",
+      disabled: true,
+    };
+  }
+  if (!selectedNode) {
+    if (activeStepIndex <= 1 && (!hasAssets || !hasProductEvidence)) {
+      return {
+        title: isThai ? "เพิ่มบริบทให้แผนก่อน" : "Add context before planning",
+        body: isThai ? "เพิ่มรูปสินค้า ฉาก ตัวละคร หรือ evidence เพื่อให้ prompt/generate node มีข้อมูลอ้างอิง" : "Add product, scene, cast, or evidence assets so prompt/generate nodes have references.",
+        label: isThai ? "เพิ่ม asset / evidence" : "Add assets",
+        action: "attach",
+      };
+    }
+    return {
+      title: isThai ? "เลือก node เพื่อทำงานทีละขั้น" : "Select a node to work step by step",
+      body: isThai ? "เลือก node บน canvas เพื่อดูรายละเอียด prompt, references, output และปุ่ม run เฉพาะ node" : "Pick a canvas node to inspect prompt, references, outputs, and node-specific run controls.",
+      label: isThai ? "เลือก node บน canvas" : "Select node",
+      action: "configure",
+      disabled: true,
+    };
+  }
+  const outputs = workspaceNodeOutputCount(selectedNode);
+  if (outputs > 0) {
+    return {
+      title: isThai ? "มีผลลัพธ์แล้ว ตรวจหรือ regenerate ได้" : "Output is ready to review",
+      body: isThai ? "เปิดดูผลลัพธ์จาก node นี้ หรือกด Regenerate หากต้องการเวอร์ชันใหม่" : "Open this node's output, or regenerate if you need a new version.",
+      label: isThai ? "ดูผลลัพธ์" : "View output",
+      action: "output",
+    };
+  }
+  if (workspaceNodeCanRun(selectedNode)) {
+    const surface = workspaceNodeSurface(selectedNode);
+    return {
+      title: surface === "production" ? (isThai ? "สร้าง prompt/ข้อมูลจาก node นี้" : "Run this prompt/work node") : (isThai ? "Generate เฉพาะ node นี้" : "Generate this node only"),
+      body: surface === "production"
+        ? (isThai ? "ขั้นนี้เป็น local prompt/skill output และจะส่งต่อไป node ถัดไป" : "This creates a local prompt/skill output and passes it downstream.")
+        : (isThai ? "ขั้นนี้อาจใช้เครดิตและต้องยืนยันก่อนส่งงาน provider" : "This may use credits and requires confirmation before provider execution."),
+      label: outputs > 0 ? "Regenerate" : "Run",
+      action: "run",
+    };
+  }
+  return {
+    title: isThai ? "ตั้งค่า node ก่อน run" : "Configure this node before running",
+    body: isThai ? "เติม prompt/model/reference/output target หรือแก้ปัญหาความพร้อมของ node นี้" : "Add prompt, model, references, output target, or resolve readiness issues for this node.",
+    label: isThai ? "เปิดตั้งค่า" : "Configure",
+    action: "configure",
+  };
+}
 
 export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const isThai = props.locale === "th";
   const space = props.space ?? fallbackSpace;
   const workspaceViewState = props.workspaceViewState ?? "ready";
   const [localSelectedNodeId, setLocalSelectedNodeId] = useState<string | null>(props.selectedNodeId ?? null);
-  const selectedNodeId = props.selectedNodeId ?? localSelectedNodeId;
+  const [mobilePanelTab, setMobilePanelTab] = useState<"assets" | "evidence" | "config" | "safeguards">("assets");
+  const autoSelectedFlowRef = useRef<string | null>(null);
+  const guidedNodeId = useMemo(() => {
+    const firstActionableNode =
+      space.flowNodes.find((node) => workspaceNodeCanRun(node) || workspaceNodeOutputCount(node) > 0)
+      ?? space.flowNodes.find((node) => node.status !== "disabled" && node.status !== "blocked")
+      ?? space.flowNodes[0];
+    return firstActionableNode?.id ?? null;
+  }, [space.flowNodes]);
+  const selectedNodeId = props.selectedNodeId ?? localSelectedNodeId ?? guidedNodeId;
   const selectedNode = useMemo<ProductionFlowNode | null>(
     () => space.flowNodes.find((node) => node.id === selectedNodeId) ?? null,
     [selectedNodeId, space.flowNodes],
@@ -188,6 +394,9 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const blockedCount = space.flowNodes.filter((node) => node.status === "blocked" || (node.readinessIssues?.length ?? 0) > 0).length;
   const creditEstimate = space.flowNodes.reduce((sum, node) => sum + Math.max(0, Number(node.estimatedCredits ?? 0)), 0);
   const latestAttempt = space.actionAttempts?.at(-1);
+  const activeAttempt = [...(space.actionAttempts ?? [])]
+    .reverse()
+    .find((attempt) => attempt.status === "queued" || attempt.status === "running" || attempt.status === "reserving_credits");
   const latestAttemptProgress = latestAttempt
     ? latestAttempt.status === "completed"
       ? 100
@@ -212,6 +421,8 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const planningSelection = props.planningSelection ?? space.planningSelection;
   const planningModelMode = props.planningModelMode ?? planningSelection?.modelMode ?? "auto";
   const selectedPlanningModel = props.selectedPlanningModel ?? planningSelection?.selectedModel ?? "";
+  const storyWizard = props.storyConceptWizard;
+  const selectedStoryConcept = storyWizard?.options.find((option) => option.id === storyWizard.selectedId) ?? null;
   const formattedStatus = formatProductionStatus(props.status, isThai);
   const labelForOption = (option: { en: string; th: string }) => isThai ? option.th : option.en;
   const currentDuration = brief.durationSeconds ? String(brief.durationSeconds) : "";
@@ -245,6 +456,37 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             : space.contextAssets.length > 0
               ? 1
               : 0;
+  const selectedNodeOutputRefs = selectedNode?.outputRefs ?? [];
+  const selectedNodeLatestOutput = selectedNodeOutputRefs.at(-1);
+  const selectedNodeOutputs = workspaceNodeOutputCount(selectedNode);
+  const planningAttachments = space.contextAssets.slice(0, maxPlanningAttachments);
+  const planningAttachmentCounts = planningAttachments.reduce<Record<ProductionContextAssetZone, number>>((counts, asset) => {
+    const zone = inferPlanningAssetZone(asset);
+    counts[zone] = (counts[zone] ?? 0) + 1;
+    return counts;
+  }, {
+    cast: 0,
+    products: 0,
+    scene_mood: 0,
+    audio: 0,
+    generated: 0,
+    targets: 0,
+  });
+  const nextAction = nextActionForWorkspace({
+    selectedNode,
+    activeStepIndex,
+    hasAssets: space.contextAssets.length > 0,
+    hasProductEvidence: Boolean(space.productEvidenceManifest && String(space.productEvidenceManifest.status) !== "not_loaded"),
+    isPlanning: props.isPlanning,
+    isThai,
+  });
+  const runScopeLabel = selectedNode
+    ? workspaceNodeSurface(selectedNode) === "production"
+      ? (isThai ? "สร้างพรอมป์ในระบบ" : "local prompt")
+      : selectedNode.estimatedCredits && selectedNode.estimatedCredits > 0
+        ? (isThai ? "ใช้เครดิต" : "uses credits")
+        : (isThai ? "ต้องยืนยัน" : "needs confirm")
+    : null;
 
   const patchBrief = (patch: Partial<ProductionGoal>) => {
     const nextBrief = { ...brief, ...patch };
@@ -257,6 +499,38 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
     setLocalSelectedNodeId(nodeId);
     props.onSelectNode?.(nodeId);
   };
+
+  const parseDraggedPlanningAsset = (dataTransfer: DataTransfer): ProductionReferenceInput | null => {
+    const serializedAsset =
+      dataTransfer.getData("application/x-production-asset-json")
+      || dataTransfer.getData("application/json");
+    if (serializedAsset) {
+      try {
+        const parsed = JSON.parse(serializedAsset) as ProductionReferenceInput;
+        if (parsed?.id && parsed.title && parsed.kind) return parsed;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const handlePlanningAttachmentDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const asset = parseDraggedPlanningAsset(event.dataTransfer);
+    if (!asset) return;
+    props.onAddPlanningAsset?.(asset);
+  };
+
+  useEffect(() => {
+    if ((props.selectedNodeId ?? localSelectedNodeId) || space.flowNodes.length === 0) return;
+    const flowKey = `${space.productionRunId}:${space.version}:${space.flowNodes.map((node) => node.id).join(",")}`;
+    if (autoSelectedFlowRef.current === flowKey) return;
+    const firstActionableNode = space.flowNodes.find((node) => node.id === guidedNodeId) ?? space.flowNodes[0];
+    autoSelectedFlowRef.current = flowKey;
+    setLocalSelectedNodeId(firstActionableNode.id);
+    props.onSelectNode?.(firstActionableNode.id);
+  }, [guidedNodeId, localSelectedNodeId, props.onSelectNode, props.selectedNodeId, space.flowNodes, space.productionRunId, space.version]);
 
   if (workspaceViewState === "loading") {
     return (
@@ -418,9 +692,9 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             <div className="grid content-start gap-2 rounded-md border border-slate-100 bg-slate-50 p-3">
               <Button type="button" variant="outline" onClick={props.onCreateFixturePlan} disabled={props.isPlanning} className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white">
                 <Route className="mr-2 h-4 w-4" />
-                {props.isPlanning
-                  ? (isThai ? "กำลังสร้างแผน..." : "Planning...")
-                  : (isThai ? "สร้าง Plan + Verify" : "Create Plan + Verify")}
+              {props.isPlanning
+                  ? (isThai ? "กำลังเตรียมแนวคิด..." : "Preparing...")
+                  : (isThai ? "วางแผน / เสนอ 4 แนวคิด" : "Plan / Suggest 4 concepts")}
               </Button>
               <Button type="button" variant="outline" onClick={props.onProjectSearchOpen}>
                 <Search className="mr-2 h-4 w-4" />
@@ -465,13 +739,43 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                 className="min-h-[72px] rounded-md border-slate-200 bg-slate-50/70 text-sm shadow-none focus-visible:bg-white"
               />
             </div>
+            <div className="rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2" data-testid="production-next-action-compact">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className="border-sky-200 bg-white text-sky-800">
+                      <Zap className="mr-1 h-3 w-3" />
+                      {isThai ? "ขั้นต่อไป" : "Next"}
+                    </Badge>
+                    {selectedNode ? <span className="truncate text-xs font-medium text-slate-700">{selectedNode.title}</span> : null}
+                  </div>
+                  <div className="mt-1 truncate text-sm font-semibold text-slate-950">{nextAction.title}</div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={nextAction.action === "run" || nextAction.action === "output" ? "shrink-0 border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" : "shrink-0"}
+                  disabled={nextAction.disabled || (nextAction.action !== "attach" && !selectedNode && nextAction.action !== "plan")}
+                  onClick={() => {
+                    if (nextAction.action === "run" && selectedNode) props.onRunNode?.(selectedNode.id);
+                    else if (nextAction.action === "output" && selectedNode) props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId);
+                    else if (nextAction.action === "configure" && selectedNode) props.onConfigureNode?.(selectedNode.id);
+                    else if (nextAction.action === "plan") props.onCreateFixturePlan();
+                    else document.querySelector("[data-testid='context-asset-board']")?.scrollIntoView({ block: "start", behavior: "smooth" });
+                  }}
+                >
+                  {nextAction.label}
+                </Button>
+              </div>
+            </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 xl:max-w-[420px] xl:justify-end">
             <Button type="button" variant="outline" onClick={props.onCreateFixturePlan} disabled={props.isPlanning} className="min-w-[164px] border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white">
               <Route className="mr-2 h-4 w-4" />
               {props.isPlanning
-                ? (isThai ? "กำลังสร้างแผน..." : "Planning...")
-                : (isThai ? "สร้าง Plan + Verify" : "Create Plan + Verify")}
+                ? (isThai ? "กำลังเตรียมแนวคิด..." : "Preparing...")
+                : (isThai ? "วางแผน / เสนอ 4 แนวคิด" : "Plan / Suggest 4 concepts")}
             </Button>
             <Button type="button" variant="outline" onClick={props.onSave} disabled={props.isSaving} className="min-w-[120px]">
               <Save className="mr-2 h-4 w-4" />
@@ -589,7 +893,194 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             </div>
           ))}
         </div>
+        <div
+          className="mt-3 rounded-lg border border-dashed border-sky-200 bg-sky-50/60 p-3 transition hover:border-sky-300 hover:bg-sky-50"
+          data-testid="production-planning-attachment-dropzone"
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+          }}
+          onDrop={handlePlanningAttachmentDrop}
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
+                <Paperclip className="h-4 w-4 text-sky-700" />
+                {isThai ? "ไฟล์แนบสำหรับสร้างแผน" : "Planning attachments"}
+                <Badge variant="outline" className="bg-white">
+                  {planningAttachments.length}/{maxPlanningAttachments}
+                </Badge>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                {isThai
+                  ? "ลากรูปตัวละคร สินค้า ฉาก ภาพประกอบ วิดีโอ หรือไฟล์เสียงจาก panel ขวามาวางที่นี่ เพื่อส่งให้ LLM ใช้วางแผนเนื้อเรื่องและ storyboard"
+                  : "Drop characters, products, scenes, visual references, videos, or audio from the right panel here so the planner can use them for story and storyboard planning."}
+              </p>
+            </div>
+            <div className="grid min-w-[220px] grid-cols-2 gap-1 text-[11px] text-slate-700 sm:grid-cols-3 lg:max-w-[420px]">
+              {(Object.keys(planningAttachmentCounts) as ProductionContextAssetZone[]).map((zone) => (
+                <div key={zone} className="rounded-md border border-sky-100 bg-white px-2 py-1">
+                  <span className="block truncate text-slate-500">{planningAttachmentLabel(zone, isThai)}</span>
+                  <span className="font-semibold tabular-nums">{planningAttachmentCounts[zone]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {planningAttachments.length ? (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1" data-testid="production-planning-attachment-list">
+              {planningAttachments.map((asset) => {
+                const Icon = planningAttachmentIcon(asset);
+                const zone = inferPlanningAssetZone(asset);
+                return (
+                  <div key={asset.id} className="flex min-w-[168px] max-w-[220px] items-center gap-2 rounded-md border border-slate-200 bg-white p-2 shadow-sm">
+                    <div className="flex h-10 w-12 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-50">
+                      {asset.thumbnailUrl || asset.url ? (
+                        asset.kind === "audio_asset" ? (
+                          <Icon className="h-4 w-4 text-sky-700" />
+                        ) : (
+                          <img src={asset.thumbnailUrl || asset.url} alt="" className="h-full w-full object-cover" draggable={false} />
+                        )
+                      ) : (
+                        <Icon className="h-4 w-4 text-sky-700" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold text-slate-900">{asset.title}</div>
+                      <div className="truncate text-[11px] text-slate-500">{planningAttachmentLabel(zone, isThai)} · {asset.role ?? asset.kind}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-3 rounded-md border border-sky-100 bg-white px-3 py-2 text-xs text-slate-600">
+              {isThai ? "ยังไม่มีไฟล์แนบสำหรับ planner" : "No planner attachments yet."}
+            </div>
+          )}
+        </div>
       </section>
+
+      {storyWizard?.status === "options_ready" && storyWizard.options.length ? (
+        <section className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm" data-testid="production-story-wizard">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
+                <Sparkles className="h-4 w-4 text-sky-700" />
+                {isThai ? "เลือกแนวคิดก่อนสร้าง workflow" : "Choose a story concept before workflow generation"}
+                <Badge variant="outline" className="bg-sky-50 text-sky-800">4 options</Badge>
+              </div>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
+                {storyWizard.contextSummary || (isThai
+                  ? "ระบบสรุป product truth, marketplace AI insight และ story options เพื่อให้เลือกแนวทางที่ต่างกันก่อนสร้าง workflow ใหม่"
+                  : "Product truth, marketplace AI insights, and story options are summarized so you can choose a distinct direction before generating a fresh workflow.")}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={props.onRegenerateStoryConcepts ?? props.onCreateFixturePlan} disabled={props.isPlanning}>
+                {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                {isThai ? "Regenerate 4 แนวคิด" : "Regenerate 4 concepts"}
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={props.onResetStoryConcepts}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {isThai ? "เริ่มเลือกใหม่" : "Start over"}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 xl:grid-cols-4">
+            {storyWizard.options.map((option) => {
+              const selected = option.id === storyWizard.selectedId;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`min-w-0 rounded-lg border p-3 text-left transition ${
+                    selected
+                      ? "border-sky-500 bg-sky-50 shadow-sm ring-1 ring-sky-200"
+                      : "border-slate-200 bg-slate-50/70 hover:border-sky-200 hover:bg-white"
+                  }`}
+                  onClick={() => props.onSelectStoryConcept?.(option.id)}
+                  data-testid={`production-story-option-${option.id}`}
+                  aria-pressed={selected}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="line-clamp-2 text-sm font-semibold text-slate-950">{option.title}</div>
+                      <div className="mt-1 text-[11px] font-medium text-sky-700">{option.angle}</div>
+                    </div>
+                    {selected ? <CheckCircle className="h-4 w-4 shrink-0 text-sky-700" /> : null}
+                  </div>
+                  <div className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
+                    <div>
+                      <span className="font-semibold">{isThai ? "กลุ่มเป้าหมาย: " : "Audience: "}</span>
+                      <span>{option.audience}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold">{isThai ? "ปัญหา: " : "Problem: "}</span>
+                      <span>{option.painPoint}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {option.narrativeStructure ? <Badge variant="outline" className="bg-white text-[10px]">{option.narrativeStructure}</Badge> : null}
+                      {option.emotionalTone ? <Badge variant="outline" className="bg-white text-[10px]">{option.emotionalTone}</Badge> : null}
+                      {option.hookTechnique ? <Badge variant="outline" className="bg-white text-[10px]">{option.hookTechnique}</Badge> : null}
+                    </div>
+                    <div className="rounded-md border border-white bg-white/80 p-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">Hook</div>
+                      <div className="mt-0.5 line-clamp-2 font-medium text-slate-900">{option.hook}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "จุดขาย" : "Selling points"}</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {option.sellingPoints.slice(0, 3).map((item) => (
+                          <Badge key={item} variant="outline" className="bg-white text-[10px]">{item}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Timeline 30s" : "30s timeline"}</div>
+                      <div className="mt-1 grid gap-1">
+                        {option.sceneTimeline.slice(0, 3).map((scene) => (
+                          <div key={`${option.id}-${scene.timeRange}`} className="rounded border border-slate-100 bg-white px-2 py-1">
+                            <span className="font-semibold text-sky-800">{scene.timeRange}</span>
+                            <span className="ml-1">{scene.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {option.risks.length ? (
+                      <div className="rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+                        {option.risks[0]}
+                      </div>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0 text-xs leading-5 text-slate-600">
+              <div className="font-semibold text-slate-950">
+                {selectedStoryConcept
+                  ? (isThai ? `เลือกแล้ว: ${selectedStoryConcept.title}` : `Selected: ${selectedStoryConcept.title}`)
+                  : (isThai ? "เลือก 1 แนวคิดก่อนสร้าง workflow" : "Select one concept before generating the workflow")}
+              </div>
+              <div>
+                {isThai
+                  ? "เมื่อยืนยัน ระบบจะถามก่อนเคลียร์ workflow เดิม แล้วสร้าง workflow ใหม่จาก concept ที่เลือก"
+                  : "On confirmation, the app will ask before clearing the old workflow and generating a new one from the selected concept."}
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="shrink-0 bg-sky-800 text-white hover:bg-sky-900"
+              disabled={!selectedStoryConcept || props.isPlanning}
+              onClick={() => selectedStoryConcept && props.onConfirmStoryConceptPlan?.(selectedStoryConcept.id)}
+            >
+              {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
+              {isThai ? "สร้าง workflow จากแนวคิดนี้" : "Generate workflow from this concept"}
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <ol className="flex flex-wrap gap-2" data-testid="production-journey-stepper" aria-label={isThai ? "ขั้นตอน Production" : "Production journey"}>
@@ -727,6 +1218,46 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
         ))}
       </section>
 
+      <section className="rounded-lg border border-sky-200 bg-sky-50/70 p-3 shadow-sm" data-testid="production-next-action">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-sky-200 bg-white text-sky-800">
+                <Zap className="mr-1 h-3 w-3" />
+                {isThai ? "ขั้นต่อไป" : "Next best action"}
+              </Badge>
+              {selectedNode ? <Badge variant="outline">{selectedNode.title}</Badge> : null}
+              {runScopeLabel ? <Badge variant="outline">{runScopeLabel}</Badge> : null}
+            </div>
+            <div className="mt-2 text-sm font-semibold text-slate-950">{nextAction.title}</div>
+            <div className="mt-1 text-xs leading-5 text-slate-700">{nextAction.body}</div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {nextAction.action === "run" ? (
+              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !workspaceNodeCanRun(selectedNode)} onClick={() => selectedNode && props.onRunNode?.(selectedNode.id)}>
+                <Play className="mr-2 h-4 w-4" />
+                {selectedNodeOutputs > 0 || selectedNode?.status === "completed" ? "Regenerate" : nextAction.label}
+              </Button>
+            ) : nextAction.action === "output" ? (
+              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !selectedNodeLatestOutput} onClick={() => selectedNode && props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId)}>
+                <Eye className="mr-2 h-4 w-4" />
+                {nextAction.label}
+              </Button>
+            ) : nextAction.action === "configure" ? (
+              <Button type="button" variant="outline" disabled={!selectedNode} onClick={() => selectedNode && props.onConfigureNode?.(selectedNode.id)}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                {nextAction.label}
+              </Button>
+            ) : (
+              <Button type="button" variant="outline" disabled={nextAction.disabled} onClick={nextAction.action === "plan" ? props.onCreateFixturePlan : () => document.querySelector("[data-testid='context-asset-board']")?.scrollIntoView({ block: "start", behavior: "smooth" })}>
+                <ArrowRight className="mr-2 h-4 w-4" />
+                {nextAction.label}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
       <ProductionFlowCanvas
         flowNodes={space.flowNodes}
         flowEdges={space.flowEdges}
@@ -743,35 +1274,86 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
         onConfigureNode={props.onConfigureNode}
         onDeleteNode={props.onDeleteNode}
         onRunNode={props.onRunNode}
+        onCancelNodeExecution={props.onCancelNodeExecution}
+        onRetryNode={props.onRetryNode}
+        onOpenNodeOutput={props.onOpenNodeOutput}
       />
 
-      <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1fr)]">
-        <ContextAssetBoard
-          assets={space.contextAssets}
-          selectedNodeId={selectedNodeId}
-          selectedNodeTitle={selectedNode?.title}
-          locale={props.locale}
-          providerCharacterResults={providerCharacterResults}
-          onAddAsset={(asset) => props.onAssetAddToCanvas?.(asset)}
-          onAssignAssetToNode={(asset, nodeId) => props.onAssetAssignToNode?.({ asset, nodeId })}
-        />
-        <ProductEvidenceTray
-          manifest={space.productEvidenceManifest}
-          contextAssets={space.contextAssets}
-          selectedNodeId={selectedNodeId}
-          locale={props.locale}
-          onAddProductAsset={(asset, nodeId) => props.onAssetAssignToNode?.({ asset, nodeId })}
-          onSetProductRole={props.onSetProductRole}
-          onSetClaimStatus={props.onSetClaimStatus}
-          onOpenEvidence={props.onOpenEvidence}
-          onRemoveEvidenceFromClaim={props.onRemoveEvidenceFromClaim}
-        />
-        <div className="space-y-3">
+      {selectedNode ? (
+        <section className="sticky bottom-2 z-20 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-lg backdrop-blur 2xl:hidden" data-testid="production-mobile-node-actions">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-xs font-semibold text-slate-900">{selectedNode.title}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{runScopeLabel}</div>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <Button type="button" variant="outline" size="sm" className="h-9 px-2" onClick={() => props.onConfigureNode?.(selectedNode.id)} aria-label={isThai ? "ตั้งค่า node ที่เลือก" : "Configure selected node"}>
+                <Settings2 className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-9 px-2" disabled={!workspaceNodeCanRun(selectedNode)} onClick={() => props.onRunNode?.(selectedNode.id)} aria-label={isThai ? "run node ที่เลือก" : "Run selected node"}>
+                <Play className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" size="sm" className="h-9 px-2" disabled={!selectedNodeLatestOutput} onClick={() => props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId)} aria-label={isThai ? "เปิดผลลัพธ์ node ที่เลือก" : "Open selected node output"}>
+                <Eye className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:hidden" role="tablist" aria-label={isThai ? "แผงเสริม Production" : "Production side panels"}>
+        {([
+          ["assets", isThai ? "แอสเซ็ต" : "Assets"],
+          ["evidence", isThai ? "หลักฐาน" : "Evidence"],
+          ["config", isThai ? "ตั้งค่า" : "Config"],
+          ["safeguards", isThai ? "ควบคุม" : "Safeguards"],
+        ] as const).map(([tab, label]) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={mobilePanelTab === tab}
+            onClick={() => setMobilePanelTab(tab)}
+            className={`min-h-10 rounded-md border px-3 text-sm font-medium ${mobilePanelTab === tab ? "border-sky-300 bg-sky-50 text-sky-800" : "border-slate-200 bg-white text-slate-600"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <section className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,0.85fr)_minmax(0,0.85fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className={mobilePanelTab === "assets" ? "block" : "hidden 2xl:block"}>
+          <ContextAssetBoard
+            assets={space.contextAssets}
+            selectedNodeId={selectedNodeId}
+            selectedNodeTitle={selectedNode?.title}
+            locale={props.locale}
+            providerCharacterResults={providerCharacterResults}
+            onAddAsset={(asset) => props.onAssetAddToCanvas?.(asset)}
+            onAssignAssetToNode={(asset, nodeId) => props.onAssetAssignToNode?.({ asset, nodeId })}
+          />
+        </div>
+        <div className={mobilePanelTab === "evidence" ? "block" : "hidden 2xl:block"}>
+          <ProductEvidenceTray
+            manifest={space.productEvidenceManifest}
+            contextAssets={space.contextAssets}
+            selectedNodeId={selectedNodeId}
+            locale={props.locale}
+            onAddProductAsset={(asset, nodeId) => props.onAssetAssignToNode?.({ asset, nodeId })}
+            onSetProductRole={props.onSetProductRole}
+            onSetClaimStatus={props.onSetClaimStatus}
+            onOpenEvidence={props.onOpenEvidence}
+            onRemoveEvidenceFromClaim={props.onRemoveEvidenceFromClaim}
+          />
+        </div>
+        <div className={mobilePanelTab === "config" ? "block" : "hidden 2xl:block"}>
           <NodeConfigPanel node={selectedNode} locale={props.locale} onSaveNodeConfig={props.onSaveNodeConfig} />
+        </div>
+        <div className={`space-y-3 ${mobilePanelTab === "safeguards" ? "block" : "hidden 2xl:block"}`}>
           <div className="rounded-lg border bg-white p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              {isThai ? "Safeguards" : "Safeguards"}
+              {isThai ? "การควบคุมและความปลอดภัย" : "Safeguards"}
             </div>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex items-center gap-2">
@@ -810,11 +1392,24 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button type="button" variant="outline" size="sm" onClick={props.onCancelExecution} disabled={!props.onCancelExecution}>
-                  {isThai ? "ยกเลิก execution" : "Cancel execution"}
+                <Button type="button" variant="outline" size="sm" onClick={props.onRunBatch} disabled={!props.onRunBatch || Boolean(activeAttempt)}>
+                  {isThai ? "Generate node ที่พร้อม" : "Generate ready nodes"}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => props.onCancelExecution?.(activeAttempt?.attemptId)} disabled={!props.onCancelExecution || !activeAttempt}>
+                  {isThai ? "ยกเลิกงานที่กำลังทำ" : "Cancel running work"}
                 </Button>
                 <Button type="button" variant="outline" size="sm" onClick={props.onRepairOutputRefs} disabled={!props.onRepairOutputRefs}>
                   {isThai ? "ซ่อม output refs" : "Repair output refs"}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button type="button" variant="outline" size="sm" onClick={props.onSendStoryboardReview} disabled={!props.onSendStoryboardReview || props.isHandoffDisabled}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  {isThai ? "ส่ง Storyboard Review" : "Send to Storyboard Review"}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={props.onSendVideoEdit} disabled={!props.onSendVideoEdit || props.isHandoffDisabled}>
+                  <Film className="mr-2 h-4 w-4" />
+                  {isThai ? "เปิดใน Video Edit" : "Open in Video Edit"}
                 </Button>
               </div>
             </div>

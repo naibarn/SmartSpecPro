@@ -4,6 +4,7 @@ import {
   groupMembers,
   marketplaceCaptureAssets,
   marketplaceCaptureSessions,
+  marketplaceCaptureInsights,
   marketplaceProductGroupShares,
   marketplaceProductImages,
   marketplaceProductPriceSnapshots,
@@ -11,7 +12,7 @@ import {
   marketplaceUserShareSettings,
   userGroups,
 } from "../../drizzle/schema";
-import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, type MarketplacePlatform } from "@shared/marketplaceCapture";
+import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, type LocalInsightType, type MarketplacePlatform } from "@shared/marketplaceCapture";
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { searchImages } from "./vectorize-search";
 
@@ -28,6 +29,160 @@ function countText(value: number | null | undefined, fallback: string | null | u
     return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
   }
   return fallback ?? null;
+}
+
+const productionSupportingInsightTypes: LocalInsightType[] = [
+  "product_brief",
+  "review_insight",
+  "tiktok_shop_trend",
+  "combined_opportunity",
+  "storytelling_handoff",
+];
+
+function compactInsightObject<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => {
+      if (item == null || item === "") return false;
+      if (Array.isArray(item)) return item.length > 0;
+      if (typeof item === "object") return Object.keys(item as Record<string, unknown>).length > 0;
+      return true;
+    }),
+  ) as T;
+}
+
+function compactInsightArray(value: unknown, limit = 8): unknown[] {
+  return Array.isArray(value) ? value.filter((item) => item != null && item !== "").slice(0, limit) : [];
+}
+
+function buildMarketplaceSupportingInsights(rows: Array<{
+  id: string;
+  insightType: string;
+  provider: string;
+  schemaVersion: string;
+  storytellingReadiness: string | null;
+  createdAt: Date;
+  payloadJson: Record<string, unknown>;
+}>) {
+  if (rows.length === 0) return null;
+  const latestByType = new Map<string, typeof rows[number]>();
+  for (const row of rows) {
+    if (!productionSupportingInsightTypes.includes(row.insightType as LocalInsightType)) continue;
+    if (!latestByType.has(row.insightType)) latestByType.set(row.insightType, row);
+  }
+  const productBrief = latestByType.get("product_brief")?.payloadJson;
+  const reviewInsight = latestByType.get("review_insight")?.payloadJson;
+  const tiktokTrend = latestByType.get("tiktok_shop_trend")?.payloadJson;
+  const opportunity = latestByType.get("combined_opportunity")?.payloadJson;
+  const storytelling = latestByType.get("storytelling_handoff")?.payloadJson;
+
+  return compactInsightObject({
+    source: "marketplace_capture_local_or_server_ai",
+    usagePolicy: {
+      mode: "optional_supporting_context",
+      note: "Use as creative assistance from the original marketplace page only. Do not treat it as mandatory direction and do not override product truth, evidence, user instructions, or safety/claim gates.",
+    },
+    insightIds: rows.map((row) => row.id).slice(0, 12),
+    availableTypes: Array.from(latestByType.keys()),
+    summary: productBrief ? compactInsightObject({
+      productName: productBrief.productName,
+      shortSummary: productBrief.shortSummary,
+      sellingPoints: compactInsightArray(productBrief.keySellingPoints),
+      hooks: compactInsightArray(productBrief.suggestedHooks),
+      audiences: compactInsightArray(productBrief.targetAudiences),
+      painPoints: compactInsightArray(productBrief.buyerPainPoints),
+      objections: compactInsightArray(productBrief.buyerObjections),
+      trustSignals: compactInsightArray(productBrief.trustSignals),
+      contentAngles: compactInsightArray(productBrief.contentAngles),
+      ctas: compactInsightArray(productBrief.suggestedCTAs),
+      confidence: productBrief.confidence,
+    }) : undefined,
+    reviewSignals: reviewInsight ? compactInsightObject({
+      positiveThemes: compactInsightArray(reviewInsight.positiveThemes),
+      negativeThemes: compactInsightArray(reviewInsight.negativeThemes),
+      buyerQuestions: compactInsightArray(reviewInsight.commonBuyerQuestions),
+      objectionsToAddress: compactInsightArray(reviewInsight.objectionsToAddress),
+      contentRecommendations: compactInsightArray(reviewInsight.contentRecommendations),
+      confidence: reviewInsight.confidence,
+    }) : undefined,
+    trendSignals: tiktokTrend ? compactInsightObject({
+      contentType: tiktokTrend.contentType,
+      hookPattern: tiktokTrend.hookPattern,
+      structure: compactInsightArray(tiktokTrend.structure),
+      audience: compactInsightArray(tiktokTrend.audience),
+      engagementDrivers: compactInsightArray(tiktokTrend.engagementDrivers),
+      replicableIdeas: compactInsightArray(tiktokTrend.replicableIdeas),
+      risks: compactInsightArray(tiktokTrend.risks),
+      confidence: tiktokTrend.confidence,
+    }) : undefined,
+    opportunity: opportunity ? compactInsightObject({
+      summary: opportunity.opportunitySummary,
+      fitScore: opportunity.productTrendFitScore,
+      recommendedContentFormat: opportunity.recommendedContentFormat,
+      positioning: opportunity.suggestedPositioning,
+      risks: compactInsightArray(opportunity.risks),
+      nextActions: compactInsightArray(opportunity.nextActions),
+    }) : undefined,
+    storytelling: storytelling ? compactInsightObject({
+      readiness: storytelling.readiness,
+      storyFormat: storytelling.storyFormat,
+      blockers: compactInsightArray(storytelling.blockers),
+      customerJourneyStages: compactInsightArray(storytelling.customerJourneyStages, 20),
+      storyOptions: compactInsightArray(storytelling.storyOptions, 12),
+      claims: compactInsightArray(storytelling.claims, 20),
+      confidence: storytelling.confidence,
+    }) : undefined,
+  });
+}
+
+async function supportingInsightsForProducts(
+  products: Array<{ id: string; captureId?: string | null; sourceUrl?: string | null }>,
+  auth: { userId: number; tenantId?: string },
+) {
+  const uniqueIds = Array.from(new Set(products.map((product) => product.id).filter(Boolean)));
+  const captureIds = Array.from(new Set(products.map((product) => product.captureId).filter(Boolean))) as string[];
+  const sourceUrls = Array.from(new Set(products.map((product) => product.sourceUrl).filter(Boolean))) as string[];
+  if (uniqueIds.length === 0 && captureIds.length === 0 && sourceUrls.length === 0) {
+    return new Map<string, ReturnType<typeof buildMarketplaceSupportingInsights>>();
+  }
+  const db = getDb();
+  const visibilityWhere = auth.tenantId
+    ? eq(marketplaceCaptureInsights.tenantId, auth.tenantId)
+    : eq(marketplaceCaptureInsights.userId, auth.userId);
+  const rows = await db.select({
+    id: marketplaceCaptureInsights.id,
+    productId: marketplaceCaptureInsights.productId,
+    captureId: marketplaceCaptureInsights.captureId,
+    sourceUrl: marketplaceCaptureInsights.sourceUrl,
+    insightType: marketplaceCaptureInsights.insightType,
+    provider: marketplaceCaptureInsights.provider,
+    schemaVersion: marketplaceCaptureInsights.schemaVersion,
+    storytellingReadiness: marketplaceCaptureInsights.storytellingReadiness,
+    createdAt: marketplaceCaptureInsights.createdAt,
+    payloadJson: marketplaceCaptureInsights.payloadJson,
+  }).from(marketplaceCaptureInsights)
+    .where(and(
+      or(
+        uniqueIds.length ? inArray(marketplaceCaptureInsights.productId, uniqueIds) : undefined,
+        captureIds.length ? inArray(marketplaceCaptureInsights.captureId, captureIds) : undefined,
+        sourceUrls.length ? inArray(marketplaceCaptureInsights.sourceUrl, sourceUrls) : undefined,
+      ),
+      inArray(marketplaceCaptureInsights.insightType, productionSupportingInsightTypes),
+      visibilityWhere,
+    ))
+    .orderBy(desc(marketplaceCaptureInsights.createdAt));
+  const grouped = new Map<string, typeof rows>();
+  for (const product of products) {
+    const matching = rows.filter((row) =>
+      row.productId === product.id
+      || (Boolean(product.captureId) && row.captureId === product.captureId)
+      || (Boolean(product.sourceUrl) && row.sourceUrl === product.sourceUrl)
+    );
+    if (matching.length) grouped.set(product.id, matching);
+  }
+  return new Map(Array.from(grouped.entries()).map(([productId, insightRows]) => [
+    productId,
+    buildMarketplaceSupportingInsights(insightRows),
+  ]));
 }
 
 function daysBetween(a: Date, b: Date) {
@@ -224,6 +379,17 @@ async function insertMetricSnapshot(productId: string, captureId: string, produc
   });
 }
 
+async function linkCaptureInsightsToProduct(captureId: string, productId: string, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  await db.update(marketplaceCaptureInsights)
+    .set({ productId, updatedAt: new Date() })
+    .where(and(
+      eq(marketplaceCaptureInsights.captureId, captureId),
+      eq(marketplaceCaptureInsights.userId, auth.userId),
+      auth.tenantId ? eq(marketplaceCaptureInsights.tenantId, auth.tenantId) : sql`${marketplaceCaptureInsights.tenantId} IS NULL`,
+    ));
+}
+
 export async function confirmMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
   const parsed = marketplaceConfirmProductSchema.parse(input);
   const { capture } = await getMarketplaceCaptureForUser(captureId, auth);
@@ -266,6 +432,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
         .where(eq(marketplaceProducts.id, existing.id));
 
       await insertMetricSnapshot(existing.id, captureId, product, auth);
+      await linkCaptureInsightsToProduct(captureId, existing.id, auth);
       await db.update(marketplaceCaptureSessions)
         .set({ status: "confirmed", updatedAt: new Date() })
         .where(eq(marketplaceCaptureSessions.id, captureId));
@@ -348,6 +515,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
   }
 
   await insertMetricSnapshot(productId, captureId, product, auth);
+  await linkCaptureInsightsToProduct(captureId, productId, auth);
   const sharedGroupIds = await applyConfiguredShares(productId, capture.platform, auth);
 
   await db.update(marketplaceCaptureSessions)
@@ -510,10 +678,12 @@ export async function listMarketplaceProductsWithAccess(
 
   const trimmed = results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, limit);
   const snapshots = await snapshotsForProductIds(trimmed.map((product) => product.id));
+  const supportingInsights = await supportingInsightsForProducts(trimmed, auth);
   return trimmed.map((product) => ({
     ...product,
     health: buildProductHealth(product, snapshots.get(product.id) ?? []),
     latestSnapshot: snapshots.get(product.id)?.[0] ?? null,
+    supportingInsights: supportingInsights.get(product.id) ?? null,
   }));
 }
 
@@ -711,6 +881,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
     })
     .slice(offset, offset + limit + 1);
   hasMore = images.length > limit;
+  const supportingInsights = await supportingInsightsForProducts(images.slice(0, limit).map((row) => row.product), auth);
   const page = images
     .slice(0, limit)
     .map((row) => ({
@@ -719,6 +890,14 @@ export async function listMarketplaceProductImagesForMediaStudio(
       productName: row.product.productName,
       platform: row.product.platform,
       brand: row.product.brand,
+      categoryText: (row.product.descriptionJson as any)?.categoryText ?? (row.product.specsJson as any)?.categoryText ?? null,
+      priceCurrent: row.product.priceCurrent,
+      priceOriginal: row.product.priceOriginal,
+      currency: row.product.currency,
+      discountText: row.product.discountText,
+      ratingScore: row.product.ratingScore,
+      reviewCountText: row.product.reviewCountText,
+      soldCountText: row.product.soldCountText,
       shopName: row.product.shopName,
       externalProductId: row.product.externalProductId,
       externalShopId: row.product.externalShopId,
@@ -736,6 +915,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       sharedByUserId: row.sharedByUserId,
       groupId: row.groupId,
       permission: row.permission ?? null,
+      supportingInsights: supportingInsights.get(row.product.id) ?? null,
     }));
 
   return {

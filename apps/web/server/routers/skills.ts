@@ -905,6 +905,8 @@ type VisionModelOption = {
   providerId: number;
   isDefault?: boolean;
   supportsVision?: boolean;
+  supportsThinking?: boolean;
+  contextLength?: number | null;
 };
 
 async function getVisionModelOptions(): Promise<VisionModelOption[]> {
@@ -918,6 +920,9 @@ async function getVisionModelOptions(): Promise<VisionModelOption[]> {
       displayName: llmProviders.displayName,
       defaultModel: llmProviders.defaultModel,
       configJson: llmProviders.configJson,
+      contextLength: modelProviderMap.contextLength,
+      supportsVision: modelProviderMap.supportsVision,
+      supportsThinking: modelProviderMap.supportsThinking,
     })
     .from(modelProviderMap)
     .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -932,10 +937,10 @@ async function getVisionModelOptions(): Promise<VisionModelOption[]> {
   ];
 
   for (const row of rows) {
-    const config = row.configJson as { supportsVision?: boolean } | null;
+    const config = row.configJson as { supportsVision?: boolean; supportsThinking?: boolean; contextLength?: number } | null;
     const modelId = row.modelId;
     const fullModelId = modelId.includes("/") ? modelId : `${row.providerName}/${modelId}`;
-    const supportsVision = config?.supportsVision ||
+    const supportsVision = (row.supportsVision ?? config?.supportsVision) ||
       [modelId, row.providerModelId, row.modelName].some((value) =>
         visionPatterns.some((pattern) => value.toLowerCase().includes(pattern.toLowerCase())),
       );
@@ -952,6 +957,8 @@ async function getVisionModelOptions(): Promise<VisionModelOption[]> {
       providerId: row.providerId,
       isDefault: modelId === row.defaultModel || fullModelId === row.defaultModel || row.providerModelId === row.defaultModel,
       supportsVision,
+      supportsThinking: row.supportsThinking ?? config?.supportsThinking ?? false,
+      contextLength: row.contextLength ?? config?.contextLength ?? null,
     });
   }
 

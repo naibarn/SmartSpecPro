@@ -753,6 +753,172 @@ describe("productionSpaceService", () => {
     }
   });
 
+  it("batch execution only schedules configured MVP executable nodes", async () => {
+    const previousRunOne = process.env.FEATURE116_RUN_ONE_NODE_ENABLED;
+    const previousRunShot = process.env.FEATURE116_RUN_ONE_SHOT_ENABLED;
+    const previousBatch = process.env.FEATURE116_BATCH_EXECUTION_ENABLED;
+    process.env.FEATURE116_RUN_ONE_NODE_ENABLED = "true";
+    process.env.FEATURE116_RUN_ONE_SHOT_ENABLED = "true";
+    process.env.FEATURE116_BATCH_EXECUTION_ENABLED = "true";
+    const space: ProductionSpace = {
+      ...buildExecutableSpace(1),
+      featureFlags: {
+        ...buildExecutableSpace(1).featureFlags,
+        feature116BatchExecution: true,
+      },
+      flowNodes: [
+        ...buildExecutableSpace(1).flowNodes,
+        {
+          id: "node-brief-preview",
+          kind: "goal_brief",
+          title: "Goal Brief",
+          status: "ready",
+          configSnapshot: {
+            snapshotId: "preview-config",
+            version: 1,
+            toolSurface: "production",
+            adapter: "preview_only",
+            config: {},
+            configHash: "preview-hash",
+          },
+        },
+        {
+          id: "node-draft-image",
+          kind: "image",
+          title: "Draft image without config",
+          status: "draft",
+        },
+      ],
+      shots: [{
+        id: "shot-1",
+        title: "Opening",
+        order: 1,
+        nodeIds: ["node-video", "node-brief-preview", "node-draft-image"],
+        status: "ready",
+      }],
+    };
+    const db = createDb({ spaces: [buildSpaceRow(space)] });
+
+    const scheduled = await scheduleProductionExecution({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+      expectedVersion: 1,
+      scope: "batch",
+      confirmed: true,
+    });
+
+    expect(scheduled.attempt).toMatchObject({
+      scope: "batch",
+      nodeIds: ["node-video"],
+      shotIds: ["shot-1"],
+      creditReserved: 4,
+    });
+    expect(scheduled.space.flowNodes.find((node) => node.id === "node-video")?.status).toBe("running");
+    expect(scheduled.space.flowNodes.find((node) => node.id === "node-brief-preview")?.status).toBe("ready");
+    expect(scheduled.space.flowNodes.find((node) => node.id === "node-draft-image")?.status).toBe("draft");
+    if (previousRunOne === undefined) delete process.env.FEATURE116_RUN_ONE_NODE_ENABLED;
+    else process.env.FEATURE116_RUN_ONE_NODE_ENABLED = previousRunOne;
+    if (previousRunShot === undefined) delete process.env.FEATURE116_RUN_ONE_SHOT_ENABLED;
+    else process.env.FEATURE116_RUN_ONE_SHOT_ENABLED = previousRunShot;
+    if (previousBatch === undefined) delete process.env.FEATURE116_BATCH_EXECUTION_ENABLED;
+    else process.env.FEATURE116_BATCH_EXECUTION_ENABLED = previousBatch;
+  });
+
+  it("orders batch execution by dependencies and skips completed unchanged nodes", async () => {
+    const previousRunOne = process.env.FEATURE116_RUN_ONE_NODE_ENABLED;
+    const previousRunShot = process.env.FEATURE116_RUN_ONE_SHOT_ENABLED;
+    const previousBatch = process.env.FEATURE116_BATCH_EXECUTION_ENABLED;
+    process.env.FEATURE116_RUN_ONE_NODE_ENABLED = "true";
+    process.env.FEATURE116_RUN_ONE_SHOT_ENABLED = "true";
+    process.env.FEATURE116_BATCH_EXECUTION_ENABLED = "true";
+    const base = buildExecutableSpace(1);
+    const space: ProductionSpace = {
+      ...base,
+      featureFlags: {
+        ...base.featureFlags,
+        feature116BatchExecution: true,
+      },
+      flowNodes: [
+        {
+          ...base.flowNodes[0],
+          id: "node-video",
+          status: "completed",
+          outputRefs: [{
+            outputRefId: "out-completed",
+            nodeId: "node-video",
+            kind: "video",
+            url: "https://cdn.example/completed.mp4",
+            configHash: "hash-1",
+          }],
+        },
+        {
+          id: "node-image",
+          kind: "image",
+          title: "Image",
+          status: "ready",
+          configSnapshot: {
+            snapshotId: "config-image",
+            version: 1,
+            toolSurface: "image",
+            adapter: "image",
+            config: { prompt: "image" },
+            configHash: "hash-image",
+          },
+          estimatedCredits: 2,
+        },
+        {
+          id: "node-tts",
+          kind: "tts",
+          title: "TTS",
+          status: "ready",
+          configSnapshot: {
+            snapshotId: "config-tts",
+            version: 1,
+            toolSurface: "audio",
+            adapter: "tts",
+            config: { text: "voice" },
+            configHash: "hash-tts",
+          },
+          estimatedCredits: 1,
+        },
+      ],
+      flowEdges: [
+        { id: "image-tts", source: "node-image", target: "node-tts", kind: "dependency" },
+      ],
+      shots: [{
+        id: "shot-1",
+        title: "Opening",
+        order: 1,
+        nodeIds: ["node-tts", "node-video", "node-image"],
+        status: "ready",
+      }],
+    };
+    const db = createDb({ spaces: [buildSpaceRow(space)] });
+
+    const scheduled = await scheduleProductionExecution({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+      expectedVersion: 1,
+      scope: "batch",
+      confirmed: true,
+    });
+
+    expect(scheduled.attempt.nodeIds).toEqual(["node-image", "node-tts"]);
+    expect(scheduled.attempt.creditReserved).toBe(3);
+    expect(scheduled.space.flowNodes.find((node) => node.id === "node-video")?.status).toBe("completed");
+
+    if (previousRunOne === undefined) delete process.env.FEATURE116_RUN_ONE_NODE_ENABLED;
+    else process.env.FEATURE116_RUN_ONE_NODE_ENABLED = previousRunOne;
+    if (previousRunShot === undefined) delete process.env.FEATURE116_RUN_ONE_SHOT_ENABLED;
+    else process.env.FEATURE116_RUN_ONE_SHOT_ENABLED = previousRunShot;
+    if (previousBatch === undefined) delete process.env.FEATURE116_BATCH_EXECUTION_ENABLED;
+    else process.env.FEATURE116_BATCH_EXECUTION_ENABLED = previousBatch;
+  });
+
   it("dispatches provider media tasks, reserves credits, and attaches task refs when live dispatch is enabled", async () => {
     const db = createDb({ spaces: [buildSpaceRow(buildExecutableSpace(1))] });
     const previousRunOne = process.env.FEATURE116_RUN_ONE_NODE_ENABLED;

@@ -10,6 +10,91 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+const STORY_OPTION_ORDER = [
+  "story_option:problem_solution",
+  "story_option:objection_trust",
+  "story_option:quick_demo",
+  "story_option:use_case_moment",
+];
+
+const STORY_OPTION_TITLE_ORDER = [
+  "ปัญหา → ทางออก",
+  "ข้อกังวล → ความมั่นใจ",
+  "เดโมเร็ว / รวมประโยชน์",
+  "สถานการณ์ใช้งานจริง",
+];
+
+type StoryOption = {
+  id?: string;
+  title?: string;
+  audience?: string;
+  customerNeed?: string;
+  problemToSolve?: string;
+  useCase?: string;
+  hook?: string;
+  confidence?: number;
+  autoSelected?: boolean;
+  storyboardOutline?: string[];
+  videoBrief?: {
+    structureLabel?: string;
+    durationSec?: number;
+    aspectRatio?: string;
+    shots?: Array<{ order?: number; startSec?: number; endSec?: number; title?: string; videoPrompt?: string; subShots?: string[]; thaiVoiceover?: string }>;
+  };
+};
+
+function compactText(value: unknown, fallback = "") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function storyOptionKey(option: StoryOption) {
+  return compactText(option.id, compactText(option.title));
+}
+
+function storyOptionRank(option: StoryOption) {
+  const idRank = STORY_OPTION_ORDER.indexOf(compactText(option.id));
+  if (idRank >= 0) return idRank;
+  const titleRank = STORY_OPTION_TITLE_ORDER.indexOf(compactText(option.title));
+  return titleRank >= 0 ? titleRank : 99;
+}
+
+function hasCompleteVideoBrief(option: StoryOption) {
+  const shots = Array.isArray(option.videoBrief?.shots) ? option.videoBrief.shots : [];
+  return shots.length >= 3 && shots.slice(0, 3).every((shot) => compactText(shot.videoPrompt) && compactText(shot.thaiVoiceover));
+}
+
+function normalizeStoryOptions(value: unknown): StoryOption[] {
+  const seen = new Map<string, StoryOption>();
+  for (const option of Array.isArray(value) ? value as StoryOption[] : []) {
+    const key = storyOptionKey(option);
+    if (!key) continue;
+    const existing = seen.get(key);
+    if (existing && (hasCompleteVideoBrief(existing) || !hasCompleteVideoBrief(option))) continue;
+    seen.set(key, option);
+  }
+  return Array.from(seen.values())
+    .sort((a, b) => {
+      const rankDiff = storyOptionRank(a) - storyOptionRank(b);
+      if (rankDiff !== 0) return rankDiff;
+      return Number(b.autoSelected) - Number(a.autoSelected) || Number(b.confidence ?? 0) - Number(a.confidence ?? 0);
+    })
+    .slice(0, 4);
+}
+
+function orderedShots(option: StoryOption) {
+  return (option.videoBrief?.shots ?? [])
+    .slice()
+    .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
+    .slice(0, 3);
+}
+
+function dedupeSelectedImages(value: unknown) {
+  return Array.from(new Map((Array.isArray(value) ? value as Array<{ url?: string; role?: string; fidelity?: string }> : [])
+    .filter((image) => image.url)
+    .map((image) => [String(image.url), image])).values());
+}
+
 export default function MarketplaceCaptureInsight() {
   const [location] = useLocation();
   const insightId = getInsightId(location);
@@ -22,7 +107,8 @@ export default function MarketplaceCaptureInsight() {
   const payload = useMemo(() => (insight?.payloadJson ?? {}) as any, [insight]);
   const claims = asArray(payload.claims) as Array<{ id?: string; text?: string; status?: string; evidenceIds?: string[] }>;
   const evidenceIds = asArray(payload.evidenceIds);
-  const selectedImages = asArray(payload.selectedImages) as Array<{ url?: string; role?: string; fidelity?: string }>;
+  const selectedImages = useMemo(() => dedupeSelectedImages(payload.selectedImages), [payload.selectedImages]);
+  const storyOptions = useMemo(() => normalizeStoryOptions(payload.storyOptions), [payload.storyOptions]);
 
   if (insightQuery.isLoading) return <main className="p-8">Loading insight...</main>;
   if (!insight) return <main className="p-8">Insight not found</main>;
@@ -92,6 +178,73 @@ export default function MarketplaceCaptureInsight() {
                   <div className="mt-2 text-xs text-slate-500">{image.role} | {image.fidelity}</div>
                 </div>
               ))}
+            </div>
+          </section>
+        ) : null}
+
+        {storyOptions.length > 0 ? (
+          <section className="rounded-md border bg-white p-4">
+            <h2 className="text-lg font-semibold">Story Options + Video Storyboard</h2>
+            <p className="mt-1 text-sm text-slate-500">Each option is a separate 30-second Thai video direction. No on-screen text is required.</p>
+            <div className="mt-3 space-y-4">
+              {storyOptions.map((option) => {
+                const shots = orderedShots(option);
+                return (
+                <article className="rounded-md border p-3" key={option.id || option.title}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">{option.title}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                      {option.autoSelected ? "Recommended" : typeof option.confidence === "number" ? `${Math.round(option.confidence * 100)}%` : "-"}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+                    <div><span className="font-medium">Audience:</span> {option.audience || "-"}</div>
+                    <div><span className="font-medium">Need:</span> {option.customerNeed || "-"}</div>
+                    <div><span className="font-medium">Problem:</span> {option.problemToSolve || "-"}</div>
+                    <div><span className="font-medium">Use case:</span> {option.useCase || "-"}</div>
+                    <div className="md:col-span-2"><span className="font-medium">Hook:</span> {option.hook || "-"}</div>
+                  </div>
+                  {asArray(option.storyboardOutline).length > 0 ? (
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                      {asArray(option.storyboardOutline).map((item) => <li key={String(item)}>{String(item)}</li>)}
+                    </ul>
+                  ) : null}
+                  {shots.length > 0 ? (
+                    <div className="mt-3 rounded-md border bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-sm font-medium">{option.videoBrief?.structureLabel || "30 วินาที | 3 Shot | Shot ละ 10 วินาที"}</div>
+                        <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
+                          {option.videoBrief?.aspectRatio || "9:16"} | {option.videoBrief?.durationSec || 30}s | no text on screen
+                        </span>
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {shots.map((shot) => (
+                          <div className="rounded-md border bg-white p-3" key={`${option.id}-${shot.order}`}>
+                            <div className="font-medium">Shot {shot.order}: {shot.title} ({shot.startSec}-{shot.endSec}s)</div>
+                            <div className="mt-2 text-xs font-medium uppercase text-slate-500">Video Prompt</div>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{shot.videoPrompt}</p>
+                            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+                              {asArray(shot.subShots).slice(0, 3).map((subShot, index) => <li key={`${String(subShot)}-${index}`}>{String(subShot)}</li>)}
+                            </ol>
+                            <div className="mt-2 text-xs font-medium uppercase text-slate-500">พูดเป็นภาษาไทยว่า</div>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{shot.thaiVoiceover}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {shots.length < 3 ? (
+                        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                          This videoBrief has only {shots.length} shot(s). Expected 3 shots.
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      Missing videoBrief for this story option.
+                    </div>
+                  )}
+                </article>
+              );
+              })}
             </div>
           </section>
         ) : null}

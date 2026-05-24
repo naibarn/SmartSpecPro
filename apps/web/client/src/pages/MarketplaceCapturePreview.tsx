@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { CaptureEvidenceViewer } from "@/components/marketplace/CaptureEvidenceViewer";
+import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import {
   ProductExtractedForm,
   productConfirmPayload,
@@ -23,6 +24,7 @@ export default function MarketplaceCapturePreview() {
   const captureId = getCaptureId(location);
   const utils = trpc.useUtils();
   const captureQuery = trpc.marketplaceCapture.getCapture.useQuery({ captureId }, { enabled: Boolean(captureId) });
+  const insightsQuery = trpc.marketplaceCapture.listInsightsByCapture.useQuery({ captureId }, { enabled: Boolean(captureId) });
   const analyzeMutation = trpc.marketplaceCapture.analyzeCapture.useMutation({
     onSuccess: () => utils.marketplaceCapture.getCapture.invalidate({ captureId }),
   });
@@ -154,6 +156,12 @@ export default function MarketplaceCapturePreview() {
             <ProductImagePicker assets={assets.filter(isProductImageAsset)} extraction={extraction} value={images} onChange={setImages} />
           </div>
         </div>
+        <MarketplaceInsightsSection
+          insights={(insightsQuery.data as any[] | undefined) ?? []}
+          isLoading={insightsQuery.isLoading}
+          title="AI Insights From This Capture"
+          emptyText="No structured AI insights have been synced for this capture yet."
+        />
       </div>
     </main>
   );

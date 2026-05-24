@@ -11948,6 +11948,7 @@ export const marketplaceCaptureInsights = pgTable("marketplace_capture_insights"
   schemaVersion: varchar("schemaVersion", { length: 16 }).notNull().default("1.0"),
   payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
   idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+  semanticKey: varchar("semanticKey", { length: 160 }),
   parentInsightIdsJson: jsonb("parentInsightIdsJson").$type<string[]>().notNull().default([]),
   payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull(),
   rawCaptureJson: jsonb("rawCaptureJson").$type<Record<string, unknown>>(),
@@ -11959,7 +11960,8 @@ export const marketplaceCaptureInsights = pgTable("marketplace_capture_insights"
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-  uniqueIndex("idx_marketplace_capture_insights_idempotency").on(t.userId, t.tenantId, t.idempotencyKey),
+  uniqueIndex("idx_marketplace_capture_insights_idempotency").on(t.userId, sql`COALESCE(${t.tenantId}, 'personal')`, t.idempotencyKey),
+  uniqueIndex("idx_marketplace_capture_insights_semantic").on(t.userId, sql`COALESCE(${t.tenantId}, 'personal')`, t.semanticKey).where(sql`${t.semanticKey} IS NOT NULL`),
   index("idx_marketplace_capture_insights_capture").on(t.captureId, t.createdAt),
   index("idx_marketplace_capture_insights_product").on(t.productId, t.createdAt),
   index("idx_marketplace_capture_insights_user").on(t.userId, t.createdAt),

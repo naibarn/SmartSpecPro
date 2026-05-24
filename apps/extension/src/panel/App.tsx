@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CategoryProductCandidate, ImageCandidate, PageDetection, ProductCapturePayload } from "../shared/types";
 import {
   buildInsightSyncRequest,
+  buildProductBriefPrompt,
   buildStorytellingHandoff,
   buildVideoBriefFromProduct,
+  applyUserStoryInsightDraft,
   createDeterministicProductBrief,
+  createUserStoryInsightDraft,
   createPromptAPISession,
   decideLocalAIProvider,
   defaultLocalAISettings,
@@ -12,12 +15,15 @@ import {
   generateProductBriefWithPromptAPI,
   generateProductBriefWithServerAI,
   sanitizeCaptureForLocalAI,
+  validateProductBrief,
   type LocalAICapability,
+  type LocalAIProviderId,
   type LocalAISettings,
   type LocalAIWorkflowState,
   type MarketplaceStorytellingHandoff,
   type ProductBrief,
   type SanitizedLocalAIInput,
+  type UserStoryInsightDraft,
   type VideoBrief,
 } from "../shared/localAi";
 
@@ -79,8 +85,29 @@ interface ProgressStep {
   status: "pending" | "active" | "done" | "error";
 }
 
-type PanelTab = "capture" | "localAI";
+type PanelTab = "capture" | "products" | "localAI" | "ask" | "config";
 type ImageFilter = "all" | ImageCandidate["kind"];
+
+interface AskResult {
+  answer: string;
+  source: "local_ai" | "assistant_rules";
+  shopeeKeywords: string[];
+  googleKeywords: string[];
+  cautions: string[];
+}
+
+interface ConfigTestResult {
+  status: "idle" | "testing" | "success" | "failed";
+  message: string;
+  error?: string;
+  checkedAt?: string;
+}
+
+interface LocalModelPreset {
+  name: string;
+  vision?: boolean;
+  cloud?: boolean;
+}
 
 interface MarketplaceLiveSnapshot {
   page: PageDetection;
@@ -103,10 +130,11 @@ const DEFAULT_SMARTSPEC_BASE_URL = "https://smartaihub.app";
 const DEVICE_ID_KEY = "deviceId";
 const LOCAL_AI_SETTINGS_KEY = "localAISettings";
 const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
+const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.17";
-const EXTENSION_BUILD_LABEL = "2026-05-23 09:48 +07";
+const EXTENSION_VERSION = "0.1.35";
+const EXTENSION_BUILD_LABEL = "2026-05-25 00:27 +07";
 
 function getLocalAIStatusView(input: {
   capability: LocalAICapability;
@@ -157,7 +185,16 @@ function getLocalAIStatusView(input: {
       label: "Download required",
       headline: "Chrome Prompt API is supported, but the model is not ready",
       description: "Chrome needs to download Gemini Nano before local AI analysis can run.",
-      nextAction: "Click Create Product Brief to start the user-triggered download, or use server fallback.",
+      nextAction: "Click Generate AI Insight to start the user-triggered download, or use server fallback.",
+    };
+  }
+  if (state === "local_ai_ready" && provider !== "chrome_prompt_api") {
+    return {
+      tone: "success",
+      label: "Ready",
+      headline: `Configured Local AI is ready (${provider})`,
+      description: "Extension will ask the background service worker to call your configured localhost/native provider for structured analysis.",
+      nextAction: "Scan a product, then AI Insight will use this provider before server fallback.",
     };
   }
   if (state === "local_ai_ready" || capability.availability === "available") {
@@ -166,7 +203,7 @@ function getLocalAIStatusView(input: {
       label: "Ready",
       headline: "Chrome Prompt API is ready",
       description: "Local AI can create structured Product Briefs on this device.",
-      nextAction: "Scan a product, then click Create Product Brief.",
+      nextAction: "Scan a product, then AI Insight will run automatically when ready.",
     };
   }
   if (state === "fallback_ready" || provider === "server_ai") {
@@ -175,7 +212,7 @@ function getLocalAIStatusView(input: {
       label: "Fallback ready",
       headline: "Chrome Prompt API is not active here",
       description: "SmartSpecPro AI fallback is available because this extension is connected.",
-      nextAction: "Create Product Brief will use server AI and keep raw capture sync off.",
+      nextAction: "AI Insight will use server AI and keep raw capture sync off.",
     };
   }
   if (state === "synced") {
@@ -184,7 +221,7 @@ function getLocalAIStatusView(input: {
       label: "Synced",
       headline: "Structured insights were sent to SmartSpecPro",
       description: "Only validated structured insight payloads were synced.",
-      nextAction: "Open the insight preview or continue to Storytelling.",
+      nextAction: "Upload/confirm the capture next; these insights will be attached for downstream content work.",
     };
   }
   if (state === "cancelled") {
@@ -213,7 +250,7 @@ function getLocalAIStatusView(input: {
       description: hasToken
         ? "Local Gemini Nano is not exposed here, but SmartSpecPro AI fallback can still create briefs."
         : "Local Gemini Nano is not exposed here. Capture still works, and connecting SmartSpecPro enables server AI fallback.",
-      nextAction: hasToken ? "Create Product Brief will use SmartSpecPro AI fallback." : "Connect SmartSpecPro to enable server AI fallback.",
+      nextAction: hasToken ? "Generate AI Insight will use SmartSpecPro AI fallback." : "Connect SmartSpecPro to enable server AI fallback.",
     };
   }
   return {
@@ -391,9 +428,13 @@ function decodeJwtExpiresAt(token: string): string | null {
   return typeof decoded?.exp === "number" ? new Date(decoded.exp * 1000).toISOString() : null;
 }
 
+function decodeJwtDeviceHash(token: string): string {
+  const decoded = decodeJwtPayload(token);
+  return typeof decoded?.deviceIdHash === "string" ? decoded.deviceIdHash.trim() : "";
+}
+
 async function assertTokenMatchesDevice(token: string, deviceId: string) {
-  const payload = decodeJwtPayload(token);
-  const tokenDeviceHash = typeof payload?.deviceIdHash === "string" ? payload.deviceIdHash : "";
+  const tokenDeviceHash = decodeJwtDeviceHash(token);
   if (!tokenDeviceHash) {
     throw new Error("Token นี้ยังไม่ได้ผูกกับเครื่อง กรุณากด Connect และ generate token ใหม่จาก extension บนเครื่องนี้");
   }
@@ -401,6 +442,47 @@ async function assertTokenMatchesDevice(token: string, deviceId: string) {
   if (tokenDeviceHash !== localHash) {
     throw new Error("Token นี้ผูกกับเครื่องอื่น กรุณา generate token ใหม่บนเครื่องนี้");
   }
+}
+
+function userFriendlyErrorMessage(error: unknown, extensionOrigin?: string): string {
+  const raw = error instanceof Error ? error.message : String(error || "");
+  if (raw === "local_ai_provider_not_allowed") {
+    return "Local AI provider is not selected. Choose Ollama for /api/chat, choose an OpenAI-compatible provider for /v1/chat/completions, or keep Auto with one of those endpoint paths.";
+  }
+  if (raw === "local_ai_ollama_origin_forbidden" || raw === "local_ai_http_403") {
+    const origin = extensionOrigin || "chrome-extension://<extension-id>";
+    return `Ollama rejected the Chrome extension origin (403). Set OLLAMA_ORIGINS=${origin} or use OLLAMA_ORIGINS=* for development only, then restart Ollama.`;
+  }
+  if (raw.startsWith("local_ai_http_")) {
+    return `Local AI endpoint returned HTTP ${raw.replace("local_ai_http_", "")}. Check that the server is running, the endpoint path is correct, and the model name exists.`;
+  }
+  if (raw === "local_ai_endpoint_path_not_allowed") return "Local AI endpoint path is not allowed. Ollama must use /api/chat. OpenAI-compatible servers must use /v1/chat/completions.";
+  if (raw === "local_ai_endpoint_must_be_localhost_http") return "Local AI endpoint must be http://localhost or http://127.0.0.1.";
+  try {
+    const parsed = JSON.parse(raw);
+    const code = parsed?.error?.code ?? parsed?.code;
+    const message = parsed?.error?.message ?? parsed?.message;
+    if (code === "extension_device_required") {
+      return "Token ยังไม่หมดอายุ แต่ request นี้ไม่มี device binding header กรุณากด Save connection อีกครั้ง ถ้ายังไม่หายให้กด Connect SmartAIHub เพื่อออก token ใหม่จาก extension นี้";
+    }
+    if (code === "extension_device_mismatch") {
+      return "Token นี้ผูกกับ Chrome Extension คนละตัว/คนละเครื่อง กรุณากด Connect SmartAIHub เพื่อออก token ใหม่จาก extension นี้";
+    }
+    if (code === "extension_token_mismatch" || code === "extension_pairing_expired" || code === "extension_pairing_inactive") {
+      return "Token นี้ถูก revoke หรือ pairing ไม่ตรงแล้ว กรุณากด Connect SmartAIHub เพื่อออก token ใหม่";
+    }
+    if (message === "local_ai_ollama_origin_forbidden" || message === "local_ai_http_403") {
+      const origin = extensionOrigin || "chrome-extension://<extension-id>";
+      return `Ollama rejected the Chrome extension origin (403). Set OLLAMA_ORIGINS=${origin} or use OLLAMA_ORIGINS=* for development only, then restart Ollama.`;
+    }
+    if (message === "local_ai_provider_not_allowed") {
+      return "Local AI provider is not selected. Choose Ollama for /api/chat, choose an OpenAI-compatible provider for /v1/chat/completions, or keep Auto with one of those endpoint paths.";
+    }
+    if (typeof message === "string" && message.trim()) return message;
+  } catch {
+    // Raw message is already plain text.
+  }
+  return raw || "Unexpected error";
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -441,6 +523,11 @@ function selectedImagesFromProduct(product: ProductCapturePayload) {
   return Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && img.selected !== false]));
 }
 
+function selectedImagesForProduct(product: ProductCapturePayload, selected: Record<string, boolean>) {
+  const urls = new Set(product.imageCandidates.map((image) => image.url));
+  return Object.fromEntries(Object.entries(selected).filter(([url]) => urls.has(url)));
+}
+
 function imageDimension(image: ImageCandidate, axis: "width" | "height"): number | null {
   const direct = Number(image[axis]);
   if (Number.isFinite(direct) && direct > 0) return direct;
@@ -460,6 +547,30 @@ function imageQualityLabel(image: ImageCandidate): string {
   const height = imageDimension(image, "height");
   if (width == null || height == null) return "quality unknown";
   return `${Math.round(width)}x${Math.round(height)} ${isLowQualityImage(image) ? "low" : "ok"}`;
+}
+
+function imageResolutionScore(image: ImageCandidate): number {
+  const width = imageDimension(image, "width") ?? 0;
+  const height = imageDimension(image, "height") ?? 0;
+  return width * height;
+}
+
+function imageKindPriority(kind: ImageCandidate["kind"]): number {
+  if (kind === "main") return 0;
+  if (kind === "description") return 1;
+  if (kind === "review") return 2;
+  if (kind === "unknown") return 3;
+  return 4;
+}
+
+function sortProductImagesForReview(images: ImageCandidate[]): ImageCandidate[] {
+  return images.slice().sort((left, right) => {
+    const kindDiff = imageKindPriority(left.kind) - imageKindPriority(right.kind);
+    if (kindDiff !== 0) return kindDiff;
+    const resolutionDiff = imageResolutionScore(right) - imageResolutionScore(left);
+    if (resolutionDiff !== 0) return resolutionDiff;
+    return (left.position ?? 9999) - (right.position ?? 9999);
+  });
 }
 
 function fieldEvidenceText(product: ProductCapturePayload | null, field: string): string {
@@ -626,14 +737,375 @@ function buildDataQualityWarnings(input: {
   ].filter(Boolean);
 }
 
+function storytellingReadinessLabel(readiness: string) {
+  if (readiness === "ready_for_storytelling") return "พร้อมแนบเป็น insight สำหรับงานวิดีโอ";
+  if (readiness === "ready_with_warnings") return "แนบได้ แต่มีคำเตือน";
+  if (readiness === "needs_user_review") return "ต้องตรวจ claim/รูปก่อน";
+  if (readiness === "insufficient_evidence") return "หลักฐานยังไม่พอ";
+  return readiness;
+}
+
+function storytellingBlockerLabel(blocker: string) {
+  const labels: Record<string, string> = {
+    low_resolution_or_mismatch_risk_image: "รูปที่เลือกอาจความละเอียดต่ำหรือเสี่ยงไม่ตรงสินค้า ให้กลับไปเลือก hero/main image ที่ชัดกว่า หรือดึงรูปเพิ่ม",
+    product_image_mismatch_risk: "มีรูปที่เสี่ยงไม่ใช่สินค้านี้ ให้เปลี่ยน/เอารูปนั้นออกก่อน",
+    missing_selected_product_image: "ยังไม่มีรูปสินค้าที่เลือกสำหรับส่งต่อไปทำวิดีโอ",
+    unsupported_claims_need_review: "มี claim ที่ยังไม่มีหลักฐานพอ ให้ Approve/Edit/Remove ก่อนส่งต่อ",
+    missing_local_or_server_insight: "ยังไม่มี AI Insight ที่ sync แล้ว ให้ Generate AI Insight หรือ Sync to backend",
+    story_options_need_more_specific_input: "Story options ยังซ้ำหรือกว้างเกินไป ให้เพิ่มข้อมูลสินค้า/use case หรือ Generate AI Insight ใหม่ก่อนใช้ต่อ",
+  };
+  return labels[blocker] ?? blocker;
+}
+
+function canAttachStorytellingInsight(readiness?: string) {
+  return readiness === "ready_for_storytelling" || readiness === "ready_with_warnings";
+}
+
+function compactAskText(value: unknown, max = 220) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function uniqueList(items: string[], max = 6) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items.map((value) => compactAskText(value, 120)).filter(Boolean)) {
+    const key = item.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(item);
+    }
+    if (result.length >= max) break;
+  }
+  return result;
+}
+
+function buildSearchUrl(kind: "shopee" | "google", keyword: string) {
+  const encoded = encodeURIComponent(keyword);
+  return kind === "shopee"
+    ? `https://shopee.co.th/search?keyword=${encoded}`
+    : `https://www.google.com/search?q=${encoded}`;
+}
+
+function likelyHealthOrChildClaim(question: string) {
+  return /(ท้องอืด|เด็ก|ทารก|ป่วย|รักษา|ยา|แพ้|ผื่น|โรค|medical|health|cure|treat)/i.test(question);
+}
+
+function buildAskContext(input: {
+  editable: EditableProduct;
+  product: ProductCapturePayload | null;
+  productBrief: ProductBrief | null;
+  storytellingHandoff: MarketplaceStorytellingHandoff | null;
+}) {
+  const { editable, product, productBrief, storytellingHandoff } = input;
+  return [
+    editable.productName || product?.productName ? `สินค้า: ${editable.productName || product?.productName}` : "",
+    editable.categoryText ? `หมวดหมู่: ${editable.categoryText}` : "",
+    editable.priceCurrentText ? `ราคา: ${editable.priceCurrentText}` : "",
+    editable.ratingScoreText ? `Rating: ${editable.ratingScoreText}` : "",
+    editable.soldCountText ? `ยอดขาย: ${editable.soldCountText}` : "",
+    editable.descriptionText ? `รายละเอียด: ${compactAskText(editable.descriptionText, 900)}` : "",
+    productBrief?.keySellingPoints.length ? `จุดขาย: ${productBrief.keySellingPoints.slice(0, 5).join("; ")}` : "",
+    productBrief?.buyerObjections.length ? `ข้อกังวล: ${productBrief.buyerObjections.slice(0, 4).join("; ")}` : "",
+    storytellingHandoff?.storyOptions.length ? `Story options: ${storytellingHandoff.storyOptions.slice(0, 4).map((option) => `${option.title}: ${option.audience} / ${option.useCase}`).join("; ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+function buildAskKeywords(question: string, editable: EditableProduct, productBrief: ProductBrief | null) {
+  const productName = compactAskText(editable.productName, 80);
+  const category = compactAskText(editable.categoryText, 80);
+  const questionCore = compactAskText(question.replace(/[?？]/g, ""), 120);
+  const queryIntent = compactAskText(question
+    .replace(/(มี|หา|ค้นหา|ช่วยหา|อยากได้|อันไหน|แบบไหน|เหมาะกับ|ใช้กับ|สำหรับ|ได้ไหม|ไหม|บ้าง|ที่|จะ|เป็น|หรือ)/gi, " ")
+    .replace(/\s+/g, " "), 80);
+  const isBathroom = /(ห้องน้ำ|bathroom|toilet)/i.test(question);
+  const isGift = /(ของฝาก|ของขวัญ|gift)/i.test(question);
+  const isElderly = /(ผู้สูงอายุ|คนแก่|elderly|senior)/i.test(question);
+  const isWheelchair = /(รถเข็น|wheelchair|วีลแชร์|ผู้ป่วย)/i.test(question);
+  const isTissue = /(ทิชชู่|กระดาษ|tissue)/i.test(`${question} ${category} ${productName}`);
+  const isWallMounted = /(แขวนผนัง|ติดผนัง|wall|ตั้งโต๊ะ|โต๊ะ)/i.test(question);
+  const highLoad = /(รับน้ำหนัก|น้ำหนัก|heavy|100\s*กก|kg|กิโล)/i.test(question);
+  const shopee = uniqueList([
+    isBathroom ? "กระดาษทิชชู่ ห้องน้ำ" : "",
+    isBathroom ? "ทิชชู่เปียก ห้องน้ำ" : "",
+    isWheelchair && highLoad ? "รถเข็นผู้สูงอายุ รับน้ำหนักมาก" : "",
+    isWheelchair ? "รถเข็นผู้ป่วย ผู้สูงอายุ" : "",
+    isWheelchair ? "วีลแชร์ผู้สูงอายุ พับได้" : "",
+    isTissue && isWallMounted ? "กระดาษทิชชู่แบบแขวนผนัง" : "",
+    isTissue && isWallMounted ? "กล่องทิชชู่ติดผนัง วางโต๊ะ" : "",
+    isGift && category ? `${category} ของฝาก` : "",
+    isElderly && category ? `${category} ผู้สูงอายุ` : "",
+    productName && isElderly ? `${productName} ผู้สูงอายุ` : "",
+    productName && isGift ? `${productName} ของฝาก` : "",
+    category && queryIntent ? `${category} ${queryIntent}` : "",
+    !category && queryIntent ? queryIntent : "",
+    !queryIntent && questionCore ? questionCore : "",
+  ].map((item) => compactAskText(item, 90)));
+  const google = uniqueList([
+    productName ? `${productName} รีวิว` : "",
+    category ? `${category} วิธีเลือก` : "",
+    isWheelchair ? "วิธีเลือกรถเข็นผู้สูงอายุ รับน้ำหนัก" : "",
+    isTissue && isWallMounted ? "กระดาษทิชชู่แบบแขวนผนัง วิธีเลือก" : "",
+    isElderly && category ? `${category} เหมาะกับผู้สูงอายุไหม` : "",
+    isGift && category ? `${category} เหมาะเป็นของฝากไหม` : "",
+    likelyHealthOrChildClaim(question) ? `${questionCore} คำแนะนำแพทย์ เภสัชกร` : "",
+    productBrief?.buyerObjections[0] ? `${productBrief.buyerObjections[0]} วิธีตรวจสอบ` : "",
+    queryIntent || questionCore,
+  ].map((item) => compactAskText(item, 100)));
+  return { shopeeKeywords: shopee, googleKeywords: google };
+}
+
+function parseAskAIJson(text: string, fallback: AskResult): AskResult | null {
+  const raw = text.trim();
+  const jsonText = raw.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
+    || raw.match(/\{[\s\S]*\}/)?.[0]
+    || raw;
+  try {
+    const parsed = JSON.parse(jsonText);
+    const arrayOfText = (value: unknown, max: number) => Array.isArray(value)
+      ? uniqueList(value.map((item) => compactAskText(item, 100)).filter(Boolean)).slice(0, max)
+      : [];
+    const answer = compactAskText(parsed?.answer, 1400);
+    const shopeeKeywords = arrayOfText(parsed?.shopeeKeywords, 6);
+    const googleKeywords = arrayOfText(parsed?.googleKeywords, 6);
+    const cautions = arrayOfText(parsed?.cautions, 5);
+    if (!answer && shopeeKeywords.length === 0 && googleKeywords.length === 0) return null;
+    return {
+      answer: answer || fallback.answer,
+      source: "local_ai",
+      shopeeKeywords: shopeeKeywords.length > 0 ? shopeeKeywords : fallback.shopeeKeywords,
+      googleKeywords: googleKeywords.length > 0 ? googleKeywords : fallback.googleKeywords,
+      cautions: uniqueList([...fallback.cautions, ...cautions]).slice(0, 6),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isConfiguredLocalAIProvider(provider: LocalAIProviderId | string) {
+  return provider === "ollama"
+    || provider === "lm_studio"
+    || provider === "localai"
+    || provider === "llama_cpp"
+    || provider === "custom_http"
+    || provider === "native_messaging";
+}
+
+function configuredProviderLabel(provider: string) {
+  const labels: Record<string, string> = {
+    auto: "Auto",
+    chrome_prompt_api: "Chrome Gemini Nano",
+    ollama: "Ollama",
+    lm_studio: "LM Studio",
+    localai: "LocalAI",
+    llama_cpp: "llama.cpp server",
+    custom_http: "Custom localhost HTTP",
+    native_messaging: "Native Messaging",
+  };
+  return labels[provider] || provider;
+}
+
+function defaultEndpointForProvider(provider: string) {
+  if (provider === "ollama") return "http://localhost:11434/api/chat";
+  if (provider === "custom_http") return "http://localhost:8000/api/chat";
+  return "http://localhost:1234/v1/chat/completions";
+}
+
+function modelPreset(name: string, options: Pick<LocalModelPreset, "vision" | "cloud"> = {}): LocalModelPreset {
+  return { name, ...options };
+}
+
+function expandOllamaVisionModel(name: string, sizes: string[], options: { cloud?: boolean } = {}) {
+  const localTags = [modelPreset(name, { vision: true }), ...sizes.map((size) => modelPreset(`${name}:${size}`, { vision: true }))];
+  return options.cloud
+    ? [modelPreset(`${name}:cloud`, { vision: true, cloud: true }), ...localTags]
+    : localTags;
+}
+
+function uniqueModelPresets(presets: LocalModelPreset[]) {
+  const seen = new Set<string>();
+  return presets.filter((preset) => {
+    if (seen.has(preset.name)) return false;
+    seen.add(preset.name);
+    return true;
+  });
+}
+
+function ollamaVisionModelPresets() {
+  return uniqueModelPresets([
+    ...expandOllamaVisionModel("gemma4", ["e2b", "e4b", "26b", "31b"], { cloud: true }),
+    ...expandOllamaVisionModel("qwen3.5", ["0.8b", "2b", "4b", "9b", "27b", "35b", "122b"], { cloud: true }),
+    ...expandOllamaVisionModel("qwen3.6", ["27b", "35b"]),
+    ...expandOllamaVisionModel("qwen3-vl", ["2b", "4b", "8b", "30b", "32b", "235b"], { cloud: true }),
+    ...expandOllamaVisionModel("gemma3", ["270m", "1b", "4b", "12b", "27b"], { cloud: true }),
+    ...expandOllamaVisionModel("ministral-3", ["3b", "8b", "14b"], { cloud: true }),
+    ...expandOllamaVisionModel("translategemma", ["4b", "12b", "27b"]),
+    ...expandOllamaVisionModel("medgemma", ["4b", "27b"]),
+    ...expandOllamaVisionModel("medgemma1.5", ["4b"]),
+    ...expandOllamaVisionModel("llava", ["7b", "13b", "34b"]),
+    ...expandOllamaVisionModel("mistral-small3.2", ["24b"]),
+    ...expandOllamaVisionModel("deepseek-ocr", ["3b"]),
+    ...expandOllamaVisionModel("glm-ocr", ["latest"]),
+    ...expandOllamaVisionModel("nemotron3", ["33b"]),
+    ...expandOllamaVisionModel("mistral-medium-3.5", ["128b"]),
+    ...expandOllamaVisionModel("gemini-3-flash-preview", ["latest"], { cloud: true }),
+    ...expandOllamaVisionModel("kimi-k2.6", ["latest"], { cloud: true }),
+    ...expandOllamaVisionModel("devstral-small-2", ["24b"], { cloud: true }),
+    ...expandOllamaVisionModel("kimi-k2.5", ["latest"], { cloud: true }),
+    ...expandOllamaVisionModel("mistral-large-3", ["latest"], { cloud: true }),
+  ]);
+}
+
+function modelPresetsForProvider(provider: string): LocalModelPreset[] {
+  const common = [
+    modelPreset("gemma3:4b", { vision: true }),
+    modelPreset("gemma3:12b", { vision: true }),
+    modelPreset("qwen3-vl:8b", { vision: true }),
+    modelPreset("qwen2.5:7b"),
+    modelPreset("qwen2.5vl:7b", { vision: true }),
+    modelPreset("llama3.1:8b"),
+    modelPreset("llava:7b", { vision: true }),
+    modelPreset("llava-llama3:8b", { vision: true }),
+    modelPreset("minicpm-v:8b", { vision: true }),
+  ];
+  if (provider === "ollama") {
+    return uniqueModelPresets([
+      ...ollamaVisionModelPresets(),
+      modelPreset("qwen2.5:7b"),
+      modelPreset("qwen2.5:14b"),
+      modelPreset("llama3.1:8b"),
+      modelPreset("llama3.2:3b"),
+      modelPreset("mistral:7b"),
+      modelPreset("phi3:mini"),
+    ]);
+  }
+  if (provider === "lm_studio" || provider === "localai" || provider === "llama_cpp" || provider === "custom_http") {
+    return uniqueModelPresets([
+      modelPreset("local-model"),
+      modelPreset("qwen2.5-vl-7b-instruct", { vision: true }),
+      modelPreset("qwen2.5-7b-instruct"),
+      modelPreset("gemma-3-4b-it", { vision: true }),
+      modelPreset("gemma-3-12b-it", { vision: true }),
+      modelPreset("llama-3.1-8b-instruct"),
+      modelPreset("llava-v1.6-vicuna-7b", { vision: true }),
+      modelPreset("minicpm-v-2_6", { vision: true }),
+      ...common,
+    ]);
+  }
+  return common;
+}
+
+function localProviderEndpointAllowed(settings: LocalAISettings) {
+  if (settings.localProviderMode === "native_messaging") return Boolean(settings.nativeHostName.trim());
+  if (settings.localProviderMode === "auto" || settings.localProviderMode === "chrome_prompt_api") return true;
+  if (!isConfiguredLocalAIProvider(settings.localProviderMode) && settings.localProviderMode !== "auto") return true;
+  try {
+    const url = new URL(settings.localEndpointUrl);
+    const local = url.protocol === "http:" && ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname.toLowerCase());
+    if (!local) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function effectiveConfiguredProvider(settings: LocalAISettings): LocalAIProviderId | "" {
+  if (isConfiguredLocalAIProvider(settings.localProviderMode)) return settings.localProviderMode as LocalAIProviderId;
+  if (settings.localProviderMode !== "auto") return "";
+  try {
+    const url = new URL(settings.localEndpointUrl);
+    if (url.pathname === "/api/chat") return "ollama";
+    if (url.pathname === "/v1/chat/completions") return "custom_http";
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function localAIConfigTroubleshooting(error: string, provider: string, extensionOrigin?: string) {
+  const normalized = error.toLowerCase();
+  if (normalized.includes("ollama_origin_forbidden") || normalized.includes("http_403") || normalized.includes("403")) {
+    const origin = extensionOrigin || "chrome-extension://<extension-id>";
+    return [
+      "Ollama rejected the Chrome extension origin. Set OLLAMA_ORIGINS to this extension origin, then restart Ollama.",
+      `Example: OLLAMA_ORIGINS=${origin} ollama serve`,
+      "For development only, you can use OLLAMA_ORIGINS=* and restart Ollama.",
+    ];
+  }
+  if (normalized.includes("provider_not_allowed")) {
+    return [
+      "If the endpoint is Ollama /api/chat, select Provider = Ollama or keep Auto with the /api/chat path.",
+      "If the endpoint is OpenAI-compatible /v1/chat/completions, select LM Studio, LocalAI, llama.cpp, or Custom localhost HTTP.",
+      "After changing provider or endpoint, run Test config again.",
+    ];
+  }
+  if (normalized.includes("404") || normalized.includes("endpoint_path")) {
+    return [
+      "Check the endpoint path. Ollama must use /api/chat. OpenAI-compatible servers must use /v1/chat/completions.",
+      "Confirm the selected provider matches the endpoint type.",
+    ];
+  }
+  if (normalized.includes("connection") || normalized.includes("failed to fetch") || normalized.includes("network") || normalized.includes("http_000")) {
+    return [
+      "Make sure the local AI server is running.",
+      "Confirm the host and port are reachable from Chrome, for example http://localhost:11434/api/chat for Ollama.",
+    ];
+  }
+  if (normalized.includes("model")) {
+    return [
+      "Check that the model name is installed and spelled exactly as your local server expects.",
+      provider === "ollama" ? "Run `ollama list` to see installed model names." : "Use the model identifier shown by your local server UI/API.",
+    ];
+  }
+  return [
+    "Verify provider, endpoint URL, and model name.",
+    "Use Test config after every change.",
+    "If the model supports vision, enable vision only after text-only testing works.",
+  ];
+}
+
+function buildRuleBasedAskAnswer(input: {
+  question: string;
+  editable: EditableProduct;
+  product: ProductCapturePayload | null;
+  productBrief: ProductBrief | null;
+  storytellingHandoff: MarketplaceStorytellingHandoff | null;
+}): AskResult {
+  const { question, editable, product, productBrief, storytellingHandoff } = input;
+  const { shopeeKeywords, googleKeywords } = buildAskKeywords(question, editable, productBrief);
+  const productName = editable.productName || product?.productName || "สินค้านี้";
+  const contextAvailable = Boolean(editable.productName || editable.descriptionText || productBrief);
+  const cautions = [
+    likelyHealthOrChildClaim(question) ? "คำถามนี้เกี่ยวกับสุขภาพ/เด็ก ระบบไม่ควรฟันธงผลลัพธ์ ให้ตรวจฉลาก คำเตือน ส่วนประกอบ และถามแพทย์หรือเภสัชกรก่อนใช้จริง" : "",
+    !contextAvailable ? "ยังไม่มีข้อมูลสินค้าที่ review มากพอ คำตอบจึงเน้นแนวทางค้นหาเพิ่มเติม" : "",
+  ].filter(Boolean);
+  let answer = "";
+  if (/(อันไหน|หา|ค้น|search|ทิชชู่|กระดาษ)/i.test(question) && /(ห้องน้ำ|bathroom|toilet)/i.test(question)) {
+    answer = "ถ้าต้องการใช้ในห้องน้ำ ให้ลองค้นหาด้วยคำที่เจาะจงเรื่องการใช้งาน เช่น กระดาษทิชชู่ ห้องน้ำ, ทิชชู่เปียก ห้องน้ำ หรือ tissue bathroom เพื่อเทียบสินค้าโดยดูความนุ่ม ความเหนียว จำนวนแผ่น ราคา/ชิ้น และรีวิวเรื่องการใช้งานจริง";
+  } else if (/(ผู้สูงอายุ|คนแก่|elderly|senior)/i.test(question)) {
+    answer = `${productName} อาจเหมาะกับผู้สูงอายุถ้ามีคุณสมบัติที่ใส่ง่าย เคลื่อนไหวง่าย ไม่รัด ไม่ลื่น และดูแลซักง่าย จากข้อมูลที่มีควรตรวจรายละเอียดไซซ์ วัสดุ เอวยาง/ความยืดหยุ่น และรีวิวผู้ซื้อก่อนตัดสินใจ`;
+  } else if (/(ของฝาก|ของขวัญ|gift)/i.test(question)) {
+    answer = `${productName} อาจเหมาะเป็นของฝากถ้าบรรจุภัณฑ์ดูดี ใช้งานง่าย ไม่ต้องรู้ไซซ์/รสนิยมเฉพาะมาก และราคาเหมาะกับผู้รับ ลองเทียบกับกลุ่มเป้าหมาย เช่น เพื่อนร่วมงาน ผู้ใหญ่ ครอบครัว หรือคนที่มี pain point ตรงกับสินค้า`;
+  } else if (likelyHealthOrChildClaim(question)) {
+    answer = `${productName} ยังไม่ควรถูกสรุปว่าใช้แก้ปัญหาสุขภาพได้จากข้อมูล marketplace เพียงอย่างเดียว โดยเฉพาะเด็ก ควรตรวจฉลาก ส่วนประกอบ วิธีใช้ ข้อห้าม และแหล่งข้อมูลทางการแพทย์/ผู้เชี่ยวชาญก่อน`;
+  } else if (storytellingHandoff?.storyOptions.length) {
+    const option = storytellingHandoff.storyOptions.find((item) => item.autoSelected) || storytellingHandoff.storyOptions[0];
+    answer = `จาก insight ปัจจุบัน ${productName} น่าจะเล่าได้ในมุม "${option.title}" โดยเน้นกลุ่ม ${option.audience}, need คือ ${option.customerNeed}, use case คือ ${option.useCase}. ถ้ายังไม่มั่นใจ ลองค้นต่อด้วย keyword ด้านล่าง`;
+  } else {
+    answer = contextAvailable
+      ? `จากข้อมูลที่ review อยู่ ให้ประเมิน ${productName} โดยดูว่า pain point ของลูกค้าตรงกับจุดขายจริงไหม มีรีวิว/หลักฐานสนับสนุนหรือไม่ และมีข้อกังวลเรื่องราคา คุณภาพ หรือวิธีใช้หรือเปล่า`
+      : "ยังไม่มีข้อมูลสินค้าเพียงพอ ให้ลอง scan/review สินค้าก่อน หรือใช้ keyword ด้านล่างเพื่อค้นหาสินค้าที่ใกล้เคียงกว่า";
+  }
+  return { answer, source: "assistant_rules", shopeeKeywords, googleKeywords, cautions };
+}
+
 function mergeImageCandidates(existing: ImageCandidate[], incoming: ImageCandidate[]) {
   const byUrl = new Map<string, ImageCandidate>();
   const merged: ImageCandidate[] = [];
-  for (const image of existing) {
+  for (const image of existing.filter((candidate) => candidate.kind !== "related")) {
     byUrl.set(image.url, image);
     merged.push(image);
   }
-  for (const image of incoming) {
+  for (const image of incoming.filter((candidate) => candidate.kind !== "related")) {
     const previous = byUrl.get(image.url);
     if (!previous) {
       const nextImage = { ...image, selected: false };
@@ -655,6 +1127,13 @@ function mergeImageCandidates(existing: ImageCandidate[], incoming: ImageCandida
     if (index >= 0) merged[index] = updated;
   }
   return merged;
+}
+
+function withoutRelatedProductImages(product: ProductCapturePayload): ProductCapturePayload {
+  return {
+    ...product,
+    imageCandidates: product.imageCandidates.filter((image) => image.kind !== "related"),
+  };
 }
 
 function mergeCandidates(existing: CategoryProductCandidate[], incoming: CategoryProductCandidate[]) {
@@ -800,12 +1279,28 @@ export default function App() {
   });
   const [selectedImages, setSelectedImages] = useState<Record<string, boolean>>({});
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [visionImageUrls, setVisionImageUrls] = useState<string[]>([]);
   const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
   const [reviewDraftStatus, setReviewDraftStatus] = useState("");
   const [progress, setProgress] = useState<ProgressStep[]>(CAPTURE_STEPS.map((label) => ({ label, status: "pending" })));
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
   const [localAISettings, setLocalAISettings] = useState<LocalAISettings>(defaultLocalAISettings);
+  const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
+  const wildcardExtensionOrigin = "chrome-extension://*";
+  const extensionId = chrome.runtime.id;
+  const ollamaOriginsCommand = `OLLAMA_ORIGINS=${extensionOrigin} ollama serve`;
+  const ollamaWildcardOriginsCommand = `OLLAMA_ORIGINS="${wildcardExtensionOrigin}" ollama serve`;
+  const windowsOllamaSetxCommand = `setx OLLAMA_ORIGINS "${extensionOrigin}"`;
+  const windowsOllamaWildcardSetxCommand = `setx OLLAMA_ORIGINS "${wildcardExtensionOrigin}"`;
+  const windowsOllamaSessionCommand = `$env:OLLAMA_ORIGINS="${extensionOrigin}"`;
+  const windowsOllamaWildcardSessionCommand = `$env:OLLAMA_ORIGINS="${wildcardExtensionOrigin}"`;
+  const windowsOllamaCheckCommand = "$env:OLLAMA_ORIGINS";
+  const macOllamaLaunchctlCommand = `launchctl setenv OLLAMA_ORIGINS "${extensionOrigin}"`;
+  const macOllamaWildcardLaunchctlCommand = `launchctl setenv OLLAMA_ORIGINS "${wildcardExtensionOrigin}"`;
+  const macOllamaCheckCommand = "launchctl getenv OLLAMA_ORIGINS";
+  const macOllamaServeCommand = `OLLAMA_ORIGINS="${extensionOrigin}" ollama serve`;
+  const macOllamaWildcardServeCommand = `OLLAMA_ORIGINS="${wildcardExtensionOrigin}" ollama serve`;
   const [localAICapability, setLocalAICapability] = useState<LocalAICapability>({
     provider: "chrome_prompt_api",
     apiExposed: false,
@@ -820,10 +1315,19 @@ export default function App() {
   const [productBrief, setProductBrief] = useState<ProductBrief | null>(null);
   const [videoBrief, setVideoBrief] = useState<VideoBrief | null>(null);
   const [storytellingHandoff, setStorytellingHandoff] = useState<MarketplaceStorytellingHandoff | null>(null);
+  const [userInsightText, setUserInsightText] = useState("");
+  const [userInsightDraft, setUserInsightDraft] = useState<UserStoryInsightDraft | null>(null);
+  const [askQuestion, setAskQuestion] = useState("");
+  const [askResult, setAskResult] = useState<AskResult | null>(null);
+  const [askBusy, setAskBusy] = useState(false);
+  const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [localAIProvider, setLocalAIProvider] = useState("noop");
   const abortLocalAIRef = useRef<AbortController | null>(null);
+  const autoInsightKeyRef = useRef<string | null>(null);
+  const autoInsightRunningRef = useRef(false);
   const productSourceRef = useRef<string | null>(null);
   const pageUrlRef = useRef<string | null>(null);
+  const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
   const localAIStatusView = useMemo(() => getLocalAIStatusView({
     capability: localAICapability,
@@ -852,16 +1356,69 @@ export default function App() {
 
   useEffect(() => {
     const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken: Boolean(settings.token) });
-    setLocalAIProvider(decision.provider);
+    const configuredProvider = localAISettings.preferLocalAI ? effectiveConfiguredProvider(localAISettings) : "";
+    setLocalAIProvider(configuredProvider || decision.provider);
     if (!["analyzing_local", "analyzing_server", "syncing", "synced", "failed", "cancelled"].includes(localAIState)) {
-      setLocalAIState(decision.state);
+      setLocalAIState(configuredProvider ? "local_ai_ready" : decision.state);
     }
   }, [localAICapability, localAISettings, settings.token]);
 
   useEffect(() => {
+    if (!product || !localAISettings.autoGenerateInsights || localAIBusy) return;
+    const hasToken = Boolean(settings.token);
+    const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken });
+    const configuredProvider = localAISettings.preferLocalAI ? effectiveConfiguredProvider(localAISettings) : "";
+    const autoProvider = configuredProvider || decision.provider;
+    if ((!configuredProvider && !decision.canAnalyze) || autoProvider === "noop") return;
+    if (!configuredProvider && autoProvider === "server_ai" && !hasToken) return;
+    if (autoProvider === "chrome_prompt_api" && localAICapability.availability !== "available") return;
+    const selectedImageUrls = Object.entries(selectedImages)
+      .filter(([, selected]) => selected)
+      .map(([url]) => url)
+      .sort()
+      .join("|");
+    const autoKey = [
+      product.platform,
+      product.sourceUrl,
+      editable.productName,
+      editable.priceCurrentText,
+      editable.categoryText,
+      editable.descriptionText.length,
+      selectedImageUrls,
+      heroImageUrl,
+      autoProvider,
+    ].join("::");
+    if (autoInsightKeyRef.current === autoKey || autoInsightRunningRef.current) return;
+    autoInsightKeyRef.current = autoKey;
+    autoInsightRunningRef.current = true;
+    const timer = window.setTimeout(() => {
+      run(() => createLocalProductBrief({ autoSync: hasToken, openTab: false }))
+        .finally(() => {
+          autoInsightRunningRef.current = false;
+        });
+    }, 900);
+    return () => {
+      window.clearTimeout(timer);
+      autoInsightRunningRef.current = false;
+    };
+  }, [
+    product,
+    settings.token,
+    localAISettings,
+    localAICapability,
+    localAIBusy,
+    selectedImages,
+    heroImageUrl,
+    editable.productName,
+    editable.priceCurrentText,
+    editable.categoryText,
+    editable.descriptionText,
+  ]);
+
+  useEffect(() => {
     const handler = (changes: Record<string, any>, areaName: string) => {
       if (areaName !== "local") return;
-      if (!changes.token && !changes.baseUrl && !changes.tokenExpiresAt) return;
+      if (!changes.token && !changes.baseUrl && !changes.tokenExpiresAt && !changes[DEVICE_ID_KEY]) return;
       loadSettings()
         .then((loaded) => {
           setSettings(loaded);
@@ -879,6 +1436,7 @@ export default function App() {
   }, []);
 
   function applyProductForReview(nextProduct: ProductCapturePayload) {
+    nextProduct = withoutRelatedProductImages(nextProduct);
     productSourceRef.current = nextProduct.sourceUrl;
     setReviewDraftStatus("");
     setProduct(nextProduct);
@@ -893,8 +1451,12 @@ export default function App() {
         if (!draft || productSourceRef.current !== nextProduct.sourceUrl) return;
         setEditable({ ...baseEditable, ...draft.editable });
         setEvidence(draft.evidence);
-        setSelectedImages({ ...nextSelectedImages, ...draft.selectedImages });
-        setHeroImageUrl(draft.heroImageUrl || nextProduct.imageCandidates.find((img) => nextSelectedImages[img.url])?.url || "");
+        const restoredSelection = selectedImagesForProduct(nextProduct, { ...nextSelectedImages, ...draft.selectedImages });
+        setSelectedImages(restoredSelection);
+        const restoredHero = draft.heroImageUrl && nextProduct.imageCandidates.some((img) => img.url === draft.heroImageUrl)
+          ? draft.heroImageUrl
+          : nextProduct.imageCandidates.find((img) => restoredSelection[img.url])?.url || "";
+        setHeroImageUrl(restoredHero);
         setReviewDraftStatus(`Resumed local draft: ${formatDateTime(draft.updatedAt)}`);
       })
       .catch(() => undefined);
@@ -902,24 +1464,77 @@ export default function App() {
   }
 
   function mergeProductImagesForReview(nextProduct: ProductCapturePayload) {
+    nextProduct = withoutRelatedProductImages(nextProduct);
     productSourceRef.current = productSourceRef.current || nextProduct.sourceUrl;
     const mergeInto = (current: ProductCapturePayload | null) => {
       if (!current || current.sourceUrl !== nextProduct.sourceUrl) return nextProduct;
+      const currentFieldEvidence = current.fieldEvidence ?? {};
+      const nextFieldEvidence = nextProduct.fieldEvidence ?? {};
+      const currentWarnings = current.fieldWarnings ?? [];
+      const nextWarnings = nextProduct.fieldWarnings ?? [];
       return {
         ...current,
+        pageTitle: nextProduct.pageTitle || current.pageTitle,
+        rawDomText: nextProduct.rawDomText || current.rawDomText,
+        htmlBlocks: nextProduct.htmlBlocks.length > current.htmlBlocks.length ? nextProduct.htmlBlocks : current.htmlBlocks,
+        productName: current.productName || nextProduct.productName,
+        priceCurrentText: current.priceCurrentText || nextProduct.priceCurrentText,
+        priceCurrentValue: current.priceCurrentValue ?? nextProduct.priceCurrentValue,
+        priceOriginalText: current.priceOriginalText || nextProduct.priceOriginalText,
+        priceOriginalValue: current.priceOriginalValue ?? nextProduct.priceOriginalValue,
+        currency: current.currency || nextProduct.currency,
+        discountText: current.discountText || nextProduct.discountText,
+        discountPercent: current.discountPercent ?? nextProduct.discountPercent,
+        ratingScoreText: current.ratingScoreText || nextProduct.ratingScoreText,
+        ratingScoreValue: current.ratingScoreValue ?? nextProduct.ratingScoreValue,
+        reviewCountText: current.reviewCountText || nextProduct.reviewCountText,
+        reviewCountValue: current.reviewCountValue ?? nextProduct.reviewCountValue,
+        soldCountText: current.soldCountText || nextProduct.soldCountText,
+        soldCountValue: current.soldCountValue ?? nextProduct.soldCountValue,
+        shopName: current.shopName || nextProduct.shopName,
+        isMall: current.isMall || nextProduct.isMall,
+        categoryText: current.categoryText || nextProduct.categoryText,
+        categoryPath: current.categoryPath?.length ? current.categoryPath : nextProduct.categoryPath,
+        brandText: current.brandText || nextProduct.brandText,
+        stockText: current.stockText || nextProduct.stockText,
+        variantsText: current.variantsText || nextProduct.variantsText,
+        sellerLocationText: current.sellerLocationText || nextProduct.sellerLocationText,
+        descriptionText: current.descriptionText || nextProduct.descriptionText,
+        specificationText: current.specificationText || nextProduct.specificationText,
         imageCandidates: mergeImageCandidates(current.imageCandidates, nextProduct.imageCandidates),
+        fieldEvidence: { ...nextFieldEvidence, ...currentFieldEvidence },
+        fieldWarnings: Array.from(new Set([...currentWarnings, ...nextWarnings])),
       };
     };
     setProduct((current) => mergeInto(current));
     setLiveProduct((current) => mergeInto(current));
+    setEditable((current) => {
+      const incoming = toEditableProduct(nextProduct);
+      return {
+        ...current,
+        productName: current.productName || incoming.productName,
+        shopName: current.shopName || incoming.shopName,
+        priceCurrentText: current.priceCurrentText || incoming.priceCurrentText,
+        commissionRateText: current.commissionRateText || incoming.commissionRateText,
+        soldCountText: current.soldCountText || incoming.soldCountText,
+        ratingScoreText: current.ratingScoreText || incoming.ratingScoreText,
+        reviewCountText: current.reviewCountText || incoming.reviewCountText,
+        categoryText: current.categoryText || incoming.categoryText,
+        stockText: current.stockText || incoming.stockText,
+        variantsText: current.variantsText || incoming.variantsText,
+        sellerLocationText: current.sellerLocationText || incoming.sellerLocationText,
+        descriptionText: current.descriptionText || incoming.descriptionText,
+      };
+    });
     setSelectedImages((current) => {
+      const hasCurrentSelection = Object.values(current).some(Boolean);
       const next = { ...current };
       for (const image of nextProduct.imageCandidates) {
-        if (next[image.url] == null) next[image.url] = false;
+        if (next[image.url] == null) next[image.url] = !hasCurrentSelection && image.kind === "main" && image.selected !== false;
       }
       return next;
     });
-    setHeroImageUrl((current) => current || nextProduct.imageCandidates.find((img) => img.kind === "main")?.url || "");
+    setHeroImageUrl((current) => current || nextProduct.imageCandidates.find((img) => img.kind === "main" && img.selected !== false)?.url || nextProduct.imageCandidates.find((img) => img.kind === "main")?.url || "");
   }
 
   function clearDetectedState() {
@@ -1046,18 +1661,34 @@ export default function App() {
       .sort((a, b) => b.score - a.score);
   }, [candidates, filters, ignoredUrls]);
 
-  const selectedImageCount = useMemo(() => Object.values(selectedImages).filter(Boolean).length, [selectedImages]);
+  const selectedImageCount = useMemo(() => (
+    product
+      ? product.imageCandidates.filter((image) => selectedImages[image.url]).length
+      : Object.values(selectedImages).filter(Boolean).length
+  ), [product, selectedImages]);
   const visibleProductImages = useMemo(() => {
     if (!product) return [];
-    return product.imageCandidates.filter((img) => imageFilter === "all" || img.kind === imageFilter);
+    return sortProductImagesForReview(product.imageCandidates.filter((img) => imageFilter === "all" || img.kind === imageFilter));
   }, [product, imageFilter]);
   const displayedProductImages = visibleProductImages.slice(0, 80);
   const selectedProductImages = useMemo(() => (
     product?.imageCandidates.filter((img) => selectedImages[img.url]) ?? []
   ), [product, selectedImages]);
+  const visionEligibleImages = useMemo(() => (
+    selectedProductImages
+      .filter((img) => img.kind !== "related" && !isLowQualityImage(img))
+      .slice(0, 20)
+  ), [selectedProductImages]);
+  const effectiveLocalProvider = useMemo(() => effectiveConfiguredProvider(localAISettings), [localAISettings]);
+  const activeVisionImageUrls = useMemo(() => (
+    localAISettings.localVisionEnabled && Boolean(effectiveLocalProvider)
+      ? visionImageUrls.filter((url) => visionEligibleImages.some((image) => image.url === url)).slice(0, Math.min(5, Math.max(1, Number(localAISettings.localVisionImageLimit) || 1)))
+      : []
+  ), [effectiveLocalProvider, localAISettings.localVisionEnabled, localAISettings.localVisionImageLimit, visionImageUrls, visionEligibleImages]);
   const lowQualitySelectedImages = useMemo(() => (
     selectedProductImages.filter((img) => isLowQualityImage(img))
   ), [selectedProductImages]);
+  const localModelPresets = useMemo(() => modelPresetsForProvider(effectiveLocalProvider || localAISettings.localProviderMode), [effectiveLocalProvider, localAISettings.localProviderMode]);
   const selectedEvidenceCount = [
     evidence.domHeader,
     evidence.domDescription,
@@ -1092,6 +1723,10 @@ export default function App() {
     selectedProductImages,
     heroImageUrl,
   }), [product, editable, selectedImageCount, selectedEvidenceCount, lowQualitySelectedImages.length, selectedProductImages, heroImageUrl]);
+  const preUploadStoryOptions = useMemo(() => (
+    storytellingHandoff?.storyOptions.slice(0, 4) ?? []
+  ), [storytellingHandoff]);
+  const aiInsightReadyForUpload = Boolean(productBrief && storytellingHandoff?.storyOptions.length);
 
   useEffect(() => {
     if (!product) return;
@@ -1185,12 +1820,152 @@ export default function App() {
     saveLocalAISettings(next).catch(() => undefined);
   }
 
-  function extensionAuthHeaders(contentType?: string) {
-    if (!settings.deviceId) throw new Error("ไม่พบ device binding กรุณากด Connect SmartAIHub ใหม่");
+  function updateVisionImageSelection(url: string, checked: boolean) {
+    const limit = Math.min(5, Math.max(1, Number(localAISettings.localVisionImageLimit) || 1));
+    setVisionImageUrls((current) => {
+      const without = current.filter((item) => item !== url);
+      return checked ? [url, ...without].slice(0, limit) : without;
+    });
+  }
+
+  function updateLocalProviderMode(mode: LocalAISettings["localProviderMode"]) {
+    const next = {
+      ...localAISettings,
+      localProviderMode: mode,
+      localEndpointUrl: mode === "native_messaging" || mode === "auto" || mode === "chrome_prompt_api"
+        ? localAISettings.localEndpointUrl
+        : defaultEndpointForProvider(mode),
+    };
+    setLocalAISettings(next);
+    saveLocalAISettings(next).catch(() => undefined);
+    setConfigTestResult({ status: "idle", message: "Provider changed. Run Test config again." });
+  }
+
+  async function promptConfiguredLocalAI(messages: Array<{ role: "system" | "user" | "assistant"; content: string }>, imageUrls: string[] = []) {
+    if (!localProviderEndpointAllowed(localAISettings)) throw new Error("Local AI config is invalid. Use a localhost/127.0.0.1 endpoint with an allowed path, or configure a native host.");
+    const provider = effectiveConfiguredProvider(localAISettings);
+    if (!provider) throw new Error("local_ai_provider_not_allowed");
+    const response = await chrome.runtime.sendMessage(provider === "native_messaging" ? {
+      type: "LOCAL_AI_NATIVE_CHAT",
+      hostName: localAISettings.nativeHostName,
+      model: localAISettings.localModel,
+      messages,
+      imageUrls,
+      imageTransport: localAISettings.localVisionImageTransport,
+      temperature: 0.2,
+    } : {
+      type: "LOCAL_AI_CHAT",
+      provider,
+      endpointUrl: localAISettings.localEndpointUrl,
+      model: localAISettings.localModel,
+      messages,
+      imageUrls,
+      imageTransport: localAISettings.localVisionImageTransport,
+      temperature: 0.2,
+    });
+    if (!response?.ok) throw new Error(response?.error || "Configured Local AI request failed");
+    const content = typeof response.content === "string"
+      ? response.content
+      : typeof response.message?.content === "string"
+        ? response.message.content
+        : typeof response.response === "string"
+          ? response.response
+          : "";
+    if (!content.trim()) throw new Error("Configured Local AI returned empty response");
+    return content;
+  }
+
+  async function generateProductBriefWithConfiguredLocalAI(source: SanitizedLocalAIInput): Promise<ProductBrief> {
+    const prompt = buildProductBriefPrompt(source, localAISettings.languagePreference);
+    const rawText = await promptConfiguredLocalAI([
+      { role: "system", content: "Return valid JSON only. Do not include markdown." },
+      { role: "user", content: activeVisionImageUrls.length > 0 ? `${prompt}\n\nVision context: analyze the attached product images only as supporting evidence. Do not infer unsupported claims from images alone.` : prompt },
+    ], activeVisionImageUrls);
+    const jsonText = rawText.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]
+      || rawText.match(/\{[\s\S]*\}/)?.[0]
+      || rawText;
+    return validateProductBrief(JSON.parse(jsonText), source);
+  }
+
+  async function testConfiguredLocalAI() {
+    setError("");
+    setConfigTestResult({ status: "testing", message: "Testing local AI connection..." });
+    setStatus("Testing Local AI config");
+    const testChromePromptAPI = async () => {
+      const capability = await detectChromePromptAPI();
+      setLocalAICapability(capability);
+      if (!capability.apiExposed) throw new Error(capability.reason || "Chrome Prompt API is not exposed.");
+      if (capability.availability !== "available") {
+        throw new Error(capability.reason || `Chrome Prompt API status is ${capability.availability}.`);
+      }
+      setLocalAIProvider("chrome_prompt_api");
+      setLocalAIState("analyzing_local");
+      const session = await createPromptAPISession(undefined, abortLocalAIRef.current?.signal);
+      try {
+        return await session.prompt("Say exactly: Chrome Gemini Nano is ready.");
+      } finally {
+        session?.destroy?.();
+      }
+    };
+    try {
+      let content = "";
+      let testedProviderLabel = configuredProviderLabel(localAISettings.localProviderMode);
+      if (localAISettings.localProviderMode === "chrome_prompt_api") {
+        content = await testChromePromptAPI();
+        testedProviderLabel = "Chrome Gemini Nano";
+      } else if (localAISettings.localProviderMode === "auto") {
+        const provider = effectiveConfiguredProvider(localAISettings);
+        if (provider) {
+          try {
+            content = await promptConfiguredLocalAI([
+              { role: "system", content: "You are a local AI connectivity test. Return one short English sentence." },
+              { role: "user", content: "Say that Local AI is ready. Do not add extra explanation." },
+            ]);
+            testedProviderLabel = configuredProviderLabel(provider);
+          } catch {
+            content = await testChromePromptAPI();
+            testedProviderLabel = "Chrome Gemini Nano";
+          }
+        } else {
+          content = await testChromePromptAPI();
+          testedProviderLabel = "Chrome Gemini Nano";
+        }
+      } else {
+        content = await promptConfiguredLocalAI([
+          { role: "system", content: "You are a local AI connectivity test. Return one short English sentence." },
+          { role: "user", content: "Say that Local AI is ready. Do not add extra explanation." },
+        ]);
+      }
+      const message = `Connection OK (${testedProviderLabel}): ${compactAskText(content, 100)}`;
+      setConfigTestResult({ status: "success", message, checkedAt: new Date().toLocaleTimeString() });
+      setStatus(message);
+      setError("");
+    } catch (err) {
+      const message = userFriendlyErrorMessage(err, extensionOrigin);
+      setConfigTestResult({ status: "failed", message: "Connection failed.", error: message, checkedAt: new Date().toLocaleTimeString() });
+      setStatus("Local AI config test failed");
+      setError("");
+    }
+  }
+
+  async function extensionAuthHeaders(contentType?: string) {
+    const deviceId = settings.deviceId || await getOrCreateDeviceId();
+    if (!settings.deviceId) {
+      setSettings((current) => ({ ...current, deviceId }));
+      await saveSettings({ ...settings, deviceId });
+    }
+    if (settings.token) {
+      try {
+        await assertTokenMatchesDevice(settings.token, deviceId);
+      } catch (error) {
+        setTokenEditorOpen(true);
+        throw error;
+      }
+    }
     return {
       ...(contentType ? { "Content-Type": contentType } : {}),
       Authorization: `Bearer ${settings.token}`,
-      "X-Marketplace-Device-Id": settings.deviceId,
+      "X-Marketplace-Device-Id": deviceId,
     };
   }
 
@@ -1201,6 +1976,7 @@ export default function App() {
     updateProgress("Detecting page");
     const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
     applyLiveSnapshot(snapshot, { replace: true });
+    setActiveTab(snapshot.product ? "capture" : snapshot.candidates.length > 0 ? "products" : "capture");
     setStatus(snapshot.product ? "Review latest detected details before upload" : `Detected ${snapshot.candidates.length} candidates`);
   }
 
@@ -1209,6 +1985,7 @@ export default function App() {
     setStatus("Scanning visible products");
     const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCAN_CATEGORY", { limit: 100 });
     setCandidates(response.candidates);
+    setActiveTab("products");
     setStatus(`Found ${response.candidates.length} candidates`);
   }
 
@@ -1217,6 +1994,7 @@ export default function App() {
     setStatus("Scrolling and scanning");
     const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCROLL_AND_SCAN_CATEGORY", { steps: 5, limit: 100 });
     setCandidates(response.candidates);
+    setActiveTab("products");
     setStatus(`Found ${response.candidates.length} candidates`);
   }
 
@@ -1247,7 +2025,7 @@ export default function App() {
     if (!sourceUrl) throw new Error("ไม่พบ URL ของหน้า marketplace");
     const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/category-candidates`, {
       method: "POST",
-      headers: extensionAuthHeaders("application/json"),
+      headers: await extensionAuthHeaders("application/json"),
       body: JSON.stringify({
         platform: filteredCandidates[0]?.platform || page?.platform || "shopee",
         sourceUrl,
@@ -1292,6 +2070,17 @@ export default function App() {
     if (commissionRateInvalid) throw new Error("Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100");
     const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
     const selected = reviewedProduct.imageCandidates.filter((img) => img.selected).map((img, position) => ({ ...img, position, selected: true }));
+    const insightPreviewLines = productBrief ? [
+      "",
+      "AI Insight ที่จะแนบไปกับ capture:",
+      `Summary: ${productBrief.shortSummary || "-"}`,
+      productBrief.keySellingPoints.length ? `Selling points: ${productBrief.keySellingPoints.slice(0, 3).join(" | ")}` : "",
+      productBrief.targetAudiences.length ? `Audience/Pain: ${productBrief.targetAudiences.slice(0, 2).join(" | ")}${productBrief.buyerPainPoints.length ? ` / ${productBrief.buyerPainPoints.slice(0, 2).join(" | ")}` : ""}` : "",
+      preUploadStoryOptions.length ? `Story options: ${preUploadStoryOptions.map((option) => option.title).join(" | ")}` : "",
+    ].filter(Boolean) : [
+      "",
+      "AI Insight: ยังไม่ได้ generate/sync ก่อน upload รอบนี้",
+    ];
     const confirmed = window.confirm([
       "ยืนยัน upload รายการสินค้านี้หรือไม่?",
       "",
@@ -1299,6 +2088,7 @@ export default function App() {
       `URL: ${reviewedProduct.sourceUrl}`,
       `จำนวนภาพที่จะ upload: ${selected.length}`,
       dataQualityWarnings.length ? `คำเตือนคุณภาพข้อมูล: ${dataQualityWarnings.length} รายการ` : "",
+      ...insightPreviewLines,
     ].join("\n"));
     if (!confirmed) {
       setStatus("Upload cancelled");
@@ -1313,7 +2103,7 @@ export default function App() {
     const htmlBlocks = evidence.rawHtmlBlocks ? product.htmlBlocks : product.htmlBlocks.map((block) => ({ ...block, outerHTML: undefined }));
     const draft = await fetch(`${serverBaseUrl}/api/marketplace-captures/captures`, {
       method: "POST",
-      headers: extensionAuthHeaders("application/json"),
+      headers: await extensionAuthHeaders("application/json"),
       body: JSON.stringify({
         platform: product.platform,
         sourceUrl: product.sourceUrl,
@@ -1339,6 +2129,33 @@ export default function App() {
     });
     if (!draft.ok) throw new Error(await draft.text());
     const draftJson = await draft.json();
+    const captureId = typeof draftJson.captureId === "string" ? draftJson.captureId : "";
+    if (captureId && productBrief && sanitizedAIInput) {
+      try {
+        setStatus("Syncing AI insights to capture");
+        const linkedSource = await sanitizeCaptureForLocalAI(reviewedProduct, captureId);
+        const linkedBrief: ProductBrief = {
+          ...productBrief,
+          source: { ...productBrief.source, captureId, url: linkedSource.sourceUrl },
+        };
+        const linkedHandoff: MarketplaceStorytellingHandoff | null = storytellingHandoff
+          ? { ...storytellingHandoff, sourceCaptureIds: [captureId], sourceUrl: linkedSource.sourceUrl }
+          : null;
+        setSanitizedAIInput(linkedSource);
+        setProductBrief(linkedBrief);
+        if (linkedHandoff) setStorytellingHandoff(linkedHandoff);
+        await syncStructuredInsight({
+          source: linkedSource,
+          brief: linkedBrief,
+          handoff: linkedHandoff,
+          rawCapture: reviewedProduct,
+          provider: localAIProvider as LocalAIProviderId,
+          openResult: false,
+        });
+      } catch (err) {
+        setError(`AI insight sync failed: ${userFriendlyErrorMessage(err, extensionOrigin)}`);
+      }
+    }
     updateProgress("Uploading selected evidence", ["Detecting page", "Collecting DOM text", "Showing local review", "Applying edits/selections"]);
 
     async function uploadScreenshot(section: "product_header" | "description", fileName: string, sortOrder: number) {
@@ -1359,7 +2176,7 @@ export default function App() {
         form.set("metadata", JSON.stringify({ source: "visible_tab", sortOrder }));
         const upload = await fetch(`${serverBaseUrl}${draftJson.next.uploadAssets}`, {
           method: "POST",
-          headers: extensionAuthHeaders(),
+          headers: await extensionAuthHeaders(),
           body: form,
         });
         if (!upload.ok) throw new Error(await upload.text());
@@ -1378,7 +2195,7 @@ export default function App() {
     updateProgress("Calling LLM extraction", ["Detecting page", "Collecting DOM text", "Showing local review", "Applying edits/selections", "Uploading selected evidence"]);
     const analyze = await fetch(`${serverBaseUrl}${draftJson.next.analyze}`, {
       method: "POST",
-      headers: extensionAuthHeaders("application/json"),
+      headers: await extensionAuthHeaders("application/json"),
       body: JSON.stringify({ forceRerun: false, language: "th" }),
     });
     if (!analyze.ok) throw new Error(await analyze.text());
@@ -1394,14 +2211,19 @@ export default function App() {
     });
   }
 
-  async function createLocalProductBrief() {
+  async function createLocalProductBrief(options: { autoSync?: boolean; openTab?: boolean } = {}) {
     if (!product) throw new Error("กรุณา Scan & Review สินค้าก่อน");
     setError("");
+    if (options.openTab !== false) setActiveTab("localAI");
+    setStatus("Generating product insight");
     const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
     const source = await sanitizeCaptureForLocalAI(reviewedProduct);
     setSanitizedAIInput(source);
-    const cacheKey = `${source.platform}:${source.sourceUrl}:${source.payloadHash}:product_brief:1.0`;
+    const cacheKey = `${source.platform}:${source.sourceUrl}:${source.payloadHash}:product_brief:${LOCAL_AI_CACHE_SCHEMA_VERSION}`;
     const cache = await loadLocalAIInsightCache();
+    const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken: Boolean(settings.token) });
+    const configuredProvider = localAISettings.preferLocalAI ? effectiveConfiguredProvider(localAISettings) : "";
+    setLocalAIProvider(configuredProvider || decision.provider);
     if (cache[cacheKey]) {
       const cached = cache[cacheKey] as any;
       setProductBrief(cached.productBrief);
@@ -1409,19 +2231,33 @@ export default function App() {
       setStorytellingHandoff(cached.storytellingHandoff);
       setLocalAIState("insight_ready");
       setStatus("Loaded cached local insight");
+      if (options.autoSync && settings.token) {
+        await syncStructuredInsight({
+          source,
+          brief: cached.productBrief,
+          video: cached.videoBrief,
+          handoff: cached.storytellingHandoff,
+          rawCapture: reviewedProduct,
+          provider: configuredProvider || decision.provider,
+          openResult: false,
+        });
+      }
       return;
     }
-    const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken: Boolean(settings.token) });
-    setLocalAIProvider(decision.provider);
     let brief: ProductBrief;
+    let resolvedProvider: LocalAIProviderId = configuredProvider || decision.provider;
     const runServerFallback = async () => {
       if (!settings.token) {
         setLocalAIProvider("noop");
+        resolvedProvider = "noop";
         return createDeterministicProductBrief(source);
       }
+      const deviceId = settings.deviceId || await getOrCreateDeviceId();
+      await assertTokenMatchesDevice(settings.token, deviceId);
       const result = await generateProductBriefWithServerAI({
         serverBaseUrl,
         token: settings.token,
+        deviceId,
         extensionVersion: EXTENSION_VERSION,
         source,
         languagePreference: localAISettings.languagePreference,
@@ -1430,9 +2266,20 @@ export default function App() {
         throw new Error(result.error?.message || "Server AI fallback failed");
       }
       setLocalAIProvider("server_ai");
+      resolvedProvider = "server_ai";
       return result.data;
     };
-    if (decision.provider === "chrome_prompt_api") {
+    if (configuredProvider) {
+      setLocalAIState("analyzing_local");
+      try {
+        brief = await generateProductBriefWithConfiguredLocalAI(source);
+        resolvedProvider = configuredProvider;
+      } catch (error) {
+        if (!localAISettings.enableServerFallback) throw error;
+        setLocalAIState("analyzing_server");
+        brief = await runServerFallback();
+      }
+    } else if (decision.provider === "chrome_prompt_api") {
       setLocalAIState(localAICapability.availability === "downloadable" ? "download_required" : "analyzing_local");
       abortLocalAIRef.current = new AbortController();
       const result = await generateProductBriefWithPromptAPI({
@@ -1450,6 +2297,7 @@ export default function App() {
         brief = await runServerFallback();
       } else {
         brief = result.data;
+        resolvedProvider = "chrome_prompt_api";
       }
     } else if (decision.provider === "server_ai") {
       setLocalAIState("analyzing_server");
@@ -1457,6 +2305,7 @@ export default function App() {
     } else {
       setLocalAIState("raw_capture_only");
       brief = createDeterministicProductBrief(source);
+      resolvedProvider = "noop";
     }
     const nextVideoBrief = buildVideoBriefFromProduct(brief, source);
     const nextHandoff = buildStorytellingHandoff(brief, nextVideoBrief, source);
@@ -1465,7 +2314,19 @@ export default function App() {
     setStorytellingHandoff(nextHandoff);
     setLocalAIState(nextHandoff.readiness === "ready_for_storytelling" ? "insight_ready" : "needs_review");
     await saveLocalAIInsightCache({ ...cache, [cacheKey]: { productBrief: brief, videoBrief: nextVideoBrief, storytellingHandoff: nextHandoff, cachedAt: new Date().toISOString() } });
-    setStatus("Local insight ready");
+    if (settings.token && (options.autoSync || localAISettings.autoGenerateInsights)) {
+      await syncStructuredInsight({
+        source,
+        brief,
+        video: nextVideoBrief,
+        handoff: nextHandoff,
+        rawCapture: reviewedProduct,
+        provider: resolvedProvider,
+        openResult: false,
+      });
+      return;
+    }
+    setStatus("AI insight ready");
   }
 
   async function downloadLocalAIModel() {
@@ -1500,7 +2361,7 @@ export default function App() {
         if (claim.id !== claimId) return claim;
         if (action === "approve") return { ...claim, status: "user_approved" as const, confidence: Math.max(claim.confidence, 0.8) };
         if (action === "remove") return { ...claim, status: "removed" as const };
-        const nextText = window.prompt("แก้ claim ก่อนส่งต่อ Storytelling", claim.text)?.trim();
+        const nextText = window.prompt("แก้ claim ก่อนแนบเป็น AI Insight", claim.text)?.trim();
         return nextText ? { ...claim, text: nextText, status: "user_approved" as const, confidence: Math.max(claim.confidence, 0.75) } : claim;
       });
       const activeClaims = claims.filter((claim) => claim.status !== "removed");
@@ -1518,29 +2379,152 @@ export default function App() {
     });
   }
 
-  async function syncStructuredInsight() {
+  function analyzeUserAddedInsight() {
+    if (!storytellingHandoff) throw new Error("กรุณา Generate AI Insight ก่อน เพื่อให้ระบบรู้ว่าจะเติมข้อมูลเข้า option ไหน");
+    const rawText = userInsightText.trim();
+    if (rawText.length < 3) throw new Error("กรุณาใส่ข้อมูลสินค้าที่ user รู้เพิ่มเติมก่อน");
+    const draft = createUserStoryInsightDraft(rawText, storytellingHandoff);
+    if (draft.additions.length === 0) throw new Error("ยังแยกหมวดข้อมูลไม่ได้ กรุณาเพิ่มรายละเอียดให้ชัดขึ้น");
+    setUserInsightDraft(draft);
+    setStatus("Review user-added insight before storing");
+  }
+
+  function mergeUserDraftIntoProductBrief(brief: ProductBrief, draft: UserStoryInsightDraft): ProductBrief {
+    const addUnique = (current: string[], values: string[], limit = 12) => {
+      const next = [...current];
+      for (const value of values) {
+        if (value && !next.includes(value)) next.push(value);
+      }
+      return next.slice(0, limit);
+    };
+    let next = { ...brief };
+    for (const addition of draft.additions) {
+      if (addition.category === "audience_pain_problem") {
+        next = {
+          ...next,
+          targetAudiences: addUnique(next.targetAudiences, addition.values.filter((value) => /(ลูกค้า|คนที่|กลุ่ม|สำหรับ|เหมาะกับ)/i.test(value))),
+          buyerPainPoints: addUnique(next.buyerPainPoints, addition.values),
+        };
+      }
+      if (addition.category === "selling_points") {
+        next = { ...next, keySellingPoints: addUnique(next.keySellingPoints, addition.values) };
+      }
+      if (addition.category === "hooks") {
+        next = { ...next, suggestedHooks: addUnique(next.suggestedHooks, addition.values) };
+      }
+      if (addition.category === "objections_trust") {
+        next = {
+          ...next,
+          buyerObjections: addUnique(next.buyerObjections, addition.values.filter((value) => /(กังวล|ลังเล|แพง|กลัว|ไม่มั่นใจ)/i.test(value))),
+          trustSignals: addUnique(next.trustSignals, addition.values),
+        };
+      }
+      if (addition.category === "example_use_case") {
+        next = { ...next, contentAngles: addUnique(next.contentAngles, addition.values) };
+      }
+    }
+    return { ...next, confidence: Math.min(0.95, next.confidence + 0.04) };
+  }
+
+  function confirmUserAddedInsight() {
+    if (!storytellingHandoff || !userInsightDraft) return;
+    const nextHandoff = applyUserStoryInsightDraft(storytellingHandoff, userInsightDraft);
+    setStorytellingHandoff(nextHandoff);
+    if (productBrief) setProductBrief(mergeUserDraftIntoProductBrief(productBrief, userInsightDraft));
+    if (videoBrief) {
+      const hook = userInsightDraft.additions.find((item) => item.category === "hooks")?.values[0];
+      if (hook) setVideoBrief({ ...videoBrief, hook, captions: [hook, ...videoBrief.captions.filter((item) => item !== hook)].slice(0, 20) });
+    }
+    setUserInsightDraft(null);
+    setUserInsightText("");
+    setStatus("User-added insight confirmed");
+  }
+
+  async function askAboutProduct() {
+    const question = askQuestion.trim();
+    if (!question) throw new Error("กรุณาพิมพ์คำถามก่อน");
+    setError("");
+    setAskBusy(true);
+    setStatus("Answering Ask");
+    const fallback = buildRuleBasedAskAnswer({ question, editable, product, productBrief, storytellingHandoff });
+    try {
+      if (localAISettings.preferLocalAI && effectiveConfiguredProvider(localAISettings)) {
+        const context = buildAskContext({ editable, product, productBrief, storytellingHandoff });
+        const answer = await promptConfiguredLocalAI([
+          { role: "system", content: "You are SmartAIHub Ask. Return JSON only with answer, shopeeKeywords, googleKeywords, cautions. Rewrite search keywords; do not copy the full question." },
+          { role: "user", content: [`Product context:\n${context || "No reviewed product context yet."}`, activeVisionImageUrls.length > 0 ? "Use attached selected product images as supporting context only." : "", `Question:\n${question}`].filter(Boolean).join("\n\n") },
+        ], activeVisionImageUrls);
+        setAskResult(parseAskAIJson(answer, fallback) || { ...fallback, source: "local_ai", answer: compactAskText(answer, 1400) || fallback.answer });
+      } else if (localAISettings.preferLocalAI && localAICapability.availability === "available") {
+        const context = buildAskContext({ editable, product, productBrief, storytellingHandoff });
+        const session = await createPromptAPISession(undefined, abortLocalAIRef.current?.signal);
+        try {
+          const answer = await session.prompt([
+            "You are SmartAIHub Ask, a read-only marketplace product assistant.",
+            "Return JSON only.",
+            "Schema: {\"answer\":\"concise Thai answer\",\"shopeeKeywords\":[\"2-6 optimized Thai marketplace search keywords\"],\"googleKeywords\":[\"1-5 research keywords\"],\"cautions\":[\"optional safety or evidence caveats\"]}.",
+            "Do not store data, do not say you saved anything, and do not create product insights.",
+            "Use only the provided product context and general shopping reasoning.",
+            "Do not copy the user's full question as a search keyword. Rewrite it into short buyer/search phrases.",
+            "Shopee keywords should be product/category terms with buyer constraints, not natural-language questions.",
+            "For medical, child, safety, or health claims, do not diagnose or promise results; recommend checking labels and professional advice.",
+            "If the user needs another product, suggest what keywords to search for.",
+            `Product context:\n${context || "No reviewed product context yet."}`,
+            `Question:\n${question}`,
+          ].join("\n\n"));
+          setAskResult(parseAskAIJson(answer, fallback) || { ...fallback, source: "local_ai", answer: compactAskText(answer, 1400) || fallback.answer });
+        } finally {
+          session?.destroy?.();
+        }
+      } else {
+        setAskResult(fallback);
+      }
+      setError("");
+      setStatus("Ask answer ready");
+    } catch {
+      setAskResult(fallback);
+      setError("");
+      setStatus("Ask answered with fallback");
+    } finally {
+      setAskBusy(false);
+    }
+  }
+
+  async function syncStructuredInsight(input: {
+    source?: SanitizedLocalAIInput;
+    brief?: ProductBrief;
+    video?: VideoBrief | null;
+    handoff?: MarketplaceStorytellingHandoff | null;
+    rawCapture?: ProductCapturePayload;
+    provider?: LocalAIProviderId;
+    openResult?: boolean;
+  } = {}) {
     if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
-    if (!sanitizedAIInput || !productBrief) throw new Error("กรุณาสร้าง Product Brief ก่อน");
+    const source = input.source ?? sanitizedAIInput;
+    const rawBrief = input.brief ?? productBrief;
+    if (!source || !rawBrief) throw new Error("กรุณาสร้าง AI Insight ก่อน");
+    const brief = validateProductBrief(rawBrief, source);
+    const video = (input.video ?? videoBrief) ? buildVideoBriefFromProduct(brief, source) : null;
+    const handoff = (input.handoff ?? storytellingHandoff) && video ? buildStorytellingHandoff(brief, video, source) : null;
     setLocalAIState("syncing");
-    const reviewedProduct = product ? buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl }) : undefined;
-    const supportPayloads = buildSupplementalInsightPayloads(sanitizedAIInput, productBrief);
-    const payloads: Array<{ insightType: "product_brief" | "review_insight" | "tiktok_shop_trend" | "combined_opportunity" | "video_brief" | "storytelling_handoff"; payload: unknown }> = [
-      { insightType: "product_brief", payload: productBrief },
+    const reviewedProduct = input.rawCapture ?? (product ? buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl }) : undefined);
+    const supportPayloads = buildSupplementalInsightPayloads(source, brief);
+    const payloads: Array<{ insightType: "product_brief" | "review_insight" | "tiktok_shop_trend" | "combined_opportunity" | "storytelling_handoff"; payload: unknown }> = [
+      { insightType: "product_brief", payload: brief },
       ...supportPayloads,
-      ...(videoBrief ? [{ insightType: "video_brief" as const, payload: videoBrief }] : []),
-      ...(storytellingHandoff ? [{ insightType: "storytelling_handoff" as const, payload: storytellingHandoff }] : []),
+      ...(handoff ? [{ insightType: "storytelling_handoff" as const, payload: handoff }] : []),
     ];
     let lastResponse: any = null;
     let storytellingResponse: any = null;
     for (const item of payloads) {
       const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/insights`, {
         method: "POST",
-        headers: extensionAuthHeaders("application/json"),
+        headers: await extensionAuthHeaders("application/json"),
         body: JSON.stringify(buildInsightSyncRequest({
           extensionVersion: EXTENSION_VERSION,
           insightType: item.insightType,
-          provider: localAIProvider as any,
-          source: sanitizedAIInput,
+          provider: input.provider ?? localAIProvider as any,
+          source,
           payload: item.payload,
           rawCapture: reviewedProduct,
           settings: localAISettings,
@@ -1551,30 +2535,11 @@ export default function App() {
       if (item.insightType === "storytelling_handoff") storytellingResponse = lastResponse;
     }
     setLocalAIState("synced");
-    setStatus("Structured insights synced");
-    if (lastResponse?.openUrl) {
+    setStatus("AI insights generated and synced");
+    if (input.openResult !== false && lastResponse?.openUrl) {
       chrome.tabs.create({ url: resolveServerUrl(serverBaseUrl, lastResponse.openUrl), active: false });
     }
     return { lastResponse, storytellingResponse };
-  }
-
-  async function sendToStorytelling() {
-    if (!storytellingHandoff) throw new Error("กรุณาสร้าง Video Brief / Storytelling handoff ก่อน");
-    if (storytellingHandoff.readiness === "needs_user_review" || storytellingHandoff.readiness === "insufficient_evidence") {
-      setStatus("Review claims/images before storytelling");
-      return;
-    }
-    const syncResult = await syncStructuredInsight();
-    const insightId = syncResult?.storytellingResponse?.insightId || syncResult?.lastResponse?.insightId;
-    const params = new URLSearchParams({
-      marketplaceStorytelling: "1",
-      sourceUrl: storytellingHandoff.sourceUrl,
-    });
-    if (insightId) params.set("marketplaceInsightId", insightId);
-    chrome.tabs.create({
-      url: resolveServerUrl(serverBaseUrl, `/media-studio?${params.toString()}`),
-      active: false,
-    });
   }
 
   function buildSupplementalInsightPayloads(source: SanitizedLocalAIInput, brief: ProductBrief) {
@@ -1631,7 +2596,7 @@ export default function App() {
     try {
       await action();
     } catch (err: any) {
-      setError(err?.message || "Unexpected error");
+      setError(userFriendlyErrorMessage(err, extensionOrigin));
       setStatus("Error");
       setProgress((current) => current.map((step) => step.status === "active" ? { ...step, status: "error" } : step));
     }
@@ -1641,7 +2606,7 @@ export default function App() {
   const updateEditable = (key: keyof EditableProduct, value: string) => setEditable((current) => ({ ...current, [key]: value }));
   const updateEvidence = (key: keyof EvidenceSelection, value: boolean) => setEvidence((current) => ({ ...current, [key]: value }));
   const canDownloadLocalAIModel = localAISettings.preferLocalAI && localAICapability.availability === "downloadable";
-  const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
+  const storytellingInsightAttachable = canAttachStorytellingInsight(storytellingHandoff?.readiness);
   const tabButtonClass = (tab: PanelTab) => `tab-button${activeTab === tab ? " active" : ""}`;
 
   return (
@@ -1662,7 +2627,15 @@ export default function App() {
           aria-selected={activeTab === "capture"}
           onClick={() => setActiveTab("capture")}
         >
-          Capture
+          Capture Review
+        </button>
+        <button
+          className={tabButtonClass("products")}
+          role="tab"
+          aria-selected={activeTab === "products"}
+          onClick={() => setActiveTab("products")}
+        >
+          Product List
         </button>
         <button
           className={tabButtonClass("localAI")}
@@ -1670,16 +2643,443 @@ export default function App() {
           aria-selected={activeTab === "localAI"}
           onClick={() => setActiveTab("localAI")}
         >
-          Local AI
+          AI Insights
+        </button>
+        <button
+          className={tabButtonClass("ask")}
+          role="tab"
+          aria-selected={activeTab === "ask"}
+          onClick={() => setActiveTab("ask")}
+        >
+          Ask
+        </button>
+        <button
+          className={tabButtonClass("config")}
+          role="tab"
+          aria-selected={activeTab === "config"}
+          onClick={() => setActiveTab("config")}
+        >
+          Config
         </button>
       </div>
 
       {error ? <div className="section error">{error}</div> : null}
 
+      {activeTab === "config" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Config">
+        <div className="section">
+          <strong>Local AI Config</strong>
+          <div className="muted">Choose the local model you want to use instead of Chrome Gemini Nano. Reviewed product text and selected images are sent only to the endpoint or host configured here.</div>
+          <div className="warning" style={{ marginTop: 8 }}>
+            Security: the background service worker accepts requests only from this extension page. Endpoints must be localhost/127.0.0.1, POST only, and one of the allowed paths. Content scripts cannot provide arbitrary URLs.
+          </div>
+          <div className="grid" style={{ marginTop: 10 }}>
+            <label>
+              <div className="muted">Provider</div>
+              <select className="input" value={localAISettings.localProviderMode} onChange={(e) => updateLocalProviderMode(e.target.value as LocalAISettings["localProviderMode"])}>
+                <option value="auto">Auto: infer endpoint → Chrome Local AI → Server fallback</option>
+                <option value="chrome_prompt_api">Chrome Gemini Nano only</option>
+                <option value="ollama">Ollama /api/chat</option>
+                <option value="lm_studio">LM Studio OpenAI-compatible</option>
+                <option value="localai">LocalAI OpenAI-compatible</option>
+                <option value="llama_cpp">llama.cpp server OpenAI-compatible</option>
+                <option value="custom_http">Custom localhost HTTP</option>
+                <option value="native_messaging">Native Messaging host</option>
+              </select>
+            </label>
+            {localAISettings.localProviderMode !== "native_messaging" ? (
+              <label>
+                <div className="muted">Local endpoint URL</div>
+                <input
+                  className="input"
+                  value={localAISettings.localEndpointUrl}
+                  placeholder="http://localhost:11434/api/chat"
+                  onChange={(e) => updateLocalAISetting("localEndpointUrl", e.target.value)}
+                />
+                <div className="field-evidence">
+                  Allowed: Ollama `/api/chat`, OpenAI-compatible `/v1/chat/completions`, custom `/api/chat` or `/v1/chat/completions` on localhost only.
+                  If Ollama returns 403, allow this extension origin and restart Ollama.
+                </div>
+              </label>
+            ) : (
+              <label>
+                <div className="muted">Native host name</div>
+                <input
+                  className="input"
+                  value={localAISettings.nativeHostName}
+                  placeholder="com.smartaihub.local_ai"
+                  onChange={(e) => updateLocalAISetting("nativeHostName", e.target.value)}
+                />
+                <div className="field-evidence">A native messaging host must be installed on this computer before the extension can call it.</div>
+              </label>
+            )}
+            <label>
+              <div className="muted">Model</div>
+              <input
+                className="input"
+                list="local-ai-model-presets"
+                value={localAISettings.localModel}
+                placeholder="Type a model name or choose a preset"
+                onChange={(e) => updateLocalAISetting("localModel", e.target.value)}
+              />
+              <datalist id="local-ai-model-presets">
+                {localModelPresets.map((model) => <option value={model.name} key={model.name} />)}
+              </datalist>
+              <div className="model-chip-row">
+                {localModelPresets.map((model) => (
+                  <button className={localAISettings.localModel === model.name ? "model-chip selected" : "model-chip"} type="button" key={model.name} onClick={() => updateLocalAISetting("localModel", model.name)}>
+                    <span>{model.name}</span>
+                    {model.vision ? <span className="model-badge vision">Vision</span> : null}
+                    {model.cloud ? <span className="model-badge cloud">Cloud</span> : null}
+                  </button>
+                ))}
+              </div>
+              <div className="field-evidence">Choose a preset or type the exact model name installed in Ollama, LM Studio, LocalAI, llama.cpp, or your custom server. Vision-capable Ollama models are marked, and cloud-capable families include a :cloud preset.</div>
+            </label>
+            <label className="muted">
+              <input type="checkbox" checked={localAISettings.preferLocalAI} onChange={(e) => updateLocalAISetting("preferLocalAI", e.target.checked)} /> Use configured/local AI before server fallback
+            </label>
+            <label className="muted">
+              <input type="checkbox" checked={localAISettings.enableServerFallback} onChange={(e) => updateLocalAISetting("enableServerFallback", e.target.checked)} /> Use SmartSpecPro server fallback if local provider fails
+            </label>
+            <label className="muted">
+              <input
+                type="checkbox"
+                checked={localAISettings.localVisionEnabled}
+                disabled={!effectiveLocalProvider}
+                onChange={(e) => updateLocalAISetting("localVisionEnabled", e.target.checked)}
+              /> Enable LLM vision for configured local provider
+            </label>
+            <label>
+              <div className="muted">Vision image limit</div>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={5}
+                disabled={!localAISettings.localVisionEnabled}
+                value={localAISettings.localVisionImageLimit}
+                onChange={(e) => updateLocalAISetting("localVisionImageLimit", Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
+              />
+              <div className="field-evidence">Send 1-5 images. Only user-selected product images are eligible.</div>
+            </label>
+            <label>
+              <div className="muted">Vision image transport</div>
+              <select
+                className="input"
+                disabled={!localAISettings.localVisionEnabled}
+                value={localAISettings.localVisionImageTransport}
+                onChange={(e) => updateLocalAISetting("localVisionImageTransport", e.target.value === "url" ? "url" : "base64")}
+              >
+                <option value="base64">Base64 via extension (recommended)</option>
+                <option value="url">Direct image URL</option>
+              </select>
+              <div className="field-evidence">{localAISettings.localVisionImageTransport === "url" ? "Send direct image URLs after HTTPS and marketplace CDN allowlist validation. Use this only when your provider can fetch image URLs itself." : "The background service worker fetches each image, checks content type and size, then sends base64. Recommended for most Ollama/OpenAI-compatible local setups."}</div>
+            </label>
+          </div>
+          <div className="section">
+            <strong>Test & Troubleshooting</strong>
+            <div className="muted">Run a text-only test first. Enable vision only after text generation works.</div>
+            <div className="config-code-grid">
+              <div>
+                <div className="muted">Extension ID</div>
+                <code className="inline-code">{extensionId}</code>
+              </div>
+              <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(extensionId).then(() => setStatus("Extension ID copied")).catch(() => setStatus("Could not copy extension ID"))}>Copy ID</button>
+              <div>
+                <div className="muted">Extension origin for Ollama</div>
+                <code className="inline-code">{extensionOrigin}</code>
+              </div>
+              <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(extensionOrigin).then(() => setStatus("Extension origin copied")).catch(() => setStatus("Could not copy extension origin"))}>Copy origin</button>
+              <div>
+                <div className="muted">Ollama launch command</div>
+                <code className="inline-code">{ollamaOriginsCommand}</code>
+              </div>
+              <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(ollamaOriginsCommand).then(() => setStatus("Ollama command copied")).catch(() => setStatus("Could not copy Ollama command"))}>Copy command</button>
+              <div>
+                <div className="muted">Wildcard origin for trusted local networks</div>
+                <code className="inline-code">{wildcardExtensionOrigin}</code>
+              </div>
+              <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(wildcardExtensionOrigin).then(() => setStatus("Wildcard origin copied")).catch(() => setStatus("Could not copy wildcard origin"))}>Copy wildcard</button>
+              <div>
+                <div className="muted">Wildcard Ollama launch command</div>
+                <code className="inline-code">{ollamaWildcardOriginsCommand}</code>
+              </div>
+              <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(ollamaWildcardOriginsCommand).then(() => setStatus("Wildcard Ollama command copied")).catch(() => setStatus("Could not copy command"))}>Copy command</button>
+            </div>
+            <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+              <button className="button primary" disabled={!localProviderEndpointAllowed(localAISettings)} onClick={() => run(testConfiguredLocalAI)}>Test config</button>
+            </div>
+            <div className="config-guide">
+              <strong>Ollama origin setup guide</strong>
+              <div className="muted">
+                Use this when Ollama returns HTTP 403 or rejects the Chrome extension origin. The commands below already include this extension ID.
+              </div>
+              <div className="warning" style={{ marginTop: 8 }}>
+                Optional trusted-network shortcut: use <code className="inline-code">{wildcardExtensionOrigin}</code> when this machine runs inside a trusted local network and you do not want to bind Ollama to one extension ID. The specific extension origin is safer and remains recommended for shared or untrusted machines.
+              </div>
+              <div className="guide-grid">
+                <div className="guide-card">
+                  <strong>Windows PowerShell</strong>
+                  <ol className="guide-steps">
+                    <li>
+                      <div>Set OLLAMA_ORIGINS permanently for future PowerShell/Ollama launches.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{windowsOllamaSetxCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(windowsOllamaSetxCommand).then(() => setStatus("Windows setx command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="muted">Trusted local-network alternative</div>
+                      <div className="command-row">
+                        <code className="inline-code">{windowsOllamaWildcardSetxCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(windowsOllamaWildcardSetxCommand).then(() => setStatus("Windows wildcard setx command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                    </li>
+                    <li>
+                      <div>If you need it in the current PowerShell window immediately, set the current session too.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{windowsOllamaSessionCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(windowsOllamaSessionCommand).then(() => setStatus("Windows session command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="muted">Trusted local-network alternative</div>
+                      <div className="command-row">
+                        <code className="inline-code">{windowsOllamaWildcardSessionCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(windowsOllamaWildcardSessionCommand).then(() => setStatus("Windows wildcard session command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                    </li>
+                    <li>
+                      <div>Check the value in PowerShell. A new PowerShell window is recommended after using setx.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{windowsOllamaCheckCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(windowsOllamaCheckCommand).then(() => setStatus("Windows check command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="expected-block">
+                        <div className="muted">Expected output</div>
+                        <code className="inline-code">{extensionOrigin}</code>
+                        <div className="muted">or, if you used the trusted-network shortcut</div>
+                        <code className="inline-code">{wildcardExtensionOrigin}</code>
+                      </div>
+                    </li>
+                    <li>
+                      <div>Restart Ollama. If you use the normal Ollama app, quit it and open it again from the Start Menu. If you run it manually, start it from PowerShell.</div>
+                      <div className="command-row">
+                        <code className="inline-code">ollama serve</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText("ollama serve").then(() => setStatus("Ollama serve command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+                <div className="guide-card">
+                  <strong>macOS Terminal</strong>
+                  <ol className="guide-steps">
+                    <li>
+                      <div>Set OLLAMA_ORIGINS for apps launched by macOS Launch Services, including the Ollama app.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{macOllamaLaunchctlCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(macOllamaLaunchctlCommand).then(() => setStatus("macOS launchctl command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="muted">Trusted local-network alternative</div>
+                      <div className="command-row">
+                        <code className="inline-code">{macOllamaWildcardLaunchctlCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(macOllamaWildcardLaunchctlCommand).then(() => setStatus("macOS wildcard launchctl command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                    </li>
+                    <li>
+                      <div>Check the value that macOS will pass to newly launched apps.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{macOllamaCheckCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(macOllamaCheckCommand).then(() => setStatus("macOS check command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="expected-block">
+                        <div className="muted">Expected output</div>
+                        <code className="inline-code">{extensionOrigin}</code>
+                        <div className="muted">or, if you used the trusted-network shortcut</div>
+                        <code className="inline-code">{wildcardExtensionOrigin}</code>
+                      </div>
+                    </li>
+                    <li>
+                      <div>Restart Ollama. Quit the Ollama app from the menu bar, then open it again. If you run Ollama manually from Terminal, use this command instead.</div>
+                      <div className="command-row">
+                        <code className="inline-code">{macOllamaServeCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(macOllamaServeCommand).then(() => setStatus("macOS serve command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                      <div className="muted">Trusted local-network alternative</div>
+                      <div className="command-row">
+                        <code className="inline-code">{macOllamaWildcardServeCommand}</code>
+                        <button className="button" type="button" onClick={() => navigator.clipboard?.writeText(macOllamaWildcardServeCommand).then(() => setStatus("macOS wildcard serve command copied")).catch(() => setStatus("Could not copy command"))}>Copy</button>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+            <div className={configTestResult.status === "failed" ? "section error" : configTestResult.status === "success" ? "section success-panel" : "section muted"}>
+              <strong>Test result</strong>
+              <div>{configTestResult.message}</div>
+              {configTestResult.checkedAt ? <div className="muted">Checked at {configTestResult.checkedAt}</div> : null}
+              {configTestResult.error ? <div>{configTestResult.error}</div> : null}
+            </div>
+            <div className="claim-list">
+              <strong>Suggested fixes</strong>
+              {localAIConfigTroubleshooting(configTestResult.error || "", localAISettings.localProviderMode, extensionOrigin).map((item) => (
+                <div className="muted" key={item}>- {item}</div>
+              ))}
+            </div>
+          </div>
+          <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+            <button className="button" onClick={() => setActiveTab("localAI")}>Back to AI Insights</button>
+          </div>
+          <div className="muted" style={{ marginTop: 8 }}>
+            Active mode: {configuredProviderLabel(localAISettings.localProviderMode)}
+            {effectiveLocalProvider && localAISettings.localProviderMode === "auto" ? ` | Effective provider: ${configuredProviderLabel(effectiveLocalProvider)}` : ""}
+            {" | "}Model: {localAISettings.localModel || "-"}
+          </div>
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "ask" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Ask">
+        <div className="section insight-panel">
+          <strong>Ask AI</strong>
+          <div className="muted">ถามเพื่อทำความเข้าใจสินค้า กลุ่มเป้าหมาย หรือ keyword สำหรับค้นต่อเท่านั้น คำตอบในแท็บนี้จะไม่ถูกบันทึกลงสินค้าและไม่ sync backend</div>
+          <textarea
+            className="textarea"
+            placeholder="เช่น มีทิชชู่อันไหนเหมาะกับใช้ในห้องน้ำบ้าง / กางเกงรุ่นนี้ผู้สูงอายุใส่ได้ไหม / เหมาะกับเป็นของฝากไหม / ช่วยแก้ท้องอืดในเด็กได้ไหม"
+            value={askQuestion}
+            onChange={(event) => setAskQuestion(event.target.value)}
+          />
+          <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+            <button className="button primary" disabled={!askQuestion.trim() || askBusy} onClick={() => run(askAboutProduct)}>{askBusy ? "Thinking..." : "Ask"}</button>
+            <button className="button" disabled={askBusy || (!askQuestion.trim() && !askResult)} onClick={() => { setAskQuestion(""); setAskResult(null); }}>Clear</button>
+            <button className="button" disabled={!product} onClick={() => setActiveTab("capture")}>Review product</button>
+          </div>
+          <div className="muted">
+            Source: {localAISettings.preferLocalAI && effectiveLocalProvider ? `${configuredProviderLabel(effectiveLocalProvider)} configured` : localAISettings.preferLocalAI && localAICapability.availability === "available" ? "Local AI available" : "Rule-based helper / search guidance"}
+          </div>
+        </div>
+        {askResult ? (
+          <div className="section">
+            <div className="row" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <strong>Answer</strong>
+              <span className={askResult.source === "local_ai" ? "status-pill active" : "status-pill"}>{askResult.source === "local_ai" ? "Local AI" : "Helper"}</span>
+            </div>
+            <div className="insight-summary">{askResult.answer}</div>
+            {askResult.cautions.length > 0 ? (
+              <div className="warning">
+                {askResult.cautions.map((item) => <div key={item}>! {item}</div>)}
+              </div>
+            ) : null}
+            {askResult.shopeeKeywords.length > 0 ? (
+              <div className="claim-list">
+                <strong>Shopee search keywords</strong>
+                {askResult.shopeeKeywords.map((keyword) => (
+                  <div className="claim-item" key={`shopee-${keyword}`}>
+                    <div>{keyword}</div>
+                    <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 6 }}>
+                      <button className="button" onClick={() => chrome.tabs.update({ url: buildSearchUrl("shopee", keyword) })}>Open Shopee</button>
+                      <button className="button" onClick={() => chrome.tabs.create({ url: buildSearchUrl("shopee", keyword) })}>New tab</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {askResult.googleKeywords.length > 0 ? (
+              <div className="claim-list">
+                <strong>Google search keywords</strong>
+                {askResult.googleKeywords.map((keyword) => (
+                  <div className="claim-item" key={`google-${keyword}`}>
+                    <div>{keyword}</div>
+                    <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 6 }}>
+                      <button className="button" onClick={() => chrome.tabs.create({ url: buildSearchUrl("google", keyword) })}>Open Google</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="section muted">ถามอะไรก็ได้เกี่ยวกับสินค้านี้ ความเหมาะสมกับกลุ่มเป้าหมาย หรือ keyword ที่ควรค้นต่อ คำตอบจะอยู่เฉพาะในหน้านี้</div>
+        )}
+      </div>
+      ) : null}
+
+      {activeTab === "products" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Product List">
+        <div className="section">
+          <div className="row">
+            <div>
+              <strong>Product List</strong>
+              <div className="muted">Filtered {filteredCandidates.length} / {candidates.length} products | Queue {queue.length}</div>
+            </div>
+            <button className="button" disabled={filteredCandidates.length === 0} onClick={() => run(sendCandidatesToSmartSpec)}>Send candidates</button>
+          </div>
+        </div>
+
+        {candidates.length > 0 ? (
+          <div className="section">
+            <strong>Filters</strong>
+            <div className="grid">
+              <input className="input" placeholder="Keyword include" value={filters.keyword} onChange={(e) => updateFilter("keyword", e.target.value)} />
+              <input className="input" placeholder="Min score" value={filters.minScore} onChange={(e) => updateFilter("minScore", e.target.value)} />
+              <input className="input" placeholder="Min sold" value={filters.minSold} onChange={(e) => updateFilter("minSold", e.target.value)} />
+              <input className="input" placeholder="Min rating" value={filters.minRating} onChange={(e) => updateFilter("minRating", e.target.value)} />
+              <input className="input" placeholder="Max price" value={filters.priceMax} onChange={(e) => updateFilter("priceMax", e.target.value)} />
+              <input className="input" placeholder="Min discount %" value={filters.discountMin} onChange={(e) => updateFilter("discountMin", e.target.value)} />
+              <label className="muted"><input type="checkbox" checked={filters.mallOnly} onChange={(e) => updateFilter("mallOnly", e.target.checked)} /> Mall / official</label>
+              <label className="muted"><input type="checkbox" checked={filters.freeShippingOnly} onChange={(e) => updateFilter("freeShippingOnly", e.target.checked)} /> Free shipping</label>
+              <label className="muted"><input type="checkbox" checked={filters.excludeSponsored} onChange={(e) => updateFilter("excludeSponsored", e.target.checked)} /> Exclude sponsored</label>
+            </div>
+          </div>
+        ) : null}
+
+        {filteredCandidates.length > 0 ? (
+          <div className="section">
+            {filteredCandidates.slice(0, 30).map((candidate) => (
+              <div className="candidate" key={candidate.url}>
+                <div className="row">
+                  {candidate.imageUrl ? <img className="thumb" src={candidate.imageUrl} alt="" /> : <div className="thumb" />}
+                  <div style={{ flex: 1 }}>
+                    <div>{candidate.title}</div>
+                    <div className="muted">
+                      {candidate.priceText ?? "-"} | {candidate.ratingText ? `rating ${candidate.ratingText} | ` : ""}{appendNormalizedCount(candidate.soldCountText) || "-"} | score {candidate.score}
+                    </div>
+                  </div>
+                </div>
+                <div className="muted">{candidate.scoreReasons.join(", ")}</div>
+                <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                  <button className="button" onClick={() => chrome.tabs.update({ url: candidate.url })}>Open</button>
+                  <button className="button" onClick={() => chrome.tabs.create({ url: candidate.url })}>New tab</button>
+                  <button className="button" onClick={() => addQueue(candidate)}>Queue</button>
+                  <button className="button" onClick={() => setIgnoredUrls(new Set([...ignoredUrls, candidate.url]))}>Ignore</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : candidates.length > 0 ? (
+          <div className="section muted">No products match the current filters.</div>
+        ) : (
+          <div className="section muted">Scan a category, search, or shop page to collect product recommendations.</div>
+        )}
+
+        {queue.length > 0 ? (
+          <div className="section">
+            <strong>Queue ({queue.length})</strong>
+            {queue.map((item) => (
+              <div className="row candidate" key={item.url}>
+                <span className="muted" style={{ flex: 1 }}>{item.title}</span>
+                <button className="button" onClick={() => chrome.tabs.create({ url: item.url })}>Open</button>
+                <button className="button" onClick={() => removeQueue(item.url)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      ) : null}
+
       {activeTab === "localAI" ? (
-      <div className="tab-panel" role="tabpanel" aria-label="Local AI">
+      <div className="tab-panel" role="tabpanel" aria-label="AI Insights">
       <div className="section">
-        <strong>Local AI</strong>
+        <strong>AI Insights</strong>
         <div className={`local-ai-card ${localAIStatusView.tone}`}>
           <div className="local-ai-card-top">
             <span className="local-ai-badge">{localAIStatusView.label}</span>
@@ -1708,6 +3108,13 @@ export default function App() {
           <label className="muted">
             <input
               type="checkbox"
+              checked={localAISettings.autoGenerateInsights}
+              onChange={(e) => updateLocalAISetting("autoGenerateInsights", e.target.checked)}
+            /> Auto generate & sync
+          </label>
+          <label className="muted">
+            <input
+              type="checkbox"
               checked={localAISettings.preferLocalAI}
               onChange={(e) => updateLocalAISetting("preferLocalAI", e.target.checked)}
             /> Prefer local AI
@@ -1730,42 +3137,165 @@ export default function App() {
         </div>
         <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
           <button className="button" onClick={() => run(refreshLocalAICapability)}>Check Local AI</button>
+          <button className="button" onClick={() => setActiveTab("config")}>Config Local AI</button>
           {canDownloadLocalAIModel ? (
             <button className="button primary" disabled={localAIBusy} onClick={() => run(downloadLocalAIModel)}>Download Gemini Nano</button>
           ) : null}
-          <button className="button primary" disabled={!product} onClick={() => run(createLocalProductBrief)}>Create Product Brief</button>
-          <button className="button" disabled={!productBrief} onClick={() => run(syncStructuredInsight)}>Send insights</button>
-          <button className="button" disabled={!storytellingHandoff} onClick={() => run(sendToStorytelling)}>Open Storytelling</button>
+          <button className="button primary" disabled={!product || localAIBusy} onClick={() => run(() => createLocalProductBrief({ autoSync: true }))}>Generate AI Insight</button>
+          <button className="button" disabled={!productBrief || localAIBusy} onClick={() => run(syncStructuredInsight)}>Sync to backend</button>
           {["downloading", "analyzing_local"].includes(localAIState) ? <button className="button" onClick={cancelLocalAI}>Cancel</button> : null}
         </div>
+        {!product ? (
+          <div className="section muted">Scan & Review a product first. AI Insights will turn the reviewed capture into selling points, hooks, objections, a 30s video brief, and downstream handoff data, then sync structured data to SmartSpecPro.</div>
+        ) : !productBrief && !localAIBusy ? (
+          <div className="section muted">
+            Ready to analyze: {editable.productName || product.productName || "current product"}.
+            {localAISettings.autoGenerateInsights ? " Auto insight will run when AI is available." : " Click Generate AI Insight to create and sync downstream content ideas."}
+          </div>
+        ) : null}
+        {storytellingHandoff ? (
+          <div className="section insight-panel">
+            <strong>User-added product knowledge</strong>
+            <div className="muted">เพิ่มข้อมูลที่ user รู้จริงเกี่ยวกับสินค้า ระบบจะช่วยสรุปให้กระชับ แยกหมวด และให้ confirm ก่อนเก็บเข้า story option</div>
+            <textarea
+              className="textarea"
+              placeholder="เช่น เหมาะกับคนที่อยู่คอนโด พื้นที่น้อย / ลูกค้ากังวลว่าติดตั้งยาก / hook ควรเปิดด้วยปัญหาห้องรก"
+              value={userInsightText}
+              onChange={(event) => {
+                setUserInsightText(event.target.value);
+                setUserInsightDraft(null);
+              }}
+            />
+            <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+              <button className="button" disabled={!userInsightText.trim()} onClick={() => run(async () => analyzeUserAddedInsight())}>Analyze user input</button>
+              {userInsightDraft ? <button className="button primary" onClick={confirmUserAddedInsight}>Confirm & store in insight</button> : null}
+              {userInsightDraft ? <button className="button" onClick={() => setUserInsightDraft(null)}>Cancel draft</button> : null}
+            </div>
+            {userInsightDraft ? (
+              <div className="claim-list">
+                <div className="claim-item">
+                  <strong>จะเก็บเข้า option: {userInsightDraft.targetOptionTitle}</strong>
+                  <div className="muted">Summary: {userInsightDraft.summary}</div>
+                  <div className="muted">Confidence {Math.round(userInsightDraft.confidence * 100)}% | รอ user confirm ก่อนบันทึก</div>
+                </div>
+                {userInsightDraft.additions.map((addition) => (
+                  <div className="claim-item" key={addition.category}>
+                    <strong>{addition.label}</strong>
+                    {addition.values.map((value) => <div className="muted" key={value}>• {value}</div>)}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {productBrief ? (
-          <div className="section">
-            <strong>{productBrief.productName}</strong>
-            <div className="muted">Confidence {Math.round(productBrief.confidence * 100)}% | Evidence {productBrief.evidenceIds.length}</div>
-            <div>{productBrief.shortSummary}</div>
-            {productBrief.keySellingPoints.length > 0 ? <div className="muted">Selling points: {productBrief.keySellingPoints.slice(0, 3).join(" • ")}</div> : null}
-            {productBrief.suggestedHooks.length > 0 ? <div className="muted">Hooks: {productBrief.suggestedHooks.slice(0, 2).join(" • ")}</div> : null}
+          <div className="section insight-panel">
+            <div className="row">
+              <div>
+                <strong>{productBrief.productName}</strong>
+                <div className="muted">
+                  {localAIProvider === "chrome_prompt_api" ? "Generated on-device" : localAIProvider === "server_ai" ? "Generated by server AI fallback" : "Generated from deterministic capture rules"}
+                  {" | "}Confidence {Math.round(productBrief.confidence * 100)}%
+                  {" | "}Evidence {productBrief.evidenceIds.length}
+                </div>
+              </div>
+              <button className="button" disabled={!productBrief || localAIBusy} onClick={() => run(syncStructuredInsight)}>Sync</button>
+            </div>
+            <div className="insight-summary">{productBrief.shortSummary}</div>
+            <div className="insight-grid">
+              <div className="insight-card">
+                <strong>Selling points</strong>
+                {productBrief.keySellingPoints.length > 0 ? productBrief.keySellingPoints.slice(0, 5).map((item) => <div className="muted" key={item}>• {item}</div>) : <div className="muted">ต้องเพิ่มข้อมูลราคา/รีวิว/รายละเอียดเพื่อสรุปจุดขาย</div>}
+              </div>
+              <div className="insight-card">
+                <strong>Hooks</strong>
+                {productBrief.suggestedHooks.length > 0 ? productBrief.suggestedHooks.slice(0, 5).map((item) => <div className="muted" key={item}>• {item}</div>) : <div className="muted">ยังไม่มี hook ที่พร้อมใช้</div>}
+              </div>
+              <div className="insight-card">
+                <strong>Audience / pain</strong>
+                {[...productBrief.targetAudiences.slice(0, 2), ...productBrief.buyerPainPoints.slice(0, 2)].map((item) => <div className="muted" key={item}>• {item}</div>)}
+              </div>
+              <div className="insight-card">
+                <strong>Objections / trust</strong>
+                {[...productBrief.buyerObjections.slice(0, 2), ...productBrief.trustSignals.slice(0, 2)].map((item) => <div className="muted" key={item}>• {item}</div>)}
+              </div>
+            </div>
           </div>
         ) : null}
         {storytellingHandoff ? (
           <div className="section">
-            <strong>Storytelling readiness: {storytellingHandoff.readiness}</strong>
+            <strong>Downstream insight readiness: {storytellingReadinessLabel(storytellingHandoff.readiness)}</strong>
+            <div className="muted">ขั้นตอนนี้ยังไม่เปิด Media Studio เพราะข้อมูลสินค้ายังไม่ได้ Upload/Confirm เป็น product จริง สิ่งที่ทำได้ตอนนี้คือ sync เพื่อแนบเป็น AI Insight กับ capture นี้ก่อน</div>
+            <div className="muted">หลัง Upload selected และ Confirm product แล้ว หน้า Product Detail / Media Studio จะอ่าน insight นี้ไปใช้ต่อเป็น brief, scene, claim, journey และรูปที่ควรใช้</div>
             <div className="muted">Journey: {storytellingHandoff.customerJourneyStages.join(" → ")}</div>
-            {storytellingHandoff.blockers.length > 0 ? <div className="warning">Review: {storytellingHandoff.blockers.join(", ")}</div> : null}
+            {storytellingHandoff.blockers.length > 0 ? (
+              <div className="warning">
+                ควรแก้ก่อน sync/ใช้ต่อ:
+                <ul>
+                  {storytellingHandoff.blockers.map((blocker) => <li key={blocker}>{storytellingBlockerLabel(blocker)}</li>)}
+                </ul>
+              </div>
+            ) : (
+              <div className="connection-summary">
+                <strong>Ready to attach as AI Insight</strong>
+                <div className="muted">กด Sync to backend เพื่อบันทึก structured insight แล้วค่อย Upload/Confirm สินค้าตาม flow ปกติ</div>
+              </div>
+            )}
             {storytellingHandoff.blockers.length > 0 ? (
               <div className="local-ai-review-actions">
                 <button className="button" onClick={() => setActiveTab("capture")}>กลับไปเพิ่ม evidence</button>
                 <button className="button" onClick={() => run(mergeVisibleProductImages)}>ดึงรูปเพิ่ม</button>
               </div>
             ) : null}
+            {storytellingHandoff.storyOptions.length > 0 ? (
+              <div className="claim-list">
+                <div className="muted">Story options ที่ AI วิเคราะห์ไว้ ระบบจะ sync เป็น structured insight เพื่อให้ Product Detail / Media Studio ใช้เลือกทำ storytelling หรือ storyboard ได้หลายแนวหลัง confirm สินค้า</div>
+                {storytellingHandoff.storyOptions.slice(0, 5).map((option) => (
+                  <div className="claim-item" key={option.id}>
+                    <div className="row" style={{ justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                      <strong>{option.title}</strong>
+                      <span className={option.autoSelected ? "status-pill active" : "status-pill"}>{option.autoSelected ? "Recommended" : `${Math.round(option.confidence * 100)}%`}</span>
+                    </div>
+                    <div className="muted">Audience: {option.audience}</div>
+                    <div className="muted">Need: {option.customerNeed}</div>
+                    <div className="muted">Problem/use case: {option.problemToSolve} / {option.useCase}</div>
+                    <div className="muted">Hook: {option.hook}</div>
+                    <div className="muted">Journey: {option.journeyStages.join(" → ")} | Evidence {option.evidenceIds.length}</div>
+                    {option.videoBrief ? (
+                      <details className="story-option-video">
+                        <summary>Video storyboard: {option.videoBrief.structureLabel}</summary>
+                        <div className="scene-list">
+                          {option.videoBrief.shots.map((shot) => (
+                            <div className="scene-item" key={`${option.id}-${shot.order}`}>
+                              <strong>Shot {shot.order}: {shot.title} ({shot.startSec}-{shot.endSec}s)</strong>
+                              <div className="muted">Video Prompt: {shot.videoPrompt}</div>
+                              <ol className="muted">
+                                {shot.subShots.map((subShot) => <li key={subShot}>{subShot}</li>)}
+                              </ol>
+                              <div className="muted">{shot.thaiVoiceover}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : null}
+                    {option.decisionReason ? <div className="muted">{option.decisionReason}</div> : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {storytellingHandoff.claims.length > 0 ? (
               <div className="claim-list">
+                <div className="muted">Claim สถานะ supported มาจากข้อมูล capture ที่มี evidence แล้ว ระบบจะ sync เป็น AI Insight ได้เลย ส่วน claim ที่ needs_review ต้องให้ user Confirm/Approve ก่อนใช้ต่อ ถ้า claim ไม่ถูกต้องให้ Edit หรือ Remove ก่อน sync</div>
                 {storytellingHandoff.claims.slice(0, 6).map((claim) => (
                   <div className="claim-item" key={claim.id}>
                     <div>{claim.text}</div>
                     <div className="muted">Status: {claim.status} | Evidence {claim.evidenceIds.length} | Confidence {Math.round(claim.confidence * 100)}%</div>
                     <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 6 }}>
-                      <button className="button" onClick={() => updateStorytellingClaim(claim.id, "approve")}>Approve</button>
+                      {claim.status === "supported" ? (
+                        <span className="status-pill active">Auto-supported</span>
+                      ) : (
+                        <button className="button" disabled={claim.status === "user_approved"} onClick={() => updateStorytellingClaim(claim.id, "approve")}>{claim.status === "user_approved" ? "Approved" : "Approve"}</button>
+                      )}
                       <button className="button" onClick={() => updateStorytellingClaim(claim.id, "edit")}>Edit</button>
                       <button className="button" onClick={() => updateStorytellingClaim(claim.id, "remove")}>Remove</button>
                     </div>
@@ -1780,7 +3310,7 @@ export default function App() {
       ) : null}
 
       {activeTab === "capture" ? (
-      <div className="tab-panel" role="tabpanel" aria-label="Capture">
+      <div className="tab-panel" role="tabpanel" aria-label="Capture Review">
       <div className="section">
         <label className="muted">Base URL</label>
         <input className="input" value={settings.baseUrl} onChange={(e) => setSettings({ ...settings, baseUrl: e.target.value })} />
@@ -1879,6 +3409,16 @@ export default function App() {
         ) : null}
       </div>
 
+      {candidates.length > 0 || queue.length > 0 ? (
+        <div className="section compact-summary">
+          <div>
+            <strong>Product List</strong>
+            <div className="muted">Recommended {filteredCandidates.length} / {candidates.length} | Queue {queue.length}</div>
+          </div>
+          <button className="button" onClick={() => setActiveTab("products")}>Open list</button>
+        </div>
+      ) : null}
+
       {liveProduct && !product ? (
         <div className="section">
           <strong>Live product details</strong>
@@ -1906,62 +3446,6 @@ export default function App() {
           </div>
         ))}
       </div>
-
-      {candidates.length > 0 ? (
-        <div className="section">
-          <strong>Filters</strong>
-          <div className="grid">
-            <input className="input" placeholder="Keyword include" value={filters.keyword} onChange={(e) => updateFilter("keyword", e.target.value)} />
-            <input className="input" placeholder="Min score" value={filters.minScore} onChange={(e) => updateFilter("minScore", e.target.value)} />
-            <input className="input" placeholder="Min sold" value={filters.minSold} onChange={(e) => updateFilter("minSold", e.target.value)} />
-            <input className="input" placeholder="Min rating" value={filters.minRating} onChange={(e) => updateFilter("minRating", e.target.value)} />
-            <input className="input" placeholder="Max price" value={filters.priceMax} onChange={(e) => updateFilter("priceMax", e.target.value)} />
-            <input className="input" placeholder="Min discount %" value={filters.discountMin} onChange={(e) => updateFilter("discountMin", e.target.value)} />
-            <label className="muted"><input type="checkbox" checked={filters.mallOnly} onChange={(e) => updateFilter("mallOnly", e.target.checked)} /> Mall / official</label>
-            <label className="muted"><input type="checkbox" checked={filters.freeShippingOnly} onChange={(e) => updateFilter("freeShippingOnly", e.target.checked)} /> Free shipping</label>
-            <label className="muted"><input type="checkbox" checked={filters.excludeSponsored} onChange={(e) => updateFilter("excludeSponsored", e.target.checked)} /> Exclude sponsored</label>
-          </div>
-        </div>
-      ) : null}
-
-      {filteredCandidates.length > 0 ? (
-        <div className="section">
-          <strong>Recommended Products</strong>
-          {filteredCandidates.slice(0, 30).map((candidate) => (
-            <div className="candidate" key={candidate.url}>
-              <div className="row">
-                {candidate.imageUrl ? <img className="thumb" src={candidate.imageUrl} alt="" /> : <div className="thumb" />}
-                <div style={{ flex: 1 }}>
-                  <div>{candidate.title}</div>
-                  <div className="muted">
-                    {candidate.priceText ?? "-"} | {candidate.ratingText ? `rating ${candidate.ratingText} | ` : ""}{appendNormalizedCount(candidate.soldCountText) || "-"} | score {candidate.score}
-                  </div>
-                </div>
-              </div>
-              <div className="muted">{candidate.scoreReasons.join(", ")}</div>
-              <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-                <button className="button" onClick={() => chrome.tabs.update({ url: candidate.url })}>Open</button>
-                <button className="button" onClick={() => chrome.tabs.create({ url: candidate.url })}>New tab</button>
-                <button className="button" onClick={() => addQueue(candidate)}>Queue</button>
-                <button className="button" onClick={() => setIgnoredUrls(new Set([...ignoredUrls, candidate.url]))}>Ignore</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {queue.length > 0 ? (
-        <div className="section">
-          <strong>Queue ({queue.length})</strong>
-          {queue.map((item) => (
-            <div className="row candidate" key={item.url}>
-              <span className="muted" style={{ flex: 1 }}>{item.title}</span>
-              <button className="button" onClick={() => chrome.tabs.create({ url: item.url })}>Open</button>
-              <button className="button" onClick={() => removeQueue(item.url)}>Remove</button>
-            </div>
-          ))}
-        </div>
-      ) : null}
 
       {product ? (
         <div className="section">
@@ -2110,11 +3594,82 @@ export default function App() {
             </div>
           </div>
 
+          <div className={`section ${aiInsightReadyForUpload ? "success-panel" : "warning-panel"}`}>
+            <strong>AI insight preview before upload</strong>
+            {productBrief ? (
+              <div className="insight-panel">
+                <div className="insight-summary">{productBrief.shortSummary}</div>
+                <div className="insight-grid">
+                  <div className="insight-card">
+                    <strong>Selling points</strong>
+                    {productBrief.keySellingPoints.slice(0, 5).map((item) => <div className="muted" key={`pre-sell-${item}`}>• {item}</div>)}
+                  </div>
+                  <div className="insight-card">
+                    <strong>Audience / Pain</strong>
+                    {[...productBrief.targetAudiences.slice(0, 3), ...productBrief.buyerPainPoints.slice(0, 3)].map((item) => <div className="muted" key={`pre-aud-${item}`}>• {item}</div>)}
+                  </div>
+                  <div className="insight-card">
+                    <strong>Hooks</strong>
+                    {productBrief.suggestedHooks.slice(0, 5).map((item) => <div className="muted" key={`pre-hook-${item}`}>• {item}</div>)}
+                  </div>
+                </div>
+                {preUploadStoryOptions.length ? (
+                  <div className="insight-grid">
+                    {preUploadStoryOptions.map((option) => (
+                      <div className="insight-card" key={`pre-story-${option.id}`}>
+                        <strong>{option.title}</strong>
+                        <div className="muted">Audience: {option.audience}</div>
+                        <div className="muted">Need: {option.customerNeed}</div>
+                        <div className="muted">Hook: {option.hook}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="warning">ยังไม่มี story options ให้ตรวจสอบก่อน upload</div>
+                )}
+              </div>
+            ) : (
+              <div className="warning">ยังไม่มี AI Insight สำหรับสินค้านี้ ระบบจะไม่แนบ storyOptions ไปกับ capture จนกว่าจะกด Generate AI Insight หรือ auto-generate สำเร็จ</div>
+            )}
+            <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+              <button className="button primary" disabled={localAIBusy} onClick={() => run(() => createLocalProductBrief({ autoSync: Boolean(settings.token), openTab: false }))}>
+                Generate AI Insight
+              </button>
+              <button className="button" onClick={() => setActiveTab("localAI")}>Open AI Insights</button>
+            </div>
+          </div>
+
           <div className="image-toolbar">
             <div className="muted">
               Selected images: {selectedImageCount} / {product.imageCandidates.length}
               {heroImageUrl ? " | Hero selected" : " | No hero"}
             </div>
+            {localAISettings.localVisionEnabled && effectiveLocalProvider ? (
+              <div className="vision-picker">
+                <div>
+                  <strong>Vision images for Local AI</strong>
+                  <div className="muted">เลือก 1-{Math.min(5, Math.max(1, Number(localAISettings.localVisionImageLimit) || 1))} รูปจากรูปสินค้าที่เลือกไว้ เพื่อส่งแบบ {localAISettings.localVisionImageTransport === "url" ? "URL direct" : "base64"} ให้ local model วิเคราะห์ร่วมกับ text</div>
+                </div>
+                {visionEligibleImages.length === 0 ? (
+                  <div className="warning">ยังไม่มีรูปสินค้าที่เหมาะกับ vision ให้เลือก main/detail image ก่อน และหลีกเลี่ยง related/low-res</div>
+                ) : (
+                  <div className="vision-image-row">
+                    {visionEligibleImages.slice(0, 10).map((img) => (
+                      <label className={`vision-image-option ${activeVisionImageUrls.includes(img.url) ? "selected" : ""}`} key={`vision-${img.url}`}>
+                        <input
+                          type="checkbox"
+                          checked={activeVisionImageUrls.includes(img.url)}
+                          disabled={!activeVisionImageUrls.includes(img.url) && activeVisionImageUrls.length >= Math.min(5, Math.max(1, Number(localAISettings.localVisionImageLimit) || 1))}
+                          onChange={(e) => updateVisionImageSelection(img.url, e.target.checked)}
+                        />
+                        <img src={img.url} alt="Vision product evidence" loading="lazy" />
+                        <span>{img.url === heroImageUrl ? "Hero" : img.kind}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
             <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
               {(["all", "main", "description", "review", "related", "unknown"] as ImageFilter[]).map((filter) => (
                 <button className={imageFilter === filter ? "button primary" : "button"} key={filter} onClick={() => setImageFilter(filter)}>
@@ -2136,7 +3691,7 @@ export default function App() {
             {displayedProductImages.map((img) => (
               <label className={`image-option ${selectedImages[img.url] ? "selected" : ""}`} key={img.url}>
                 <input className="image-checkbox" type="checkbox" aria-label={`Select ${img.kind} image ${img.position ?? ""}`} checked={Boolean(selectedImages[img.url])} onChange={(e) => setSelectedImages((current) => ({ ...current, [img.url]: e.target.checked }))} />
-                <img className="image-thumb" src={img.url} alt={`${img.kind} product evidence`} loading="lazy" />
+                <img className="image-thumb" src={img.url} alt={`${img.kind} product evidence`} loading="eager" decoding="async" />
                 <span className="image-kind">{img.kind} | {imageQualityLabel(img)}</span>
                 <span className="image-badges">
                   {imageBadges(img, heroImageUrl).map((badge) => <span className="image-badge" key={badge}>{badge}</span>)}

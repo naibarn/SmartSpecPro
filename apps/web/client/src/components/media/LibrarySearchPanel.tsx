@@ -8,6 +8,7 @@ import { FileImage, FileText, Film, Loader2, Maximize2, Music, Plus, Search } fr
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
+import type { ProductionReferenceInput } from "@shared/mediaProduction";
 
 type MediaLibraryItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
 
@@ -27,6 +28,10 @@ interface LibrarySearchPanelProps {
   addToReferenceLabel?: string;
   canAddToReferenceItem?: (item: LibrarySearchResultItem) => boolean;
   onAddToReference?: (item: LibrarySearchResultItem) => void;
+  attachToSelectedNodeLabel?: string;
+  canAttachToSelectedNode?: boolean;
+  onAttachToSelectedNode?: (item: LibrarySearchResultItem) => void;
+  getProductionAssetForItem?: (item: LibrarySearchResultItem) => ProductionReferenceInput | null;
   onPreview?: (item: LibrarySearchResultItem) => void;
   onSelect: (item: LibrarySearchResultItem) => void;
 }
@@ -47,6 +52,10 @@ export default function LibrarySearchPanel({
   addToReferenceLabel = "Use as reference",
   canAddToReferenceItem,
   onAddToReference,
+  attachToSelectedNodeLabel,
+  canAttachToSelectedNode = false,
+  onAttachToSelectedNode,
+  getProductionAssetForItem,
   onPreview,
   onSelect,
 }: LibrarySearchPanelProps) {
@@ -82,6 +91,11 @@ export default function LibrarySearchPanel({
     event.dataTransfer.setData("text/plain", dragUrl);
     event.dataTransfer.setData("application/x-smartspec-media-type", mediaType);
     event.dataTransfer.setData("text/x-smartspec-media-type", mediaType);
+    const productionAsset = getProductionAssetForItem?.(item);
+    if (productionAsset) {
+      event.dataTransfer.setData("application/x-production-asset-id", productionAsset.id);
+      event.dataTransfer.setData("application/x-production-asset-json", JSON.stringify(productionAsset));
+    }
     event.dataTransfer.effectAllowed = "copy";
   };
 
@@ -289,6 +303,18 @@ export default function LibrarySearchPanel({
                       >
                         <span className="truncate">{t("common.select")}</span>
                       </Button>
+                      {onAttachToSelectedNode && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="min-w-0 flex-1"
+                          onClick={() => onAttachToSelectedNode(item)}
+                          disabled={!canAttachToSelectedNode}
+                          title={attachToSelectedNodeLabel}
+                        >
+                          <span className="truncate">{attachToSelectedNodeLabel ?? "Attach to node"}</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

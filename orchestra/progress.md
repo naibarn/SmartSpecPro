@@ -79,3 +79,40 @@
     - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
     - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 14/14 tests.
     - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests.
+- 2026-05-24 marketplace insight semantic dedupe:
+  - SocratiCode active/green and used before targeted code discovery.
+  - Classified as medium/medium risk: extension sync contract + backend persistence + Drizzle migration + local DB cleanup.
+  - Implemented stable insight semantic dedupe for marketplace capture insights.
+  - Added `semanticKey`, backend semantic lookup/upsert, extension stable idempotency metadata, and migration `0187_marketplace_insight_semantic_dedupe.sql`.
+  - Local DB was backed up before destructive cleanup at `tmp/db-backups/marketplace_capture_insights_before_0187_20260524_222941.sql`.
+  - Applied migration through `npm --prefix apps/web run db:migrate`; duplicate groups went from 11-row groups to 0 duplicate groups. Backup table `marketplace_capture_insights_dedup_backup_0187` contains 110 removed rows.
+  - Verification passed:
+    - `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check` — passed.
+    - `npm --prefix apps/extension run typecheck` — passed.
+    - `npm --prefix apps/web run test -- shared/marketplaceCapture.test.ts` — 13/13 tests.
+- 2026-05-24 marketplace story option data migration:
+  - SocratiCode active/green and used before DB verification.
+  - Found remaining migrated data gap after semantic dedupe: existing `storytelling_handoff` rows still had 5 legacy story options and 0 per-option `videoBrief` objects.
+  - Added migration `0188_marketplace_story_option_video_briefs_backfill.sql`.
+  - Local DB was backed up before payload backfill at `tmp/db-backups/marketplace_capture_insights_before_0188_20260524_232119.sql`.
+  - Applied migration through `npm --prefix apps/web run db:migrate`; backup table `marketplace_capture_story_options_backup_0188` contains 5 original rows.
+  - Post-migration DB verification:
+    - Drizzle migration history includes `0188_marketplace_story_option_video_briefs_backfill`.
+    - All 5 `storytelling_handoff` rows now have exactly 4 story options.
+    - Each story option has a `videoBrief`; each handoff has 12 valid shots total with 3 sub-shots and Thai voiceover format.
+    - `semanticKey` nulls remain 0 and semantic duplicate groups remain 0.
+  - Verification passed:
+    - `npm --prefix apps/web run test -- shared/marketplaceCapture.test.ts` — 13/13 tests.
+    - `git diff --check -- apps/web/drizzle/0188_marketplace_story_option_video_briefs_backfill.sql apps/web/drizzle/meta/_journal.json` — passed.
+- 2026-05-24 Media Studio marketplace story planning:
+  - SocratiCode active/green and used before targeted Media Studio discovery.
+  - Implemented product-aware 4-concept planning from stored Marketplace `storyOptions` when complete.
+  - Added deterministic storytelling taxonomy mixing for each concept: story structure, emotional tone, and short-video hook technique.
+  - Added LLM synthesis fallback through the selected planner skill when stored storyOptions are incomplete, with deterministic local fallback if the LLM call fails.
+  - Added persistence of synthesized `storytelling_handoff` data through the existing `marketplaceCapture.syncInsight` mutation so future planning can reuse it.
+  - Added Regenerate 4 concepts UI action that forces a new seed/concept set instead of reusing the current selected concept.
+  - Updated the planner skill contract for `marketplace_story_concept_synthesis`.
+  - Verification passed:
+    - `npm --prefix apps/web run test -- client/src/features/media-production/production-director.e2e.test.tsx` — 24/24 tests.
+    - `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check` — passed.
+    - `git diff --check -- apps/web/client/src/pages/MediaStudio.tsx apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx apps/web/client/src/features/media-production/production-director.e2e.test.tsx apps/web/skills/media-production-storyboard-planner/skill.md orchestra/plan.md` — passed.

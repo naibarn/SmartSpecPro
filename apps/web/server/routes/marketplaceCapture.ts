@@ -36,7 +36,7 @@ function marketplaceCors(req: Request, res: Response, next: NextFunction) {
   if (origin && isAllowedMarketplaceOrigin(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Requested-With");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Requested-With, X-Marketplace-Device-Id");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Max-Age", "600");
   }

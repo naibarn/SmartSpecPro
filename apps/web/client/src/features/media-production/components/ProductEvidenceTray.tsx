@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, CheckCircle2, PackageCheck, ShieldAlert } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, ExternalLink, PackageCheck, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type {
@@ -55,6 +55,22 @@ function normalizeRoleValue(role: string | null | undefined): string {
   return role && role.trim() ? role : "__none__";
 }
 
+function productTruthValue(productTruth: Record<string, unknown> | undefined, path: string): string {
+  const value = path.split(".").reduce<unknown>((current, key) => {
+    if (!current || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, productTruth);
+  return value == null ? "" : String(value);
+}
+
+function productTruthArray(productTruth: Record<string, unknown> | undefined, path: string): string[] {
+  const value = path.split(".").reduce<unknown>((current, key) => {
+    if (!current || typeof current !== "object") return undefined;
+    return (current as Record<string, unknown>)[key];
+  }, productTruth);
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
+}
+
 export function ProductEvidenceTray({
   manifest,
   contextAssets,
@@ -95,6 +111,21 @@ export function ProductEvidenceTray({
               productAssets.find((asset) => asset.assetId === product.id || asset.id === product.id) ??
               productAssets.find((asset) => asset.title === product.title);
             const roleValue = normalizeRoleValue(product.role);
+            const productTruth = product.productTruth as Record<string, unknown> | undefined;
+            const productDetailChips = [
+              productTruthValue(productTruth, "platform"),
+              productTruthValue(productTruth, "brand"),
+              productTruthValue(productTruth, "shopName"),
+              productTruthValue(productTruth, "itemId"),
+              productTruthValue(productTruth, "price.current"),
+              productTruthValue(productTruth, "performanceSignals.ratingScore"),
+              productTruthValue(productTruth, "performanceSignals.soldCountText"),
+            ].filter(Boolean);
+            const productDetailId = productTruthValue(productTruth, "productId") || product.productId;
+            const supportingInsightTypes = productTruthArray(productTruth, "supportingInsights.availableTypes");
+            const supportingSummary = productTruthValue(productTruth, "supportingInsights.summary.shortSummary");
+            const supportingHook = productTruthArray(productTruth, "supportingInsights.summary.hooks")[0];
+            const videoBriefTitle = productTruthValue(productTruth, "supportingInsights.videoBrief.title");
 
             return (
               <div key={product.id} className="min-w-0 rounded border bg-slate-50 p-3">
@@ -109,6 +140,56 @@ export function ProductEvidenceTray({
                       {product.sku ? <Badge variant="outline">{product.sku}</Badge> : null}
                       <Badge variant="outline">{product.claimEvidence.length} claims</Badge>
                     </div>
+                    {productDetailChips.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {productDetailChips.slice(0, 7).map((chip) => (
+                          <Badge key={chip} variant="outline" className="max-w-full truncate bg-white text-[10px]">
+                            {chip}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                    {productTruthValue(productTruth, "sourceUrl") ? (
+                      <div className="mt-2 truncate text-[11px] text-muted-foreground">
+                        {productTruthValue(productTruth, "sourceUrl")}
+                      </div>
+                    ) : null}
+                    {supportingInsightTypes.length ? (
+                      <div className="mt-2 rounded border border-sky-100 bg-sky-50 p-2 text-[11px] text-slate-700">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant="outline" className="bg-white text-[10px] text-sky-700">
+                            {isThai ? "AI insight เสริม" : "Optional AI insight"}
+                          </Badge>
+                          {supportingInsightTypes.slice(0, 3).map((type) => (
+                            <Badge key={type} variant="outline" className="bg-white text-[10px]">
+                              {type}
+                            </Badge>
+                          ))}
+                        </div>
+                        {supportingSummary || supportingHook || videoBriefTitle ? (
+                          <div className="mt-1 line-clamp-2">
+                            {supportingSummary || supportingHook || videoBriefTitle}
+                          </div>
+                        ) : null}
+                        <div className="mt-1 text-[10px] text-slate-500">
+                          {isThai
+                            ? "ใช้ช่วยคิด hook/story ได้ แต่ไม่แทน product truth"
+                            : "Can inform hooks/story, but never replaces product truth."}
+                        </div>
+                      </div>
+                    ) : null}
+                    {productDetailId ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 h-8 gap-1 bg-white text-xs"
+                        onClick={() => window.open(`/marketplace-capture/products/${encodeURIComponent(productDetailId)}`, "_blank", "noopener,noreferrer")}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        {isThai ? "รายละเอียดสินค้าในระบบ" : "Product details"}
+                      </Button>
+                    ) : null}
                     <div className="mt-2 text-xs text-muted-foreground">
                       {isThai ? "บทบาทสินค้า" : "Product role"}
                     </div>

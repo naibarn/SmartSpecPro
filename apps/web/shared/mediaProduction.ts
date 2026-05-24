@@ -192,6 +192,7 @@ export interface ProductStoryboardAsset {
   reviewNotes?: string[];
   claimEvidence: ProductClaimEvidenceMap[];
   provenance?: Record<string, unknown>;
+  productTruth?: Record<string, unknown>;
 }
 
 export interface ProductionShotProductUse {

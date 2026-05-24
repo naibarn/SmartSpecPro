@@ -69,6 +69,11 @@ export interface ProductionCanvasCallbacks {
   onDeleteNode?: (nodeId: string) => void;
   onConfigureNode?: (nodeId: string) => void;
   onRunNode?: (nodeId: string) => void;
+  onRunBatch?: () => void;
+  onCancelExecution?: (attemptId?: string) => void;
+  onCancelNodeExecution?: (nodeId: string) => void;
+  onRetryNode?: (nodeId: string) => void;
+  onOpenNodeOutput?: (nodeId: string, outputRefId?: string) => void;
 }
 
 export type ProductionWorkspaceViewState = "ready" | "loading" | "error" | "conflict" | "feature_disabled" | "archived" | "deleted" | "stale";
@@ -100,7 +105,7 @@ export function nodeConfigToDraft(node: ProductionFlowNode): ProductionNodeConfi
 
 export function adapterForNodeKind(kind: ProductionNodeKind): ProductionNodeConfigSnapshot["adapter"] {
   if (kind === "image" || kind === "image_generate" || kind === "image_edit" || kind === "image_upscale_enhance" || kind === "character_create") return "image";
-  if (kind === "video" || kind === "video_shot" || kind === "video_generate" || kind === "image_to_video" || kind === "video_to_video" || kind === "lip_sync" || kind === "video_edit") return "video";
+  if (kind === "video" || kind === "video_generate" || kind === "image_to_video" || kind === "video_to_video" || kind === "lip_sync") return "video";
   if (kind === "tts" || kind === "text_to_speech" || kind === "voice" || kind === "voice_change") return "tts";
   if ([
     "goal_brief",
@@ -132,7 +137,7 @@ export function adapterForNodeKind(kind: ProductionNodeKind): ProductionNodeConf
 
 export function toolSurfaceForNodeKind(kind: ProductionNodeKind): ProductionNodeConfigSnapshot["toolSurface"] {
   if (kind === "image" || kind === "image_generate" || kind === "image_edit" || kind === "image_upscale_enhance" || kind === "character_create") return "image";
-  if (kind === "video" || kind === "video_shot" || kind === "video_generate" || kind === "image_to_video" || kind === "video_to_video" || kind === "lip_sync" || kind === "source_video_reference") return "video";
+  if (kind === "video" || kind === "video_generate" || kind === "image_to_video" || kind === "video_to_video" || kind === "lip_sync" || kind === "source_video_reference") return "video";
   if (kind === "tts" || kind === "text_to_speech" || kind === "voice" || kind === "voice_change" || kind === "music" || kind === "music_generate" || kind === "sound_effect" || kind === "sound_effect_generate" || kind === "audio_reference" || kind === "speech_to_text" || kind === "voice_isolate_cleanup") return "audio";
   if (kind === "storyboard_review") return "storyboard_review";
   if (kind === "video_edit" || kind === "handoff") return "video_edit";

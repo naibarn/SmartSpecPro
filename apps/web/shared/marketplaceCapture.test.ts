@@ -178,10 +178,23 @@ describe("marketplace capture parsers", () => {
       },
       insightType: "product_brief",
       provider: "chrome_prompt_api",
+      metadata: {
+        semanticKey: "shopee:source-hash:product_brief:chrome_prompt_api:v1:payload-hash",
+        semanticPayloadHash: "payload-hash",
+        sourceIdentityHash: "source-hash",
+        sourceIdentity: {
+          platform: "shopee",
+          canonicalSourceUrl: "https://shopee.co.th/product/1/2",
+          externalShopId: "1",
+          externalProductId: "2",
+        },
+      },
       payload: brief,
       rawCaptureIncluded: false,
     });
     expect(sync.insightType).toBe("product_brief");
+    expect(sync.metadata.semanticKey).toContain("product_brief");
+    expect(sync.metadata.sourceIdentity?.canonicalSourceUrl).toBe("https://shopee.co.th/product/1/2");
   });
 
   it("validates server AI generation request and response contracts", () => {
@@ -241,11 +254,155 @@ describe("marketplace capture parsers", () => {
       readiness: "needs_user_review",
       blockers: ["unsupported_claims_need_review"],
       customerJourneyStages: ["awareness", "consideration", "conversion_cta"],
+      storyOptions: [{
+        id: "story_option:problem_solution",
+        title: "Problem -> Solution",
+        audience: "ผู้ซื้อที่กำลังเปรียบเทียบสินค้า",
+        customerNeed: "ต้องการแก้ปัญหาให้เร็วขึ้น",
+        problemToSolve: "ยังไม่มั่นใจว่าสินค้าช่วยอะไร",
+        useCase: "ใช้เมื่อลูกค้าต้องการเห็นประโยชน์หลักก่อนซื้อ",
+        angle: "โชว์ประโยชน์และหลักฐานจากหน้าสินค้า",
+        storyFormat: "customer_journey",
+        journeyStages: ["problem_recognition", "consideration", "proof_review_demo", "conversion_cta"],
+        hook: "ดูว่าสินค้านี้ช่วยอะไรได้บ้าง",
+        storyboardOutline: ["เปิดด้วย pain point", "โชว์จุดเด่น", "เสริม proof", "ปิด CTA"],
+        primaryClaimIds: ["claim:1"],
+        evidenceIds: [],
+        confidence: 0.62,
+        autoSelected: true,
+        decisionReason: "เลือกอัตโนมัติจาก confidence สูงสุด",
+        videoBrief: {
+          schemaVersion: "1.0",
+          durationSec: 30,
+          aspectRatio: "9:16",
+          language: "th",
+          structureLabel: "30 วินาที | 3 Shot | Shot ละ 10 วินาที",
+          noOnScreenText: true,
+          shots: [
+            {
+              order: 1,
+              startSec: 0,
+              endSec: 10,
+              title: "เปิดปัญหา",
+              videoPrompt: "Vertical video 9:16, realistic home, no text on screen, no subtitles.",
+              subShots: ["เห็นปัญหา", "คนลังเล", "Close-up ปัญหา"],
+              thaiVoiceover: "พูดเป็นภาษาไทยว่า “ปัญหานี้แก้ได้ง่ายขึ้น”",
+            },
+            {
+              order: 2,
+              startSec: 10,
+              endSec: 20,
+              title: "โชว์ทางออก",
+              videoPrompt: "Vertical video 9:16, realistic product demo, no text on screen, no subtitles.",
+              subShots: ["หยิบสินค้า", "โชว์จุดเด่น", "ใช้จริง"],
+              thaiVoiceover: "พูดเป็นภาษาไทยว่า “สินค้านี้ช่วยให้ใช้งานง่ายขึ้น”",
+            },
+            {
+              order: 3,
+              startSec: 20,
+              endSec: 30,
+              title: "สรุปผลลัพธ์",
+              videoPrompt: "Vertical video 9:16, clean product ending, no text on screen, no subtitles.",
+              subShots: ["หลังใช้", "สินค้าในบริบทจริง", "ปิด CTA"],
+              thaiVoiceover: "พูดเป็นภาษาไทยว่า “ดูรายละเอียดสินค้าเพิ่มเติมได้เลย”",
+            },
+          ],
+        },
+      }],
       claims: [{ id: "claim:1", text: "Claim", evidenceIds: [], status: "needs_review", confidence: 0.4 }],
       selectedImages: [{ url: "https://img.example/demo.jpg", role: "hero", fidelity: "likely_product" }],
       evidenceIds: [],
       confidence: 0.4,
     });
     expect(handoff.readiness).toBe("needs_user_review");
+    expect(handoff.storyOptions[0]?.autoSelected).toBe(true);
+    expect(handoff.storyOptions[0]?.videoBrief?.shots).toHaveLength(3);
+    expect(handoff.storyOptions[0]?.videoBrief?.shots[0]?.subShots).toHaveLength(3);
+    const sync = marketplaceCaptureInsightSyncSchema.parse({
+      extensionVersion: "0.1.34",
+      idempotencyKey: "idem_storytelling_video_brief_12345678",
+      schemaVersion: "1.0",
+      insightCreatedAt: new Date().toISOString(),
+      payloadHash: "payload_hash_story_video_12345678",
+      source: {
+        platform: "shopee",
+        url: "https://shopee.co.th/product/1/2",
+        capturedAt: new Date().toISOString(),
+        captureId: "cap_1",
+      },
+      insightType: "storytelling_handoff",
+      provider: "chrome_prompt_api",
+      metadata: {
+        storyOptionCount: 1,
+        storyOptionVideoBriefCount: 1,
+      },
+      payload: handoff,
+      rawCaptureIncluded: false,
+    });
+    expect(sync.payload.storyOptions[0]?.videoBrief?.shots[0]?.thaiVoiceover).toContain("พูดเป็นภาษาไทยว่า");
+  });
+
+  it("reports invalid local insight payload field details", () => {
+    const parsed = marketplaceCaptureInsightSyncSchema.safeParse({
+      extensionVersion: "0.1.19",
+      idempotencyKey: "idem_storytelling_12345678",
+      schemaVersion: "1.0",
+      insightCreatedAt: new Date().toISOString(),
+      payloadHash: "payload_hash_12345678",
+      source: {
+        platform: "shopee",
+        url: "https://shopee.co.th/product/1/2",
+        capturedAt: new Date().toISOString(),
+      },
+      insightType: "storytelling_handoff",
+      provider: "chrome_prompt_api",
+      payload: {
+        schemaVersion: "1.0",
+        sourceUrl: "https://shopee.co.th/product/1/2",
+        platform: "shopee",
+        storyOptions: [{ id: "old_cached_option", title: "Old cached option", journeyStages: ["awareness"] }],
+      },
+      rawCaptureIncluded: false,
+    });
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues[0]?.message).toContain("Invalid storytelling_handoff payload");
+    expect(parsed.error?.issues[0]?.message).toContain("productName");
+  });
+
+  it("accepts configured localhost local AI providers for synced insights", () => {
+    const brief = productBriefSchema.parse({
+      schemaVersion: "1.0",
+      source: { platform: "shopee", captureId: "cap_1", url: "https://shopee.co.th/product/1/2" },
+      productName: "Demo product",
+      shortSummary: "Short summary",
+      keySellingPoints: ["point"],
+      targetAudiences: [],
+      buyerPainPoints: [],
+      buyerObjections: [],
+      trustSignals: [],
+      contentAngles: [],
+      suggestedHooks: [],
+      suggestedCTAs: [],
+      confidence: 0.8,
+      evidenceIds: ["title:product"],
+    });
+    const sync = marketplaceCaptureInsightSyncSchema.parse({
+      extensionVersion: "0.1.19",
+      idempotencyKey: "idem_ollama_12345678",
+      schemaVersion: "1.0",
+      insightCreatedAt: new Date().toISOString(),
+      payloadHash: "payload_hash_12345678",
+      source: {
+        platform: "shopee",
+        url: "https://shopee.co.th/product/1/2",
+        capturedAt: new Date().toISOString(),
+        captureId: "cap_1",
+      },
+      insightType: "product_brief",
+      provider: "ollama",
+      payload: brief,
+      rawCaptureIncluded: false,
+    });
+    expect(sync.provider).toBe("ollama");
   });
 });

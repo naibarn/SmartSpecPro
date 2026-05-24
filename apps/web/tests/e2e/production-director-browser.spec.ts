@@ -520,6 +520,7 @@ type EvidenceRun = {
     violationCount: number;
     passes: number;
     incomplete: number;
+    violations?: Array<{ id: string; impact: string | null; target: string[] }>;
   };
   console: {
     consoleErrors: string[];
@@ -541,6 +542,8 @@ type LiveRouteEvidenceRun = {
     noPageErrors: boolean;
     productionWorkspaceVisible: boolean;
     productionTabSelected: boolean;
+    selectedNodeDetailVisible: boolean;
+    rightPanelDestinationVisible: boolean;
     overflow: boolean;
     overlap: boolean;
     canvasAllowsPageScroll: boolean;
@@ -813,7 +816,10 @@ async function buildEvidence({
       Boolean((focusAfterSecondTab || "").toLowerCase().includes("save draft"));
 
     const overflowValid = layoutChecks.entries.every((entry) => {
-      if (entry.missing || entry.hidden) return false;
+      const mobileTabbedPanelHidden = viewport.width < 1536
+        && (entry.label === "product-evidence-tray" || entry.label === "node-config-panel")
+        && entry.hidden;
+      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden)) return false;
       return !entry.textOverflow && !entry.overflow.left && !entry.overflow.right;
     });
 
@@ -860,6 +866,11 @@ async function buildEvidence({
         violationCount: axeResults.violations.length,
         passes: axeResults.passes.length,
         incomplete: axeResults.incomplete.length,
+        violations: axeResults.violations.map((violation) => ({
+          id: violation.id,
+          impact: violation.impact ?? null,
+          target: violation.nodes.flatMap((node) => node.target.map(String)),
+        })),
       },
       console: {
         consoleErrors,
@@ -1087,6 +1098,14 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
 	      await expect(page.getByTestId("production-flow-canvas")).toBeVisible();
 	    }
     const rightPanel = page.getByTestId("media-studio-right-panel");
+    await expect(rightPanel).toHaveAttribute("data-collapsed", "false");
+    await expect(page.getByTestId("production-node-detail-panel")).toBeVisible();
+    await expect(rightPanel.getByTestId("production-right-panel-destination")).toBeVisible();
+    await rightPanel.getByTestId("media-studio-right-panel-toggle").click();
+    await expect(rightPanel).toHaveAttribute("data-collapsed", "true");
+    await expect(rightPanel.getByTestId("media-studio-right-panel-collapsed")).toBeVisible();
+    await rightPanel.getByTestId("media-studio-right-panel-toggle").click();
+    await expect(rightPanel).toHaveAttribute("data-collapsed", "false");
     await expect(rightPanel.getByAltText(/history evidence image/i)).toBeVisible();
     await rightPanel.getByRole("tab", { name: /search library/i }).click();
     await expect(rightPanel.getByAltText(/library evidence image/i)).toBeVisible();
@@ -1099,6 +1118,8 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
       Array.from(document.querySelectorAll("[role='tab']"))
         .some((tab) => /production/i.test(tab.textContent ?? "") && tab.getAttribute("data-state") === "active")
     );
+    const selectedNodeDetailVisible = await page.getByTestId("production-node-detail-panel").isVisible().catch(() => false);
+    const rightPanelDestinationVisible = await rightPanel.getByTestId("production-right-panel-destination").isVisible().catch(() => false);
     const layoutChecks = await collectLayoutChecks(page);
     const pageScroll = await collectCanvasPageScroll(page);
     const axeResults = await new AxeBuilder({ page })
@@ -1106,7 +1127,10 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
       .analyze();
     fs.writeFileSync(axeReportPath, JSON.stringify(axeResults, null, 2), "utf8");
     const overflowValid = layoutChecks.entries.every((entry) => {
-      if (entry.missing || entry.hidden) return false;
+      const mobileTabbedPanelHidden = viewport.width < 1536
+        && (entry.label === "product-evidence-tray" || entry.label === "node-config-panel")
+        && entry.hidden;
+      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden)) return false;
       return !entry.textOverflow && !entry.overflow.left && !entry.overflow.right;
     });
     const checks = {
@@ -1114,6 +1138,8 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
       noPageErrors: pageErrors.length === 0,
       productionWorkspaceVisible: await workspace.isVisible(),
       productionTabSelected,
+      selectedNodeDetailVisible,
+      rightPanelDestinationVisible,
       overflow: overflowValid,
       overlap: layoutChecks.overlapping.length === 0,
       canvasAllowsPageScroll: pageScroll.moved,
@@ -1148,6 +1174,11 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
         violationCount: axeResults.violations.length,
         passes: axeResults.passes.length,
         incomplete: axeResults.incomplete.length,
+        violations: axeResults.violations.map((violation) => ({
+          id: violation.id,
+          impact: violation.impact ?? null,
+          target: violation.nodes.flatMap((node) => node.target.map(String)),
+        })),
       },
       console: {
         consoleErrors,
@@ -1186,7 +1217,7 @@ test.describe("Production Director browser evidence", () => {
         reducedMotion: false,
       });
       appendSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, console: run.console }, null, 2)).toBe("pass");
+      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
     });
 
     test(`Production Director browser evidence at ${viewport.name} (dark)`, async ({ page }) => {
@@ -1198,7 +1229,7 @@ test.describe("Production Director browser evidence", () => {
         reducedMotion: false,
       });
       appendSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, console: run.console }, null, 2)).toBe("pass");
+      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
     });
   }
 
@@ -1220,7 +1251,7 @@ test.describe("Production Director browser evidence", () => {
     test(`Media Studio authenticated live route production evidence at ${viewport.name}`, async ({ page }) => {
       const run = await buildLiveRouteEvidence(page, viewport);
       appendLiveRouteSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, console: run.console }, null, 2)).toBe("pass");
+      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
       expect(run.authenticated).toBe(true);
     });
   }

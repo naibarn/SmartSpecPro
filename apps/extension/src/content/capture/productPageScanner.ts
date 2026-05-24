@@ -10,6 +10,39 @@ function uniqueUrls(urls: string[]): string[] {
   return Array.from(new Set(urls.filter((url) => /^https?:\/\//.test(url))));
 }
 
+function bestUrlFromSrcset(srcset: string | null | undefined): string | null {
+  if (!srcset) return null;
+  const candidates = srcset
+    .split(",")
+    .map((part) => {
+      const [url, descriptor] = part.trim().split(/\s+/, 2);
+      const width = descriptor?.endsWith("w") ? Number(descriptor.slice(0, -1)) : 0;
+      const density = descriptor?.endsWith("x") ? Number(descriptor.slice(0, -1)) * 1000 : 0;
+      return { url, score: Number.isFinite(width + density) ? width + density : 0 };
+    })
+    .filter((item) => /^https?:\/\//.test(item.url))
+    .sort((left, right) => right.score - left.score);
+  return candidates[0]?.url ?? null;
+}
+
+function imageUrlFromElement(el: HTMLElement): string | null {
+  if (el instanceof HTMLImageElement) {
+    return bestUrlFromSrcset(el.srcset) || el.currentSrc || el.src || null;
+  }
+  if (el instanceof HTMLSourceElement) {
+    return bestUrlFromSrcset(el.srcset) || null;
+  }
+  if (el instanceof HTMLVideoElement) {
+    return el.poster || null;
+  }
+  const bg = window.getComputedStyle(el).backgroundImage;
+  return bg.match(/url\(["']?(https?:\/\/[^"')]+)["']?\)/)?.[1] ?? null;
+}
+
+function imageElements(root: ParentNode = document): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>("img[src], img[srcset], picture source[srcset], video[poster], [style*='background']"));
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -47,25 +80,80 @@ function evidence(text: string | null, source: string, confidence: number, optio
   return { text, source, confidence, ...options };
 }
 
-function collectImages(kind: ImageCandidate["kind"], root: ParentNode = document): ImageCandidate[] {
-  const candidates = Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
-    .filter((img) => {
-      const rect = img.getBoundingClientRect();
-      const url = img.currentSrc || img.src;
+function elementDocumentTop(el: Element): number {
+  return el.getBoundingClientRect().top + window.scrollY;
+}
+
+function nearestContextText(el: HTMLElement, maxDepth = 6): string {
+  const chunks: string[] = [];
+  let current: HTMLElement | null = el;
+  for (let depth = 0; current && depth < maxDepth; depth += 1) {
+    const text = (current.innerText || current.textContent || "").replace(/\s+/g, " ").trim();
+    if (text && text.length <= 8_000) chunks.push(text);
+    current = current.parentElement;
+  }
+  return chunks.join(" ");
+}
+
+function hasRelatedProductContext(el: HTMLElement): boolean {
+  return /Bundle Deals|ดีลแบบแพ็ก|ซื้อ\s*\d+\s*ชิ้น\s*ลด|คุณอาจจะชอบสิ่งนี้|สินค้าที่คล้ายกัน|สินค้าแนะนำ|สินค้าที่เกี่ยวข้อง|ร้านค้าแนะนำ|ดูเพิ่มเติม|You may also like|Related products|Similar products|Recommended/i.test(nearestContextText(el));
+}
+
+const RELATED_SECTION_PATTERN = /Bundle Deals|ดีลแบบแพ็ก|ซื้อ\s*\d+\s*ชิ้น\s*ลด|คุณอาจจะชอบสิ่งนี้|สินค้าที่คล้ายกัน|สินค้าแนะนำ|สินค้าที่เกี่ยวข้อง|ร้านค้าแนะนำ|You may also like|Related products|Similar products|Recommended/i;
+const REVIEW_SECTION_PATTERN = /คะแนนของสินค้า|รีวิวสินค้า|ความคิดเห็น|ratings?|reviews?/i;
+
+function firstDocumentTopByText(pattern: RegExp): number | null {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const textMatches: HTMLElement[] = [];
+  let node = walker.nextNode();
+  while (node) {
+    const text = (node.textContent || "").replace(/\s+/g, " ").trim();
+    if (text.length > 0 && text.length <= 160 && pattern.test(text)) {
+      const parent = node.parentElement;
+      if (parent) textMatches.push(parent);
+    }
+    node = walker.nextNode();
+  }
+  const textMatch = textMatches.sort((left, right) => elementDocumentTop(left) - elementDocumentTop(right))[0];
+  if (textMatch) return elementDocumentTop(textMatch);
+
+  const elementMatch = Array.from(document.querySelectorAll<HTMLElement>("section, article, div, h2, h3"))
+    .map((el) => ({ el, text: (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim() }))
+    .filter((item) => item.text.length > 0 && item.text.length <= 4_000 && pattern.test(item.text))
+    .sort((left, right) => elementDocumentTop(left.el) - elementDocumentTop(right.el))[0];
+  return elementMatch ? elementDocumentTop(elementMatch.el) : null;
+}
+
+function productHeaderImageCutoff(descriptionNode: HTMLElement | null): number {
+  const titleTop = document.querySelector<HTMLElement>("h1") ? elementDocumentTop(document.querySelector<HTMLElement>("h1")!) : window.scrollY;
+  const descriptionTop = descriptionNode ? elementDocumentTop(descriptionNode) : null;
+  const hardCutoff = titleTop + 1_250;
+  return Math.min(
+    descriptionTop != null ? descriptionTop - 80 : Number.POSITIVE_INFINITY,
+    hardCutoff,
+  );
+}
+
+function collectImages(kind: ImageCandidate["kind"], root: ParentNode = document, options: { mainCutoffTop?: number } = {}): ImageCandidate[] {
+  const candidates = imageElements(root)
+    .map((el) => ({ el, rect: el.getBoundingClientRect(), url: imageUrlFromElement(el) }))
+    .filter((item): item is { el: HTMLElement; rect: DOMRect; url: string } => {
+      const { el, rect, url } = item;
+      if (!url) return false;
       if (/sprite|logo|avatar|icon/i.test(url)) return false;
+      if (hasRelatedProductContext(el)) return false;
       if (kind !== "main") return rect.width >= 40 && rect.height >= 40;
+      if (options.mainCutoffTop != null && elementDocumentTop(el) > options.mainCutoffTop) return false;
       return rect.width >= 70 && rect.height >= 70 && rect.top > -80 && rect.top < window.innerHeight * 1.4;
     })
     .sort((a, b) => {
-      const aRect = a.getBoundingClientRect();
-      const bRect = b.getBoundingClientRect();
-      return (bRect.width * bRect.height) - (aRect.width * aRect.height);
+      return (b.rect.width * b.rect.height) - (a.rect.width * a.rect.height);
     })
-    .map((img) => {
-      const rect = img.getBoundingClientRect();
+    .map(({ el, rect, url }) => {
       const width = Math.round(rect.width);
       const height = Math.round(rect.height);
-      return { url: img.currentSrc || img.src, width, height, alt: img.alt };
+      const alt = el instanceof HTMLImageElement ? el.alt : "";
+      return { url, width, height, alt };
     });
   const byUrl = new Map(candidates.filter((candidate) => /^https?:\/\//.test(candidate.url)).map((candidate) => [candidate.url, candidate]));
   return uniqueUrls(candidates.map((candidate) => candidate.url))
@@ -294,28 +382,38 @@ function findShopeeDescriptionNode(): HTMLElement | null {
 function trimShopeeDescription(text: string): string {
   let output = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
   const detailMarkers = ["รายละเอียดสินค้า", "Product Description"];
-  const markerIndex = Math.max(...detailMarkers.map((marker) => output.toLowerCase().lastIndexOf(marker.toLowerCase())));
+  const markerIndex = detailMarkers
+    .map((marker) => output.toLowerCase().indexOf(marker.toLowerCase()))
+    .filter((index) => index >= 0)
+    .sort((left, right) => left - right)[0] ?? -1;
   if (markerIndex >= 0) {
     output = output.slice(markerIndex);
   }
   output = output
     .replace(/^(?:รายละเอียดสินค้า|Product Description)\s*/i, "")
     .trim();
-  const stopMatch = output.search(/\s(?:คะแนนของสินค้า|รีวิวสินค้า|ความคิดเห็น|สินค้าแนะนำ|สินค้าที่คล้ายกัน|ร้านค้าแนะนำ|ข้อมูลจำเพาะของสินค้า)\b/i);
+  const stopMatch = output.search(/\s(?:รายละเอียดสินค้าสร้างโดย AI|AI-generated product description|Product description generated by AI|คะแนนของสินค้า|รีวิวสินค้า|ความคิดเห็น|สินค้าแนะนำ|สินค้าที่คล้ายกัน|ร้านค้าแนะนำ|ข้อมูลจำเพาะของสินค้า)\b/i);
   if (stopMatch > 80) {
     output = output.slice(0, stopMatch).trim();
   }
   return output.slice(0, 12_000);
 }
 
+function isUsableShopeeDescription(value: string): boolean {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (text.length < 20) return false;
+  if (/\{rppd_link\}|rppd_link/i.test(text)) return false;
+  return !/^ข้ามไปที่เนื้อหาหลัก|Shopee Home|Main images|Description images/i.test(text);
+}
+
 function extractShopeeDescriptionText(bodyText: string, descriptionNode: HTMLElement | null): string | null {
   const fromNode = descriptionNode ? trimShopeeDescription(descriptionNode.innerText || "") : "";
-  if (fromNode && !/^ข้ามไปที่เนื้อหาหลัก|Shopee Home|Main images|Description images/i.test(fromNode)) {
+  if (fromNode && isUsableShopeeDescription(fromNode)) {
     return fromNode;
   }
 
   const bodyDescription = trimShopeeDescription(bodyText);
-  return bodyDescription && !/^ข้ามไปที่เนื้อหาหลัก|Shopee Home|Main images|Description images/i.test(bodyDescription)
+  return bodyDescription && isUsableShopeeDescription(bodyDescription)
     ? bodyDescription
     : null;
 }
@@ -330,13 +428,18 @@ function uniqueImageCandidates(candidates: ImageCandidate[]): ImageCandidate[] {
 }
 
 function collectReviewImages(): ImageCandidate[] {
+  const reviewTop = firstDocumentTopByText(REVIEW_SECTION_PATTERN);
+  const relatedTop = firstDocumentTopByText(RELATED_SECTION_PATTERN);
+  const isBeforeRelated = (el: HTMLElement) => relatedTop == null || elementDocumentTop(el) < relatedTop - 24;
   const reviewRoots = Array.from(document.querySelectorAll<HTMLElement>("section, article, li, div"))
     .map((el) => ({ el, text: el.innerText || "", rect: el.getBoundingClientRect() }))
     .filter((item) => {
       const visible = item.rect.bottom >= -200 && item.rect.top <= window.innerHeight + 800;
       const reviewText = /คะแนนของสินค้า|ความคิดเห็น|รีวิวสินค้า|รีวิว|ratings?|reviews?|มีรูปภาพ\/วิดีโอ|ตัวเลือกสินค้า|คุณภาพ|การใช้งาน/i.test(item.text);
       const reviewShape = /[★⭐]{3,}|\b\d{4}-\d{2}-\d{2}\b/.test(item.text);
-      return visible && (reviewText || reviewShape);
+      const top = elementDocumentTop(item.el);
+      const inReviewBand = reviewTop == null || top >= reviewTop - 220;
+      return visible && inReviewBand && isBeforeRelated(item.el) && !hasRelatedProductContext(item.el) && (reviewText || reviewShape);
     })
     .sort((left, right) => (left.rect.top - right.rect.top) || (left.text.length - right.text.length))
     .slice(0, 16)
@@ -345,15 +448,15 @@ function collectReviewImages(): ImageCandidate[] {
   for (const root of reviewRoots) {
     for (const img of Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))) {
       const rect = img.getBoundingClientRect();
-      const url = img.currentSrc || img.src;
-      if (rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
+      const url = imageUrlFromElement(img) || img.currentSrc || img.src;
+      if (isBeforeRelated(img) && !hasRelatedProductContext(img) && rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
         candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
       }
     }
     for (const video of Array.from(root.querySelectorAll<HTMLVideoElement>("video[poster]"))) {
       const rect = video.getBoundingClientRect();
       const url = video.poster;
-      if (rect.width >= 40 && rect.height >= 40 && /^https?:\/\//.test(url)) {
+      if (isBeforeRelated(video) && !hasRelatedProductContext(video) && rect.width >= 40 && rect.height >= 40 && /^https?:\/\//.test(url)) {
         candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
       }
     }
@@ -361,7 +464,7 @@ function collectReviewImages(): ImageCandidate[] {
       const rect = el.getBoundingClientRect();
       const bg = window.getComputedStyle(el).backgroundImage;
       const url = bg.match(/url\(["']?(https?:\/\/[^"')]+)["']?\)/)?.[1];
-      if (url && rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
+      if (url && isBeforeRelated(el) && !hasRelatedProductContext(el) && rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
         candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
       }
     }
@@ -386,27 +489,32 @@ function collectReviewImages(): ImageCandidate[] {
     });
 }
 
-async function collectThumbnailImages(): Promise<ImageCandidate[]> {
-  const thumbImages = Array.from(document.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
-    .filter((img) => {
-      const rect = img.getBoundingClientRect();
+async function collectThumbnailImages(mainCutoffTop: number): Promise<ImageCandidate[]> {
+  const thumbImages = imageElements(document)
+    .filter((el) => {
+      const rect = el.getBoundingClientRect();
+      const url = imageUrlFromElement(el);
+      if (!url || /sprite|logo|avatar|icon/i.test(url)) return false;
+      if (elementDocumentTop(el) > mainCutoffTop) return false;
+      if (hasRelatedProductContext(el)) return false;
       return rect.width >= 36 && rect.width <= 140 && rect.height >= 36 && rect.height <= 140 && rect.top < window.innerHeight * 1.2;
     })
-    .slice(0, 16);
+    .slice(0, 30);
   const candidates: Array<{ url: string; width: number; height: number }> = [];
   for (const img of thumbImages) {
     img.scrollIntoView({ block: "center", inline: "center" });
     img.click();
     await delay(350);
-    candidates.push(...Array.from(document.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
-      .filter((candidate) => {
-        const rect = candidate.getBoundingClientRect();
+    candidates.push(...imageElements(document)
+      .map((candidate) => ({ candidate, rect: candidate.getBoundingClientRect(), url: imageUrlFromElement(candidate) }))
+      .filter((item): item is { candidate: HTMLElement; rect: DOMRect; url: string } => {
+        const { candidate, rect, url } = item;
+        if (!url || /sprite|logo|avatar|icon/i.test(url)) return false;
+        if (elementDocumentTop(candidate) > mainCutoffTop) return false;
+        if (hasRelatedProductContext(candidate)) return false;
         return rect.width >= 180 && rect.height >= 180 && rect.top < window.innerHeight * 1.25;
       })
-      .map((candidate) => {
-        const rect = candidate.getBoundingClientRect();
-        return { url: candidate.currentSrc || candidate.src, width: Math.round(rect.width), height: Math.round(rect.height) };
-      }));
+      .map(({ rect, url }) => ({ url, width: Math.round(rect.width), height: Math.round(rect.height) })));
   }
   const byUrl = new Map(candidates.map((candidate) => [candidate.url, candidate]));
   return uniqueUrls(candidates.map((candidate) => candidate.url))
@@ -450,23 +558,25 @@ export async function scanShopeeProductPage(options: { interactive?: boolean } =
   const categoryData = extractShopeeCategoryData(title, bodyText);
   const categoryText = categoryData?.text ?? null;
   const variantsText = collectVariantText();
-  const thumbnailImages = interactive ? await collectThumbnailImages() : [];
   const descriptionNode = findShopeeDescriptionNode();
+  const mainImageCutoffTop = productHeaderImageCutoff(descriptionNode);
+  const thumbnailImages = interactive ? await collectThumbnailImages(mainImageCutoffTop) : [];
   if (interactive && descriptionNode) {
     descriptionNode.scrollIntoView({ block: "start" });
     await delay(700);
   }
   const descriptionText = extractShopeeDescriptionText(bodyText, descriptionNode);
-  const mainImages = thumbnailImages.length > 0 ? thumbnailImages : collectImages("main");
+  const mainImages = thumbnailImages.length > 0 ? thumbnailImages : collectImages("main", document, { mainCutoffTop: mainImageCutoffTop });
   const imageCandidates = uniqueImageCandidates([
     ...mainImages,
-    ...Array.from(descriptionNode?.querySelectorAll<HTMLImageElement>("img[src], img[srcset]") ?? [])
-      .map((img, position) => {
-        const rect = img.getBoundingClientRect();
+    ...imageElements(descriptionNode ?? document.createElement("div"))
+      .map((img) => ({ img, url: imageUrlFromElement(img), rect: img.getBoundingClientRect() }))
+      .filter((item): item is { img: HTMLElement; url: string; rect: DOMRect } => Boolean(item.url) && !hasRelatedProductContext(item.img))
+      .map(({ img, url, rect }, position) => {
         const width = Math.round(rect.width);
         const height = Math.round(rect.height);
         return {
-          url: img.currentSrc || img.src,
+          url,
           kind: "description" as const,
           source: "dom" as const,
           evidenceId: `image.description.${position}`,
@@ -476,7 +586,7 @@ export async function scanShopeeProductPage(options: { interactive?: boolean } =
           width,
           height,
           selected: false,
-          metadata: { alt: img.alt || undefined },
+          metadata: { alt: img instanceof HTMLImageElement ? img.alt || undefined : undefined },
         };
       }),
     ...collectReviewImages(),

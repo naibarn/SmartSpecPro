@@ -153,7 +153,7 @@ export function ContextAssetBoard({
   const emptyState = emptyStateCopy(selectedZone, isThai);
 
   return (
-    <div className="rounded-lg border bg-white p-3" data-testid="context-asset-board">
+    <div className="min-w-0 overflow-hidden rounded-lg border bg-white p-3" data-testid="context-asset-board">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <PackagePlus className="h-4 w-4 text-sky-600" />
@@ -161,7 +161,7 @@ export function ContextAssetBoard({
         </div>
         {selectedNodeId ? <Badge variant="outline">{selectedNodeTitle ?? selectedNodeId}</Badge> : null}
       </div>
-      <div className="mt-3 flex items-center gap-2 rounded border bg-slate-50 px-2">
+      <div className="mt-3 flex w-full min-w-0 items-center gap-2 rounded border bg-slate-50 px-2">
         <Search className="h-4 w-4 text-muted-foreground" />
 	        <Input
 	          value={query}
@@ -171,7 +171,7 @@ export function ContextAssetBoard({
 	          }}
 	          placeholder={isThai ? "ค้นหา asset / character / provider" : "Search assets / characters / providers"}
 	          aria-label={isThai ? "ค้นหา asset character provider" : "Search assets characters providers"}
-	          className="border-0 bg-transparent shadow-none focus-visible:ring-0"
+	          className="min-w-0 border-0 bg-transparent shadow-none focus-visible:ring-0"
 	        />
 	      </div>
 	      {(providerCharacterResults.length > 0 || isSearchingProviders) ? (
@@ -206,16 +206,17 @@ export function ContextAssetBoard({
                       >
                         {isThai ? "เพิ่ม" : "Add"}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="min-h-10 sm:min-h-0"
-                        disabled={!selectedNodeId}
-                        onClick={() => onAssignAssetToNode?.(asset, selectedNodeId)}
-                      >
-                        {isThai ? "ผูก" : "Attach"}
-                      </Button>
+	                      <Button
+	                        type="button"
+	                        variant="outline"
+	                        size="sm"
+	                        className="min-h-10 sm:min-h-0"
+	                        disabled={!selectedNodeId}
+                          data-testid="provider-asset-attach-selected-node"
+	                        onClick={() => onAssignAssetToNode?.(asset, selectedNodeId)}
+	                      >
+	                        {selectedNodeId ? (isThai ? "ผูกกับ node นี้" : "Attach to node") : (isThai ? "เลือก node ก่อน" : "Select node first")}
+	                      </Button>
                     </div>
 	                </div>
 	              );
@@ -236,10 +237,14 @@ export function ContextAssetBoard({
           </button>
         ))}
       </div>
-      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-muted-foreground">
-        {isThai
-          ? "เลือกประเภทด้านบนเพื่อดูว่า asset จะถูกใช้เป็นตัวละคร สินค้า ฉาก เสียง หรือปลายทาง จากนั้นกดปุ่มบน card เพื่อเพิ่มเข้า canvas หรือผูกกับ node ที่เลือก"
-          : "Use the filters above to see whether an asset will become a character, product, scene, audio, or target reference. Card actions add it to the canvas or attach it to the selected node."}
+      <div className="mt-2 min-w-0 break-words rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-muted-foreground">
+          {selectedNodeId
+            ? (isThai
+              ? `ปลายทางตอนนี้: ${selectedNodeTitle ?? selectedNodeId} กด "ผูกกับ node นี้" เพื่อใช้ asset เป็น reference ของ node`
+              : `Current destination: ${selectedNodeTitle ?? selectedNodeId}. Use "Attach to this node" to make an asset a node reference.`)
+            : (isThai
+              ? "เลือก node บน canvas ก่อน แล้วค่อยกดผูก asset เพื่อใช้เป็นตัวละคร สินค้า ฉาก เสียง หรือ reference ของ node"
+              : "Select a canvas node first, then attach assets as cast, product, scene, audio, or node references.")}
       </div>
       <div className="mt-3 grid gap-2">
         {visibleAssets.length ? (
@@ -251,14 +256,29 @@ export function ContextAssetBoard({
               <div
                 key={asset.id}
                 draggable
-                onDragStart={(event) => {
-                  event.dataTransfer.setData("application/x-production-asset-id", asset.id);
-                  event.dataTransfer.effectAllowed = "copy";
-                }}
+	                onDragStart={(event) => {
+	                  event.dataTransfer.setData("application/x-production-asset-id", asset.id);
+	                  event.dataTransfer.setData("application/json", JSON.stringify(asset));
+	                  event.dataTransfer.effectAllowed = "copy";
+	                }}
                 className="w-full rounded border bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-sky-200 hover:bg-sky-50"
               >
-                <div className="flex items-start gap-2">
-                  <Icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+	                <div className="flex items-start gap-2">
+	                  {asset.thumbnailUrl || asset.url ? (
+	                    <div className="h-10 w-12 shrink-0 overflow-hidden rounded border bg-white">
+	                      {asset.kind === "source_video" ? (
+	                        <video src={asset.thumbnailUrl || asset.url} className="h-full w-full object-cover" muted playsInline />
+	                      ) : asset.kind === "audio_asset" ? (
+	                        <div className="flex h-full w-full items-center justify-center bg-sky-50">
+	                          <Icon className="h-4 w-4 text-sky-600" />
+	                        </div>
+	                      ) : (
+	                        <img src={asset.thumbnailUrl || asset.url} alt="" className="h-full w-full object-cover" />
+	                      )}
+	                    </div>
+	                  ) : (
+	                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+	                  )}
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{asset.title}</div>
                     <div className="truncate text-xs text-muted-foreground">
@@ -288,9 +308,10 @@ export function ContextAssetBoard({
                     size="sm"
                     className="min-h-10 sm:min-h-0"
                     disabled={!selectedNodeId}
+                    data-testid="context-asset-attach-selected-node"
                     onClick={() => onAssignAssetToNode?.(asset, selectedNodeId)}
                   >
-                    {selectedNodeId ? (isThai ? "ผูกกับ node ที่เลือก" : "Attach to selected node") : (isThai ? "เลือก node ก่อน" : "Select node first")}
+                    {selectedNodeId ? (isThai ? "ผูกกับ node นี้" : "Attach to this node") : (isThai ? "เลือก node ก่อน" : "Select node first")}
                   </Button>
                 </div>
               </div>

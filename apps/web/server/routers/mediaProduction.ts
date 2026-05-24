@@ -806,6 +806,7 @@ export const mediaProductionRouter = router({
       scope: productionExecutionScopeSchema,
       targetId: z.string().min(1).max(128).optional(),
       confirmed: z.boolean().default(false),
+      retryOfAttemptId: z.string().min(1).max(256).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -823,6 +824,7 @@ export const mediaProductionRouter = router({
         scope: input.scope,
         targetId: input.targetId,
         confirmed: input.confirmed,
+        retryOfAttemptId: input.retryOfAttemptId,
       });
     }),
 

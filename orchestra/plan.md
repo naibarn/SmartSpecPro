@@ -1,5 +1,48 @@
 # Orchestra Plan
 
+## Media Studio Marketplace Story Planning — 2026-05-24
+
+### Task
+Make Media Studio's "Plan / Suggest 4 concepts" action generate product-aware plans from marketplace insight storyOptions, synthesize and persist missing storyOptions when needed, and support regeneration with varied storytelling structures, tones, and hooks.
+
+### Classification
+- scope: large
+- risk: medium
+- affected_domains: frontend Media Studio workflow, shared marketplace insight payload usage, skills prompt contract, tRPC marketplace insight sync, tests
+- estimated_file_count: 5
+- chosen_route: multi-agent-waves with inline execution fallback
+- task_summary: Use marketplace storyOptions as product truth-aware planning inputs, fall back to LLM concept synthesis when incomplete, persist synthesized handoff data, and let users regenerate varied concept sets.
+- bug_route: false
+- parallel_default: true
+- planned_agents: []
+- dispatch_preference: inline-fallback because the available sub-agent tool requires explicit sub-agent/delegation permission beyond the Orchestra invocation.
+
+### Activation Decision
+- Explicit skill requested: orchestra.
+- SocratiCode status: active/green and used before targeted code reads.
+- Additional product references provided by user: common story structures, emotional tones, short-video hook techniques and formulas.
+
+### Impact Preflight
+- Direct change candidates:
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/MediaStudio.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/production-director.e2e.test.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/skills/media-production-storyboard-planner/skill.md
+- Risk-sensitive surfaces:
+  - Existing `marketplaceCapture.syncInsight` mutation is reused to persist synthesized `storytelling_handoff` payloads; no new auth surface planned.
+  - Planner must not override verified product truth or invent unsupported claims.
+- Sequential workstreams:
+  - Extend concept/taxonomy contract before UI and planner call updates.
+  - Update option synthesis before workflow generation consumes selected concepts.
+  - Update UI/test after behavior is stable.
+- Confidence: medium-high. Unknowns are limited to exact LLM output shape from `executeCustomSkill`; deterministic fallback will remain available.
+
+### Wave Plan
+- Wave 1: Extend story concept types and local taxonomy-driven generation.
+- Wave 2: Add LLM concept synthesis fallback and sync synthesized storytelling handoff back through existing marketplace insight sync.
+- Wave 3: Add regenerate UI and tests; update planner skill instructions.
+- Wave 4: Run targeted tests/typecheck gates; no build unless explicitly requested.
+
 ## Task
 Close the important Feature 116 Production Director implementation gaps found in the audit and update the spec/plans so MVP vs full-scope acceptance is aligned.
 

@@ -16,6 +16,17 @@ export interface NodeConfigPanelProps {
 
 const adapters: ProductionNodeConfigSnapshot["adapter"][] = ["image", "video", "tts", "preview_only", "disabled"];
 
+function adapterLabel(adapter: ProductionNodeConfigSnapshot["adapter"], isThai: boolean): string {
+  const labels: Record<ProductionNodeConfigSnapshot["adapter"], { en: string; th: string }> = {
+    image: { en: "Image generator", th: "ตัวสร้างภาพ" },
+    video: { en: "Video generator", th: "ตัวสร้างวิดีโอ" },
+    tts: { en: "Audio / TTS generator", th: "ตัวสร้างเสียง / อ่านข้อความ" },
+    preview_only: { en: "Planning only", th: "วางแผน / ส่งต่อเท่านั้น" },
+    disabled: { en: "Disabled", th: "ปิดใช้งาน" },
+  };
+  return isThai ? labels[adapter].th : labels[adapter].en;
+}
+
 function parseConfig(value: string): { ok: true; config: Record<string, unknown> } | { ok: false; error: string } {
   try {
     const parsed = value.trim() ? JSON.parse(value) : {};
@@ -126,16 +137,17 @@ export function NodeConfigPanel({ node, locale, onSaveNodeConfig }: NodeConfigPa
           <Input id="production-node-title" value={title} onChange={(event) => setTitle(event.target.value)} />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="production-node-adapter">{isThai ? "Adapter" : "Adapter"}</Label>
+          <Label htmlFor="production-node-adapter">{isThai ? "วิธีรัน / ตัวเชื่อม" : "Run mode / adapter"}</Label>
           <select
             id="production-node-adapter"
             value={adapter}
+            aria-label="Adapter"
             onChange={(event) => setAdapter(event.target.value as ProductionNodeConfigSnapshot["adapter"])}
             className="h-10 rounded-md border bg-background px-3 text-sm"
           >
             {adapters.map((item) => (
               <option key={item} value={item}>
-                {item}
+                {adapterLabel(item, isThai)}
               </option>
             ))}
           </select>
@@ -172,7 +184,7 @@ export function NodeConfigPanel({ node, locale, onSaveNodeConfig }: NodeConfigPa
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="production-node-output-target">{isThai ? "Output target" : "Output target"}</Label>
+                <Label htmlFor="production-node-output-target">{isThai ? "ส่งผลลัพธ์ไปที่" : "Output destination"}</Label>
                 <Input
                   id="production-node-output-target"
                   value={outputTarget}

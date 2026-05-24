@@ -123,6 +123,8 @@ server {
     # tRPC endpoints (SmartSpec Web)
     # ============================================
     location /trpc/ {
+        client_max_body_size 50M;
+
         # NO rate limits for tRPC in development - makes many parallel batch calls
         # Re-enable for production: limit_req zone=api_limit burst=100 nodelay;
 
