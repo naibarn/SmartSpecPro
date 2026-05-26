@@ -84,9 +84,16 @@ security-frontend
 > independent agents in the same wave in one dispatch batch. If it does not, preserve the
 > same wave plan and execute them sequentially inline as a platform fallback.
 
-This is an execution requirement, not an optimization. Direct conductor work or inline role
-execution is allowed for non-trivial tasks only after agent-tool capability detection fails
-or an attempted dispatch fails and the fallback is recorded in `orchestra/progress.md`.
+This is an execution requirement, not an optimization, **when agent dispatch is authorized**.
+In Codex standard light mode, the active `spawn_agent` tool may require the user to
+explicitly ask for sub-agents, delegation, or parallel agent work. In that case,
+availability is not enough: do not spawn agents unless the user gave that authorization.
+Record the direct/inline light-mode decision in `orchestra/progress.md`.
+
+Direct conductor work or inline role execution is allowed for non-trivial tasks when:
+- agent-tool capability detection fails
+- an attempted authorized dispatch fails and the fallback is recorded
+- Codex standard light mode applies and the user did not explicitly authorize delegation
 
 ```
 WRONG (sequential — do not do this):
@@ -98,8 +105,9 @@ CORRECT (parallel — one message, all wave agents):
 ```
 
 On platforms with a Task/sub-agent tool, the conductor's single dispatch batch causes all
-agents to start concurrently. On platforms without that tool, the conductor executes the
-same wave sequentially and records each result before proceeding.
+authorized agents to start concurrently. On platforms without that tool, or in standard
+light mode without delegation authorization, the conductor executes the same wave
+sequentially/directly and records each result before proceeding.
 
 Read-only reviewers and specialists that do not depend on each other's output must batch
 together by default. Examples:
@@ -219,6 +227,19 @@ Do not inject the full file — it inflates prompt size beyond what Standard mod
 - Workflow steps
 - Quality Checklist
 - Error Handling
+
+### Standard Light Mode
+
+Before building a Task Packet in standard mode, check the active sub-agent tool policy. If
+it says spawning is allowed only when the user explicitly asks for sub-agents, delegation,
+or parallel agent work, then:
+
+1. Do not call `spawn_agent` for routine `small` or `medium` work.
+2. Do not treat inline/direct execution as a policy violation.
+3. Preserve the same ownership boundaries in `orchestra/plan.md` and `orchestra/contracts.md`.
+4. Run targeted conductor review and repository commands instead of reviewer-agent waves.
+5. If the user later asks for agents, switch back to normal Standard mode and use the
+   dispatch metadata/model-routing rules above.
 
 **Example injection prefix for frontend agent (Standard mode):**
 

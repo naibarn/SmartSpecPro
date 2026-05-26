@@ -32,6 +32,30 @@ are repository example defaults. If the active plan or repository docs define ex
 
 ---
 
+## Codex Standard Light Gate Policy
+
+When Orchestra is in Codex standard light mode, use the smallest gate set that proves the
+changed surface without turning routine work into a long-running orchestration session.
+
+Defaults:
+- `small` / low risk: run one targeted static or unit check when available; otherwise do a
+  targeted file review and report skipped commands.
+- `small` / medium risk: run the relevant typecheck/lint plus focused tests for changed
+  behavior when they exist.
+- implementation-ready `medium` / medium risk: run relevant typecheck/lint and focused
+  tests/E2E only for the touched workflow.
+- Do not dispatch reviewer agents, visual reviewers, or full suites unless the user asked
+  for that depth, the task is high/critical risk, or the touched surface requires it.
+
+Long-running gates:
+- Prefer focused commands over full suites.
+- If a low/medium non-blocking gate exceeds 10 minutes, stop waiting, record it as skipped
+  with residual risk, and continue.
+- If a high/critical blocking gate exceeds 10 minutes, stop and report the command,
+  elapsed time, and next recommended command instead of silently waiting.
+
+---
+
 ## Blocking vs Warning Matrix
 
 | Risk Level | TypeScript Check | Python Lint | Unit Tests | Security (General) | Full Test Suite |
@@ -250,6 +274,10 @@ After every review/gate-driven fix:
 3. Rerun stale gates before the next review round or final summary.
 4. If a gate cannot run, record it as skipped with a blocker and residual risk. Do not count
    it as a clean convergence signal.
+
+In standard light mode, rerun only stale gates that cover the changed files/runtime path.
+Do not upgrade to full-suite reruns unless risk is high/critical, a broad shared contract
+changed, or the user requested exhaustive verification.
 
 ## Gate 18: Review Convergence Gate
 

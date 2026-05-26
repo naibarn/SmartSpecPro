@@ -13,18 +13,21 @@ Maintain scenario coverage for:
 - deep planning requests choose the correct deep-* chain
 - trivial requests do not trigger heavyweight orchestration
 - final completion requires verification evidence
-- final completion for medium+ work requires review convergence evidence, not just one
-  post-completion review pass
+- final completion for medium+ work requires review convergence evidence; Codex standard
+  light mode may use one targeted clean round for implementation-ready medium work
 - review/gate-driven fixes mark covered gates stale and require reruns
 - Task Packet examples preserve all 8 required fields
 - Result Report output contracts preserve all 6 required fields
 - Claude Code dispatch examples use generated `ssp-*` names
 - Standard/Open-Code fallback routes preserve the same contracts when sequential
-- sub-agent-first default: non-trivial tasks dispatch at least one agent when tooling exists
+- sub-agent-first default outside Codex standard light mode: non-trivial tasks dispatch at
+  least one agent when tooling exists and dispatch is authorized
+- Codex standard light mode: routine small/medium work uses direct/inline execution unless
+  the user explicitly asked for sub-agents, delegation, or parallel agent work
 - parallel-default behavior: 2+ independent agents dispatch as one batch unless a
   `sequential_reason` is recorded
-- inline/direct execution is forbidden for non-trivial tasks when a Task/sub-agent tool is
-  available
+- inline/direct execution is forbidden for non-trivial tasks only when an authorized
+  Task/sub-agent tool is available and light mode does not apply
 - lightweight sub-agent work defaults to `gpt-5.3-codex-spark` when model overrides are
   available, while explicit overrides, deep/high-risk/performance work, and failed Spark
   attempts use inherited/default or requested models

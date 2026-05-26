@@ -5,6 +5,11 @@ decides whether an inline role should keep the conductor's current/default model
 
 ## Default Model Rule
 
+First confirm that sub-agent dispatch is authorized for the current platform and user
+request. In Codex standard light mode, do not call `spawn_agent` solely to apply this model
+policy; direct/inline execution uses the conductor's current model and records the intended
+model preference only as audit metadata.
+
 For sub-agent work that is bounded, routine, or primarily mechanical, set:
 
 ```text

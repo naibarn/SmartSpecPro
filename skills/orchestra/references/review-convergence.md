@@ -35,13 +35,16 @@ Use these maximums to avoid both under-review and infinite loops:
 | Scope / risk | Minimum clean rounds | Maximum rounds |
 |---|---:|---:|
 | small + low risk | 1 | 2 |
+| small + medium risk in standard light mode | 1 | 2 |
 | medium or medium risk | 2 | 5 |
+| implementation-ready medium in standard light mode | 1 | 3 |
 | large, high risk, or broad cross-domain | 2 | 8 |
 | project or critical risk | 3 | 10 |
 
 A "clean round" is a review round that finds no new material finding and no missing coverage.
 For medium+ work, one clean round is not enough after fixes; require at least two consecutive
-clean rounds.
+clean rounds, except in Codex standard light mode where implementation-ready medium work may
+finish after one clean targeted conductor review plus fresh relevant gates.
 
 ## Material Finding
 
@@ -73,6 +76,9 @@ For each round:
      domains changed
    - require every reviewer report to include an intent/necessity check and real
      call-path trace when code behavior is being reviewed
+   In Codex standard light mode, replace reviewer-agent dispatch with a targeted conductor
+   review unless the user explicitly authorized agents, the risk is high/critical, or a
+   security gate requires specialists.
 3. Classify each finding:
    - `MUST_FIX`: CRITICAL, HIGH, or in-scope MEDIUM
    - `VERIFY_ONLY`: no code change needed, but a gate or targeted inspection must prove it
@@ -88,6 +94,8 @@ For each round:
    - which previously passed gates became stale and must be rerun?
 6. Rerun stale gates. A gate is stale if any file, contract, or runtime path it covered was
    changed after that gate passed.
+   In Codex standard light mode, rerun only stale gates that cover the changed files or
+   runtime path; do not expand to a full suite unless risk or user request requires it.
 7. Update `orchestra/review-findings.md` with:
    - round number
    - findings discovered

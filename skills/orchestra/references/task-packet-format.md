@@ -274,7 +274,14 @@ Use the native `ssp-*` agent name or inline role that matches the DOMAIN (see do
 
 ### Mode: `standard`
 
-If this environment exposes default/worker/explorer-style agents, do not rely on specialized dispatch names. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no agent tool is available, use the inline fallback described below:
+If this environment exposes default/worker/explorer-style agents, first check whether the
+active tool policy and user request authorize spawning. In Codex standard light mode,
+routine small/medium work should not build or dispatch a Task Packet; execute directly or
+inline and record the same ownership/verification notes in `orchestra/plan.md`.
+
+When dispatch is authorized, do not rely on specialized dispatch names. Prepend only the
+condensed identity + constraints from the agent definition before the Task Packet. If no
+agent tool is available, use the inline fallback described below:
 
 ```
 Task(

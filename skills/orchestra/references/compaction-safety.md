@@ -20,7 +20,7 @@ The Context Health Check runs at the following trigger points:
 |-------|----------|--------|
 | `green` | Short conversation, few decisions, simple task (trivial/small scope); context window is well below limits | Continue normally; no additional logging required |
 | `yellow` | Multiple waves complete, growing context, medium scope; approaching 50% of context window capacity | Log a warning entry in `progress.md`; no other action required |
-| `red` | Many decisions + active contracts + more than 5 wave cycles, **OR** about to change major topic, **OR** HIGH/CRITICAL risk work upcoming | **Mandatory snapshot** before proceeding (follow 4-step protocol below) |
+| `red` | Many decisions + active contracts + more than 5 wave cycles, **OR** about to change major topic, **OR** HIGH/CRITICAL risk work upcoming | **Mandatory snapshot** before proceeding (follow 4-step protocol below), then continue automatically unless the next action is destructive/high-risk or the user asks to pause |
 
 ---
 
@@ -31,7 +31,7 @@ When context state is `red`, execute all 4 steps before continuing:
 1. **Update `orchestra/snapshot.json`** — Write the full structured checkpoint using the canonical schema below. All file paths in `key_files` must be absolute paths.
 2. **Update `orchestra/snapshot.md`** — Write a human-readable summary of what was accomplished, what decisions were made, what is in-progress, and what is pending. This is the file a human reads to understand session state after a `/clear`.
 3. **Update `orchestra/progress.md` and `orchestra/backlog.md`** — Ensure these reflect the current wave status accurately. `progress.md` must show every completed wave with a status line. `backlog.md` must list any pending items or expected artifact paths.
-4. **Notify the user** — Print the red-state notification message (see User Notification Messages below).
+4. **Notify the user** — Print the red-state notification message (see User Notification Messages below). Treat `/clear` and `/orchestra resume` as optional recovery steps, not a required pause, unless the next action is destructive/high-risk or the user explicitly asks to stop.
 
 ---
 
@@ -115,6 +115,6 @@ After this checkpoint, you may run /clear and re-invoke /orchestra to resume cle
   snapshot.json: /absolute/path/orchestra/snapshot.json
   snapshot.md:   /absolute/path/orchestra/snapshot.md
 
-To resume after /clear: /orchestra resume
-To continue in this session: type "continue"
+Optional manual recovery after /clear: /orchestra resume
+Continuing automatically in this session.
 ```

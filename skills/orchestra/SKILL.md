@@ -68,6 +68,25 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/artifact-management.md` | Always on Step 0 when orchestra/ needs to be created, archived, or verified — fresh start, archive path, and first-ever invocation all read this file |
 | `../BACKUP-PLAYBOOK.md` | Any time the planned route includes destructive data risk, backup creation, restore planning, or irreversible transforms |
 
+## Codex Standard Light Mode
+
+When the detected platform is `standard` and the available sub-agent tool's own rules
+require explicit user authorization before spawning agents, Orchestra runs in **light
+mode** by default.
+
+Light mode keeps the SocratiCode preflight, planning notes, impact checks, progress files,
+targeted implementation, and relevant verification, but it does not spawn sub-agents just
+because a tool exists. Use sub-agents in standard mode only when one of these is true:
+- the user explicitly asks for sub-agents, delegation, parallel agents, reviewers, or
+  agent waves
+- the task is high/critical risk and the active tool policy permits the dispatch
+- a previous direct/inline attempt is blocked and delegation is explicitly authorized
+
+For `trivial`, `small`, and implementation-ready `medium` work in standard light mode,
+prefer direct conductor implementation with bounded file reads and targeted gates. Promote
+to written planning or ask a narrow question only when product intent, destructive risk,
+or accepted security risk blocks progress.
+
 ### Token-Efficient Reading Discipline
 
 When SocratiCode is active, use it to narrow files, symbols, and line ranges before
@@ -251,7 +270,8 @@ Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists 
 
 **If `orchestra/snapshot.json` exists:**
 - If the user explicitly asked for `new`, `fresh`, `reset`, or `archive and restart`, follow the fresh-start path.
-- Otherwise default to **Resume path** automatically: read `references/session-resume.md`, execute the R4 algorithm (Read, Restore, Reconcile, Resume), and jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
+- If the user explicitly asked to resume, continue, or pick up prior Orchestra work, follow the **Resume path**: read `references/session-resume.md`, execute the R4 algorithm (Read, Restore, Reconcile, Resume), and jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
+- Otherwise inspect `orchestra/progress.md` and `orchestra/review-findings.md` first. If they indicate completed/converged work with no `FAILED`, `PARTIAL`, `BLOCKED`, or pending wave markers, treat the snapshot as stale-complete state and follow the fresh-start path. If the snapshot records active in-progress work, resume automatically.
 - **Fresh start path:** Read `references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
 
 **If no `orchestra/snapshot.json` exists:**
@@ -299,6 +319,9 @@ Default behavior:
   a failed agent wave.
 - Use at least one sub-agent for `small` implementation/review work when a Task/sub-agent
   tool is available.
+- In Codex standard light mode, the previous sub-agent-first bullets become advisory:
+  direct conductor execution is preferred for `small` and implementation-ready `medium`
+  work unless the user explicitly authorized agent delegation.
 - Promote the task to `medium` when two or more independent workstreams can run safely in
   parallel, even if the estimated file count is small.
 - Prefer parallel read-only analysis/review agents whenever their findings can be collected
@@ -384,8 +407,8 @@ Read `references/routing-decision.md`.
 | Scope | Route | Next Action |
 |-------|-------|-------------|
 | `trivial` | Direct edit | Conductor edits file directly only when the parallel opportunity scan found no useful agent work. No sub-agents. Skip to Step 7. |
-| `small` | Single-agent or quick-plan-chain | If implementation is obvious, build one Task Packet and dispatch the best-matching sub-agent when tooling exists. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
-| `medium` | Multi-agent waves or quick-plan-chain | Default to multi-agent waves when implementation-ready. Use `deep-plan-quick` only when a compact written plan is still needed before dispatch. |
+| `small` | Direct edit, single-agent, or quick-plan-chain | In standard light mode, implement directly when obvious. Outside light mode, build one Task Packet and dispatch the best-matching sub-agent when tooling exists. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
+| `medium` | Direct/inline wave, multi-agent waves, or quick-plan-chain | In standard light mode, use direct/inline sequential execution unless the user authorized agents. Outside light mode, default to multi-agent waves when implementation-ready. Use `deep-plan-quick` only when a compact written plan is still needed before dispatch. |
 | `large` | deep-plan chain | Read `references/skill-pack-integration.md`. Create or refresh `spec.md`, auto-run `deep-plan`, verify artifacts, then continue directly into `deep-implement`. |
 | `project` | full-pipeline | Read `references/skill-pack-integration.md`. Create or refresh `requirements.md`, auto-run `deep-project`, then auto-run `deep-plan` and `deep-implement` per split. |
 
@@ -396,6 +419,9 @@ Read `references/routing-decision.md`.
 - If a non-trivial task routes to `single-agent`, still dispatch one sub-agent through the
   active platform's agent tool when available. Inline execution is allowed only when the
   platform truly lacks agent tooling.
+- In Codex standard light mode, do not dispatch merely because the tool exists. If the
+  active sub-agent tool requires explicit user authorization and the user has not granted
+  it, record `dispatch_preference: direct-standard-light` and proceed directly/inline.
 - Record the selected route and planned agents in `orchestra/plan.md` before execution.
 
 If the task touches auth, RBAC, tenant isolation, secrets, encryption, browser automation
@@ -484,14 +510,15 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 | Platform | Method |
 |----------|--------|
 | `claude-code` | Task tool with registered agent names from `sub-agents/agents/*.md`. All wave agents dispatched in a **single message** where supported. Max 4 concurrent agents. |
-| `standard` | Actively use default/worker/explorer-style agents when this environment exposes them. Inject a condensed agent identity template. If no agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
+| `standard` | Use Codex standard light mode unless the user explicitly authorized sub-agents. If authorized, use default/worker/explorer-style agents with condensed identity templates. If not authorized or no agent tool is available, execute directly/inline while preserving the same impact, progress, and Result Report discipline. |
 | `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Standard mode. Proceeding sequentially." |
 
 **Agent-tool availability check:** Before inline fallback, check the active tool list and
-deferred tool discovery for Task/sub-agent/spawn-agent capability. If any such tool exists,
-use it for `single-agent` and `multi-agent-waves`. Inline fallback while an agent tool is
-available is a policy violation unless the tool call fails and the failure is recorded in
-`orchestra/progress.md`.
+deferred tool discovery for Task/sub-agent/spawn-agent capability. Also read the tool's
+authorization rules. If the tool requires explicit user authorization and the user did not
+ask for delegation, treat dispatch as not authorized and use standard light mode. Inline
+fallback while an authorized agent tool is available is a policy violation unless the tool
+call fails and the failure is recorded in `orchestra/progress.md`.
 
 **Parallelism hard constraints:**
 - Maximum 4 concurrent agents
@@ -570,6 +597,20 @@ Read `references/verification-before-completion.md` before reporting any wave or
 **Blocking policy:**
 - LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
 - HIGH/CRITICAL risk tasks: gate failures block progression to next wave
+- In standard light mode, run the smallest relevant gate set for `small`/`medium` work:
+  typecheck/lint/tests that directly cover changed files, plus explicitly requested
+  browser/security checks. Do not launch reviewer agents or full gate suites for
+  low/medium risk unless the change surface demands it or the user asked for that depth.
+
+**Long-running gate protocol:**
+- Prefer narrow commands and repository-defined focused scripts.
+- For any command or sub-agent wait that runs longer than 10 minutes, write a status entry
+  to `orchestra/progress.md` with the command, elapsed time, and whether it is still
+  blocking.
+- If a non-blocking low/medium gate exceeds the timeout budget, stop waiting, record it as
+  skipped with residual risk, and continue to final summary.
+- If a blocking high/critical gate exceeds the timeout budget, pause with a compact status
+  report instead of silently waiting.
 
 **Gate failure retry protocol:**
 1. Identify which agent caused the failure
@@ -649,7 +690,8 @@ Read `references/compaction-safety.md` **only** when context state is `yellow` o
 1. Update `orchestra/snapshot.json` (see canonical schema below)
 2. Update `orchestra/snapshot.md` with human-readable summary
 3. Update `orchestra/progress.md` and `orchestra/backlog.md`
-4. Notify user (two-phase notification):
+4. Notify user (two-phase notification) and continue automatically unless the user
+   explicitly asks to pause or the next step is destructive/high-risk:
 
    Before snapshot:
    ```
@@ -664,14 +706,14 @@ Read `references/compaction-safety.md` **only** when context state is `yellow` o
      snapshot.json: {absolute_path}/orchestra/snapshot.json
      snapshot.md:   {absolute_path}/orchestra/snapshot.md
 
-   ⚠️  IMPORTANT — manual steps required (Orchestra cannot do these automatically):
-     1. Type /clear   ← clears context, must be done by you
+   Optional manual recovery (Orchestra cannot run these commands for you):
+     1. Type /clear   ← clears context, if you want a clean context
      2. Type /orchestra resume   ← restores state from snapshot
 
-   To continue WITHOUT clearing (same session): type "continue"
+   Continuing automatically in the same session.
    ```
 
-   > **Note:** Orchestra cannot automatically run `/clear` or `/orchestra resume`. These are always manual user actions. Orchestra's role is to take the snapshot and notify — you must perform the `/clear` + `/orchestra resume` steps yourself. Claude Code's auto-compact (context compression) is separate and happens automatically, but may or may not preserve Orchestra's skill instructions — if Orchestra seems unresponsive after auto-compact, run `/orchestra resume` to restore state.
+   > **Note:** Orchestra cannot automatically run `/clear` or `/orchestra resume`. These are optional manual recovery actions. Claude Code's auto-compact (context compression) is separate and happens automatically, but may or may not preserve Orchestra's skill instructions — if Orchestra seems unresponsive after auto-compact, run `/orchestra resume` to restore state.
 
 **Canonical `snapshot.json` schema:**
 

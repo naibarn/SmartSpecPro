@@ -7,8 +7,8 @@ This reference defines when orchestra should stay in its normal wave model and w
 | Scope / Situation | Route | Behavior |
 |---|---|---|
 | `trivial` | `direct-edit` | Edit directly; no planning chain |
-| `small` and implementation-ready with no safe parallel split | `single-agent` | Dispatch one sub-agent when tooling exists; direct conductor implementation only for `trivial` |
-| `medium` or any task with 2+ safe independent workstreams | `multi-agent-waves` | Wave-based implementation with parallel batches by default |
+| `small` and implementation-ready with no safe parallel split | `direct-edit` in standard light mode, otherwise `single-agent` | In Codex standard light mode, edit directly unless the user explicitly asked for delegation. Outside light mode, dispatch one sub-agent when tooling exists. |
+| `medium` or any task with 2+ safe independent workstreams | `direct-inline-waves` in standard light mode, otherwise `multi-agent-waves` | In Codex standard light mode, execute bounded sequential waves directly/inline unless the user authorized sub-agents. Outside light mode, use wave-based implementation with parallel batches by default. |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
 | idea/product direction unclear before planning | `brainstorming-prelude` | Use `brainstorming` to clarify intent/options, then route to quick plan, deep plan, or full pipeline |
 | explicit installed skill/slash tool or specialized scan/generator | `installed-skill-flow` | Read `installed-skill-routing.md`, run the smallest matching skill, and wrap with Orchestra state/gates when multi-step |
@@ -24,8 +24,11 @@ This reference defines when orchestra should stay in its normal wave model and w
 Do not stop merely to ask the user to run another skill.
 
 Do not collapse non-trivial work into conductor-only implementation when a sub-agent tool is
-available. Before selecting `single-agent`, run the parallelization preflight from
-`wave-planning.md`; if it finds two or more safe workstreams, select `multi-agent-waves`.
+available **and authorized by that tool's policy/user request**. In Codex standard light
+mode, sub-agent availability alone is not authorization. Before selecting `single-agent`,
+run the parallelization preflight from `wave-planning.md`; if it finds two or more safe
+workstreams, select `multi-agent-waves` outside light mode or `direct-inline-waves` in
+light mode.
 
 If orchestra determines that a deep-* skill is needed, it should:
 1. create the required input artifact(s)
@@ -39,6 +42,24 @@ Interrupt the user only for:
 - ambiguous product intent
 - critical blocker that cannot be resolved safely
 - critical security acceptance
+
+## Codex Standard Light Mode Routing
+
+Use this route adjustment when `orchestra/platform.md` is `standard` and the active
+sub-agent/spawn-agent tool says delegation requires an explicit user request.
+
+Behavior:
+1. Keep SocratiCode preflight, impact notes, and `orchestra/` progress artifacts.
+2. Prefer direct conductor implementation for `small` and implementation-ready `medium`
+   work.
+3. Do not create Task Packets or spawn agents unless the user explicitly asked for
+   sub-agents, delegation, parallel agents, reviewers, or agent waves.
+4. Replace reviewer-agent waves with targeted conductor review and the smallest relevant
+   repository commands.
+5. Record `dispatch_preference: direct-standard-light` or
+   `dispatch_preference: inline-standard-light` in `orchestra/plan.md`.
+6. Escalate out of light mode only when the user authorizes agents, product ambiguity
+   requires a specialist, or high/critical risk cannot be reviewed safely inline.
 
 ## Route: `installed-skill-flow`
 
