@@ -258,6 +258,7 @@ export function ContextAssetBoard({
                 draggable
 	                onDragStart={(event) => {
 	                  event.dataTransfer.setData("application/x-production-asset-id", asset.id);
+	                  event.dataTransfer.setData("application/x-production-asset-json", JSON.stringify(asset));
 	                  event.dataTransfer.setData("application/json", JSON.stringify(asset));
 	                  event.dataTransfer.effectAllowed = "copy";
 	                }}

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildProductionSkillAttachmentPack,
   estimateProductionSkillContextTokens,
+  selectProductionRoleBalancedReferenceImageUrls,
+  splitProductionReferenceImageUrlsByRole,
   selectProductionPlanningModelForContext,
 } from "./productionSkillContext";
 
@@ -51,6 +53,41 @@ describe("productionSkillContext", () => {
       "https://cdn.test/table.png",
       "https://cdn.test/scene.png",
     ]);
+    expect(pack.referenceProductImageUrls).toEqual(["https://cdn.test/table.png"]);
+    expect(pack.referenceEnvironmentImageUrls).toEqual(["https://cdn.test/scene.png"]);
+  });
+
+  it("splits image references by explicit production zone before kind fallback", () => {
+    const groups = splitProductionReferenceImageUrlsByRole([
+      {
+        id: "product-zone-ref",
+        kind: "reference_image",
+        title: "Generic image dropped as product",
+        url: "https://cdn.test/product-zone.png",
+        source: "upload",
+        zone: "products",
+      },
+      {
+        id: "scene-zone-product-kind",
+        kind: "product_image",
+        title: "Product-kind image dropped as scene",
+        url: "https://cdn.test/scene-zone.png",
+        source: "upload",
+        zone: "scene_mood",
+      },
+      {
+        id: "character-zone-ref",
+        kind: "reference_image",
+        title: "Generic image dropped as character",
+        url: "https://cdn.test/cast-zone.png",
+        source: "upload",
+        zone: "cast",
+      },
+    ]);
+
+    expect(groups.product).toEqual(["https://cdn.test/product-zone.png"]);
+    expect(groups.environment).toEqual(["https://cdn.test/scene-zone.png"]);
+    expect(groups.character).toEqual(["https://cdn.test/cast-zone.png"]);
   });
 
   it("keeps unique image video and audio references in one canonical pack", () => {
@@ -66,6 +103,18 @@ describe("productionSkillContext", () => {
     expect(pack.referenceVideos).toEqual([{ url: "https://cdn.test/video.mp4", name: "Video", role: "source_video", source: "media-studio-reference" }]);
     expect(pack.referenceAudio).toEqual([{ url: "https://cdn.test/audio.mp3", name: "Audio", role: "audio_reference", source: "gemini-omni-audio" }]);
     expect(pack.attachmentKinds).toMatchObject({ reference_image: 1, source_video: 1, audio_asset: 1 });
+  });
+
+  it("selects balanced references across product character and environment before filling extras", () => {
+    const selected = selectProductionRoleBalancedReferenceImageUrls({
+      product: ["product-1", "product-2"],
+      character: ["character-1"],
+      environment: ["environment-1", "environment-2"],
+      fallback: ["fallback-1"],
+      limit: 4,
+    });
+
+    expect(selected).toEqual(["product-1", "character-1", "environment-1", "product-2"]);
   });
 
   it("does not override a manual planning model even when context is large", () => {

@@ -309,6 +309,16 @@ const languageOptions = [
 ];
 const maxPlanningAttachments = 10;
 
+const planningImageDropZones: Array<{
+  zone: Extract<ProductionContextAssetZone, "cast" | "products" | "scene_mood">;
+  kind: ProductionReferenceInput["kind"];
+  role: string;
+}> = [
+  { zone: "cast", kind: "character_asset", role: "character_reference" },
+  { zone: "products", kind: "product_image", role: "product_reference" },
+  { zone: "scene_mood", kind: "reference_image", role: "environment_reference" },
+];
+
 function inferPlanningAssetZone(asset: ProductionReferenceInput): ProductionContextAssetZone {
   if (asset.zone) return asset.zone;
   if (asset.kind === "marketplace_product" || asset.kind === "product_image") return "products";
@@ -336,6 +346,28 @@ function planningAttachmentIcon(asset: ProductionReferenceInput) {
   if (asset.kind === "source_video") return Video;
   if (asset.kind === "marketplace_product" || asset.kind === "product_image") return PackagePlus;
   return ImageIcon;
+}
+
+function normalizePlanningAssetForZone(asset: ProductionReferenceInput, zone?: ProductionContextAssetZone): ProductionReferenceInput {
+  if (!zone) return asset.zone ? asset : { ...asset, zone: inferPlanningAssetZone(asset) };
+  const keepSpecificRole = asset.role && asset.role !== "visual_reference";
+  if (zone === "cast") {
+    return { ...asset, kind: "character_asset", zone, role: keepSpecificRole ? asset.role : "character_reference" };
+  }
+  if (zone === "products") {
+    const kind = asset.kind === "marketplace_product" ? "marketplace_product" : "product_image";
+    return { ...asset, kind, zone, role: keepSpecificRole ? asset.role : "product_reference" };
+  }
+  if (zone === "scene_mood") {
+    return { ...asset, kind: asset.kind === "generated_media" ? "generated_media" : "reference_image", zone, role: keepSpecificRole ? asset.role : "environment_reference" };
+  }
+  if (zone === "audio") {
+    return { ...asset, kind: "audio_asset", zone, role: asset.role || "audio_reference" };
+  }
+  if (zone === "targets") {
+    return { ...asset, kind: "source_video", zone, role: asset.role || "source_video_reference" };
+  }
+  return { ...asset, zone };
 }
 
 function workspaceNodeSurface(node: ProductionFlowNode): string {
@@ -917,11 +949,11 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
     return null;
   };
 
-  const handlePlanningAttachmentDrop = (event: DragEvent<HTMLDivElement>) => {
+  const handlePlanningAttachmentDrop = (event: DragEvent<HTMLDivElement>, zone?: ProductionContextAssetZone) => {
     event.preventDefault();
     const asset = parseDraggedPlanningAsset(event.dataTransfer);
     if (!asset) return;
-    props.onAddPlanningAsset?.(asset);
+    props.onAddPlanningAsset?.(normalizePlanningAssetForZone(asset, zone));
   };
 
   useEffect(() => {
@@ -1363,7 +1395,7 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             event.preventDefault();
             event.dataTransfer.dropEffect = "copy";
           }}
-          onDrop={handlePlanningAttachmentDrop}
+          onDrop={(event) => handlePlanningAttachmentDrop(event)}
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -1376,8 +1408,8 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
               </div>
               <p className="mt-1 text-xs leading-5 text-slate-600">
                 {isThai
-                  ? "ลากรูปตัวละคร สินค้า ฉาก ภาพประกอบ วิดีโอ หรือไฟล์เสียงจาก panel ขวามาวางที่นี่ เพื่อส่งให้ LLM ใช้วางแผนเนื้อเรื่องและ storyboard"
-                  : "Drop characters, products, scenes, visual references, videos, or audio from the right panel here so the planner can use them for story and storyboard planning."}
+                  ? "ลากรูปลงช่องตัวละคร สินค้า หรือฉากด้านล่าง เพื่อกำหนดบทบาทก่อนส่งให้ skill และ planner"
+                  : "Drop images into the character, product, or environment lanes below so their role is fixed before skill and planner execution."}
               </p>
             </div>
             <div className="grid min-w-[220px] grid-cols-2 gap-1 text-[11px] text-slate-700 sm:grid-cols-3 lg:max-w-[420px]">
@@ -1388,6 +1420,38 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                 </div>
               ))}
             </div>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-3" data-testid="production-planning-role-dropzones">
+            {planningImageDropZones.map((dropZone) => {
+              const count = planningAttachments.filter((asset) => inferPlanningAssetZone(asset) === dropZone.zone).length;
+              return (
+                <div
+                  key={dropZone.zone}
+                  className="rounded-md border border-dashed border-sky-200 bg-white/80 p-3 transition hover:border-sky-400 hover:bg-white"
+                  data-testid={`production-planning-attachment-dropzone-${dropZone.zone}`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                  }}
+                  onDrop={(event) => {
+                    event.stopPropagation();
+                    handlePlanningAttachmentDrop(event, dropZone.zone);
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-900">{planningAttachmentLabel(dropZone.zone, isThai)}</span>
+                    <Badge variant="outline" className="bg-slate-50">{count}</Badge>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-slate-600">
+                    {dropZone.zone === "cast"
+                      ? (isThai ? "รูปคน / presenter / character เท่านั้น" : "People, presenter, or character references only.")
+                      : dropZone.zone === "products"
+                        ? (isThai ? "รูปสินค้าจริง / packshot / marketplace evidence" : "Real product, packshot, or marketplace evidence references.")
+                        : (isThai ? "รูปห้อง ฉาก mood แสง พื้น ผนัง หรือ environment" : "Room, scene, mood, lighting, floor, wall, or environment references.")}
+                  </p>
+                </div>
+              );
+            })}
           </div>
           {planningAttachments.length ? (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1" data-testid="production-planning-attachment-list">

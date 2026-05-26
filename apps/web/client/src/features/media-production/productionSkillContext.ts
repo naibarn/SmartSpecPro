@@ -39,8 +39,12 @@ export interface ProductionSkillAttachmentPack {
     source?: string;
     provenance?: Record<string, unknown>;
     isProductReference?: boolean;
+    referenceRole: ProductionSkillImageReferenceRole;
   }>;
   referenceImageUrls: string[];
+  referenceProductImageUrls: string[];
+  referenceCharacterImageUrls: string[];
+  referenceEnvironmentImageUrls: string[];
   referenceVideos: Array<{ url: string; name?: string; role?: string; source?: string }>;
   referenceAudio: Array<{ url: string; name?: string; role?: string; source?: string }>;
   attachmentKinds: Record<string, number>;
@@ -64,6 +68,8 @@ const IMAGE_ATTACHMENT_KINDS = new Set([
   "generated_media",
   "marketplace_product",
 ]);
+
+export type ProductionSkillImageReferenceRole = "product" | "character" | "environment";
 
 function cleanString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -91,6 +97,77 @@ export function dedupeProductionReferenceAssets(assets: ProductionReferenceInput
     next.push(asset);
   });
   return next;
+}
+
+export function getProductionImageReferenceRole(asset: Pick<ProductionReferenceInput, "kind" | "zone">): ProductionSkillImageReferenceRole | null {
+  if (asset.zone === "products") return "product";
+  if (asset.zone === "cast") return "character";
+  if (asset.zone === "scene_mood" || asset.zone === "generated") return "environment";
+  if (asset.kind === "product_image" || asset.kind === "marketplace_product") return "product";
+  if (asset.kind === "character_asset") return "character";
+  if (asset.kind === "reference_image" || asset.kind === "generated_media") return "environment";
+  return null;
+}
+
+function uniqueUrls(urls: string[]): string[] {
+  return Array.from(new Set(urls.map((url) => cleanString(url)).filter(Boolean)));
+}
+
+export function splitProductionReferenceImageUrlsByRole(assets: ProductionReferenceInput[]): {
+  product: string[];
+  character: string[];
+  environment: string[];
+  all: string[];
+} {
+  const product: string[] = [];
+  const character: string[] = [];
+  const environment: string[] = [];
+  assets.forEach((asset) => {
+    if (!asset.url || !IMAGE_ATTACHMENT_KINDS.has(asset.kind)) return;
+    const role = getProductionImageReferenceRole(asset);
+    if (role === "product") product.push(asset.url);
+    else if (role === "character") character.push(asset.url);
+    else if (role === "environment") environment.push(asset.url);
+  });
+  return {
+    product: uniqueUrls(product),
+    character: uniqueUrls(character),
+    environment: uniqueUrls(environment),
+    all: uniqueUrls([...product, ...character, ...environment]),
+  };
+}
+
+export function selectProductionRoleBalancedReferenceImageUrls(input: {
+  product?: string[];
+  character?: string[];
+  environment?: string[];
+  fallback?: string[];
+  limit: number;
+}): string[] {
+  const limit = Math.max(0, Math.floor(input.limit));
+  if (limit <= 0) return [];
+
+  const product = uniqueUrls(input.product ?? []);
+  const character = uniqueUrls(input.character ?? []);
+  const environment = uniqueUrls(input.environment ?? []);
+  const fallback = uniqueUrls(input.fallback ?? []);
+  const selected: string[] = [];
+  const add = (url?: string) => {
+    const cleanUrl = cleanString(url);
+    if (!cleanUrl || selected.length >= limit || selected.includes(cleanUrl)) return;
+    selected.push(cleanUrl);
+  };
+
+  add(product[0]);
+  add(character[0]);
+  add(environment[0]);
+
+  for (const url of [...product.slice(1), ...character.slice(1), ...environment.slice(1), ...fallback]) {
+    add(url);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
 }
 
 function buildProductEvidenceAssets(manifest: ProductionSpace["productEvidenceManifest"] | undefined): ProductionReferenceInput[] {
@@ -200,14 +277,19 @@ export function buildProductionSkillAttachmentPack(input: {
 
   const referenceImages = attachments
     .filter((asset) => asset.url && IMAGE_ATTACHMENT_KINDS.has(asset.kind))
-    .map((asset) => ({
-      url: asset.url as string,
-      name: asset.title,
-      role: asset.role,
-      source: asset.source,
-      provenance: asset.provenance,
-      isProductReference: asset.kind === "product_image" || asset.kind === "marketplace_product",
-    }));
+    .map((asset) => {
+      const referenceRole = getProductionImageReferenceRole(asset) ?? "environment";
+      return {
+        url: asset.url as string,
+        name: asset.title,
+        role: asset.role,
+        source: asset.source,
+        provenance: asset.provenance,
+        isProductReference: referenceRole === "product",
+        referenceRole,
+      };
+    });
+  const referenceImageUrlGroups = splitProductionReferenceImageUrlsByRole(attachments);
   const referenceVideos = attachments
     .filter((asset) => asset.url && asset.kind === "source_video")
     .map((asset) => ({ url: asset.url as string, name: asset.title, role: asset.role, source: asset.source }));
@@ -222,7 +304,10 @@ export function buildProductionSkillAttachmentPack(input: {
   return {
     attachments,
     referenceImages,
-    referenceImageUrls: referenceImages.map((item) => item.url),
+    referenceImageUrls: referenceImageUrlGroups.all,
+    referenceProductImageUrls: referenceImageUrlGroups.product,
+    referenceCharacterImageUrls: referenceImageUrlGroups.character,
+    referenceEnvironmentImageUrls: referenceImageUrlGroups.environment,
     referenceVideos,
     referenceAudio,
     attachmentKinds,

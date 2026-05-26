@@ -435,6 +435,62 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     }));
   });
 
+  it("normalizes dropped planning images by the explicit role lane", () => {
+    const onAddPlanningAsset = vi.fn();
+    const genericImage = {
+      id: "right-panel-generic-image",
+      kind: "reference_image",
+      title: "Generic uploaded image",
+      url: "https://cdn.example.test/generic.png",
+      thumbnailUrl: "https://cdn.example.test/generic.png",
+      source: "library-right-panel",
+      role: "visual_reference",
+    };
+
+    render(
+      <ProductionWorkspace
+        title="Launch teaser"
+        status="plan_ready_for_review"
+        summary="Create a short product video using approved evidence only."
+        productionRunId="run-feature-116"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        onAddPlanningAsset={onAddPlanningAsset}
+        onAssetAddToCanvas={vi.fn()}
+        space={featureSpace}
+      />
+    );
+
+    fireEvent.drop(screen.getByTestId("production-planning-attachment-dropzone-products"), {
+      dataTransfer: {
+        getData: (type: string) => type === "application/x-production-asset-json" ? JSON.stringify(genericImage) : "",
+        dropEffect: "copy",
+      },
+    });
+    fireEvent.drop(screen.getByTestId("production-planning-attachment-dropzone-scene_mood"), {
+      dataTransfer: {
+        getData: (type: string) => type === "application/x-production-asset-json" ? JSON.stringify({ ...genericImage, id: "right-panel-scene-image" }) : "",
+        dropEffect: "copy",
+      },
+    });
+
+    expect(onAddPlanningAsset).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      id: "right-panel-generic-image",
+      kind: "product_image",
+      zone: "products",
+      role: "product_reference",
+    }));
+    expect(onAddPlanningAsset).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      id: "right-panel-scene-image",
+      kind: "reference_image",
+      zone: "scene_mood",
+      role: "environment_reference",
+    }));
+  });
+
   it("shows the story concept wizard before generating a fresh workflow", () => {
     const onSelectStoryConcept = vi.fn();
     const onConfirmStoryConceptPlan = vi.fn();

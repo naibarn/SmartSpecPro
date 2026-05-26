@@ -69,6 +69,8 @@ import {
   buildProductionSkillAttachmentPack,
   estimateProductionSkillContextTokens,
   selectProductionPlanningModelForContext,
+  selectProductionRoleBalancedReferenceImageUrls,
+  splitProductionReferenceImageUrlsByRole,
 } from "@/features/media-production/productionSkillContext";
 import {
   toolSurfaceForNodeKind,
@@ -1782,10 +1784,18 @@ function resolveProductionInfographicImageModel(params: {
 function buildProductionInfographicModelExtraParams(params: {
   model?: any;
   referenceImageUrls: string[];
+  referenceProductImageUrls?: string[];
+  referenceCharacterImageUrls?: string[];
+  referenceEnvironmentImageUrls?: string[];
   aspectRatio: string;
   base: Record<string, unknown>;
 }): Record<string, unknown> {
-  const extraParams: Record<string, unknown> = { ...params.base };
+  const extraParams: Record<string, unknown> = {
+    ...params.base,
+    reference_product_images: params.referenceProductImageUrls ?? [],
+    reference_character_images: params.referenceCharacterImageUrls ?? [],
+    reference_environment_images: params.referenceEnvironmentImageUrls ?? [],
+  };
   const fields = parseModelInputFields(params.model ? {
     id: getMediaModelRecordId(params.model),
     name: String(params.model?.name ?? getMediaModelRecordId(params.model)),
@@ -14363,6 +14373,9 @@ export default function MediaStudio() {
       marketplace_supporting_insights: marketplaceSupportingInsights,
       context_assets: planningAttachments,
       reference_images: planningAttachmentPack.referenceImages,
+      reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+      reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+      reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
       reference_videos: planningAttachmentPack.referenceVideos,
       reference_audio: planningAttachmentPack.referenceAudio,
       story_concepts: productionStoryConceptWizard?.options,
@@ -14624,6 +14637,9 @@ export default function MediaStudio() {
             "seedance-2",
           ],
           reference_images: planningAttachmentPack.referenceImages,
+          reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+          reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+          reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
           reference_videos: planningAttachmentPack.referenceVideos,
           reference_audio: planningAttachmentPack.referenceAudio,
           character_ids: geminiOmni.selectedCharacterIds,
@@ -14665,6 +14681,9 @@ export default function MediaStudio() {
           production_goal: goal,
           plan_package: parsedPlan,
           context_assets: planningAttachments,
+          reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+          reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+          reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
           product_truth_context: productTruthContext,
           marketplace_supporting_insights: marketplaceSupportingInsights,
           selected_story_concept: storyConcept,
@@ -14993,6 +15012,9 @@ export default function MediaStudio() {
         product_truth_context: productTruthContext,
         context_assets: planningAttachmentPack.attachments,
         reference_images: planningAttachmentPack.referenceImages,
+        reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+        reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+        reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
         current_story_concepts: currentWizard.options,
         target_story_concept: currentConcept,
       }),
@@ -15011,6 +15033,10 @@ export default function MediaStudio() {
           instruction: "Return JSON only with story_concepts containing exactly one regenerated concept for the requested dimension. Preserve product truth and do not invent unsupported claims. The regenerated concept must match the current product identity from production_goal, product_truth_context, and attached product images; ignore stale marketplace insights from other domains. Include infographic_prompt, visual_summary, key_visual_elements, and storyboard_thumbnail_notes.",
           production_goal: goal,
           product_truth_context: productTruthContext,
+          reference_images: planningAttachmentPack.referenceImages,
+          reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+          reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+          reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
           planning_context_pack: {
             assetCount: planningAttachmentPack.attachments.length,
             attachmentKinds: planningAttachmentPack.attachmentKinds,
@@ -15146,6 +15172,9 @@ export default function MediaStudio() {
           product_truth_context: productTruthContext,
           context_assets: attachments,
           reference_images: planningAttachmentPack.referenceImages,
+          reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+          reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+          reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
         }),
       });
       const selectedPlanningModel = planningModelSelection.modelId;
@@ -15161,6 +15190,10 @@ export default function MediaStudio() {
         skillId: MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID,
         userInputs: {
           ...storyboardSkillInput,
+          reference_images: planningAttachmentPack.referenceImages,
+          reference_product_images: planningAttachmentPack.referenceProductImageUrls,
+          reference_character_images: planningAttachmentPack.referenceCharacterImageUrls,
+          reference_environment_images: planningAttachmentPack.referenceEnvironmentImageUrls,
           planning_context_pack: {
             assetCount: planningAttachmentPack.attachments.length,
             attachmentKinds: planningAttachmentPack.attachmentKinds,
@@ -15202,6 +15235,9 @@ export default function MediaStudio() {
       const infographicExtraParams = buildProductionInfographicModelExtraParams({
         model: selectedInfographicModel,
         referenceImageUrls: referenceImageUrls.map((item) => item.url),
+        referenceProductImageUrls: planningAttachmentPack.referenceProductImageUrls,
+        referenceCharacterImageUrls: planningAttachmentPack.referenceCharacterImageUrls,
+        referenceEnvironmentImageUrls: planningAttachmentPack.referenceEnvironmentImageUrls,
         aspectRatio,
         base: {
           purpose: "production_concept_infographic",
@@ -16591,18 +16627,10 @@ export default function MediaStudio() {
     const storyboardGuide = buildProductionShotStoryboardGuide(shotId);
     const references = getProductionShotReferenceAssets("image");
     const referenceUrls = Array.from(new Set(references.map((asset) => asset.url).filter(Boolean) as string[]));
-    const productReferenceUrls = Array.from(new Set(references
-      .filter((asset) => ["product_image", "marketplace_product", "reference_image"].includes(asset.kind))
-      .map((asset) => asset.url)
-      .filter(Boolean) as string[]));
-    const characterReferenceUrls = Array.from(new Set(references
-      .filter((asset) => asset.kind === "character_asset")
-      .map((asset) => asset.url)
-      .filter(Boolean) as string[]));
-    const environmentReferenceUrls = Array.from(new Set(references
-      .filter((asset) => asset.kind === "generated_media")
-      .map((asset) => asset.url)
-      .filter(Boolean) as string[]));
+    const referenceUrlGroups = splitProductionReferenceImageUrlsByRole(references);
+    const productReferenceUrls = referenceUrlGroups.product;
+    const characterReferenceUrls = referenceUrlGroups.character;
+    const environmentReferenceUrls = referenceUrlGroups.environment;
     const planningModelSelection = selectProductionPlanningModelForContext({
       modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
       manualModelId: productionDirector.planningModelId.trim(),
@@ -16663,7 +16691,17 @@ export default function MediaStudio() {
       stopFramePrompt,
     });
     toast.success(isThaiLocale ? "สร้าง prompt จาก reference skill แล้ว" : "Reference storyboard prompt generated.");
-    return { promptText, startFramePrompt, stopFramePrompt, storyboardGuide, referenceUrls, references };
+    return {
+      promptText,
+      startFramePrompt,
+      stopFramePrompt,
+      storyboardGuide,
+      referenceUrls,
+      referenceProductImageUrls: productReferenceUrls,
+      referenceCharacterImageUrls: characterReferenceUrls,
+      referenceEnvironmentImageUrls: environmentReferenceUrls,
+      references,
+    };
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (isThaiLocale ? "สร้าง prompt จาก skill ไม่สำเร็จ" : "Failed to generate skill prompt"));
       return null;
@@ -16697,12 +16735,16 @@ export default function MediaStudio() {
       && (!promptItemSkillId || promptItemSkillId === skillId);
     if (canReusePromptItem) {
       const references = getProductionShotReferenceAssets("image");
+      const referenceUrlGroups = splitProductionReferenceImageUrlsByRole(references);
       return {
         promptText: String(mergedPromptItem.referenceStoryboardPrompt),
         startFramePrompt: String(mergedPromptItem.startFramePrompt ?? ""),
         stopFramePrompt: String(mergedPromptItem.stopFramePrompt ?? ""),
         storyboardGuide: buildProductionShotStoryboardGuide(shotId),
-        referenceUrls: references.map((asset) => asset.url).filter(Boolean) as string[],
+        referenceUrls: referenceUrlGroups.all,
+        referenceProductImageUrls: referenceUrlGroups.product,
+        referenceCharacterImageUrls: referenceUrlGroups.character,
+        referenceEnvironmentImageUrls: referenceUrlGroups.environment,
         references,
       };
     }
@@ -16726,6 +16768,9 @@ export default function MediaStudio() {
     durationSeconds?: number;
     referenceInputs: ProductionReferenceInput[];
     referenceImageUrls: string[];
+    referenceProductImageUrls?: string[];
+    referenceCharacterImageUrls?: string[];
+    referenceEnvironmentImageUrls?: string[];
     referenceVideoUrls?: string[];
     resultUrl?: string;
     backendTaskId?: string;
@@ -16787,6 +16832,9 @@ export default function MediaStudio() {
           aspectRatio: params.aspectRatio,
           durationSeconds: params.durationSeconds,
           referenceImageUrls: params.referenceImageUrls,
+          referenceProductImageUrls: params.referenceProductImageUrls ?? [],
+          referenceCharacterImageUrls: params.referenceCharacterImageUrls ?? [],
+          referenceEnvironmentImageUrls: params.referenceEnvironmentImageUrls ?? [],
           referenceVideoUrls: params.referenceVideoUrls ?? [],
           frameRole: params.role,
           ...(params.config ?? {}),
@@ -16835,7 +16883,14 @@ export default function MediaStudio() {
           ? String((promptDraft?.startFramePrompt ?? skillPackage.startFramePrompt) || skillPackage.promptText)
           : String((promptDraft?.stopFramePrompt ?? skillPackage.stopFramePrompt) || skillPackage.promptText);
       const maxImages = getModelReferenceImageLimit(selectedModel as any) ?? 5;
-      const referenceUrls = skillPackage.referenceUrls.slice(0, Math.max(0, Math.min(5, maxImages)));
+      const referenceLimit = Math.max(0, Math.min(20, maxImages));
+      const referenceUrls = selectProductionRoleBalancedReferenceImageUrls({
+        product: skillPackage.referenceProductImageUrls,
+        character: skillPackage.referenceCharacterImageUrls,
+        environment: skillPackage.referenceEnvironmentImageUrls,
+        fallback: skillPackage.referenceUrls,
+        limit: referenceLimit,
+      });
       const baseExtraParams = buildDefaultExtraParamsForModel(selectedModel as any) ?? {};
       const extraParams = applyModelSyncTargets(selectedModel as any, {
         ...baseExtraParams,
@@ -16844,6 +16899,9 @@ export default function MediaStudio() {
         frameRole: role,
         sourceSkillId: skillId,
         storyboardGuide: skillPackage.storyboardGuide,
+        reference_product_images: skillPackage.referenceProductImageUrls,
+        reference_character_images: skillPackage.referenceCharacterImageUrls,
+        reference_environment_images: skillPackage.referenceEnvironmentImageUrls,
       }, {
         prompt,
         aspectRatio: aspect,
@@ -16878,6 +16936,9 @@ export default function MediaStudio() {
         aspectRatio: aspect,
         referenceInputs: skillPackage.references,
         referenceImageUrls: referenceUrls,
+        referenceProductImageUrls: skillPackage.referenceProductImageUrls,
+        referenceCharacterImageUrls: skillPackage.referenceCharacterImageUrls,
+        referenceEnvironmentImageUrls: skillPackage.referenceEnvironmentImageUrls,
         resultUrl: task.resultUrl,
         backendTaskId: task.backendTaskId,
         providerTaskId: task.providerTaskId,
@@ -16961,6 +17022,7 @@ export default function MediaStudio() {
         .filter((asset) => asset.kind !== "source_video")
         .map((asset) => asset.url)
         .filter(Boolean) as string[];
+      const contextReferenceImageGroups = splitProductionReferenceImageUrlsByRole(getProductionShotReferenceAssets("video"));
       const contextReferenceVideos = getProductionShotReferenceAssets("video")
         .filter((asset) => asset.kind === "source_video")
         .map((asset) => asset.url)
@@ -16971,8 +17033,17 @@ export default function MediaStudio() {
         : referenceImageUrl
           ? [referenceImageUrl]
           : contextReferenceUrls;
+      const imageReferenceLimit = Math.max(0, Math.min(20, maxImages));
       const referenceImageUrls = modelSupport.imageUrls
-        ? primaryReferenceUrls.slice(0, Math.max(0, Math.min(5, maxImages)))
+        ? startFrameUrl || stopFrameUrl
+          ? primaryReferenceUrls.slice(0, imageReferenceLimit)
+          : selectProductionRoleBalancedReferenceImageUrls({
+            product: contextReferenceImageGroups.product,
+            character: contextReferenceImageGroups.character,
+            environment: contextReferenceImageGroups.environment,
+            fallback: primaryReferenceUrls,
+            limit: imageReferenceLimit,
+          })
         : [];
       const referenceVideoUrls = modelSupport.videoUrls ? contextReferenceVideos.slice(0, 5) : [];
       const generationMode = startFrameUrl && stopFrameUrl && modelSupport.imageUrls
@@ -16995,6 +17066,9 @@ export default function MediaStudio() {
         sourceSkillId: skillId,
         videoGenerationMode: generationMode,
         storyboardGuide: buildProductionShotStoryboardGuide(shotId),
+        reference_product_images: contextReferenceImageGroups.product,
+        reference_character_images: contextReferenceImageGroups.character,
+        reference_environment_images: contextReferenceImageGroups.environment,
         ...(generationMode === "start_stop" && supportsFirstLastGenerationType ? {
           generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
           startFrameUrl,
@@ -17068,6 +17142,9 @@ export default function MediaStudio() {
         durationSeconds,
         referenceInputs: getProductionShotReferenceAssets("video"),
         referenceImageUrls,
+        referenceProductImageUrls: contextReferenceImageGroups.product,
+        referenceCharacterImageUrls: contextReferenceImageGroups.character,
+        referenceEnvironmentImageUrls: contextReferenceImageGroups.environment,
         referenceVideoUrls,
         resultUrl: task.resultUrl,
         backendTaskId: task.backendTaskId,
