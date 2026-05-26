@@ -320,6 +320,12 @@
       ],
       "default": "auto"
     },
+    "storyboard_guide": {
+      "title": "Storyboard Guide",
+      "description": "Optional storyboard, shot brief, or video-shot guide from Media Studio. When provided, every generated frame prompt must follow this guide's shot order, timing, story beat, action, camera intent, furniture-use intent, scale/room context, and continuity. The guide is a creative direction contract; do not contradict it. If left blank, keep the normal skill behavior.",
+      "type": "string",
+      "default": ""
+    },
     "scene_descriptions": {
       "type": "array",
       "items": {

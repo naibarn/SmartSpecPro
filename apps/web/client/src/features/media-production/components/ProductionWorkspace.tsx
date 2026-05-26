@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { AlertCircle, AlertTriangle, Archive, ArrowRight, CheckCircle, Clock, Eye, Film, Image as ImageIcon, Layers, ListTree, Loader2, Lock, MoreHorizontal, Music, PackagePlus, Paperclip, Play, RotateCcw, Route, Save, Search, Settings2, ShieldCheck, Sparkles, Trash2, Video, Zap } from "lucide-react";
+import { AlertCircle, AlertTriangle, Archive, ArrowRight, CheckCircle, Clock, Eye, Film, Image as ImageIcon, Layers, ListTree, Loader2, Lock, Maximize2, MoreHorizontal, Music, PackagePlus, Paperclip, Play, RotateCcw, Route, Save, Search, Settings2, ShieldCheck, Sparkles, Trash2, Video, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ProductionContextAssetZone, ProductionEvidenceStatus, ProductionFlowNode, ProductionGoal, ProductionPlanningSelection, ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
+import type { ProductionContextAssetZone, ProductionEvidenceStatus, ProductionFlowNode, ProductionGenerationDefaults, ProductionGoal, ProductionPlanningSelection, ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
 import { ContextAssetBoard } from "./ContextAssetBoard";
 import { NodeConfigPanel } from "./NodeConfigPanel";
 import { ProductEvidenceTray } from "./ProductEvidenceTray";
@@ -27,7 +28,8 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   storyConceptWizard?: ProductionStoryConceptWizardState | null;
   onSelectStoryConcept?: (conceptId: string) => void;
   onConfirmStoryConceptPlan?: (conceptId: string) => void;
-  onRegenerateStoryConcepts?: () => void;
+  onRegenerateStoryConcepts?: (conceptId?: string) => void;
+  onGenerateStoryConceptInfographic?: (conceptId: string) => void;
   onResetStoryConcepts?: () => void;
   onOpenVideoShot: () => void;
   isSaving?: boolean;
@@ -56,8 +58,18 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   planningSelection?: ProductionPlanningSelection;
   selectedPlanningModel?: string;
   planningModelMode?: ProductionPlanningSelection["modelMode"];
+  planningModelOptions?: ProductionPlanningModelOption[];
   onPlanningSkillChange?: (skillId: string) => void;
   onPlanningModelChange?: (modelMode: ProductionPlanningSelection["modelMode"], modelId?: string) => void;
+  storyboardBuildMode?: ProductionStoryboardBuildMode;
+  onStoryboardBuildModeChange?: (mode: ProductionStoryboardBuildMode) => void;
+  storyboardClipDurationSeconds?: number;
+  storyboardClipDurationOptions?: number[];
+  onStoryboardClipDurationSecondsChange?: (seconds: number) => void;
+  generationDefaults?: ProductionGenerationDefaults;
+  imageModelOptions?: ProductionMediaModelOption[];
+  videoModelOptions?: ProductionMediaModelOption[];
+  onGenerationDefaultChange?: (patch: Partial<ProductionGenerationDefaults>) => void;
   onSetProductRole?: (productId: string, nextRole: string | null) => void;
   onSetClaimStatus?: (productId: string, claimId: string, nextStatus: ProductionEvidenceStatus) => void;
   onOpenEvidence?: (evidenceId: string) => void;
@@ -88,6 +100,19 @@ export interface ProductionStoryConceptOption {
   hookFormula?: string;
   source?: "marketplace_insight" | "llm_synthesized" | "local_fallback";
   videoBrief?: Record<string, unknown>;
+  visualSummary?: string;
+  keyVisualElements?: string[];
+  storyboardThumbnailNotes?: string;
+  infographicPrompt?: string;
+  infographicTaskId?: string;
+  infographicBackendTaskId?: string;
+  infographicProviderTaskId?: string;
+  infographicUrl?: string;
+  infographicStatus?: "idle" | "prompt_ready" | "queued" | "generating" | "ready" | "failed";
+  infographicError?: string;
+  infographicSubmittedAt?: string;
+  infographicGeneratedAt?: string;
+  infographicModelId?: string;
   sceneTimeline: Array<{
     timeRange: string;
     title: string;
@@ -96,6 +121,25 @@ export interface ProductionStoryConceptOption {
   risks: string[];
   sourceSignals: string[];
 }
+
+export interface ProductionMediaModelOption {
+  modelId: string;
+  name: string;
+  provider?: string;
+  isDefault?: boolean;
+}
+
+export interface ProductionPlanningModelOption {
+  modelId: string;
+  name: string;
+  provider?: string;
+  supportsThinking?: boolean;
+  supportsVision?: boolean;
+  contextLength?: number | null;
+  isDefault?: boolean;
+}
+
+export type ProductionStoryboardBuildMode = "image_first" | "prompt_to_video";
 
 export interface ProductionStoryConceptWizardState {
   status: "idle" | "options_ready";
@@ -372,6 +416,351 @@ function nextActionForWorkspace(params: {
   };
 }
 
+function modelOptionLabel(option: ProductionMediaModelOption): string {
+  return [
+    option.name || option.modelId,
+    option.provider,
+    option.isDefault ? "default" : "",
+  ].filter(Boolean).join(" · ");
+}
+
+function planningModelOptionLabel(option: ProductionPlanningModelOption): string {
+  const contextLabel = Number(option.contextLength ?? 0) > 0
+    ? `${Math.round(Number(option.contextLength) / 1000)}k`
+    : "";
+  return [
+    option.name || option.modelId,
+    option.provider,
+    option.supportsThinking ? "thinking" : "",
+    option.supportsVision !== false ? "vision" : "",
+    contextLabel,
+    option.isDefault ? "default" : "",
+  ].filter(Boolean).join(" · ");
+}
+
+function buildConceptInfographicPrompt(option: ProductionStoryConceptOption): string {
+  return option.infographicPrompt || [
+    "Create a beautiful realistic infographic with photorealistic supporting images.",
+    `Concept: ${option.title}`,
+    `Angle: ${option.angle}`,
+    `Hook: ${option.hook}`,
+    option.visualSummary ? `Visual summary: ${option.visualSummary}` : "",
+    option.keyVisualElements?.length ? `Key visual elements: ${option.keyVisualElements.join(", ")}` : "",
+    `Storyboard: ${option.sceneTimeline.map((scene) => `${scene.timeRange} ${scene.title} - ${scene.detail}`).join(" | ")}`,
+    "Make the idea understandable at a glance, premium, clean, product-safe, and do not invent unsupported product claims.",
+  ].filter(Boolean).join("\n");
+}
+
+function ProductionConceptCard(props: {
+  option: ProductionStoryConceptOption;
+  selected: boolean;
+  isThai: boolean;
+  isPlanning?: boolean;
+  onSelect?: (conceptId: string) => void;
+  onRegenerate?: (conceptId: string) => void;
+  onGenerateInfographic?: (conceptId: string) => void;
+  onOpenPreview: (option: ProductionStoryConceptOption) => void;
+}) {
+  const { option, selected, isThai } = props;
+  const infographicStatus = option.infographicStatus ?? (option.infographicUrl ? "ready" : option.infographicPrompt ? "prompt_ready" : "idle");
+  return (
+    <article
+      className={`flex min-w-0 flex-col overflow-hidden rounded-lg border p-3 text-left transition ${
+        selected
+          ? "border-sky-500 bg-sky-50 shadow-sm ring-1 ring-sky-200"
+          : "border-slate-200 bg-slate-50/70 hover:border-sky-200 hover:bg-white"
+      }`}
+      data-testid={`production-story-option-${option.id}`}
+      aria-label={option.title}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="line-clamp-2 text-sm font-semibold text-slate-950">{option.title}</div>
+          <div className="mt-1 line-clamp-2 text-[11px] font-medium text-sky-700">{option.angle}</div>
+        </div>
+        {selected ? <CheckCircle className="h-4 w-4 shrink-0 text-sky-700" /> : null}
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-md border border-slate-200 bg-white">
+        {option.infographicUrl ? (
+          <button
+            type="button"
+            className="group flex w-full items-center justify-center bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+            onClick={() => props.onOpenPreview(option)}
+            aria-label={isThai ? `ขยายภาพ ${option.title}` : `Open ${option.title} infographic preview`}
+          >
+            <img
+              src={option.infographicUrl}
+              alt=""
+              className="h-auto max-h-[560px] w-full object-contain transition group-hover:brightness-95"
+              draggable={false}
+            />
+          </button>
+        ) : (
+          <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 bg-slate-100 px-3 text-center text-xs text-slate-600">
+            {infographicStatus === "generating" ? <Loader2 className="h-5 w-5 animate-spin text-sky-700" /> : <ImageIcon className="h-5 w-5 text-sky-700" />}
+            <span className="line-clamp-2">
+              {infographicStatus === "failed"
+                ? (option.infographicError || (isThai ? "สร้าง infographic ไม่สำเร็จ" : "Infographic failed"))
+                : infographicStatus === "queued"
+                  ? (isThai ? "ส่งงานแล้ว รอระบบสร้างภาพ" : "Queued. Waiting for image generation.")
+                  : infographicStatus === "generating"
+                    ? (isThai ? "กำลังสร้าง infographic..." : "Generating infographic...")
+                  : (isThai ? "ยังไม่มี infographic สำหรับแนวคิดนี้" : "No infographic for this concept yet")}
+            </span>
+            {option.infographicTaskId && infographicStatus !== "ready" && infographicStatus !== "failed" ? (
+              <span className="max-w-full truncate text-[10px] text-slate-500">Task {option.infographicTaskId}</span>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 min-w-0 flex-1 space-y-2 text-xs leading-5 text-slate-700 [overflow-wrap:anywhere]">
+        {option.audience ? (
+          <div className="min-w-0">
+            <span className="font-semibold">{isThai ? "กลุ่มเป้าหมาย: " : "Audience: "}</span>
+            <span>{option.audience}</span>
+          </div>
+        ) : null}
+        {option.painPoint ? (
+          <div className="min-w-0">
+            <span className="font-semibold">{isThai ? "ปัญหา: " : "Problem: "}</span>
+            <span>{option.painPoint}</span>
+          </div>
+        ) : null}
+        <div className="min-w-0 rounded-md border border-white bg-white/80 p-2">
+          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">Hook</div>
+          <div className="mt-0.5 line-clamp-3 font-medium text-slate-900">{option.hook}</div>
+        </div>
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Storyboard" : "30s timeline"}</div>
+          <div className="mt-1 grid gap-1">
+            {option.sceneTimeline.slice(0, 4).map((scene) => (
+              <div key={`${option.id}-${scene.timeRange}`} className="min-w-0 rounded border border-slate-100 bg-white px-2 py-1">
+                <span className="font-semibold text-sky-800">{scene.timeRange}</span>
+                <span className="ml-1">{scene.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {option.sellingPoints.length ? (
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "จุดขาย" : "Selling points"}</div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {option.sellingPoints.slice(0, 3).map((item) => (
+                <Badge key={item} variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{item}</Badge>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {option.narrativeStructure ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.narrativeStructure}</Badge> : null}
+          {option.emotionalTone ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.emotionalTone}</Badge> : null}
+          {option.hookTechnique ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.hookTechnique}</Badge> : null}
+        </div>
+        {option.risks.length ? (
+          <div className="min-w-0 rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+            {option.risks[0]}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Button type="button" variant={selected ? "default" : "outline"} size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onSelect?.(option.id)}>
+          {selected ? <CheckCircle className="mr-2 h-4 w-4" /> : <Route className="mr-2 h-4 w-4" />}
+          {selected ? (isThai ? "เลือกอยู่" : "Selected") : (isThai ? "เลือกแนวคิด" : "Select concept")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onRegenerate?.(option.id)} disabled={!props.onRegenerate}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          {isThai ? "Regenerate ใบนี้" : "Regenerate"}
+        </Button>
+        <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onGenerateInfographic?.(option.id)} disabled={!props.onGenerateInfographic}>
+          {infographicStatus === "generating" || infographicStatus === "queued" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}
+          {infographicStatus === "generating" || infographicStatus === "queued"
+            ? (isThai ? "ส่งเพิ่ม" : "Queue another")
+            : option.infographicUrl
+              ? (isThai ? "สร้างภาพใหม่" : "Regenerate image")
+              : (isThai ? "สร้าง infographic" : "Infographic")}
+        </Button>
+        <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onOpenPreview(option)}>
+          <Maximize2 className="mr-2 h-4 w-4" />
+          {isThai ? "ขยายดูเต็มจอ" : "Fullscreen preview"}
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function ProductionConceptBoard(props: {
+  storyWizard: ProductionStoryConceptWizardState;
+  selectedStoryConcept: ProductionStoryConceptOption | null;
+  isThai: boolean;
+  isPlanning?: boolean;
+  emptyState?: boolean;
+  storyboardBuildMode?: ProductionStoryboardBuildMode;
+  onStoryboardBuildModeChange?: (mode: ProductionStoryboardBuildMode) => void;
+  storyboardClipDurationSeconds?: number;
+  storyboardClipDurationOptions?: number[];
+  totalDurationSeconds?: number;
+  onStoryboardClipDurationSecondsChange?: (seconds: number) => void;
+  onSelectStoryConcept?: (conceptId: string) => void;
+  onConfirmStoryConceptPlan?: (conceptId: string) => void;
+  onRegenerateStoryConcepts?: (conceptId?: string) => void;
+  onGenerateStoryConceptInfographic?: (conceptId: string) => void;
+  onResetStoryConcepts?: () => void;
+}) {
+  const [previewOption, setPreviewOption] = useState<ProductionStoryConceptOption | null>(null);
+  const { storyWizard, isThai } = props;
+  const previewPrompt = previewOption ? buildConceptInfographicPrompt(previewOption) : "";
+  const clipDurationOptions = props.storyboardClipDurationOptions?.length ? props.storyboardClipDurationOptions : [8, 10];
+  const clipDurationSeconds = Number(props.storyboardClipDurationSeconds) > 0 ? Number(props.storyboardClipDurationSeconds) : clipDurationOptions[0] ?? 8;
+  const totalDurationSeconds = Number(props.totalDurationSeconds) > 0 ? Number(props.totalDurationSeconds) : 0;
+  const derivedVideoCount = totalDurationSeconds > 0 ? Math.max(1, Math.ceil(totalDurationSeconds / clipDurationSeconds)) : 0;
+  return (
+    <section className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm" data-testid="production-story-wizard">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
+            <Sparkles className="h-4 w-4 text-sky-700" />
+            {props.emptyState
+              ? (isThai ? "เลือกแนวคิดและ Storyboard ก่อนสร้าง workflow" : "Choose a concept and storyboard before workflow generation")
+              : (isThai ? "เลือกแนวคิดก่อนสร้าง workflow" : "Choose a story concept before workflow generation")}
+            <Badge variant="outline" className="bg-sky-50 text-sky-800">4 cards</Badge>
+            <Badge variant="outline" className="bg-white text-slate-700">Storyboard</Badge>
+          </div>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
+            {storyWizard.contextSummary || (isThai
+              ? "ระบบเตรียม 4 แนวคิดพร้อม storyboard timeline ให้เลือกก่อนสร้าง workflow"
+              : "Four concepts with storyboard timelines are ready to review before creating the workflow.")}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
+            value={props.storyboardBuildMode ?? "image_first"}
+            onChange={(event) => props.onStoryboardBuildModeChange?.(event.target.value as ProductionStoryboardBuildMode)}
+            aria-label={isThai ? "รูปแบบการสร้าง storyboard" : "Storyboard build mode"}
+          >
+            <option value="image_first">{isThai ? "สร้างภาพ storyboard ก่อน" : "Storyboard images first"}</option>
+            <option value="prompt_to_video">{isThai ? "ใช้ prompt สร้างวิดีโอเลย" : "Prompt directly to video"}</option>
+          </select>
+          <select
+            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
+            value={String(clipDurationSeconds)}
+            onChange={(event) => props.onStoryboardClipDurationSecondsChange?.(Number(event.target.value) || clipDurationSeconds)}
+            aria-label={isThai ? "วินาทีต่อวิดีโอ storyboard" : "Seconds per storyboard video"}
+          >
+            {clipDurationOptions.map((seconds) => (
+              <option key={seconds} value={seconds}>
+                {isThai ? `${seconds} วินาที/วิดีโอ` : `${seconds}s per video`}
+              </option>
+            ))}
+          </select>
+          <Button type="button" variant="outline" size="sm" onClick={() => props.onRegenerateStoryConcepts?.()} disabled={props.isPlanning}>
+            {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {isThai ? "Regenerate 4 แนวคิด" : "Regenerate 4 concepts"}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={props.onResetStoryConcepts}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            {isThai ? "เริ่มเลือกใหม่" : "Start over"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {storyWizard.options.map((option) => (
+          <ProductionConceptCard
+            key={option.id}
+            option={option}
+            selected={option.id === storyWizard.selectedId}
+            isThai={isThai}
+            isPlanning={props.isPlanning}
+            onSelect={props.onSelectStoryConcept}
+            onRegenerate={(conceptId) => props.onRegenerateStoryConcepts?.(conceptId)}
+            onGenerateInfographic={props.onGenerateStoryConceptInfographic}
+            onOpenPreview={setPreviewOption}
+          />
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 text-xs leading-5 text-slate-600">
+          <div className="font-semibold text-slate-950">
+            {props.selectedStoryConcept
+              ? (isThai ? `เลือกแล้ว: ${props.selectedStoryConcept.title}` : `Selected: ${props.selectedStoryConcept.title}`)
+              : (isThai ? "เลือก 1 แนวคิดก่อนสร้าง workflow" : "Select one concept before generating the workflow")}
+          </div>
+          <div>
+            {derivedVideoCount
+              ? (isThai
+                ? `เมื่อยืนยัน ระบบจะสร้าง ${derivedVideoCount} วิดีโอ/shot จากความยาวรวม ${totalDurationSeconds}s ÷ ${clipDurationSeconds}s`
+                : `On confirmation, the app will create ${derivedVideoCount} videos/shots from ${totalDurationSeconds}s total ÷ ${clipDurationSeconds}s.`)
+              : (isThai
+                ? "เมื่อยืนยัน ระบบจะสร้าง workflow ใหม่จากแนวคิดและ storyboard ที่เลือก"
+                : "On confirmation, the app will generate a workflow from the selected concept and storyboard.")}
+          </div>
+        </div>
+        <Button
+          type="button"
+          className="shrink-0 bg-sky-800 text-white hover:bg-sky-900"
+          disabled={!props.selectedStoryConcept || props.isPlanning}
+          onClick={() => props.selectedStoryConcept && props.onConfirmStoryConceptPlan?.(props.selectedStoryConcept.id)}
+        >
+          {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
+          {isThai ? "สร้าง workflow จากแนวคิดนี้" : "Generate workflow from this concept"}
+        </Button>
+      </div>
+
+      <Dialog open={Boolean(previewOption)} onOpenChange={(open) => !open && setPreviewOption(null)}>
+        <DialogContent className="max-h-[94vh] w-[96vw] max-w-7xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewOption?.title ?? (isThai ? "ดูแนวคิด" : "Concept preview")}</DialogTitle>
+            <DialogDescription>
+              {isThai ? "ดูภาพรวมแนวคิด infographic และ storyboard timeline แบบเต็มจอ" : "Fullscreen concept preview with infographic and storyboard timeline."}
+            </DialogDescription>
+          </DialogHeader>
+          {previewOption ? (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
+              <div className="flex min-h-[320px] items-center justify-center overflow-hidden rounded-lg border bg-slate-100">
+                {previewOption.infographicUrl ? (
+                  <img src={previewOption.infographicUrl} alt="" className="max-h-[82vh] max-w-full object-contain" />
+                ) : (
+                  <div className="flex min-h-[360px] flex-col items-center justify-center gap-2 p-6 text-center text-sm text-slate-600">
+                    <ImageIcon className="h-8 w-8 text-sky-700" />
+                    {isThai ? "ยังไม่มี infographic กดสร้างจาก card เพื่อดูภาพรวมแนวคิด" : "No infographic yet. Generate it from the card to see the visual concept."}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
+                <div className="min-w-0 rounded-lg border bg-white p-3">
+                  <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">Hook</div>
+                  <div className="mt-1 text-sm font-medium text-slate-950">{previewOption.hook}</div>
+                  <div className="mt-2 text-xs leading-5 text-slate-600">{previewOption.angle}</div>
+                </div>
+                <div className="min-w-0 rounded-lg border bg-white p-3">
+                  <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">Storyboard</div>
+                  <div className="mt-2 grid gap-2">
+                    {previewOption.sceneTimeline.map((scene) => (
+                      <div key={`${previewOption.id}-preview-${scene.timeRange}`} className="min-w-0 rounded-md border border-slate-100 bg-slate-50 p-2 text-xs">
+                        <div className="font-semibold text-sky-800">{scene.timeRange} · {scene.title}</div>
+                        <div className="mt-1 text-slate-700">{scene.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="min-w-0 rounded-lg border bg-white p-3">
+                  <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Prompt ภาพรวม" : "Infographic prompt"}</div>
+                  <div className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-slate-600">{previewPrompt}</div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
 export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const isThai = props.locale === "th";
   const space = props.space ?? fallbackSpace;
@@ -421,17 +810,30 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const planningSelection = props.planningSelection ?? space.planningSelection;
   const planningModelMode = props.planningModelMode ?? planningSelection?.modelMode ?? "auto";
   const selectedPlanningModel = props.selectedPlanningModel ?? planningSelection?.selectedModel ?? "";
+  const generationDefaults = props.generationDefaults ?? space.generationDefaults ?? space.brief.generationDefaults ?? planningSelection?.contextPack?.generationDefaults ?? {};
+  const selectedImageModelId = generationDefaults.imageModelId ?? "";
+  const selectedVideoModelId = generationDefaults.videoModelId ?? "";
   const storyWizard = props.storyConceptWizard;
   const selectedStoryConcept = storyWizard?.options.find((option) => option.id === storyWizard.selectedId) ?? null;
   const formattedStatus = formatProductionStatus(props.status, isThai);
   const labelForOption = (option: { en: string; th: string }) => isThai ? option.th : option.en;
   const currentDuration = brief.durationSeconds ? String(brief.durationSeconds) : "";
   const hasCustomDuration = currentDuration && !durationOptions.map(String).includes(currentDuration);
+  const storyboardClipDurationOptions = props.storyboardClipDurationOptions?.length ? props.storyboardClipDurationOptions : [8, 10];
+  const storyboardClipDurationSeconds = Number(props.storyboardClipDurationSeconds) > 0
+    ? Number(props.storyboardClipDurationSeconds)
+    : storyboardClipDurationOptions[0] ?? 8;
+  const storyboardDerivedVideoCount = Number(brief.durationSeconds) > 0
+    ? Math.max(1, Math.ceil(Number(brief.durationSeconds) / storyboardClipDurationSeconds))
+    : 0;
   const hasCustomAspectRatio = brief.aspectRatio && !aspectRatioOptions.includes(brief.aspectRatio);
   const hasCustomLanguage = brief.language && !languageOptions.some((option) => option.value === brief.language);
   const hasCustomGoalType = brief.goalType && !goalTypeOptions.some((option) => option.value === brief.goalType);
   const lifecycleDisabled = props.isLifecycleActionDisabled || !props.productionRunId;
-  const hasProjectSeed = Boolean(props.productionRunId?.trim() || brief.title?.trim() || brief.summary?.trim());
+  const activeProductionRunId = [props.productionRunId, space.productionRunId]
+    .find((value) => value?.trim() && value.trim() !== "draft")
+    ?.trim() ?? "";
+  const hasProjectSeed = Boolean(activeProductionRunId);
   const isEmptyProduction = !hasProjectSeed && space.shots.length === 0 && space.contextAssets.length === 0 && space.flowNodes.length <= 1;
   const journeySteps = [
     ["brief", isThai ? "Brief" : "Brief"],
@@ -678,6 +1080,7 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                   onChange={(event) => patchBrief({ title: event.target.value })}
                   placeholder={isThai ? "ชื่อโปรเจกต์" : "Project title"}
                   aria-label={isThai ? "ชื่อโปรเจกต์ Production" : "Production project title"}
+                  disabled
                   className="h-11 rounded-md border-slate-200 bg-slate-50/70 text-base font-medium shadow-none focus-visible:bg-white"
                 />
                 <Textarea
@@ -685,16 +1088,15 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                   onChange={(event) => patchBrief({ summary: event.target.value })}
                   placeholder={isThai ? "เป้าหมายการผลิต" : "Production goal"}
                   aria-label={isThai ? "เป้าหมายการผลิต" : "Production goal"}
+                  disabled
                   className="min-h-[72px] rounded-md border-slate-200 bg-slate-50/70 text-sm shadow-none focus-visible:bg-white"
                 />
               </div>
             </div>
             <div className="grid content-start gap-2 rounded-md border border-slate-100 bg-slate-50 p-3">
-              <Button type="button" variant="outline" onClick={props.onCreateFixturePlan} disabled={props.isPlanning} className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white">
+              <Button type="button" variant="outline" onClick={props.onCreateFixturePlan} disabled className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white">
                 <Route className="mr-2 h-4 w-4" />
-              {props.isPlanning
-                  ? (isThai ? "กำลังเตรียมแนวคิด..." : "Preparing...")
-                  : (isThai ? "วางแผน / เสนอ 4 แนวคิด" : "Plan / Suggest 4 concepts")}
+                {isThai ? "เลือกหรือสร้างโปรเจกต์ก่อน" : "Open or create a project first"}
               </Button>
               <Button type="button" variant="outline" onClick={props.onProjectSearchOpen}>
                 <Search className="mr-2 h-4 w-4" />
@@ -706,6 +1108,29 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
               </Button>
             </div>
           </div>
+        </section>
+        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" data-testid="production-empty-canvas">
+          <ProductionFlowCanvas
+            flowNodes={[]}
+            flowEdges={[]}
+            contextAssets={[]}
+            selectedNodeId={null}
+            locale={props.locale}
+            onAddNode={props.onAddNode}
+            onSelectNode={props.onSelectNode}
+            onConnectNodes={props.onConnectNodes}
+            onInvalidEdge={props.onInvalidEdge}
+            onNodePositionChange={props.onNodePositionChange}
+            onAssetAddToCanvas={props.onAssetAddToCanvas}
+            onAssetAssignToNode={props.onAssetAssignToNode}
+            onConfigureNode={props.onConfigureNode}
+            onDeleteNode={props.onDeleteNode}
+            onResetCanvas={props.onResetCanvas}
+            onRunNode={props.onRunNode}
+            onCancelNodeExecution={props.onCancelNodeExecution}
+            onRetryNode={props.onRetryNode}
+            onOpenNodeOutput={props.onOpenNodeOutput}
+          />
         </section>
       </div>
     );
@@ -870,13 +1295,51 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                 <option value="auto">Auto</option>
                 <option value="manual">Manual</option>
               </select>
-              <Input
+              <select
+                className="h-9 min-w-0 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm disabled:text-slate-400"
                 value={selectedPlanningModel}
                 disabled={planningModelMode === "auto"}
-                onChange={(event) => props.onPlanningModelChange?.("manual", event.target.value)}
-                placeholder={planningModelMode === "auto" ? (isThai ? "Auto model" : "Auto model") : "gemini / gpt / custom model"}
+                onChange={(event) => props.onPlanningModelChange?.("manual", event.target.value || undefined)}
                 aria-label={isThai ? "โมเดล planning" : "Planning model"}
-              />
+              >
+                <option value="">{planningModelMode === "auto" ? (isThai ? "Auto model" : "Auto model") : (isThai ? "เลือกโมเดล LLM" : "Select LLM model")}</option>
+                {(props.planningModelOptions ?? []).map((model) => (
+                  <option key={model.modelId} value={model.modelId}>{planningModelOptionLabel(model)}</option>
+                ))}
+                {selectedPlanningModel && !(props.planningModelOptions ?? []).some((model) => model.modelId === selectedPlanningModel) ? (
+                  <option value={selectedPlanningModel}>{selectedPlanningModel}</option>
+                ) : null}
+              </select>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <select
+                className="h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm"
+                value={selectedImageModelId}
+                onChange={(event) => props.onGenerationDefaultChange?.({
+                  imageModelId: event.target.value || undefined,
+                  imageModelSource: event.target.value ? "project_default" : "system_default",
+                })}
+                aria-label={isThai ? "โมเดลเริ่มต้นสำหรับสร้างภาพ" : "Default image generation model"}
+              >
+                <option value="">{isThai ? "Auto image model" : "Auto image model"}</option>
+                {(props.imageModelOptions ?? []).map((model) => (
+                  <option key={model.modelId} value={model.modelId}>{modelOptionLabel(model)}</option>
+                ))}
+              </select>
+              <select
+                className="h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm"
+                value={selectedVideoModelId}
+                onChange={(event) => props.onGenerationDefaultChange?.({
+                  videoModelId: event.target.value || undefined,
+                  videoModelSource: event.target.value ? "project_default" : "system_default",
+                })}
+                aria-label={isThai ? "โมเดลเริ่มต้นสำหรับสร้างวิดีโอ" : "Default video generation model"}
+              >
+                <option value="">{isThai ? "Auto video model" : "Auto video model"}</option>
+                {(props.videoModelOptions ?? []).map((model) => (
+                  <option key={model.modelId} value={model.modelId}>{modelOptionLabel(model)}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -961,125 +1424,23 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
       </section>
 
       {storyWizard?.status === "options_ready" && storyWizard.options.length ? (
-        <section className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm" data-testid="production-story-wizard">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-950">
-                <Sparkles className="h-4 w-4 text-sky-700" />
-                {isThai ? "เลือกแนวคิดก่อนสร้าง workflow" : "Choose a story concept before workflow generation"}
-                <Badge variant="outline" className="bg-sky-50 text-sky-800">4 options</Badge>
-              </div>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
-                {storyWizard.contextSummary || (isThai
-                  ? "ระบบสรุป product truth, marketplace AI insight และ story options เพื่อให้เลือกแนวทางที่ต่างกันก่อนสร้าง workflow ใหม่"
-                  : "Product truth, marketplace AI insights, and story options are summarized so you can choose a distinct direction before generating a fresh workflow.")}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={props.onRegenerateStoryConcepts ?? props.onCreateFixturePlan} disabled={props.isPlanning}>
-                {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                {isThai ? "Regenerate 4 แนวคิด" : "Regenerate 4 concepts"}
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={props.onResetStoryConcepts}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                {isThai ? "เริ่มเลือกใหม่" : "Start over"}
-              </Button>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 xl:grid-cols-4">
-            {storyWizard.options.map((option) => {
-              const selected = option.id === storyWizard.selectedId;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={`min-w-0 rounded-lg border p-3 text-left transition ${
-                    selected
-                      ? "border-sky-500 bg-sky-50 shadow-sm ring-1 ring-sky-200"
-                      : "border-slate-200 bg-slate-50/70 hover:border-sky-200 hover:bg-white"
-                  }`}
-                  onClick={() => props.onSelectStoryConcept?.(option.id)}
-                  data-testid={`production-story-option-${option.id}`}
-                  aria-pressed={selected}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="line-clamp-2 text-sm font-semibold text-slate-950">{option.title}</div>
-                      <div className="mt-1 text-[11px] font-medium text-sky-700">{option.angle}</div>
-                    </div>
-                    {selected ? <CheckCircle className="h-4 w-4 shrink-0 text-sky-700" /> : null}
-                  </div>
-                  <div className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
-                    <div>
-                      <span className="font-semibold">{isThai ? "กลุ่มเป้าหมาย: " : "Audience: "}</span>
-                      <span>{option.audience}</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold">{isThai ? "ปัญหา: " : "Problem: "}</span>
-                      <span>{option.painPoint}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {option.narrativeStructure ? <Badge variant="outline" className="bg-white text-[10px]">{option.narrativeStructure}</Badge> : null}
-                      {option.emotionalTone ? <Badge variant="outline" className="bg-white text-[10px]">{option.emotionalTone}</Badge> : null}
-                      {option.hookTechnique ? <Badge variant="outline" className="bg-white text-[10px]">{option.hookTechnique}</Badge> : null}
-                    </div>
-                    <div className="rounded-md border border-white bg-white/80 p-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">Hook</div>
-                      <div className="mt-0.5 line-clamp-2 font-medium text-slate-900">{option.hook}</div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "จุดขาย" : "Selling points"}</div>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {option.sellingPoints.slice(0, 3).map((item) => (
-                          <Badge key={item} variant="outline" className="bg-white text-[10px]">{item}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Timeline 30s" : "30s timeline"}</div>
-                      <div className="mt-1 grid gap-1">
-                        {option.sceneTimeline.slice(0, 3).map((scene) => (
-                          <div key={`${option.id}-${scene.timeRange}`} className="rounded border border-slate-100 bg-white px-2 py-1">
-                            <span className="font-semibold text-sky-800">{scene.timeRange}</span>
-                            <span className="ml-1">{scene.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {option.risks.length ? (
-                      <div className="rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
-                        {option.risks[0]}
-                      </div>
-                    ) : null}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0 text-xs leading-5 text-slate-600">
-              <div className="font-semibold text-slate-950">
-                {selectedStoryConcept
-                  ? (isThai ? `เลือกแล้ว: ${selectedStoryConcept.title}` : `Selected: ${selectedStoryConcept.title}`)
-                  : (isThai ? "เลือก 1 แนวคิดก่อนสร้าง workflow" : "Select one concept before generating the workflow")}
-              </div>
-              <div>
-                {isThai
-                  ? "เมื่อยืนยัน ระบบจะถามก่อนเคลียร์ workflow เดิม แล้วสร้าง workflow ใหม่จาก concept ที่เลือก"
-                  : "On confirmation, the app will ask before clearing the old workflow and generating a new one from the selected concept."}
-              </div>
-            </div>
-            <Button
-              type="button"
-              className="shrink-0 bg-sky-800 text-white hover:bg-sky-900"
-              disabled={!selectedStoryConcept || props.isPlanning}
-              onClick={() => selectedStoryConcept && props.onConfirmStoryConceptPlan?.(selectedStoryConcept.id)}
-            >
-              {props.isPlanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Route className="mr-2 h-4 w-4" />}
-              {isThai ? "สร้าง workflow จากแนวคิดนี้" : "Generate workflow from this concept"}
-            </Button>
-          </div>
-        </section>
+        <ProductionConceptBoard
+          storyWizard={storyWizard}
+          selectedStoryConcept={selectedStoryConcept}
+          isThai={isThai}
+          isPlanning={props.isPlanning}
+          onSelectStoryConcept={props.onSelectStoryConcept}
+          onConfirmStoryConceptPlan={props.onConfirmStoryConceptPlan}
+          onRegenerateStoryConcepts={props.onRegenerateStoryConcepts}
+          onGenerateStoryConceptInfographic={props.onGenerateStoryConceptInfographic}
+          onResetStoryConcepts={props.onResetStoryConcepts}
+          storyboardBuildMode={props.storyboardBuildMode}
+          onStoryboardBuildModeChange={props.onStoryboardBuildModeChange}
+          storyboardClipDurationSeconds={props.storyboardClipDurationSeconds}
+          storyboardClipDurationOptions={props.storyboardClipDurationOptions}
+          totalDurationSeconds={Number(brief.durationSeconds) || undefined}
+          onStoryboardClipDurationSecondsChange={props.onStoryboardClipDurationSecondsChange}
+        />
       ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -1145,6 +1506,20 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             {hasCustomDuration ? <option value={currentDuration}>{currentDuration}s</option> : null}
             {durationOptions.map((seconds) => (
               <option key={seconds} value={seconds}>{seconds}s</option>
+            ))}
+          </select>
+          <select
+            value={String(storyboardClipDurationSeconds)}
+            onChange={(event) => props.onStoryboardClipDurationSecondsChange?.(Number(event.target.value) || storyboardClipDurationSeconds)}
+            aria-label={isThai ? "วินาทีต่อวิดีโอ" : "Storyboard seconds per video"}
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            {storyboardClipDurationOptions.map((seconds) => (
+              <option key={seconds} value={seconds}>
+                {storyboardDerivedVideoCount
+                  ? (isThai ? `${seconds}s / วิดีโอ (${storyboardDerivedVideoCount} วิดีโอ)` : `${seconds}s / video (${storyboardDerivedVideoCount} videos)`)
+                  : (isThai ? `${seconds}s / วิดีโอ` : `${seconds}s / video`)}
+              </option>
             ))}
           </select>
           <select
@@ -1273,6 +1648,7 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
         onAssetAssignToNode={props.onAssetAssignToNode}
         onConfigureNode={props.onConfigureNode}
         onDeleteNode={props.onDeleteNode}
+        onResetCanvas={props.onResetCanvas}
         onRunNode={props.onRunNode}
         onCancelNodeExecution={props.onCancelNodeExecution}
         onRetryNode={props.onRetryNode}

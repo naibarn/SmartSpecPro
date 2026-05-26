@@ -179,6 +179,86 @@ function nodeLatestOutputText(node: ProductionFlowNode): string | null {
   return summarizeUnknown(latest.metadata?.text ?? latest.metadata?.generatedPrompt ?? latest.metadata?.prompt ?? latest.providerTaskId ?? latest.mediaTaskId);
 }
 
+type StoryboardPromptItem = {
+  shotId?: string;
+  order?: number;
+  title?: string;
+  timeRange?: string;
+  durationSeconds?: number;
+  script?: string;
+  imagePrompt?: string;
+  videoPrompt?: string;
+};
+
+function storyboardPromptItemsForNode(node: ProductionFlowNode): StoryboardPromptItem[] {
+  const latest = node.outputRefs?.at(-1)?.metadata;
+  const candidates = [
+    latest?.storyboardPrompts,
+    node.configSnapshot?.config?.storyboardPrompts,
+    node.metadata?.storyboardPrompts,
+  ];
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
+    return candidate
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      .map((item) => ({
+        shotId: summarizeUnknown(item.shotId) ?? undefined,
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : undefined,
+        title: summarizeUnknown(item.title) ?? undefined,
+        timeRange: summarizeUnknown(item.timeRange) ?? undefined,
+        durationSeconds: Number.isFinite(Number(item.durationSeconds)) ? Number(item.durationSeconds) : undefined,
+        script: summarizeUnknown(item.script) ?? undefined,
+        imagePrompt: summarizeUnknown(item.imagePrompt) ?? undefined,
+        videoPrompt: summarizeUnknown(item.videoPrompt) ?? undefined,
+      }));
+  }
+  return [];
+}
+
+function StoryboardPromptCard({ node, locale }: { node: ProductionFlowNode; locale?: ProductionLocale }) {
+  const isThai = locale === "th";
+  const items = storyboardPromptItemsForNode(node);
+  if (!items.length) return null;
+  return (
+    <div className="rounded-lg border border-sky-100 bg-white p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-normal text-sky-700">{isThai ? "Storyboard card" : "Storyboard card"}</div>
+        <Badge variant="outline" className="bg-sky-50 text-[10px] text-sky-700">{items.length} prompts</Badge>
+      </div>
+      <div className="mt-2 grid gap-2">
+        {items.map((item, index) => (
+          <div key={`${item.shotId ?? item.title ?? "shot"}-${index}`} className="rounded-md border border-slate-100 bg-slate-50 p-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline" className="bg-white text-[10px]">{item.timeRange ?? `${item.durationSeconds ?? 10}s`}</Badge>
+              <div className="min-w-0 flex-1 break-words text-xs font-semibold text-slate-900">{item.title ?? `Shot ${index + 1}`}</div>
+            </div>
+            {item.script ? (
+              <div className="mt-2 rounded bg-white p-2 text-[11px] leading-5 text-slate-700">
+                <span className="font-semibold text-slate-900">{isThai ? "บท/เสียง" : "Script"}: </span>
+                {item.script}
+              </div>
+            ) : null}
+            <div className="mt-2 grid gap-2">
+              {item.imagePrompt ? (
+                <div className="rounded bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Prompt ภาพ" : "Image prompt"}</div>
+                  <div className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-700">{item.imagePrompt}</div>
+                </div>
+              ) : null}
+              {item.videoPrompt ? (
+                <div className="rounded bg-white p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Prompt วิดีโอ" : "Video prompt"}</div>
+                  <div className="mt-1 max-h-24 overflow-y-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-slate-700">{item.videoPrompt}</div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function nodeRunScopeLabel(node: ProductionFlowNode, locale?: ProductionLocale): string {
   const isThai = locale === "th";
   const surface = nodeSurface(node);
@@ -548,6 +628,7 @@ function ProductionFlowCanvasInner({
   onAssetAssignToNode,
   onConfigureNode,
   onDeleteNode,
+  onResetCanvas,
   onRunNode,
   onCancelNodeExecution,
   onRetryNode,
@@ -702,18 +783,50 @@ function ProductionFlowCanvasInner({
   }, []);
 
   const resetCanvasNodes = useCallback(() => {
-    if (!flowNodes.length || !onDeleteNode) return;
+    if (!flowNodes.length || (!onResetCanvas && !onDeleteNode)) return;
     const confirmed = window.confirm(
       isThai
         ? `ต้องการลบ node ทั้งหมด ${flowNodes.length} รายการออกจาก canvas ใช่ไหม? การกระทำนี้ย้อนกลับไม่ได้`
         : `Remove all ${flowNodes.length} nodes from the canvas? This cannot be undone.`,
     );
     if (!confirmed) return;
-    for (const node of flowNodes) onDeleteNode(node.id);
+    if (onResetCanvas) onResetCanvas();
+    else for (const node of flowNodes) onDeleteNode?.(node.id);
     setListConnectSourceId(null);
     setFloatingDetailOpen(false);
     onSelectNode?.(null);
-  }, [flowNodes, isThai, onDeleteNode, onSelectNode]);
+  }, [flowNodes, isThai, onDeleteNode, onResetCanvas, onSelectNode]);
+
+  const deleteNodesById = useCallback((nodeIds: string[]) => {
+    if (!onDeleteNode) return;
+    const uniqueNodeIds = Array.from(new Set(nodeIds.filter(Boolean)));
+    if (!uniqueNodeIds.length) return;
+    for (const nodeId of uniqueNodeIds) onDeleteNode(nodeId);
+    if (selectedFlowNode && uniqueNodeIds.includes(selectedFlowNode.id)) {
+      setFloatingDetailOpen(false);
+      onSelectNode?.(null);
+    }
+  }, [onDeleteNode, onSelectNode, selectedFlowNode]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      if (!selectedFlowNode || !onDeleteNode) return;
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isTypingTarget = Boolean(
+        target?.isContentEditable
+        || tagName === "input"
+        || tagName === "textarea"
+        || tagName === "select",
+      );
+      if (isTypingTarget) return;
+      event.preventDefault();
+      deleteNodesById([selectedFlowNode.id]);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteNodesById, onDeleteNode, selectedFlowNode]);
 
   const renderDrawerItem = (item: (typeof nodeKinds)[number]) => {
     const isDeferred = item.adapterStatus === "deferred";
@@ -1211,6 +1324,8 @@ function ProductionFlowCanvasInner({
                 onNodeClick={(_event, node) => selectNodeAndOpenDetail(node.id)}
                 onPaneClick={() => selectNodeAndOpenDetail(null)}
                 onNodeDragStop={onNodeDragStop}
+                onNodesDelete={(deletedNodes) => deleteNodesById(deletedNodes.map((node) => node.id))}
+                deleteKeyCode={["Backspace", "Delete"]}
                 proOptions={{ hideAttribution: true }}
               >
                 <Background color="transparent" gap={24} />
@@ -1311,6 +1426,7 @@ function ProductionFlowCanvasInner({
                   <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-2 text-sm">
                     {nodeDetailTab === "overview" ? (
                       <div className="grid gap-2">
+                        <StoryboardPromptCard node={selectedFlowNode} locale={locale} />
                         {nodeDetailRows(selectedFlowNode, locale).length ? nodeDetailRows(selectedFlowNode, locale).map((row) => (
                           <div key={row.label} className="min-w-0 rounded-md border border-slate-100 bg-white px-2 py-1.5">
                             <div className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{row.label}</div>

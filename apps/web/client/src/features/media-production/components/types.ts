@@ -67,6 +67,7 @@ export interface ProductionCanvasCallbacks {
   onAssetAssignToNode?: (target: ProductionAssetTarget) => void;
   onSaveNodeConfig?: (draft: ProductionNodeConfigDraft) => void;
   onDeleteNode?: (nodeId: string) => void;
+  onResetCanvas?: () => void;
   onConfigureNode?: (nodeId: string) => void;
   onRunNode?: (nodeId: string) => void;
   onRunBatch?: () => void;

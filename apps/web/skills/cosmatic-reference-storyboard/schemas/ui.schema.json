@@ -10,6 +10,7 @@
     "storyboard_layout_preset",
     "aspect_ratio",
     "cinematic_style",
+    "storyboard_guide",
     "scene_descriptions"
   ],
   "generation_mode": {
@@ -51,6 +52,10 @@
   "cinematic_style": {
     "ui:widget": "select",
     "ui:help": "เลือก auto เพื่อให้ระบบเลือกสไตล์จาก reference"
+  },
+  "storyboard_guide": {
+    "ui:widget": "textarea",
+    "ui:help": "ไม่บังคับ ใช้รับ Storyboard จาก Video Shot เพื่อให้ prompt ทุกเฟรมสอดคล้องกับลำดับเรื่อง จังหวะ ภาพ และการใช้สินค้า"
   },
   "scene_descriptions": {
     "ui:widget": "textarea"

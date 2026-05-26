@@ -1,188 +1,203 @@
 # Orchestra Plan
 
-## Media Studio Marketplace Story Planning — 2026-05-24
-
-### Task
-Make Media Studio's "Plan / Suggest 4 concepts" action generate product-aware plans from marketplace insight storyOptions, synthesize and persist missing storyOptions when needed, and support regeneration with varied storytelling structures, tones, and hooks.
-
-### Classification
-- scope: large
-- risk: medium
-- affected_domains: frontend Media Studio workflow, shared marketplace insight payload usage, skills prompt contract, tRPC marketplace insight sync, tests
-- estimated_file_count: 5
-- chosen_route: multi-agent-waves with inline execution fallback
-- task_summary: Use marketplace storyOptions as product truth-aware planning inputs, fall back to LLM concept synthesis when incomplete, persist synthesized handoff data, and let users regenerate varied concept sets.
-- bug_route: false
-- parallel_default: true
-- planned_agents: []
-- dispatch_preference: inline-fallback because the available sub-agent tool requires explicit sub-agent/delegation permission beyond the Orchestra invocation.
-
-### Activation Decision
-- Explicit skill requested: orchestra.
-- SocratiCode status: active/green and used before targeted code reads.
-- Additional product references provided by user: common story structures, emotional tones, short-video hook techniques and formulas.
-
-### Impact Preflight
-- Direct change candidates:
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/MediaStudio.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/production-director.e2e.test.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/skills/media-production-storyboard-planner/skill.md
-- Risk-sensitive surfaces:
-  - Existing `marketplaceCapture.syncInsight` mutation is reused to persist synthesized `storytelling_handoff` payloads; no new auth surface planned.
-  - Planner must not override verified product truth or invent unsupported claims.
-- Sequential workstreams:
-  - Extend concept/taxonomy contract before UI and planner call updates.
-  - Update option synthesis before workflow generation consumes selected concepts.
-  - Update UI/test after behavior is stable.
-- Confidence: medium-high. Unknowns are limited to exact LLM output shape from `executeCustomSkill`; deterministic fallback will remain available.
-
-### Wave Plan
-- Wave 1: Extend story concept types and local taxonomy-driven generation.
-- Wave 2: Add LLM concept synthesis fallback and sync synthesized storytelling handoff back through existing marketplace insight sync.
-- Wave 3: Add regenerate UI and tests; update planner skill instructions.
-- Wave 4: Run targeted tests/typecheck gates; no build unless explicitly requested.
-
 ## Task
-Close the important Feature 116 Production Director implementation gaps found in the audit and update the spec/plans so MVP vs full-scope acceptance is aligned.
+Plan the Production Director enhancement so Media Studio shows four separate plan/storyboard concept cards, supports card-level regeneration, can generate realistic infographic previews inside each card, offers fullscreen preview, and stores project-level default image/video media models for downstream generation.
 
-## Classification
-- scope: large
-- risk: high
-- affected_domains: shared contracts, backend tRPC/services, tenant/permission tests, frontend Production UI, feature specs/plans, verification evidence
-- estimated_file_count: 12
-- chosen_route: multi-agent-waves with security-gate overlay
-- task_summary: Add downstream import contract/route coverage, strengthen release-gate tests and UI planning affordances, and reconcile Feature 116 spec/plan artifacts.
-- bug_route: false
-- parallel_default: true
-- planned_agents: backend-test-security explorer, frontend-spec explorer, conductor implementation/integration
-- dispatch_preference: parallel read-only explorers plus conductor-owned implementation
+## Task Classification
+- Scope: large
+- Risk: medium
+- Affected domains: frontend Media Studio UI, Production Director state, skill/LLM planner contract, media generation integration, tests
+- Estimated file count: 8-12
+- Chosen route: planning-only now; implementation should use visual-ui-flow + multi-agent waves or deep-plan-chain against existing Feature 116 artifacts
+- Bug route: false
+- Classification notes: This is a user-facing workflow extension over an existing Production Director implementation. It likely touches React UI, Media Studio orchestration state, shared production types, planner skill contract, media generation task wiring, and e2e/component tests.
 
-## Activation Decision
-- Explicit skill requested: orchestra.
-- Intent signals: "ปรับปรุงแก้ไขช่องว่างที่สำคัญทั้งหมด", "แก้ไข spec", "แก้ไขแผนให้สอดคล้อง" indicate multi-step cross-domain implementation and planning alignment.
-- SocratiCode status: active/green and used before targeted reads.
+## SocratiCode Preflight
+- Status: active and green for `/home/dev/projects/SmartSpecPro`.
+- Relevant files/symbols found:
+  - `apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx`
+  - `apps/web/client/src/pages/MediaStudio.tsx`
+  - `apps/web/client/src/features/media-production/production-director.e2e.test.tsx`
+  - `apps/web/skills/media-production-storyboard-planner/skill.md`
+  - `specs/feature/116-production-director-node-canvas/spec.md`
+  - `specs/feature/114-gemini-omni-suite-media-assets/sections/section-09-media-studio-production-director.md`
+- Blast radius:
+  - `ProductionWorkspace.tsx`: no reverse dependents reported by SocratiCode.
+  - `MediaStudio.tsx`: no reverse dependents reported by SocratiCode.
+- Current dirty work detected before planning:
+  - `apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx`
+  - `apps/web/client/src/features/media-production/production-director.e2e.test.tsx`
+  - `apps/web/client/src/pages/MediaStudio.tsx`
 
-## Impact Preflight
-- Directly changed candidates:
-  - /home/dev/projects/SmartSpecPro/apps/web/shared/mediaProduction.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/services/productionSpaceService.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/mediaProduction.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/services/__tests__/productionSpaceService.test.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/__tests__/mediaProduction.execution.test.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/shared/mediaProduction.test.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ContextAssetBoard.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionFlowCanvas.tsx
-  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/spec.md
-  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md
-  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md
-- SocratiCode impact:
-  - shared mediaProduction.ts impacts productionLegacyCompatibilityService.ts and shared tests.
-  - mediaProduction router has no static callers, but it is a public tRPC surface and security-sensitive.
-- Risk-sensitive surfaces:
-  - tRPC procedure additions and router tests.
-  - tenant/user ownership and collaborator permissions.
-  - downstream import should not overwrite locked shots/node configs.
-  - export redaction must continue excluding sensitive data.
-- Parallelizable workstreams:
-  - backend/test/security read-only analysis.
-  - frontend/spec read-only analysis.
-  - conductor implementation over shared/backend, then UI/spec integration.
-- Sequential workstreams:
-  - shared contract changes before router/service/UI consumers.
-  - backend import service before router and tests.
-  - UI consumes shared contract after contract settles.
-  - spec/plan alignment after implementation shape is known.
-- Confidence: medium-high. Unknowns are limited to existing test helper behavior and exact compile fallout.
+## Existing Fit
+- `ProductionWorkspace` already has a `ProductionStoryConceptWizardState` with four options and a combined `Regenerate 4 concepts` action.
+- `MediaStudio.runProductionPlanAndVerify` already calls `media-production-storyboard-planner` with `mode: "marketplace_story_concept_synthesis"` and requires four story dimensions:
+  - `story_option:problem_solution`
+  - `story_option:objection_trust`
+  - `story_option:quick_demo`
+  - `story_option:use_case_moment`
+- `MediaStudio` already stores image/video/audio selected models in `ProductionGoal.tabSnapshots.selectedModels`.
+- Generated workflow nodes currently default image/video generation snapshots from `tabStates.image.selectedModel || "auto"` and `tabStates.video.selectedModel || "auto"`.
 
-## Wave Plan
+## Product Design
 
-### Wave 1: Contract + Backend Foundation
-- Add downstream import input/result contracts.
-- Add first-class planning selector/context pack and deferred node catalog metadata.
-- Implement downstream import service and tRPC procedure.
-- Add service/router tests for conflict, locked configs, and access guard paths.
+### User Experience
+Production Director should show a "Concept Board" after planning:
 
-### Wave 2: Frontend + Spec Alignment
-- Expose project header search/open/new affordances and planning skill/model panel.
-- Make context asset board clearly support character/provider search.
-- Add deferred/full node catalog metadata in UI without enabling full adapters.
-- Update spec/Section 12/Section 16/implementation plan notes to align MVP vs full scope.
+1. Four cards render as first-class alternatives, not a compact button grid.
+2. Each card contains:
+   - concept title and angle
+   - hook
+   - storyboard timeline
+   - key selling/proof points
+   - risk/readiness badges
+   - infographic preview area
+   - actions: select, regenerate this card, generate infographic, fullscreen
+3. Regenerating one card preserves the other three cards and uses the card dimension as the LLM target.
+4. Generating infographic creates a visual summary for that card using the existing image generation system, with a prompt that asks for a beautiful realistic infographic that helps the user understand the concept.
+5. Fullscreen opens a focused review modal/lightbox with the infographic, storyboard timeline, prompt summary, risk badges, and create-workflow action.
+6. The project-level model panel should include default image model and default video model selectors before workflow generation. These values seed every generated image/video node unless a node is manually overridden.
 
-### Wave 3: Gates + Convergence
-- Run targeted Feature 116 tests.
-- Run TypeScript check if feasible.
-- Run post-completion review convergence and security-sensitive route review.
+### UX Acceptance
+- Users can understand the four creative directions without reading raw JSON.
+- A user can regenerate only one weak card without losing the other three.
+- A user can generate or regenerate a card infographic independently.
+- A user can inspect the concept fullscreen before selecting it.
+- The selected project image/video defaults are visible before plan creation and are persisted with the Production project.
+- Generated nodes use the project defaults, not an unrelated currently active tab model.
 
----
+## Data Contract Plan
 
-## UI/UX Review Session — 2026-05-23
+### Extend `ProductionStoryConceptOption`
+Add optional visual generation fields:
 
-### Task
-Audit remaining visual quality, standards consistency, and UX gaps in the Feature 116 Production Director / Media Studio UI after the latest canvas and layout polish.
+```ts
+infographicPrompt?: string;
+infographicTaskId?: string;
+infographicUrl?: string;
+infographicStatus?: "idle" | "prompt_ready" | "generating" | "ready" | "failed";
+infographicError?: string;
+infographicGeneratedAt?: string;
+infographicModelId?: string;
+```
 
-### Classification
-- scope: medium
-- risk: low
-- affected_domains: frontend React UI, Tailwind/shadcn styling, responsive browser evidence, accessibility evidence
-- estimated_file_count: 6
-- chosen_route: visual-ui-flow
-- task_summary: Review the Production Director UI for remaining visual polish, UX consistency, responsive, accessibility, and canvas workflow gaps.
-- bug_route: false
-- parallel_default: true
-- planned_agents: visual-ux-reviewer, accessibility-reviewer, responsive-reviewer
-- dispatch_preference: parallel read-only reviewer agents plus conductor browser/code evidence integration
+### Add Project Generation Defaults
+Prefer a small shared type under `@shared/mediaProduction`:
 
-### Impact Preflight
-- SocratiCode status: active/green and used before targeted shell reads.
-- Direct review targets:
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/MediaStudio.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionFlowCanvas.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ContextAssetBoard.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/NodeConfigPanel.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/production-director-browser.spec.ts
-- Risk-sensitive surfaces: none for read-only review; no auth, server, DB, or provider-credit behavior changes planned in this review pass.
-- Parallelizable workstreams:
-  - Visual hierarchy / workflow clarity review.
-  - Accessibility / focus / labeling review.
-  - Responsive / overflow / canvas scroll review.
-- Sequential workstreams:
-  - Browser evidence command after reviewers and local code inspection, so final findings can reference current runtime artifacts.
-- Confidence: medium-high. Unknowns are limited to whether the deterministic browser fixture fully reflects the live route visual density.
+```ts
+generationDefaults?: {
+  imageModelId?: string;
+  videoModelId?: string;
+  imageModelSource?: "project_default" | "media_tab" | "system_default";
+  videoModelSource?: "project_default" | "media_tab" | "system_default";
+};
+```
 
-### UI/UX Contract
-- Target User / JTBD: media operator creating an AI production plan, reviewing node flow, configuring nodes, and moving safely to downstream media tools without spending generation credits early.
-- Surface Inventory: Media Studio header/tab shell; Production workspace project header; planning/model context panel; journey/forms/metrics; React Flow canvas/drawer/list fallback; Node Config panel; Context Asset/Product Evidence surfaces; History/Library side rail interaction with the workspace.
-- Component Map: ProductionWorkspace owns page composition and task actions; ProductionFlowCanvas owns canvas, drawer, node list fallback, and edge mode; ContextAssetBoard owns reference/search attachment; NodeConfigPanel owns node field editing and save-to-node workflow.
-- State Matrix: loading, empty, planner failed, partial, schema invalid, conflict, permission denied, disabled/deferred, selected, hover, focus states must remain visible and non-color-only where practical.
-- Responsive Matrix: required mobile 390x844, tablet 768x1024, desktop 1440x900; extended dense/canvas viewports 360x800, 1024x768, 1280x800.
-- Accessibility Acceptance: keyboard path reaches title, goal, primary actions, canvas list fallback, node actions, config panel, and browser evidence icon controls; focus is visible; labels/accessible names are present; dark/light readability and reduced motion are verified where tests support them.
-- Visual Direction: Enterprise Calm / Technical Precision; dense operational UI, restrained surfaces, semantic tokens where possible, one clear primary action per state, no marketing hero treatment.
-- Copy Contract: Thai/English labels should stay concise and action-oriented; internal/provider framework details should be hidden from normal users; warnings must state user action where possible.
-- Browser Evidence Required: `npm --prefix apps/web run e2e:production-director-browser` plus component gate if code changes follow.
+Persist it in `ProductionSpace` or `ProductionPlanningSelection.contextPack` and mirror it in `ProductionGoal.tabSnapshots.selectedModels`.
 
-### Wave Plan
-- Wave 1: Parallel read-only review agents for visual UX, accessibility, and responsive/canvas behavior.
-- Wave 2: Conductor integrates agent findings with targeted code inspection and browser evidence artifacts.
-- Wave 3: Produce severity-ranked UI/UX review report and backlog-ready recommendations; no code edits unless user requests a fix pass.
+### Planner Skill Output
+Ask `media-production-storyboard-planner` to return, per concept:
 
----
+```json
+{
+  "infographic_prompt": "Create a polished realistic infographic...",
+  "visual_summary": "...",
+  "key_visual_elements": ["..."],
+  "storyboard_thumbnail_notes": "..."
+}
+```
 
-## UI/UX Fix Pass — 2026-05-23
+The prompt must prohibit unsupported product claims and require visible evidence-safe language.
 
-### Task
-Implement the UI/UX review recommendations for Feature 116 Production Director and align browser evidence/spec notes with the completed fixes.
+## Implementation Waves
 
-### Completed Waves
-- Wave 1: Workspace command hierarchy and copy cleanup in `MediaStudio.tsx` / `ProductionWorkspace.tsx`.
-- Wave 2: Canvas, node drawer/list, Context Asset, and Node Config UX/accessibility improvements.
-- Wave 3: Browser evidence expansion for 360x800 and 1024x768 plus scoped live-route axe/layout/canvas-scroll gates.
-- Wave 4: Verification and documentation alignment.
+### Wave 1: Types and State Contract
+- Extend shared production types for concept infographic fields and project generation defaults.
+- Update local normalizers/parsers in `MediaStudio.tsx` to preserve these fields.
+- Add helper selectors for default image/video model resolution:
+  - project default
+  - selected media tab model
+  - system/model auto fallback
 
-### Acceptance
-- Production surface keeps one clear primary action, lifecycle actions are secondary/overflow, and project picker is no longer a duplicate command panel.
-- Canvas viewport does not trap page scrolling, including authenticated `/media-studio` route evidence.
-- Raw JSON node config is advanced-only, while operator-facing settings remain visible.
-- Browser evidence passes 24/24 across fixture and live-route coverage.
+### Wave 2: UI Concept Cards
+- Refactor the existing story wizard card grid into a dedicated `ProductionConceptCard` or `ProductionConceptBoard` component.
+- Each card owns independent actions:
+  - `onRegenerateStoryConcept(conceptId)`
+  - `onGenerateConceptInfographic(conceptId)`
+  - `onOpenConceptPreview(conceptId)`
+- Add loading/failed/ready visual states for infographic preview.
+- Add fullscreen dialog using existing dialog/lightbox patterns.
+
+### Wave 3: LLM and Image Generation Wiring
+- Add card-level regeneration path in `runProductionPlanAndVerify` or a sibling callback.
+- For infographic generation, use the existing media image generation path instead of adding a new provider.
+- Build prompt from concept + storyboard + product truth:
+  - "Create a beautiful realistic infographic with photorealistic supporting imagery..."
+  - include card title, hook, timeline, product-safe proof points, audience, platform
+  - ask for readable visual hierarchy and no fabricated claims
+- Save resulting `taskId`/URL back onto the matching concept card.
+
+### Wave 4: Project Default Media Models
+- Add image/video model selectors in the planning/model context panel.
+- Default values should come from current Media Studio selected image/video models, but become explicit project-level defaults once saved.
+- Use these defaults when creating generated image/video node `configSnapshot.config.model`.
+- Add validation so image nodes cannot accidentally receive a video model and video nodes cannot receive an image model.
+
+### Wave 5: Tests and Browser Evidence
+- Update `production-director.e2e.test.tsx`:
+  - renders four card-style concepts
+  - regenerates one card only
+  - starts infographic generation for one card
+  - opens fullscreen preview
+  - project image/video defaults render and feed node config snapshots
+- Run TypeScript/Vitest checks for changed files.
+- For final implementation, run browser/visual checks at mobile 390x844, tablet 768x1024, desktop 1440x900.
+
+## UI/UX Contract
+
+### Target User / JTBD
+- Role: creator, marketer, product seller, video production operator
+- Goal: compare four creative directions quickly and choose the best concept before building a workflow
+- Entry point: Media Studio -> Production
+- Success outcome: selected concept has clear storyboard, visual idea, project default media models, and can generate a workflow safely
+
+### Surface Inventory
+| Surface | File/route | Change |
+|---|---|---|
+| Production Director | `ProductionWorkspace.tsx` | four concept cards, infographic preview, fullscreen modal, model defaults |
+| Media Studio orchestration | `MediaStudio.tsx` | card-level regeneration, image generation wiring, default model resolution |
+| Planner skill | `apps/web/skills/media-production-storyboard-planner/skill.md` | infographic prompt output contract |
+| Tests | `production-director.e2e.test.tsx` | card/action/model default coverage |
+
+### State Matrix
+| State | Expected UI | Verification |
+|---|---|---|
+| loading | card action spinner, disabled duplicate action | component test |
+| empty | no infographic preview, clear generate image action | component test |
+| error | card-level error and retry | component test |
+| success | image preview visible, fullscreen opens | component + browser |
+| disabled/focus/hover | keyboard focus visible, icon buttons labelled | a11y/browser |
+
+### Responsive Matrix
+| Viewport | Expected behavior | Evidence |
+|---|---|---|
+| mobile 390x844 | cards stack, actions remain reachable, fullscreen uses full viewport | browser screenshot |
+| tablet 768x1024 | two-column card grid where space allows | browser screenshot |
+| desktop 1440x900 | four cards fit without cramped text/overlap | browser screenshot |
+
+### Accessibility Acceptance
+- Keyboard path: tab through card actions, select, regenerate, generate image, fullscreen, close.
+- Focus visibility: every icon/action button has a visible focus ring.
+- Labels/semantics: card action buttons have accessible labels in Thai/English.
+- Contrast: infographic placeholders and badges must pass common contrast expectations.
+- Reduced motion: no required animation for understanding.
+
+## Quality Gates
+- `cd apps/web && pnpm test -- production-director.e2e.test.tsx`
+- `cd apps/web && pnpm check`
+- Browser/manual evidence for `/media-studio` Production tab at mobile/tablet/desktop after implementation.
+
+## Open Product Question
+Should infographic generation happen automatically after the four concepts are created, or should each card wait for the user to click "Generate infographic" to control credits?
+
+Recommended default: manual per-card generation first, with an optional "Generate all 4" action later.

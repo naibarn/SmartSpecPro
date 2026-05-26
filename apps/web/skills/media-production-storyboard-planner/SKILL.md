@@ -15,3 +15,12 @@ execution_mode: llm-only
 # Media Production Storyboard Planner
 
 Create a reviewable plan package. Do not submit provider jobs or reserve credits.
+
+When creating four story concepts for Production Director, return visual support fields for each concept:
+
+- `visualSummary`
+- `keyVisualElements`
+- `storyboardThumbnailNotes`
+- `infographicPrompt`
+
+`infographicPrompt` must be suitable for the existing image generation system and should request a beautiful realistic infographic with photorealistic supporting imagery, readable storyboard/timeline sections, and no unsupported product claims.

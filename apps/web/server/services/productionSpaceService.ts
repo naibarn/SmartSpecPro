@@ -34,7 +34,7 @@ import {
   type ProductionSpace,
   type ProductionRunStatus,
 } from "../../shared/mediaProduction";
-import { adaptLegacyRunToProductionSpace } from "./productionLegacyCompatibilityService";
+import { adaptLegacyRunToProductionSpace, migrateProductionSpaceData, upgradeProductionSpaceSchema } from "./productionLegacyCompatibilityService";
 
 type Db = any;
 type ProductionSpaceSource = "space" | "legacy";
@@ -787,8 +787,12 @@ export async function getProductionSpace(params: {
   const access = await assertProductionRunAccess(params.db, params.tenantId, params.userId, params.productionRunId, "read");
   const latest = access.latest;
   if (latest) {
+    const upgraded = upgradeProductionSpaceSchema(latest.space);
+    if (!upgraded.ok) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "production_space_schema_unsupported", cause: upgraded });
+    }
     return {
-      space: latest.space as ProductionSpace,
+      space: upgraded.space,
       version: Number(latest.version),
       source: "space",
       archivedAt: toIsoOrNull(latest.archivedAt),
@@ -843,8 +847,8 @@ export async function saveProductionSpace(params: {
   const changedFields = params.changedFields ?? [];
   const shouldSanitizeClientFields = !params.changeKind || ["space", "brief", "shot", "layout"].includes(params.changeKind);
   const spaceInput = shouldSanitizeClientFields
-    ? sanitizeClientWritableProductionSpace(params.space, latest?.space)
-    : params.space;
+    ? sanitizeClientWritableProductionSpace(migrateProductionSpaceData(params.space), latest?.space)
+    : migrateProductionSpaceData(params.space);
   const approvalState = applyProductionApprovalInvalidation(spaceInput, params.userId, params.changeKind, changedFields);
   const metrics = ensureMetrics(spaceInput);
   if (approvalState?.status === "invalidated" && spaceInput.approvalState?.status === "approved") {

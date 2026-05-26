@@ -1,0 +1,225 @@
+{
+  "project": {
+    "project_name": "รีวิวโต๊ะข้างเตียง",
+    "production_goal": "ทำวิดีโอรีวิวสินค้าโต๊ะข้างเตียงนอน",
+    "workflow_status": "Production",
+    "planner_name": "Media Production Storyboard Planner"
+  },
+  "input_capture": {
+    "content_type": "Storyboard หลายวิดีโอ",
+    "target_group": "คนแต่งบ้าน / ของใช้ในบ้าน",
+    "platform": "TikTok",
+    "duration": "30s",
+    "aspect_ratio": "9:16",
+    "language": "ไทย",
+    "product_truth_brand_truth": "ภาพสินค้าต้องเหมือนภาพจริงที่แนบไป",
+    "creative_direction": "โทนสะอาด อบอุ่น เป็นระเบียบ เห็นการใช้งานจริงในห้องนอน",
+    "constraints": "ห้ามเปลี่ยนรูปทรงสินค้า ห้ามใส่ฟีเจอร์ที่ไม่มีในภาพ ห้ามใช้ฉากรกเกินไป",
+    "targets": [
+      "รีวิวสตอรี่บอร์ด",
+      "ตัดต่อวิดีโอ"
+    ],
+    "selected_node_or_concept_card": "ปัญหา → ทางออก",
+    "hook_seed": "โต๊ะข้างเตียงรก วางของจำเป็นไม่เป็นที่"
+  },
+  "concept_direction": {
+    "main_concept": "รีวิวโต๊ะข้างเตียงแบบปัญหา → ทางออก",
+    "story_theme": "จัดระเบียบห้องนอนให้หยิบของง่ายขึ้น",
+    "narrative_purpose": "problem_solution",
+    "story_angle": "เริ่มจากปัญหาข้างเตียงรก แล้วเปลี่ยนเป็นมุมข้างเตียงที่เป็นระเบียบด้วยโต๊ะขนาดเล็ก",
+    "emotional_tone": [
+      "relief",
+      "practical",
+      "friendly",
+      "clean"
+    ],
+    "key_message": "โต๊ะข้างเตียงช่วยให้ของจำเป็นเป็นที่ หยิบง่าย และทำให้ห้องดูเป็นระเบียบขึ้น",
+    "visual_theme_keywords": [
+      "ห้องนอน",
+      "จัดระเบียบ",
+      "โต๊ะข้างเตียง",
+      "รีวิวสินค้า",
+      "TikTok"
+    ],
+    "story_arc": [
+      "Hook",
+      "Problem",
+      "Solution",
+      "Proof",
+      "CTA"
+    ],
+    "must_include_ideas": [
+      "โชว์ความรกก่อนใช้",
+      "โชว์สินค้าเหมือนภาพจริง",
+      "โชว์การวางหนังสือ แก้วน้ำ นาฬิกา หรือของใช้ข้างเตียง"
+    ],
+    "avoid_ideas": [
+      "อย่าเปลี่ยนรูปทรงสินค้า",
+      "อย่าใช้ฉากที่ไม่เกี่ยวกับห้องนอน"
+    ]
+  },
+  "reference_assets": {
+    "enabled": true,
+    "reference_usage_policy": "must_visibly_integrate_all",
+    "visual_source_of_truth_policy": {
+      "enabled": true,
+      "primary_source": "attached_product_images",
+      "strictness": "strict",
+      "preserve_from_images": [
+        "silhouette",
+        "structure",
+        "visible part count",
+        "proportions",
+        "color/material",
+        "surface finish",
+        "all product-specific details visible in the reference images"
+      ],
+      "allowed_changes": [
+        "background",
+        "lighting",
+        "camera framing",
+        "infographic layout",
+        "text overlay",
+        "non-product props that do not alter or hide the product"
+      ],
+      "forbidden_changes": [
+        "generic substitute product",
+        "different model or variant",
+        "changed shape",
+        "changed proportions",
+        "changed material or color",
+        "extra unsupported features",
+        "missing visible product details"
+      ],
+      "conflict_resolution": "If text and product images conflict on visual attributes, follow the product images and mention the conflict in handoff_notes."
+    },
+    "assets": [
+      {
+        "asset_id": "C1",
+        "asset_type": "character_image",
+        "label": "Presenter portrait",
+        "usage_role": "identity_reference",
+        "must_appear_in_sections": [
+          "hook",
+          "solution_scene",
+          "closing_frame"
+        ],
+        "must_preserve": [
+          "professional female presenter look",
+          "grey blazer",
+          "white turtleneck",
+          "calm confident expression"
+        ],
+        "can_modify": [
+          "pose",
+          "crop",
+          "lighting"
+        ],
+        "notes": "Use as presenter if the final output includes character."
+      },
+      {
+        "asset_id": "S1",
+        "asset_type": "background_scene_image",
+        "label": "Warm bedroom / dressing room scene",
+        "usage_role": "background_scene_reference",
+        "must_appear_in_sections": [
+          "problem_scene",
+          "solution_scene",
+          "mood_board"
+        ],
+        "must_preserve": [
+          "warm daylight",
+          "clean luxury bedroom atmosphere",
+          "cream and gold tone"
+        ],
+        "can_modify": [
+          "camera angle",
+          "product placement"
+        ]
+      },
+      {
+        "asset_id": "P1",
+        "asset_type": "product_image",
+        "label": "Greenforst bedside table product 1",
+        "usage_role": "hero_product_reference",
+        "must_appear_in_sections": [
+          "solution_scene",
+          "hero_panel",
+          "product_callouts"
+        ],
+        "must_preserve": [
+          "use this attached product image as the visual source of truth",
+          "preserve the exact visible shape, shelf/part structure, proportions, color/material, and product details from the image",
+          "do not substitute a similar generic bedside table"
+        ],
+        "can_modify": [
+          "lighting",
+          "background placement"
+        ]
+      },
+      {
+        "asset_id": "P2",
+        "asset_type": "product_image",
+        "label": "Greenforst bedside table product 2",
+        "usage_role": "hero_product_reference",
+        "must_appear_in_sections": [
+          "proof_panel",
+          "product_callouts",
+          "closing_frame"
+        ],
+        "must_preserve": [
+          "use this attached product image as the visual source of truth",
+          "preserve the exact visible product geometry, shelf/part structure, proportions, color/material, and details from the image",
+          "do not substitute a similar generic bedside table"
+        ],
+        "can_modify": [
+          "crop",
+          "angle"
+        ]
+      }
+    ]
+  },
+  "product_truth": {
+    "product_name": "Greenforst โต๊ะวางของข้างเตียง",
+    "category": "ของใช้ในบ้าน / เฟอร์นิเจอร์จัดระเบียบ",
+    "main_features": [
+      "โต๊ะข้างเตียง",
+      "ชั้นวางหลายชั้น",
+      "ใช้วางของจำเป็นข้างเตียง"
+    ],
+    "benefits": [
+      "ลดความรก",
+      "หยิบของง่าย",
+      "ทำให้ห้องดูเป็นระเบียบ"
+    ],
+    "proof_points": [
+      "ต้องเหมือนภาพสินค้าจริงที่แนบ"
+    ],
+    "price_or_offer": "",
+    "brand_personality": "ใช้งานง่าย คุ้มค่า เป็นมิตรกับบ้าน",
+    "claims_to_avoid": [
+      "ห้ามอ้างสรรพคุณเกินจริง",
+      "ห้ามบอกยอดขายถ้าไม่มี evidence"
+    ]
+  },
+  "storyboard_request": {
+    "shot_count_or_range": "5 shots",
+    "timing_structure": "0-5s Hook, 5-12s Problem, 12-20s Solution, 20-26s Proof, 26-30s CTA",
+    "required_scenes": [
+      "hook ห้องนอนรก",
+      "ปัญหาข้างเตียงไม่มีที่วางของ",
+      "โชว์โต๊ะ",
+      "จัดของลงชั้น",
+      "before/after"
+    ],
+    "cta": "ดูรายละเอียดหรือสั่งซื้อได้ที่หน้าร้าน"
+  },
+  "output": {
+    "output_type": "full_plan",
+    "platform": "TikTok",
+    "aspect_ratio": "9:16",
+    "language": "ไทย",
+    "include_negative_prompt": true,
+    "include_input_usage_map": true
+  }
+}

@@ -106,6 +106,12 @@ function buildSpace(version = 1): ProductionSpace {
       feature116RunOneShot: true,
       feature116BatchExecution: false,
     },
+    generationDefaults: {
+      imageModelId: "image-default",
+      videoModelId: "video-default",
+      imageModelSource: "project_default",
+      videoModelSource: "project_default",
+    },
     updatedAt: baseDate.toISOString(),
   };
 }
@@ -318,6 +324,10 @@ describe("productionSpaceService", () => {
         productionRunId: "run-116",
         version: 3,
         brief: { summary: "Production Director canvas" },
+        generationDefaults: {
+          imageModelId: "image-default",
+          videoModelId: "video-default",
+        },
       });
       expect(upgraded.space.flowNodes[0].configSnapshot?.snapshotId).toBe("config-1");
       expect(upgraded.space.downstreamResultRecords?.[0]?.recordId).toBe("downstream-1");
@@ -330,6 +340,51 @@ describe("productionSpaceService", () => {
       schemaVersion: "9.0.0",
       preservedInput: future,
     });
+  });
+
+  it("migrates oversized ProductionSpace warning fields on read", async () => {
+    const longWarning = `prompt payload ${"x".repeat(1_500)}`;
+    const dirtySpace: ProductionSpace = {
+      ...buildSpace(2),
+      warnings: [longWarning],
+      contextAssets: [{
+        ...buildSpace(2).contextAssets[0],
+        warnings: [{ raw: longWarning } as any],
+      }],
+      shots: [{
+        ...buildSpace(2).shots[0],
+        mustShow: [longWarning],
+        mustAvoid: [{ raw: longWarning } as any],
+      }],
+      flowNodes: [{
+        ...buildSpace(2).flowNodes[0],
+        readinessIssues: [longWarning],
+      }],
+      productEvidenceManifest: {
+        ...buildSpace(2).productEvidenceManifest!,
+        warnings: [longWarning],
+        products: [{
+          ...buildSpace(2).productEvidenceManifest!.products[0],
+          reviewNotes: [longWarning],
+        }],
+      },
+    };
+    const db = createDb({ spaces: [buildSpaceRow(dirtySpace)] });
+
+    const result = await getProductionSpace({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+    });
+
+    expect(result?.space.warnings?.[0]).toHaveLength(1_000);
+    expect(result?.space.contextAssets[0].warnings?.[0]).toHaveLength(1_000);
+    expect(result?.space.shots[0].mustShow?.[0]).toHaveLength(1_000);
+    expect(result?.space.shots[0].mustAvoid?.[0]).toHaveLength(1_000);
+    expect(result?.space.flowNodes[0].readinessIssues?.[0]).toHaveLength(1_000);
+    expect(result?.space.productEvidenceManifest?.warnings[0]).toHaveLength(1_000);
+    expect(result?.space.productEvidenceManifest?.products[0].reviewNotes?.[0]).toHaveLength(1_000);
   });
 
   it("falls back to the legacy run when ProductionSpace storage is not migrated yet", async () => {

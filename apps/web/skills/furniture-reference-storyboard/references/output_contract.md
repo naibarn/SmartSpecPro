@@ -15,7 +15,9 @@ Required storyboard behavior:
 
 Required furniture fidelity behavior:
 - Every prompt must include a product reference lock.
-- Preserve exact category, geometry, countable parts, material, color, finish, texture, hardware, support/base, scale, and physical markings from current product references.
+- Every prompt must include a product scale lock. Use numeric dimensions when supplied; otherwise infer visible scale class, height-width-depth relationship, physical aspect ratio, and visual bounding-box ratio from the product reference.
+- Preserve exact category, geometry, physical proportions, countable parts, material, color, finish, texture, hardware, support/base, scale, and physical markings from current product references.
+- Every product-visible storyboard frame must keep the same product footprint envelope, tier/shelf/drawer/cushion spacing, leg/post thickness, and class-level scale. Close-up frames may crop tighter but must not change the real product proportions.
 - Product references override environment references.
 - Environment references may provide room mood and architecture only.
 - Reject current-reference contamination from old uploads, previous generated outputs, unrelated people, unrelated rooms, travel, fashion, or beach scenes.
@@ -23,6 +25,9 @@ Required furniture fidelity behavior:
 Allowed plain-text shape:
 
 PRODUCT REFERENCE LOCK:
+...
+
+PRODUCT SCALE LOCK:
 ...
 
 STORYBOARD PROMPT:

@@ -439,6 +439,8 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onSelectStoryConcept = vi.fn();
     const onConfirmStoryConceptPlan = vi.fn();
     const onRegenerateStoryConcepts = vi.fn();
+    const onGenerateStoryConceptInfographic = vi.fn();
+    const onStoryboardClipDurationSecondsChange = vi.fn();
     const storyOption = {
       id: "problem-solution",
       title: "Fast Problem-Solution",
@@ -473,6 +475,16 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         onSelectStoryConcept={onSelectStoryConcept}
         onConfirmStoryConceptPlan={onConfirmStoryConceptPlan}
         onRegenerateStoryConcepts={onRegenerateStoryConcepts}
+        onGenerateStoryConceptInfographic={onGenerateStoryConceptInfographic}
+        generationDefaults={{ imageModelId: "image-default", videoModelId: "video-default", imageModelSource: "project_default", videoModelSource: "project_default" }}
+        imageModelOptions={[{ modelId: "image-default", name: "Default Image Model", provider: "test", isDefault: true }]}
+        videoModelOptions={[{ modelId: "video-default", name: "Default Video Model", provider: "test", isDefault: true }]}
+        planningModelMode="manual"
+        selectedPlanningModel="vision-thinking-model"
+        planningModelOptions={[{ modelId: "vision-thinking-model", name: "Vision Thinking Model", provider: "test", supportsThinking: true, supportsVision: true, contextLength: 1_000_000 }]}
+        storyboardClipDurationSeconds={10}
+        storyboardClipDurationOptions={[8, 10]}
+        onStoryboardClipDurationSecondsChange={onStoryboardClipDurationSecondsChange}
         storyConceptWizard={{
           status: "options_ready",
           selectedId: "problem-solution",
@@ -491,12 +503,152 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Choose a story concept before workflow generation");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Fast Problem-Solution");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("30s timeline");
+    expect(screen.getByLabelText("Planning model")).toHaveValue("vision-thinking-model");
+    expect(screen.getByLabelText("Default image generation model")).toHaveValue("image-default");
+    expect(screen.getByLabelText("Default video generation model")).toHaveValue("video-default");
+    expect(screen.getByLabelText("Storyboard seconds per video")).toHaveValue("10");
+    expect(screen.getByLabelText("Seconds per storyboard video")).toHaveValue("10");
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("3 videos/shots from 30s total ÷ 10s");
+    fireEvent.change(screen.getByLabelText("Seconds per storyboard video"), { target: { value: "8" } });
+    expect(onStoryboardClipDurationSecondsChange).toHaveBeenCalledWith(8);
     fireEvent.click(screen.getByRole("button", { name: /regenerate 4 concepts/i }));
-    expect(onRegenerateStoryConcepts).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId("production-story-option-proof-trust"));
+    expect(onRegenerateStoryConcepts).toHaveBeenCalledWith();
+    fireEvent.click(within(screen.getByTestId("production-story-option-proof-trust")).getByRole("button", { name: /^regenerate$/i }));
+    expect(onRegenerateStoryConcepts).toHaveBeenCalledWith("proof-trust");
+    fireEvent.click(within(screen.getByTestId("production-story-option-proof-trust")).getByRole("button", { name: /infographic/i }));
+    expect(onGenerateStoryConceptInfographic).toHaveBeenCalledWith("proof-trust");
+    fireEvent.click(within(screen.getByTestId("production-story-option-proof-trust")).getByRole("button", { name: /fullscreen preview/i }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Proof-Led Review");
+    fireEvent.click(screen.getByRole("button", { name: /close/i }));
+    fireEvent.click(within(screen.getByTestId("production-story-option-proof-trust")).getByRole("button", { name: /select concept/i }));
     expect(onSelectStoryConcept).toHaveBeenCalledWith("proof-trust");
     fireEvent.click(screen.getByRole("button", { name: /generate workflow from this concept/i }));
     expect(onConfirmStoryConceptPlan).toHaveBeenCalledWith("problem-solution");
+  });
+
+  it("shows story concept options after a production project exists", () => {
+    const storyOption = {
+      id: "problem-solution",
+      title: "Fast Problem-Solution",
+      angle: "Lead with the pain point, then show product proof.",
+      audience: "Marketplace shoppers",
+      painPoint: "Unsure whether the product fits the room.",
+      hook: "Tiny room, cleaner setup",
+      sellingPoints: ["Foldable", "Space saving"],
+      objectionsTrust: ["Use verified product evidence only"],
+      useCase: "Small bedroom organization",
+      sceneTimeline: [
+        { timeRange: "0-3s", title: "Hook", detail: "Open with the cramped room problem." },
+        { timeRange: "3-12s", title: "Problem", detail: "Show the before context." },
+        { timeRange: "12-23s", title: "Demo", detail: "Show the product in use." },
+        { timeRange: "23-30s", title: "CTA", detail: "Invite product detail review." },
+      ],
+      risks: [],
+      sourceSignals: ["Marketplace AI insight available"],
+    };
+    const emptySpace: ProductionSpace = {
+      schemaVersion: "1.0.0",
+      productionRunId: "fixture",
+      version: 1,
+      status: "draft",
+      brief: { summary: "" },
+      contextAssets: [],
+      shots: [],
+      flowNodes: [],
+      flowEdges: [],
+    };
+
+    render(
+      <ProductionWorkspace
+        title=""
+        status="draft"
+        summary=""
+        productionRunId="fixture"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        storyConceptWizard={{
+          status: "options_ready",
+          selectedId: "problem-solution",
+          options: [
+            storyOption,
+            { ...storyOption, id: "proof-trust", title: "Proof-Led Review" },
+            { ...storyOption, id: "quick-demo", title: "Quick Demo" },
+            { ...storyOption, id: "use-case-moment", title: "Use Case Moment" },
+          ],
+        }}
+        space={emptySpace}
+      />
+    );
+
+    expect(screen.queryByTestId("production-empty-state")).not.toBeInTheDocument();
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Choose a story concept before workflow generation");
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Storyboard");
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Proof-Led Review");
+  });
+
+  it("keeps infographic task state visible while queued or failed", () => {
+    const storyOption = {
+      id: "problem-solution",
+      title: "Fast Problem-Solution",
+      angle: "Lead with the pain point, then show product proof.",
+      audience: "Marketplace shoppers",
+      painPoint: "Unsure whether the product fits the room.",
+      hook: "Tiny room, cleaner setup",
+      sellingPoints: ["Foldable", "Space saving"],
+      objectionsTrust: ["Use verified product evidence only"],
+      useCase: "Small bedroom organization",
+      sceneTimeline: [
+        { timeRange: "0-3s", title: "Hook", detail: "Open with the cramped room problem." },
+        { timeRange: "3-12s", title: "Problem", detail: "Show the before context." },
+        { timeRange: "12-23s", title: "Demo", detail: "Show the product in use." },
+        { timeRange: "23-30s", title: "CTA", detail: "Invite product detail review." },
+      ],
+      risks: [],
+      sourceSignals: ["Marketplace AI insight available"],
+    };
+
+    render(
+      <ProductionWorkspace
+        title="Launch teaser"
+        status="plan_ready_for_review"
+        summary="Create a short product video using approved evidence only."
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        storyConceptWizard={{
+          status: "options_ready",
+          selectedId: "problem-solution",
+          options: [
+            {
+              ...storyOption,
+              infographicStatus: "queued",
+              infographicTaskId: "task-long-running-123",
+              infographicBackendTaskId: "backend-123",
+            },
+            {
+              ...storyOption,
+              id: "proof-trust",
+              title: "Proof-Led Review",
+              infographicStatus: "failed",
+              infographicTaskId: "task-failed-456",
+              infographicError: "Provider marked the task as failed",
+            },
+            { ...storyOption, id: "quick-demo", title: "Quick Demo" },
+            { ...storyOption, id: "use-case-moment", title: "Use Case Moment" },
+          ],
+        }}
+        space={featureSpace}
+      />
+    );
+
+    expect(within(screen.getByTestId("production-story-option-problem-solution")).getByText(/queued/i)).toBeInTheDocument();
+    expect(screen.getByText("Task task-long-running-123")).toBeInTheDocument();
+    expect(screen.getByText("Provider marked the task as failed")).toBeInTheDocument();
   });
 
   it("auto-selects the first actionable node and exposes readable canvas controls", async () => {
@@ -557,13 +709,49 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     );
 
     expect(screen.getByTestId("production-empty-state")).toBeInTheDocument();
-    expect(screen.queryByTestId("production-flow-canvas")).not.toBeInTheDocument();
+    expect(screen.getByTestId("production-flow-canvas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Production project title")).toBeDisabled();
+    expect(screen.getByLabelText("Production goal")).toBeDisabled();
+    expect(screen.getByRole("button", { name: /open or create a project first/i })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /open existing project/i }));
     fireEvent.click(screen.getByRole("button", { name: /new project/i }));
-    fireEvent.click(screen.getByRole("button", { name: /plan \/ suggest 4 concepts/i }));
     expect(onProjectSearchOpen).toHaveBeenCalledTimes(1);
     expect(onNewProject).toHaveBeenCalledTimes(1);
-    expect(onCreateFixturePlan).toHaveBeenCalledTimes(1);
+    expect(onCreateFixturePlan).not.toHaveBeenCalled();
+  });
+
+  it("emits the selected image generation model instead of bouncing to the previous option", () => {
+    const onGenerationDefaultChange = vi.fn();
+    render(
+      <ProductionWorkspace
+        title="Model switch"
+        status="idle"
+        summary="Validate model selector"
+        productionRunId="run-model-switch"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        generationDefaults={{ imageModelId: "gpt-image-2-text-to-image", imageModelSource: "project_default" }}
+        imageModelOptions={[
+          { modelId: "gpt-image-2-text-to-image", name: "GPT Image 2 Text-to-Image", provider: "kie.ai" },
+          { modelId: "google-banana-2", name: "Google Banana 2", provider: "kie.ai" },
+          { modelId: "nano-banana-pro-flash", name: "Nano Banana Pro Flash", provider: "magnific" },
+        ]}
+        videoModelOptions={[]}
+        onGenerationDefaultChange={onGenerationDefaultChange}
+        space={featureSpace}
+      />
+    );
+
+    const imageModelSelect = screen.getByLabelText("Default image generation model");
+    expect(imageModelSelect).toHaveValue("gpt-image-2-text-to-image");
+    fireEvent.change(imageModelSelect, { target: { value: "google-banana-2" } });
+    expect(onGenerationDefaultChange).toHaveBeenCalledWith({
+      imageModelId: "google-banana-2",
+      imageModelSource: "project_default",
+    });
   });
 
   it("keeps deferred node catalog entries visible as unavailable roadmap items", () => {
@@ -649,8 +837,39 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
 
   it("asks before resetting the canvas and deletes every node only after confirmation", () => {
     const onDeleteNode = vi.fn();
+    const onResetCanvas = vi.fn();
     const onSelectNode = vi.fn();
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(
+      <ProductionFlowCanvas
+        flowNodes={featureSpace.flowNodes}
+        flowEdges={featureSpace.flowEdges}
+        contextAssets={featureSpace.contextAssets}
+        selectedNodeId="image-node"
+        onDeleteNode={onDeleteNode}
+        onResetCanvas={onResetCanvas}
+        onSelectNode={onSelectNode}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /reset canvas/i }));
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("Remove all 4 nodes"));
+    expect(onDeleteNode).not.toHaveBeenCalled();
+    expect(onResetCanvas).not.toHaveBeenCalled();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: /reset canvas/i }));
+    expect(onResetCanvas).toHaveBeenCalledTimes(1);
+    expect(onDeleteNode).not.toHaveBeenCalled();
+    expect(onSelectNode).toHaveBeenCalledWith(null);
+
+    confirmSpy.mockRestore();
+  });
+
+  it("deletes the selected canvas node with the Delete key", () => {
+    const onDeleteNode = vi.fn();
+    const onSelectNode = vi.fn();
 
     render(
       <ProductionFlowCanvas
@@ -663,17 +882,9 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /reset canvas/i }));
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("Remove all 4 nodes"));
-    expect(onDeleteNode).not.toHaveBeenCalled();
-
-    confirmSpy.mockReturnValue(true);
-    fireEvent.click(screen.getByRole("button", { name: /reset canvas/i }));
-    expect(onDeleteNode).toHaveBeenCalledTimes(featureSpace.flowNodes.length);
-    for (const node of featureSpace.flowNodes) expect(onDeleteNode).toHaveBeenCalledWith(node.id);
+    fireEvent.keyDown(window, { key: "Delete" });
+    expect(onDeleteNode).toHaveBeenCalledWith("image-node");
     expect(onSelectNode).toHaveBeenCalledWith(null);
-
-    confirmSpy.mockRestore();
   });
 
   it("shows direct tab links on each canvas node for image, video, and audio surfaces", () => {
@@ -1241,6 +1452,12 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onMergeShot = vi.fn();
     const onOpenShot = vi.fn();
     const onConfigureShot = vi.fn();
+    const onUpdateStoryboardPrompt = vi.fn();
+    const onStoryboardReferenceSkillChange = vi.fn();
+    const onGenerateShotReferencePrompt = vi.fn();
+    const onGenerateShotReferenceImage = vi.fn();
+    const onGenerateShotFrameImage = vi.fn();
+    const onGenerateShotVideo = vi.fn();
 
     render(
       <VideoShotWorkspace
@@ -1257,8 +1474,38 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         onMergeShot={onMergeShot}
         onOpenShot={onOpenShot}
         onConfigureShot={onConfigureShot}
+        onUpdateStoryboardPrompt={onUpdateStoryboardPrompt}
+        storyboardReferenceSkillId="furniture-reference-storyboard"
+        storyboardReferenceSkillOptions={[
+          { id: "furniture-reference-storyboard", label: "Furniture Reference Storyboard" },
+          { id: "cosmatic-reference-storyboard", label: "Cosmatic Reference Storyboard" },
+        ]}
+        onStoryboardReferenceSkillChange={onStoryboardReferenceSkillChange}
+        onGenerateShotReferencePrompt={onGenerateShotReferencePrompt}
+        onGenerateShotReferenceImage={onGenerateShotReferenceImage}
+        onGenerateShotFrameImage={onGenerateShotFrameImage}
+        onGenerateShotVideo={onGenerateShotVideo}
       />
     );
+
+    expect(screen.getByTestId("video-shot-storyboard-cards")).toHaveTextContent("Full storyboard prompt cards");
+    fireEvent.change(screen.getByLabelText("Start/stop frame prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
+    expect(onStoryboardReferenceSkillChange).toHaveBeenCalledWith("cosmatic-reference-storyboard");
+    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("No video yet");
+    expect(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).queryByLabelText("Image prompt")).not.toBeInTheDocument();
+    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("Reference skill prompt"), { target: { value: "Updated reference prompt for card" } });
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /save this card/i }));
+    expect(onUpdateStoryboardPrompt).toHaveBeenCalledWith("shot-1", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /reference image/i }));
+    expect(onGenerateShotReferenceImage).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /start frame/i }));
+    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "start", "furniture-reference-storyboard", expect.any(Object));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /stop frame/i }));
+    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "stop", "furniture-reference-storyboard", expect.any(Object));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate video/i }));
+    expect(onGenerateShotVideo).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.any(Object));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /skill prompt/i }));
+    expect(onGenerateShotReferencePrompt).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard");
 
     expect(screen.getByText("Hook")).toBeInTheDocument();
     expect(screen.getByText("Image config node")).toBeInTheDocument();

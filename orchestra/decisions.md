@@ -1,20 +1,27 @@
-[2026-05-23T00:00:00Z] DECISION: Treat Feature 116 gap closure as large/high-risk multi-agent work.
-  Context: The request touches shared contracts, tRPC procedures, tenant/permission behavior, UI workflows, tests, and specs.
-  Alternatives considered: Direct edit without orchestration; rejected because release-gate gaps span multiple domains.
+[2026-05-25T00:34:23Z] DECISION: Start a fresh orchestra session for the Production Director concept-card planning task.
+  Context: Existing `orchestra/` directory had no `snapshot.json`, so it was treated as stale session state and archived.
+  Alternatives considered: Reuse old session files, but they were from unrelated previous work and could pollute this plan.
 
-[2026-05-24T22:45:00+07:00] AUTO-APPROVED: Add semantic marketplace insight dedupe key and cleanup duplicate insight rows.
-Reason: auto_by_default mode active; user explicitly requested full implementation of the recommended duplicate fix.
-Risk: MEDIUM
-Files affected: apps/extension/src/shared/localAi.ts, apps/web/server/services/marketplaceInsightService.ts, apps/web/shared/marketplaceCapture.ts, apps/web/drizzle/schema.ts, apps/web/drizzle/0187_marketplace_insight_semantic_dedupe.sql
-Backup: tmp/db-backups/marketplace_capture_insights_before_0187_20260524_222941.sql and DB table marketplace_capture_insights_dedup_backup_0187.
+[2026-05-25T00:34:23Z] DECISION: Treat this request as planning-only, not implementation.
+  Context: The user asked "วางแผนงาน" and existing Media Studio files already had uncommitted edits.
+  Alternatives considered: Implement immediately, but product-code edits would risk mixing with existing dirty work before plan approval.
 
-[2026-05-24T23:22:00+07:00] AUTO-APPROVED: Backfill per-story-option video briefs for existing marketplace storytelling handoffs.
-Reason: user requested complete data migration after the duplicate-root-cause fix; existing handoff rows still had legacy 5-option payloads without per-option videoBrief data.
-Risk: MEDIUM
-Files affected: apps/web/drizzle/0188_marketplace_story_option_video_briefs_backfill.sql, apps/web/drizzle/meta/_journal.json.
-Backup: tmp/db-backups/marketplace_capture_insights_before_0188_20260524_232119.sql and DB table marketplace_capture_story_options_backup_0188.
+[2026-05-25T00:34:23Z] DECISION: Recommend manual per-card infographic generation as MVP default.
+  Context: Image generation likely consumes credits and provider resources. Manual generation gives users control while still enabling rich previews.
+  Alternatives considered: Auto-generate all four images immediately; deferred because it may surprise users and increase cost.
 
-[2026-05-24T23:50:00+07:00] AUTO-APPROVED: Use marketplace storyOptions as Media Studio planning concepts and synthesize/persist missing options.
-Reason: auto_by_default mode active; user requested end-to-end implementation of product-aware planning and regeneration.
-Risk: MEDIUM
-Files affected: apps/web/client/src/pages/MediaStudio.tsx, apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx, apps/web/client/src/features/media-production/production-director.e2e.test.tsx, apps/web/skills/media-production-storyboard-planner/skill.md.
+[2026-05-25T00:52:00Z] DECISION: Implement the approved plan with manual card-level infographic generation.
+  Context: The user explicitly approved implementation after the planning pass. The UI now offers four concept cards, per-card regeneration, infographic generation, and fullscreen preview without auto-spending image generation credits.
+  Alternatives considered: Auto-generate images for every concept after planning; deferred to avoid hidden cost and slower planning UX.
+
+[2026-05-25T00:52:00Z] DECISION: Store project default media model choices on the Production goal/space contract.
+  Context: Production plan generation and downstream node snapshots need stable image/video model choices to avoid accidentally using a tab-selected or provider-default model.
+  Alternatives considered: Keep using current Media Studio tab selections only; rejected because project-level production planning needs explicit defaults.
+
+[2026-05-25T01:08:00Z] DECISION: Reconcile infographic image tasks from media history without a frontend timeout.
+  Context: Image generation can legitimately take up to 30 minutes. The card now stores local/backend/provider task ids, keeps queued/generating state, and only marks failed when the provider task status becomes failed or cancelled.
+  Alternatives considered: Add a 30-minute frontend timeout; rejected because backend/provider status is the source of truth.
+
+[2026-05-25T01:08:00Z] DECISION: Clear infographic output metadata when a single concept card is regenerated.
+  Context: Regenerated concept text/storyboard may no longer match the previously generated image.
+  Alternatives considered: Preserve old image for comparison; deferred to a future prompt-history feature.

@@ -11,7 +11,8 @@ Every prompt independently repeats:
 - character identity lock when people appear
 - furniture product lock
 - exact furniture geometry and scale lock
-- numeric dimension lock when supplied
+- product physical aspect-ratio and visual bounding-box lock
+- product scale lock in every prompt, using numeric dimensions when supplied or inferred reference proportions when dimensions are absent
 - compact/portable furniture scale guard when applicable
 - exact color, material, finish, marking, and construction lock
 - room scale and environment lock
@@ -24,7 +25,7 @@ Product reference images are the highest-priority source of truth. Interior styl
 
 When product references are supplied, every prompt/frame must include a `PRODUCT REFERENCE LOCK:` block before the scene description. The block restates the furniture category, silhouette, primary/secondary materials, upholstery or wood/metal/plastic/glass/rattan finish, hardware/caster details, visible brand/tag/marking details, and explicit no-redesign/no-recolor negatives.
 
-When user-supplied dimensions are available, every prompt/frame must include a `PRODUCT SCALE LOCK:` block. Numeric dimensions override generic assumptions. For example, a 110 cm x 50 cm x 12 cm floor sofa must remain a compact one-person floor chair/lounger, not a full-size sofa, loveseat, chaise, mattress, sectional, or raised recliner.
+Every prompt/frame must include a `PRODUCT SCALE LOCK:` block. Numeric dimensions override generic assumptions when supplied. When dimensions are absent, the prompt must infer and lock the visible product scale class, physical aspect ratio, visual bounding-box ratio, height-width-depth relationship, shelf/cushion/drawer spacing, support/base stance, and compact/full-size class from the product reference image. For example, a compact white two-tier side shelf/table must remain a small table-height rectangular open shelf, not a tall bookcase, cube organizer, bulky cabinet, or oversized shelving tower.
 
 The skill separates reference roles:
 - product images define the product
@@ -37,7 +38,7 @@ Existing schema fields such as `product_label_text`, `label_fidelity`, and `labe
 
 Character reference images are identity anchors. Face likeness, facial proportions, skin tone, hairline, distinctive marks, age range, and styling continuity must stay consistent across every frame where the person appears. If identity cannot be preserved confidently, the frame should become product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shot rather than inventing a new face.
 
-The skill includes a silent prompt quality loop. It rewrites any draft prompt that violates fatal QA gates: wrong product category, ignored dimensions, wrong scale, wrong material/colorway, changed geometry, wrong cushion/tier/shelf/drawer/door count, invented text, environment-reference contamination, character drift, or props/hands hiding key product details.
+The skill includes a silent prompt quality loop. It rewrites any draft prompt that violates fatal QA gates: wrong product category, ignored dimensions, wrong inferred proportions, wrong scale, cross-panel scale drift, wrong material/colorway, changed geometry, wrong cushion/tier/shelf/drawer/door count, invented text, environment-reference contamination, character drift, or props/hands hiding key product details.
 
 
 ## V1.3.0 Quality Improvements

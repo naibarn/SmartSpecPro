@@ -37,6 +37,10 @@ When `userInputs.mode` is `marketplace_story_concept_synthesis`, return JSON onl
       "narrativeStructure": "Problem → Solution",
       "emotionalTone": "Empathy Tone",
       "hookTechnique": "Hook แบบปัญหาโดนใจ",
+      "visualSummary": "One sentence describing the card's visual concept.",
+      "keyVisualElements": ["realistic product hero", "4-step storyboard timeline", "evidence-safe proof badge"],
+      "storyboardThumbnailNotes": "How the infographic should summarize the idea visually.",
+      "infographicPrompt": "Create a polished realistic infographic with photorealistic supporting imagery, readable storyboard beats, and no unsupported product claims...",
       "sceneTimeline": [
         { "timeRange": "0-3s", "title": "Hook", "detail": "..." },
         { "timeRange": "3-12s", "title": "Problem", "detail": "..." },
@@ -56,3 +60,5 @@ Always provide exactly four concepts for:
 - `story_option:use_case_moment`: real use case by context.
 
 Mix each concept with a suitable storytelling structure, emotional tone, and short-video hook technique from the provided reference list. Use product truth, selected marketplace evidence, user-provided assets, and existing insight first. If evidence is missing, mark the concept review-safe instead of inventing product facts.
+
+For every concept, include an `infographicPrompt` designed for the existing image generation system. The prompt should ask for a beautiful, realistic infographic with photorealistic supporting imagery, clear storyboard/timeline sections, and a visual summary that helps the user understand the concept at a glance. It must not invent unsupported product claims or alter product identity beyond the provided evidence.

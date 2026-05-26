@@ -13,7 +13,7 @@
     "orientationAngle": 0,
     "orientationType": "landscape-primary"
   },
-  "timestamp": "2026-05-24T00:51:30.822Z",
+  "timestamp": "2026-05-25T01:53:28.827Z",
   "url": "http://127.0.0.1:3000/media-studio",
   "toolOptions": {
     "reporter": "v1"
@@ -1218,6 +1218,72 @@
           "html": "<input data-slot=\"input\" class=\"file:text-foreground...\" disabled=\"\" placeholder=\"Auto model\" aria-label=\"Planning model\" value=\"\" style=\"\">",
           "target": [
             "input[placeholder=\"Auto model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            },
+            {
+              "id": "aria-allowed-attr-elm",
+              "data": null,
+              "relatedNodes": [],
+              "message": "ARIA attributes are allowed for this element",
+              "impact": "critical"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-allowed-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attributes are used correctly for the defined role"
+            },
+            {
+              "id": "aria-allowed-attr-elm",
+              "data": null,
+              "relatedNodes": [],
+              "message": "ARIA attributes are allowed for this element",
+              "impact": "critical"
+            }
+          ],
+          "none": [
+            {
+              "id": "aria-unsupported-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute is supported"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
           ]
         },
         {
@@ -4936,6 +5002,42 @@
           ],
           "none": [],
           "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-conditional-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "none": [],
+          "impact": null,
           "html": "<ol class=\"flex flex-wrap gap-2\" data-testid=\"production-journey-stepper\" aria-label=\"Production journey\">",
           "target": [
             "ol"
@@ -7447,6 +7549,42 @@
           "html": "<input data-slot=\"input\" class=\"file:text-foreground...\" disabled=\"\" placeholder=\"Auto model\" aria-label=\"Planning model\" value=\"\" style=\"\">",
           "target": [
             "input[placeholder=\"Auto model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "aria-prohibited-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "ARIA attribute is allowed"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
           ]
         },
         {
@@ -11052,6 +11190,70 @@
           ],
           "none": [],
           "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [
+            {
+              "id": "aria-valid-attr-value",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute values are valid"
+            },
+            {
+              "id": "aria-errormessage",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-errormessage exists and references elements visible to screen readers that use a supported aria-errormessage technique"
+            },
+            {
+              "id": "aria-level",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-level values are valid"
+            }
+          ],
+          "none": [],
+          "impact": null,
           "html": "<ol class=\"flex flex-wrap gap-2\" data-testid=\"production-journey-stepper\" aria-label=\"Production journey\">",
           "target": [
             "ol"
@@ -14011,6 +14213,42 @@
           "html": "<input data-slot=\"input\" class=\"file:text-foreground...\" disabled=\"\" placeholder=\"Auto model\" aria-label=\"Planning model\" value=\"\" style=\"\">",
           "target": [
             "input[placeholder=\"Auto model\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-valid-attr",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "ARIA attribute name is valid"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
           ]
         },
         {
@@ -18298,6 +18536,56 @@
             {
               "id": "color-contrast",
               "data": {
+                "fgColor": "#0f172b",
+                "bgColor": "#f8fafc",
+                "contrastRatio": 17.04,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 17.04"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
+                "fgColor": "#0f172b",
+                "bgColor": "#f8fafc",
+                "contrastRatio": 17.04,
+                "fontSize": "10.5pt (14px)",
+                "fontWeight": "normal",
+                "expectedContrastRatio": "4.5:1"
+              },
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element has sufficient color contrast of 17.04"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "color-contrast",
+              "data": {
                 "fgColor": "#62748e",
                 "bgColor": "#f8fafc",
                 "contrastRatio": 4.55,
@@ -21679,6 +21967,42 @@
             }
           ],
           "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "multiple-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "moderate",
+              "message": "Form field does not have multiple label elements"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "multiple-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "moderate",
+              "message": "Form field does not have multiple label elements"
+            }
+          ],
+          "impact": null,
           "html": "<select aria-label=\"Goal type\" class=\"h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500\">",
           "target": [
             "select[aria-label=\"Goal type\"]"
@@ -21965,6 +22289,42 @@
           "html": "<input data-slot=\"input\" class=\"file:text-foreground...\" disabled=\"\" placeholder=\"Auto model\" aria-label=\"Planning model\" value=\"\" style=\"\">",
           "target": [
             "input[placeholder=\"Auto model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "title-only",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Form element does not solely use title attribute for its label"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [],
+          "all": [],
+          "none": [
+            {
+              "id": "title-only",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Form element does not solely use title attribute for its label"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
           ]
         },
         {
@@ -22845,6 +23205,42 @@
           "html": "<option value=\"manual\">Manual</option>",
           "target": [
             "option[value=\"manual\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "no-focusable-content",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element does not have focusable descendants"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<option value=\"\">Auto image model</option>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"] > option[value=\"\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "no-focusable-content",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "serious",
+              "message": "Element does not have focusable descendants"
+            }
+          ],
+          "all": [],
+          "none": [],
+          "impact": null,
+          "html": "<option value=\"\">Auto video model</option>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"] > option[value=\"\"]"
           ]
         },
         {
@@ -24976,6 +25372,58 @@
           "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Planning model mode\"><option value=\"auto\">Auto</option><option value=\"manual\">Manual</option></select>",
           "target": [
             "select[aria-label=\"Planning model mode\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "hidden-explicit-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "Form element has a visible explicit <label>"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default image generation model\"><option value=\"\">Auto image model</option></select>",
+          "target": [
+            "select[aria-label=\"Default image generation model\"]"
+          ]
+        },
+        {
+          "any": [
+            {
+              "id": "aria-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "aria-label attribute exists and is not empty"
+            }
+          ],
+          "all": [],
+          "none": [
+            {
+              "id": "hidden-explicit-label",
+              "data": null,
+              "relatedNodes": [],
+              "impact": "critical",
+              "message": "Form element has a visible explicit <label>"
+            }
+          ],
+          "impact": null,
+          "html": "<select class=\"h-9 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm\" aria-label=\"Default video generation model\"><option value=\"\">Auto video model</option></select>",
+          "target": [
+            "select[aria-label=\"Default video generation model\"]"
           ]
         },
         {

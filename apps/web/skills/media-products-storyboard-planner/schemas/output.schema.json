@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/media-production-storyboard-planner/output.schema.json",
+  "title": "Media Production Storyboard Planner Output",
+  "description": "Output schema requiring full input coverage, asset integration, storyboard timing, prompts, QA, and omitted input tracking.",
+  "type": "object",
+  "required": [
+    "thai_summary",
+    "input_usage_map",
+    "reference_integration_plan",
+    "storyboard_timing",
+    "main_prompt",
+    "negative_prompt",
+    "qa_checklist",
+    "omitted_inputs",
+    "handoff_notes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "thai_summary": {
+      "type": "string",
+      "description": "สรุปสั้น ๆ ว่าแผนนี้จะสร้างอะไร"
+    },
+    "input_usage_map": {
+      "type": "array",
+      "description": "แผนที่การใช้ input ทุกช่องที่ผู้ใช้กรอก",
+      "items": {
+        "type": "object",
+        "required": [
+          "input_field",
+          "user_value",
+          "used_in",
+          "usage_description",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input_field": {
+            "type": "string"
+          },
+          "user_value": {
+            "type": "string"
+          },
+          "used_in": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usage_description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "used",
+              "partially_used",
+              "not_applicable",
+              "missing"
+            ]
+          }
+        }
+      }
+    },
+    "reference_integration_plan": {
+      "type": "array",
+      "description": "แผนการใช้ asset แต่ละไฟล์ใน storyboard",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_id",
+          "label",
+          "used_in_sections",
+          "usage_summary",
+          "preservation_rules"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "used_in_sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "usage_summary": {
+            "type": "string"
+          },
+          "preservation_rules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "storyboard_timing": {
+      "type": "array",
+      "description": "ลำดับเวลา/ช็อตสำหรับ storyboard หรือวิดีโอ",
+      "items": {
+        "type": "object",
+        "required": [
+          "shot_number",
+          "time_range",
+          "scene_goal",
+          "visual",
+          "voiceover_or_text",
+          "asset_ids",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "shot_number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "time_range": {
+            "type": "string"
+          },
+          "scene_goal": {
+            "type": "string"
+          },
+          "visual": {
+            "type": "string"
+          },
+          "voiceover_or_text": {
+            "type": "string"
+          },
+          "asset_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "main_prompt": {
+      "type": "string",
+      "description": "Prompt หลักสำหรับ image/video generation หรือ storyboard board"
+    },
+    "product_fidelity_lock": {
+      "type": "object",
+      "description": "Structured product-reference lock used when product images are attached.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "source_of_truth": {
+          "type": "string",
+          "description": "Which reference should control product visuals. Prefer attached product images when present."
+        },
+        "preserve": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_changes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_changes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "qa_fail_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "visual_source_of_truth_notes": {
+      "type": "array",
+      "description": "Notes explaining how attached images control visual product attributes and how text evidence controls claims.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "negative_prompt": {
+      "type": "string",
+      "description": "สิ่งที่ต้องหลีกเลี่ยง"
+    },
+    "qa_checklist": {
+      "type": "array",
+      "description": "รายการตรวจคุณภาพก่อนส่งต่อ",
+      "items": {
+        "type": "string"
+      }
+    },
+    "omitted_inputs": {
+      "type": "array",
+      "description": "input ที่ไม่ได้ใช้พร้อมเหตุผล หากไม่มีให้เป็น array ว่าง",
+      "items": {
+        "type": "object",
+        "required": [
+          "input_field",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "input_field": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "handoff_notes": {
+      "type": "array",
+      "description": "หมายเหตุสำหรับทีมตัดต่อ / designer / generation pipeline",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

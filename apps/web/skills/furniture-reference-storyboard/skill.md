@@ -2,7 +2,7 @@
 name: furniture-reference-storyboard
 description: Furniture reference storyboard prompt skill adapted from the original reference storyboard bundle. Optimized for furniture product fidelity, exact scale/dimensions, compact and convertible furniture recognition, clean single-frame output control, default no-text rendering, strict storyboard-mode enforcement, strict equal-frame storyboard layout control, borderless storyboard presentation, strict per-panel uniqueness control, customer-journey storyboard planning, anti-redundancy frame design, broad furniture taxonomy coverage, product-source dominance, room-scale visualization, material preservation, construction details, realistic usage scenes, and reference-role disambiguation while keeping existing schemas compatible. Includes exhaustive visual inspection, furniture taxonomy coverage, variant handling, set handling, occlusion control, product-specific QA gates, current-reference contamination rejection, mandatory person-with-product interaction coverage, floor-textile/rug product support, physical-pattern text preservation, reference relevance ranking, dominant product category lock, product-family collection handling, environment compatibility control, cross-turn contamination fail-safes, and irrelevant-frame rejection.
 category: image_prompt_generation
-version: 1.4.16
+version: 1.4.17
 icon: sofa
 tags:
   - shared-skill
@@ -43,16 +43,25 @@ config:
 ---
 # Prompt Logic
 
+## Optional Storyboard Guide Contract
+
+Input `storyboard_guide` is optional. When it is blank, keep the normal skill behavior.
+
+When `storyboard_guide` is provided, it becomes the creative direction contract for the output. Every generated prompt or frame must follow the guide's shot order, timing, story beat, furniture-use action, camera intent, room-scale context, and continuity. Do not replace the guide with a new story, do not skip required beats, and do not introduce conflicting actions, dimensions, prices, promotions, claims, or product variants. Use the guide to decide the composition and moment of each frame while still preserving all furniture geometry, material, scale, construction, marking, character, and environment reference locks below.
+
+For start/stop-frame workflows, interpret the guide as one video shot: create a start-frame prompt that matches the beginning of that shot and a stop-frame prompt that matches the end state of that shot. The stop frame should be visually compatible as the next shot's start frame when Media Studio chains shots together.
+
 This skill writes high-fidelity image prompts for furniture, furniture-adjacent products, floor textiles, storage units, hardware, and storyboard/contact-sheet outputs. It must preserve the product from the current reference images instead of turning it into a generic catalog archetype.
 
 Every generated prompt MUST independently repeat:
 - Character identity lock when people appear.
 - Character reference lock block when recognizable people appear.
 - Furniture product geometry lock.
+- Furniture product physical aspect-ratio and visual bounding-box lock.
 - Furniture material, color, finish, texture, and pattern lock.
 - Visible brand/marking/tag preservation lock when present.
 - Room, scale, and environment consistency lock.
-- Numeric dimension lock when user-supplied dimensions exist.
+- Product scale lock in every prompt, using exact numeric dimensions when supplied or inferred scale/proportion from product references when not supplied.
 - Compact/portable/convertible furniture scale guard when applicable.
 - Single-frame vs storyboard/collage output guard.
 - Default no-extra-text rendering guard.
@@ -199,6 +208,7 @@ Before writing prompts, extract these attributes from the product reference and 
 - single item vs set; exact number of included units.
 - overall silhouette and footprint.
 - height/width/depth relationship and numeric dimensions when supplied.
+- visual bounding-box ratio from the reference image: whether the product is short/tall, narrow/wide, shallow/deep, cube-like, slab-like, tower-like, or table-height.
 - primary visible orientation and allowed alternate orientations.
 - support system: legs, pedestal, plinth, casters, wall mount, floor pad, suspension, rails, glides.
 - countable structure: cushions, panels, drawers, doors, shelves, legs, wheels, arms, slats, modules, pillows, handles, hooks, rails, baskets.
@@ -231,6 +241,27 @@ For sofas/daybeds/floor chairs, preserve cushion count, backrest position, armre
 For tables/desks, preserve tabletop shape, edge profile, thickness, overhang, leg count, base type, crossbars, drawers, cable holes, and material finish. Do not change a round table to rectangular, four legs to pedestal, glass to marble, desk to dining table, or coffee table to bench.
 
 For racks/carts/shelves, preserve tier count, basket lips, caster count, pole thickness, rail placement, and narrow/wide footprint. Do not turn a narrow rolling cart into a pantry cabinet or built-in shelf.
+
+## Product Physical Aspect-Ratio Lock
+
+Product physical aspect ratio is separate from output canvas aspect ratio. The storyboard canvas may be 9:16, 1:1, 16:9, or another layout, but the furniture object itself must keep the same height-to-width-to-depth relationship visible in the product reference.
+
+When product references are supplied, every prompt MUST include a product-proportion sentence inside `PRODUCT REFERENCE LOCK`:
+
+`PRODUCT PHYSICAL PROPORTION LOCK: preserve the reference product's real object proportions and visual bounding-box ratio exactly: [height vs width vs depth], [top thickness], [leg/post thickness], [shelf/drawer/cushion spacing], [floor clearance/base stance]. Do not stretch taller, widen, flatten, bulk up, slim down, upscale, downscale, or change the object's physical ratio to fit the storyboard frame or room composition.`
+
+This lock is required even when no numeric dimensions are supplied. Infer the proportion class from the product image and state it plainly, such as:
+- `small table-height two-tier shelf, not a tall bookcase`.
+- `narrow rolling cart, not a full-height pantry rack`.
+- `low floor sofa, not a raised sectional`.
+- `wide squat cabinet, not a tall dresser`.
+- `thin floor mat, not a blanket or thick mattress`.
+
+Every storyboard panel that shows the product must preserve the same product instance proportions. Camera angle, crop, perspective, and distance may change, but the object may not gain height, lose width, thicken shelves, stretch legs, change shelf spacing, or become a different furniture archetype from panel to panel.
+
+For product-only, hero, and room-placement panels, show enough full silhouette to verify the proportion lock. At least 4 of 9 panels in a 3x3 furniture storyboard must show the full or nearly full product body with top, base/feet, side posts/legs, shelves/drawers/cushions, and floor contact visible unless the user explicitly requests detail-only frames.
+
+If the reference product is a compact white two-tier side shelf/table or nursery side table, explicitly lock it as a small table-height rectangular open shelf with a flat top, two open shelf levels, four straight vertical side posts/legs, slim rectangular boards, low floor clearance, and compact height-to-width ratio. Do not transform it into a tall bookcase, cube organizer, bulky cabinet, thick-legged table, oversized shelving tower, or generic nursery furniture.
 
 ## Exact Furniture Color, Finish, And Marking Lock
 
@@ -290,6 +321,10 @@ If an underside, interior, or hidden side is exposed in a storyboard frame, defa
 When the user supplies exact dimensions, include a dedicated `PRODUCT SCALE LOCK` block:
 
 `PRODUCT SCALE LOCK: real product dimensions are approximately [length] x [width] x [height/thickness/depth] [unit]; preserve this [compact/full-size/portable/low-profile/tall-narrow] scale; show it as [one-person/two-person/storage-height/table-height/etc.] furniture; do not enlarge, shrink, or reinterpret it as a different furniture class.`
+
+When the user does not supply numeric dimensions, still include an inferred scale lock from the reference:
+
+`INFERRED PRODUCT SCALE LOCK: based on the product reference image, preserve the visible scale class and physical proportions: [small tabletop/table-height/storage-height/floor-level/full-size/etc.], with the same height-width-depth relationship and same countable structure. Do not let room styling, nursery context, props, human scale, or storyboard framing resize the product into another class.`
 
 Compact furniture guardrails:
 - If under about 150 cm long or under about 70 cm wide, treat as compact/portable/one-person/small-room unless references prove otherwise.
@@ -766,7 +801,7 @@ For each generated prompt, use this order:
 3. `REFERENCE ROLE LOCK` - product images are product truth, character images are identity truth, environment images are scene truth only.
 4. `CHARACTER REFERENCE LOCK` - only when a recognizable referenced person appears.
 5. `PRODUCT REFERENCE LOCK` - exact category, silhouette, construction, color/material/finish, visible markings.
-6. `PRODUCT SCALE LOCK` - numeric dimensions if supplied, compact/full-size classification, human/room scale cues.
+6. `PRODUCT SCALE LOCK` - required in every prompt; use numeric dimensions if supplied, otherwise infer compact/full-size/table-height/storage-height/floor-level classification and physical proportions from the product reference.
 7. `STORYBOARD GRID LOCK` - mandatory for storyboard requests; exact grid, equal panels, borderless, no single-frame fallback.
 8. `SCENE DESCRIPTION` - action, environment, camera, lighting, composition.
 9. `NEGATIVE CONSTRAINTS` - no redesign, no recolor, no wrong scale, no invented text, no anatomy errors.
@@ -807,6 +842,7 @@ Fatal QA gates:
 - Irrelevant frame rejection: every panel must contribute to product story, detail, function, room placement, scale, or customer journey.
 - Person-with-product coverage: if product and relevant character references are supplied for 3x3, include at least one clear person-product interaction.
 - Storage furniture fidelity: drawer count, handle position, lock/keyhole placement, material, and base stance must match reference.
+- Cross-panel scale continuity: every product-visible storyboard frame must inherit the same furniture footprint envelope, physical aspect ratio, tier/shelf/drawer/cushion spacing, leg/post thickness, and class-level scale from `PRODUCT REFERENCE LOCK` and `PRODUCT SCALE LOCK`; close-up frames may crop tighter but must not alter the product's real proportions.
 - Watermark exclusion: reference-photo overlays are not product markings.
 - Convertible furniture configuration: do not lose short legs, low scale, hinge/backrest/slab structure, or gain armrests/sectional modules.
 - Wrong product category, scale, color, material, finish, geometry, cushion grid, tier count, shelf count, drawer/door layout, caster/leg count, arm/back structure, fold/hinge design.
@@ -838,7 +874,7 @@ Before finalizing any prompt package:
 - Correct count: cushions, drawers, doors, shelves, legs, wheels, arms, panels, pillows, hooks, rails, handles, hinges, brackets, modules match reference.
 - Correct small parts: tags, zippers, seams, piping, casters, caps, glides, screws, connector plates, pulls, knobs, shelf pins, rails, brackets, trim are not lost or invented.
 - Correct material/color: every major and secondary visible part preserves referenced material, finish, texture scale, pattern direction, and colorway.
-- Correct scale: numeric dimensions and human/room scale are plausible and consistent.
+- Correct scale: numeric dimensions when supplied, inferred product-reference proportions when dimensions are absent, and human/room scale are plausible and consistent across every product-visible panel.
 - Correct support/contact: legs, casters, plinths, floor pads, wall mounts, and feet contact surfaces naturally.
 - Correct storyboard format: requested grid produces requested number of equal-sized panels.
 - Correct product persistence: same product appears in most storyboard panels and never changes category.

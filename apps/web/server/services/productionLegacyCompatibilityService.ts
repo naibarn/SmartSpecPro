@@ -1,5 +1,54 @@
 import type { ProductionSpace, ProductionGoal, ProductionRunStatus } from "../../shared/mediaProduction";
 
+function normalizeProductionWarning(value: unknown): string {
+  const text = typeof value === "string"
+    ? value
+    : (() => {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value ?? "");
+      }
+    })();
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length <= 1000 ? normalized : `${normalized.slice(0, 997)}...`;
+}
+
+function normalizeProductionWarningArray(value: unknown, limit: number): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.map(normalizeProductionWarning).filter(Boolean).slice(0, limit);
+}
+
+export function migrateProductionSpaceData(space: ProductionSpace): ProductionSpace {
+  return {
+    ...space,
+    warnings: normalizeProductionWarningArray(space.warnings, 50),
+    contextAssets: (space.contextAssets ?? []).map((asset) => ({
+      ...asset,
+      warnings: normalizeProductionWarningArray(asset.warnings, 20),
+    })),
+    shots: (space.shots ?? []).map((shot) => ({
+      ...shot,
+      mustShow: normalizeProductionWarningArray(shot.mustShow, 20),
+      mustAvoid: normalizeProductionWarningArray(shot.mustAvoid, 20),
+    })),
+    flowNodes: (space.flowNodes ?? []).map((node) => ({
+      ...node,
+      readinessIssues: normalizeProductionWarningArray(node.readinessIssues, 20),
+    })),
+    productEvidenceManifest: space.productEvidenceManifest
+      ? {
+        ...space.productEvidenceManifest,
+        warnings: normalizeProductionWarningArray(space.productEvidenceManifest.warnings, 50) ?? [],
+        products: space.productEvidenceManifest.products.map((product) => ({
+          ...product,
+          reviewNotes: normalizeProductionWarningArray(product.reviewNotes, 20),
+        })),
+      }
+      : space.productEvidenceManifest,
+  };
+}
+
 export function upgradeProductionSpaceSchema(input: unknown): {
   ok: true;
   space: ProductionSpace;
@@ -25,36 +74,39 @@ export function upgradeProductionSpaceSchema(input: unknown): {
       preservedInput: input,
     };
   }
+  const space: ProductionSpace = {
+    schemaVersion: "1.0.0",
+    productionRunId: String(record.productionRunId ?? ""),
+    version: Number(record.version ?? 1),
+    status: (record.status ?? "goal_draft") as ProductionRunStatus,
+    brief: {
+      ...(record.brief ?? {}),
+      summary: String(record.brief?.summary ?? "Untitled production"),
+    },
+    shots: Array.isArray(record.shots) ? record.shots : [],
+    flowNodes: Array.isArray(record.flowNodes) ? record.flowNodes : [],
+    flowEdges: Array.isArray(record.flowEdges) ? record.flowEdges : [],
+    contextAssets: Array.isArray(record.contextAssets) ? record.contextAssets : [],
+    productEvidenceManifest: record.productEvidenceManifest,
+    shotProductUsage: record.shotProductUsage,
+    layerVersions: record.layerVersions,
+    approvalState: record.approvalState,
+    actionAttempts: record.actionAttempts,
+    auditEvents: record.auditEvents,
+    metrics: record.metrics,
+    planningSelection: record.planningSelection,
+    generationDefaults: record.generationDefaults,
+    storyConceptWizard: record.storyConceptWizard,
+    downstreamResultRecords: record.downstreamResultRecords,
+    cues: record.cues,
+    warnings: record.warnings,
+    featureFlags: record.featureFlags,
+    accessPolicy: record.accessPolicy,
+    updatedAt: record.updatedAt,
+  };
   return {
     ok: true,
-    space: {
-      schemaVersion: "1.0.0",
-      productionRunId: String(record.productionRunId ?? ""),
-      version: Number(record.version ?? 1),
-      status: (record.status ?? "goal_draft") as ProductionRunStatus,
-      brief: {
-        ...(record.brief ?? {}),
-        summary: String(record.brief?.summary ?? "Untitled production"),
-      },
-      shots: Array.isArray(record.shots) ? record.shots : [],
-      flowNodes: Array.isArray(record.flowNodes) ? record.flowNodes : [],
-      flowEdges: Array.isArray(record.flowEdges) ? record.flowEdges : [],
-      contextAssets: Array.isArray(record.contextAssets) ? record.contextAssets : [],
-      productEvidenceManifest: record.productEvidenceManifest,
-      shotProductUsage: record.shotProductUsage,
-      layerVersions: record.layerVersions,
-      approvalState: record.approvalState,
-      actionAttempts: record.actionAttempts,
-      auditEvents: record.auditEvents,
-      metrics: record.metrics,
-      planningSelection: record.planningSelection,
-      downstreamResultRecords: record.downstreamResultRecords,
-      cues: record.cues,
-      warnings: record.warnings,
-      featureFlags: record.featureFlags,
-      accessPolicy: record.accessPolicy,
-      updatedAt: record.updatedAt,
-    },
+    space: migrateProductionSpaceData(space),
   };
 }
 
@@ -111,7 +163,7 @@ export function adaptLegacyRunToProductionSpace(input: {
     });
   }
 
-  return {
+  return migrateProductionSpaceData({
     schemaVersion: "1.0.0",
     productionRunId: input.productionRunId,
     version: Number(input.version ?? 1),
@@ -126,5 +178,5 @@ export function adaptLegacyRunToProductionSpace(input: {
     contextAssets: [],
     warnings: ["legacy_run_adapted"],
     updatedAt: input.updatedAt ? new Date(input.updatedAt).toISOString() : undefined,
-  };
+  });
 }

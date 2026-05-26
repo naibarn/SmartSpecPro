@@ -27,6 +27,14 @@ config:
 ---
 # Prompt Logic
 
+## Optional Storyboard Guide Contract
+
+Input `storyboard_guide` is optional. When it is blank, keep the normal skill behavior.
+
+When `storyboard_guide` is provided, it becomes the creative direction contract for the output. Every generated prompt or frame must follow the guide's shot order, timing, story beat, product-use action, camera intent, and continuity. Do not replace the guide with a new story, do not skip required beats, and do not introduce conflicting actions or claims. Use the guide to decide the composition and moment of each frame while still preserving all product, character, label, and environment reference locks below.
+
+For start/stop-frame workflows, interpret the guide as one video shot: create a start-frame prompt that matches the beginning of that shot and a stop-frame prompt that matches the end state of that shot. The stop frame should be visually compatible as the next shot's start frame when Media Studio chains shots together.
+
 Every generated prompt MUST independently repeat:
 - Character identity lock
 - Character reference lock block when people appear

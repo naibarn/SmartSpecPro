@@ -1,0 +1,605 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/media-production-storyboard-planner/input.schema.json",
+  "title": "Media Production Storyboard Planner Input",
+  "description": "Input schema for a full-input-coverage media production storyboard planner.",
+  "type": "object",
+  "required": [
+    "project",
+    "input_capture",
+    "concept_direction",
+    "reference_assets",
+    "storyboard_request",
+    "output"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": [
+        "project_name",
+        "production_goal"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "project_name": {
+          "type": "string",
+          "minLength": 1,
+          "title": "ชื่อโปรเจกต์",
+          "examples": [
+            "รีวิวโต๊ะข้างเตียง"
+          ]
+        },
+        "production_goal": {
+          "type": "string",
+          "minLength": 1,
+          "title": "เป้าหมายการผลิต",
+          "examples": [
+            "ทำวิดีโอรีวิวสินค้าโต๊ะข้างเตียงนอน"
+          ]
+        },
+        "workflow_status": {
+          "type": "string",
+          "enum": [
+            "Draft",
+            "Production",
+            "Idle",
+            "Ready",
+            "QA",
+            "Handoff"
+          ],
+          "default": "Draft"
+        },
+        "planner_name": {
+          "type": "string",
+          "default": "Media Production Storyboard Planner"
+        }
+      }
+    },
+    "input_capture": {
+      "type": "object",
+      "description": "Raw values captured from the user interface. Every non-empty value must be used or explicitly omitted with a reason.",
+      "required": [
+        "content_type",
+        "target_group",
+        "platform",
+        "duration",
+        "aspect_ratio",
+        "language"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "title": "ประเภทงาน",
+          "examples": [
+            "Storyboard หลายวิดีโอ",
+            "วิดีโอเดี่ยว / ช็อตเดียว",
+            "ภาพ infographic"
+          ]
+        },
+        "target_group": {
+          "type": "string",
+          "title": "กลุ่มเป้าหมาย",
+          "examples": [
+            "คนแต่งบ้าน / ของใช้ในบ้าน"
+          ]
+        },
+        "platform": {
+          "type": "string",
+          "title": "แพลตฟอร์ม",
+          "examples": [
+            "TikTok",
+            "Facebook Reels",
+            "Instagram Reels",
+            "YouTube Shorts"
+          ]
+        },
+        "duration": {
+          "type": "string",
+          "title": "ความยาว",
+          "examples": [
+            "15s",
+            "30s",
+            "60s"
+          ]
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "title": "อัตราส่วนภาพ",
+          "examples": [
+            "9:16",
+            "1:1",
+            "4:5",
+            "16:9"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "title": "ภาษา",
+          "examples": [
+            "ไทย",
+            "English"
+          ]
+        },
+        "product_truth_brand_truth": {
+          "type": "string",
+          "title": "Product truth / brand truth",
+          "examples": [
+            "ภาพสินค้าต้องเหมือนภาพจริงที่แนบไป"
+          ]
+        },
+        "creative_direction": {
+          "type": "string",
+          "title": "Creative direction",
+          "examples": [
+            "รีวิวแบบอบอุ่น ใช้จริงในห้องนอน แสงธรรมชาติ สะอาด น่าเชื่อถือ"
+          ]
+        },
+        "constraints": {
+          "type": "string",
+          "title": "ข้อจำกัด / สิ่งที่ห้ามทำ",
+          "examples": [
+            "ห้ามเปลี่ยนรูปทรงสินค้า ห้ามใช้ฉากรก ห้ามใส่โลโก้ปลอม"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "title": "Targets",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "รีวิวสตอรี่บอร์ด",
+              "ตัดต่อวิดีโอ"
+            ]
+          ]
+        },
+        "selected_node_or_concept_card": {
+          "type": "string",
+          "title": "Selected concept card",
+          "examples": [
+            "ปัญหา → ทางออก",
+            "Question → Answer",
+            "Relief Tone"
+          ]
+        },
+        "hook_seed": {
+          "type": "string",
+          "title": "Hook seed",
+          "examples": [
+            "โต๊ะข้างเตียงรก วางของจำเป็นไม่เป็นที่"
+          ]
+        }
+      }
+    },
+    "concept_direction": {
+      "type": "object",
+      "required": [
+        "main_concept",
+        "story_theme",
+        "narrative_purpose"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "main_concept": {
+          "type": "string",
+          "title": "Concept / แนวเรื่อง",
+          "examples": [
+            "รีวิวโต๊ะข้างเตียงแบบปัญหา → ทางออก"
+          ]
+        },
+        "story_theme": {
+          "type": "string",
+          "title": "Theme",
+          "examples": [
+            "จัดระเบียบห้องนอนให้หยิบของง่ายขึ้น"
+          ]
+        },
+        "narrative_purpose": {
+          "type": "string",
+          "enum": [
+            "introduce_space",
+            "present_product",
+            "educate",
+            "review",
+            "show_before_after",
+            "show_usage_steps",
+            "sell_softly",
+            "brand_story",
+            "walkthrough",
+            "problem_solution"
+          ],
+          "title": "Narrative purpose"
+        },
+        "story_angle": {
+          "type": "string",
+          "title": "Story angle",
+          "examples": [
+            "เริ่มจากปัญหาข้างเตียงรก แล้วเปลี่ยนเป็นมุมข้างเตียงที่เป็นระเบียบด้วยโต๊ะขนาดเล็ก"
+          ]
+        },
+        "emotional_tone": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "relief",
+              "practical",
+              "friendly",
+              "clean"
+            ]
+          ]
+        },
+        "key_message": {
+          "type": "string",
+          "examples": [
+            "โต๊ะข้างเตียงช่วยให้ของจำเป็นเป็นที่ หยิบง่าย และทำให้ห้องดูเป็นระเบียบขึ้น"
+          ]
+        },
+        "visual_theme_keywords": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "ห้องนอน",
+              "จัดระเบียบ",
+              "โต๊ะข้างเตียง",
+              "รีวิวสินค้า",
+              "TikTok"
+            ]
+          ]
+        },
+        "story_arc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "examples": [
+            [
+              "Hook",
+              "Problem",
+              "Solution",
+              "Proof",
+              "CTA"
+            ]
+          ]
+        },
+        "must_include_ideas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "avoid_ideas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "reference_assets": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "reference_usage_policy",
+        "assets"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "reference_usage_policy": {
+          "type": "string",
+          "enum": [
+            "must_visibly_integrate_all",
+            "must_integrate_selected_best_fit",
+            "prioritize_product_and_scene",
+            "prioritize_character_product_scene"
+          ],
+          "default": "must_visibly_integrate_all"
+        },
+        "visual_source_of_truth_policy": {
+          "type": "object",
+          "description": "Product-reference fidelity policy. When product images are attached, product visuals must be derived from the images rather than inferred from text alone.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "primary_source": {
+              "type": "string",
+              "enum": [
+                "attached_product_images",
+                "product_truth_text",
+                "mixed"
+              ],
+              "default": "attached_product_images"
+            },
+            "strictness": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "balanced",
+                "loose"
+              ],
+              "default": "strict"
+            },
+            "preserve_from_images": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "silhouette",
+                "structure",
+                "visible part count",
+                "proportions",
+                "color/material",
+                "surface finish",
+                "openings/handles/legs/shelves/buttons/labels/packaging when visible",
+                "product-specific details visible in references",
+                "logos only when physically printed on the product/package itself"
+              ]
+            },
+            "allowed_changes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "background",
+                "lighting",
+                "camera framing",
+                "infographic layout",
+                "text overlay",
+                "non-product props that do not hide or alter the product",
+                "generic brand-free labels that do not create trademarks or promotional claims"
+              ]
+            },
+            "forbidden_changes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "generic substitute product",
+                "different model or variant",
+                "changed shape",
+                "changed proportions",
+                "changed material or color",
+                "extra unsupported features",
+                "missing visible product details",
+                "invented logo or fake brand mark",
+                "copied source-image logo used as standalone decoration",
+                "fake certification or marketplace badge",
+                "price tag, discount badge, voucher, promo banner, free-shipping badge, sale countdown, or limited-time offer"
+              ]
+            },
+            "conflict_resolution": {
+              "type": "string",
+              "default": "If text and product images conflict on visual attributes, follow the product images and mention the conflict in handoff_notes."
+            }
+          }
+        },
+        "assets": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "asset_id",
+              "asset_type",
+              "label",
+              "usage_role"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "asset_id": {
+                "type": "string",
+                "examples": [
+                  "P1",
+                  "S1",
+                  "C1"
+                ]
+              },
+              "asset_type": {
+                "type": "string",
+                "enum": [
+                  "character_image",
+                  "product_image",
+                  "background_scene_image",
+                  "floor_plan_reference",
+                  "style_reference",
+                  "logo_or_brand_reference",
+                  "material_reference",
+                  "video_reference",
+                  "audio_reference",
+                  "other"
+                ]
+              },
+              "label": {
+                "type": "string"
+              },
+              "file_path": {
+                "type": "string"
+              },
+              "usage_role": {
+                "type": "string",
+                "enum": [
+                  "identity_reference",
+                  "hero_product_reference",
+                  "background_scene_reference",
+                  "style_mood_reference",
+                  "proof_reference",
+                  "layout_grounding",
+                  "secondary_detail_reference"
+                ]
+              },
+              "must_appear_in_sections": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "hook",
+                    "problem_scene",
+                    "solution_scene",
+                    "hero_panel",
+                    "storyboard_frames",
+                    "product_callouts",
+                    "proof_panel",
+                    "mood_board",
+                    "reference_strip",
+                    "closing_frame"
+                  ]
+                }
+              },
+              "must_preserve": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "can_modify": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "product_truth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "product_name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "main_features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "benefits": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proof_points": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "price_or_offer": {
+          "type": "string"
+        },
+        "brand_personality": {
+          "type": "string"
+        },
+        "claims_to_avoid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "storyboard_request": {
+      "type": "object",
+      "required": [
+        "shot_count_or_range",
+        "timing_structure"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shot_count_or_range": {
+          "type": "string",
+          "examples": [
+            "5 shots",
+            "6 shots",
+            "4-6 shots"
+          ]
+        },
+        "timing_structure": {
+          "type": "string",
+          "examples": [
+            "0-5s Hook, 5-12s Problem, 12-20s Solution, 20-26s Proof, 26-30s CTA"
+          ]
+        },
+        "required_scenes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cta": {
+          "type": "string",
+          "examples": [
+            "ดูรายละเอียดหรือสั่งซื้อได้ที่หน้าร้าน"
+          ]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": [
+        "output_type",
+        "platform",
+        "aspect_ratio",
+        "language"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "output_type": {
+          "type": "string",
+          "enum": [
+            "storyboard",
+            "image_prompt",
+            "video_prompt",
+            "shot_list",
+            "script",
+            "full_plan"
+          ]
+        },
+        "platform": {
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "include_negative_prompt": {
+          "type": "boolean",
+          "default": true
+        },
+        "include_input_usage_map": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

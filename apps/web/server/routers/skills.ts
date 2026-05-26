@@ -3014,7 +3014,7 @@ export const skillsRouter = router({
         skillId: z.string().min(1),
         userInputs: z.record(z.any()), // Dynamic form values
         model: z.string().optional(),
-        referenceImages: z.array(z.string()).max(5).optional(),
+        referenceImages: z.array(z.string()).max(20).optional(),
         originSurface: z.enum(["media_studio"]).optional(),
       })
     )

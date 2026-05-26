@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/media-production-storyboard-planner/ui.schema.json",
+  "title": "Media Production Storyboard Planner UI Schema",
+  "description": "UI schema for rendering the planner form and preserving all user inputs.",
+  "type": "object",
+  "ui:order": [
+    "project",
+    "input_capture",
+    "concept_direction",
+    "reference_assets",
+    "product_truth",
+    "storyboard_request",
+    "output"
+  ],
+  "properties": {
+    "project": {
+      "ui:title": "Project / Goal",
+      "ui:description": "ชื่อโปรเจกต์และเป้าหมายการผลิต",
+      "project_name": {
+        "ui:widget": "text",
+        "ui:placeholder": "เช่น รีวิวโต๊ะข้างเตียง"
+      },
+      "production_goal": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น ทำวิดีโอรีวิวสินค้าโต๊ะข้างเตียงนอน"
+      },
+      "workflow_status": {
+        "ui:widget": "select"
+      },
+      "planner_name": {
+        "ui:widget": "hidden"
+      }
+    },
+    "input_capture": {
+      "ui:title": "Brief / Context",
+      "ui:description": "ค่าที่ผู้ใช้กรอกจาก UI ทุกช่องที่ไม่ว่างต้องถูกนำไปใช้",
+      "content_type": {
+        "ui:widget": "select",
+        "ui:options": [
+          "Storyboard หลายวิดีโอ",
+          "วิดีโอเดี่ยว / ช็อตเดียว",
+          "ภาพ infographic",
+          "Shot list",
+          "Script"
+        ]
+      },
+      "target_group": {
+        "ui:widget": "text",
+        "ui:placeholder": "เช่น คนแต่งบ้าน / ของใช้ในบ้าน"
+      },
+      "platform": {
+        "ui:widget": "select",
+        "ui:options": [
+          "TikTok",
+          "Facebook Reels",
+          "Instagram Reels",
+          "YouTube Shorts",
+          "Marketplace",
+          "Website"
+        ]
+      },
+      "duration": {
+        "ui:widget": "select",
+        "ui:options": [
+          "6s",
+          "15s",
+          "30s",
+          "45s",
+          "60s"
+        ]
+      },
+      "aspect_ratio": {
+        "ui:widget": "select",
+        "ui:options": [
+          "9:16",
+          "4:5",
+          "1:1",
+          "16:9",
+          "3:4"
+        ]
+      },
+      "language": {
+        "ui:widget": "select",
+        "ui:options": [
+          "ไทย",
+          "English",
+          "Bilingual"
+        ]
+      },
+      "product_truth_brand_truth": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น ภาพสินค้าต้องเหมือนภาพจริงที่แนบไป"
+      },
+      "creative_direction": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น อบอุ่น สะอาด มินิมอล แสงธรรมชาติ"
+      },
+      "constraints": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น ห้ามเปลี่ยนรูปทรงสินค้า ห้ามใช้ฉากรก"
+      },
+      "targets": {
+        "ui:widget": "tags",
+        "ui:placeholder": "เช่น รีวิวสตอรี่บอร์ด, ตัดต่อวิดีโอ"
+      },
+      "selected_node_or_concept_card": {
+        "ui:widget": "select",
+        "ui:options": [
+          "ปัญหา → ทางออก",
+          "Question → Answer",
+          "Before → After",
+          "Feature → Benefit",
+          "Walkthrough",
+          "Soft-sell"
+        ]
+      },
+      "hook_seed": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น โต๊ะข้างเตียงรก วางของจำเป็นไม่เป็นที่"
+      }
+    },
+    "concept_direction": {
+      "ui:title": "Concept Direction",
+      "ui:description": "แนวคิด มุมเล่าเรื่อง อารมณ์ และ key message",
+      "main_concept": {
+        "ui:widget": "textarea"
+      },
+      "story_theme": {
+        "ui:widget": "text"
+      },
+      "narrative_purpose": {
+        "ui:widget": "select"
+      },
+      "story_angle": {
+        "ui:widget": "textarea"
+      },
+      "emotional_tone": {
+        "ui:widget": "tags"
+      },
+      "key_message": {
+        "ui:widget": "textarea"
+      },
+      "visual_theme_keywords": {
+        "ui:widget": "tags"
+      },
+      "story_arc": {
+        "ui:widget": "tags"
+      },
+      "must_include_ideas": {
+        "ui:widget": "tags"
+      },
+      "avoid_ideas": {
+        "ui:widget": "tags"
+      }
+    },
+    "reference_assets": {
+      "ui:title": "Asset / Evidence",
+      "ui:description": "ภาพ/ไฟล์แนบทุกไฟล์ต้องมีบทบาทและต้องถูก map เข้ากับ storyboard",
+      "enabled": {
+        "ui:widget": "checkbox"
+      },
+      "reference_usage_policy": {
+        "ui:widget": "select"
+      },
+      "assets": {
+        "ui:widget": "asset-list",
+        "ui:options": {
+          "allowUpload": true,
+          "maxFiles": 20,
+          "assetTypeOptions": [
+            "character_image",
+            "product_image",
+            "background_scene_image",
+            "floor_plan_reference",
+            "style_reference",
+            "logo_or_brand_reference",
+            "material_reference",
+            "video_reference",
+            "audio_reference",
+            "other"
+          ]
+        }
+      }
+    },
+    "product_truth": {
+      "ui:title": "Product Truth",
+      "ui:description": "ข้อเท็จจริงสินค้า จุดขาย และ claim ที่ห้ามแต่งเพิ่ม",
+      "product_name": {
+        "ui:widget": "text"
+      },
+      "category": {
+        "ui:widget": "text"
+      },
+      "main_features": {
+        "ui:widget": "tags"
+      },
+      "benefits": {
+        "ui:widget": "tags"
+      },
+      "proof_points": {
+        "ui:widget": "tags"
+      },
+      "price_or_offer": {
+        "ui:widget": "text"
+      },
+      "brand_personality": {
+        "ui:widget": "text"
+      },
+      "claims_to_avoid": {
+        "ui:widget": "tags"
+      }
+    },
+    "storyboard_request": {
+      "ui:title": "Storyboard / Shot",
+      "ui:description": "จำนวนช็อต โครงเวลา และ CTA",
+      "shot_count_or_range": {
+        "ui:widget": "text",
+        "ui:placeholder": "เช่น 5 shots"
+      },
+      "timing_structure": {
+        "ui:widget": "textarea",
+        "ui:placeholder": "เช่น 0-5s Hook, 5-12s Problem, 12-20s Solution..."
+      },
+      "required_scenes": {
+        "ui:widget": "tags"
+      },
+      "cta": {
+        "ui:widget": "text"
+      }
+    },
+    "output": {
+      "ui:title": "Generate / Handoff",
+      "ui:description": "รูปแบบผลลัพธ์ที่ต้องการ",
+      "output_type": {
+        "ui:widget": "select"
+      },
+      "platform": {
+        "ui:widget": "select"
+      },
+      "aspect_ratio": {
+        "ui:widget": "select"
+      },
+      "language": {
+        "ui:widget": "select"
+      },
+      "include_negative_prompt": {
+        "ui:widget": "checkbox"
+      },
+      "include_input_usage_map": {
+        "ui:widget": "checkbox"
+      }
+    }
+  }
+}

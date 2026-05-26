@@ -1,118 +1,27 @@
-# Orchestra Progress
+[COMPLETE] step-0-session-start — Archived stale orchestra session, created a fresh session, and recorded platform `standard`.
+[COMPLETE] step-1-discovery — SocratiCode status green; narrowed Production Director files, planner skill, specs, and current dirty work.
+[COMPLETE] step-2-planning — Created planning artifact for four concept cards, card-level regeneration, infographic image generation, fullscreen preview, and project default image/video media models.
+[COMPLETE] implementation-wave-1 — Added generation default image/video model contract across shared types, goal/space payloads, and router schemas.
+[COMPLETE] implementation-wave-2 — Replaced the story concept wizard with a four-card concept/storyboard board, card-level actions, infographic preview state, and fullscreen preview.
+[COMPLETE] implementation-wave-3 — Wired full-board and per-card story concept regeneration, plus manual per-card infographic image generation through the existing image generation mutation.
+[COMPLETE] implementation-wave-4 — Added project default image/video model selectors and applied selected defaults to production goal snapshots, generated nodes, and planning capability IDs.
+[COMPLETE] implementation-wave-5 — Updated planner skill output guidance and production director e2e coverage; targeted e2e and typecheck passed.
+[COMPLETE] implementation-wave-6 — Closed review findings: long-running infographic task tracking/reconciliation, regenerated-card infographic reset, card accessibility semantics, schema upgrade preservation, and browser evidence.
+[COMPLETE] implementation-wave-7 — Debugged workflow canvas disappearing from real code path: stale `getSpace` query responses could overwrite newer local `ProductionSpace` drafts. Added stale-version guard, selected the generated `storyboard-card` after workflow creation, and stopped repeated infographic polling for task-not-found responses.
+[COMPLETE] implementation-wave-8 — Moved full Storyboard prompt card review out of the canvas into the Video Shot tab. Added per-shot storyboard cards with editable script/image/video prompts, reference thumbnails, generated image/video previews, and per-card image/video generate/regenerate actions that prefill and auto-start the selected media surface.
+[COMPLETE] implementation-wave-9 — Added a storyboard seconds-per-video contract. Production Director now lets users choose 8s or 10s per storyboard video, sends total duration / clip duration / required video count to the planner skill, and normalizes generated Storyboard prompt cards plus Video Shot records to the derived count.
 
-[COMPLETED] wave-1-contract-backend — Added shared contracts, downstream import service/router, and targeted tests.
-[COMPLETED] wave-2-frontend-spec — Added planning UI affordances, provider/character search evidence, deferred node catalog UI, and spec/plan alignment.
-[COMPLETED] wave-3-gates-review — Targeted tests and TypeScript check passed.
-
-## Session Notes
-- SocratiCode active/green for /home/dev/projects/SmartSpecPro and used before broad implementation.
-- Worktree was dirty before this session; unrelated/package/script/AGENTS changes are preserved and not reverted.
-- Two read-only explorer agents were dispatched:
-  - backend/test/security: 019e5257-0507-7730-aa28-153f79dc5456
-  - frontend/spec: 019e5257-1ac5-7860-bd3a-23a751abbcee
+Notes:
+- SocratiCode was active and used before broad shell search.
+- Existing uncommitted work was present in Media Studio / Production Director files before this planning task began.
+- Implementation proceeded after user approval ("implement ต่อได้เลย").
 - Verification:
-  - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts shared/mediaProduction.test.ts client/src/features/media-production/production-director.e2e.test.tsx` passed: 4 files, 56 tests.
-  - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` passed.
-- 2026-05-23 completeness audit:
-  - SocratiCode status green and used before targeted shell reads.
-  - Frontend/spec explorer completed read-only review.
-  - Backend explorer retried on inherited/default model after Spark quota failure and completed read-only review.
-  - `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas` passed: 16/16 sections.
-  - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts server/jobs/__tests__/productionExecutionReconciliationJob.test.ts shared/mediaProduction.test.ts shared/geminiOmni.test.ts client/src/features/media-production/production-director.e2e.test.tsx` passed: 6 files, 70 tests.
-  - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` passed.
-- 2026-05-23 gap-closure implementation:
-  - Closed backend catalog enforcement for Save-to-Node and execution scheduling.
-  - Closed tenant-scoped handoff idempotency on router/service preview paths.
-  - Hardened Feature 116 runtime router schemas for node kind/status, shot status, product evidence manifest, access policy, and tool binding metadata.
-  - Added full mutating-procedure missing-tenant/cross-user regression coverage plus collaborator read/write/execute role-boundary tests.
-  - Added deterministic legacy adapter and schema read-safety tests.
-  - Added Production execution status panel copy for confirm/progress/failure-retry/reconcile states.
-  - Verification passed:
-    - `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas` — 16/16 sections.
-    - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts server/jobs/__tests__/productionExecutionReconciliationJob.test.ts shared/mediaProduction.test.ts shared/geminiOmni.test.ts client/src/features/media-production/production-director.e2e.test.tsx` — 6 files, 78 tests.
-    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
-- 2026-05-23 UI/UX review session:
-  - SocratiCode active/green and used before targeted UI discovery.
-  - Classified as medium/low-risk visual-ui-flow read-only review.
-  - Worktree already had many dirty/untracked files from prior implementation; this review will not revert or overwrite unrelated changes.
-  - Planned parallel read-only agents: visual-ux-reviewer, accessibility-reviewer, responsive-reviewer.
-  - Spark dispatch for all three read-only reviewers hit quota limit; retrying the same packets with inherited/default model per model-routing escalation.
-  - Read-only review complete:
-    - visual-ux-reviewer found high-priority command hierarchy, node drawer density, node list duplication, JSON-first config, ambiguous context asset actions, and raw/mixed copy.
-    - accessibility-reviewer found active tab contrast, unannounced warnings/errors, color-only selected states, visual-only progress, and shallow reduced-motion checks.
-    - responsive-reviewer found fixture-heavy browser evidence, missing 360x800/1024x768, unproven touch canvas behavior, nested `lg` density risk, and small mobile touch targets.
-  - Consolidated report written to `orchestra/ui-ux-review-2026-05-23.md`.
-  - Actionable follow-up items added to `orchestra/backlog.md`.
-- 2026-05-23 UI/UX fix pass:
-  - Consolidated Production commands into `ProductionWorkspace`, made Create Plan + Verify the primary action, and moved lifecycle actions into Manage.
-  - Reduced canvas drawer/list density, added selected-node inspector semantics, explicit Context Asset actions, advanced Node Config JSON, human status labels, and stronger Thai/English operator copy.
-  - Hardened accessibility/responsive behavior: aria-live/alert semantics, stepper current state, progressbar semantics, reduced-motion spinners, darker active tabs/actions, mobile touch targets, and React Flow viewport page-scroll handling.
-  - Browser evidence now covers 360x800, 390x844, 768x1024, 1024x768, 1280x800, and 1440x900 across fixture light/dark/reduced-motion plus authenticated `/media-studio` live route layout/overflow/axe/canvas-scroll checks.
-  - Verification passed:
-    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 13/13 tests.
-    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
-    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests.
-- 2026-05-23 UI/UX re-review:
-  - SocratiCode active/green and used before targeted file/screenshot inspection.
-  - Latest browser evidence remains `pass` with 18 fixture runs, 6 authenticated live-route runs, and 0 failed runs.
-  - Re-review found no automated gate blockers, but UX still needs follow-up for true empty/no-project state, mobile/tablet canvas priority, node action density, real adapter-specific Node Config fields, provider-result action clarity, and display-label cleanup.
-  - Report written to `orchestra/ui-ux-rereview-2026-05-23.md`.
-- 2026-05-23 UI/UX re-review fix pass:
-  - Implemented every main re-review finding: true no-project state, mobile/tablet canvas priority, collapsed node drawer, compact node list actions, operator-facing Node Config fields, explicit provider-result actions, removed first-asset shortcut, consolidated top workspace actions, and display-label mappers for machine terms.
-  - Hardened canvas/page scroll evidence: React Flow viewport still forwards wheel events to page scroll; virtual graph internals are no longer treated as text overflow in browser evidence while right/left viewport overflow remains blocking.
-  - Product Evidence Tray and canvas containers now guard horizontal overflow with `min-w-0`/`max-w-full`/overflow constraints.
-  - Verification passed:
-    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
-    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 14/14 tests.
-    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests; summary `pass`, 18 fixture runs, 6 authenticated live-route runs, 0 failed.
-- 2026-05-23 right-panel media restore:
-  - Fixed Media Studio right-panel fetch isolation so History, Search Library, and Marketplace queries only run when their sidebar tab is active.
-  - Sanitized HTML/502 tRPC responses in the Library tab so raw app-shell HTML is not rendered to operators.
-  - Added browser evidence that clicks all three right-panel tabs on authenticated `/media-studio` and verifies a visible image in History, Library, and Marketplace.
-  - Verification passed:
-    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
-    - `npm --prefix apps/web test -- client/src/components/media/LibrarySearchPanel.test.ts client/src/features/media-production/production-director.e2e.test.tsx` — 21/21 tests.
-    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests; summary `pass`, 18 fixture runs, 6 authenticated live-route runs, 0 failed.
-- 2026-05-23 canvas node typography polish:
-  - Adjusted Production Flow canvas node typography so title, node kind, and status are smaller, line-height controlled, and truncated within a stable node width for Thai/English labels.
-  - Verification passed:
-    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
-    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 14/14 tests.
-    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests.
-- 2026-05-24 marketplace insight semantic dedupe:
-  - SocratiCode active/green and used before targeted code discovery.
-  - Classified as medium/medium risk: extension sync contract + backend persistence + Drizzle migration + local DB cleanup.
-  - Implemented stable insight semantic dedupe for marketplace capture insights.
-  - Added `semanticKey`, backend semantic lookup/upsert, extension stable idempotency metadata, and migration `0187_marketplace_insight_semantic_dedupe.sql`.
-  - Local DB was backed up before destructive cleanup at `tmp/db-backups/marketplace_capture_insights_before_0187_20260524_222941.sql`.
-  - Applied migration through `npm --prefix apps/web run db:migrate`; duplicate groups went from 11-row groups to 0 duplicate groups. Backup table `marketplace_capture_insights_dedup_backup_0187` contains 110 removed rows.
-  - Verification passed:
-    - `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check` — passed.
-    - `npm --prefix apps/extension run typecheck` — passed.
-    - `npm --prefix apps/web run test -- shared/marketplaceCapture.test.ts` — 13/13 tests.
-- 2026-05-24 marketplace story option data migration:
-  - SocratiCode active/green and used before DB verification.
-  - Found remaining migrated data gap after semantic dedupe: existing `storytelling_handoff` rows still had 5 legacy story options and 0 per-option `videoBrief` objects.
-  - Added migration `0188_marketplace_story_option_video_briefs_backfill.sql`.
-  - Local DB was backed up before payload backfill at `tmp/db-backups/marketplace_capture_insights_before_0188_20260524_232119.sql`.
-  - Applied migration through `npm --prefix apps/web run db:migrate`; backup table `marketplace_capture_story_options_backup_0188` contains 5 original rows.
-  - Post-migration DB verification:
-    - Drizzle migration history includes `0188_marketplace_story_option_video_briefs_backfill`.
-    - All 5 `storytelling_handoff` rows now have exactly 4 story options.
-    - Each story option has a `videoBrief`; each handoff has 12 valid shots total with 3 sub-shots and Thai voiceover format.
-    - `semanticKey` nulls remain 0 and semantic duplicate groups remain 0.
-  - Verification passed:
-    - `npm --prefix apps/web run test -- shared/marketplaceCapture.test.ts` — 13/13 tests.
-    - `git diff --check -- apps/web/drizzle/0188_marketplace_story_option_video_briefs_backfill.sql apps/web/drizzle/meta/_journal.json` — passed.
-- 2026-05-24 Media Studio marketplace story planning:
-  - SocratiCode active/green and used before targeted Media Studio discovery.
-  - Implemented product-aware 4-concept planning from stored Marketplace `storyOptions` when complete.
-  - Added deterministic storytelling taxonomy mixing for each concept: story structure, emotional tone, and short-video hook technique.
-  - Added LLM synthesis fallback through the selected planner skill when stored storyOptions are incomplete, with deterministic local fallback if the LLM call fails.
-  - Added persistence of synthesized `storytelling_handoff` data through the existing `marketplaceCapture.syncInsight` mutation so future planning can reuse it.
-  - Added Regenerate 4 concepts UI action that forces a new seed/concept set instead of reusing the current selected concept.
-  - Updated the planner skill contract for `marketplace_story_concept_synthesis`.
-  - Verification passed:
-    - `npm --prefix apps/web run test -- client/src/features/media-production/production-director.e2e.test.tsx` — 24/24 tests.
-    - `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check` — passed.
-    - `git diff --check -- apps/web/client/src/pages/MediaStudio.tsx apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx apps/web/client/src/features/media-production/production-director.e2e.test.tsx apps/web/skills/media-production-storyboard-planner/skill.md orchestra/plan.md` — passed.
+  - `npm run e2e:production-director` in `apps/web`: passed, 25 tests.
+  - `npm test -- server/services/__tests__/productionSpaceService.test.ts` in `apps/web`: passed, 35 tests.
+  - `npm run e2e:production-director-browser` in `apps/web`: passed, 24 Playwright tests.
+  - `npm run check` in `apps/web`: passed.
+  - Latest wave: `npm run check` in `apps/web`: passed.
+  - Latest wave: `npm run e2e:production-director` in `apps/web`: passed, 28 tests.
+  - Latest Video Shot storyboard card wave: `npm run check` and `npm run e2e:production-director` in `apps/web`: passed, 28 tests.
+  - Latest storyboard timing wave: `npm run check` and `npm run e2e:production-director` in `apps/web`: passed, 28 tests.
+  - `pnpm` was unavailable in this environment, so repo npm scripts were used.

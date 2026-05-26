@@ -145,7 +145,15 @@ export interface ProductionGoal {
   visualStyle?: Record<string, unknown>;
   constraints?: Record<string, unknown>;
   tabSnapshots?: Record<string, unknown>;
+  generationDefaults?: ProductionGenerationDefaults;
   contractVersion?: string;
+}
+
+export interface ProductionGenerationDefaults {
+  imageModelId?: string;
+  videoModelId?: string;
+  imageModelSource?: "project_default" | "media_tab" | "system_default";
+  videoModelSource?: "project_default" | "media_tab" | "system_default";
 }
 
 export interface ProductionReferenceInput {
@@ -503,6 +511,7 @@ export interface ProductionPlanningContextPack {
   desiredTargets: ProductionOutputSurface[];
   capabilityIds: string[];
   budgetNotes?: string;
+  generationDefaults?: ProductionGenerationDefaults;
   updatedAt?: string;
 }
 
@@ -550,6 +559,8 @@ export interface ProductionSpace {
   auditEvents?: ProductionAuditEvent[];
   metrics?: ProductionMetricsSnapshot;
   planningSelection?: ProductionPlanningSelection;
+  generationDefaults?: ProductionGenerationDefaults;
+  storyConceptWizard?: Record<string, unknown>;
   downstreamResultRecords?: ProductionDownstreamResultRecord[];
   cues?: ProductionCue[];
   warnings?: string[];

@@ -66,6 +66,20 @@ import { TRPCError } from "@trpc/server";
 
 const unknownRecordSchema = z.record(z.string(), z.unknown());
 const productionPayloadSchema = unknownRecordSchema;
+function normalizeProductionWarning(value: unknown): string {
+  const text = typeof value === "string"
+    ? value
+    : (() => {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value ?? "");
+      }
+    })();
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length <= 1000 ? normalized : `${normalized.slice(0, 997)}...`;
+}
+const productionWarningSchema = z.preprocess(normalizeProductionWarning, z.string().max(1000));
 const productionNodeStatusSchema = z.enum([
   "draft",
   "needs_config",
@@ -107,6 +121,7 @@ const productionGoalSchema: z.ZodType<ProductionGoal> = z.object({
   visualStyle: unknownRecordSchema.optional(),
   constraints: unknownRecordSchema.optional(),
   tabSnapshots: unknownRecordSchema.optional(),
+  generationDefaults: unknownRecordSchema.optional(),
   contractVersion: z.string().max(64).optional(),
 }).passthrough() as unknown as z.ZodType<ProductionGoal>;
 const productionReferenceSchema = z.object({
@@ -124,7 +139,7 @@ const productionReferenceSchema = z.object({
   zone: z.enum(["cast", "products", "scene_mood", "audio", "generated", "targets"]).optional(),
   role: z.string().max(120).optional(),
   locked: z.boolean().optional(),
-  warnings: z.array(z.string().max(1000)).optional(),
+  warnings: z.array(productionWarningSchema).optional(),
   approvalState: z.enum(["approved", "needs_review", "blocked"]).optional(),
   sku: z.string().max(256).optional(),
   variantId: z.string().max(256).optional(),
@@ -190,7 +205,7 @@ const productionNodeSchema = z.object({
 	  configSnapshot: productionNodeConfigSchema.optional(),
   referenceInputs: z.array(productionReferenceSchema).optional(),
   outputRefs: z.array(productionOutputRefSchema).optional(),
-  readinessIssues: z.array(z.string().max(1000)).optional(),
+  readinessIssues: z.array(productionWarningSchema).optional(),
   estimatedCredits: z.number().finite().nonnegative().optional(),
   position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
   locked: z.boolean().optional(),
@@ -210,8 +225,8 @@ const productionShotSchema: z.ZodType<ProductionShot> = z.object({
   sourceVideoControl: unknownRecordSchema.optional(),
   characterAssetIds: z.array(z.string().min(1).max(256)).optional(),
   customerJourneyStage: z.string().max(256).optional(),
-  mustShow: z.array(z.string().max(1000)).optional(),
-  mustAvoid: z.array(z.string().max(1000)).optional(),
+  mustShow: z.array(productionWarningSchema).optional(),
+  mustAvoid: z.array(productionWarningSchema).optional(),
   script: z.string().max(100_000).optional(),
   visualIntent: z.string().max(20_000).optional(),
   audioIntent: z.string().max(20_000).optional(),
@@ -244,7 +259,7 @@ const productStoryboardAssetSchema = z.object({
   role: z.enum(["hero", "detail", "use_case", "review", "comparison", "background", "packshot", "label_close_up", "texture_detail", "before_after", "cta_end_card"]).optional(),
   frameStrategy: z.enum(["image_reference", "start_frame", "stop_frame", "start_and_stop", "packshot_insert"]).optional(),
   requiredVisualAccuracy: z.enum(["standard", "high", "strict"]).optional(),
-  reviewNotes: z.array(z.string().max(1000)).optional(),
+  reviewNotes: z.array(productionWarningSchema).optional(),
   claimEvidence: z.array(productClaimEvidenceSchema),
   provenance: unknownRecordSchema.optional(),
 });
@@ -253,7 +268,7 @@ const productionProductEvidenceManifestSchema = z.object({
   products: z.array(productStoryboardAssetSchema),
   requiredClaimIds: z.array(z.string().min(1).max(256)),
   status: z.enum(["ready", "warning", "blocked"]),
-  warnings: z.array(z.string().max(1000)),
+  warnings: z.array(productionWarningSchema),
 });
 const productionSpaceSchema: z.ZodType<ProductionSpace> = z.object({
   schemaVersion: z.literal("1.0.0"),
@@ -266,6 +281,8 @@ const productionSpaceSchema: z.ZodType<ProductionSpace> = z.object({
   flowEdges: z.array(productionEdgeSchema),
   contextAssets: z.array(productionReferenceSchema),
   productEvidenceManifest: productionProductEvidenceManifestSchema.optional(),
+  generationDefaults: unknownRecordSchema.optional(),
+  storyConceptWizard: unknownRecordSchema.optional(),
   shotProductUsage: z.array(unknownRecordSchema).optional(),
   actionAttempts: z.array(unknownRecordSchema).optional(),
 	  auditEvents: z.array(unknownRecordSchema).optional(),
@@ -275,7 +292,7 @@ const productionSpaceSchema: z.ZodType<ProductionSpace> = z.object({
   approvalState: unknownRecordSchema.optional(),
   downstreamResultRecords: z.array(unknownRecordSchema).optional(),
   cues: z.array(unknownRecordSchema).optional(),
-  warnings: z.array(z.string().max(1000)).optional(),
+  warnings: z.array(productionWarningSchema).optional(),
   featureFlags: z.record(z.string(), z.boolean()).optional(),
   accessPolicy: z.object({
     ownerUserId: z.number().int().positive().optional(),
