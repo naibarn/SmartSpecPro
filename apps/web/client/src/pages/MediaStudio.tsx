@@ -66,6 +66,11 @@ import { StoryboardBatchReviewDialog, type StoryboardReviewTask } from "@/compon
 import { ProductionWorkspace, type ProductionMediaModelOption, type ProductionPlanningModelOption, type ProductionStoryboardBuildMode, type ProductionStoryConceptOption, type ProductionStoryConceptWizardState } from "@/features/media-production/components/ProductionWorkspace";
 import { VideoShotWorkspace } from "@/features/media-production/components/VideoShotWorkspace";
 import {
+  buildProductionSkillAttachmentPack,
+  estimateProductionSkillContextTokens,
+  selectProductionPlanningModelForContext,
+} from "@/features/media-production/productionSkillContext";
+import {
   toolSurfaceForNodeKind,
   type ProductionInvalidEdgeWarning,
   type ProductionNodeConfigDraft,
@@ -1501,6 +1506,40 @@ function buildProductionStoryboardReferenceAssets(input: {
   return [...fromAttachments, ...fromReferenceImages].slice(0, 20);
 }
 
+function buildProductionProductEvidenceReferenceInputs(
+  manifest: ProductionSpace["productEvidenceManifest"] | undefined,
+): ProductionReferenceInput[] {
+  if (!manifest?.products?.length) return [];
+
+  return manifest.products
+    .filter((product) => typeof product.imageUrl === "string" && product.imageUrl.trim().length > 0)
+    .map((product, index) => {
+      const url = product.imageUrl?.trim() ?? "";
+      return {
+        id: `product-evidence-${product.id || index + 1}`,
+        kind: "product_image",
+        title: product.title || `Product reference ${index + 1}`,
+        url,
+        thumbnailUrl: url,
+        source: "product-evidence-manifest",
+        provenance: {
+          manifestId: manifest.manifestId,
+          productId: product.productId,
+          productAssetId: product.id,
+          productTruth: product.productTruth,
+          sourceProvenance: product.provenance,
+        },
+        zone: "products",
+        role: product.role || "hero",
+        locked: product.requiredVisualAccuracy === "strict",
+        warnings: product.reviewNotes,
+        approvalState: product.approvalState,
+        sku: product.sku,
+        variantId: product.variantId,
+      } satisfies ProductionReferenceInput;
+    });
+}
+
 function buildMediaProductsStoryboardPlannerInput(input: {
   concept: ProductionStoryConceptOption;
   goal: ProductionGoal;
@@ -2317,6 +2356,11 @@ interface GenerationTask {
   videoQaResult?: Record<string, any>;
   storyboardContext?: StoryboardVideoGenerationContext;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
+  productionShotContext?: {
+    shotId: string;
+    role: "reference" | "start" | "stop" | "video";
+    surface: "image" | "video";
+  };
 }
 
 interface StoryboardReviewDraft {
@@ -4941,6 +4985,8 @@ export default function MediaStudio() {
   const productionInfographicDirectFetchAtRef = useRef<Record<string, number>>({});
   const productionInfographicNotFoundTaskIdsRef = useRef<Set<string>>(new Set());
   const attachedProductionOutputKeysRef = useRef<Set<string>>(new Set());
+  const syncedProductionShotMediaTaskIdsRef = useRef<Set<string>>(new Set());
+  const latestProductionSpaceDraftRef = useRef<ProductionSpace | null>(null);
   const marketplaceStorytellingParams = useMemo(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search), [location]);
   const marketplaceStorytellingRequested = marketplaceStorytellingParams.get("marketplaceStorytelling") === "1";
   const marketplaceStorytellingInsightId = marketplaceStorytellingParams.get("marketplaceInsightId") || marketplaceStorytellingParams.get("insightId") || "";
@@ -5437,7 +5483,15 @@ export default function MediaStudio() {
 
   const setSelectedSkillId = useCallback((value: string) => updateTabState('selectedSkillId', value), [updateTabState]);
   const setUseAdvancedMode = useCallback((value: boolean) => updateTabState('useAdvancedMode', value), [updateTabState]);
-  const setDynamicFormValues = useCallback((value: Record<string, any>) => updateTabState('dynamicFormValues', value), [updateTabState]);
+  const setDynamicFormValues = useCallback((value: Record<string, any> | ((prev: Record<string, any>) => Record<string, any>)) => {
+    setTabStates(prev => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        dynamicFormValues: typeof value === 'function' ? value(prev[activeTab].dynamicFormValues) : value
+      }
+    }));
+  }, [activeTab]);
   const setSelectedStyleCategory = useCallback((value: string) => updateTabState('selectedStyleCategory', value), [updateTabState]);
   const setSelectedStyle = useCallback((value: string) => updateTabState('selectedStyle', value), [updateTabState]);
   const setSelectedVfxCategory = useCallback((value: string) => updateTabState('selectedVfxCategory', value), [updateTabState]);
@@ -5723,6 +5777,7 @@ export default function MediaStudio() {
   const [floatingPreviewFrame, setFloatingPreviewFrame] = useState<FloatingPreviewFrame>(() => getDefaultFloatingPreviewFrame());
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
+  const [floatingPreviewTaskIds, setFloatingPreviewTaskIds] = useState<Set<string> | null>(null);
   const [dismissedGenerationQueueTaskIds, setDismissedGenerationQueueTaskIds] = useState<Set<string>>(() => new Set());
   const [trackedGenerationQueueTaskIds, setTrackedGenerationQueueTaskIds] = useState<Set<string>>(() => new Set());
   const [isGenerationQueueCollapsed, setIsGenerationQueueCollapsed] = useState(false);
@@ -10001,6 +10056,7 @@ export default function MediaStudio() {
       ...(activeMarketplaceCtx ? { marketplaceProduct: activeMarketplaceCtx } : {}),
     }));
     setGenerationTasks(initialTasks);
+    setFloatingPreviewTaskIds(null);
     setIsGenerationQueueHidden(false);
     setIsGenerationQueueCollapsed(false);
     setFocusedGenerationTaskId(initialTasks[0]?.id ?? null);
@@ -13235,9 +13291,15 @@ export default function MediaStudio() {
   };
 
   const floatingPreviewType = previewContextTab ?? activeTab;
+  const floatingPreviewTasks = useMemo(() => {
+    if (!floatingPreviewTaskIds) return generationTasks;
+    return generationTasks.filter((task) =>
+      getGenerationQueueIdentityCandidates(task).some((id) => floatingPreviewTaskIds.has(id))
+    );
+  }, [floatingPreviewTaskIds, generationTasks]);
   const hasFloatingPreviewContent = Boolean(previewUrl || isGenerating || generationTasks.length > 0);
-  const showFloatingProgressGrid = generationTasks.length > 1 && (
-    isGenerating || generationTasks.some((task) => task.status !== "queued")
+  const showFloatingProgressGrid = floatingPreviewTasks.length > 1 && (
+    isGenerating || floatingPreviewTasks.some((task) => task.status !== "queued")
   );
   const floatingPreviewStyle = isFloatingPreviewMaximized
     ? {
@@ -13719,6 +13781,10 @@ export default function MediaStudio() {
 	    productionDefaultCapabilityIds,
 	    productionGenerationDefaults,
 	  ]);
+  useEffect(() => {
+    latestProductionSpaceDraftRef.current = productionWorkspaceSpace;
+  }, [productionWorkspaceSpace]);
+
   const activeProductionRunId = useMemo(() => {
     return [productionDirector.productionRunId, productionWorkspaceSpace.productionRunId]
       .find((value) => value && value !== "draft") ?? "";
@@ -14079,6 +14145,7 @@ export default function MediaStudio() {
     successMessage?: string,
   ) => {
     const sanitizedNextSpace = sanitizeProductionSpaceWarnings(nextSpace);
+    latestProductionSpaceDraftRef.current = sanitizedNextSpace;
     setProductionSpaceDraft(sanitizedNextSpace);
     if (!sanitizedNextSpace.productionRunId || sanitizedNextSpace.productionRunId === "draft") return sanitizedNextSpace;
     pendingProductionSpaceSaveCountRef.current += 1;
@@ -14093,6 +14160,7 @@ export default function MediaStudio() {
       const savedSpace = (saved as any)?.space as ProductionSpace | undefined;
       if (savedSpace) {
         persistedProductionRunIdsRef.current.add(savedSpace.productionRunId);
+        latestProductionSpaceDraftRef.current = savedSpace;
         setProductionSpaceDraft(savedSpace);
       }
       if (successMessage) toast.success(successMessage);
@@ -14103,6 +14171,7 @@ export default function MediaStudio() {
         const latestSpace = (latestResult.data as any)?.space as ProductionSpace | undefined;
         if (latestSpace?.schemaVersion === "1.0.0") {
           const rebasedSpace = sanitizeProductionSpaceWarnings(rebaseProductionSpaceChangedFields(latestSpace, sanitizedNextSpace, changedFields));
+          latestProductionSpaceDraftRef.current = rebasedSpace;
           setProductionSpaceDraft(rebasedSpace);
           const saved = await saveProductionSpaceMutation.mutateAsync({
             productionRunId: rebasedSpace.productionRunId,
@@ -14113,6 +14182,7 @@ export default function MediaStudio() {
           const savedSpace = (saved as any)?.space as ProductionSpace | undefined;
           if (savedSpace) {
             persistedProductionRunIdsRef.current.add(savedSpace.productionRunId);
+            latestProductionSpaceDraftRef.current = savedSpace;
             setProductionSpaceDraft(savedSpace);
           }
           if (successMessage) toast.success(successMessage);
@@ -14132,7 +14202,7 @@ export default function MediaStudio() {
     changedFields: string[],
     successMessage?: string,
   ) => {
-    const nextSpace = updater(productionWorkspaceSpace);
+    const nextSpace = updater(latestProductionSpaceDraftRef.current ?? productionWorkspaceSpace);
     void persistProductionSpace(nextSpace, changedFields, successMessage);
   }, [persistProductionSpace, productionWorkspaceSpace]);
 
@@ -14141,6 +14211,10 @@ export default function MediaStudio() {
     const productionRunId = [productionDirector.productionRunId, productionWorkspaceSpace.productionRunId]
       .find((value) => value && value !== "draft");
     if (!productionRunId || productionRunId === "draft") return;
+    const loadedSpace = (productionSpaceQuery.data as any)?.space as ProductionSpace | undefined;
+    const hasLoadedSpaceForRun = loadedSpace?.schemaVersion === "1.0.0" && loadedSpace.productionRunId === productionRunId;
+    const hasDraftForRun = productionSpaceDraft?.productionRunId === productionRunId;
+    if (!hasLoadedSpaceForRun && !hasDraftForRun) return;
     const autosaveHash = buildProductionStableHash({
       productionRunId,
       contextAssets: productionWorkspaceSpace.contextAssets.map((asset) => ({
@@ -14160,7 +14234,7 @@ export default function MediaStudio() {
         ...productionWorkspaceSpace,
         productionRunId,
         storyConceptWizard: productionStoryConceptWizard as unknown as Record<string, unknown>,
-      }, ["contextAssets", "storyConceptWizard"], undefined).catch((error) => {
+      }, ["storyConceptWizard"], undefined).catch((error) => {
         lastProductionStoryAutosaveHashRef.current = "";
         if (String(error instanceof Error ? error.message : error).includes("space_version_stale")) {
           void productionSpaceQuery.refetch();
@@ -14264,16 +14338,14 @@ export default function MediaStudio() {
       toast.error(isThaiLocale ? "กรุณาระบุเป้าหมายหรือ prompt ก่อนสร้างแผน" : "Add a goal or prompt before planning.");
       return;
     }
-    const planningAttachments = productionWorkspaceSpace.contextAssets.slice(0, MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT);
-    const planningAttachmentImageUrls = planningAttachments
-      .filter((asset) => asset.url && ["reference_image", "product_image", "character_asset", "generated_media", "marketplace_product"].includes(asset.kind))
-      .map((asset) => asset.url as string);
-    const planningAttachmentVideos = planningAttachments
-      .filter((asset) => asset.url && asset.kind === "source_video")
-      .map((asset) => ({ url: asset.url as string, name: asset.title, role: asset.role, source: asset.source }));
-    const planningAttachmentAudio = planningAttachments
-      .filter((asset) => asset.url && asset.kind === "audio_asset")
-      .map((asset) => ({ url: asset.url as string, name: asset.title, role: asset.role, source: asset.source }));
+    const planningAttachmentPack = buildProductionSkillAttachmentPack({
+      space: productionWorkspaceSpace,
+      referenceImages,
+      referenceVideos,
+      audioAssets: geminiOmniAudioAssets,
+      limit: MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT,
+    });
+    const planningAttachments = planningAttachmentPack.attachments;
     const marketplaceHandoff = marketplaceStorytellingImport.handoff;
     const productTruthContext = buildProductionProductTruthContext({
       attachments: planningAttachments,
@@ -14284,14 +14356,26 @@ export default function MediaStudio() {
       ? (productTruthContext as Record<string, unknown>).marketplaceSupportingInsights
       : [];
     const selectedPlannerSkillId = productionDirector.planningSkillId || MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID;
-    const autoPlanningModel = productionPlanningModelOptions[0];
     const manualPlanningModelId = productionDirector.planningModelId.trim();
-    const selectedPlanningModelOption = productionDirector.planningModelMode === "manual" && manualPlanningModelId
-      ? productionPlanningModelOptions.find((model) => model.modelId === manualPlanningModelId)
-      : autoPlanningModel;
-    const selectedPlanningModel = productionDirector.planningModelMode === "manual" && manualPlanningModelId
-      ? manualPlanningModelId
-      : autoPlanningModel?.modelId ?? selectedLlmModelSelection.resolvedModelId;
+    const planningModelContextEstimate = estimateProductionSkillContextTokens({
+      production_goal: goal,
+      product_truth_context: productTruthContext,
+      marketplace_supporting_insights: marketplaceSupportingInsights,
+      context_assets: planningAttachments,
+      reference_images: planningAttachmentPack.referenceImages,
+      reference_videos: planningAttachmentPack.referenceVideos,
+      reference_audio: planningAttachmentPack.referenceAudio,
+      story_concepts: productionStoryConceptWizard?.options,
+    });
+    const planningModelSelection = selectProductionPlanningModelForContext({
+      modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
+      manualModelId: manualPlanningModelId,
+      fallbackModelId: selectedLlmModelSelection.resolvedModelId,
+      options: productionPlanningModelOptions,
+      estimatedContextTokens: planningModelContextEstimate,
+    });
+    const selectedPlanningModelOption = planningModelSelection.option;
+    const selectedPlanningModel = planningModelSelection.modelId;
     const storyConcept = explicitStoryConcept
       ?? (options?.regenerate ? null : productionStoryConceptWizard?.options.find((option) => option.id === productionStoryConceptWizard.selectedId))
       ?? null;
@@ -14359,7 +14443,7 @@ export default function MediaStudio() {
               generation_seed: generationSeed,
             },
             ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
-            referenceImages: planningAttachmentImageUrls.slice(0, 5),
+            referenceImages: planningAttachmentPack.referenceImageUrls,
             originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
           });
           const parsedConcepts = parseJsonSkillContent(conceptResult.content || "");
@@ -14508,20 +14592,17 @@ export default function MediaStudio() {
 	            requires_thinking: true,
 	            selected_model: selectedPlanningModel,
 	            selected_model_context_tokens: selectedPlanningModelOption?.contextLength ?? null,
-	            auto_selected_reason: productionDirector.planningModelMode === "manual"
-	              ? "manual_override"
-	              : autoPlanningModel
-	                ? "auto_selected_first_enabled_vision_thinking_priority"
-	                : "fallback_to_available_vision_model",
+	            auto_selected_reason: planningModelSelection.reason,
+	            estimated_context_tokens: planningModelSelection.estimatedContextTokens,
+	            required_context_tokens: planningModelSelection.requiredContextTokens,
+	            escalated_from_model: planningModelSelection.escalatedFrom,
+	            overflow_risk: planningModelSelection.overflowRisk,
 	          },
 	          planning_context_pack: {
 	            ...(productionWorkspaceSpace.planningSelection?.contextPack ?? {}),
 	            assetCount: planningAttachments.length,
 	            attachmentLimit: MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT,
-	            attachmentKinds: planningAttachments.reduce<Record<string, number>>((counts, asset) => {
-	              counts[asset.kind] = (counts[asset.kind] ?? 0) + 1;
-	              return counts;
-	            }, {}),
+	            attachmentKinds: planningAttachmentPack.attachmentKinds,
 	          },
 	          context_assets: planningAttachments,
 	          product_truth_context: productTruthContext,
@@ -14542,25 +14623,16 @@ export default function MediaStudio() {
             selectedModel || GEMINI_OMNI_VIDEO_MODEL_ID,
             "seedance-2",
           ],
-          reference_images: [
-            ...planningAttachments
-              .filter((asset) => asset.url && ["reference_image", "product_image", "character_asset", "generated_media", "marketplace_product"].includes(asset.kind))
-              .map((asset) => ({ url: asset.url as string, name: asset.title, role: asset.role, source: asset.source, provenance: asset.provenance })),
-            ...referenceImages.map((image) => ({ url: image.url, name: image.name })),
-          ].slice(0, MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT),
-          reference_videos: planningAttachmentVideos.length
-            ? planningAttachmentVideos
-            : referenceVideos.map((video) => ({ url: video.url, name: video.name })),
-          reference_audio: planningAttachmentAudio,
+          reference_images: planningAttachmentPack.referenceImages,
+          reference_videos: planningAttachmentPack.referenceVideos,
+          reference_audio: planningAttachmentPack.referenceAudio,
           character_ids: geminiOmni.selectedCharacterIds,
           audio_ids: geminiOmni.selectedAudioIds,
           revision_instructions: productionDirector.revisionInstructions.trim() || undefined,
 	          require_review_before_batch: true,
 	        },
 	        ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
-	        referenceImages: [...planningAttachmentImageUrls, ...referenceImages.map((image) => image.url)]
-	          .filter((url, index, all) => all.indexOf(url) === index)
-	          .slice(0, 5),
+	        referenceImages: planningAttachmentPack.referenceImageUrls,
 	        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
 	      });
       const parsedPlan = parseJsonSkillContent(plannerResult.content || "") ?? {
@@ -14602,9 +14674,7 @@ export default function MediaStudio() {
           require_human_approval: true,
         },
 	        ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
-        referenceImages: [...planningAttachmentImageUrls, ...referenceImages.map((image) => image.url)]
-          .filter((url, index, all) => all.indexOf(url) === index)
-          .slice(0, 5),
+        referenceImages: planningAttachmentPack.referenceImageUrls,
         originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
       });
       const parsedVerification = parseJsonSkillContent(verifierResult.content || "") ?? {
@@ -14816,10 +14886,18 @@ export default function MediaStudio() {
             packId: `story-wizard:${productionRunId}:${planVersion}`,
             goalHash: buildProductionStableHash({ goal, storyConcept }),
             assetCount: planningAttachments.length,
+            attachmentKinds: planningAttachmentPack.attachmentKinds,
             productEvidenceStatus: productionWorkspaceSpace.productEvidenceManifest?.status,
             shotCount: safeWizardShots.length,
             desiredTargets: ["storyboard_review", "video_edit"],
             capabilityIds: productionDefaultCapabilityIds,
+            selectedModel: selectedPlanningModel,
+            selectedModelContextTokens: selectedPlanningModelOption?.contextLength ?? null,
+            modelAutoSelectionReason: planningModelSelection.reason,
+            estimatedContextTokens: planningModelSelection.estimatedContextTokens,
+            requiredContextTokens: planningModelSelection.requiredContextTokens,
+            escalatedFromModel: planningModelSelection.escalatedFrom,
+            overflowRisk: planningModelSelection.overflowRisk,
             updatedAt: nowIso,
           },
         },
@@ -14845,6 +14923,7 @@ export default function MediaStudio() {
     buildCurrentProductionGoal,
     executeCustomSkillMutation,
     geminiOmni.deliveryMode,
+    geminiOmniAudioAssets,
     geminiOmni.selectedAudioIds,
     geminiOmni.selectedCharacterIds,
     isThaiLocale,
@@ -14891,15 +14970,34 @@ export default function MediaStudio() {
     if (!currentWizard || !currentConcept) return;
     const generationSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const goal = buildCurrentProductionGoal();
+    const planningAttachmentPack = buildProductionSkillAttachmentPack({
+      space: productionWorkspaceSpace,
+      referenceImages,
+      referenceVideos,
+      audioAssets: geminiOmniAudioAssets,
+      limit: MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT,
+    });
     const productTruthContext = buildProductionProductTruthContext({
-      attachments: productionWorkspaceSpace.contextAssets.slice(0, MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT),
+      attachments: planningAttachmentPack.attachments,
       manifest: productionWorkspaceSpace.productEvidenceManifest,
       handoff: marketplaceStorytellingImport.handoff,
     });
     const selectedPlannerSkillId = productionDirector.planningSkillId || MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID;
-    const selectedPlanningModel = productionDirector.planningModelMode === "manual" && productionDirector.planningModelId.trim()
-      ? productionDirector.planningModelId.trim()
-      : productionPlanningModelOptions[0]?.modelId ?? selectedLlmModelSelection.resolvedModelId;
+    const planningModelSelection = selectProductionPlanningModelForContext({
+      modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
+      manualModelId: productionDirector.planningModelId.trim(),
+      fallbackModelId: selectedLlmModelSelection.resolvedModelId,
+      options: productionPlanningModelOptions,
+      estimatedContextTokens: estimateProductionSkillContextTokens({
+        production_goal: goal,
+        product_truth_context: productTruthContext,
+        context_assets: planningAttachmentPack.attachments,
+        reference_images: planningAttachmentPack.referenceImages,
+        current_story_concepts: currentWizard.options,
+        target_story_concept: currentConcept,
+      }),
+    });
+    const selectedPlanningModel = planningModelSelection.modelId;
     setProductionStoryConceptWizard((current) => current ? {
       ...current,
       contextSummary: isThaiLocale ? "กำลัง regenerate แนวคิดที่เลือก..." : "Regenerating the selected concept...",
@@ -14913,16 +15011,24 @@ export default function MediaStudio() {
           instruction: "Return JSON only with story_concepts containing exactly one regenerated concept for the requested dimension. Preserve product truth and do not invent unsupported claims. The regenerated concept must match the current product identity from production_goal, product_truth_context, and attached product images; ignore stale marketplace insights from other domains. Include infographic_prompt, visual_summary, key_visual_elements, and storyboard_thumbnail_notes.",
           production_goal: goal,
           product_truth_context: productTruthContext,
+          planning_context_pack: {
+            assetCount: planningAttachmentPack.attachments.length,
+            attachmentKinds: planningAttachmentPack.attachmentKinds,
+            selected_model: selectedPlanningModel,
+            selected_model_context_tokens: planningModelSelection.option?.contextLength ?? null,
+            auto_selected_reason: planningModelSelection.reason,
+            estimated_context_tokens: planningModelSelection.estimatedContextTokens,
+            required_context_tokens: planningModelSelection.requiredContextTokens,
+            escalated_from_model: planningModelSelection.escalatedFrom,
+            overflow_risk: planningModelSelection.overflowRisk,
+          },
           current_story_concepts: currentWizard.options,
           target_story_concept: currentConcept,
           required_dimensions: [currentConcept.storyOptionId ?? `story_option:${currentConcept.storyDimension ?? currentConcept.id}`],
           generation_seed: generationSeed,
         },
         ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
-        referenceImages: productionWorkspaceSpace.contextAssets
-          .filter((asset) => asset.url && ["reference_image", "product_image", "character_asset", "generated_media", "marketplace_product"].includes(asset.kind))
-          .map((asset) => asset.url as string)
-          .slice(0, 5),
+        referenceImages: planningAttachmentPack.referenceImageUrls,
         originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
       });
       const parsed = parseJsonSkillContent(result.content || "");
@@ -14955,6 +15061,7 @@ export default function MediaStudio() {
     executeCustomSkillMutation,
     isThaiLocale,
     marketplaceStorytellingImport.handoff,
+    geminiOmniAudioAssets,
     productionDirector.planningModelId,
     productionDirector.planningModelMode,
     productionDirector.planningSkillId,
@@ -14962,6 +15069,8 @@ export default function MediaStudio() {
     productionStoryConceptWizard,
     productionWorkspaceSpace.contextAssets,
     productionWorkspaceSpace.productEvidenceManifest,
+    referenceImages,
+    referenceVideos,
     runProductionPlanAndVerify,
     selectedLlmModelSelection.resolvedModelId,
   ]);
@@ -14970,7 +15079,14 @@ export default function MediaStudio() {
     const currentConcept = productionStoryConceptWizard?.options.find((option) => option.id === conceptId);
     if (!currentConcept) return;
     const goal = buildCurrentProductionGoal();
-    const attachments = productionWorkspaceSpace.contextAssets.slice(0, MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT);
+    const planningAttachmentPack = buildProductionSkillAttachmentPack({
+      space: productionWorkspaceSpace,
+      referenceImages,
+      referenceVideos,
+      audioAssets: geminiOmniAudioAssets,
+      limit: MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT,
+    });
+    const attachments = planningAttachmentPack.attachments;
     const productTruthContext = buildProductionProductTruthContext({
       attachments,
       manifest: productionWorkspaceSpace.productEvidenceManifest,
@@ -14983,22 +15099,12 @@ export default function MediaStudio() {
       locale: isThaiLocale ? "th" : "en",
     });
     let promptText = fallbackPromptText;
-    const rawReferenceImageUrls = [
-      ...attachments
-        .filter((asset) => asset.url && ["reference_image", "product_image", "character_asset", "generated_media", "marketplace_product"].includes(asset.kind))
-        .map((asset) => ({
-          url: asset.url as string,
-          name: asset.title,
-          isProductReference: asset.kind === "product_image" || asset.kind === "marketplace_product",
-        })),
-      ...referenceImages
-        .filter((image) => image.url)
-        .map((image) => ({
-          url: image.url,
-          name: image.name || "Reference image",
-          isProductReference: Boolean((image as any).marketplaceProduct),
-        })),
-    ].filter((item, index, items) => items.findIndex((candidate) => candidate.url === item.url) === index)
+    const rawReferenceImageUrls = planningAttachmentPack.referenceImages
+      .map((item) => ({
+        url: item.url,
+        name: item.name || "Reference image",
+        isProductReference: Boolean(item.isProductReference),
+      }))
       .slice(0, 20);
     const infographicModelSelection = resolveProductionInfographicImageModel({
       preferredModelId: productionGenerationDefaults.imageModelId || undefined,
@@ -15029,9 +15135,20 @@ export default function MediaStudio() {
       } : option),
     } : current);
     try {
-      const selectedPlanningModel = productionDirector.planningModelMode === "manual" && productionDirector.planningModelId.trim()
-        ? productionDirector.planningModelId.trim()
-        : productionPlanningModelOptions[0]?.modelId ?? selectedLlmModelSelection.resolvedModelId;
+      const planningModelSelection = selectProductionPlanningModelForContext({
+        modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
+        manualModelId: productionDirector.planningModelId.trim(),
+        fallbackModelId: selectedLlmModelSelection.resolvedModelId,
+        options: productionPlanningModelOptions,
+        estimatedContextTokens: estimateProductionSkillContextTokens({
+          concept: currentConcept,
+          production_goal: goal,
+          product_truth_context: productTruthContext,
+          context_assets: attachments,
+          reference_images: planningAttachmentPack.referenceImages,
+        }),
+      });
+      const selectedPlanningModel = planningModelSelection.modelId;
       const storyboardSkillInput = buildMediaProductsStoryboardPlannerInput({
         concept: currentConcept,
         goal,
@@ -15042,7 +15159,20 @@ export default function MediaStudio() {
       });
       const skillResult = await executeCustomSkillMutation.mutateAsync({
         skillId: MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID,
-        userInputs: storyboardSkillInput,
+        userInputs: {
+          ...storyboardSkillInput,
+          planning_context_pack: {
+            assetCount: planningAttachmentPack.attachments.length,
+            attachmentKinds: planningAttachmentPack.attachmentKinds,
+            selected_model: selectedPlanningModel,
+            selected_model_context_tokens: planningModelSelection.option?.contextLength ?? null,
+            auto_selected_reason: planningModelSelection.reason,
+            estimated_context_tokens: planningModelSelection.estimatedContextTokens,
+            required_context_tokens: planningModelSelection.requiredContextTokens,
+            escalated_from_model: planningModelSelection.escalatedFrom,
+            overflow_risk: planningModelSelection.overflowRisk,
+          },
+        },
         ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
         referenceImages: referenceImageUrls.map((item) => item.url),
         originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
@@ -15207,6 +15337,8 @@ export default function MediaStudio() {
     productionWorkspaceSpace.productEvidenceManifest,
     imageMediaModels?.models,
     referenceImages,
+    referenceVideos,
+    geminiOmniAudioAssets,
     refetchMediaHistory,
     selectedLlmModelSelection.resolvedModelId,
     setGenerationTasks,
@@ -16360,12 +16492,25 @@ export default function MediaStudio() {
   }, [getProductionStoryboardPromptForShot, productionWorkspaceSpace]);
 
   const getProductionShotReferenceAssets = useCallback((surface: "image" | "video" = "image") => {
-    return productionWorkspaceSpace.contextAssets
+    const productEvidenceAssets = buildProductionProductEvidenceReferenceInputs(
+      productionWorkspaceSpace.productEvidenceManifest,
+    );
+    const seen = new Set<string>();
+    return [
+      ...productEvidenceAssets,
+      ...productionWorkspaceSpace.contextAssets,
+    ]
       .filter((asset) => asset.url && (surface === "video"
         ? ["reference_image", "product_image", "marketplace_product", "character_asset", "generated_media", "source_video"].includes(asset.kind)
         : ["reference_image", "product_image", "marketplace_product", "character_asset", "generated_media"].includes(asset.kind)))
+      .filter((asset) => {
+        const identity = `${asset.kind}:${asset.url || asset.id}`;
+        if (seen.has(identity)) return false;
+        seen.add(identity);
+        return true;
+      })
       .slice(0, 12);
-  }, [productionWorkspaceSpace.contextAssets]);
+  }, [productionWorkspaceSpace.contextAssets, productionWorkspaceSpace.productEvidenceManifest]);
 
   const setProductionShotActionBusy = useCallback((shotId: string, action: "referencePrompt" | "referenceImage" | "startFrame" | "stopFrame" | "video", busy: boolean) => {
     setProductionShotGenerationState((current) => ({
@@ -16398,6 +16543,7 @@ export default function MediaStudio() {
     prompt: string;
     model?: string;
     fallbackTaskId: string;
+    productionShotContext?: GenerationTask["productionShotContext"];
   }) => {
     const resultUrl = params.taskResult?.resultUrl || extractTaskResultUrl(params.taskResult) || undefined;
     const backendTaskId = String(params.taskResult?.id ?? params.taskResult?.backendTaskId ?? "");
@@ -16416,6 +16562,7 @@ export default function MediaStudio() {
       ...(resultUrl ? { url: resultUrl } : {}),
       ...(backendTaskId ? { backendTaskId } : {}),
       ...(providerTaskId ? { providerTaskId } : {}),
+      ...(params.productionShotContext ? { productionShotContext: params.productionShotContext } : {}),
       statusDetail: resultUrl ? t('mediaStudio.generationStatus.completed') : t('mediaStudio.generationStatus.queuedForSubmission'),
     };
     setGenerationTasks((prev) => {
@@ -16430,6 +16577,7 @@ export default function MediaStudio() {
       getGenerationQueueIdentityCandidates(queueTask).forEach((id) => next.add(id));
       return next;
     });
+    setFloatingPreviewTaskIds(new Set(getGenerationQueueIdentityCandidates(queueTask)));
     setIsGenerationQueueHidden(false);
     setIsGenerationQueueCollapsed(false);
     return { resultUrl, backendTaskId, providerTaskId, status };
@@ -16442,22 +16590,33 @@ export default function MediaStudio() {
     try {
     const storyboardGuide = buildProductionShotStoryboardGuide(shotId);
     const references = getProductionShotReferenceAssets("image");
-    const referenceUrls = references.map((asset) => asset.url).filter(Boolean) as string[];
-    const productReferenceUrls = references
+    const referenceUrls = Array.from(new Set(references.map((asset) => asset.url).filter(Boolean) as string[]));
+    const productReferenceUrls = Array.from(new Set(references
       .filter((asset) => ["product_image", "marketplace_product", "reference_image"].includes(asset.kind))
       .map((asset) => asset.url)
-      .filter(Boolean) as string[];
-    const characterReferenceUrls = references
+      .filter(Boolean) as string[]));
+    const characterReferenceUrls = Array.from(new Set(references
       .filter((asset) => asset.kind === "character_asset")
       .map((asset) => asset.url)
-      .filter(Boolean) as string[];
-    const environmentReferenceUrls = references
+      .filter(Boolean) as string[]));
+    const environmentReferenceUrls = Array.from(new Set(references
       .filter((asset) => asset.kind === "generated_media")
       .map((asset) => asset.url)
-      .filter(Boolean) as string[];
-    const selectedPlanningModel = productionDirector.planningModelMode === "manual" && productionDirector.planningModelId.trim()
-      ? productionDirector.planningModelId.trim()
-      : productionPlanningModelOptions[0]?.modelId ?? selectedLlmModelSelection.resolvedModelId;
+      .filter(Boolean) as string[]));
+    const planningModelSelection = selectProductionPlanningModelForContext({
+      modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
+      manualModelId: productionDirector.planningModelId.trim(),
+      fallbackModelId: selectedLlmModelSelection.resolvedModelId,
+      options: productionPlanningModelOptions,
+      estimatedContextTokens: estimateProductionSkillContextTokens({
+        storyboard_guide: storyboardGuide,
+        scene_descriptions: [storyboardGuide],
+        reference_product_images: productReferenceUrls,
+        reference_character_images: characterReferenceUrls,
+        reference_environment_images: environmentReferenceUrls,
+      }),
+    });
+    const selectedPlanningModel = planningModelSelection.modelId;
     const result = await executeCustomSkillMutation.mutateAsync({
       skillId,
       userInputs: {
@@ -16468,6 +16627,15 @@ export default function MediaStudio() {
         reference_product_images: productReferenceUrls,
         reference_character_images: characterReferenceUrls,
         reference_environment_images: environmentReferenceUrls,
+        planning_context_pack: {
+          selected_model: selectedPlanningModel,
+          selected_model_context_tokens: planningModelSelection.option?.contextLength ?? null,
+          auto_selected_reason: planningModelSelection.reason,
+          estimated_context_tokens: planningModelSelection.estimatedContextTokens,
+          required_context_tokens: planningModelSelection.requiredContextTokens,
+          escalated_from_model: planningModelSelection.escalatedFrom,
+          overflow_risk: planningModelSelection.overflowRisk,
+        },
       },
       ...(selectedPlanningModel ? { model: selectedPlanningModel } : {}),
       referenceImages: referenceUrls,
@@ -16698,6 +16866,7 @@ export default function MediaStudio() {
         prompt,
         model,
         fallbackTaskId: `production-${shotId}-${role}-${Date.now()}`,
+        productionShotContext: { shotId, role, surface: "image" },
       });
       upsertProductionShotMediaNode({
         shotId,
@@ -16886,6 +17055,7 @@ export default function MediaStudio() {
         prompt,
         model,
         fallbackTaskId: `production-${shotId}-video-${Date.now()}`,
+        productionShotContext: { shotId, role: "video", surface: "video" },
       });
       upsertProductionShotMediaNode({
         shotId,
@@ -16945,6 +17115,255 @@ export default function MediaStudio() {
     setProductionShotActionBusy,
     updateProductionStoryboardPrompt,
     upsertProductionShotMediaNode,
+  ]);
+
+  useEffect(() => {
+    const historyLookup = new Map<string, MediaHistoryTaskLite>();
+    for (const task of (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[]) {
+      if (task.id) historyLookup.set(task.id, task);
+      if (task.taskId) historyLookup.set(task.taskId, task);
+    }
+
+    const readRecord = (value: unknown): Record<string, unknown> =>
+      value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+    const inferProductionShotContext = (
+      task: GenerationTask,
+      historyTask?: MediaHistoryTaskLite,
+    ): GenerationTask["productionShotContext"] => {
+      if (task.productionShotContext) return task.productionShotContext;
+      const parameters = readRecord(historyTask?.parameters);
+      const extraParams = readRecord(parameters.extraParams ?? parameters.extra_params);
+      const shotId = String(extraParams.shotId ?? parameters.shotId ?? "").trim();
+      if (!shotId) return undefined;
+      const rawRole = String(extraParams.frameRole ?? extraParams.framePhase ?? parameters.frameRole ?? parameters.framePhase ?? "").trim().toLowerCase();
+      const purpose = String(extraParams.purpose ?? parameters.purpose ?? "").trim().toLowerCase();
+      const role =
+        rawRole === "reference" || purpose.includes("reference_image")
+          ? "reference"
+          : rawRole === "start" || purpose.includes("start_frame")
+            ? "start"
+            : rawRole === "stop" || rawRole === "end" || purpose.includes("stop_frame")
+              ? "stop"
+              : purpose.includes("shot_video") || task.type === "video"
+                ? "video"
+                : undefined;
+      if (!role) return undefined;
+      return { shotId, role, surface: role === "video" ? "video" : "image" };
+    };
+
+    const getHistoryTaskForGenerationTask = (task: GenerationTask): MediaHistoryTaskLite | undefined => {
+      if (task.providerTaskId && historyLookup.has(task.providerTaskId)) return historyLookup.get(task.providerTaskId);
+      if (task.backendTaskId && historyLookup.has(task.backendTaskId)) return historyLookup.get(task.backendTaskId);
+      if (historyLookup.has(task.id)) return historyLookup.get(task.id);
+      return undefined;
+    };
+
+    const completedShotTasks = generationTasks
+      .flatMap((task) => {
+        const historyTask = getHistoryTaskForGenerationTask(task);
+        const resultUrl = task.url || historyTask?.resultUrl || extractTaskResultUrl(historyTask as any) || undefined;
+        const context = inferProductionShotContext(task, historyTask);
+        const normalizedStatus = historyTask ? normalizeQueueStatus(historyTask.status) : task.status === "completed" ? "completed" : undefined;
+        const taskId = task.backendTaskId || task.providerTaskId || historyTask?.id || historyTask?.taskId || task.id;
+        if (!resultUrl || !context?.shotId || !taskId || (task.status !== "completed" && normalizedStatus !== "completed")) {
+          return [];
+        }
+        return [{ task, historyTask, resultUrl, context, normalizedStatus, taskId }];
+      });
+
+    for (const historyTask of (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[]) {
+      const resultUrl = historyTask.resultUrl || extractTaskResultUrl(historyTask as any) || undefined;
+      const normalizedStatus = normalizeQueueStatus(historyTask.status);
+      if (!resultUrl || normalizedStatus !== "completed") continue;
+      const taskId = historyTask.id || historyTask.taskId;
+      if (!taskId) continue;
+      const context = inferProductionShotContext({
+        id: taskId,
+        index: 0,
+        status: "completed",
+        type: historyTask.mediaType === "video" ? "video" : "image",
+        prompt: historyTask.prompt ?? "",
+        model: historyTask.model ?? "auto",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        url: resultUrl,
+        backendTaskId: historyTask.id,
+        providerTaskId: historyTask.taskId ?? undefined,
+      }, historyTask);
+      if (!context?.shotId) continue;
+      completedShotTasks.push({
+        task: {
+          id: taskId,
+          index: 0,
+          status: "completed",
+          type: context.surface,
+          prompt: historyTask.prompt ?? "",
+          model: historyTask.model ?? "auto",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          url: resultUrl,
+          backendTaskId: historyTask.id,
+          providerTaskId: historyTask.taskId ?? undefined,
+          productionShotContext: context,
+        },
+        historyTask,
+        resultUrl,
+        context,
+        normalizedStatus,
+        taskId,
+      });
+    }
+
+    const storyboardNode = productionWorkspaceSpace.flowNodes.find((node) => node.id === "storyboard-card" || node.kind === "storyboard_planning");
+    const storyboardPrompts = [
+      storyboardNode?.outputRefs?.at(-1)?.metadata?.storyboardPrompts,
+      storyboardNode?.configSnapshot?.config?.storyboardPrompts,
+      storyboardNode?.metadata?.storyboardPrompts,
+    ].find((candidate) => Array.isArray(candidate)) as Record<string, unknown>[] | undefined;
+    for (const promptItem of storyboardPrompts ?? []) {
+      const shotId = String(promptItem.shotId ?? "").trim();
+      if (!shotId) continue;
+      const roleTaskCandidates: Array<{ role: "reference" | "start" | "stop" | "video"; taskId: string; existingUrl?: string }> = [
+        { role: "reference", taskId: String(promptItem.referenceImageTaskId ?? "").trim(), existingUrl: String(promptItem.referenceImageUrl ?? "").trim() || undefined },
+        { role: "start", taskId: String(promptItem.startFrameTaskId ?? "").trim(), existingUrl: String(promptItem.startFrameUrl ?? "").trim() || undefined },
+        { role: "stop", taskId: String(promptItem.stopFrameTaskId ?? "").trim(), existingUrl: String(promptItem.stopFrameUrl ?? "").trim() || undefined },
+        { role: "video", taskId: String(promptItem.videoTaskId ?? "").trim(), existingUrl: String(promptItem.videoUrl ?? "").trim() || undefined },
+      ];
+      const roleTaskIds = roleTaskCandidates.filter((item) => item.taskId && !item.existingUrl);
+      for (const tracked of roleTaskIds) {
+        const historyTask = historyLookup.get(tracked.taskId);
+        const resultUrl = historyTask?.resultUrl || extractTaskResultUrl(historyTask as any) || undefined;
+        if (!historyTask || !resultUrl || normalizeQueueStatus(historyTask.status) !== "completed") continue;
+        completedShotTasks.push({
+          task: {
+            id: tracked.taskId,
+            index: 0,
+            status: "completed",
+            type: tracked.role === "video" ? "video" : "image",
+            prompt: historyTask.prompt ?? "",
+            model: historyTask.model ?? "auto",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            url: resultUrl,
+            backendTaskId: historyTask.id,
+            providerTaskId: historyTask.taskId ?? undefined,
+            productionShotContext: { shotId, role: tracked.role, surface: tracked.role === "video" ? "video" : "image" },
+          },
+          historyTask,
+          resultUrl,
+          context: { shotId, role: tracked.role, surface: tracked.role === "video" ? "video" : "image" },
+          normalizedStatus: "completed",
+          taskId: tracked.taskId,
+        });
+      }
+    }
+
+    const newestCompletedShotTasks = new Map<string, typeof completedShotTasks[number]>();
+    for (const item of completedShotTasks) {
+      const key = `${item.context.shotId}:${item.context.role}`;
+      const existing = newestCompletedShotTasks.get(key);
+      const itemTime = getTaskTimestampMs(item.historyTask ?? item.task);
+      const existingTime = existing ? getTaskTimestampMs(existing.historyTask ?? existing.task) : -1;
+      if (!existing || itemTime >= existingTime) {
+        newestCompletedShotTasks.set(key, item);
+      }
+    }
+
+    for (const item of newestCompletedShotTasks.values()) {
+      const syncKey = `${item.taskId}:${item.context.shotId}:${item.context.role}:${item.resultUrl}`;
+      if (syncedProductionShotMediaTaskIdsRef.current.has(syncKey)) continue;
+
+      const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, item.context.shotId);
+      const alreadySynced =
+        item.context.role === "reference"
+          ? promptItem?.referenceImageUrl === item.resultUrl
+          : item.context.role === "start"
+            ? promptItem?.startFrameUrl === item.resultUrl
+            : item.context.role === "stop"
+              ? promptItem?.stopFrameUrl === item.resultUrl
+              : promptItem?.videoUrl === item.resultUrl;
+
+      if (!alreadySynced) {
+        if (item.context.role === "reference") {
+          updateProductionStoryboardPrompt(item.context.shotId, {
+            referenceImageUrl: item.resultUrl,
+            referenceImageTaskId: item.taskId,
+          });
+        } else if (item.context.role === "start") {
+          updateProductionStoryboardPrompt(item.context.shotId, {
+            startFrameUrl: item.resultUrl,
+            startFrameTaskId: item.taskId,
+          });
+        } else if (item.context.role === "stop") {
+          updateProductionStoryboardPrompt(item.context.shotId, {
+            stopFrameUrl: item.resultUrl,
+            stopFrameTaskId: item.taskId,
+          });
+        } else {
+          updateProductionStoryboardPrompt(item.context.shotId, {
+            videoUrl: item.resultUrl,
+            videoTaskId: item.taskId,
+          });
+        }
+      }
+
+      const nodeId = item.context.role === "reference"
+        ? `${item.context.shotId}-reference-image`
+        : item.context.role === "start"
+          ? `${item.context.shotId}-start-frame`
+          : item.context.role === "stop"
+            ? `${item.context.shotId}-stop-frame`
+            : `${item.context.shotId}-video-generate`;
+      updateProductionSpaceDraft((space) => {
+        let changed = false;
+        const flowNodes = space.flowNodes.map((node) => {
+          if (node.id !== nodeId) return node;
+          const outputRefs = [...(node.outputRefs ?? [])];
+          const outputIndex = outputRefs.findIndex((output) =>
+            output.mediaTaskId === item.taskId
+            || output.providerTaskId === item.taskId
+            || output.outputRefId.includes(item.taskId)
+          );
+          const outputRef: ProductionNodeOutputRef = {
+            outputRefId: outputIndex >= 0 ? outputRefs[outputIndex].outputRefId : `out-${nodeId}-${Date.now().toString(36)}`,
+            nodeId,
+            kind: item.context.surface,
+            url: item.resultUrl,
+            thumbnailUrl: item.context.surface === "image" ? item.resultUrl : undefined,
+            mediaTaskId: item.task.backendTaskId || item.historyTask?.id || item.taskId,
+            providerTaskId: item.task.providerTaskId || item.historyTask?.taskId || undefined,
+            generatedAt: new Date().toISOString(),
+            metadata: {
+              ...(outputIndex >= 0 ? outputRefs[outputIndex].metadata ?? {} : {}),
+              frameRole: item.context.role,
+              status: "completed",
+              model: item.task.model,
+            },
+          };
+          if (outputIndex >= 0) {
+            if (outputRefs[outputIndex].url === item.resultUrl && node.status === "completed") return node;
+            outputRefs[outputIndex] = outputRef;
+          } else {
+            outputRefs.push(outputRef);
+          }
+          changed = true;
+          return { ...node, status: "completed" as const, outputRefs };
+        });
+        return changed ? { ...space, flowNodes } : space;
+      }, [`flowNodes.${nodeId}.outputRefs`], isThaiLocale ? "อัปเดตผลลัพธ์สื่อกลับเข้า card แล้ว" : "Shot media result synced back to the card.");
+
+      syncedProductionShotMediaTaskIdsRef.current.add(syncKey);
+    }
+  }, [
+    extractTaskResultUrl,
+    generationTasks,
+    getProductionStoryboardPromptForShot,
+    isThaiLocale,
+    mediaHistory?.tasks,
+    productionWorkspaceSpace,
+    updateProductionSpaceDraft,
+    updateProductionStoryboardPrompt,
   ]);
 
   const cancelLatestProductionExecution = useCallback((attemptId?: string) => {
@@ -22496,7 +22915,7 @@ export default function MediaStudio() {
                 <div className="truncate text-sm font-semibold text-foreground">{t('mediaStudio.preview')}</div>
                 {showFloatingProgressGrid && (
                   <div className="text-xs text-muted-foreground">
-                    {generationTasks.filter((task) => task.status === "completed").length}/{generationTasks.length}
+                    {floatingPreviewTasks.filter((task) => task.status === "completed").length}/{floatingPreviewTasks.length}
                   </div>
                 )}
               </div>
@@ -22528,7 +22947,7 @@ export default function MediaStudio() {
           <div className="min-h-0 flex-1 overflow-auto bg-slate-50/70 p-3">
             {showFloatingProgressGrid ? (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {generationTasks.map((task) => (
+                {floatingPreviewTasks.map((task) => (
                   <button
                     key={task.id}
                     type="button"

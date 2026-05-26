@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { ProductionFlowNode, ProductionNodeOutputRef, ProductionSpace } from "@shared/mediaProduction";
+import type { ProductionFlowNode, ProductionNodeOutputRef, ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
 import { shotToDraft, type ProductionLocale, type ProductionShotDraft, type VideoShotWorkspaceCallbacks } from "./types";
 
 export interface VideoShotWorkspaceProps extends VideoShotWorkspaceCallbacks {
@@ -91,6 +91,52 @@ function summarizeUnknown(value: unknown): string {
   if (Array.isArray(value)) return value.map(summarizeUnknown).filter(Boolean).join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return "";
+}
+
+function productEvidenceReferenceInputs(space: ProductionSpace): ProductionReferenceInput[] {
+  return (space.productEvidenceManifest?.products ?? [])
+    .filter((product) => typeof product.imageUrl === "string" && product.imageUrl.trim().length > 0)
+    .map((product, index) => {
+      const url = product.imageUrl?.trim() ?? "";
+      return {
+        id: `product-evidence-${product.id || index + 1}`,
+        kind: "product_image",
+        title: product.title || `Product reference ${index + 1}`,
+        url,
+        thumbnailUrl: url,
+        source: "product-evidence-manifest",
+        provenance: {
+          manifestId: space.productEvidenceManifest?.manifestId,
+          productId: product.productId,
+          productAssetId: product.id,
+          productTruth: product.productTruth,
+          sourceProvenance: product.provenance,
+        },
+        zone: "products",
+        role: product.role || "hero",
+        locked: product.requiredVisualAccuracy === "strict",
+        warnings: product.reviewNotes,
+        approvalState: product.approvalState,
+        sku: product.sku,
+        variantId: product.variantId,
+      } satisfies ProductionReferenceInput;
+    });
+}
+
+function referenceAssetIdentity(asset: ProductionReferenceInput): string {
+  const mediaUrl = (asset.url || asset.thumbnailUrl || "").trim();
+  if (mediaUrl) return `url:${mediaUrl}`;
+  return `id:${asset.id}`;
+}
+
+function dedupeReferenceAssets(assets: ProductionReferenceInput[]): ProductionReferenceInput[] {
+  const seen = new Set<string>();
+  return assets.filter((asset) => {
+    const identity = referenceAssetIdentity(asset);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
 }
 
 function storyboardPromptItemsFromSpace(space?: ProductionSpace | null): StoryboardPromptItem[] {
@@ -270,18 +316,24 @@ export function VideoShotWorkspace({
   const shotReferenceAssetsById = useMemo(() => {
     const result: Record<string, ProductionSpace["contextAssets"]> = {};
     if (!space) return result;
-    const visualAssets = space.contextAssets.filter((asset) => (
+    const productEvidenceAssets = productEvidenceReferenceInputs(space);
+    const contextAssets = dedupeReferenceAssets([...productEvidenceAssets, ...space.contextAssets]);
+    const visualAssets = contextAssets.filter((asset) => (
       asset.url
       && ["reference_image", "product_image", "marketplace_product", "character_asset", "generated_media", "source_video"].includes(asset.kind)
     ));
     for (const shot of shots) {
       const shotProductIds = new Set(shot.productAssetIds ?? []);
-      const productAssets = space.contextAssets.filter((asset) => {
+      const productAssets = contextAssets.filter((asset) => {
         if (shotProductIds.has(asset.id)) return true;
         const productId = String((asset.provenance as any)?.productTruth?.productId ?? (asset.provenance as any)?.marketplaceProduct?.productId ?? "");
         return productId && shotProductIds.has(productId);
       });
-      result[shot.id] = [...productAssets, ...visualAssets.filter((asset) => !productAssets.some((product) => product.id === asset.id))].slice(0, 12);
+      const productAssetIdentities = new Set(productAssets.map(referenceAssetIdentity));
+      result[shot.id] = [
+        ...productAssets,
+        ...visualAssets.filter((asset) => !productAssetIdentities.has(referenceAssetIdentity(asset))),
+      ].slice(0, 12);
     }
     return result;
   }, [shots, space]);

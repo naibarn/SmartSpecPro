@@ -1548,6 +1548,144 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(onToggleShotLock).toHaveBeenCalledWith("shot-1", false);
   });
 
+  it("keeps generated storyboard media scoped to the correct shot across three shots", () => {
+    const threeShotSpace: ProductionSpace = {
+      ...featureSpace,
+      shots: [
+        { id: "shot-1", title: "Hook", order: 1, durationSeconds: 8, nodeIds: ["shot-1-group", "shot-1-reference-image"], status: "ready" },
+        { id: "shot-2", title: "Problem", order: 2, durationSeconds: 8, nodeIds: ["shot-2-group", "shot-2-reference-image"], status: "ready" },
+        { id: "shot-3", title: "Solution", order: 3, durationSeconds: 8, nodeIds: ["shot-3-group", "shot-3-reference-image"], status: "ready" },
+      ],
+      flowNodes: [
+        {
+          id: "storyboard-card",
+          kind: "storyboard_planning",
+          title: "Storyboard",
+          status: "ready",
+          position: { x: 0, y: 0 },
+          configSnapshot: {
+            snapshotId: "storyboard-snap",
+            version: 1,
+            toolSurface: "production",
+            adapter: "storyboard",
+            config: {
+              storyboardPrompts: [
+                { shotId: "shot-1", order: 1, title: "Hook", referenceStoryboardPrompt: "Prompt 1" },
+                { shotId: "shot-2", order: 2, title: "Problem", referenceStoryboardPrompt: "Prompt 2" },
+                { shotId: "shot-3", order: 3, title: "Solution", referenceStoryboardPrompt: "Prompt 3" },
+              ],
+            },
+            configHash: "storyboard-hash",
+          },
+        },
+        ...["shot-1", "shot-2", "shot-3"].flatMap((shotId, index) => [
+          {
+            id: `${shotId}-group`,
+            kind: "video_shot" as const,
+            title: `Shot ${index + 1}`,
+            status: "ready" as const,
+            shotId,
+            position: { x: 100, y: index * 100 },
+          },
+          {
+            id: `${shotId}-reference-image`,
+            kind: "image_generate" as const,
+            title: `Shot ${index + 1} reference`,
+            status: "completed" as const,
+            shotId,
+            position: { x: 200, y: index * 100 },
+            outputRefs: [
+              {
+                outputRefId: `out-${shotId}-reference`,
+                nodeId: `${shotId}-reference-image`,
+                kind: "image" as const,
+                url: `https://example.test/${shotId}-reference.png`,
+                thumbnailUrl: `https://example.test/${shotId}-reference-thumb.png`,
+                metadata: { frameRole: "reference" },
+              },
+            ],
+            configSnapshot: {
+              snapshotId: `${shotId}-reference-snap`,
+              version: 1,
+              toolSurface: "image" as const,
+              adapter: "image",
+              config: { frameRole: "reference" },
+              configHash: `${shotId}-reference-hash`,
+            },
+          },
+        ]),
+      ],
+      flowEdges: [],
+    };
+
+    render(
+      <VideoShotWorkspace
+        space={threeShotSpace}
+        selectedShotId="shot-1"
+        onBackToProduction={() => {}}
+      />
+    );
+
+    for (const shotId of ["shot-1", "shot-2", "shot-3"]) {
+      const card = screen.getByTestId(`video-shot-storyboard-card-${shotId}`);
+      const image = within(card)
+        .getByTestId(`story-card-${shotId}-reference-image`)
+        .querySelector("img");
+      expect(image).toHaveAttribute("src", `https://example.test/${shotId}-reference.png`);
+      for (const otherShotId of ["shot-1", "shot-2", "shot-3"].filter((id) => id !== shotId)) {
+        expect(card.innerHTML).not.toContain(`https://example.test/${otherShotId}-reference.png`);
+      }
+    }
+  });
+
+  it("deduplicates shot reference images restored from product evidence and context assets", () => {
+    const duplicateUrl = "https://example.test/reference-product.png";
+    const spaceWithDuplicateReference: ProductionSpace = {
+      ...featureSpace,
+      contextAssets: [
+        {
+          id: "right-panel-product-reference",
+          kind: "marketplace_product",
+          title: "Product reference from context",
+          source: "right-panel",
+          url: duplicateUrl,
+          thumbnailUrl: duplicateUrl,
+          zone: "products",
+        },
+        {
+          id: "scene-reference",
+          kind: "reference_image",
+          title: "Scene reference",
+          source: "library",
+          url: "https://example.test/scene.png",
+          thumbnailUrl: "https://example.test/scene.png",
+          zone: "scene_mood",
+        },
+      ],
+      productEvidenceManifest: {
+        ...featureSpace.productEvidenceManifest!,
+        products: [
+          {
+            ...featureSpace.productEvidenceManifest!.products[0],
+            id: "right-panel-product-reference",
+            imageUrl: duplicateUrl,
+          },
+        ],
+      },
+    };
+
+    render(
+      <VideoShotWorkspace
+        space={spaceWithDuplicateReference}
+        selectedShotId="shot-1"
+        onBackToProduction={() => {}}
+      />,
+    );
+
+    expect(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("Shot references").parentElement).toHaveTextContent("2");
+  });
+
   it("captures ProductEvidenceTray role/claim/evidence controls", () => {
     const onSetProductRole = vi.fn();
     const onSetClaimStatus = vi.fn();

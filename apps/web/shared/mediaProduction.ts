@@ -512,6 +512,14 @@ export interface ProductionPlanningContextPack {
   capabilityIds: string[];
   budgetNotes?: string;
   generationDefaults?: ProductionGenerationDefaults;
+  attachmentKinds?: Record<string, number>;
+  selectedModel?: string;
+  selectedModelContextTokens?: number | null;
+  modelAutoSelectionReason?: string;
+  estimatedContextTokens?: number;
+  requiredContextTokens?: number;
+  escalatedFromModel?: string;
+  overflowRisk?: boolean;
   updatedAt?: string;
 }
 
