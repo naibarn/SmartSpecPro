@@ -696,6 +696,11 @@ function buildStoryboardPlannerPrompt(input: {
       index: slot.index,
       startFrameAlias: `@Image${startImage}`,
       endFrameAlias: `@Image${endImage}`,
+      visionTask: [
+        `Inspect @Image${startImage} as this slot's real start frame.`,
+        `Inspect @Image${endImage} as this slot's real stop/end frame.`,
+        "Write motion and camera direction that fits the visible change between these two images.",
+      ].join(" "),
       currentPrompt: slot.currentPrompt ?? "",
       durationSeconds: slot.durationSeconds ?? null,
       aspectRatio: slot.aspectRatio ?? null,
@@ -705,7 +710,11 @@ function buildStoryboardPlannerPrompt(input: {
 
   return [
     "Create a complete ecommerce storyboard video prompt plan.",
-    "Use the ordered image aliases below. Each slot has an exact start frame and exact end frame.",
+    "Use the ordered attached image aliases below. Each slot has an exact start frame and exact stop/end frame.",
+    "You MUST analyze every slot's two images with vision before writing that slot's video_prompt.",
+    "Every slot.video_prompt must be unique to its own visible start/end pair, naming concrete visual details from both frames and choosing motion/camera direction that naturally connects them.",
+    "Start each slot.video_prompt with the unique visible action/camera direction for that shot, not with a repeated alias boilerplate sentence.",
+    "Do not reuse the same generic transition prompt across slots. Do not merely paraphrase currentPrompt.",
     "",
     "Product metadata:",
     JSON.stringify(input.productMetadata ?? {}, null, 2),
@@ -720,6 +729,13 @@ function buildStoryboardPlannerPrompt(input: {
     "- The aliases above are only for your planning call, because all slot images are sent together.",
     "- In each returned slot.video_prompt, write local slot aliases only: @Image1 is that slot's start frame and @Image2 is that slot's end frame.",
     "- Never output @Image3, @Image4, @Image5, or any higher image alias in slot.video_prompt, voiceover_script, or sound_brief.",
+    "- Even though returned prompts use local aliases, the content must come from the actual global aliases assigned to that input slot.",
+    "",
+    "Per-slot vision requirements:",
+    "- Identify what is visibly present in the start frame and what is visibly present in the stop/end frame.",
+    "- Describe the most plausible subject/object motion, hand/product action, staging change, or camera move for that exact pair.",
+    "- Preserve visible product geometry, materials, colors, room/context, people, hands, props, and composition anchors from the frames.",
+    "- If the two frames are very similar, use subtle motion such as micro push-in, parallax, lighting, hand adjustment, or product reveal rather than inventing new action.",
     "",
     `Return exactly ${imageMap.length} slot object(s), one for every input slot id.`,
     "Return valid JSON only following the output schema described in the skill instructions.",
@@ -737,6 +753,80 @@ function normalizeStoryboardSlotLocalImageAliases(content: string, slotPosition:
     if (imageNumber === 1 || imageNumber === 2) return match;
     return match;
   });
+}
+
+function normalizeStoryboardPromptForDuplicateCheck(content: string): string {
+  return String(content || "")
+    .toLowerCase()
+    .replace(/\bshot\s+\d+\s*:\s*/gi, "")
+    .replace(/\bclip\s+\d+\s*:\s*/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isGenericStoryboardTransitionPrompt(content: string): boolean {
+  const normalized = normalizeStoryboardPromptForDuplicateCheck(content);
+  return normalized.includes("create a smooth cinematic transition between the two frames while preserving the same subject");
+}
+
+async function repairStoryboardSlotVideoPrompt(input: {
+  userId: number;
+  visionModel: string;
+  slotIndex: number;
+  currentPrompt: string;
+  startFrameUrl: string;
+  endFrameUrl: string;
+  aspectRatio?: string | null;
+  durationSeconds?: number | null;
+  model?: string | null;
+  productMetadata: Record<string, unknown> | null;
+  publicUrl?: string | null;
+}): Promise<{ prompt: string; promptTokens: number; completionTokens: number }> {
+  const systemPrompt = [
+    "You are a senior AI video director for first-frame/last-frame ecommerce video generation.",
+    "Analyze the two attached images with vision: Image 1 is the exact start frame, Image 2 is the exact stop/end frame.",
+    "Return one production-ready video prompt only. No markdown, no code fence, no title, no JSON, no explanation.",
+    "The prompt must be specific to the visible objects, people, hands, room, props, product geometry, colors, materials, and endpoint state in these two images.",
+    "Choose motion and camera direction that naturally connects Image 1 to Image 2. If the frames are similar, use subtle push-in, parallax, lighting, or micro-movement.",
+    "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
+  ].join("\n");
+  const userPrompt = [
+    `Shot ${input.slotIndex + 1}`,
+    `Current prompt to replace: ${input.currentPrompt}`,
+    input.aspectRatio ? `Aspect ratio: ${input.aspectRatio}` : "",
+    input.durationSeconds ? `Target duration: ${input.durationSeconds} seconds` : "",
+    input.model ? `Target model: ${input.model}` : "",
+    input.productMetadata ? [
+      "",
+      "Product metadata is context only. The attached images are the visual truth:",
+      JSON.stringify(input.productMetadata, null, 2),
+    ].join("\n") : "",
+    "",
+    "Write the improved prompt in English. It must explicitly use local aliases only:",
+    "- @Image1 is the exact start frame",
+    "- @Image2 is the exact stop/end frame",
+    "Start with the unique visible action/camera direction for this shot, not with a repeated alias boilerplate sentence.",
+    "Name concrete visual details from both images and describe the best product/user motion or camera move for this exact pair.",
+  ].filter(Boolean).join("\n");
+
+  const result = await callLLMWithVision(
+    systemPrompt,
+    userPrompt,
+    input.userId,
+    [input.startFrameUrl, input.endFrameUrl],
+    input.visionModel,
+    900,
+    { publicUrl: input.publicUrl ?? null },
+  );
+  const prompt = result.content
+    .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  return {
+    prompt,
+    promptTokens: result.usage.promptTokens,
+    completionTokens: result.usage.completionTokens,
+  };
 }
 
 /**
@@ -2681,8 +2771,10 @@ export const skillsRouter = router({
           { publicUrl: ctx.publicUrl ?? null },
         );
         const parsed = parseLlmJsonObject(result.content);
+        let totalPromptTokens = result.usage.promptTokens;
+        let totalCompletionTokens = result.usage.completionTokens;
         const slotPositionById = new Map(orderedSlots.map((slot, position) => [slot.id, position]));
-        const slots = Array.isArray(parsed.slots)
+        const parsedSlots = Array.isArray(parsed.slots)
           ? parsed.slots
             .filter((slot): slot is Record<string, unknown> => Boolean(slot) && typeof slot === "object")
             .map((slot) => {
@@ -2710,23 +2802,95 @@ export const skillsRouter = router({
               };
             })
           : [];
-        const inputSlotIds = new Set(orderedSlots.map((slot) => slot.id));
-        const returnedSlotIds = new Set(slots.map((slot) => slot.id).filter(Boolean));
-        const missingSlotIds = [...inputSlotIds].filter((id) => !returnedSlotIds.has(id));
-        const emptyPromptSlotIds = slots
-          .filter((slot) => inputSlotIds.has(slot.id) && !slot.videoPrompt.trim())
+        const parsedSlotById = new Map(parsedSlots.map((slot) => [slot.id, slot]));
+        let slots = orderedSlots.map((slot) => parsedSlotById.get(slot.id) ?? {
+          id: slot.id,
+          index: slot.index,
+          journeyStage: "",
+          videoPrompt: "",
+          voiceoverScript: "",
+          soundBrief: "",
+          qualityNotes: [],
+        });
+        const normalizedPromptCounts = new Map<string, number>();
+        for (const slot of slots) {
+          const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
+          if (normalized) {
+            normalizedPromptCounts.set(normalized, (normalizedPromptCounts.get(normalized) ?? 0) + 1);
+          }
+        }
+        const repairSlotIds = new Set(slots
+          .filter((slot) => {
+            const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
+            return !normalized
+              || isGenericStoryboardTransitionPrompt(slot.videoPrompt)
+              || (normalizedPromptCounts.get(normalized) ?? 0) > 1;
+          })
+          .map((slot) => slot.id));
+
+        if (repairSlotIds.size > 0) {
+          const repairResults = await Promise.all(slots.map(async (slot) => {
+            if (!repairSlotIds.has(slot.id)) return null;
+            const inputSlot = orderedSlots.find((candidate) => candidate.id === slot.id);
+            if (!inputSlot) return null;
+            const repaired = await repairStoryboardSlotVideoPrompt({
+              userId,
+              visionModel,
+              slotIndex: inputSlot.index,
+              currentPrompt: inputSlot.currentPrompt ?? slot.videoPrompt,
+              startFrameUrl: inputSlot.startFrameUrl,
+              endFrameUrl: inputSlot.endFrameUrl,
+              aspectRatio: inputSlot.aspectRatio ?? null,
+              durationSeconds: inputSlot.durationSeconds ?? null,
+              model: inputSlot.model ?? null,
+              productMetadata: input.productMetadata ?? null,
+              publicUrl: ctx.publicUrl ?? null,
+            });
+            return { slotId: slot.id, repaired };
+          }));
+          const repairedPromptBySlotId = new Map<string, Awaited<ReturnType<typeof repairStoryboardSlotVideoPrompt>>>();
+          for (const repairResult of repairResults) {
+            if (!repairResult) continue;
+            repairedPromptBySlotId.set(repairResult.slotId, repairResult.repaired);
+            totalPromptTokens += repairResult.repaired.promptTokens;
+            totalCompletionTokens += repairResult.repaired.completionTokens;
+          }
+          slots = slots.map((slot) => {
+            const repaired = repairedPromptBySlotId.get(slot.id);
+            if (!repaired) return slot;
+            return {
+              ...slot,
+              videoPrompt: normalizeStoryboardSlotLocalImageAliases(repaired.prompt, slotPositionById.get(slot.id) ?? 0),
+              qualityNotes: [
+                ...slot.qualityNotes,
+                "Auto-repaired from the slot's own start/end frames because the planner returned a generic or duplicate prompt.",
+              ],
+            };
+          });
+        }
+
+        const finalNormalizedPromptCounts = new Map<string, number>();
+        for (const slot of slots) {
+          const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
+          if (normalized) {
+            finalNormalizedPromptCounts.set(normalized, (finalNormalizedPromptCounts.get(normalized) ?? 0) + 1);
+          }
+        }
+        const invalidPromptSlotIds = slots
+          .filter((slot) => {
+            const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
+            return !normalized
+              || isGenericStoryboardTransitionPrompt(slot.videoPrompt)
+              || (finalNormalizedPromptCounts.get(normalized) ?? 0) > 1;
+          })
           .map((slot) => slot.id);
-        if (slots.length !== orderedSlots.length || missingSlotIds.length > 0 || emptyPromptSlotIds.length > 0) {
-          throw new Error([
-            "Planner returned incomplete slots",
-            missingSlotIds.length > 0 ? `missing=${missingSlotIds.join(",")}` : "",
-            emptyPromptSlotIds.length > 0 ? `emptyPrompt=${emptyPromptSlotIds.join(",")}` : "",
-          ].filter(Boolean).join(" "));
+        if (invalidPromptSlotIds.length > 0) {
+          throw new Error(`Planner returned generic or duplicate prompts for slots: ${invalidPromptSlotIds.join(",")}`);
         }
 
         const creditsUsed = Math.max(1, calculateCreditsForLLM(
-          result.usage.promptTokens,
-          result.usage.completionTokens,
+          totalPromptTokens,
+          totalCompletionTokens,
           visionModel,
         ));
         await deductCredits({
@@ -2740,10 +2904,11 @@ export const skillsRouter = router({
             llmModel: visionModel,
             skill: skillSlug,
             runtimeKind: "llm",
-            inputTokens: result.usage.promptTokens,
-            outputTokens: result.usage.completionTokens,
+            inputTokens: totalPromptTokens,
+            outputTokens: totalCompletionTokens,
             referenceImageCount: referenceImages.length,
             slotCount: orderedSlots.length,
+            repairedSlotCount: repairSlotIds.size,
             originSurface: "storyboard_review",
           },
         });

@@ -38,6 +38,8 @@ Before writing slot prompts, infer:
 - the hook, proof points, usage moments, detail moments, and closing intent
 - how every slot should connect visually and narratively
 
+Then inspect every slot's start/end image pair with vision. For each slot, identify what is actually visible in the start frame, what is actually visible in the stop/end frame, and what physical motion or camera move would naturally connect those two images. The images are the source of truth for shot content.
+
 ## Continuity Rules
 
 - Preserve the exact start frame as `@ImageN` and exact end frame as `@ImageN+1` for each slot.
@@ -50,16 +52,22 @@ Before writing slot prompts, infer:
 - Every slot must have a clear role in the sales journey.
 - Avoid repeating the same motion or same benefit in multiple slots.
 - When product metadata conflicts with visual frames, use the visual frame as truth and metadata as commercial context.
+- Every slot prompt must be different when the frame pair is different. Do not reuse a generic "smooth cinematic transition" prompt across slots.
 
 ## Video Prompt Requirements
 
 Each slot prompt must:
 - explicitly mention the exact start/end frame anchors
+- start with the unique visible action or camera direction for that shot, not with repeated alias boilerplate
+- include concrete visible details from that slot's own start frame and stop/end frame
 - describe a plausible camera move or product/user motion
+- make the motion/camera choice fit the actual visual change between the two frames
 - state what to preserve from both frames
 - state the customer-journey purpose of the slot
 - avoid visible captions, subtitles, UI, price badges, new readable text, or extra labels unless already visible in the frames
 - be concise enough for Veo/Kling-style image-to-video generation, but specific enough to preserve product fidelity
+
+Good slot prompts name the visible subject, product placement, hand/action, room/prop context, and endpoint state when those details are present. If the two frames are nearly identical, use subtle push-in, parallax, lighting shift, hand micro-movement, or product-settling motion instead of inventing new objects or actions.
 
 ## Voiceover Requirements
 
