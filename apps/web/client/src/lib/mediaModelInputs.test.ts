@@ -10,6 +10,7 @@ import {
   getModelReferenceImageLimit,
   getModelInputField,
   parseModelInputFields,
+  selectHighestImageResolutionInput,
 } from "./mediaModelInputs";
 
 describe("mediaModelInputs", () => {
@@ -50,6 +51,77 @@ describe("mediaModelInputs", () => {
       affectsPricing: true,
     });
     expect(getModelInputField(model, "missing")).toBeUndefined();
+  });
+
+  it("selects the highest supported image resolution option", () => {
+    const model = {
+      id: "image-model",
+      name: "Image Model",
+      configJson: {
+        inputFields: [
+          {
+            key: "resolution",
+            label: "Resolution",
+            type: "select",
+            default: "1K",
+            options: [
+              { value: "1K", label: "1K" },
+              { value: "2K", label: "2K" },
+              { value: "4K", label: "4K" },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(selectHighestImageResolutionInput(model)).toMatchObject({
+      key: "resolution",
+      value: "4K",
+      resolution: "4K",
+    });
+  });
+
+  it("falls back to the highest declared lower image resolution", () => {
+    const model = {
+      id: "image-model",
+      name: "Image Model",
+      configJson: {
+        inputFields: [
+          {
+            key: "outputQuality",
+            label: "Quality",
+            type: "select",
+            default: "1K",
+            options: [
+              { value: "1K", label: "1K" },
+              { value: "2K", label: "2K" },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(selectHighestImageResolutionInput(model)).toMatchObject({
+      key: "outputQuality",
+      value: "2K",
+      resolution: "2K",
+    });
+  });
+
+  it("uses config resolutions when no explicit input field exists", () => {
+    const model = {
+      id: "image-model",
+      name: "Image Model",
+      configJson: {
+        resolutions: ["1K", "2K"],
+      },
+    };
+
+    expect(selectHighestImageResolutionInput(model)).toMatchObject({
+      key: "resolution",
+      value: "2K",
+      resolution: "2K",
+    });
   });
 
   it("preserves Gemini Omni suite-managed provider asset metadata", () => {

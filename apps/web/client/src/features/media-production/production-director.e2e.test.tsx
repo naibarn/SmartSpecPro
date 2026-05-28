@@ -315,6 +315,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onCreateFixturePlan = vi.fn();
     const onProjectSearchOpen = vi.fn();
     const onOpenVideoShot = vi.fn();
+    const onStoryboardReferenceSkillChange = vi.fn();
 
     render(
       <ProductionWorkspace
@@ -330,6 +331,12 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         onOpenVideoShot={onOpenVideoShot}
         onAssetAssignToNode={vi.fn()}
         onAssetAddToCanvas={vi.fn()}
+        storyboardReferenceSkillId="furniture-reference-storyboard"
+        storyboardReferenceSkillOptions={[
+          { id: "furniture-reference-storyboard", label: "Furniture Reference Storyboard" },
+          { id: "cosmatic-reference-storyboard", label: "Cosmatic Reference Storyboard" },
+        ]}
+        onStoryboardReferenceSkillChange={onStoryboardReferenceSkillChange}
         space={featureSpace}
       />
     );
@@ -358,6 +365,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByRole("button", { name: /product details/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Planning skill selector")).toHaveValue("media-production-storyboard-planner");
     expect(screen.getByLabelText("Planning model mode")).toHaveValue("auto");
+    expect(screen.getByLabelText("Start/stop image prompt skill")).toHaveValue("furniture-reference-storyboard");
     expect(screen.getByText("Character / Provider Results")).toBeInTheDocument();
     expect(screen.getAllByText("Gemini Omni cast reference").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Planner/verifier may use LLM credits; Generate requires separate confirmation")).toBeInTheDocument();
@@ -385,10 +393,12 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     fireEvent.click(screen.getByRole("button", { name: /search \/ open/i }));
     fireEvent.click(screen.getByRole("button", { name: /plan \/ suggest 4 concepts/i }));
     fireEvent.click(screen.getByRole("button", { name: /open video shot/i }));
+    fireEvent.change(screen.getByLabelText("Start/stop image prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onProjectSearchOpen).toHaveBeenCalledTimes(1);
     expect(onCreateFixturePlan).toHaveBeenCalledTimes(1);
     expect(onOpenVideoShot).toHaveBeenCalledTimes(1);
+    expect(onStoryboardReferenceSkillChange).toHaveBeenCalledWith("cosmatic-reference-storyboard");
   });
 
   it("accepts typed right-panel media drops as planning attachments without creating canvas nodes", () => {
@@ -491,12 +501,42 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     }));
   });
 
+  it("removes planning attachments from the attachment list", () => {
+    const onRemovePlanningAsset = vi.fn();
+
+    render(
+      <ProductionWorkspace
+        title="Launch teaser"
+        status="plan_ready_for_review"
+        summary="Create a short product video using approved evidence only."
+        productionRunId="run-feature-116"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        onAddPlanningAsset={vi.fn()}
+        onRemovePlanningAsset={onRemovePlanningAsset}
+        onAssetAddToCanvas={vi.fn()}
+        space={featureSpace}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("production-planning-attachment-remove-asset-normal-1"));
+
+    expect(onRemovePlanningAsset).toHaveBeenCalledWith(expect.objectContaining({
+      id: "asset-normal-1",
+      title: "Normal moodboard frame",
+    }));
+  });
+
   it("shows the story concept wizard before generating a fresh workflow", () => {
     const onSelectStoryConcept = vi.fn();
     const onConfirmStoryConceptPlan = vi.fn();
     const onRegenerateStoryConcepts = vi.fn();
     const onGenerateStoryConceptInfographic = vi.fn();
     const onStoryboardClipDurationSecondsChange = vi.fn();
+    const onBriefChange = vi.fn();
     const storyOption = {
       id: "problem-solution",
       title: "Fast Problem-Solution",
@@ -507,6 +547,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
       sellingPoints: ["Foldable", "Space saving"],
       objectionsTrust: ["Use verified product evidence only"],
       useCase: "Small bedroom organization",
+      conceptDetails: "Product name: Compact shelf. Summarized product details: foldable shelf for small bedrooms. Target audience: marketplace shoppers. Problem: unsure whether the product fits the room. Selling points: foldable and space saving.",
       sceneTimeline: [
         { timeRange: "0-3s", title: "Hook", detail: "Open with the cramped room problem." },
         { timeRange: "3-12s", title: "Problem", detail: "Show the before context." },
@@ -532,6 +573,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         onConfirmStoryConceptPlan={onConfirmStoryConceptPlan}
         onRegenerateStoryConcepts={onRegenerateStoryConcepts}
         onGenerateStoryConceptInfographic={onGenerateStoryConceptInfographic}
+        onBriefChange={onBriefChange}
         generationDefaults={{ imageModelId: "image-default", videoModelId: "video-default", imageModelSource: "project_default", videoModelSource: "project_default" }}
         imageModelOptions={[{ modelId: "image-default", name: "Default Image Model", provider: "test", isDefault: true }]}
         videoModelOptions={[{ modelId: "video-default", name: "Default Video Model", provider: "test", isDefault: true }]}
@@ -539,7 +581,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         selectedPlanningModel="vision-thinking-model"
         planningModelOptions={[{ modelId: "vision-thinking-model", name: "Vision Thinking Model", provider: "test", supportsThinking: true, supportsVision: true, contextLength: 1_000_000 }]}
         storyboardClipDurationSeconds={10}
-        storyboardClipDurationOptions={[8, 10]}
+        storyboardClipDurationOptions={[5, 6, 8, 9, 10, 12, 15]}
         onStoryboardClipDurationSecondsChange={onStoryboardClipDurationSecondsChange}
         storyConceptWizard={{
           status: "options_ready",
@@ -559,12 +601,22 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Choose a story concept before workflow generation");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Fast Problem-Solution");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("30s timeline");
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Concept and details");
+    expect(screen.getAllByDisplayValue(/Product name: Compact shelf/i)).toHaveLength(4);
     expect(screen.getByLabelText("Planning model")).toHaveValue("vision-thinking-model");
     expect(screen.getByLabelText("Default image generation model")).toHaveValue("image-default");
     expect(screen.getByLabelText("Default video generation model")).toHaveValue("video-default");
+    expect(screen.getByLabelText("Duration seconds")).toHaveValue("30");
     expect(screen.getByLabelText("Storyboard seconds per video")).toHaveValue("10");
     expect(screen.getByLabelText("Seconds per storyboard video")).toHaveValue("10");
+    expect(screen.getByRole("option", { name: "5s / video (6 videos)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "6s / video (5 videos)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "9s / video (4 videos)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "12s / video (3 videos)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "15s / video (2 videos)" })).toBeInTheDocument();
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("3 videos/shots from 30s total ÷ 10s");
+    fireEvent.change(screen.getByLabelText("Duration seconds"), { target: { value: "56" } });
+    expect(onBriefChange).toHaveBeenCalledWith(expect.objectContaining({ durationSeconds: 56 }));
     fireEvent.change(screen.getByLabelText("Seconds per storyboard video"), { target: { value: "8" } });
     expect(onStoryboardClipDurationSecondsChange).toHaveBeenCalledWith(8);
     fireEvent.click(screen.getByRole("button", { name: /regenerate 4 concepts/i }));
@@ -731,6 +783,63 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByRole("button", { name: /readable/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /overview/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /focus/i })).toBeEnabled();
+  });
+
+  it("separates planning, workflow, and canvas display modes", () => {
+    const storyOption = {
+      id: "problem-solution",
+      title: "Fast Problem-Solution",
+      angle: "Lead with the pain point, then show product proof.",
+      audience: "Marketplace shoppers",
+      painPoint: "Unsure whether the product fits the room.",
+      hook: "Tiny room, cleaner setup",
+      sellingPoints: ["Foldable", "Space saving"],
+      objectionsTrust: ["Use verified product evidence only"],
+      useCase: "Small bedroom organization",
+      sceneTimeline: [
+        { timeRange: "0-3s", title: "Hook", detail: "Open with the cramped room problem." },
+      ],
+      risks: ["Claims must stay grounded."],
+      sourceSignals: ["Marketplace AI insight available"],
+    };
+    const baseProps = {
+      title: "Launch teaser",
+      status: "plan_ready_for_review",
+      summary: "Create a short product video using approved evidence only.",
+      productionRunId: "run-feature-116",
+      onTitleChange: vi.fn(),
+      onSummaryChange: vi.fn(),
+      onSave: vi.fn(),
+      onCreateFixturePlan: vi.fn(),
+      onOpenVideoShot: vi.fn(),
+      space: featureSpace,
+      storyConceptWizard: {
+        status: "options_ready" as const,
+        selectedId: "problem-solution",
+        options: [storyOption],
+        contextSummary: "Choose one concept before generating a fresh workflow.",
+      },
+    };
+
+    const planningRender = render(<ProductionWorkspace {...baseProps} displayMode="planning" />);
+    expect(screen.getByTestId("production-planning-skill-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("production-story-wizard")).toBeInTheDocument();
+    expect(screen.queryByTestId("production-journey-stepper")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("react-flow-canvas")).not.toBeInTheDocument();
+    planningRender.unmount();
+
+    const workflowRender = render(<ProductionWorkspace {...baseProps} displayMode="workflow" />);
+    expect(screen.getByTestId("production-journey-stepper")).toBeInTheDocument();
+    expect(screen.queryByTestId("production-story-wizard")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("production-planning-skill-panel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("react-flow-canvas")).not.toBeInTheDocument();
+    workflowRender.unmount();
+
+    render(<ProductionWorkspace {...baseProps} displayMode="canvas" />);
+    expect(screen.getByTestId("production-workspace-canvas-embed")).toBeInTheDocument();
+    expect(screen.getByTestId("react-flow-canvas")).toBeInTheDocument();
+    expect(screen.queryByTestId("production-journey-stepper")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("production-planning-skill-panel")).not.toBeInTheDocument();
   });
 
   it("shows a focused no-project state before the canvas workspace is ready", () => {
@@ -1511,8 +1620,9 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onUpdateStoryboardPrompt = vi.fn();
     const onStoryboardReferenceSkillChange = vi.fn();
     const onGenerateShotReferencePrompt = vi.fn();
-    const onGenerateShotReferenceImage = vi.fn();
-    const onGenerateShotFrameImage = vi.fn();
+    const onGenerateShotStoryboardGridImage = vi.fn();
+    const onOpenShotStoryboardGridSplit = vi.fn();
+    const onAssignShotMediaSlot = vi.fn();
     const onGenerateShotVideo = vi.fn();
 
     render(
@@ -1538,30 +1648,36 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         ]}
         onStoryboardReferenceSkillChange={onStoryboardReferenceSkillChange}
         onGenerateShotReferencePrompt={onGenerateShotReferencePrompt}
-        onGenerateShotReferenceImage={onGenerateShotReferenceImage}
-        onGenerateShotFrameImage={onGenerateShotFrameImage}
+        onGenerateShotStoryboardGridImage={onGenerateShotStoryboardGridImage}
+        onOpenShotStoryboardGridSplit={onOpenShotStoryboardGridSplit}
+        onAssignShotMediaSlot={onAssignShotMediaSlot}
         onGenerateShotVideo={onGenerateShotVideo}
       />
     );
 
     expect(screen.getByTestId("video-shot-storyboard-cards")).toHaveTextContent("Full storyboard prompt cards");
-    fireEvent.change(screen.getByLabelText("Start/stop frame prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
+    fireEvent.change(screen.getByLabelText("3x3 storyboard image prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
     expect(onStoryboardReferenceSkillChange).toHaveBeenCalledWith("cosmatic-reference-storyboard");
-    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("No video yet");
-    expect(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).queryByLabelText("Image prompt")).not.toBeInTheDocument();
-    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("Reference skill prompt"), { target: { value: "Updated reference prompt for card" } });
+	    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Drop a video here");
+	    expect(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).queryByLabelText("Image prompt")).not.toBeInTheDocument();
+	    expect(screen.getByLabelText("Video prompt speech mode")).toHaveValue("none");
+	    expect(screen.getByLabelText("Video prompt tone")).toHaveValue("sales");
+	    fireEvent.change(screen.getByLabelText("Video prompt speech mode"), { target: { value: "th" } });
+	    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("3x3 storyboard image prompt"), { target: { value: "Updated reference prompt for card" } });
     fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /save this card/i }));
-    expect(onUpdateStoryboardPrompt).toHaveBeenCalledWith("shot-1", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /reference image/i }));
-    expect(onGenerateShotReferenceImage).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /start frame/i }));
-    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "start", "furniture-reference-storyboard", expect.any(Object));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /stop frame/i }));
-    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "stop", "furniture-reference-storyboard", expect.any(Object));
+    expect(onUpdateStoryboardPrompt).toHaveBeenCalledWith("shot-1", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card", storyboardGridPrompt: "Updated reference prompt for card" }));
+    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate 3x3 image/i }));
+    expect(onGenerateShotStoryboardGridImage).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
     fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate video/i }));
-    expect(onGenerateShotVideo).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.any(Object));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /skill prompt/i }));
-    expect(onGenerateShotReferencePrompt).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard");
+	    expect(onGenerateShotVideo).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.any(Object));
+	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /skill prompt/i }));
+	    expect(onGenerateShotReferencePrompt).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({
+	      promptSpeechMode: "th",
+	      promptSpeechLanguage: "Thai",
+	      promptIncludeSound: false,
+	      promptTone: "sales",
+	      referenceStoryboardPrompt: "Updated reference prompt for card",
+	    }));
 
     expect(screen.getByText("Hook")).toBeInTheDocument();
     expect(screen.getByText("Image config node")).toBeInTheDocument();
@@ -1584,6 +1700,8 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /^Open$/i })[0]);
     expect(onOpenShot).toHaveBeenCalledWith("shot-1");
     expect(onSelectShot).toHaveBeenCalledWith("shot-1");
+    fireEvent.click(screen.getByTestId("video-shot-list-item-shot-2"));
+    expect(onSelectShot).toHaveBeenCalledWith("shot-2");
     fireEvent.click(screen.getAllByRole("button", { name: /^Configure$/i })[0]);
     expect(onConfigureShot).toHaveBeenCalledWith("shot-1");
     fireEvent.click(screen.getAllByRole("button", { name: /^Delete$/i })[0]);
@@ -1604,7 +1722,252 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(onToggleShotLock).toHaveBeenCalledWith("shot-1", false);
   });
 
-  it("keeps generated storyboard media scoped to the correct shot across three shots", () => {
+  it("assigns split storyboard frames and generated videos by drag and drop", async () => {
+    const onAssignShotMediaSlot = vi.fn();
+    const spaceWithGridFrames: ProductionSpace = {
+      ...featureSpaceTwoShots,
+      flowNodes: [
+        ...featureSpaceTwoShots.flowNodes,
+        {
+          id: "storyboard-card",
+          kind: "storyboard_planning" as const,
+          title: "Storyboard prompt card",
+          status: "ready" as const,
+          position: { x: 0, y: 0 },
+          metadata: {
+            storyboardPrompts: [
+              {
+                shotId: "shot-1",
+                order: 1,
+                title: "Hook",
+                storyboardGridPrompt: "Grid prompt",
+                storyboardGridImageUrl: "https://example.test/storyboard-grid.jpg",
+                storyboardGridImageResolution: "4K",
+                storyboardGridFrames: [
+                  { index: 0, row: 0, col: 0, url: "https://example.test/frame-1.jpg", name: "Frame 1" },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const createDataTransfer = (files: File[] = []) => {
+      const store = new Map<string, string>();
+      return {
+        effectAllowed: "",
+        dropEffect: "",
+        files,
+        setData: vi.fn((type: string, value: string) => store.set(type, value)),
+        getData: vi.fn((type: string) => store.get(type) ?? ""),
+      };
+    };
+    const onUploadShotMediaFile = vi.fn(async () => ({
+      url: "https://example.test/uploaded-shot.mp4",
+      mediaType: "video" as const,
+      name: "uploaded-shot.mp4",
+      source: "uploaded_file",
+    }));
+
+    render(
+      <VideoShotWorkspace
+        space={spaceWithGridFrames}
+        selectedShotId="shot-1"
+        onBackToProduction={() => {}}
+        onAssignShotMediaSlot={onAssignShotMediaSlot}
+        onUploadShotMediaFile={onUploadShotMediaFile}
+      />
+    );
+
+    const card = screen.getByTestId("video-shot-storyboard-card-shot-1");
+	    const frameTransfer = createDataTransfer();
+	    fireEvent.dragStart(within(card).getByTitle("Drag frame 1"), { dataTransfer: frameTransfer });
+	    fireEvent.drop(within(card).getByTestId("story-card-shot-1-start-frame"), { dataTransfer: frameTransfer });
+	    expect(onAssignShotMediaSlot).toHaveBeenCalledWith("shot-1", "start", expect.objectContaining({
+	      url: "https://example.test/frame-1.jpg",
+	      mediaType: "image",
+	      source: "storyboard_grid_frame",
+	    }));
+
+	    const referenceTransfer = createDataTransfer();
+	    referenceTransfer.setData("application/x-production-asset-json", JSON.stringify({
+	      id: "asset-reference-image",
+	      kind: "reference_image",
+	      title: "Reference asset",
+	      url: "https://cdn.example.test/reference-asset",
+	    }));
+	    fireEvent.drop(within(card).getByTestId("story-card-shot-1-reference-image"), { dataTransfer: referenceTransfer });
+	    expect(onAssignShotMediaSlot).toHaveBeenCalledWith("shot-1", "reference", expect.objectContaining({
+	      url: "https://cdn.example.test/reference-asset",
+	      mediaType: "image",
+	      name: "Reference asset",
+	      source: "production_asset",
+	    }));
+
+	    const stopTransfer = createDataTransfer();
+	    stopTransfer.setData("text/x-smartspec-media-type", "image");
+	    stopTransfer.setData("text/plain", "https://cdn.example.test/stop-frame");
+	    fireEvent.drop(within(card).getByTestId("story-card-shot-1-stop-frame"), { dataTransfer: stopTransfer });
+	    expect(onAssignShotMediaSlot).toHaveBeenCalledWith("shot-1", "stop", expect.objectContaining({
+	      url: "https://cdn.example.test/stop-frame",
+	      mediaType: "image",
+	    }));
+
+	    const videoTransfer = createDataTransfer();
+	    videoTransfer.setData("application/x-smartspec-media-type", "video");
+	    videoTransfer.setData("text/plain", "https://example.test/generated-shot.mp4");
+	    fireEvent.drop(within(card).getByTestId("story-card-shot-1-video"), { dataTransfer: videoTransfer });
+    expect(onAssignShotMediaSlot).toHaveBeenCalledWith("shot-1", "video", expect.objectContaining({
+      url: "https://example.test/generated-shot.mp4",
+	      mediaType: "video",
+	    }));
+
+    const mp4File = new File(["video-bytes"], "uploaded-shot.mp4", { type: "video/mp4" });
+    const mp4Transfer = createDataTransfer([mp4File]);
+    fireEvent.drop(within(card).getByTestId("story-card-shot-1-video"), { dataTransfer: mp4Transfer });
+    await waitFor(() => {
+      expect(onUploadShotMediaFile).toHaveBeenCalledWith(mp4File, "shot-1", "video");
+      expect(onAssignShotMediaSlot).toHaveBeenCalledWith("shot-1", "video", expect.objectContaining({
+        url: "https://example.test/uploaded-shot.mp4",
+        mediaType: "video",
+        source: "uploaded_file",
+      }));
+    });
+	  });
+
+  it("exposes combine videos action for ready Video Shot clips", () => {
+    const onCompoundShotVideos = vi.fn();
+    const spaceWithShotVideos: ProductionSpace = {
+      ...featureSpaceTwoShots,
+      flowNodes: [
+        ...featureSpaceTwoShots.flowNodes,
+        {
+          id: "storyboard-card",
+          kind: "storyboard_planning" as const,
+          title: "Storyboard prompt card",
+          status: "ready" as const,
+          position: { x: 0, y: 0 },
+          metadata: {
+            storyboardPrompts: [
+              { shotId: "shot-1", order: 1, title: "Hook", videoUrl: "https://example.test/shot-1.mp4" },
+              { shotId: "shot-2", order: 2, title: "Proof", videoUrl: "https://example.test/shot-2.mp4" },
+            ],
+          },
+        },
+      ],
+    };
+
+    render(
+      <VideoShotWorkspace
+        space={spaceWithShotVideos}
+        selectedShotId="shot-1"
+        onBackToProduction={() => {}}
+        onCompoundShotVideos={onCompoundShotVideos}
+      />
+    );
+
+    const combineButton = screen.getByRole("button", { name: /combine videos \(2\)/i });
+    expect(combineButton).toBeEnabled();
+    fireEvent.click(combineButton);
+    expect(onCompoundShotVideos).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders assigned media slot URLs over older generated node outputs", () => {
+    const spaceWithAssignedSlots: ProductionSpace = {
+      ...featureSpaceTwoShots,
+      shots: [
+        {
+          ...featureSpaceTwoShots.shots[0],
+          nodeIds: [
+            ...(featureSpaceTwoShots.shots[0]?.nodeIds ?? []),
+            "shot-1-reference-image",
+            "shot-1-start-frame",
+            "shot-1-stop-frame",
+            "shot-1-video-output",
+          ],
+        },
+        ...featureSpaceTwoShots.shots.slice(1),
+      ],
+      flowNodes: [
+        ...featureSpaceTwoShots.flowNodes,
+        {
+          id: "shot-1-reference-image",
+          kind: "image" as const,
+          title: "Old reference image",
+          status: "completed" as const,
+          shotId: "shot-1",
+          position: { x: 0, y: 0 },
+          metadata: { frameRole: "reference" },
+          outputRefs: [{ outputRefId: "old-reference", nodeId: "shot-1-reference-image", kind: "image", url: "https://cdn.example.test/old-reference.png", metadata: { frameRole: "reference" } }],
+        },
+        {
+          id: "shot-1-start-frame",
+          kind: "image" as const,
+          title: "Old start frame",
+          status: "completed" as const,
+          shotId: "shot-1",
+          position: { x: 0, y: 0 },
+          metadata: { frameRole: "start" },
+          outputRefs: [{ outputRefId: "old-start", nodeId: "shot-1-start-frame", kind: "image", url: "https://cdn.example.test/old-start.png", metadata: { frameRole: "start" } }],
+        },
+        {
+          id: "shot-1-stop-frame",
+          kind: "image" as const,
+          title: "Old stop frame",
+          status: "completed" as const,
+          shotId: "shot-1",
+          position: { x: 0, y: 0 },
+          metadata: { frameRole: "stop" },
+          outputRefs: [{ outputRefId: "old-stop", nodeId: "shot-1-stop-frame", kind: "image", url: "https://cdn.example.test/old-stop.png", metadata: { frameRole: "stop" } }],
+        },
+        {
+          id: "shot-1-video-output",
+          kind: "video" as const,
+          title: "Old shot video",
+          status: "completed" as const,
+          shotId: "shot-1",
+          position: { x: 0, y: 0 },
+          outputRefs: [{ outputRefId: "old-video", nodeId: "shot-1-video-output", kind: "video", url: "https://cdn.example.test/old-video.mp4" }],
+        },
+        {
+          id: "storyboard-card",
+          kind: "storyboard_planning" as const,
+          title: "Storyboard prompt card",
+          status: "ready" as const,
+          position: { x: 0, y: 0 },
+          metadata: {
+            storyboardPrompts: [
+              {
+                shotId: "shot-1",
+                order: 1,
+                title: "Hook",
+                referenceImageUrl: "https://cdn.example.test/manual-reference.png",
+                startFrameUrl: "https://cdn.example.test/manual-start.png",
+                stopFrameUrl: "https://cdn.example.test/manual-stop.png",
+                videoUrl: "https://cdn.example.test/manual-video.mp4",
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    render(
+      <VideoShotWorkspace
+        space={spaceWithAssignedSlots}
+        selectedShotId="shot-1"
+        onBackToProduction={() => {}}
+      />
+    );
+
+    const card = screen.getByTestId("video-shot-storyboard-card-shot-1");
+    expect(within(card).getByTestId("story-card-shot-1-reference-image").querySelector("img")?.getAttribute("src")).toBe("https://cdn.example.test/manual-reference.png");
+    expect(within(card).getByTestId("story-card-shot-1-start-frame").querySelector("img")?.getAttribute("src")).toBe("https://cdn.example.test/manual-start.png");
+    expect(within(card).getByTestId("story-card-shot-1-stop-frame").querySelector("img")?.getAttribute("src")).toBe("https://cdn.example.test/manual-stop.png");
+    expect(within(card).getByTestId("story-card-shot-1-video").querySelector("video")?.getAttribute("src")).toBe("https://cdn.example.test/manual-video.mp4");
+  });
+
+	  it("keeps generated storyboard media scoped to the correct shot across three shots", () => {
     const threeShotSpace: ProductionSpace = {
       ...featureSpace,
       shots: [

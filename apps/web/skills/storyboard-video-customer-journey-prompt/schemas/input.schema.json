@@ -31,6 +31,17 @@
       "type": "boolean",
       "default": false
     },
+    "speech_mode": {
+      "title": "Speech Mode",
+      "type": "string",
+      "enum": ["none", "en", "th", "other"],
+      "default": "none"
+    },
+    "speech_language": {
+      "title": "Speech Language",
+      "type": "string",
+      "default": ""
+    },
     "include_sound": {
       "title": "Include Sound / Music Brief",
       "type": "boolean",

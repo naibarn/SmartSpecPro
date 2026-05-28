@@ -69,15 +69,46 @@ Each slot prompt must:
 
 Good slot prompts name the visible subject, product placement, hand/action, room/prop context, and endpoint state when those details are present. If the two frames are nearly identical, use subtle push-in, parallax, lighting shift, hand micro-movement, or product-settling motion instead of inventing new objects or actions.
 
+Every `video_prompt` must use this Veo 3.1 structure:
+
+Create an [duration]-second cinematic video.
+
+Scene:
+[location, time, atmosphere, visual truth from the attached frames]
+
+Characters:
+[visible person/hands/presenter only, no invented characters]
+
+Action:
+[what happens in this shot and what must be preserved]
+
+Camera:
+[shot size, movement, start/end frame roles, aspect ratio]
+
+Lighting / Style:
+[realistic ecommerce cinematic style and lighting]
+
+Audio:
+[native audio, ambient sound, sound design, dialogue language, lip-sync, no subtitles, no extra dialogue]
+
+Dialogue:
+[spoken line in quotes, or No spoken dialogue.]
+
 ## Voiceover Requirements
 
 If `includeVoiceover` is true:
 - create a natural spoken script per slot
-- use the requested language or infer from product context
-- make the script continuous across slots
-- keep it short enough for the slot duration
+- use `speechMode` / `speechLanguage` when provided. `th` means Thai, `en` means English, and `other` means the caller-provided language.
+- make the script continuous across slots as one ordered story, not separate standalone taglines
+- plan the full speech arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot
+- make each slot line naturally follow the previous slot and set up the next slot; avoid repeating the same opening phrase, benefit, or claim
+- keep it natural for the slot duration. For an 8-10 second shot, write a line intended to fill most of that slot's speech time without rushed delivery.
+- align the spoken line with the visible shot, customer journey stage, concept/details guideline, and video_prompt
+- write only the spoken line, not visual direction, in `voiceover_script`
+- also include the same spoken line inside `video_prompt` under the `Dialogue:` section as a native-audio instruction. For Thai, the prompt must contain `Presenter พูดเป็นภาษาไทยว่า "[short Thai line]"`. For English, use `Presenter says, clearly: "[short English line]"`.
 - avoid fake discounts, fake guarantees, or unsupported claims
 - focus on benefit, use case, product detail, and emotional reason to buy
+- return `voiceover_full_script` as the exact ordered combination of all slot `voiceover_script` lines
 
 If `includeVoiceover` is false, use an empty string for every slot voiceover.
 
@@ -89,6 +120,7 @@ If `includeSound` is true:
 - do not overpower voiceover if voiceover is enabled
 
 If `includeSound` is false, use an empty string for every slot sound brief.
+Also keep the `video_prompt` Audio section free of sound design: do not request ambient sound, room tone, native environment audio, foley, SFX, or music. If voiceover/dialogue is enabled, write audio as dialogue-only native speech plus lip-sync rules. If voiceover/dialogue is disabled too, write `Audio: No audio.`
 
 ## Output Schema
 

@@ -34,6 +34,7 @@ When `userInputs.mode` is `marketplace_story_concept_synthesis`, return JSON onl
       "sellingPoints": ["..."],
       "objectionsTrust": ["..."],
       "useCase": "...",
+      "conceptDetails": "One complete narrative paragraph ready to copy into downstream work such as voice over scripting. Include product name, summarized product details, target audience, problem, and selling points without unsupported claims.",
       "narrativeStructure": "Problem → Solution",
       "emotionalTone": "Empathy Tone",
       "hookTechnique": "Hook แบบปัญหาโดนใจ",
@@ -60,5 +61,7 @@ Always provide exactly four concepts for:
 - `story_option:use_case_moment`: real use case by context.
 
 Mix each concept with a suitable storytelling structure, emotional tone, and short-video hook technique from the provided reference list. Use product truth, selected marketplace evidence, user-provided assets, and existing insight first. If evidence is missing, mark the concept review-safe instead of inventing product facts.
+
+For every concept, include `conceptDetails` as one complete copy-ready paragraph. It must explicitly cover product name, summarized product details, target audience, problem, and selling points in natural narration form, not a bullet list.
 
 For every concept, include an `infographicPrompt` designed for the existing image generation system. The prompt should ask for a beautiful, realistic infographic with photorealistic supporting imagery, clear storyboard/timeline sections, and a visual summary that helps the user understand the concept at a glance. It must not invent unsupported product claims or alter product identity beyond the provided evidence.

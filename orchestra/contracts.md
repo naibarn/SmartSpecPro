@@ -1,58 +1,20 @@
-# Contracts
+# Orchestra Contracts
 
-## Production Concept Card Contract
+## Production Director Extension Detail API
 
-Owner: frontend UI implementation.
+Endpoint: `GET /api/marketplace-captures/production-director/project?productionRunId=...`
 
-Input:
-- `ProductionStoryConceptOption`
-- selected concept id
-- per-card loading/status fields
-- callbacks for select, regenerate, generate infographic, fullscreen
+Existing auth and tenancy behavior is unchanged:
+- Requires marketplace extension bearer auth with `marketplace:read`.
+- Reads only the authenticated user's active production space for the resolved tenant.
+- Does not add writes or provider-secret exposure.
 
-Output:
-- renders exactly one concept card
-- never mutates sibling concepts directly
-- emits card id for every card-level action
+Per-shot response extends the existing shot object:
+- `storyboardGridPrompt?: string`
+- `videoPrompt?: string`
+- `storyboardGridImageUrl?: string`
+- `referenceImageUrl?: string`
+- `startFrameUrl?: string`
+- `stopFrameUrl?: string`
 
-## Project Generation Defaults Contract
-
-Owner: Media Studio orchestration and shared production types.
-
-Shape:
-
-```ts
-generationDefaults?: {
-  imageModelId?: string;
-  videoModelId?: string;
-  imageModelSource?: "project_default" | "media_tab" | "system_default";
-  videoModelSource?: "project_default" | "media_tab" | "system_default";
-};
-```
-
-Rules:
-- image nodes use `generationDefaults.imageModelId` before tab/system fallback
-- video nodes use `generationDefaults.videoModelId` before tab/system fallback
-- never assign an image model to a video node or a video model to an image node
-
-## Infographic Generation Contract
-
-Owner: Media Studio orchestration.
-
-Input:
-- concept card
-- production goal
-- product truth/evidence context
-- project default image model
-
-Prompt intent:
-- realistic polished infographic
-- photorealistic supporting imagery
-- storyboard/timeline visible
-- concept understandable at a glance
-- no unsupported product claims
-
-Output:
-- task id while generating
-- image URL when completed
-- card-level status/error on failure
+The extension may render these as read-only prompts and draggable media URLs. Legacy `storyboardPrompt` remains available as a fallback.

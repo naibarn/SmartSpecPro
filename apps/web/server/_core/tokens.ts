@@ -32,6 +32,8 @@ export interface TokenClaims {
   registeredByUserId?: number;
   externalReference?: string;
   deviceIdHash?: string;
+  origin?: string;
+  extensionId?: string;
   llmRoutingMode?: "auto" | "pinned_provider";
   preferredProviderId?: number;
   preferredProviderName?: string;

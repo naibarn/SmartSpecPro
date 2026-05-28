@@ -226,6 +226,7 @@ export default function LibrarySearchPanel({
               const canAddToReference = showAddToReference && (canAddToReferenceItem ? canAddToReferenceItem(item) : true);
               const itemType = item.item_type.toLowerCase();
               const canPreview = itemType === "image" || itemType === "video";
+              const sourceUrl = item.source_url?.trim() || null;
               return (
                 <div
                   key={item.item_id}
@@ -272,6 +273,27 @@ export default function LibrarySearchPanel({
                         {item.item_type} • {item.model_name || item.source}
                       </p>
                     </div>
+
+                    {itemType === "audio" && sourceUrl ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                            <Music className="h-4 w-4" />
+                          </span>
+                          <p className="line-clamp-2 min-w-0 text-xs font-medium text-amber-950" title={item.title}>
+                            {item.title}
+                          </p>
+                        </div>
+                        <audio
+                          src={sourceUrl}
+                          controls
+                          preload="metadata"
+                          className="h-9 w-full"
+                          onClick={(event) => event.stopPropagation()}
+                          onDragStart={(event) => event.preventDefault()}
+                        />
+                      </div>
+                    ) : null}
 
                     <div className="flex items-center justify-between gap-2">
                       {status.retryable ? (

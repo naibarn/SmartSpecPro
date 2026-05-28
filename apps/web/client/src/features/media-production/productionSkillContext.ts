@@ -151,6 +151,10 @@ export function selectProductionRoleBalancedReferenceImageUrls(input: {
   const character = uniqueUrls(input.character ?? []);
   const environment = uniqueUrls(input.environment ?? []);
   const fallback = uniqueUrls(input.fallback ?? []);
+  const roleUrls = uniqueUrls([...product, ...character, ...environment]);
+  if (fallback.length > 0 && fallback.length <= limit && roleUrls.every((url) => fallback.includes(url))) {
+    return fallback;
+  }
   const selected: string[] = [];
   const add = (url?: string) => {
     const cleanUrl = cleanString(url);

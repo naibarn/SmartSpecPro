@@ -3,11 +3,16 @@
  * CRUD operations for persistent video editor project storage with auto-save support.
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { mediaStudioStoryboardReviews, videoEditorProjects } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+
+const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
+const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
 
 export function getReviewDataUpdatedAt(reviewData: unknown): number {
   if (!reviewData || typeof reviewData !== "object") return 0;
@@ -33,6 +38,108 @@ function getTaskUrl(task: unknown): string {
   return typeof url === "string" ? url : "";
 }
 
+function getCompanionAudioUpdatedAt(reviewData: unknown): number {
+  if (!reviewData || typeof reviewData !== "object") return 0;
+  const value = (reviewData as { companionAudioUpdatedAt?: unknown }).companionAudioUpdatedAt;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  return 0;
+}
+
+function summarizeCompanionAudio(reviewData: unknown) {
+  if (!reviewData || typeof reviewData !== "object") {
+    return { draftUpdatedAt: 0, companionAudioUpdatedAt: 0, count: 0, audio: [] };
+  }
+  const companionAudio = (reviewData as { companionAudio?: unknown }).companionAudio;
+  const audioItems = Array.isArray(companionAudio) ? companionAudio : [];
+  return {
+    draftUpdatedAt: getReviewDataUpdatedAt(reviewData),
+    companionAudioUpdatedAt: getCompanionAudioUpdatedAt(reviewData),
+    hasExplicitCompanionAudioUpdatedAt: typeof (reviewData as { companionAudioUpdatedAt?: unknown }).companionAudioUpdatedAt === "number",
+    count: audioItems.length,
+    audio: audioItems.slice(0, 4).map((item) => {
+      const audio = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const url = typeof audio.url === "string" ? audio.url : "";
+      return {
+        id: typeof audio.id === "string" ? audio.id : null,
+        kind: typeof audio.kind === "string" ? audio.kind : null,
+        title: typeof audio.title === "string" ? audio.title.slice(0, 120) : null,
+        model: typeof audio.model === "string" ? audio.model.slice(0, 80) : null,
+        urlTail: url ? url.slice(-160) : null,
+      };
+    }),
+  };
+}
+
+function getDebugHeaderValue(headers: Record<string, unknown> | undefined, key: string): string | null {
+  const value = headers?.[key.toLowerCase()] ?? headers?.[key];
+  if (Array.isArray(value)) return value.join(", ").slice(0, 240);
+  return typeof value === "string" ? value.slice(0, 240) : null;
+}
+
+function summarizeDebugRequest(ctx: { req?: { headers?: Record<string, unknown>; ip?: string; originalUrl?: string; socket?: { remoteAddress?: string } } }) {
+  const headers = ctx.req?.headers;
+  return {
+    ip: ctx.req?.ip ?? ctx.req?.socket?.remoteAddress ?? null,
+    xForwardedFor: getDebugHeaderValue(headers, "x-forwarded-for"),
+    origin: getDebugHeaderValue(headers, "origin"),
+    referer: getDebugHeaderValue(headers, "referer"),
+    userAgent: getDebugHeaderValue(headers, "user-agent"),
+    methodPath: ctx.req?.originalUrl ?? null,
+  };
+}
+
+function writeStoryboardReviewDebugLog(entry: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === "test" || process.env.STORYBOARD_REVIEW_DEBUG_LOG === "0") return;
+  const logPath = path.resolve(process.cwd(), process.env.STORYBOARD_REVIEW_DEBUG_LOG_PATH || "logs/storyboard-review-save-debug.ndjson");
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `${JSON.stringify({
+      ts: new Date().toISOString(),
+      serverBuild: STORYBOARD_REVIEW_SERVER_DEBUG_BUILD,
+      ...entry,
+    })}\n`, "utf8");
+  } catch {
+    // Debug logging must never block user saves.
+  }
+}
+
+export function sanitizeStoryboardReviewClientDebugPayload(value: unknown, depth = 0): unknown {
+  if (value === null || value === undefined) return value ?? null;
+  if (typeof value === "string") return value.length > 500 ? `${value.slice(0, 500)}...` : value;
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value !== "object") return String(value).slice(0, 120);
+  if (depth >= 5) return "[MaxDepth]";
+
+  if (Array.isArray(value)) {
+    return value.slice(0, 20).map((item) => sanitizeStoryboardReviewClientDebugPayload(item, depth + 1));
+  }
+
+  const sensitiveKeyPattern = /(authorization|cookie|password|secret|token|sig|signature|url|uri)$/i;
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 40)) {
+    output[key] = sensitiveKeyPattern.test(key)
+      ? "[redacted]"
+      : sanitizeStoryboardReviewClientDebugPayload(item, depth + 1);
+  }
+  return output;
+}
+
+function writeStoryboardReviewClientDebugLog(entry: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === "test" || process.env.STORYBOARD_REVIEW_CLIENT_DEBUG_LOG === "0") return;
+  const logPath = path.resolve(process.cwd(), process.env.STORYBOARD_REVIEW_CLIENT_DEBUG_LOG_PATH || "logs/storyboard-review-client-debug.ndjson");
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `${JSON.stringify({
+      ts: new Date().toISOString(),
+      serverBuild: STORYBOARD_REVIEW_SERVER_DEBUG_BUILD,
+      clientDebugBuild: STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD,
+      ...entry,
+    })}\n`, "utf8");
+  } catch {
+    // Debug logging must never block the review page.
+  }
+}
+
 export function mergeFresherExistingReviewTasks(
   existingReviewData: unknown,
   incomingReviewData: unknown,
@@ -43,6 +150,8 @@ export function mergeFresherExistingReviewTasks(
   const existingTasks = (existingReviewData as { tasks?: unknown }).tasks;
   const incomingTasks = (incomingReviewData as { tasks?: unknown }).tasks;
   if (!Array.isArray(existingTasks) || !Array.isArray(incomingTasks)) return incomingReviewData;
+  const existingCompanionAudioUpdatedAt = getCompanionAudioUpdatedAt(existingReviewData);
+  const incomingCompanionAudioUpdatedAt = getCompanionAudioUpdatedAt(incomingReviewData);
 
   const existingTaskById = new Map<string, unknown>();
   for (const task of existingTasks) {
@@ -69,8 +178,26 @@ export function mergeFresherExistingReviewTasks(
     return incomingTask;
   });
 
+  const existingCompanionAudio = (existingReviewData as { companionAudio?: unknown }).companionAudio;
+  const incomingCompanionAudio = (incomingReviewData as { companionAudio?: unknown }).companionAudio;
+  const existingAudioItems = Array.isArray(existingCompanionAudio) ? existingCompanionAudio : [];
+  const incomingAudioItems = Array.isArray(incomingCompanionAudio) ? incomingCompanionAudio : [];
+  const shouldUseExistingCompanionAudio = existingCompanionAudioUpdatedAt > incomingCompanionAudioUpdatedAt;
+  if (shouldUseExistingCompanionAudio) {
+    changed = true;
+  }
+
   return changed
-    ? { ...(incomingReviewData as Record<string, unknown>), tasks: mergedTasks }
+    ? {
+        ...(incomingReviewData as Record<string, unknown>),
+        tasks: mergedTasks,
+        ...(Array.isArray(incomingCompanionAudio)
+          ? {
+              companionAudio: shouldUseExistingCompanionAudio ? existingAudioItems : incomingAudioItems,
+              companionAudioUpdatedAt: Math.max(existingCompanionAudioUpdatedAt, incomingCompanionAudioUpdatedAt),
+            }
+          : {}),
+      }
     : incomingReviewData;
 }
 
@@ -88,6 +215,30 @@ function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | un
 }
 
 export const videoEditorProjectsRouter = router({
+  /** Browser lifecycle debug events for storyboard review audio persistence. */
+  debugStoryboardReviewClient: protectedProcedure
+    .input(
+      z.object({
+        event: z.string().min(1).max(160),
+        reviewId: z.number().int().positive().nullable().optional(),
+        pageBuild: z.string().max(160).nullable().optional(),
+        route: z.string().max(300).nullable().optional(),
+        payload: z.unknown().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      writeStoryboardReviewClientDebugLog({
+        event: input.event,
+        reviewId: input.reviewId ?? null,
+        userId: ctx.user.id,
+        pageBuild: input.pageBuild ?? null,
+        route: input.route ?? null,
+        request: summarizeDebugRequest(ctx),
+        payload: sanitizeStoryboardReviewClientDebugPayload(input.payload),
+      });
+      return { ok: true };
+    }),
+
   /** List persistent Media Studio storyboard review workspaces */
   listStoryboardReviews: protectedProcedure
     .input(
@@ -155,7 +306,16 @@ export const videoEditorProjectsRouter = router({
             eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
           ),
         )
-        .limit(1);
+          .limit(1);
+
+      writeStoryboardReviewDebugLog({
+        event: "getStoryboardReview",
+        reviewId: input.id,
+        userId: ctx.user.id,
+        found: Boolean(review),
+        request: summarizeDebugRequest(ctx),
+        stored: summarizeCompanionAudio(review?.reviewData),
+      });
 
       return review ?? null;
     }),
@@ -171,6 +331,7 @@ export const videoEditorProjectsRouter = router({
         completedClipCount: z.number().min(0).optional(),
         thumbnailUrl: z.string().optional().nullable(),
         videoEditorProjectId: z.number().optional().nullable(),
+        debugSource: z.any().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -193,13 +354,17 @@ export const videoEditorProjectsRouter = router({
           )
           .limit(1);
         if (!existing) throw new Error("Storyboard review not found");
-        const incomingUpdatedAt = getReviewDataUpdatedAt(input.reviewData);
-        const existingUpdatedAt = getReviewDataUpdatedAt(existing.reviewData);
-        if (incomingUpdatedAt > 0 && existingUpdatedAt > incomingUpdatedAt) {
-          return { id: input.id };
-        }
-
         const reviewData = mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData);
+        writeStoryboardReviewDebugLog({
+          event: "saveStoryboardReview.update",
+          reviewId: input.id,
+          userId: ctx.user.id,
+          debugSource: input.debugSource ?? null,
+          request: summarizeDebugRequest(ctx),
+          existing: summarizeCompanionAudio(existing.reviewData),
+          incoming: summarizeCompanionAudio(input.reviewData),
+          merged: summarizeCompanionAudio(reviewData),
+        });
 
         await db
           .update(mediaStudioStoryboardReviews)
@@ -215,7 +380,7 @@ export const videoEditorProjectsRouter = router({
           })
           .where(eq(mediaStudioStoryboardReviews.id, input.id));
 
-        return { id: input.id };
+        return { id: input.id, reviewData };
       }
 
       const [inserted] = await db
@@ -233,8 +398,16 @@ export const videoEditorProjectsRouter = router({
           updatedAt: now,
         })
         .returning({ id: mediaStudioStoryboardReviews.id });
+      writeStoryboardReviewDebugLog({
+        event: "saveStoryboardReview.insert",
+        reviewId: inserted.id,
+        userId: ctx.user.id,
+        debugSource: input.debugSource ?? null,
+        request: summarizeDebugRequest(ctx),
+        incoming: summarizeCompanionAudio(input.reviewData),
+      });
 
-      return { id: inserted.id };
+      return { id: inserted.id, reviewData: input.reviewData };
     }),
 
   /** Delete a storyboard review workspace after it is no longer needed */

@@ -72,6 +72,8 @@ interface UVoiceModelEntry {
 
 type UVoiceTier = "standard" | "natural" | "premium";
 
+const UVOICE_PREVIEW_BASE_URL = "https://cdn.uvoice.app/";
+
 const UVOICE_VOICE_LIST_URLS_BY_TIER: Record<UVoiceTier, readonly string[]> = {
   standard: [
     "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Standard&source=API-DOCS",
@@ -141,7 +143,7 @@ async function fetchUVoiceOptionsFromPublicPage(
       if (!voiceID) continue;
       if (dedupe.has(voiceID)) continue;
       const path = typeof entry?.path === "string" ? entry.path.trim() : "";
-      const previewUrl = path ? new URL(path.replace(/^\//, ""), "https://uvoice.app/").toString() : undefined;
+      const previewUrl = path ? new URL(path.replace(/^\//, ""), UVOICE_PREVIEW_BASE_URL).toString() : undefined;
       dedupe.set(voiceID, {
         value: voiceID,
         label: buildVoiceLabel(entry),
@@ -188,8 +190,8 @@ function buildTierOptionsSource(tier: UVoiceTier): InputField["optionsSource"] {
     valueField: "voiceID",
     labelField: "displayName",
     previewField: "path",
-    previewBaseUrl: "https://uvoice.app/",
-    cacheTtlSeconds: 86400,
+    previewBaseUrl: UVOICE_PREVIEW_BASE_URL,
+    cacheTtlSeconds: 300,
   };
 }
 
@@ -212,7 +214,7 @@ function buildCommonInputFields(
     key: "speed",
     label: "Speed",
     type: "number",
-    default: 1,
+    default: 1.1,
   },
   {
     key: "volume",

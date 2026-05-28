@@ -11,6 +11,7 @@
     "aspect_ratio",
     "cinematic_style",
     "storyboard_guide",
+    "production_concept_details",
     "scene_descriptions"
   ],
   "generation_mode": {
@@ -56,6 +57,10 @@
   "storyboard_guide": {
     "ui:widget": "textarea",
     "ui:help": "ไม่บังคับ ใช้รับ Storyboard จาก Video Shot เพื่อให้ prompt ทุกเฟรมสอดคล้องกับลำดับเรื่อง จังหวะ ภาพ และการใช้สินค้า"
+  },
+  "production_concept_details": {
+    "ui:widget": "textarea",
+    "ui:help": "ไม่บังคับ ใช้รับแนวคิดจาก Production Director เพื่อคุมโทน กลุ่มเป้าหมาย ปัญหา hook และจุดขายแบบไม่ใช้ราคา rating หรือยอดขาย"
   },
   "scene_descriptions": {
     "ui:widget": "textarea"

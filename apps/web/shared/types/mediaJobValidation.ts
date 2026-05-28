@@ -21,6 +21,7 @@ export type EngineContext = "web_backend" | "desktop_sidecar" | "web_wasm";
 // ========================================
 
 const SHELL_METACHAR_RE = /[;|&`$(){}><]/;
+const URI_QUERY_SHELL_METACHAR_RE = /[;|`$(){}><]/;
 
 const MAX_VIDEO_BITRATE_KBPS = 50_000;
 const MAX_AUDIO_BITRATE_KBPS = 320;
@@ -106,6 +107,13 @@ export function isInternalUri(uri: string): boolean {
   return false;
 }
 
+function uriContainsShellMetacharacters(uri: string): boolean {
+  const queryStart = uri.search(/[?#]/);
+  const pathPart = queryStart >= 0 ? uri.slice(0, queryStart) : uri;
+  const queryPart = queryStart >= 0 ? uri.slice(queryStart) : "";
+  return SHELL_METACHAR_RE.test(pathPart) || URI_QUERY_SHELL_METACHAR_RE.test(queryPart);
+}
+
 // ========================================
 // sanitizeUri
 // ========================================
@@ -127,8 +135,8 @@ export function sanitizeUri(uri: string, context: EngineContext): string {
     return uri;
   }
 
-  // Reject shell metacharacters in external URIs (passed to FFmpeg CLI)
-  if (SHELL_METACHAR_RE.test(uri)) {
+  // Reject shell metacharacters in external URIs while allowing signed URL query delimiters.
+  if (uriContainsShellMetacharacters(uri)) {
     throw new Error(
       `URI contains shell metacharacter: "${uri}"`,
     );

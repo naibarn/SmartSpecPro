@@ -19,11 +19,16 @@ Required furniture fidelity behavior:
 - Every prompt must include a product scale lock. Use numeric dimensions when supplied; otherwise infer visible scale class, height-width-depth relationship, physical aspect ratio, and visual bounding-box ratio from the product reference.
 - Preserve exact category, geometry, physical proportions, countable parts, material, color, finish, texture, hardware, support/base, scale, and physical markings from current product references.
 - Every product-visible storyboard frame must keep the same product footprint envelope, tier/shelf/drawer/cushion spacing, leg/post thickness, and class-level scale. Close-up frames may crop tighter but must not change the real product proportions.
+- Every frame in a 2-4 panel product storyboard must show the referenced product; do not use product-absent mood, room, bed, floor, prop, or book-only setup frames unless explicitly requested.
+- Same-model multi-reference inputs may supply multiple angles or colorways, but a single-SKU storyboard must lock one output colorway while preserving shared geometry across all frames.
 - Product references override environment references.
 - Environment references may provide room mood and architecture only.
 - Reject current-reference contamination from old uploads, previous generated outputs, unrelated people, unrelated rooms, travel, fashion, or beach scenes.
 
 Allowed plain-text shape:
+
+OUTPUT FORMAT LOCK:
+...
 
 PRODUCT REFERENCE LOCK:
 ...

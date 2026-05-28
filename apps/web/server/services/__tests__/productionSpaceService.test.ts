@@ -143,6 +143,7 @@ function createDb(options: {
   spaces?: Array<Record<string, any>>;
   runsSelectError?: Error;
   spacesSelectError?: Error;
+  spacesInsertError?: Error;
 } = {}) {
   const db = {
     runs: [{
@@ -205,6 +206,9 @@ function createDb(options: {
       const insertQuery = {
         values(value: Record<string, any>) {
           if (table === mediaProductionSpaces) {
+            if (options.spacesInsertError) {
+              throw options.spacesInsertError;
+            }
             const row = { id: db.spaces.length + 1, ...value };
             db.spaces.push(row);
             db.insertedSpaces.push(row);
@@ -451,6 +455,36 @@ describe("productionSpaceService", () => {
         expected: { spaceVersion: 0 },
         current: { spaceVersion: 1 },
         safePreview: { canReloadLatest: true },
+      },
+    });
+    expect(db.insertedSpaces).toHaveLength(0);
+  });
+
+  it("reports concurrent version inserts as stale conflicts instead of raw database errors", async () => {
+    const duplicateVersionError = Object.assign(
+      new Error('duplicate key value violates unique constraint "media_production_spaces_unique"'),
+      { code: "23505", constraint: "media_production_spaces_unique" },
+    );
+    const db = createDb({
+      spaces: [buildSpaceRow(buildSpace(2))],
+      spacesInsertError: duplicateVersionError,
+    });
+
+    await expect(saveProductionSpace({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+      expectedVersion: 2,
+      space: buildSpace(2),
+    })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "space_version_stale",
+      cause: {
+        reason: "space_version_stale",
+        productionRunId: "run-116",
+        expected: { spaceVersion: 2 },
+        current: { spaceVersion: 2 },
       },
     });
     expect(db.insertedSpaces).toHaveLength(0);
@@ -744,6 +778,52 @@ describe("productionSpaceService", () => {
     expect(saved.space.featureFlags).toEqual(buildSpace(1).featureFlags);
     expect(saved.space.productEvidenceManifest?.products[0].approvalState).not.toBe("blocked");
     expect(saved.space.productEvidenceManifest?.products[0].claimEvidence[0].status).toBe("approved");
+  });
+
+  it("sanitizes draft product evidence that would otherwise fail space validation", async () => {
+    const previous = buildSpace(1);
+    previous.productEvidenceManifest = {
+      manifestId: "manifest-1",
+      status: "blocked",
+      requiredClaimIds: ["claim-1"],
+      warnings: [],
+      products: [{
+        id: "product-1",
+        productId: "sku-1",
+        title: "Product",
+        approvalState: "blocked",
+        claimEvidence: [{
+          claimId: "claim-1",
+          evidenceIds: ["claim-1"],
+          status: "blocked",
+          riskLevel: "high",
+        }],
+      }],
+    };
+    const draft = {
+      ...buildSpace(1),
+      productEvidenceManifest: previous.productEvidenceManifest,
+    };
+    const db = createDb({ spaces: [buildSpaceRow(previous)] });
+
+    const saved = await saveProductionSpace({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+      expectedVersion: 1,
+      space: draft,
+      changedFields: ["storyConceptWizard"],
+    });
+
+    expect(saved.space.productEvidenceManifest).toMatchObject({
+      status: "warning",
+      requiredClaimIds: [],
+    });
+    expect(saved.space.productEvidenceManifest?.products[0]).toMatchObject({
+      approvalState: "needs_review",
+      claimEvidence: [],
+    });
   });
 
   it("requires server-side execution flags before scheduling provider-credit attempts", async () => {

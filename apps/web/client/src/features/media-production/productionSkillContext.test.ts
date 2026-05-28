@@ -117,6 +117,18 @@ describe("productionSkillContext", () => {
     expect(selected).toEqual(["product-1", "character-1", "environment-1", "product-2"]);
   });
 
+  it("preserves the skill prompt reference order when all fallback references fit the model limit", () => {
+    const selected = selectProductionRoleBalancedReferenceImageUrls({
+      product: ["product-white", "product-wood"],
+      character: ["character"],
+      environment: ["bedroom"],
+      fallback: ["product-white", "product-wood", "character", "bedroom"],
+      limit: 5,
+    });
+
+    expect(selected).toEqual(["product-white", "product-wood", "character", "bedroom"]);
+  });
+
   it("does not override a manual planning model even when context is large", () => {
     const selection = selectProductionPlanningModelForContext({
       modelMode: "manual",

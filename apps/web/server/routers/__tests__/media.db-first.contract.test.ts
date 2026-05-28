@@ -1604,6 +1604,7 @@ describe("media router DB-first model contract", () => {
           ok: true,
           text: async () => (
             'var apiBaseAudioUrl = "https://hearme.blob.core.windows.net/audiostorage/";'
+            + 'var CDNBaseAudioUrl = "https://cdn.uvoice.app/";'
             + 'var storageToken = "?sig=test-token";'
           ),
         } as any;
@@ -1630,12 +1631,12 @@ describe("media router DB-first model contract", () => {
       },
     });
 
-    expect(result.source).toBe("merged");
+    expect(result.source).toBe("dynamic");
     expect(result.options).toEqual([
       {
         value: "EN-1",
         label: "en - English Voice 1 (Adult)",
-        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/en/voice-1.mp3?sig=test-token",
+        previewUrl: "https://cdn.uvoice.app/voice-preview/en/voice-1.mp3",
       },
     ]);
     expect(fetch).toHaveBeenCalledWith(
@@ -1665,7 +1666,108 @@ describe("media router DB-first model contract", () => {
     );
   });
 
-  it("listModelFieldOptions includes only premium UVoice voices for premium model and keeps static fallback", async () => {
+  it("listModelFieldOptions includes only live natural UVoice voices for natural model", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "uvoice",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voiceID",
+              options: [],
+              optionsSource: {
+                type: "public_api",
+                endpoint: "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS",
+                itemsPath: "",
+                valueField: "voiceID",
+                labelField: "displayName",
+                previewField: "path",
+              },
+            },
+          ],
+        },
+      }],
+      [{ userPreferences: { translationLanguage: "th" } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-ThaptimNatural", displayName: "Ruby (Beta)", age: "A" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-KittiNatural", displayName: "กิตติ (Beta)", age: "A", path: "voice-preview/th/kitti_natural.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/") {
+        return {
+          ok: true,
+          text: async () => (
+            'var apiBaseAudioUrl = "https://hearme.blob.core.windows.net/audiostorage/";'
+            + 'var CDNBaseAudioUrl = "https://cdn.uvoice.app/";'
+            + 'var storageToken = "?sig=test-token";'
+          ),
+        } as any;
+      }
+      return { ok: false, status: 404 } as any;
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        modelId: "uvoice/tts-natural",
+        fieldKey: "voiceID",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("dynamic");
+    expect(result.options).toEqual([
+      {
+        value: "EN-ThaptimNatural",
+        label: "en - Ruby (Beta) (Adult)",
+      },
+      {
+        value: "TH-KittiNatural",
+        label: "th - กิตติ (Beta) (Adult)",
+        previewUrl: "https://cdn.uvoice.app/voice-preview/th/kitti_natural.mp3",
+      },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Natural&source=API-DOCS",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Standard&source=API-DOCS",
+      expect.anything(),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Premium&source=API-DOCS",
+      expect.anything(),
+    );
+  });
+
+  it("listModelFieldOptions includes only live premium UVoice voices for premium model", async () => {
     const db = makeDbWithSequentialSelectResults([
       [{
         modelType: "audio",
@@ -1744,6 +1846,7 @@ describe("media router DB-first model contract", () => {
           ok: true,
           text: async () => (
             'var apiBaseAudioUrl = "https://hearme.blob.core.windows.net/audiostorage/";'
+            + 'var CDNBaseAudioUrl = "https://cdn.uvoice.app/";'
             + 'var storageToken = "?sig=test-token";'
           ),
         } as any;
@@ -1769,21 +1872,17 @@ describe("media router DB-first model contract", () => {
       },
     });
 
-    expect(result.source).toBe("merged");
+    expect(result.source).toBe("dynamic");
     expect(result.options).toEqual([
       {
         value: "EN-P1",
         label: "en - English Premium Voice (Adult)",
-        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/en/voice-premium.mp3?sig=test-token",
+        previewUrl: "https://cdn.uvoice.app/voice-preview/en/voice-premium.mp3",
       },
       {
         value: "TH-BowkyPremiumHD",
         label: "th - Bowky Premium HD (Adult)",
-        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/th/bowky-premium.mp3?sig=test-token",
-      },
-      {
-        value: "TH-STATIC",
-        label: "Static Voice",
+        previewUrl: "https://cdn.uvoice.app/voice-preview/th/bowky-premium.mp3",
       },
     ]);
     expect(fetch).not.toHaveBeenCalledWith(

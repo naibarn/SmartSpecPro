@@ -65,6 +65,18 @@ export function isProductionSpaceStorageUnavailable(error: unknown): boolean {
     || message.includes("relation")
   );
 }
+
+function isProductionSpaceVersionRaceError(error: unknown): boolean {
+  const raw = error as { code?: string; cause?: { code?: string; constraint?: string; message?: string }; constraint?: string; message?: string };
+  const code = raw?.code ?? raw?.cause?.code;
+  const constraint = String(raw?.constraint ?? raw?.cause?.constraint ?? "");
+  const message = `${raw?.message ?? ""} ${raw?.cause?.message ?? ""}`.toLowerCase();
+  return code === "23505" && (
+    constraint === "media_production_spaces_unique"
+    || message.includes("media_production_spaces_unique")
+    || (message.includes("media_production_spaces") && message.includes("duplicate key"))
+  );
+}
 type ProductionCreditLedger = {
   reserve(input: {
     userId: number;
@@ -653,11 +665,55 @@ const defaultMediaDispatcher: ProductionMediaDispatcher = {
   },
 };
 
+function sanitizeProductionProductEvidenceManifestForSpaceSave(
+  manifest: ProductionSpace["productEvidenceManifest"] | undefined,
+): ProductionSpace["productEvidenceManifest"] | undefined {
+  if (!manifest) return manifest;
+
+  const warnings = new Set(manifest.warnings ?? []);
+  let changed = false;
+  const products = manifest.products.map((product) => {
+    const claimEvidence = product.claimEvidence
+      .map((claim) => {
+        const evidenceIds = claim.evidenceIds.filter((id) => id && id !== claim.claimId);
+        if (evidenceIds.length !== claim.evidenceIds.length) changed = true;
+        return { ...claim, evidenceIds };
+      })
+      .filter((claim) => {
+        const keep = claim.status !== "blocked" && claim.evidenceIds.length > 0;
+        if (!keep) changed = true;
+        return keep;
+      });
+    const approvalState = product.approvalState === "blocked" ? "needs_review" as const : product.approvalState;
+    if (approvalState !== product.approvalState || claimEvidence.length !== product.claimEvidence.length) changed = true;
+    return {
+      ...product,
+      approvalState,
+      claimEvidence,
+    };
+  });
+
+  const validClaimIds = new Set(products.flatMap((product) => product.claimEvidence.map((claim) => claim.claimId)));
+  const requiredClaimIds = manifest.requiredClaimIds.filter((claimId) => validClaimIds.has(claimId));
+  if (requiredClaimIds.length !== manifest.requiredClaimIds.length) changed = true;
+
+  if (!changed && manifest.status !== "blocked") return manifest;
+
+  warnings.add("Some product evidence needs review before generation or handoff.");
+  return {
+    ...manifest,
+    products,
+    requiredClaimIds,
+    status: "warning",
+    warnings: Array.from(warnings),
+  };
+}
+
 function sanitizeClientWritableProductionSpace(input: ProductionSpace, previous?: ProductionSpace): ProductionSpace {
   const needsReview: ProductionEvidenceStatus = "needs_review";
   const blocked: ProductionEvidenceStatus = "blocked";
   const previousProducts = new Map((previous?.productEvidenceManifest?.products ?? []).map((product) => [product.id, product]));
-  const productEvidenceManifest = input.productEvidenceManifest
+  const productEvidenceManifestInput = input.productEvidenceManifest
     ? {
         ...input.productEvidenceManifest,
         products: input.productEvidenceManifest.products.map((product) => {
@@ -693,6 +749,7 @@ function sanitizeClientWritableProductionSpace(input: ProductionSpace, previous?
         }),
       }
     : input.productEvidenceManifest;
+  const productEvidenceManifest = sanitizeProductionProductEvidenceManifestForSpaceSave(productEvidenceManifestInput);
   return {
     ...input,
     productEvidenceManifest,
@@ -866,30 +923,60 @@ export async function saveProductionSpace(params: {
   };
   const validation = validateProductionSpace(space);
   if (!validation.ok) {
+    const issueSummary = validation.issues
+      .map((issue) => `${issue.code}${issue.path ? `:${issue.path}` : ""}`)
+      .join(", ");
+    console.warn("[mediaProduction.saveSpace] production_space_invalid", {
+      productionRunId: params.productionRunId,
+      expectedVersion: params.expectedVersion,
+      nextVersion: version,
+      changeKind: params.changeKind,
+      changedFields,
+      issues: validation.issues,
+    });
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "production_space_invalid",
+      message: issueSummary ? `production_space_invalid: ${issueSummary}` : "production_space_invalid",
       cause: validation.issues,
     });
   }
   const now = new Date();
-  const [saved] = await params.db
-    .insert(mediaProductionSpaces)
-    .values({
-      tenantId: params.tenantId,
-      userId: params.userId,
-      productionRunId: params.productionRunId,
-      version,
-      space: space as any,
-      changeKind: params.changeKind ?? "space",
-      changedFields,
-      spaceHash: buildProductionStableHash(space),
-      status: space.status,
-      contractVersion: space.schemaVersion,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
+  let saved: any;
+  try {
+    [saved] = await params.db
+      .insert(mediaProductionSpaces)
+      .values({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        productionRunId: params.productionRunId,
+        version,
+        space: space as any,
+        changeKind: params.changeKind ?? "space",
+        changedFields,
+        spaceHash: buildProductionStableHash(space),
+        status: space.status,
+        contractVersion: space.schemaVersion,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+  } catch (error) {
+    if (isProductionSpaceVersionRaceError(error)) {
+      const latestAfterRace = await getProductionSpace(params);
+      throwProductionConflict(buildProductionConflictPayload({
+        productionRunId: params.productionRunId,
+        reason: "space_version_stale",
+        expected: { spaceVersion: params.expectedVersion },
+        current: { spaceVersion: Number(latestAfterRace?.version ?? version) },
+        changedFields,
+        currentSpace: latestAfterRace?.space,
+        source: latestAfterRace?.source,
+        archivedAt: latestAfterRace?.archivedAt,
+        deletedAt: latestAfterRace?.deletedAt,
+      }));
+    }
+    throw error;
+  }
 
   const existingRun = await getRun(params.db, params.tenantId, params.productionRunId);
   await params.db

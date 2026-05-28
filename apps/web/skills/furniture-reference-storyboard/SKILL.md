@@ -2,7 +2,7 @@
 name: furniture-reference-storyboard
 description: Furniture reference storyboard prompt skill adapted from the original reference storyboard bundle. Optimized for furniture product fidelity, exact scale/dimensions, compact and convertible furniture recognition, clean single-frame output control, default no-text rendering, strict storyboard-mode enforcement, strict equal-frame storyboard layout control, borderless storyboard presentation, strict per-panel uniqueness control, customer-journey storyboard planning, anti-redundancy frame design, broad furniture taxonomy coverage, product-source dominance, room-scale visualization, material preservation, construction details, realistic usage scenes, and reference-role disambiguation while keeping existing schemas compatible. Includes exhaustive visual inspection, furniture taxonomy coverage, variant handling, set handling, occlusion control, product-specific QA gates, current-reference contamination rejection, mandatory person-with-product interaction coverage, floor-textile/rug product support, physical-pattern text preservation, reference relevance ranking, dominant product category lock, product-family collection handling, environment compatibility control, cross-turn contamination fail-safes, and irrelevant-frame rejection.
 category: image_prompt_generation
-version: 1.4.17
+version: 1.4.19
 icon: sofa
 tags:
   - shared-skill
@@ -49,6 +49,8 @@ Input `storyboard_guide` is optional. When it is blank, keep the normal skill be
 
 When `storyboard_guide` is provided, it becomes the creative direction contract for the output. Every generated prompt or frame must follow the guide's shot order, timing, story beat, furniture-use action, camera intent, room-scale context, and continuity. Do not replace the guide with a new story, do not skip required beats, and do not introduce conflicting actions, dimensions, prices, promotions, claims, or product variants. Use the guide to decide the composition and moment of each frame while still preserving all furniture geometry, material, scale, construction, marking, character, and environment reference locks below.
 
+Input `production_concept_details` is optional. When provided, use it as the higher-level concept guideline for audience, problem, hook, emotional tone, selling points, and storyboard intent. Align every frame prompt to this concept, but never add price, discount, rating, sold count, sales volume, or other volatile marketplace claims.
+
 For start/stop-frame workflows, interpret the guide as one video shot: create a start-frame prompt that matches the beginning of that shot and a stop-frame prompt that matches the end state of that shot. The stop frame should be visually compatible as the next shot's start frame when Media Studio chains shots together.
 
 This skill writes high-fidelity image prompts for furniture, furniture-adjacent products, floor textiles, storage units, hardware, and storyboard/contact-sheet outputs. It must preserve the product from the current reference images instead of turning it into a generic catalog archetype.
@@ -94,7 +96,13 @@ The final answer must be directly usable in the Media Studio prompt textarea. If
 
 Allowed shape:
 
+OUTPUT FORMAT LOCK:
+...
+
 PRODUCT REFERENCE LOCK:
+...
+
+PRODUCT SCALE LOCK:
 ...
 
 STORYBOARD PROMPT:
@@ -122,6 +130,8 @@ The skill MUST separate reference images into clear roles before writing any pro
 When a reference set contains furniture-like objects in the environment image, treat those as background context unless they are also present in product references. Do not accidentally replace the referenced product with an unrelated sofa, table, cabinet, bed, shelf, stool, cart, rug, or decorative furniture from the room image.
 
 When product references show multiple colorways or variants, choose the variant requested by the user. If the user does not specify, infer the dominant/clearest product variant from product references and state it in `PRODUCT REFERENCE LOCK`. Do not blend variants into a new hybrid colorway or mixed construction.
+
+If multiple product references show the same furniture model in different colorways, finishes, or listing angles, treat them as geometry evidence for one shared product design. Lock the shared silhouette, board thickness, shelf count, support count, height-width-depth relationship, and table-height footprint from all product references, then lock exactly one output colorway unless the user explicitly asks for a collection comparison. Never alternate between white and wood variants across frames in a single-SKU storyboard.
 
 ## Automatic Colorway Decision And Same-Frame Color Consistency Rule
 
@@ -250,6 +260,8 @@ When product references are supplied, every prompt MUST include a product-propor
 
 `PRODUCT PHYSICAL PROPORTION LOCK: preserve the reference product's real object proportions and visual bounding-box ratio exactly: [height vs width vs depth], [top thickness], [leg/post thickness], [shelf/drawer/cushion spacing], [floor clearance/base stance]. Do not stretch taller, widen, flatten, bulk up, slim down, upscale, downscale, or change the object's physical ratio to fit the storyboard frame or room composition.`
 
+If `PRODUCT PHYSICAL PROPORTION LOCK` is missing, the prompt is invalid and must be rewritten before output.
+
 This lock is required even when no numeric dimensions are supplied. Infer the proportion class from the product image and state it plainly, such as:
 - `small table-height two-tier shelf, not a tall bookcase`.
 - `narrow rolling cart, not a full-height pantry rack`.
@@ -262,6 +274,10 @@ Every storyboard panel that shows the product must preserve the same product ins
 For product-only, hero, and room-placement panels, show enough full silhouette to verify the proportion lock. At least 4 of 9 panels in a 3x3 furniture storyboard must show the full or nearly full product body with top, base/feet, side posts/legs, shelves/drawers/cushions, and floor contact visible unless the user explicitly requests detail-only frames.
 
 If the reference product is a compact white two-tier side shelf/table or nursery side table, explicitly lock it as a small table-height rectangular open shelf with a flat top, two open shelf levels, four straight vertical side posts/legs, slim rectangular boards, low floor clearance, and compact height-to-width ratio. Do not transform it into a tall bookcase, cube organizer, bulky cabinet, thick-legged table, oversized shelving tower, or generic nursery furniture.
+
+Do not describe a compact open side table as having solid side panels, a closed cabinet body, a back panel, or thick slab walls unless those are unmistakably visible in the product reference. If the reference shows open sides or narrow supports, say open-sided frame with slim vertical supports/posts/legs. If uncertain, use "appears open-sided" and prohibit closed-cabinet reinterpretation.
+
+For square or near-square compact side tables, the prompt must say `near-square table-height footprint` or `roughly cube-like table-height footprint` and explicitly prohibit tall narrow shelving proportions. The generated object must not be taller than it is wide by a large margin unless the reference proves that ratio.
 
 ## Exact Furniture Color, Finish, And Marking Lock
 
@@ -325,6 +341,8 @@ When the user supplies exact dimensions, include a dedicated `PRODUCT SCALE LOCK
 When the user does not supply numeric dimensions, still include an inferred scale lock from the reference:
 
 `INFERRED PRODUCT SCALE LOCK: based on the product reference image, preserve the visible scale class and physical proportions: [small tabletop/table-height/storage-height/floor-level/full-size/etc.], with the same height-width-depth relationship and same countable structure. Do not let room styling, nursery context, props, human scale, or storyboard framing resize the product into another class.`
+
+The final prompt must still label this block as `PRODUCT SCALE LOCK:`. If there are no numeric dimensions, put the inferred-scale sentence under `PRODUCT SCALE LOCK:` rather than omitting the block or using only generic words like compact, table-height, or small.
 
 Compact furniture guardrails:
 - If under about 150 cm long or under about 70 cm wide, treat as compact/portable/one-person/small-room unless references prove otherwise.
@@ -467,6 +485,10 @@ Core categories:
 If the product does not fit exactly, classify by physical construction first: seating surface, sleeping surface, storage volume, tabletop surface, rack/shelf structure, floor textile, hardware component, or hybrid/transformable structure.
 
 ## Product Visibility, Occlusion, And Cropping Rule
+
+Every storyboard frame must contain the referenced product unless the user explicitly requests a product-absent establishing shot. Do not create mood-only, room-only, bed-only, floor-only, prop-only, book-only, or person-only panels in a product storyboard.
+
+For any storyboard with 2-4 panels, every panel must show the full or nearly full product clearly enough to verify category, shelf/tier count, open sides, tabletop, support/leg structure, and table-height scale. Detail-only crops are allowed only when the storyboard has 5 or more panels and the crop still includes enough adjacent product structure to prove it belongs to the same item.
 
 For hero/product panels:
 - Show the full product silhouette with defining structure visible.
@@ -628,6 +650,8 @@ For furniture, default journey:
 7. room-scale/context frame.
 8. second lifestyle/benefit frame or another functional state.
 9. final confirmatory frame showing complete product clearly or folded/opened/converted/storage state.
+
+For 2-panel, 3-panel, or 4-panel product storyboards, do not use any panel as a product-absent setup image. Panel 1 must be a full product hero, panel 2 must be an alternate angle or placement with the same full product, and remaining panels must still keep the product visible.
 
 ## Required 3x3 Panel Role Maps
 
@@ -797,6 +821,21 @@ Whenever a generated image intentionally includes a person, choose a face-readab
 
 If identity preservation is not important for a product-detail frame, prefer hands-only, side/back/over-shoulder, or partial-body interaction instead of describing or inventing a new face.
 
+## 3x3 Human Reference And Clear Face Rule
+
+When the output is a 3x3 storyboard or 9-frame storyboard grid and `reference_character_images` include a recognizable person, the storyboard MUST include the referenced person in some frames to anchor real scale, use, and lifestyle context. Do not put a person in every frame; keep enough frames product-only for geometry, material, and functional details.
+
+Minimum human-frame coverage for 3x3:
+- include the referenced person in at least 2 of 9 frames when a relevant character reference is supplied.
+- one person frame must be a clear face establishing or lifestyle frame with the referenced product visible.
+- one additional person frame must show product use, access, scale, placement, sitting/reaching/resting/opening/organizing, or another product-relevant interaction.
+
+For 3x3 person frames, the face must be clear enough to preserve identity: front-facing or three-quarter face, sharp focus, well lit, unobstructed, and large enough to recognize. Do not count these as valid identity/person frames: back of head, over-shoulder with no face, tiny face, cropped-off face, face hidden by hair/hands/product, sunglasses/mask, heavy shadow, motion blur, profile too far from camera, or a person looking fully away from camera.
+
+Every person frame must include `CHARACTER REFERENCE LOCK` and must say: "same referenced person, clear visible face, front-facing or three-quarter camera angle, identity locked, no face swap, no generic model." If the model cannot preserve a clear referenced face, rewrite that panel as product-only, hands-only, or partial-body-with-product without a visible face. Never invent a new visible face.
+
+The referenced product must remain visible in every required person frame. A person-only portrait, fashion frame, or lifestyle frame that hides the furniture is invalid. The person should demonstrate scale, contact, use, function, installation, reach, comfort, or lifestyle benefit while the product geometry remains readable.
+
 ## Required Prompt Block Order
 
 For each generated prompt, use this order:
@@ -812,6 +851,8 @@ For each generated prompt, use this order:
 10. `QA BEFORE OUTPUT` - rewrite internally if product, scale, character, storyboard, or environment fidelity fails.
 
 Do not output analysis or QA notes as visible text inside generated images.
+
+Any final prompt that has product references but lacks both `PRODUCT PHYSICAL PROPORTION LOCK` inside `PRODUCT REFERENCE LOCK` and a separate `PRODUCT SCALE LOCK` block is incomplete. Rewrite it before returning it to Media Studio.
 
 ## Category-Specific Red-Flag Corrections
 
@@ -842,16 +883,21 @@ Fatal QA gates:
 - Frame geometry: storyboard must enforce equal-sized frames and a regular grid.
 - Borderless completeness: storyboard prompt must include both positive borderless declaration and explicit no-divider/no-gutter/no-border prohibitions.
 - Product-source dominance: product must follow current product reference, not environment furniture or generic showroom archetype.
+- Product visibility completeness: every frame in a 2-4 panel storyboard and at least 8 of 9 frames in a 3x3 storyboard must show the referenced product; product-absent mood/setup frames are fatal unless explicitly requested.
+- Required lock completeness: product-reference prompts must contain `PRODUCT PHYSICAL PROPORTION LOCK` and a separate `PRODUCT SCALE LOCK`; missing either one is fatal.
 - Current-reference contamination: no old products, old rooms, old generated outputs, unrelated people, beach/fashion/travel frames unless supplied in current run.
 - Irrelevant frame rejection: every panel must contribute to product story, detail, function, room placement, scale, or customer journey.
-- Person-with-product coverage: if product and relevant character references are supplied for 3x3, include at least one clear person-product interaction.
+- Person-with-product coverage: if product and relevant character references are supplied for 3x3, include at least 2 referenced-person frames: one clear visible-face establishing/lifestyle frame with product visible and one clear visible-face person-product interaction frame.
 - Storage furniture fidelity: drawer count, handle position, lock/keyhole placement, material, and base stance must match reference.
+- Open shelving/table fidelity: open side tables, open shelves, and compact side tables must not become closed cabinets, tall cube organizers, thick-sided towers, or full-height bookcases; preserve open sides, shelf count, board thickness, support count, and squat/table-height footprint from the reference.
+- Variant consistency: multi-reference same-model products must preserve shared geometry and one chosen colorway throughout a single-SKU storyboard; no switching colorway/material between frames unless collection mode is explicit.
 - Cross-panel scale continuity: every product-visible storyboard frame must inherit the same furniture footprint envelope, physical aspect ratio, tier/shelf/drawer/cushion spacing, leg/post thickness, and class-level scale from `PRODUCT REFERENCE LOCK` and `PRODUCT SCALE LOCK`; close-up frames may crop tighter but must not alter the product's real proportions.
 - Watermark exclusion: reference-photo overlays are not product markings.
 - Convertible furniture configuration: do not lose short legs, low scale, hinge/backrest/slab structure, or gain armrests/sectional modules.
 - Wrong product category, scale, color, material, finish, geometry, cushion grid, tier count, shelf count, drawer/door layout, caster/leg count, arm/back structure, fold/hinge design.
 - Environment reference overpowering the product reference.
 - Character reference replaced by generic model when face is visible.
+- Missing clear referenced-face coverage in 3x3 when character references are supplied.
 - Props/hands/books/blankets/plants/crops hiding defining product details.
 - Unwanted visible text, captions, labels, watermarks, UI boxes, or ad typography.
 

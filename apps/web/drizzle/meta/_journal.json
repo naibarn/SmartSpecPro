@@ -1233,6 +1233,20 @@
       "when": 1779753294793,
       "tag": "0189_media_production_space_warning_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0190_elevenlabs_dialogue_stability_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1780000001000,
+      "tag": "0191_uvoice_live_voice_options",
+      "breakpoints": true
     }
   ]
 }

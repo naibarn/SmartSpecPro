@@ -21,6 +21,7 @@ export type AuthResult =
       externalReference?: string;
       jti?: string;
       deviceIdHash?: string;
+      origin?: string;
     }
   | {
       ok: true;
@@ -207,6 +208,9 @@ export async function authorizeRequest(
         const deviceIdHash = typeof (claims as any).deviceIdHash === "string"
           ? (claims as any).deviceIdHash.trim()
           : "";
+        const origin = typeof (claims as any).origin === "string"
+          ? (claims as any).origin.trim()
+          : "";
         return {
           ok: true,
           mode: "bearer",
@@ -219,6 +223,7 @@ export async function authorizeRequest(
           ...(externalReference ? { externalReference } : {}),
           ...(jti ? { jti } : {}),
           ...(deviceIdHash ? { deviceIdHash } : {}),
+          ...(origin ? { origin } : {}),
         };
       } catch (e: any) {
         return { ok: false, error: e?.message || "Invalid token" };

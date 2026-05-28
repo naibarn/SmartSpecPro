@@ -523,10 +523,10 @@ describe("mediaProviderUtils", () => {
       expect.objectContaining({
         key: "stability",
         type: "select",
-        default: "auto",
+        default: "0.25",
         options: expect.arrayContaining([
           expect.objectContaining({ value: "auto", label: "Auto" }),
-          expect.objectContaining({ value: "0.5" }),
+          expect.objectContaining({ value: "0.25" }),
         ]),
       }),
       expect.objectContaining({ key: "pronunciation_dictionary_locators", type: "array", maxItems: 3 }),

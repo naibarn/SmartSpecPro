@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID,
+  buildElevenLabsBeautyDialogueRepairPrompt,
   evaluateElevenLabsBeautyDialogueQuality,
+  normalizeElevenLabsBeautyDialogueOutput,
+  resolveElevenLabsBeautyDialogueRepairMaxTokens,
 } from "./elevenLabsBeautyDialogueQuality";
 
 describe("evaluateElevenLabsBeautyDialogueQuality", () => {
@@ -52,6 +55,56 @@ describe("evaluateElevenLabsBeautyDialogueQuality", () => {
     expect(report.issues).toHaveLength(0);
   });
 
+  it("allows single-speaker voiceover output without speaker labels", () => {
+    const output = [
+      "[energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?",
+      "สูตรนี้โฟกัสฟีลคลีนแบบไม่ต้องเอี๊ยด เหมาะกับรูทีนที่อยากให้ผิวรู้สึกสบายหลังล้าง",
+      "[confident] เริ่มจากขั้นล้างหน้าที่พอดี แล้วค่อยให้สกินแคร์ขั้นต่อไปทำงานต่อ",
+    ].join("\n");
+
+    const report = evaluateElevenLabsBeautyDialogueQuality(
+      output,
+      ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID,
+      { speaker_count: "1" },
+    );
+
+    expect(report.passed).toBe(true);
+    expect(report.issues.filter((issue) => issue.severity === "repair")).toHaveLength(0);
+  });
+
+  it("flags speaker labels when single-speaker voiceover is requested", () => {
+    const output = [
+      "Speaker 1: [energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?",
+      "Speaker 2: ใช่ เหมือนล้างเสร็จแล้วหน้าแห้งทันที",
+    ].join("\n");
+
+    const report = evaluateElevenLabsBeautyDialogueQuality(
+      output,
+      ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID,
+      { speaker_count: 1 },
+    );
+
+    expect(report.passed).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toContain("speaker_format");
+  });
+
+  it("normalizes accidental two-speaker output into unprefixed single-speaker voiceover", () => {
+    const output = [
+      "Speaker 1: [energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?",
+      "Speaker 2: ใช่ เหมือนล้างเสร็จแล้วหน้าแห้งทันที",
+      "Speaker 1: [confident] เริ่มจากขั้นล้างหน้าที่พอดี",
+    ].join("\n");
+
+    expect(normalizeElevenLabsBeautyDialogueOutput(
+      output,
+      ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID,
+      { speaker_count: "1" },
+    )).toBe([
+      "[energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?",
+      "[confident] เริ่มจากขั้นล้างหน้าที่พอดี",
+    ].join("\n"));
+  });
+
   it("flags exaggerated, guarantee-style, and unnatural listener lines", () => {
     const output = [
       "Speaker 1: Dr.PONG เจลล้างหน้าอ่อนโยนสุด ๆ ที่ช่วยให้ผิวรู้สึกสดชื่น",
@@ -71,5 +124,41 @@ describe("evaluateElevenLabsBeautyDialogueQuality", () => {
       "unnatural_listener_reaction",
       "daily_result_promise",
     ]));
+  });
+
+  it("flags storyboard planning labels and timecodes that leaked into the spoken script", () => {
+    const output = [
+      "แนวคิด: ปัญหา → ทางออก รายละเอียด: โชว์ปัญหาห้องนอนข้างเตียงรก",
+      "0-3s Hook: โต๊ะข้างเตียงรก หยิบอะไรก็ไม่เจอ",
+    ].join("\n");
+
+    const report = evaluateElevenLabsBeautyDialogueQuality(
+      output,
+      ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID,
+      { speaker_count: "1", target_duration_seconds: "90" },
+    );
+
+    expect(report.passed).toBe(false);
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "storyboard_metadata_leak",
+      "duration_too_short",
+    ]));
+  });
+
+  it("adds duration and metadata conversion rules to the repair prompt for longer scripts", () => {
+    const prompt = buildElevenLabsBeautyDialogueRepairPrompt({
+      previousContent: "แนวคิด: ปัญหา → ทางออก",
+      issues: [
+        { code: "storyboard_metadata_leak", severity: "repair", message: "Planning labels leaked." },
+        { code: "duration_too_short", severity: "repair", message: "Too short." },
+      ],
+      userInputs: { speaker_count: "1", target_duration_seconds: "90" },
+    });
+
+    expect(prompt).toContain("Target spoken duration is 90 seconds");
+    expect(prompt).toContain("10-14 compact spoken lines");
+    expect(prompt).toContain("Never output labels like แนวคิด:");
+    expect(prompt).toContain("Do not use Speaker 1:");
+    expect(resolveElevenLabsBeautyDialogueRepairMaxTokens({ target_duration_seconds: "90" })).toBe(3060);
   });
 });

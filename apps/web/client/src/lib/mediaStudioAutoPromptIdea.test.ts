@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildMediaStudioAutoPromptReferenceImageSync,
   buildMediaStudioAutoPromptIdea,
   extractMediaStudioDynamicImageUrls,
 } from "./mediaStudioAutoPromptIdea";
@@ -81,5 +82,64 @@ describe("extractMediaStudioDynamicImageUrls", () => {
       reference_images: ["/uploads/same.png", "/uploads/same.png"],
       notes: "/uploads/not-an-image-field.png",
     })).toEqual(["/uploads/same.png"]);
+  });
+});
+
+describe("buildMediaStudioAutoPromptReferenceImageSync", () => {
+  it("adds dynamic skill image fields to the reference tray in prompt order", () => {
+    const sync = buildMediaStudioAutoPromptReferenceImageSync({
+      referenceImages: [],
+      dynamicImageUrls: [
+        "/uploads/character.png",
+        "/uploads/product.png",
+        "/uploads/environment.png",
+      ],
+      maxImages: 5,
+    });
+
+    expect(sync.items.map((image) => image.url)).toEqual([
+      "/uploads/character.png",
+      "/uploads/product.png",
+      "/uploads/environment.png",
+    ]);
+    expect(sync.addedCount).toBe(3);
+    expect(sync.changed).toBe(true);
+  });
+
+  it("preserves existing reference image order before appended skill images", () => {
+    const sync = buildMediaStudioAutoPromptReferenceImageSync({
+      referenceImages: [
+        { url: "/uploads/existing.png", name: "existing" },
+      ],
+      dynamicImageUrls: [
+        "/uploads/product.png",
+      ],
+      maxImages: 5,
+    });
+
+    expect(sync.items).toEqual([
+      { url: "/uploads/existing.png", name: "existing" },
+      { url: "/uploads/product.png", name: "auto-prompt-reference-2" },
+    ]);
+  });
+
+  it("deduplicates and applies the media model reference limit", () => {
+    const sync = buildMediaStudioAutoPromptReferenceImageSync({
+      referenceImages: [
+        { url: "/uploads/existing.png", name: "existing" },
+      ],
+      dynamicImageUrls: [
+        "/uploads/existing.png",
+        "/uploads/product.png",
+        "/uploads/environment.png",
+      ],
+      maxImages: 2,
+    });
+
+    expect(sync.items.map((image) => image.url)).toEqual([
+      "/uploads/existing.png",
+      "/uploads/product.png",
+    ]);
+    expect(sync.droppedCount).toBe(1);
   });
 });

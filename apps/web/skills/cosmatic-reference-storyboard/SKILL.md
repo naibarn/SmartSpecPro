@@ -33,6 +33,8 @@ Input `storyboard_guide` is optional. When it is blank, keep the normal skill be
 
 When `storyboard_guide` is provided, it becomes the creative direction contract for the output. Every generated prompt or frame must follow the guide's shot order, timing, story beat, product-use action, camera intent, and continuity. Do not replace the guide with a new story, do not skip required beats, and do not introduce conflicting actions or claims. Use the guide to decide the composition and moment of each frame while still preserving all product, character, label, and environment reference locks below.
 
+Input `production_concept_details` is optional. When provided, use it as the higher-level concept guideline for audience, problem, hook, emotional tone, selling points, and storyboard intent. Align every frame prompt to this concept, but never add price, discount, rating, sold count, sales volume, or other volatile marketplace claims.
+
 For start/stop-frame workflows, interpret the guide as one video shot: create a start-frame prompt that matches the beginning of that shot and a stop-frame prompt that matches the end state of that shot. The stop frame should be visually compatible as the next shot's start frame when Media Studio chains shots together.
 
 Every generated prompt MUST independently repeat:
@@ -289,9 +291,27 @@ For skincare, cosmetic, beauty, and product-use storyboards, keep the same chara
 
 Whenever a generated image intentionally includes a person, choose a face-readable camera angle by default: front-facing or three-quarter view, sharp focus, well lit, unobstructed, and large enough to recognize. Avoid back-of-head, over-shoulder with no face, fully side/rear angles, hidden/cropped faces, or people looking fully away from camera unless the frame is explicitly product-only, hands-only, or partial-body without recognizable identity.
 
+### 3x3 Character Presence And Clear Face Rule
+
+When the output is a 3x3 storyboard or 9-frame storyboard grid and `reference_character_images` include a recognizable person, the storyboard MUST include the referenced person in some frames, while keeping other frames product-only, hands-only, packaging-detail, or environment/product-detail frames as needed.
+
+Minimum human-frame coverage for 3x3:
+- include the referenced person in at least 2 of 9 frames.
+- use 3 to 5 person frames when the product-use story benefits from face application, reaction, testimonial, or lifestyle usage.
+- at least one person frame must be a clear face establishing frame with the same referenced person, front-facing or three-quarter face, sharp focus, well lit, unobstructed, and large enough to recognize.
+- at least one additional person frame should show product use, application, holding, scale, reaction, or benefit while preserving the same identity.
+
+Every 3x3 frame that includes a person must use the attached character reference as the identity anchor. Do not create a generic beauty model, stock-photo model, influencer face, different age, different hairline, different hair length, different hairstyle, different face shape, or different smile character.
+
+For every 3x3 frame that intentionally includes the referenced person, the face must be clearly visible. Do not count these as valid person/identity frames: back of head, over-shoulder with no face, tiny face, cropped-off face, face hidden by hair/hands/product, sunglasses/mask, heavy shadow, motion blur, profile too far from camera, or a person looking fully away from camera. Such compositions may only be used as product-detail or hands-only support frames when no recognizable person/face is intended; they must not be described as person frames and must not replace the required clear-face frames.
+
+If a clear referenced face cannot be preserved confidently, rewrite that frame as product-only, hands-only, packaging-detail, texture/detail, or environment-with-product instead of inventing a new face. Never invent a new visible face to satisfy the human-frame requirement.
+
+Frame descriptions for person panels should explicitly say: "same referenced person, clear visible face, front-facing or three-quarter camera angle, identity locked, no face swap, no generic model." Product-only panels should explicitly stay product-only or hands-only so the model does not invent extra people.
+
 When the product requires application on a face, the prompt must say: "same referenced person, face identity locked, no face swap, no generic beauty model, preserve facial proportions, hair length/style, age impression, smile character, and distinctive features from the character reference."
 
-Before finalizing the output, perform a Character Fidelity QA check. Character Identity Fidelity is a fatal QA gate: if any frame description implies a different face, different age, different hair length/style, different hairline, different facial proportions, different smile character, different ethnicity cues, or a generic beauty model replacing the reference person, do not output that prompt. Rewrite that frame until the character remains reference-accurate. If the image model may not preserve identity confidently in a frame, change that frame to product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shot instead of inventing a new face.
+Before finalizing the output, perform a Character Fidelity QA check. Character Identity Fidelity is a fatal QA gate: if any frame description implies a different face, different age, different hair length/style, different hairline, different facial proportions, different smile character, different ethnicity cues, or a generic beauty model replacing the reference person, do not output that prompt. Rewrite that frame until the character remains reference-accurate. If the image model may not preserve identity confidently in a frame, change that frame to product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shot instead of inventing a new face. For a 3x3 storyboard with character references, fail and rewrite if the storyboard lacks the required clear visible referenced-face frames.
 
 ## Product Usage Intelligence Rule
 

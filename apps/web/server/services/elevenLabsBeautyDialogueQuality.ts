@@ -12,9 +12,30 @@ export type ElevenLabsBeautyDialogueQualityReport = {
 };
 
 const THAI_CHAR_PATTERN = /[\u0E00-\u0E7F]/g;
+const STORYBOARD_METADATA_PATTERN = /(^|\s)(แนวคิด|รายละเอียด|โครงเรื่อง|อารมณ์|Hook|Pain|Agitate|Relief|CTA|Scene|Timeline|Storyboard)\s*[:：]|\/?\s*\d+\s*[-–]\s*\d+\s*s\b|→|·/i;
 
 function countThaiChars(text: string): number {
   return (text.match(THAI_CHAR_PATTERN) || []).length;
+}
+
+function readTargetDurationSeconds(userInputs?: Record<string, unknown> | null): number | null {
+  const rawValue = userInputs?.target_duration_seconds ?? userInputs?.max_duration_seconds ?? userInputs?.duration_seconds;
+  if (rawValue === "auto" || rawValue === undefined || rawValue === null || rawValue === "") return null;
+  const parsed = Number(String(rawValue).trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function estimateSpokenSeconds(content: string): number {
+  const thaiChars = countThaiChars(content);
+  if (thaiChars > 0) return thaiChars / 7.2;
+  const words = content.split(/\s+/).filter(Boolean).length;
+  return words / 2.6;
+}
+
+export function resolveElevenLabsBeautyDialogueRepairMaxTokens(userInputs?: Record<string, unknown> | null): number {
+  const targetDurationSeconds = readTargetDurationSeconds(userInputs);
+  if (!targetDurationSeconds || targetDurationSeconds < 60) return 1800;
+  return Math.max(1800, Math.min(5200, Math.ceil(targetDurationSeconds * 34)));
 }
 
 function normalizeLines(content: string): string[] {
@@ -22,6 +43,46 @@ function normalizeLines(content: string): string[] {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function isSingleSpeakerVoiceover(userInputs?: Record<string, unknown> | null): boolean {
+  const value = userInputs?.speaker_count;
+  return value === 1 || value === "1";
+}
+
+export function normalizeElevenLabsBeautyDialogueOutput(
+  content: string,
+  skillId: string | null | undefined,
+  userInputs?: Record<string, unknown> | null,
+): string {
+  if (skillId !== ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID || !isSingleSpeakerVoiceover(userInputs)) {
+    return content;
+  }
+
+  const lines = normalizeLines(content);
+  const normalizedLines: string[] = [];
+  for (const line of lines) {
+    if (/^Speaker\s*2\s*[:：]/i.test(line)) {
+      continue;
+    }
+
+    const speakerOneMatch = line.match(/^Speaker\s*1\s*[:：]\s*(.*)$/i);
+    if (speakerOneMatch) {
+      const text = String(speakerOneMatch[1] || "").trim();
+      if (text) {
+        normalizedLines.push(text);
+      }
+      continue;
+    }
+
+    if (/^Speaker\s*\d+\s*[:：]/i.test(line)) {
+      continue;
+    }
+
+    normalizedLines.push(line);
+  }
+
+  return normalizedLines.join("\n").trim();
 }
 
 function hasRiskyCleanserClaim(line: string): boolean {
@@ -65,6 +126,7 @@ function hasDailyResultPromise(line: string): boolean {
 export function evaluateElevenLabsBeautyDialogueQuality(
   content: string,
   skillId: string | null | undefined,
+  userInputs?: Record<string, unknown> | null,
 ): ElevenLabsBeautyDialogueQualityReport {
   if (skillId !== ELEVENLABS_BEAUTY_DIALOGUE_SKILL_ID) {
     return { passed: true, issues: [] };
@@ -72,13 +134,20 @@ export function evaluateElevenLabsBeautyDialogueQuality(
 
   const issues: ElevenLabsBeautyDialogueQualityIssue[] = [];
   const lines = normalizeLines(content);
+  const singleSpeakerVoiceover = isSingleSpeakerVoiceover(userInputs);
 
   if (lines.length === 0) {
     issues.push({ code: "empty_output", severity: "repair", message: "Output is empty." });
   }
 
   lines.forEach((line, index) => {
-    if (!/^Speaker\s*[12]\s*[:：]/i.test(line)) {
+    if (singleSpeakerVoiceover && /^Speaker\s*\d+\s*[:：]/i.test(line)) {
+      issues.push({
+        code: "speaker_format",
+        severity: "repair",
+        message: `Line ${index + 1} must be plain voiceover text with no Speaker label because speaker_count is 1.`,
+      });
+    } else if (!singleSpeakerVoiceover && !/^Speaker\s*[12]\s*[:：]/i.test(line)) {
       issues.push({
         code: "speaker_format",
         severity: "repair",
@@ -134,6 +203,13 @@ export function evaluateElevenLabsBeautyDialogueQuality(
         message: `Line ${index + 1} promises an ongoing daily skin-feel/result. Use a routine next-step instead.`,
       });
     }
+    if (STORYBOARD_METADATA_PATTERN.test(line)) {
+      issues.push({
+        code: "storyboard_metadata_leak",
+        severity: "repair",
+        message: `Line ${index + 1} contains planning/storyboard labels or timecodes. Convert the idea into natural spoken ad copy.`,
+      });
+    }
     if (countThaiChars(line) > 95) {
       issues.push({
         code: "line_too_long_for_audio",
@@ -164,6 +240,19 @@ export function evaluateElevenLabsBeautyDialogueQuality(
     });
   }
 
+  const targetDurationSeconds = readTargetDurationSeconds(userInputs);
+  if (targetDurationSeconds && targetDurationSeconds >= 60 && lines.length > 0) {
+    const estimatedSeconds = estimateSpokenSeconds(lines.join("\n"));
+    const minimumExpectedSeconds = targetDurationSeconds * 0.72;
+    if (estimatedSeconds < minimumExpectedSeconds) {
+      issues.push({
+        code: "duration_too_short",
+        severity: "repair",
+        message: `Estimated spoken length is about ${Math.round(estimatedSeconds)} seconds, below the requested ${targetDurationSeconds} seconds. Expand into a fuller spoken script, not planning notes.`,
+      });
+    }
+  }
+
   return {
     passed: !issues.some((issue) => issue.severity === "repair"),
     issues,
@@ -175,6 +264,31 @@ export function buildElevenLabsBeautyDialogueRepairPrompt(params: {
   issues: ElevenLabsBeautyDialogueQualityIssue[];
   userInputs: Record<string, unknown>;
 }): string {
+  const singleSpeakerVoiceover = isSingleSpeakerVoiceover(params.userInputs);
+  const targetDurationSeconds = readTargetDurationSeconds(params.userInputs);
+  const durationRules = targetDurationSeconds && targetDurationSeconds >= 60
+    ? [
+        `- Target spoken duration is ${targetDurationSeconds} seconds. Aim for about ${Math.round(targetDurationSeconds * 0.8)}-${Math.round(targetDurationSeconds * 0.95)} seconds of natural speech.`,
+        "- Do not summarize the concept into a short brief. Expand it into a complete spoken ad script with a hook, problem, product fit, usage moment, grounded benefits, and closing CTA.",
+        "- For Thai, a 90-second script normally needs roughly 10-14 compact spoken lines, depending on pacing.",
+      ]
+    : [
+        targetDurationSeconds
+          ? `- Target spoken duration is ${targetDurationSeconds} seconds. Keep it close to that target without padding.`
+          : "- Keep the script concise unless the user selected a longer duration.",
+      ];
+  const speakerFormatRules = singleSpeakerVoiceover
+    ? [
+        "- speaker_count is 1, so output a single-speaker voiceover.",
+        "- Do not use Speaker 1:, Speaker 2:, or any speaker label.",
+        "- Do not include listener reactions, Q&A turns, or a second persona.",
+      ]
+    : [
+        "- Every line starts with Speaker 1: or Speaker 2:.",
+        "- Speaker 1 leads the sell; Speaker 2 reacts like a real listener.",
+        "- Speaker 2 should ask grounded short questions or objections, not cheerlead.",
+      ];
+
   return [
     "Repair this ElevenLabs Thai beauty dialogue for final Media Studio TTS output.",
     "",
@@ -182,13 +296,13 @@ export function buildElevenLabsBeautyDialogueRepairPrompt(params: {
     "",
     "Quality target:",
     "- Strong stop-scroll sales audio, short punchy turns, energetic but natural.",
-    "- Every line starts with Speaker 1: or Speaker 2:.",
+    ...durationRules,
+    ...speakerFormatRules,
     "- No blank lines.",
-    "- Speaker 1 leads the sell; Speaker 2 reacts like a real listener.",
+    "- Convert storyboard/planning input into spoken ad copy. Never output labels like แนวคิด:, รายละเอียด:, โครงเรื่อง:, Hook:, CTA:, 0-3s, Pain → Agitate → Relief, or bullet-style planning notes.",
     "- Use 2-3 emotion tags total, only where they improve delivery.",
     "- Avoid exaggerated intensifiers or instant-result wording such as อ่อนโยนสุด ๆ, ทันที, วางใจได้เลย, ตื่นเต้น!, or generic hype.",
     "- Avoid guarantee words such as แน่นอน, วางใจได้เลย, ไม่ทำให้..., and avoid ทุกวัน when it implies a promised result.",
-    "- Speaker 2 should ask grounded short questions or objections, not cheerlead.",
     "",
     "Facial cleanser claim rules:",
     "- Do not mention killing bacteria, reducing inflammation, acne drying, acne cure/prevention, or acne treatment.",

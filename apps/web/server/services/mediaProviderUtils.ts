@@ -1017,7 +1017,7 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         key: "stability",
         label: "Dialogue Stability",
         type: "select",
-        default: "auto",
+        default: "0.25",
         options: ELEVENLABS_STABILITY_OPTIONS,
         description: "Auto is recommended. Use More expressive / ad energy for stronger sales delivery. Maximum stability sounds calmer and can reduce emotional punch.",
       },

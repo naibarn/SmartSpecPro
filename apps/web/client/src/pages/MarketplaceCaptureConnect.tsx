@@ -14,6 +14,7 @@ export default function MarketplaceCaptureConnect() {
   const { tenant } = useTenant();
   const brandName = tenant?.name || "SmartAIHub";
   const extensionId = origin.match(/^chrome-extension:\/\/([^/]+)$/)?.[1] ?? "";
+  const originLocked = Boolean(extensionId && deviceId);
   const sendTokenToExtension = async (data: { accessToken: string; expiresAt: string }) => {
     if (!extensionId) {
       setDeliveryStatus("manual");
@@ -97,6 +98,7 @@ export default function MarketplaceCaptureConnect() {
             className="mt-2 w-full rounded-md border px-3 py-2 text-sm"
             placeholder="chrome-extension://..."
             value={origin}
+            readOnly={originLocked}
             onChange={(event) => setOrigin(event.target.value)}
           />
           <button

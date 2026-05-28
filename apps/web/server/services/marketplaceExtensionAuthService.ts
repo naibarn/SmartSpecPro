@@ -32,6 +32,15 @@ function hashDeviceId(deviceId: string) {
   return crypto.createHash("sha256").update(deviceId, "utf8").digest("hex");
 }
 
+function readExtensionOrigin(req: Request) {
+  const browserOrigin = String(req.headers.origin ?? "").trim() || undefined;
+  const headerOrigin = String(req.headers["x-marketplace-extension-origin"] ?? "").trim() || undefined;
+  if (browserOrigin && headerOrigin && browserOrigin !== headerOrigin) {
+    throw marketplaceCaptureError("extension_origin_mismatch", "Extension origin header does not match request origin", 403);
+  }
+  return browserOrigin || headerOrigin;
+}
+
 async function ensureDeviceBindingSchema() {
   if (deviceBindingSchemaReady) return;
   if (!deviceBindingSchemaReadyPromise) {
@@ -108,6 +117,8 @@ export async function issueMarketplaceExtensionToken(input: {
     tenantId: input.tenantId ?? undefined,
     externalReference: pairingId,
     deviceIdHash,
+    origin: origin ?? undefined,
+    extensionId: input.extensionId ?? undefined,
     scopes,
     jti,
   }, config.tokenTtl as any);
@@ -129,7 +140,7 @@ export async function requireMarketplaceAuth(
   if (!config.enabled) {
     throw marketplaceCaptureError("marketplace_capture_disabled", "Marketplace capture is disabled", 503, true);
   }
-  const origin = String(req.headers.origin ?? "").trim() || undefined;
+  const origin = readExtensionOrigin(req);
   if (origin && !isAllowedMarketplaceOrigin(origin)) {
     throw marketplaceCaptureError("extension_origin_not_allowed", "Extension origin is not allowed", 403);
   }
@@ -173,6 +184,9 @@ export async function requireMarketplaceAuth(
   }
   if (!pairing.tokenJti || pairing.tokenJti !== auth.jti) {
     throw marketplaceCaptureError("extension_token_mismatch", "This extension token is no longer valid. Generate a new token.", 401);
+  }
+  if (auth.origin && origin !== auth.origin) {
+    throw marketplaceCaptureError("extension_origin_mismatch", "Extension origin does not match this token", 403);
   }
   if (pairing.origin && origin !== pairing.origin) {
     throw marketplaceCaptureError("extension_origin_mismatch", "Extension origin does not match this token", 403);

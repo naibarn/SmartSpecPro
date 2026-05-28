@@ -577,6 +577,17 @@ describe("validateJobSpec — additional edge cases", () => {
     }
   });
 
+  it("allows signed HTTPS asset URLs with query-string delimiters", () => {
+    const signedUrl = "https://hearme.blob.core.windows.net/audiostorage/voice-storage/file.mp3?se=2026-07-26T12%3A45%3A08Z&sr=b&sp=r&sig=abc123%2Fxyz%3D&sv=2014-02-14";
+    const spec = makeMinimalSpec({
+      inputs: {
+        assets: [{ assetId: "signed-audio", kind: "audio", uri: signedUrl }],
+      },
+    });
+
+    expect(validateJobSpec(spec).valid).toBe(true);
+  });
+
   it("allows spec with no assets (project-only input)", () => {
     const spec = makeMinimalSpec({
       inputs: {

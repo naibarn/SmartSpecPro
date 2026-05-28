@@ -584,7 +584,13 @@ function buildUvoiceVoiceSources(
 }
 
 const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
-const uvoicePreviewConfigCache: { expiresAt: number; config: { baseUrl: string; token: string } | null } = {
+type UvoicePreviewConfig = {
+  baseUrl: string;
+  token: string;
+  cdnBaseUrl?: string;
+};
+
+const uvoicePreviewConfigCache: { expiresAt: number; config: UvoicePreviewConfig | null } = {
   expiresAt: 0,
   config: null,
 };
@@ -694,18 +700,29 @@ function resolvePreviewUrl(
 
 function buildUvoicePreviewUrl(
   relativePath: string,
-  config: { baseUrl: string; token: string },
+  config: UvoicePreviewConfig,
 ): string | undefined {
   const cleanedPath = relativePath.trim().replace(/^\//, "");
   if (!cleanedPath) {
     return undefined;
+  }
+  if (config.cdnBaseUrl && /^https:\/\//i.test(config.cdnBaseUrl)) {
+    try {
+      return new URL(cleanedPath, config.cdnBaseUrl).toString();
+    } catch {
+      return undefined;
+    }
   }
   if (!/^https:\/\//i.test(config.baseUrl)) {
     return undefined;
   }
   const token = config.token.trim();
   const normalizedToken = token ? (token.startsWith("?") ? token : `?${token}`) : "";
-  return `${config.baseUrl}${cleanedPath}${normalizedToken}`;
+  try {
+    return `${new URL(cleanedPath, config.baseUrl).toString()}${normalizedToken}`;
+  } catch {
+    return undefined;
+  }
 }
 
 function isThaiTranslationLanguage(value: string): boolean {
@@ -807,7 +824,7 @@ async function getUserTranslationLanguagePreference(
   return typeof rawLanguage === "string" ? rawLanguage : "";
 }
 
-async function resolveUvoicePreviewConfig(): Promise<{ baseUrl: string; token: string } | null> {
+async function resolveUvoicePreviewConfig(): Promise<UvoicePreviewConfig | null> {
   const now = Date.now();
   if (uvoicePreviewConfigCache.config && uvoicePreviewConfigCache.expiresAt > now) {
     return uvoicePreviewConfigCache.config;
@@ -822,14 +839,16 @@ async function resolveUvoicePreviewConfig(): Promise<{ baseUrl: string; token: s
     }
     const html = await response.text();
     const baseUrlMatch = html.match(/var\s+apiBaseAudioUrl\s*=\s*"([^"]+)"/i);
+    const cdnBaseUrlMatch = html.match(/var\s+CDNBaseAudioUrl\s*=\s*"([^"]+)"/i);
     const tokenMatch = html.match(/var\s+storageToken\s*=\s*"([^"]+)"/i);
     const baseUrl = baseUrlMatch?.[1]?.trim() ?? "";
+    const cdnBaseUrl = cdnBaseUrlMatch?.[1]?.trim() ?? "";
     const token = tokenMatch?.[1]?.trim() ?? "";
-    if (!baseUrl || !token) {
+    if (!cdnBaseUrl && (!baseUrl || !token)) {
       return null;
     }
 
-    const config = { baseUrl, token };
+    const config = { baseUrl, token, ...(cdnBaseUrl ? { cdnBaseUrl } : {}) };
     uvoicePreviewConfigCache.config = config;
     uvoicePreviewConfigCache.expiresAt = now + (5 * 60 * 1000);
     return config;
@@ -926,14 +945,18 @@ async function fetchProviderApiFieldOptions(
   const previewField = typeof source.previewField === "string" ? source.previewField : "";
   const previewBaseUrl = typeof source.previewBaseUrl === "string" ? source.previewBaseUrl.trim() : "";
   const valueTransform = typeof source.valueTransform === "string" ? source.valueTransform : "none";
-  const previewResolverVersion = providerName.trim().toLowerCase() === "uvoice"
-    ? "uvoice_preview_tokenized_v1"
+  const isUvoicePreviewSource = providerName.trim().toLowerCase() === "uvoice" && previewField.length > 0;
+  const previewResolverVersion = isUvoicePreviewSource
+    ? "uvoice_preview_cdn_v2"
     : "default";
-  const cacheTtlSeconds = (
+  const rawCacheTtlSeconds = (
     typeof source.cacheTtlSeconds === "number" && source.cacheTtlSeconds > 0
       ? Math.floor(source.cacheTtlSeconds)
       : 300
   );
+  const cacheTtlSeconds = isUvoicePreviewSource
+    ? Math.min(rawCacheTtlSeconds, 300)
+    : rawCacheTtlSeconds;
 
   const cacheKey = `${sourceType}|${providerName}|${endpointRaw}|${method}|${itemsPath}|${valueField}|${labelField}|${previewField}|${previewBaseUrl}|${valueTransform}|${previewResolverVersion}|${query ?? ""}`;
   const now = Date.now();
@@ -3345,11 +3368,8 @@ export const mediaRouter = router({
         }
       }
 
-      const merged = isUvoiceVoiceField
-        ? dedupeFieldOptions([
-          ...dynamicOptions,
-          ...staticOptions,
-        ])
+      const merged = isUvoiceVoiceField && dynamicOptions.length > 0
+        ? dedupeFieldOptions(dynamicOptions)
         : dedupeFieldOptions([
           ...dynamicOptions,
           ...staticOptions,
@@ -3367,9 +3387,9 @@ export const mediaRouter = router({
         options: filtered.slice(0, input.limit),
         source:
           dynamicOptions.length > 0
-            ? staticOptions.length > 0
-              ? "merged"
-              : "dynamic"
+            ? (isUvoiceVoiceField || staticOptions.length === 0)
+              ? "dynamic"
+              : "merged"
             : staticOptions.length > 0
               ? "static"
               : "none",

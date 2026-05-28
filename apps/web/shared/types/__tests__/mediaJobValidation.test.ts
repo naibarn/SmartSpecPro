@@ -93,9 +93,20 @@ describe("sanitizeUri", () => {
       .toBe("https://storage.example.com/media/clip.mp4");
   });
 
+  it("allows signed HTTPS URLs with query-string delimiters", () => {
+    const signedUrl = "https://hearme.blob.core.windows.net/audiostorage/voice-storage/file.mp3?se=2026-07-26T12%3A45%3A08Z&sr=b&sp=r&sig=abc123%2Fxyz%3D&sv=2014-02-14";
+
+    expect(sanitizeUri(signedUrl, "web_backend")).toBe(signedUrl);
+  });
+
   it("rejects URIs with shell metacharacters", () => {
     expect(() => sanitizeUri("https://example.com/file;rm", "web_backend")).toThrow(/metacharacter/i);
     expect(() => sanitizeUri("https://example.com/file|cat", "desktop_sidecar")).toThrow(/metacharacter/i);
+  });
+
+  it("still rejects shell metacharacters inside signed URL paths and query values", () => {
+    expect(() => sanitizeUri("https://example.com/file|cat.mp3?sig=abc&sp=r", "web_backend")).toThrow(/metacharacter/i);
+    expect(() => sanitizeUri("https://example.com/file.mp3?sig=abc`id`&sp=r", "web_backend")).toThrow(/metacharacter/i);
   });
 });
 

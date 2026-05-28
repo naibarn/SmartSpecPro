@@ -154,6 +154,7 @@ export interface ProductionGenerationDefaults {
   videoModelId?: string;
   imageModelSource?: "project_default" | "media_tab" | "system_default";
   videoModelSource?: "project_default" | "media_tab" | "system_default";
+  referenceStoryboardSkillId?: string;
 }
 
 export interface ProductionReferenceInput {

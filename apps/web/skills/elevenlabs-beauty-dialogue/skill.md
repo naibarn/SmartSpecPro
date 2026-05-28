@@ -26,7 +26,9 @@ Return **plain text only**, never JSON, never Markdown code fences.
 Final dialogue formatting rules:
 - Output one spoken turn per line.
 - Do not insert blank lines between dialogue turns.
-- Every spoken line must start with `Speaker 1:` or `Speaker 2:`.
+- Respect `speaker_count` exactly when it is provided.
+- If `speaker_count` is `1` or `"1"`, write a single-speaker voiceover as plain spoken text only. Do not prefix lines with `Speaker 1:`. Do not create `Speaker 2:` lines, listener reactions, Q&A turns, or a second persona.
+- If `speaker_count` is `2`, `"2"`, or `auto`, write a two-speaker dialogue: every spoken line must start with `Speaker 1:` or `Speaker 2:`.
 - Use ElevenLabs Eleven v3 bracket audio tags sparingly. Add them only when they materially guide delivery, such as the opening hook, a major reaction, a tonal turn, a pause, a breath, a whisper, or the closing call to action.
 - Do not add audio tags to every line. For most scripts, 2-4 tagged lines total is enough; direct-response or dramatic scripts may use one extra non-verbal cue if it improves performance.
 - Audio tags are natural-language instructions inside the spoken text, not fixed enum fields. Prefer clear English tags that describe something audible and performable.
@@ -34,14 +36,32 @@ Final dialogue formatting rules:
 - Keep tags voice-realistic. A calm or soft voice may not perform extreme cues like shouting; use moderate delivery such as `[warmly]`, `[softly]`, `[thoughtful]`, or `[confidently]` when the voice should stay polished.
 - Keep each line compact and conversational so ElevenLabs does not create long, unnatural pauses.
 
-Preferred final output shape:
+Preferred final output shape for `speaker_count = 1`:
+[energetic] ...
+...
+[confidently] ...
+
+Preferred final output shape for `speaker_count = 2` or `auto`:
 Speaker 1: [playful] ...
 Speaker 2: [curious] ...
 Speaker 1: ...
 Speaker 2: ...
 Speaker 1: [excited] ...
 
-Use natural language in the selected `output_language`. Keep total spoken length under `target_duration_seconds`, default 55 seconds.
+Use natural language in the selected `output_language`. Treat `target_duration_seconds` as a real spoken-duration target, not just a maximum. For 15-55 seconds, stay concise and under the selected target. For 60-180 seconds, aim for about 80-95% of the selected duration with a fuller spoken sales arc instead of a short summary.
+
+## Duration and Spoken-Script Contract
+
+When the user selects a longer duration, the output must get longer and more complete. Do not make a longer-duration request shorter.
+
+- 15-30 seconds: short hook, one key benefit, fast close.
+- 45-55 seconds: hook, product fit, 2-3 grounded details, usage moment, close.
+- 60-90 seconds: fuller spoken ad with hook, problem, agitation, product fit, usage moment, benefits, gentle proof, and clear CTA.
+- 105-180 seconds: complete spoken script with natural sections, but still written as speakable lines, not headings.
+
+For Thai scripts, a 90-second output should normally be around 10-14 compact spoken lines depending on delivery speed. Do not pad with filler, but do expand the actual spoken story.
+
+If the input contains Production Director, concept, storyboard, or planning text, convert it into customer-facing spoken copy. Never output planning labels or timecodes such as `แนวคิด:`, `รายละเอียด:`, `โครงเรื่อง:`, `อารมณ์:`, `Hook:`, `CTA:`, `0-3s`, `Pain → Agitate → Relief`, or slash-separated storyboard notes. Those are source notes only; the final answer must be what the voice should say.
 
 ## ElevenLabs Eleven v3 Audio Tag Direction v22
 
@@ -119,6 +139,13 @@ Speaker 2: [chuckles] ขอแบบสะอาด แต่ไม่เอี
 Speaker 1: [confident] งั้นโฟกัสสูตรที่ให้ฟีลคลีนและสบายหลังล้างตามรายละเอียดสินค้า
 ```
 
+Single-speaker announcer voiceover:
+```text
+[energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?
+สูตรนี้โฟกัสฟีลคลีนแบบไม่ต้องเอี๊ยด เหมาะกับรูทีนที่อยากให้ผิวรู้สึกสบายหลังล้าง
+[confidently] เริ่มจากขั้นล้างหน้าที่พอดี แล้วค่อยให้สกินแคร์ขั้นต่อไปทำงานต่อ
+```
+
 ### Tag Safety and Brand Fit
 
 - For regulated, medical-adjacent, intimate-care, dental, diagnostic, scar gel, supplement, or self-sampling scripts, keep tags calm and reassuring. Do not use `[excited]` to hype medical-adjacent decisions.
@@ -135,7 +162,8 @@ Do:
 - Keep the first spoken line short enough to land in about 2 seconds.
 - Use punchy spoken Thai/English, not formal presenter language.
 - Write for audio performance, not reading. Prefer short beats, concrete words, and clean pauses.
-- Let Speaker 2 sound like a real skeptical or curious listener, not a sales assistant.
+- For `speaker_count = 2` or `auto`, let Speaker 2 sound like a real skeptical or curious listener, not a sales assistant.
+- For `speaker_count = 1`, keep the same punchy sales structure as a single unprefixed voiceover.
 - Use benefit lines that are specific, sensory, and grounded in the product details.
 - End with a confident next step, not a generic slogan.
 
@@ -149,7 +177,7 @@ Hook quality bar:
 Punchy ad-read rules for energetic/direct-response output:
 - Keep most spoken turns under 85 Thai characters or 14 English words.
 - Use one idea per line. Split long ingredient/benefit lists into two shorter turns.
-- Speaker 2 should use short reactions: “ใช่”, “แล้วต่างยังไง?”, “ตรงนี้แหละที่อยากรู้”, “โอเค อันนี้น่าสน”.
+- For `speaker_count = 2` or `auto`, Speaker 2 should use short reactions: “ใช่”, “แล้วต่างยังไง?”, “ตรงนี้แหละที่อยากรู้”, “โอเค อันนี้น่าสน”.
 - Avoid soft filler: “ฟังดูดี”, “น่าสนใจนะ”, “ต้องลองแล้ว” unless followed by a sharper buying reason.
 - Use 2-4 strong audio tags total. For sales energy, prefer `[energetic]`, `[intrigued]`, `[confident]`, `[confidently]`, `[excited]`, or `[energetic and upbeat]`. Avoid `[playful]` as the opening tag when the user asks for high sales impact unless the hook itself is very strong.
 - Do not end with a weak curiosity line. End with a clear action or routine moment.
@@ -164,7 +192,7 @@ Do not open with generic presenter lines:
 
 For high-energy direct response, use this structure:
 1. Stop-scroll hook: one sharp problem or curiosity line.
-2. Listener reaction: short, human, skeptical/curious.
+2. If `speaker_count = 2` or `auto`, listener reaction: short, human, skeptical/curious. If `speaker_count = 1`, skip the listener reaction and continue as a single announcer.
 3. Product fit: name the product and one grounded reason.
 4. Proof-like details: ingredients/features from source only, softened safely.
 5. Usage moment: when/how it fits the routine.
@@ -207,6 +235,7 @@ Key options:
 - When `output_language` is `auto`, infer the spoken language from `ui_locale`, `browser_locale`, or `app_language` first. If the UI/app locale starts with `th`, default to Thai unless the user explicitly requests another language or the product details are overwhelmingly in another target language. If the UI/app locale is English, default to English unless the product details or user request clearly ask for Thai/another language.
 - `speech_style`: professional, friendly, friend-to-friend, humorous, sarcastic-light, complaining-but-helpful, roast-but-praise, luxury-polished, soft-caring, energetic-host.
 - `persuasion_style`: benefit-led, problem-solution, storytelling, review-like, educational, soft sell, direct response, humor hook, premium trust, routine journey.
+- `speaker_count`: if set to `1`/`"1"`, output plain spoken text with no speaker labels. If set to `2`/`"2"` or `auto`, output two-speaker dialogue.
 - `evergreen_mode`: ignore short-term promotions, discounts, giveaways, shipping policy, shop terms, review conditions, return rules, and marketplace noise unless the user explicitly asks for promo copy.
 - `regulated_product_mode`: when the product is medical-adjacent, dental-adjacent, intimate-care-adjacent, or a non-cosmetic personal hygiene item, keep copy factual, cautious, and instruction-led.
 
@@ -236,11 +265,11 @@ The draft must pass all checks:
 - Sales-energy check: for `energetic_host`, `direct_response`, or `humor_hook`, the script has momentum, contrast, and a clear reason to keep listening within the first 2 lines.
 - Audio-impact check: lines are short enough to read with energy; there is no long explanatory sentence that makes TTS slow down; pauses, punctuation, and non-verbal tags are useful but not cluttered; the closing line gives a clear action/routine reason.
 - Voice naturalness check: lines sound speakable in real Thai/English, with no stiff presenter wording, no long ingredient dump, and no line likely to create slow unnatural TTS pacing.
-- Speaker-role check: Speaker 1 leads the sales idea; Speaker 2 reacts like a real listener with curiosity, skepticism, or a short objection. Speaker 2 must not become another announcer.
+- Speaker-count check: if `speaker_count` is `1` or `"1"`, there are no speaker labels, no `Speaker 2:` lines, and no implied second persona. If `speaker_count` is `2`, `"2"`, or `auto`, Speaker 1 leads the sales idea and Speaker 2 reacts like a real listener with curiosity, skepticism, or a short objection. Speaker 2 must not become another announcer.
 - Audio-tag check: tags are sparse, strong, and placed only where they improve delivery. Most scripts should use 2-4 tags total and should form a clear emotional arc. Tags must be audible/performance-based, written in English, and realistic for the voice. Remove weak, repetitive, visual-only, unsafe, or unnecessary tags.
 - Wording suitability check: no insulting, over-sarcastic, creepy, shame-based, medically risky, or culturally awkward line. Humor must support the sale, not make the product sound fake.
 - Claim-safety check: all claims are grounded in user-provided details and category guards. Rewrite treatment-style claims into cosmetic/routine language or omit them.
-- Format check: plain text only, no Markdown fences, no blank lines, every line starts with `Speaker 1:` or `Speaker 2:`.
+- Format check: plain text only, no Markdown fences, no blank lines. For `speaker_count = 1`, output unprefixed spoken lines with no speaker labels. For `speaker_count = 2` or `auto`, every line starts with `Speaker 1:` or `Speaker 2:`.
 
 If any check fails, rewrite the script internally and review again. Return only the version that passes.
 

@@ -13,6 +13,24 @@ export interface BuildMediaStudioAutoPromptIdeaInput {
   skillSchema?: MediaStudioAutoPromptSchemaLike | null;
 }
 
+export interface MediaStudioReferenceImageLike {
+  url: string;
+  name?: string;
+}
+
+export interface BuildMediaStudioAutoPromptReferenceImageSyncInput<T extends MediaStudioReferenceImageLike> {
+  referenceImages: T[];
+  dynamicImageUrls: string[];
+  maxImages?: number | null;
+}
+
+export interface BuildMediaStudioAutoPromptReferenceImageSyncResult<T extends MediaStudioReferenceImageLike> {
+  items: T[];
+  addedCount: number;
+  droppedCount: number;
+  changed: boolean;
+}
+
 const IMAGE_FIELD_KEYWORDS = [
   "image",
   "images",
@@ -122,6 +140,61 @@ export function extractMediaStudioDynamicImageUrls(
     seen.add(url);
     return true;
   });
+}
+
+export function buildMediaStudioAutoPromptReferenceImageSync<T extends MediaStudioReferenceImageLike>(
+  input: BuildMediaStudioAutoPromptReferenceImageSyncInput<T>,
+): BuildMediaStudioAutoPromptReferenceImageSyncResult<T> {
+  const maxImages = typeof input.maxImages === "number" && Number.isFinite(input.maxImages)
+    ? Math.max(0, input.maxImages)
+    : Number.POSITIVE_INFINITY;
+  const existingByUrl = new Map<string, T>();
+  const seenUrls = new Set<string>();
+  const orderedUrls: string[] = [];
+
+  const pushUrl = (value: unknown) => {
+    const url = typeof value === "string" ? value.trim() : "";
+    if (!url || seenUrls.has(url)) {
+      return;
+    }
+    seenUrls.add(url);
+    orderedUrls.push(url);
+  };
+
+  input.referenceImages.forEach((image) => {
+    const url = image.url.trim();
+    if (!url || seenUrls.has(url)) {
+      return;
+    }
+    seenUrls.add(url);
+    existingByUrl.set(url, image);
+    orderedUrls.push(url);
+  });
+  input.dynamicImageUrls.forEach(pushUrl);
+
+  const limitedUrls = orderedUrls.slice(0, maxImages);
+  const items = limitedUrls.map((url, index) => {
+    const existing = existingByUrl.get(url);
+    if (existing) {
+      return existing;
+    }
+    return {
+      url,
+      name: `auto-prompt-reference-${index + 1}`,
+    } as T;
+  });
+  const addedCount = items.filter((image) => !existingByUrl.has(image.url.trim())).length;
+  const droppedCount = Math.max(0, orderedUrls.length - limitedUrls.length);
+  const changed = droppedCount > 0
+    || items.length !== input.referenceImages.length
+    || items.some((image, index) => image.url !== input.referenceImages[index]?.url);
+
+  return {
+    items,
+    addedCount,
+    droppedCount,
+    changed,
+  };
 }
 
 function getOrderedSchemaFieldIds(

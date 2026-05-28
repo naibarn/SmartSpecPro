@@ -29,7 +29,7 @@
     },
     "reference_character_images": {
       "title": "Reference Character Images",
-      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face.",
+      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. For 3x3 storyboards, include the referenced person in some frames and require every intentional person frame to show a clear visible referenced face with the product visible for identity and scale. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face.",
       "type": "array",
       "maxItems": 12,
       "items": {
@@ -234,7 +234,7 @@
         "ภาพใหญ่ 4:3 / 4x3 / 12 เฟรมจัตุรัส",
         "ภาพใหญ่ 3:4 / 3x4 / 12 เฟรมจัตุรัส"
       ],
-      "default": "auto"
+      "default": "canvas_9_16_grid_3x3_frame_9_16_exact"
     },
     "aspect_ratio": {
       "title": "Aspect Ratio",
@@ -323,6 +323,12 @@
     "storyboard_guide": {
       "title": "Storyboard Guide",
       "description": "Optional storyboard, shot brief, or video-shot guide from Media Studio. When provided, every generated frame prompt must follow this guide's shot order, timing, story beat, action, camera intent, furniture-use intent, scale/room context, and continuity. The guide is a creative direction contract; do not contradict it. If left blank, keep the normal skill behavior.",
+      "type": "string",
+      "default": ""
+    },
+    "production_concept_details": {
+      "title": "Production Concept Details",
+      "description": "Optional selected Production Director concept/details. Use this as the creative guideline for tone, audience, problem, hook, selling points, and storyboard intent while preserving all reference-image locks. Do not introduce price, rating, sales volume, promotions, or other volatile marketplace claims.",
       "type": "string",
       "default": ""
     },

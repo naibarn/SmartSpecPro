@@ -600,6 +600,74 @@ export function getModelReferenceImageLimit(model: MediaModelOption | undefined)
   );
 }
 
+type PreferredResolution = "4K" | "2K" | "1K";
+
+const PREFERRED_IMAGE_RESOLUTION_ORDER: PreferredResolution[] = ["4K", "2K", "1K"];
+
+function normalizeResolutionCandidate(value: unknown): PreferredResolution | null {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+  if (["4k", "4096", "3840", "uhd", "2160p"].includes(normalized)) return "4K";
+  if (["2k", "2048", "1440p"].includes(normalized)) return "2K";
+  if (["1k", "1024", "720p"].includes(normalized)) return "1K";
+  if (normalized.includes("4k") || normalized.includes("4096") || normalized.includes("3840") || normalized.includes("2160p")) return "4K";
+  if (normalized.includes("2k") || normalized.includes("2048") || normalized.includes("1440p")) return "2K";
+  if (normalized.includes("1k") || normalized.includes("1024") || normalized.includes("720p")) return "1K";
+  return null;
+}
+
+function preferredResolutionRank(value: PreferredResolution): number {
+  const index = PREFERRED_IMAGE_RESOLUTION_ORDER.indexOf(value);
+  return index >= 0 ? index : PREFERRED_IMAGE_RESOLUTION_ORDER.length;
+}
+
+export function selectHighestImageResolutionInput(
+  model: MediaModelOption | undefined,
+): { key: string; value: string | number | boolean; resolution: PreferredResolution; label: string } | null {
+  const fields = parseModelInputFields(model);
+  const candidateFields = fields.filter((field) => {
+    const normalizedKey = field.key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    return normalizedKey.includes("resolution") || normalizedKey.includes("outputquality");
+  });
+
+  let best: { key: string; value: string | number | boolean; resolution: PreferredResolution; label: string } | null = null;
+  const consider = (candidate: { key: string; value: string | number | boolean; resolution: PreferredResolution; label: string }) => {
+    if (!best || preferredResolutionRank(candidate.resolution) < preferredResolutionRank(best.resolution)) {
+      best = candidate;
+    }
+  };
+
+  for (const field of candidateFields) {
+    for (const option of field.options ?? []) {
+      const resolution = normalizeResolutionCandidate(option.value) ?? normalizeResolutionCandidate(option.label);
+      if (!resolution) continue;
+      consider({
+        key: field.key,
+        value: option.value,
+        resolution,
+        label: option.label,
+      });
+    }
+  }
+
+  const configJson = model?.configJson;
+  if (configJson && typeof configJson === "object" && !Array.isArray(configJson)) {
+    const rawResolutions = (configJson as Record<string, unknown>).resolutions;
+    const resolutions = Array.isArray(rawResolutions) ? rawResolutions : [];
+    for (const value of resolutions) {
+      const resolution = normalizeResolutionCandidate(value);
+      if (!resolution) continue;
+      consider({
+        key: "resolution",
+        value: String(value),
+        resolution,
+        label: String(value),
+      });
+    }
+  }
+
+  return best;
+}
+
 export function clampReferenceImagesToModelLimit<T>(
   model: MediaModelOption | undefined,
   referenceImages: readonly T[],

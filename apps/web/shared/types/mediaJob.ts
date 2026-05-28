@@ -220,6 +220,14 @@ function resolveCompatibilityOutcome(
 // ========================================
 
 const SHELL_METACHAR_RE = /[;|&`$(){}><]/;
+const URI_QUERY_SHELL_METACHAR_RE = /[;|`$(){}><]/;
+
+function uriContainsShellMetacharacters(uri: string): boolean {
+  const queryStart = uri.search(/[?#]/);
+  const pathPart = queryStart >= 0 ? uri.slice(0, queryStart) : uri;
+  const queryPart = queryStart >= 0 ? uri.slice(queryStart) : "";
+  return SHELL_METACHAR_RE.test(pathPart) || URI_QUERY_SHELL_METACHAR_RE.test(queryPart);
+}
 
 export function validateJobSpec(
   spec: MediaJobSpec,
@@ -255,7 +263,7 @@ export function validateJobSpec(
   // URI validation on assets
   if (spec.inputs?.assets) {
     for (const asset of spec.inputs.assets) {
-      if (SHELL_METACHAR_RE.test(asset.uri)) {
+      if (uriContainsShellMetacharacters(asset.uri)) {
         errors.push(
           `Asset "${asset.assetId}" uri contains invalid shell metacharacters: "${asset.uri}"`,
         );

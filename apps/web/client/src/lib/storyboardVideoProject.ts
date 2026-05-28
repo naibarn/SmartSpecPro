@@ -35,6 +35,8 @@ export interface StoryboardCompanionAudioCandidate {
   actualDurationSeconds?: number;
   targetDurationSeconds?: number;
   volume?: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface BuildStoryboardProjectOptions {
