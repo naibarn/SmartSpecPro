@@ -118,6 +118,8 @@ import {
 import {
   buildElevenLabsBeautyDialogueRepairPrompt,
   evaluateElevenLabsBeautyDialogueQuality,
+  normalizeElevenLabsBeautyDialogueOutput,
+  resolveElevenLabsBeautyDialogueRepairMaxTokens,
 } from "../services/elevenLabsBeautyDialogueQuality";
 import {
   buildAudioFirstStoryboardRepairPrompt,
@@ -134,6 +136,11 @@ import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSk
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
 import { getConversationById } from "../services/chatService";
 import { readLocalAiConversationOverride } from "../../shared/localAiConversationSettings";
+import {
+  buildVeo31StoryboardVideoPrompt,
+  extractStoryboardNativeSpeechText,
+  formatStoryboardNativeSpeechDirective,
+} from "../../shared/storyboardPromptAudio";
 import {
   resolveConversationLocalAiMode,
   resolveExplicitChatSessionLocalAiMode,
@@ -683,38 +690,156 @@ function parseLlmJsonObject(content: string): Record<string, unknown> {
   }
 }
 
+function storyboardSpeechLanguageLabel(speechMode: string, speechLanguage?: string | null): string {
+  if (speechMode === "th") return "Thai";
+  if (speechMode === "en") return "English";
+  return String(speechLanguage ?? "").trim() || speechMode || "the requested language";
+}
+
+function storyboardNativeSpeechDirectiveExample(speechMode: string, speechLanguage?: string | null): string {
+  const language = storyboardSpeechLanguageLabel(speechMode, speechLanguage);
+  if (speechMode === "th" || language.toLowerCase() === "thai") {
+    return 'Presenter พูดเป็นภาษาไทยว่า "[slot.voiceover_script]"';
+  }
+  if (speechMode === "en" || language.toLowerCase() === "english") {
+    return 'Presenter says, clearly: "[slot.voiceover_script]"';
+  }
+  return `The presenter speaks in ${language}: "[slot.voiceover_script]"`;
+}
+
+function getStoryboardPlannerProductName(productMetadata: Record<string, unknown> | null): string {
+  if (!productMetadata) return "";
+  for (const key of ["productName", "product_name", "title", "name"]) {
+    const value = productMetadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim().replace(/\s+/g, " ").slice(0, 80);
+    }
+  }
+  return "";
+}
+
+function buildFallbackStoryboardVoiceoverScript(input: {
+  speechMode: string;
+  speechLanguage?: string | null;
+  productMetadata: Record<string, unknown> | null;
+  conceptDetails?: string | null;
+  currentPrompt?: string | null;
+  previousVoiceoverScript?: string | null;
+  nextVoiceoverScript?: string | null;
+}): string {
+  const productName = getStoryboardPlannerProductName(input.productMetadata);
+  const language = storyboardSpeechLanguageLabel(input.speechMode, input.speechLanguage).toLowerCase();
+
+  if (input.speechMode === "th" || language === "thai") {
+    if (input.previousVoiceoverScript || input.nextVoiceoverScript) {
+      return productName
+        ? `ต่อจากนั้น${productName}ช่วยให้เห็นผลลัพธ์ชัดขึ้น ก่อนปิดด้วยเหตุผลที่น่าเลือกใช้`
+        : "ต่อจากนั้นจะเห็นผลลัพธ์ชัดขึ้น ก่อนปิดด้วยเหตุผลที่น่าเลือกใช้";
+    }
+    return productName
+      ? `${productName} ช่วยให้มุมนี้เป็นระเบียบและหยิบใช้ได้ง่ายขึ้น`
+      : "เปลี่ยนมุมรกให้เป็นระเบียบ หยิบของใช้ได้ง่ายขึ้น";
+  }
+
+  if (input.speechMode === "en" || language === "english") {
+    if (input.previousVoiceoverScript || input.nextVoiceoverScript) {
+      return productName
+        ? `Then ${productName} makes the result clearer before the story closes with a practical reason to choose it.`
+        : "Then the result becomes clearer before the story closes with a practical reason to choose it.";
+    }
+    return productName
+      ? `${productName} keeps this corner tidy and easy to use.`
+      : "Turn this cluttered corner into an easier space to use.";
+  }
+
+  return productName
+    ? `${productName} helps make this space easier to use.`
+    : "Make this small space easier to use.";
+}
+
+function inferStoryboardSpeechDirectiveMode(promptText: string): { speechMode: string; speechLanguage: string } {
+  if (/พูดเป็นภาษาไทยว่า/i.test(promptText)) {
+    return { speechMode: "th", speechLanguage: "Thai" };
+  }
+  if (/speaks\s+in\s+english\s*:/i.test(promptText)) {
+    return { speechMode: "en", speechLanguage: "English" };
+  }
+  const languageMatch = promptText.match(/speaks\s+in\s+([^:]+)\s*:/i);
+  const language = languageMatch?.[1]?.trim() || "";
+  return { speechMode: language ? "other" : "en", speechLanguage: language || "English" };
+}
+
 function buildStoryboardPlannerPrompt(input: {
   productMetadata: Record<string, unknown> | null;
   options: Record<string, unknown>;
   slots: Array<Record<string, unknown>>;
+  conceptDetails?: string | null;
+  storyboardGuide?: string | null;
 }): string {
+  const speechMode = String(input.options.speechMode ?? "none");
+  const speechLanguage = String(input.options.speechLanguage ?? "").trim();
+  const includeSpeech = speechMode !== "none";
+  const nativeSpeechDirectiveExample = storyboardNativeSpeechDirectiveExample(speechMode, speechLanguage);
   const imageMap = input.slots.map((slot, index) => {
     const startImage = index * 2 + 1;
     const endImage = index * 2 + 2;
+    const frameRoles = Array.isArray(slot.frameRoles) ? slot.frameRoles : ["start", "stop"];
+    const firstRole = frameRoles[0] === "reference" ? "reference image" : frameRoles[0] === "stop" ? "stop/end frame" : "start frame";
+    const secondRole = frameRoles[1] === "reference" ? "reference image" : frameRoles[1] === "start" ? "start frame" : "stop/end frame";
     return {
       id: slot.id,
       index: slot.index,
-      startFrameAlias: `@Image${startImage}`,
-      endFrameAlias: `@Image${endImage}`,
+      firstImageAlias: `@Image${startImage}`,
+      secondImageAlias: `@Image${endImage}`,
+      frameRoles,
       visionTask: [
-        `Inspect @Image${startImage} as this slot's real start frame.`,
-        `Inspect @Image${endImage} as this slot's real stop/end frame.`,
-        "Write motion and camera direction that fits the visible change between these two images.",
+        `Inspect @Image${startImage} as this slot's ${firstRole}.`,
+        `Inspect @Image${endImage} as this slot's ${secondRole}.`,
+        frameRoles[0] === "start" && frameRoles[1] === "stop"
+          ? "Write motion and camera direction that fits the visible change between these two exact endpoint images."
+          : "Write motion and camera direction that follows the exact endpoint roles and uses reference-only images as guidance, not as frozen start/end frames.",
       ].join(" "),
       currentPrompt: slot.currentPrompt ?? "",
+      conceptDetails: slot.conceptDetails ?? input.conceptDetails ?? "",
+      storyboardGuide: slot.storyboardGuide ?? input.storyboardGuide ?? "",
       durationSeconds: slot.durationSeconds ?? null,
       aspectRatio: slot.aspectRatio ?? null,
       model: slot.model ?? null,
+      voiceoverContinuity: {
+        voiceoverFullScript: slot.voiceoverFullScript ?? "",
+        previousVoiceoverScript: slot.previousVoiceoverScript ?? "",
+        nextVoiceoverScript: slot.nextVoiceoverScript ?? "",
+        previousJourneyStage: slot.previousJourneyStage ?? "",
+        nextJourneyStage: slot.nextJourneyStage ?? "",
+        previousPrompt: slot.previousPrompt ?? "",
+        nextPrompt: slot.nextPrompt ?? "",
+      },
     };
+  });
+  const hasSingleSlotRewriteContext = imageMap.some((slot) => {
+    const continuity = slot.voiceoverContinuity as Record<string, unknown>;
+    return Boolean(
+      String(continuity.voiceoverFullScript ?? "").trim()
+      || String(continuity.previousVoiceoverScript ?? "").trim()
+      || String(continuity.nextVoiceoverScript ?? "").trim()
+    );
   });
 
   return [
     "Create a complete ecommerce storyboard video prompt plan.",
-    "Use the ordered attached image aliases below. Each slot has an exact start frame and exact stop/end frame.",
+    "Use the ordered attached image aliases below. Each slot declares whether each attached image is an exact start frame, exact stop/end frame, or reference-only image.",
     "You MUST analyze every slot's two images with vision before writing that slot's video_prompt.",
-    "Every slot.video_prompt must be unique to its own visible start/end pair, naming concrete visual details from both frames and choosing motion/camera direction that naturally connects them.",
+    "Every slot.video_prompt must be unique to its own visible image pair, naming concrete visual details from both images and choosing motion/camera direction that respects the declared roles.",
     "Start each slot.video_prompt with the unique visible action/camera direction for that shot, not with a repeated alias boilerplate sentence.",
     "Do not reuse the same generic transition prompt across slots. Do not merely paraphrase currentPrompt.",
+    "Every slot.video_prompt must follow this Veo 3.1 section format exactly: Create an [duration]-second cinematic video. Then sections Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+    "Write the production direction in English, but keep any requested spoken line in the target spoken language inside quotes.",
+    "In Audio:, separate ambient sound, sound design, dialogue language, lip-sync, subtitle, and no-extra-dialogue instructions from the visual description.",
+    includeSpeech
+      ? "In Dialogue:, put the exact spoken line in quotes. For Thai use this exact shape inside the section: " + nativeSpeechDirectiveExample + "."
+      : "In Dialogue:, write exactly: No spoken dialogue.",
+    input.conceptDetails ? ["", "Production concept and details guideline:", input.conceptDetails].join("\n") : "",
+    input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
     "",
     "Product metadata:",
     JSON.stringify(input.productMetadata ?? {}, null, 2),
@@ -722,18 +847,46 @@ function buildStoryboardPlannerPrompt(input: {
     "Options:",
     JSON.stringify(input.options, null, 2),
     "",
+    includeSpeech
+      ? [
+        "Speech / voiceover instruction:",
+        `- Include a concise spoken line for each slot in ${speechLanguage || speechMode}.`,
+        "- Treat all slot.voiceover_script values as one continuous script split across ordered slots, not standalone taglines.",
+        "- Plan the full story arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot.",
+        "- Each line must naturally follow the previous slot and set up the next slot. Avoid repeating the same opening phrase, benefit, or sales claim in multiple slots.",
+        "- The spoken line must fit the slot duration. For an 8-10 second shot, write a natural line intended to fill most of that slot's speech time without rushing.",
+        "- The line must match the concept/details guideline, visible product use, journey stage, and video_prompt.",
+        "- Write the line as natural spoken speech only, not visual direction. Do not include price, rating, sales volume, promo, or unsupported claims.",
+        "- Return voiceover_full_script as the exact ordered combination of all slot.voiceover_script lines.",
+        "- Put the spoken line in slot.voiceover_script. Because includeVoiceover is true, slot.voiceover_script is REQUIRED and must not be empty for any slot.",
+        `- Also include the same spoken line inside slot.video_prompt as a native-audio instruction using this exact shape: ${nativeSpeechDirectiveExample}.`,
+        hasSingleSlotRewriteContext
+          ? [
+            "",
+            "Single-slot rewrite continuity:",
+            "- Some slots include voiceoverContinuity because the user is regenerating only that slot.",
+            "- Rewrite only the current slot.voiceover_script, while preserving the meaning and story flow of neighboring lines.",
+            "- previousVoiceoverScript is the line immediately before this slot; the new line must sound like a natural continuation.",
+            "- nextVoiceoverScript is the line immediately after this slot; the new line must set it up without contradiction.",
+            "- voiceoverFullScript is the existing whole narration. Keep the rewritten slot compatible with that full script; do not rewrite or quote the neighboring lines as the current slot line.",
+          ].join("\n")
+          : "",
+      ].join("\n")
+      : "Speech / voiceover instruction: Do not include spoken dialogue or voiceover. Return empty voiceover_script for every slot.",
+    "",
     "Storyboard slots:",
     JSON.stringify(imageMap, null, 2),
     "",
     "Important output alias rule:",
     "- The aliases above are only for your planning call, because all slot images are sent together.",
-    "- In each returned slot.video_prompt, write local slot aliases only: @Image1 is that slot's start frame and @Image2 is that slot's end frame.",
+    "- In each returned slot.video_prompt, write local slot aliases only: @Image1 is that slot's first attached image and @Image2 is that slot's second attached image.",
+    "- Explicitly describe whether local @Image1/@Image2 are exact start frame, exact stop/end frame, or reference-only based on each slot's frameRoles.",
     "- Never output @Image3, @Image4, @Image5, or any higher image alias in slot.video_prompt, voiceover_script, or sound_brief.",
     "- Even though returned prompts use local aliases, the content must come from the actual global aliases assigned to that input slot.",
     "",
     "Per-slot vision requirements:",
-    "- Identify what is visibly present in the start frame and what is visibly present in the stop/end frame.",
-    "- Describe the most plausible subject/object motion, hand/product action, staging change, or camera move for that exact pair.",
+    "- Identify what is visibly present in each attached image and respect whether it is a start frame, stop/end frame, or reference-only image.",
+    "- Describe the most plausible subject/object motion, hand/product action, staging change, or camera move for that exact role pair.",
     "- Preserve visible product geometry, materials, colors, room/context, people, hands, props, and composition anchors from the frames.",
     "- If the two frames are very similar, use subtle motion such as micro push-in, parallax, lighting, hand adjustment, or product reveal rather than inventing new action.",
     "",
@@ -776,20 +929,28 @@ async function repairStoryboardSlotVideoPrompt(input: {
   currentPrompt: string;
   startFrameUrl: string;
   endFrameUrl: string;
+  frameRoles?: string[];
+  conceptDetails?: string | null;
+  storyboardGuide?: string | null;
+  speechMode?: string | null;
+  speechLanguage?: string | null;
   aspectRatio?: string | null;
   durationSeconds?: number | null;
   model?: string | null;
   productMetadata: Record<string, unknown> | null;
   publicUrl?: string | null;
 }): Promise<{ prompt: string; promptTokens: number; completionTokens: number }> {
+  const frameRoles = Array.isArray(input.frameRoles) && input.frameRoles.length >= 2 ? input.frameRoles : ["start", "stop"];
+  const includeSpeech = input.speechMode && input.speechMode !== "none";
   const systemPrompt = [
-    "You are a senior AI video director for first-frame/last-frame ecommerce video generation.",
-    "Analyze the two attached images with vision: Image 1 is the exact start frame, Image 2 is the exact stop/end frame.",
+    "You are a senior AI video director for ecommerce video generation from storyboard images.",
+    `Analyze the two attached images with vision. Image 1 role: ${frameRoles[0]}. Image 2 role: ${frameRoles[1]}.`,
     "Return one production-ready video prompt only. No markdown, no code fence, no title, no JSON, no explanation.",
-    "The prompt must be specific to the visible objects, people, hands, room, props, product geometry, colors, materials, and endpoint state in these two images.",
-    "Choose motion and camera direction that naturally connects Image 1 to Image 2. If the frames are similar, use subtle push-in, parallax, lighting, or micro-movement.",
-    "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
-  ].join("\n");
+	    "The prompt must be specific to the visible objects, people, hands, room, props, product geometry, colors, materials, and declared image roles.",
+	    "Choose motion and camera direction that follows exact start/stop frames when declared; use reference-only images as guidance without treating them as frozen endpoints.",
+	    "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
+	    "Use the Veo 3.1 section format: Create an [duration]-second cinematic video. Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+	  ].join("\n");
   const userPrompt = [
     `Shot ${input.slotIndex + 1}`,
     `Current prompt to replace: ${input.currentPrompt}`,
@@ -801,10 +962,16 @@ async function repairStoryboardSlotVideoPrompt(input: {
       "Product metadata is context only. The attached images are the visual truth:",
       JSON.stringify(input.productMetadata, null, 2),
     ].join("\n") : "",
+    input.conceptDetails ? ["", "Production concept and details guideline:", input.conceptDetails].join("\n") : "",
+    input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
+    includeSpeech ? [
+      "",
+      `Speech guideline for downstream planner context: spoken line language is ${input.speechLanguage || input.speechMode}. Keep any spoken idea short enough for about 8 seconds and aligned to the concept.`,
+    ].join("\n") : "",
     "",
     "Write the improved prompt in English. It must explicitly use local aliases only:",
-    "- @Image1 is the exact start frame",
-    "- @Image2 is the exact stop/end frame",
+    `- @Image1 role: ${frameRoles[0]}`,
+    `- @Image2 role: ${frameRoles[1]}`,
     "Start with the unique visible action/camera direction for this shot, not with a repeated alias boilerplate sentence.",
     "Name concrete visual details from both images and describe the best product/user motion or camera move for this exact pair.",
   ].filter(Boolean).join("\n");
@@ -826,6 +993,77 @@ async function repairStoryboardSlotVideoPrompt(input: {
     prompt,
     promptTokens: result.usage.promptTokens,
     completionTokens: result.usage.completionTokens,
+  };
+}
+
+type StoryboardPlannerSlotResult = {
+  id: string;
+  index: number;
+  journeyStage: string;
+  videoPrompt: string;
+  voiceoverScript: string;
+  soundBrief: string;
+  qualityNotes: string[];
+};
+
+function enforceStoryboardPlannerNativeAudio(input: {
+  slot: StoryboardPlannerSlotResult;
+  sourceSlot?: {
+    currentPrompt?: string;
+    conceptDetails?: string | null;
+    storyboardGuide?: string | null;
+    durationSeconds?: number | null;
+    aspectRatio?: string | null;
+    frameRoles?: string[] | null;
+    previousVoiceoverScript?: string | null;
+    nextVoiceoverScript?: string | null;
+  };
+  includeVoiceover: boolean;
+  includeSound: boolean;
+  speechMode: string;
+  speechLanguage?: string | null;
+  productMetadata: Record<string, unknown> | null;
+}): StoryboardPlannerSlotResult {
+  const existingInlineSpeech = extractStoryboardNativeSpeechText(input.slot.videoPrompt);
+  const shouldIncludeVoiceover = input.includeVoiceover && input.speechMode !== "none";
+  const voiceoverScript = shouldIncludeVoiceover
+    ? input.slot.voiceoverScript.trim()
+      || existingInlineSpeech
+      || buildFallbackStoryboardVoiceoverScript({
+        speechMode: input.speechMode,
+        speechLanguage: input.speechLanguage,
+        productMetadata: input.productMetadata,
+        conceptDetails: input.sourceSlot?.conceptDetails ?? null,
+        currentPrompt: input.sourceSlot?.currentPrompt ?? null,
+        previousVoiceoverScript: input.sourceSlot?.previousVoiceoverScript ?? null,
+        nextVoiceoverScript: input.sourceSlot?.nextVoiceoverScript ?? null,
+      })
+    : "";
+  const videoPrompt = buildVeo31StoryboardVideoPrompt({
+    visualPrompt: input.slot.videoPrompt || input.sourceSlot?.currentPrompt || "",
+    durationSeconds: input.sourceSlot?.durationSeconds ?? null,
+    aspectRatio: input.sourceSlot?.aspectRatio ?? null,
+    frameRoles: input.sourceSlot?.frameRoles ?? null,
+    conceptDetails: input.sourceSlot?.conceptDetails ?? null,
+    storyboardGuide: input.sourceSlot?.storyboardGuide ?? null,
+    includeVoiceover: shouldIncludeVoiceover,
+    speechMode: input.speechMode,
+    speechLanguage: input.speechLanguage,
+    voiceoverScript,
+    includeSound: input.includeSound,
+    soundBrief: input.slot.soundBrief,
+  });
+
+  return {
+    ...input.slot,
+    videoPrompt,
+    voiceoverScript,
+    qualityNotes: !shouldIncludeVoiceover || voiceoverScript === input.slot.voiceoverScript.trim()
+      ? input.slot.qualityNotes
+      : [
+        ...input.slot.qualityNotes,
+        "Veo 3.1 native speech prompt was normalized so the generated video prompt keeps the requested voiceover line.",
+      ],
   };
 }
 
@@ -2555,6 +2793,9 @@ export const skillsRouter = router({
       currentPrompt: z.string().trim().min(1).max(5000),
       startFrameUrl: z.string().trim().min(1),
       endFrameUrl: z.string().trim().min(1),
+      frameRoles: z.array(z.enum(["start", "stop", "reference"])).min(2).max(2).optional(),
+      conceptDetails: z.string().trim().max(12000).optional(),
+      storyboardGuide: z.string().trim().max(12000).optional(),
       aspectRatio: z.string().trim().max(32).optional(),
       durationSeconds: z.number().positive().max(60).optional(),
       model: z.string().trim().max(255).optional(),
@@ -2588,13 +2829,17 @@ export const skillsRouter = router({
       }
 
       const systemPrompt = [
-        "You are a senior AI video director for first-frame/last-frame video generation.",
-        "Analyze the two images: Image 1 is the exact start frame, Image 2 is the exact end frame.",
+        "You are a senior AI video director for storyboard image-to-video generation.",
+        `Analyze the two images with these roles: Image 1 = ${(input.frameRoles ?? ["start", "stop"])[0]}, Image 2 = ${(input.frameRoles ?? ["start", "stop"])[1]}.`,
         "Return one production-ready video prompt only. No markdown, no code fence, no title, no explanation.",
-        "The prompt must preserve product identity, people identity, composition intent, text/logo fidelity, colors, lighting, and the exact start/end frame relationship.",
-        "Describe a natural camera move and subject/product motion that connects Image 1 to Image 2 without inventing unrelated objects, extra people, extra labels, subtitles, UI, or new readable text.",
+        "The prompt must preserve product identity, people identity, composition intent, text/logo fidelity, colors, lighting, and the declared frame/reference relationship.",
+        "Describe a natural camera move and subject/product motion that respects exact start/stop roles and treats reference-only images as guidance, not frozen endpoints.",
         "Keep it concise but specific, suitable for Veo/Kling-style image-to-video generation.",
       ].join("\n");
+      const existingSpeechText = extractStoryboardNativeSpeechText(input.currentPrompt);
+      const existingSpeechMode = existingSpeechText
+        ? inferStoryboardSpeechDirectiveMode(input.currentPrompt)
+        : null;
       const userPrompt = [
         `Current generic prompt: ${input.currentPrompt}`,
         input.aspectRatio ? `Aspect ratio: ${input.aspectRatio}` : "",
@@ -2610,10 +2855,26 @@ export const skillsRouter = router({
           input.marketplaceContext.itemId ? `- Item ID: ${input.marketplaceContext.itemId}` : "",
           input.marketplaceContext.sourceUrl ? `- Product page URL: ${input.marketplaceContext.sourceUrl}` : "",
         ].filter(Boolean).join("\n") : "",
+        input.conceptDetails ? [
+          "",
+          "Production concept and details guideline:",
+          input.conceptDetails,
+        ].join("\n") : "",
+        input.storyboardGuide ? [
+          "",
+          "Storyboard guide:",
+          input.storyboardGuide,
+        ].join("\n") : "",
+        existingSpeechText && existingSpeechMode ? [
+          "",
+          "Native audio instruction from the current prompt:",
+          `- Preserve this spoken line exactly in the improved prompt: ${formatStoryboardNativeSpeechDirective(existingSpeechText, existingSpeechMode.speechMode, existingSpeechMode.speechLanguage)}`,
+          "- Do not remove requested speech, voiceover, music, sound, or audio mood directions already present in the current prompt.",
+        ].join("\n") : "",
         "",
         "Write the improved prompt in English. It must explicitly say:",
-        "- use @Image1 as the exact start frame",
-        "- use @Image2 as the exact end frame",
+        `- @Image1 role: ${(input.frameRoles ?? ["start", "stop"])[0]}`,
+        `- @Image2 role: ${(input.frameRoles ?? ["start", "stop"])[1]}`,
         "- preserve all visible product/package/brand details from both frames",
         "- create only plausible movement between these two frames",
       ].filter(Boolean).join("\n");
@@ -2628,10 +2889,23 @@ export const skillsRouter = router({
           900,
           { publicUrl: ctx.publicUrl ?? null },
         );
-        const prompt = result.content
+        let prompt = result.content
           .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
           .replace(/\s*```$/i, "")
           .trim();
+        prompt = buildVeo31StoryboardVideoPrompt({
+          visualPrompt: prompt,
+          durationSeconds: input.durationSeconds ?? null,
+          aspectRatio: input.aspectRatio ?? null,
+          frameRoles: input.frameRoles ?? ["start", "stop"],
+          conceptDetails: input.conceptDetails ?? null,
+          storyboardGuide: input.storyboardGuide ?? null,
+          includeVoiceover: Boolean(existingSpeechText && existingSpeechMode),
+          speechMode: existingSpeechMode?.speechMode ?? "none",
+          speechLanguage: existingSpeechMode?.speechLanguage ?? null,
+          voiceoverScript: existingSpeechText,
+          includeSound: false,
+        });
 
         const creditsUsed = Math.max(1, calculateCreditsForLLM(
           result.usage.promptTokens,
@@ -2667,18 +2941,32 @@ export const skillsRouter = router({
     .input(z.object({
       productMetadata: z.record(z.unknown()).nullable().optional(),
       includeVoiceover: z.boolean().default(false),
+      speechMode: z.enum(["none", "en", "th", "other"]).default("none"),
+      speechLanguage: z.string().trim().max(80).optional(),
       includeSound: z.boolean().default(false),
       tone: z.enum(["sales", "premium", "demo", "ugc", "cinematic"]).default("sales"),
       language: z.enum(["auto", "th", "en"]).default("auto"),
+      conceptDetails: z.string().trim().max(12000).optional(),
+      storyboardGuide: z.string().trim().max(12000).optional(),
       slots: z.array(z.object({
         id: z.string().trim().min(1).max(255),
         index: z.number().int().min(0),
         currentPrompt: z.string().max(8000).optional(),
         startFrameUrl: z.string().trim().min(1),
         endFrameUrl: z.string().trim().min(1),
+        frameRoles: z.array(z.enum(["start", "stop", "reference"])).min(2).max(2).optional(),
+        conceptDetails: z.string().trim().max(12000).optional(),
+        storyboardGuide: z.string().trim().max(12000).optional(),
         aspectRatio: z.string().trim().max(32).optional(),
         durationSeconds: z.number().positive().max(60).optional(),
         model: z.string().trim().max(255).optional(),
+        voiceoverFullScript: z.string().trim().max(12000).optional(),
+        previousVoiceoverScript: z.string().trim().max(2000).optional(),
+        nextVoiceoverScript: z.string().trim().max(2000).optional(),
+        previousJourneyStage: z.string().trim().max(255).optional(),
+        nextJourneyStage: z.string().trim().max(255).optional(),
+        previousPrompt: z.string().max(8000).optional(),
+        nextPrompt: z.string().max(8000).optional(),
       })).min(1).max(12),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -2746,17 +3034,37 @@ export const skillsRouter = router({
         productMetadata: input.productMetadata ?? null,
         options: {
           includeVoiceover: input.includeVoiceover,
+          speechMode: input.speechMode,
+          speechLanguage: input.speechMode === "none"
+            ? ""
+            : input.speechMode === "th"
+              ? "Thai"
+              : input.speechMode === "en"
+                ? "English"
+                : input.speechLanguage,
           includeSound: input.includeSound,
           tone: input.tone,
           language: input.language,
         },
+        conceptDetails: input.conceptDetails ?? null,
+        storyboardGuide: input.storyboardGuide ?? null,
         slots: orderedSlots.map((slot) => ({
           id: slot.id,
           index: slot.index,
           currentPrompt: slot.currentPrompt ?? "",
+          frameRoles: slot.frameRoles ?? ["start", "stop"],
+          conceptDetails: slot.conceptDetails ?? input.conceptDetails ?? "",
+          storyboardGuide: slot.storyboardGuide ?? input.storyboardGuide ?? "",
           durationSeconds: slot.durationSeconds ?? null,
           aspectRatio: slot.aspectRatio ?? null,
           model: slot.model ?? null,
+          voiceoverFullScript: slot.voiceoverFullScript ?? "",
+          previousVoiceoverScript: slot.previousVoiceoverScript ?? "",
+          nextVoiceoverScript: slot.nextVoiceoverScript ?? "",
+          previousJourneyStage: slot.previousJourneyStage ?? "",
+          nextJourneyStage: slot.nextJourneyStage ?? "",
+          previousPrompt: slot.previousPrompt ?? "",
+          nextPrompt: slot.nextPrompt ?? "",
         })),
       });
 
@@ -2803,7 +3111,8 @@ export const skillsRouter = router({
             })
           : [];
         const parsedSlotById = new Map(parsedSlots.map((slot) => [slot.id, slot]));
-        let slots = orderedSlots.map((slot) => parsedSlotById.get(slot.id) ?? {
+        const sourceSlotById = new Map(orderedSlots.map((slot) => [slot.id, slot]));
+        let slots: StoryboardPlannerSlotResult[] = orderedSlots.map((slot) => parsedSlotById.get(slot.id) ?? {
           id: slot.id,
           index: slot.index,
           journeyStage: "",
@@ -2812,6 +3121,15 @@ export const skillsRouter = router({
           soundBrief: "",
           qualityNotes: [],
         });
+        slots = slots.map((slot) => enforceStoryboardPlannerNativeAudio({
+          slot,
+          sourceSlot: sourceSlotById.get(slot.id),
+          includeVoiceover: input.includeVoiceover,
+          includeSound: input.includeSound,
+          speechMode: input.speechMode,
+          speechLanguage: input.speechLanguage ?? null,
+          productMetadata: input.productMetadata ?? null,
+        }));
         const normalizedPromptCounts = new Map<string, number>();
         for (const slot of slots) {
           const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
@@ -2840,6 +3158,11 @@ export const skillsRouter = router({
               currentPrompt: inputSlot.currentPrompt ?? slot.videoPrompt,
               startFrameUrl: inputSlot.startFrameUrl,
               endFrameUrl: inputSlot.endFrameUrl,
+              frameRoles: inputSlot.frameRoles ?? ["start", "stop"],
+              conceptDetails: inputSlot.conceptDetails ?? input.conceptDetails ?? null,
+              storyboardGuide: inputSlot.storyboardGuide ?? input.storyboardGuide ?? null,
+              speechMode: input.speechMode,
+              speechLanguage: input.speechLanguage ?? null,
               aspectRatio: inputSlot.aspectRatio ?? null,
               durationSeconds: inputSlot.durationSeconds ?? null,
               model: inputSlot.model ?? null,
@@ -2867,6 +3190,15 @@ export const skillsRouter = router({
               ],
             };
           });
+          slots = slots.map((slot) => enforceStoryboardPlannerNativeAudio({
+            slot,
+            sourceSlot: sourceSlotById.get(slot.id),
+            includeVoiceover: input.includeVoiceover,
+            includeSound: input.includeSound,
+            speechMode: input.speechMode,
+            speechLanguage: input.speechLanguage ?? null,
+            productMetadata: input.productMetadata ?? null,
+          }));
         }
 
         const finalNormalizedPromptCounts = new Map<string, number>();
@@ -3717,7 +4049,7 @@ export const skillsRouter = router({
           }
         }
 
-        const initialBeautyDialogueQuality = evaluateElevenLabsBeautyDialogueQuality(processedContent, input.skillId);
+        const initialBeautyDialogueQuality = evaluateElevenLabsBeautyDialogueQuality(processedContent, input.skillId, mergedUserInputs);
         let beautyDialogueRepairAttempts = 0;
         let beautyDialogueQuality = initialBeautyDialogueQuality;
         while (!beautyDialogueQuality.passed && beautyDialogueRepairAttempts < 2) {
@@ -3737,14 +4069,14 @@ export const skillsRouter = router({
               userId,
               input.referenceImages || [],
               visionModel,
-              1800,
+              resolveElevenLabsBeautyDialogueRepairMaxTokens(mergedUserInputs),
               {
                 ...webSearchOptions,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
             const repairedContent = repairResult.content.trim();
-            const repairedQuality = evaluateElevenLabsBeautyDialogueQuality(repairedContent, input.skillId);
+            const repairedQuality = evaluateElevenLabsBeautyDialogueQuality(repairedContent, input.skillId, mergedUserInputs);
             processedContent = repairedContent;
             beautyDialogueQuality = repairedQuality;
           } catch (repairError) {
@@ -3752,6 +4084,7 @@ export const skillsRouter = router({
             break;
           }
         }
+        processedContent = normalizeElevenLabsBeautyDialogueOutput(processedContent, input.skillId, mergedUserInputs);
 
         if (promptLengthPlan && responseMode !== "cms_json") {
           const originalLength = processedContent.length;

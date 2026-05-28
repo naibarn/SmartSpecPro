@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Check, ExternalLink, ImagePlus, Loader2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Upload, Video, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Upload, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,6 +37,7 @@ export interface StoryboardReviewTask {
   referenceUrls?: string[];
   generationAspectRatio?: string;
   generationExtraParams?: Record<string, unknown>;
+  referenceFrameRoles?: Array<"start" | "stop" | "reference">;
   marketplaceProduct?: {
     productId?: string | null;
     platform?: "shopee" | "tiktok_shop" | null;
@@ -54,6 +55,8 @@ export interface StoryboardReviewTask {
 
 export interface StoryboardPromptPlannerOptions {
   includeVoiceover: boolean;
+  speechMode: "none" | "en" | "th" | "other";
+  speechLanguage?: string;
   includeSound: boolean;
   tone: "sales" | "premium" | "demo" | "ugc" | "cinematic";
   language: "auto" | "th" | "en";
@@ -69,14 +72,19 @@ interface StoryboardBatchReviewDialogProps {
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
   onUpdateTaskPrompt?: (taskId: string, prompt: string) => void | Promise<void>;
-  onPlanScenePrompts?: (options: StoryboardPromptPlannerOptions) => void | Promise<void>;
+  conceptDetails?: string | null;
+  onConceptDetailsChange?: (value: string) => void | Promise<void>;
+  storyboardGuide?: string | null;
+  onStoryboardGuideChange?: (value: string) => void | Promise<void>;
+  onPlanScenePrompts?: (options: StoryboardPromptPlannerOptions, taskId?: string) => void | Promise<void>;
   isPlanningScenePrompts?: boolean;
   onStartGenerationBatch?: () => void;
   onCancelGeneration?: () => void | Promise<void>;
   onReplaceReferenceFrame?: (taskId: string, frameIndex: 0 | 1, imageUrl: string) => void | Promise<void>;
+  onUpdateReferenceFrameRole?: (taskId: string, frameIndex: 0 | 1, role: "start" | "stop" | "reference") => void | Promise<void>;
   onUploadReferenceFrame?: (taskId: string, frameIndex: 0 | 1, files: FileList | File[]) => Promise<string[]>;
   replacingReferenceFrameKey?: string | null;
-  onUploadVideoSlot?: (taskId: string, mode: "replace" | "insert-after") => void | Promise<void>;
+  onUploadVideoSlot?: (taskId: string, mode: "replace" | "insert-after", files?: FileList | File[]) => void | Promise<void>;
   uploadingVideoSlotKey?: string | null;
   onMoveTask?: (taskId: string, direction: "up" | "down") => void;
   onRemoveTask?: (taskId: string) => void;
@@ -108,6 +116,11 @@ export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchRev
 }
 
 type StoryboardConfirmAction = "generate" | "render" | "project";
+type StoryboardLightboxMedia = {
+  type: "image" | "video";
+  url: string;
+  title: string;
+} | null;
 
 function summarizePrompt(prompt: string): string {
   const normalized = prompt.replace(/\s+/g, " ").trim();
@@ -122,6 +135,19 @@ function getFirstLastFrameUrls(task: StoryboardReviewTask): [string, string] | n
   return [referenceUrls[0]!, referenceUrls[1]!];
 }
 
+function getReferenceFrameRole(task: StoryboardReviewTask, frameIndex: 0 | 1): "start" | "stop" | "reference" {
+  const role = task.referenceFrameRoles?.[frameIndex] ?? (task.generationExtraParams?.referenceFrameRoles as unknown[] | undefined)?.[frameIndex];
+  return role === "reference" || role === "stop" || role === "start"
+    ? role
+    : frameIndex === 0 ? "start" : "stop";
+}
+
+function referenceFrameRoleLabel(role: "start" | "stop" | "reference", locale: string, short = false): string {
+  if (role === "reference") return locale === "th" ? (short ? "Ref" : "ภาพ Reference") : (short ? "Ref" : "Reference image");
+  if (role === "stop") return locale === "th" ? (short ? "End" : "Stop Frame") : (short ? "End" : "Stop frame");
+  return locale === "th" ? (short ? "Start" : "Start Frame") : (short ? "Start" : "Start frame");
+}
+
 export function StoryboardBatchReviewPanel({
   tasks,
   selectedTaskIds,
@@ -131,11 +157,16 @@ export function StoryboardBatchReviewPanel({
   onSelectNone,
   onRegenerateTask,
   onUpdateTaskPrompt,
+  conceptDetails,
+  onConceptDetailsChange,
+  storyboardGuide,
+  onStoryboardGuideChange,
   onPlanScenePrompts,
   isPlanningScenePrompts = false,
   onStartGenerationBatch,
   onCancelGeneration,
   onReplaceReferenceFrame,
+  onUpdateReferenceFrameRole,
   onUploadReferenceFrame,
   replacingReferenceFrameKey,
   onUploadVideoSlot,
@@ -171,12 +202,23 @@ export function StoryboardBatchReviewPanel({
   const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
   const [isCancellingSelected, setIsCancellingSelected] = useState(false);
   const [expandedMetadataTaskId, setExpandedMetadataTaskId] = useState<string | null>(null);
-  const [plannerIncludeVoiceover, setPlannerIncludeVoiceover] = useState(true);
-  const [plannerIncludeSound, setPlannerIncludeSound] = useState(true);
+  const [plannerSpeechMode, setPlannerSpeechMode] = useState<StoryboardPromptPlannerOptions["speechMode"]>("none");
+  const [plannerOtherSpeechLanguage, setPlannerOtherSpeechLanguage] = useState("");
+  const [plannerIncludeSound, setPlannerIncludeSound] = useState(false);
   const [plannerTone, setPlannerTone] = useState<StoryboardPromptPlannerOptions["tone"]>("sales");
   const [plannerLanguage, setPlannerLanguage] = useState<StoryboardPromptPlannerOptions["language"]>(locale === "th" ? "th" : "auto");
   const [confirmAction, setConfirmAction] = useState<StoryboardConfirmAction | null>(null);
+  const [copiedPromptTaskId, setCopiedPromptTaskId] = useState<string | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<StoryboardLightboxMedia>(null);
+  const [draggingVideoTaskId, setDraggingVideoTaskId] = useState<string | null>(null);
   const showGenerationCancel = Boolean(onCancelGeneration) && (Boolean(regeneratingTaskId) || isGeneratingSelected);
+  const plannerSpeechLanguage = plannerSpeechMode === "th"
+    ? "Thai"
+    : plannerSpeechMode === "en"
+      ? "English"
+      : plannerSpeechMode === "other"
+        ? plannerOtherSpeechLanguage.trim()
+        : "";
 
   useEffect(() => {
     setDraftPrompts((prev) => {
@@ -205,6 +247,28 @@ export function StoryboardBatchReviewPanel({
     [selectedTaskIds, tasks],
   );
   const generationCancelRequestedRef = useRef(false);
+  const handleCopyTaskPrompt = async (taskId: string, prompt: string) => {
+    const text = prompt.trim();
+    if (!text) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    }
+    setCopiedPromptTaskId(taskId);
+    window.setTimeout(() => {
+      setCopiedPromptTaskId((current) => current === taskId ? null : current);
+    }, 1400);
+  };
+
+  const handleVideoSlotDrop = async (taskId: string, event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDraggingVideoTaskId(null);
+    if (!onUploadVideoSlot) return;
+    const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("video/"));
+    if (!files.length) return;
+    await onUploadVideoSlot(taskId, "replace", files);
+  };
+
   const handleGenerateSelectedTasks = async () => {
     if (generatableSelectedTasks.length === 0 || isGeneratingSelected) return;
     generationCancelRequestedRef.current = false;
@@ -385,6 +449,39 @@ export function StoryboardBatchReviewPanel({
           </div>
         </div>
 
+        <div className="mx-3 shrink-0 rounded-lg border bg-background px-3 py-2 sm:mx-6">
+          <div className="grid gap-2 lg:grid-cols-2">
+            <div className="min-w-0">
+              <div className="mb-1 text-xs font-medium text-muted-foreground">
+                {locale === "th" ? "แนวคิดและรายละเอียด" : "Concept and details"}
+              </div>
+              <Textarea
+                value={conceptDetails ?? ""}
+                onChange={(event) => void onConceptDetailsChange?.(event.target.value)}
+                readOnly={!onConceptDetailsChange}
+                className="min-h-[72px] resize-y text-xs leading-5"
+                placeholder={locale === "th"
+                  ? "แนวคิดจาก Production Director จะถูกใช้เป็น guideline ตอนสร้าง prompt แต่ละฉาก"
+                  : "Production Director concept guidance used when planning per-scene prompts"}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1 text-xs font-medium text-muted-foreground">
+                {locale === "th" ? "Storyboard guide" : "Storyboard guide"}
+              </div>
+              <Textarea
+                value={storyboardGuide ?? ""}
+                onChange={(event) => void onStoryboardGuideChange?.(event.target.value)}
+                readOnly={!onStoryboardGuideChange}
+                className="min-h-[72px] resize-y text-xs leading-5"
+                placeholder={locale === "th"
+                  ? "ข้อมูลลำดับช็อต คู่ภาพ start/end และแนวทาง continuity สำหรับใช้ตอนสร้าง prompt"
+                  : "Shot order, start/end frame guidance, and continuity notes for prompt planning"}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="mx-3 flex shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm sm:mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{t("mediaStudio.storyboardReviewSelectedCount", { count: selectedCount })}</Badge>
@@ -395,14 +492,25 @@ export function StoryboardBatchReviewPanel({
           <div className="flex flex-wrap items-center gap-2">
             {onPlanScenePrompts ? (
               <>
-                <label className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
-                  <Checkbox
-                    checked={plannerIncludeVoiceover}
-                    onCheckedChange={(checked) => setPlannerIncludeVoiceover(Boolean(checked))}
-                    className="h-3.5 w-3.5"
+                <select
+                  value={plannerSpeechMode}
+                  onChange={(event) => setPlannerSpeechMode(event.target.value as StoryboardPromptPlannerOptions["speechMode"])}
+                  className="h-8 rounded-md border bg-background px-2 text-xs"
+                  aria-label={locale === "th" ? "โหมดบทพูด" : "Speech mode"}
+                >
+                  <option value="none">{locale === "th" ? "ไม่ใส่บทพูด" : "No speech"}</option>
+                  <option value="en">{locale === "th" ? "บทพูดภาษาอังกฤษ" : "English speech"}</option>
+                  <option value="th">{locale === "th" ? "บทพูดภาษาไทย" : "Thai speech"}</option>
+                  <option value="other">{locale === "th" ? "ภาษาอื่น ๆ" : "Other language"}</option>
+                </select>
+                {plannerSpeechMode === "other" ? (
+                  <input
+                    value={plannerOtherSpeechLanguage}
+                    onChange={(event) => setPlannerOtherSpeechLanguage(event.target.value)}
+                    placeholder={locale === "th" ? "ระบุภาษา" : "Language"}
+                    className="h-8 w-32 rounded-md border bg-background px-2 text-xs"
                   />
-                  {locale === "th" ? "บทพูด" : "Voiceover"}
-                </label>
+                ) : null}
                 <label className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
                   <Checkbox
                     checked={plannerIncludeSound}
@@ -435,7 +543,9 @@ export function StoryboardBatchReviewPanel({
                   variant="outline"
                   size="sm"
                   onClick={() => void onPlanScenePrompts({
-                    includeVoiceover: plannerIncludeVoiceover,
+                    includeVoiceover: plannerSpeechMode !== "none",
+                    speechMode: plannerSpeechMode,
+                    speechLanguage: plannerSpeechLanguage,
                     includeSound: plannerIncludeSound,
                     tone: plannerTone,
                     language: plannerLanguage,
@@ -604,35 +714,41 @@ export function StoryboardBatchReviewPanel({
                       className="mt-1"
                     />
 
-                    <div className="w-full shrink-0 overflow-hidden rounded-lg border bg-muted/40 sm:w-36">
-                      {hasVideo ? (
-                        <video
-                          src={task.url || undefined}
-                          controls
-                          muted={muteVideoPreviewAudio}
-                          className="h-44 w-full object-cover sm:h-24"
-                        />
-                      ) : (
+                    <div className="w-full shrink-0 space-y-2 sm:w-36">
+                      <div className="overflow-hidden rounded-lg border bg-muted/40">
                         <div className="flex h-44 items-center justify-center text-muted-foreground sm:h-24">
                           {firstLastFrameUrls ? (
                             <div className="grid h-full w-full grid-cols-2">
-                              {firstLastFrameUrls.map((url, frameIndex) => (
-                                <div key={`${task.id}-frame-${frameIndex}`} className="relative min-w-0 overflow-hidden border-r last:border-r-0">
-                                  <img
-                                    src={url}
-                                    alt={frameIndex === 0
-                                      ? t("mediaStudio.storyboardReviewStartFrame")
-                                      : t("mediaStudio.storyboardReviewEndFrame")}
-                                    className="h-full w-full object-cover"
-                                    loading="lazy"
-                                  />
-                                  <div className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                    {frameIndex === 0
-                                      ? t("mediaStudio.storyboardReviewStartFrameShort")
-                                      : t("mediaStudio.storyboardReviewEndFrameShort")}
-                                  </div>
-                                </div>
-                              ))}
+                              {firstLastFrameUrls.map((url, frameIndex) => {
+                                const role = getReferenceFrameRole(task, frameIndex as 0 | 1);
+                                const label = referenceFrameRoleLabel(role, locale);
+                                return (
+                                  <button
+                                    key={`${task.id}-frame-${frameIndex}`}
+                                    type="button"
+                                    className="group relative min-w-0 overflow-hidden border-r text-left last:border-r-0"
+                                    onClick={() => setLightboxMedia({
+                                      type: "image",
+                                      url,
+                                      title: `${t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })} · ${label}`,
+                                    })}
+                                    title={locale === "th" ? "ขยายดูภาพเต็มจอ" : "Open full-size image"}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={label}
+                                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                      {referenceFrameRoleLabel(role, locale, true)}
+                                    </div>
+                                    <div className="absolute bottom-1 right-1 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                      <Maximize2 className="h-3 w-3" />
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           ) : task.status === "generating" ? (
                             <Loader2 className="h-6 w-6 animate-spin" />
@@ -642,7 +758,62 @@ export function StoryboardBatchReviewPanel({
                             <Video className="h-6 w-6" />
                           )}
                         </div>
-                      )}
+                      </div>
+                      {hasVideo || onUploadVideoSlot ? (
+                        <div
+                          className={cn(
+                            "overflow-hidden rounded-lg border border-dashed bg-muted/20 transition-colors",
+                            draggingVideoTaskId === task.id ? "border-blue-400 bg-blue-50" : "border-border",
+                          )}
+                          onDragEnter={(event) => {
+                            if (!onUploadVideoSlot) return;
+                            event.preventDefault();
+                            setDraggingVideoTaskId(task.id);
+                          }}
+                          onDragOver={(event) => {
+                            if (!onUploadVideoSlot) return;
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "copy";
+                            setDraggingVideoTaskId(task.id);
+                          }}
+                          onDragLeave={(event) => {
+                            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                            setDraggingVideoTaskId((current) => current === task.id ? null : current);
+                          }}
+                          onDrop={(event) => void handleVideoSlotDrop(task.id, event)}
+                        >
+                          {hasVideo ? (
+                            <div className="relative bg-black">
+                              <video
+                                src={task.url || undefined}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="h-40 w-full bg-black object-contain sm:h-24"
+                              />
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="secondary"
+                                className="absolute bottom-1 right-1 h-7 w-7 bg-white/90"
+                                onClick={() => task.url && setLightboxMedia({
+                                  type: "video",
+                                  url: task.url,
+                                  title: t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 }),
+                                })}
+                                title={locale === "th" ? "ขยายวิดีโอ" : "Expand video"}
+                              >
+                                <Maximize2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex h-20 flex-col items-center justify-center px-2 text-center text-[11px] text-muted-foreground sm:h-16">
+                              <Upload className="mb-1 h-4 w-4" />
+                              <span>{locale === "th" ? "ลากวิดีโอมาวาง" : "Drop video"}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -724,29 +895,44 @@ export function StoryboardBatchReviewPanel({
                             {firstLastFrameUrls.map((url, frameIndex) => {
                               const typedFrameIndex = frameIndex as 0 | 1;
                               const key = `${task.id}:${typedFrameIndex}`;
-                              const frameLabel = typedFrameIndex === 0
-                                ? t("mediaStudio.storyboardReviewStartFrame")
-                                : t("mediaStudio.storyboardReviewEndFrame");
+                              const frameRole = getReferenceFrameRole(task, typedFrameIndex);
+                              const frameLabel = referenceFrameRoleLabel(frameRole, locale);
                               return (
-                                <ImageSourcePicker
-                                  key={key}
-                                  value={[url]}
-                                  maxImages={1}
-                                  selectionMode="replace"
-                                  disabled={task.status === "generating" || replacingReferenceFrameKey === key}
-                                  isUploading={replacingReferenceFrameKey === key}
-                                  onUpload={onUploadReferenceFrame
-                                    ? (files) => onUploadReferenceFrame(task.id, typedFrameIndex, files)
-                                    : undefined}
-                                  onChange={(urls) => {
-                                    const nextUrl = urls[0]?.trim();
-                                    if (!nextUrl || nextUrl === url) return;
-                                    void onReplaceReferenceFrame(task.id, typedFrameIndex, nextUrl);
-                                  }}
-                                  label={frameLabel}
-                                  helpText={t("mediaStudio.storyboardReviewReplaceFrameHelp")}
-                                  language={locale === "th" ? "th" : "en"}
-                                />
+                                <div key={key} className="space-y-2">
+                                  <label className="grid gap-1 text-xs">
+                                    <span className="font-medium text-muted-foreground">
+                                      {locale === "th" ? "บทบาทภาพของคลิปนี้" : "Frame role for this clip"}
+                                    </span>
+                                    <select
+                                      value={frameRole}
+                                      disabled={task.status === "generating" || !onUpdateReferenceFrameRole}
+                                      onChange={(event) => void onUpdateReferenceFrameRole?.(task.id, typedFrameIndex, event.target.value as "start" | "stop" | "reference")}
+                                      className="h-8 rounded-md border bg-background px-2 text-xs"
+                                    >
+                                      <option value="start">{referenceFrameRoleLabel("start", locale)}</option>
+                                      <option value="stop">{referenceFrameRoleLabel("stop", locale)}</option>
+                                      <option value="reference">{referenceFrameRoleLabel("reference", locale)}</option>
+                                    </select>
+                                  </label>
+                                  <ImageSourcePicker
+                                    value={[url]}
+                                    maxImages={1}
+                                    selectionMode="replace"
+                                    disabled={task.status === "generating" || replacingReferenceFrameKey === key}
+                                    isUploading={replacingReferenceFrameKey === key}
+                                    onUpload={onUploadReferenceFrame
+                                      ? (files) => onUploadReferenceFrame(task.id, typedFrameIndex, files)
+                                      : undefined}
+                                    onChange={(urls) => {
+                                      const nextUrl = urls[0]?.trim();
+                                      if (!nextUrl || nextUrl === url) return;
+                                      void onReplaceReferenceFrame(task.id, typedFrameIndex, nextUrl);
+                                    }}
+                                    label={frameLabel}
+                                    helpText={t("mediaStudio.storyboardReviewReplaceFrameHelp")}
+                                    language={locale === "th" ? "th" : "en"}
+                                  />
+                                </div>
                               );
                             })}
                           </div>
@@ -774,6 +960,23 @@ export function StoryboardBatchReviewPanel({
                         <Button
                           type="button"
                           size="sm"
+                          variant="outline"
+                          disabled={!draftPrompt.trim()}
+                          onClick={() => void handleCopyTaskPrompt(task.id, draftPrompt)}
+                          title={locale === "th" ? "คัดลอก prompt ของคลิปนี้" : "Copy this clip prompt"}
+                        >
+                          {copiedPromptTaskId === task.id ? (
+                            <Check className="mr-2 h-4 w-4" />
+                          ) : (
+                            <Copy className="mr-2 h-4 w-4" />
+                          )}
+                          {copiedPromptTaskId === task.id
+                            ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                            : (locale === "th" ? "Copy Prompt" : "Copy prompt")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
                           variant={isQueuedForGeneration ? "default" : "outline"}
                           disabled={!canRegenerate || task.status === "generating" || Boolean(regeneratingTaskId)}
                           onClick={() => {
@@ -795,6 +998,26 @@ export function StoryboardBatchReviewPanel({
                             ? t("mediaStudio.storyboardReviewGenerateVideo")
                             : t("mediaStudio.storyboardReviewRegenerate")}
                         </Button>
+                        {onPlanScenePrompts ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isPlanningScenePrompts || task.status === "generating" || Boolean(regeneratingTaskId)}
+                            onClick={() => void onPlanScenePrompts({
+                              includeVoiceover: plannerSpeechMode !== "none",
+                              speechMode: plannerSpeechMode,
+                              speechLanguage: plannerSpeechLanguage,
+                              includeSound: plannerIncludeSound,
+                              tone: plannerTone,
+                              language: plannerLanguage,
+                            }, task.id)}
+                            title={locale === "th" ? "สร้าง prompt เฉพาะฉากนี้ พร้อมส่งบทบาทภาพแนบและแนวคิด" : "Plan only this scene with frame roles and concept guidance"}
+                          >
+                            {isPlanningScenePrompts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic2 className="mr-2 h-4 w-4" />}
+                            {locale === "th" ? "สร้าง Prompt ฉากนี้" : "Plan this scene"}
+                          </Button>
+                        ) : null}
                         {onUploadVideoSlot ? (
                           <>
                             <Button
@@ -1048,6 +1271,49 @@ export function StoryboardBatchReviewPanel({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          {lightboxMedia ? (
+            <div
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3"
+              role="dialog"
+              aria-modal="true"
+              aria-label={lightboxMedia.title}
+              onClick={() => setLightboxMedia(null)}
+            >
+              <div className="flex max-h-full w-full max-w-6xl flex-col gap-3" onClick={(event) => event.stopPropagation()}>
+                <div className="flex items-center justify-between gap-3 text-white">
+                  <div className="min-w-0 truncate text-sm font-medium">{lightboxMedia.title}</div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button asChild type="button" size="sm" variant="secondary">
+                      <a href={lightboxMedia.url} download target="_blank" rel="noreferrer">
+                        <Download className="mr-2 h-4 w-4" />
+                        {locale === "th" ? "Download" : "Download"}
+                      </a>
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => setLightboxMedia(null)}>
+                      <X className="mr-2 h-4 w-4" />
+                      {locale === "th" ? "ปิด" : "Close"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
+                  {lightboxMedia.type === "image" ? (
+                    <img
+                      src={lightboxMedia.url}
+                      alt={lightboxMedia.title}
+                      className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
+                    />
+                  ) : (
+                    <video
+                      src={lightboxMedia.url}
+                      controls
+                      autoPlay
+                      className="max-h-[calc(100dvh-8rem)] max-w-full bg-black object-contain"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
     </div>
   );

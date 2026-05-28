@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { ChevronLeft, ExternalLink, Film, Layers, Loader2, Music2, Trash2, Video } from "lucide-react";
+import { Check, ChevronLeft, ExternalLink, Film, Layers, Loader2, Music2, Pencil, Search, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
@@ -26,6 +27,7 @@ import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import { WebAssetResolver } from "@/services/webAssetResolver";
 import {
   clearStoryboardReviewDraft,
+  getStoryboardCompanionAudioUpdatedAt,
   getStoryboardReviewName,
   mergeFresherStoryboardReviewTasks,
   normalizeStoryboardReviewDraft,
@@ -35,17 +37,42 @@ import {
   storyboardDraftToReviewTasks,
   writeStoryboardReviewDraft,
   type StoryboardGenerationTask,
+  type StoryboardReferenceFrameRole,
   type StoryboardReviewDraft,
 } from "@/lib/storyboardReviewWorkspace";
 import { cn } from "@/lib/utils";
 import { videoEditorRenderService } from "@/services/videoEditorService";
+import { buildVeo31StoryboardVideoPrompt, extractStoryboardNativeSpeechText } from "@shared/storyboardPromptAudio";
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
   "Reference image mode: use the attached image(s) only as material, identity, style, product, object, or scene references.",
   "Do not treat any attached image as a start frame, end frame, frozen opening frame, or exact first/last frame unless generationType is FIRST_AND_LAST_FRAMES_2_VIDEO.",
 ].join(" ");
 
+function normalizeReferenceFrameRole(value: unknown, fallback: StoryboardReferenceFrameRole): StoryboardReferenceFrameRole {
+  return value === "start" || value === "stop" || value === "reference" ? value : fallback;
+}
+
+function getTaskReferenceFrameRoles(task: StoryboardGenerationTask): StoryboardReferenceFrameRole[] {
+  const roles = Array.isArray(task.storyboardContext?.extraParams?.referenceFrameRoles)
+    ? task.storyboardContext?.extraParams?.referenceFrameRoles
+    : [];
+  return [
+    normalizeReferenceFrameRole(roles?.[0], "start"),
+    normalizeReferenceFrameRole(roles?.[1], "stop"),
+  ];
+}
+
+function frameRolesUseExactFirstLast(roles: StoryboardReferenceFrameRole[]): boolean {
+  return roles[0] === "start" && roles[1] === "stop";
+}
+
+function generationTypeForFrameRoles(roles: StoryboardReferenceFrameRole[]): string {
+  return frameRolesUseExactFirstLast(roles) ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "REFERENCE_2_VIDEO";
+}
+
 type StoryboardMediaPickerKind = "video" | "audio";
+type StoryboardAudioSourceTab = "library" | "history";
 
 function isProbablyVideoUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
@@ -182,11 +209,103 @@ function prepareVeoPromptForGenerationType(promptText: string, generationType: u
   return `${VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION}\n${promptText}`.trim();
 }
 
+function buildStoryboardPlannedPrompt(input: {
+  basePrompt: string;
+  durationSeconds?: number | null;
+  aspectRatio?: string | null;
+  frameRoles?: readonly string[] | null;
+  conceptDetails?: string | null;
+  storyboardGuide?: string | null;
+  includeVoiceover: boolean;
+  speechMode: StoryboardPromptPlannerOptions["speechMode"];
+  speechLanguage?: string;
+  voiceoverScript?: string;
+  includeSound: boolean;
+  soundBrief?: string;
+}): string {
+  return buildVeo31StoryboardVideoPrompt({
+    visualPrompt: input.basePrompt,
+    durationSeconds: input.durationSeconds,
+    aspectRatio: input.aspectRatio,
+    frameRoles: input.frameRoles,
+    conceptDetails: input.conceptDetails,
+    storyboardGuide: input.storyboardGuide,
+    includeVoiceover: input.includeVoiceover,
+    speechMode: input.speechMode,
+    speechLanguage: input.speechLanguage,
+    voiceoverScript: input.voiceoverScript,
+    includeSound: input.includeSound,
+    soundBrief: input.soundBrief,
+  }).trim();
+}
+
+function getStoryboardPlannerVoiceContext(task?: StoryboardGenerationTask | null): {
+  voiceoverScript: string;
+  journeyStage: string;
+  voiceoverFullScript: string;
+} {
+  const planner = task?.storyboardContext?.extraParams?.storyboardPromptPlanner as Record<string, unknown> | undefined;
+  return {
+    voiceoverScript: String(planner?.voiceoverScript ?? extractStoryboardNativeSpeechText(task?.prompt ?? "") ?? "").trim(),
+    journeyStage: String(planner?.journeyStage ?? "").trim(),
+    voiceoverFullScript: String(planner?.voiceoverFullScript ?? "").trim(),
+  };
+}
+
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 const STORYBOARD_GENERATION_POLL_ATTEMPTS = 90;
+const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-20260527-2325";
+
+function summarizeStoryboardAudioForDebug(audio: Partial<StoryboardCompanionAudioCandidate> | null | undefined) {
+  if (!audio) return null;
+  return {
+    id: typeof audio.id === "string" ? audio.id : null,
+    title: typeof audio.title === "string" ? audio.title.slice(0, 140) : null,
+    model: typeof audio.model === "string" ? audio.model.slice(0, 100) : null,
+    kind: typeof audio.kind === "string" ? audio.kind : null,
+    actualDurationSeconds: typeof audio.actualDurationSeconds === "number" ? audio.actualDurationSeconds : null,
+    targetDurationSeconds: typeof audio.targetDurationSeconds === "number" ? audio.targetDurationSeconds : null,
+    createdAt: typeof audio.createdAt === "number" ? audio.createdAt : null,
+    updatedAt: typeof audio.updatedAt === "number" ? audio.updatedAt : null,
+  };
+}
+
+function summarizeStoryboardDraftForDebug(draft: Partial<StoryboardReviewDraft> | null | undefined) {
+  const companionAudio = Array.isArray(draft?.companionAudio) ? draft.companionAudio : [];
+  const taskIds = Array.isArray(draft?.taskIds) ? draft.taskIds : [];
+  const selectedTaskIds = Array.isArray(draft?.selectedTaskIds) ? draft.selectedTaskIds : [];
+  return {
+    exists: Boolean(draft),
+    reviewId: typeof draft?.reviewId === "number" ? draft.reviewId : null,
+    updatedAt: typeof draft?.updatedAt === "number" ? draft.updatedAt : null,
+    companionAudioUpdatedAt: typeof draft?.companionAudioUpdatedAt === "number" ? draft.companionAudioUpdatedAt : null,
+    hasExplicitCompanionAudioUpdatedAt: typeof draft?.companionAudioUpdatedAt === "number",
+    audioCount: companionAudio.length,
+    audio: companionAudio.slice(0, 4).map(summarizeStoryboardAudioForDebug),
+    taskCount: Array.isArray(draft?.tasks) ? draft.tasks.length : 0,
+    taskIdsFirst: taskIds.slice(0, 8),
+    selectedCount: selectedTaskIds.length,
+    renderJobId: typeof draft?.renderJobId === "string" ? draft.renderJobId : null,
+  };
+}
+
+function buildStoryboardReviewDebugSource(source: string, draft: Partial<StoryboardReviewDraft> | null | undefined) {
+  const companionAudio = Array.isArray(draft?.companionAudio) ? draft.companionAudio : [];
+  return {
+    source,
+    build: STORYBOARD_REVIEW_PAGE_DEBUG_BUILD,
+    reviewId: typeof draft?.reviewId === "number" ? draft.reviewId : null,
+    updatedAt: typeof draft?.updatedAt === "number" ? draft.updatedAt : null,
+    companionAudioUpdatedAt: typeof draft?.companionAudioUpdatedAt === "number" ? draft.companionAudioUpdatedAt : null,
+    audioCount: companionAudio.length,
+    audioIds: companionAudio.map((audio) => audio.id).slice(0, 5),
+    audioTitles: companionAudio.map((audio) => audio.title).slice(0, 5),
+    audioModels: companionAudio.map((audio) => audio.model).slice(0, 5),
+  };
+}
 
 function updateDraftTask(draft: StoryboardReviewDraft, taskId: string, updates: Partial<StoryboardGenerationTask>): StoryboardReviewDraft {
   return {
@@ -198,6 +317,26 @@ function updateDraftTask(draft: StoryboardReviewDraft, taskId: string, updates: 
 
 function isDraftNewerThan(a: StoryboardReviewDraft | null | undefined, b: StoryboardReviewDraft | null | undefined): boolean {
   return (a?.updatedAt ?? 0) > (b?.updatedAt ?? 0);
+}
+
+function preferCanonicalServerCompanionAudio(
+  localDraft: StoryboardReviewDraft | null | undefined,
+  serverDraft: StoryboardReviewDraft | null | undefined,
+  mergedDraft: StoryboardReviewDraft | null | undefined,
+): StoryboardReviewDraft | null {
+  if (!mergedDraft) return null;
+  if (!serverDraft || !mergedDraft) return mergedDraft;
+  const serverCompanionAudioUpdatedAt = getStoryboardCompanionAudioUpdatedAt(serverDraft);
+  const localCompanionAudioUpdatedAt = getStoryboardCompanionAudioUpdatedAt(localDraft);
+  if (serverCompanionAudioUpdatedAt <= 0 || serverCompanionAudioUpdatedAt < localCompanionAudioUpdatedAt) {
+    return mergedDraft;
+  }
+
+  return {
+    ...mergedDraft,
+    companionAudio: serverDraft.companionAudio,
+    companionAudioUpdatedAt: serverDraft.companionAudioUpdatedAt,
+  };
 }
 
 function ensureDraftNewerThan(next: StoryboardReviewDraft, current: StoryboardReviewDraft): StoryboardReviewDraft {
@@ -326,6 +465,8 @@ function createImportedAudioTrack(input: {
     actualDurationSeconds: input.durationSeconds,
     targetDurationSeconds: input.targetDurationSeconds,
     volume: 1,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -345,7 +486,11 @@ export default function StoryboardReviewPage() {
   const [isCompounding, setIsCompounding] = useState(false);
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
+  const [audioSourceTab, setAudioSourceTab] = useState<StoryboardAudioSourceTab>("library");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
+  const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [isEditingProjectName, setIsEditingProjectName] = useState(false);
+  const [projectNameDraft, setProjectNameDraft] = useState("");
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [replacingReferenceFrameKey, setReplacingReferenceFrameKey] = useState<string | null>(null);
   const [uploadingVideoSlotKey, setUploadingVideoSlotKey] = useState<string | null>(null);
@@ -355,10 +500,14 @@ export default function StoryboardReviewPage() {
   const lastLocalResyncAtRef = useRef(0);
   const generationCancelRequestedRef = useRef(false);
   const activeGenerationTaskIdRef = useRef<string | null>(null);
+  const storedDraftReviewId = typeof draft?.reviewId === "number" && Number.isFinite(draft.reviewId) && draft.reviewId > 0
+    ? draft.reviewId
+    : null;
+  const canonicalReviewId = reviewId ?? storedDraftReviewId;
 
   const { data: review, isLoading: isReviewLoading } = trpc.videoEditorProjects.getStoryboardReview.useQuery(
-    { id: reviewId ?? 0 },
-    { enabled: typeof reviewId === "number" && Number.isFinite(reviewId) },
+    { id: canonicalReviewId ?? 0 },
+    { enabled: typeof canonicalReviewId === "number" && Number.isFinite(canonicalReviewId) },
   );
   const { data: reviewProjectsData, refetch: refetchReviews } = trpc.videoEditorProjects.listStoryboardReviews.useQuery({ limit: 50, offset: 0 });
   const saveReviewMutation = trpc.videoEditorProjects.saveStoryboardReview.useMutation();
@@ -370,6 +519,7 @@ export default function StoryboardReviewPage() {
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
   const planStoryboardVideoPromptsMutation = trpc.skills.planStoryboardVideoPrompts.useMutation();
+  const { mutate: writeStoryboardReviewClientDebug } = trpc.videoEditorProjects.debugStoryboardReviewClient.useMutation();
   const {
     data: librarySearchData,
     isLoading: isLibrarySearchLoading,
@@ -390,6 +540,25 @@ export default function StoryboardReviewPage() {
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+
+  const emitStoryboardReviewClientDebug = useCallback((event: string, payload?: Record<string, unknown>) => {
+    const currentReviewId = reviewId ?? draftRef.current?.reviewId ?? null;
+    writeStoryboardReviewClientDebug({
+      event,
+      reviewId: currentReviewId,
+      pageBuild: STORYBOARD_REVIEW_PAGE_DEBUG_BUILD,
+      route: typeof window === "undefined" ? null : `${window.location.pathname}${window.location.search}`,
+      payload: {
+        routeReviewId: reviewId,
+        canonicalReviewId: currentReviewId,
+        currentDraft: summarizeStoryboardDraftForDebug(draftRef.current),
+        ...payload,
+      },
+    }, {
+      onError: () => undefined,
+    });
+  }, [reviewId, writeStoryboardReviewClientDebug]);
+
   const { data: mediaHistoryData, isLoading: isMediaHistoryLoading } = trpc.media.listTasks.useQuery(
     {
       mediaType: mediaPickerKind,
@@ -408,6 +577,10 @@ export default function StoryboardReviewPage() {
     if (reviewId) {
       const localDraft = readStoryboardReviewDraft();
       const matchingLocalDraft = localDraft?.reviewId === reviewId ? localDraft : null;
+      emitStoryboardReviewClientDebug("route.localDraftLoaded", {
+        localDraft: summarizeStoryboardDraftForDebug(localDraft),
+        matchingLocalDraft: summarizeStoryboardDraftForDebug(matchingLocalDraft),
+      });
       setDraft(matchingLocalDraft);
       setRenderJobId(matchingLocalDraft?.renderJobId ?? null);
       setRegeneratingTaskId(null);
@@ -415,21 +588,52 @@ export default function StoryboardReviewPage() {
     }
 
     const localDraft = readStoryboardReviewDraft();
+    emitStoryboardReviewClientDebug("route.localDraftLoaded", {
+      localDraft: summarizeStoryboardDraftForDebug(localDraft),
+      matchingLocalDraft: summarizeStoryboardDraftForDebug(localDraft),
+    });
     setDraft(localDraft);
     setRenderJobId(localDraft?.renderJobId ?? null);
     setRegeneratingTaskId(null);
-  }, [reviewId]);
+  }, [emitStoryboardReviewClientDebug, reviewId]);
 
   useEffect(() => {
     const reviewRecord = review as any;
-    if (!reviewId || !reviewRecord || Number(reviewRecord.id) !== reviewId) return;
+    if (!canonicalReviewId || !reviewRecord || Number(reviewRecord.id) !== canonicalReviewId) return;
 
     const nextDraft = normalizeStoryboardReviewDraft(reviewRecord.reviewData);
-    const rawIncoming = nextDraft ? { ...nextDraft, reviewId } : null;
+    const rawIncoming = nextDraft ? {
+      ...nextDraft,
+      reviewId: canonicalReviewId,
+      name: nextDraft.name ?? (typeof reviewRecord.name === "string" ? reviewRecord.name : null),
+    } : null;
     const current = draftRef.current;
-    const incoming = mergeFresherStoryboardReviewTasks(current, rawIncoming);
-    if (current && current.reviewId === reviewId && isDraftNewerThan(current, incoming)) {
+    const mergedIncoming = mergeFresherStoryboardReviewTasks(current, rawIncoming);
+    const incoming = preferCanonicalServerCompanionAudio(
+      current,
+      rawIncoming,
+      mergedIncoming,
+    );
+    const serverCompanionAudioUpdatedAt = getStoryboardCompanionAudioUpdatedAt(rawIncoming);
+    const currentCompanionAudioUpdatedAt = getStoryboardCompanionAudioUpdatedAt(current);
+    const serverCompanionAudioIsCanonical = serverCompanionAudioUpdatedAt > 0
+      && serverCompanionAudioUpdatedAt >= currentCompanionAudioUpdatedAt;
+    if (
+      current
+      && current.reviewId === canonicalReviewId
+      && isDraftNewerThan(current, incoming)
+      && !serverCompanionAudioIsCanonical
+    ) {
       const mergedCurrent = mergeFresherStoryboardReviewTasks(incoming, current);
+      emitStoryboardReviewClientDebug("serverReview.appliedLocalNewer", {
+        reviewRecordFound: true,
+        serverCompanionAudioIsCanonical,
+        serverCompanionAudioUpdatedAt,
+        currentCompanionAudioUpdatedAt,
+        rawIncoming: summarizeStoryboardDraftForDebug(rawIncoming),
+        mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
+        appliedDraft: summarizeStoryboardDraftForDebug(mergedCurrent),
+      });
       draftRef.current = mergedCurrent;
       writeStoryboardReviewDraft(mergedCurrent);
       setDraft(mergedCurrent);
@@ -437,12 +641,21 @@ export default function StoryboardReviewPage() {
       return;
     }
     if (incoming) {
+      emitStoryboardReviewClientDebug("serverReview.appliedIncoming", {
+        reviewRecordFound: true,
+        serverCompanionAudioIsCanonical,
+        serverCompanionAudioUpdatedAt,
+        currentCompanionAudioUpdatedAt,
+        rawIncoming: summarizeStoryboardDraftForDebug(rawIncoming),
+        mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
+        appliedDraft: summarizeStoryboardDraftForDebug(incoming),
+      });
       draftRef.current = incoming;
       writeStoryboardReviewDraft(incoming);
     }
     setDraft(incoming);
     setRenderJobId(incoming?.renderJobId ?? null);
-  }, [review, reviewId]);
+  }, [canonicalReviewId, emitStoryboardReviewClientDebug, review]);
 
   const activeDraft = reviewId && draft?.reviewId !== reviewId ? null : draft;
   const tasks = useMemo(() => storyboardDraftToReviewTasks(activeDraft), [activeDraft]);
@@ -454,28 +667,91 @@ export default function StoryboardReviewPage() {
     () => ((mediaHistoryData?.tasks ?? []) as any[]).filter((task) => Boolean(extractStoryboardMediaUrl(task, mediaPickerKind))),
     [mediaHistoryData?.tasks, mediaPickerKind],
   );
+  const currentProjectName = activeDraft ? getStoryboardReviewName(activeDraft) : t("mediaStudio.storyboardReview");
+  const filteredReviewProjects = useMemo(() => {
+    const reviews = (reviewProjectsData?.reviews ?? []) as any[];
+    const query = projectSearchQuery.trim().toLowerCase();
+    if (!query) return reviews;
+    return reviews.filter((item) => String(item?.name ?? "").toLowerCase().includes(query));
+  }, [projectSearchQuery, reviewProjectsData?.reviews]);
+
+  useEffect(() => {
+    if (!isEditingProjectName) {
+      setProjectNameDraft(currentProjectName);
+    }
+  }, [currentProjectName, isEditingProjectName]);
 
   const saveCurrentDraft = useCallback(async (nextDraft: StoryboardReviewDraft) => {
-    if (!nextDraft.reviewId && !reviewId) return;
-    const id = nextDraft.reviewId ?? reviewId ?? undefined;
+    if (!nextDraft.reviewId && !canonicalReviewId) return;
+    const id = nextDraft.reviewId ?? canonicalReviewId ?? undefined;
     const completedClipCount = nextDraft.tasks.filter((task) => task.status === "completed" && task.url).length;
-    const result = await saveReviewMutation.mutateAsync({
-      id,
-      name: getStoryboardReviewName(nextDraft),
-      reviewData: nextDraft,
-      clipCount: nextDraft.tasks.length,
-      completedClipCount,
-      thumbnailUrl: nextDraft.tasks.find((task) => task.url)?.url ?? null,
+    emitStoryboardReviewClientDebug("save.before", {
+      id: id ?? null,
+      nextDraft: summarizeStoryboardDraftForDebug(nextDraft),
     });
-    if (!nextDraft.reviewId) {
-      const savedDraft = { ...nextDraft, reviewId: result.id };
-      draftRef.current = savedDraft;
-      writeStoryboardReviewDraft(savedDraft);
-      setDraft(savedDraft);
+    try {
+      const result = await saveReviewMutation.mutateAsync({
+        id,
+        name: getStoryboardReviewName(nextDraft),
+        reviewData: nextDraft,
+        clipCount: nextDraft.tasks.length,
+        completedClipCount,
+        thumbnailUrl: nextDraft.tasks.find((task) => task.url)?.url ?? null,
+        debugSource: buildStoryboardReviewDebugSource("StoryboardReviewPage.saveCurrentDraft", nextDraft),
+      });
+      const returnedDraft = normalizeStoryboardReviewDraft(
+        (result as { reviewData?: Partial<StoryboardReviewDraft> | null }).reviewData,
+      );
+      if (returnedDraft) {
+        const serverDraft = {
+          ...returnedDraft,
+          reviewId: result.id,
+          name: returnedDraft.name ?? nextDraft.name ?? null,
+        };
+        const savedDraft = preferCanonicalServerCompanionAudio(
+          nextDraft,
+          serverDraft,
+          mergeFresherStoryboardReviewTasks(nextDraft, serverDraft),
+        ) ?? nextDraft;
+        emitStoryboardReviewClientDebug("save.after", {
+          resultId: result.id,
+          nextDraft: summarizeStoryboardDraftForDebug(nextDraft),
+          returnedDraft: summarizeStoryboardDraftForDebug(serverDraft),
+          savedDraft: summarizeStoryboardDraftForDebug(savedDraft),
+        });
+        draftRef.current = savedDraft;
+        writeStoryboardReviewDraft(savedDraft);
+        setDraft(savedDraft);
+      } else if (!nextDraft.reviewId) {
+        const savedDraft = { ...nextDraft, reviewId: result.id };
+        emitStoryboardReviewClientDebug("save.after", {
+          resultId: result.id,
+          nextDraft: summarizeStoryboardDraftForDebug(nextDraft),
+          returnedDraft: null,
+          savedDraft: summarizeStoryboardDraftForDebug(savedDraft),
+        });
+        draftRef.current = savedDraft;
+        writeStoryboardReviewDraft(savedDraft);
+        setDraft(savedDraft);
+      } else {
+        emitStoryboardReviewClientDebug("save.after", {
+          resultId: result.id,
+          nextDraft: summarizeStoryboardDraftForDebug(nextDraft),
+          returnedDraft: null,
+          savedDraft: summarizeStoryboardDraftForDebug(nextDraft),
+        });
+      }
+      void trpcUtils.videoEditorProjects.getStoryboardReview.invalidate({ id: result.id });
+      void refetchReviews();
+    } catch (error) {
+      emitStoryboardReviewClientDebug("save.error", {
+        id: id ?? null,
+        nextDraft: summarizeStoryboardDraftForDebug(nextDraft),
+        message: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-    void trpcUtils.videoEditorProjects.getStoryboardReview.invalidate({ id: result.id });
-    void refetchReviews();
-  }, [refetchReviews, reviewId, saveReviewMutation, trpcUtils]);
+  }, [canonicalReviewId, emitStoryboardReviewClientDebug, refetchReviews, saveReviewMutation, trpcUtils]);
 
   const persistDraftUpdate = useCallback(async (
     updater: (current: StoryboardReviewDraft) => StoryboardReviewDraft,
@@ -485,18 +761,33 @@ export default function StoryboardReviewPage() {
     if (reviewId && current.reviewId !== reviewId) return null;
 
     const next = ensureDraftNewerThan(updater(current), current);
+    emitStoryboardReviewClientDebug("persistDraftUpdate.localWrite", {
+      before: summarizeStoryboardDraftForDebug(current),
+      nextDraft: summarizeStoryboardDraftForDebug(next),
+    });
     draftRef.current = next;
     writeStoryboardReviewDraft(next);
     setDraft(next);
     await saveCurrentDraft(next);
     return next;
-  }, [reviewId, saveCurrentDraft]);
+  }, [emitStoryboardReviewClientDebug, reviewId, saveCurrentDraft]);
 
   const setAndSaveDraft = useCallback((updater: (current: StoryboardReviewDraft) => StoryboardReviewDraft) => {
     void persistDraftUpdate(updater).catch((error) => {
       toast.error(error instanceof Error ? error.message : t("mediaStudio.storyboardReviewSaveFailed"));
     });
   }, [persistDraftUpdate, t]);
+
+  const saveProjectName = useCallback(() => {
+    const name = projectNameDraft.trim();
+    if (!activeDraft || !name) return;
+    setIsEditingProjectName(false);
+    setAndSaveDraft((current) => ({
+      ...current,
+      name,
+      updatedAt: Date.now(),
+    }));
+  }, [activeDraft, projectNameDraft, setAndSaveDraft]);
 
   useEffect(() => {
     if (!reviewId || !activeDraft || activeDraft.reviewId !== reviewId) return;
@@ -651,12 +942,25 @@ export default function StoryboardReviewPage() {
   }, [setAndSaveDraft]);
 
   const removeStoryboardAudio = useCallback((audioId: string) => {
-    setAndSaveDraft((current) => ({
-      ...current,
-      updatedAt: Date.now(),
-      companionAudio: current.companionAudio.filter((audio) => audio.id !== audioId),
-    }));
-  }, [setAndSaveDraft]);
+    const now = Date.now();
+    emitStoryboardReviewClientDebug("audio.remove.requested", {
+      audioId,
+      before: summarizeStoryboardDraftForDebug(draftRef.current),
+    });
+    setAndSaveDraft((current) => {
+      const next = {
+        ...current,
+        updatedAt: now,
+        companionAudio: current.companionAudio.filter((audio) => audio.id !== audioId),
+        companionAudioUpdatedAt: now,
+      };
+      emitStoryboardReviewClientDebug("audio.remove.nextDraft", {
+        audioId,
+        nextDraft: summarizeStoryboardDraftForDebug(next),
+      });
+      return next;
+    });
+  }, [emitStoryboardReviewClientDebug, setAndSaveDraft]);
 
   const addImportedVideoToStoryboard = useCallback((input: {
     idPrefix: string;
@@ -693,8 +997,8 @@ export default function StoryboardReviewPage() {
     toast.success(t("mediaStudio.storyboardReviewVideoAdded"));
   }, [setAndSaveDraft, t]);
 
-  const uploadVideoToStoryboardSlot = useCallback(async (taskId: string, mode: "replace" | "insert-after") => {
-    const file = await new Promise<File | null>((resolve) => {
+  const uploadVideoToStoryboardSlot = useCallback(async (taskId: string, mode: "replace" | "insert-after", files?: FileList | File[]) => {
+    const file = files?.[0] ?? await new Promise<File | null>((resolve) => {
       const input = document.createElement("input");
       input.type = "file";
       input.accept = "video/*";
@@ -772,6 +1076,15 @@ export default function StoryboardReviewPage() {
       toast.error(t("mediaStudio.storyboardReviewAudioLimit"));
       return;
     }
+    emitStoryboardReviewClientDebug("audio.add.requested", {
+      input: {
+        idPrefix: input.idPrefix,
+        title: input.title.slice(0, 140),
+        model: input.model?.slice(0, 100) ?? null,
+        durationSeconds: input.durationSeconds ?? null,
+      },
+      before: summarizeStoryboardDraftForDebug(draftRef.current),
+    });
     setAndSaveDraft((current) => {
       if (current.companionAudio.length >= 2) {
         toast.error(t("mediaStudio.storyboardReviewAudioLimit"));
@@ -792,14 +1105,21 @@ export default function StoryboardReviewPage() {
         durationSeconds: input.durationSeconds,
         targetDurationSeconds,
       });
-      return {
+      const now = Date.now();
+      const next = {
         ...current,
-        updatedAt: Date.now(),
+        updatedAt: now,
         companionAudio: [...current.companionAudio, audio],
+        companionAudioUpdatedAt: now,
       };
+      emitStoryboardReviewClientDebug("audio.add.nextDraft", {
+        addedAudio: summarizeStoryboardAudioForDebug(audio),
+        nextDraft: summarizeStoryboardDraftForDebug(next),
+      });
+      return next;
     });
     toast.success(t("mediaStudio.storyboardReviewAudioAdded"));
-  }, [activeDraft?.companionAudio.length, setAndSaveDraft, t]);
+  }, [activeDraft?.companionAudio.length, emitStoryboardReviewClientDebug, setAndSaveDraft, t]);
 
   const addLibraryItemToStoryboard = useCallback((item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
@@ -934,13 +1254,13 @@ export default function StoryboardReviewPage() {
     }
   }, [buildSelectedProject, draft, saveProjectMutation, setAndSaveDraft]);
 
-  const planScenePrompts = useCallback(async (options: StoryboardPromptPlannerOptions) => {
+  const planScenePrompts = useCallback(async (options: StoryboardPromptPlannerOptions, targetTaskId?: string) => {
     if (!draft) return;
     const reviewTasks = storyboardDraftToReviewTasks(draft);
     const selectedIds = draft.selectedTaskIds.length > 0 ? new Set(draft.selectedTaskIds) : new Set(draft.taskIds);
     const candidateTasks = reviewTasks.filter((task) => {
       const refs = task.referenceUrls?.map((url) => String(url || "").trim()).filter(Boolean) ?? [];
-      return selectedIds.has(task.id) && refs.length >= 2 && task.canRegenerate !== false;
+      return (targetTaskId ? task.id === targetTaskId : selectedIds.has(task.id)) && refs.length >= 2 && task.canRegenerate !== false;
     });
     if (candidateTasks.length === 0) {
       toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
@@ -963,22 +1283,58 @@ export default function StoryboardReviewPage() {
     }));
 
     try {
+      const orderedDraftTasks = draft.taskIds
+        .map((taskId) => draft.tasks.find((task) => task.id === taskId))
+        .filter((task): task is StoryboardGenerationTask => Boolean(task));
+      const draftTaskPositionById = new Map(orderedDraftTasks.map((task, index) => [task.id, index]));
+      const targetVoiceContext = targetTaskId
+        ? getStoryboardPlannerVoiceContext(orderedDraftTasks.find((task) => task.id === targetTaskId))
+        : null;
+      const voiceoverFullScript = targetVoiceContext?.voiceoverFullScript
+        || orderedDraftTasks
+          .map((task) => getStoryboardPlannerVoiceContext(task).voiceoverScript)
+          .filter(Boolean)
+          .join("\n");
       const result = await planStoryboardVideoPromptsMutation.mutateAsync({
         productMetadata: productMetadata as Record<string, unknown> | null,
         includeVoiceover: options.includeVoiceover,
+        speechMode: options.speechMode,
+        speechLanguage: options.speechLanguage,
         includeSound: options.includeSound,
         tone: options.tone,
         language: options.language,
-        slots: candidateTasks.map((task) => ({
-          id: task.id,
-          index: task.index,
-          currentPrompt: task.prompt,
-          startFrameUrl: task.referenceUrls?.[0] || "",
-          endFrameUrl: task.referenceUrls?.[1] || "",
-          aspectRatio: task.generationAspectRatio,
-          durationSeconds: task.durationSeconds,
-          model: task.generationModelId || task.model,
-        })),
+        conceptDetails: draft.conceptDetails ?? undefined,
+        storyboardGuide: draft.storyboardGuide ?? undefined,
+        slots: candidateTasks.map((task) => {
+          const sourceTask = draft.tasks.find((item) => item.id === task.id);
+          const sourceTaskPosition = sourceTask ? draftTaskPositionById.get(sourceTask.id) : undefined;
+          const previousTask = typeof sourceTaskPosition === "number" ? orderedDraftTasks[sourceTaskPosition - 1] : undefined;
+          const nextTask = typeof sourceTaskPosition === "number" ? orderedDraftTasks[sourceTaskPosition + 1] : undefined;
+          const previousVoiceContext = getStoryboardPlannerVoiceContext(previousTask);
+          const nextVoiceContext = getStoryboardPlannerVoiceContext(nextTask);
+          return {
+            id: task.id,
+            index: task.index,
+            currentPrompt: task.prompt,
+            startFrameUrl: task.referenceUrls?.[0] || "",
+            endFrameUrl: task.referenceUrls?.[1] || "",
+            frameRoles: sourceTask ? getTaskReferenceFrameRoles(sourceTask) : ["start", "stop"],
+            conceptDetails: draft.conceptDetails ?? undefined,
+            storyboardGuide: draft.storyboardGuide ?? undefined,
+            aspectRatio: task.generationAspectRatio,
+            durationSeconds: task.durationSeconds,
+            model: task.generationModelId || task.model,
+            ...(targetTaskId ? {
+              voiceoverFullScript: voiceoverFullScript || undefined,
+              previousVoiceoverScript: previousVoiceContext.voiceoverScript || undefined,
+              nextVoiceoverScript: nextVoiceContext.voiceoverScript || undefined,
+              previousJourneyStage: previousVoiceContext.journeyStage || undefined,
+              nextJourneyStage: nextVoiceContext.journeyStage || undefined,
+              previousPrompt: previousTask?.prompt,
+              nextPrompt: nextTask?.prompt,
+            } : {}),
+          };
+        }),
       });
       const plannedById = new Map(result.slots.map((slot) => [slot.id, slot]));
       const nextStatus = `${plannedStatusLabel} ${result.slots.length}/${candidateTasks.length}`;
@@ -989,21 +1345,24 @@ export default function StoryboardReviewPage() {
         tasks: current.tasks.map((task) => {
           const planned = plannedById.get(task.id);
           if (!planned) return task;
-          const voiceoverSection = options.includeVoiceover && planned.voiceoverScript
-            ? `\n\nVOICEOVER SCRIPT:\n${planned.voiceoverScript}`
-            : "";
-          const soundSection = options.includeSound && planned.soundBrief
-            ? `\n\nSOUND / MUSIC BRIEF:\n${planned.soundBrief}`
-            : "";
-          const prompt = `${planned.videoPrompt || task.prompt}${voiceoverSection}${soundSection}`.trim();
+          const prompt = buildStoryboardPlannedPrompt({
+            basePrompt: planned.videoPrompt || task.prompt,
+            durationSeconds: task.storyboardContext?.duration ?? task.durationSeconds,
+            aspectRatio: task.storyboardContext?.aspectRatio ?? task.aspectRatio ?? null,
+            frameRoles: getTaskReferenceFrameRoles(task),
+            conceptDetails: draft.conceptDetails ?? null,
+            storyboardGuide: draft.storyboardGuide ?? null,
+            includeVoiceover: options.includeVoiceover,
+            speechMode: options.speechMode,
+            speechLanguage: options.speechLanguage,
+            voiceoverScript: planned.voiceoverScript,
+            includeSound: options.includeSound,
+            soundBrief: planned.soundBrief,
+          });
           return {
             ...task,
             prompt,
-            status: task.status === "completed" ? "queued" : task.status,
-            url: task.status === "completed" ? undefined : task.url,
             error: undefined,
-            backendTaskId: undefined,
-            providerTaskId: undefined,
             statusDetail: planned.journeyStage
               ? `Prompt planned: ${planned.journeyStage}`
               : plannedStatusLabel,
@@ -1017,6 +1376,8 @@ export default function StoryboardReviewPage() {
                       skillId: "storyboard-video-customer-journey-prompt",
                       journeyStage: planned.journeyStage,
                       voiceoverScript: planned.voiceoverScript,
+                      speechMode: options.speechMode,
+                      speechLanguage: options.speechLanguage,
                       soundBrief: planned.soundBrief,
                       qualityNotes: planned.qualityNotes,
                       globalVideoStrategy: result.globalVideoStrategy,
@@ -1057,6 +1418,53 @@ export default function StoryboardReviewPage() {
           }
         : task),
       compoundStatus: null,
+    }));
+  }, [locale, setAndSaveDraft]);
+
+  const updateConceptDetails = useCallback((value: string) => {
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      conceptDetails: value,
+    }));
+  }, [setAndSaveDraft]);
+
+  const updateStoryboardGuide = useCallback((value: string) => {
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      storyboardGuide: value,
+    }));
+  }, [setAndSaveDraft]);
+
+  const updateReferenceFrameRole = useCallback((taskId: string, frameIndex: 0 | 1, role: StoryboardReferenceFrameRole) => {
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      tasks: current.tasks.map((task) => {
+        if (task.id !== taskId || !task.storyboardContext) return task;
+        const roles = getTaskReferenceFrameRoles(task);
+        roles[frameIndex] = role;
+        const generationType = generationTypeForFrameRoles(roles);
+        return {
+          ...task,
+          status: task.status === "completed" ? "queued" : task.status,
+          url: task.status === "completed" ? undefined : task.url,
+          backendTaskId: undefined,
+          providerTaskId: undefined,
+          error: undefined,
+          statusDetail: locale === "th" ? "อัปเดตบทบาทภาพแนบแล้ว" : "Reference frame role updated",
+          updatedAt: Date.now(),
+          storyboardContext: {
+            ...task.storyboardContext,
+            extraParams: {
+              ...(task.storyboardContext.extraParams ?? {}),
+              generationType,
+              referenceFrameRoles: roles,
+            },
+          },
+        };
+      }),
     }));
   }, [locale, setAndSaveDraft]);
 
@@ -1150,14 +1558,18 @@ export default function StoryboardReviewPage() {
         return false;
       }
       const context = task.storyboardContext;
-      const generationType = String(context.extraParams?.generationType ?? "").trim();
+      const frameRoles = getTaskReferenceFrameRoles(task);
+      const generationType = generationTypeForFrameRoles(frameRoles);
       const startFrameUrl = context.referenceImages?.[0]?.url?.trim();
       const endFrameUrl = context.referenceImages?.[1]?.url?.trim();
-      const generationPrompt = generationType === "FIRST_AND_LAST_FRAMES_2_VIDEO" && startFrameUrl && endFrameUrl
+      const generationPrompt = startFrameUrl && endFrameUrl
         ? stripPromptCodeFence((await generateStoryboardVideoPromptMutation.mutateAsync({
           currentPrompt: normalizedPrompt,
           startFrameUrl,
           endFrameUrl,
+          frameRoles,
+          conceptDetails: draft.conceptDetails ?? undefined,
+          storyboardGuide: draft.storyboardGuide ?? undefined,
           aspectRatio: context.aspectRatio,
           durationSeconds: context.duration ?? task.durationSeconds,
           model: context.model,
@@ -1171,12 +1583,18 @@ export default function StoryboardReviewPage() {
         }));
       }
       const payload = buildMediaStudioCommonPayload({
-        prompt: prepareVeoPromptForGenerationType(generationPrompt, context.extraParams?.generationType),
+        prompt: prepareVeoPromptForGenerationType(generationPrompt, generationType),
         model: context.model,
         aspectRatio: context.aspectRatio,
         referenceImages: context.referenceImages as any,
         referenceVideos: context.referenceVideos as any,
-        extraParams: context.extraParams,
+        extraParams: {
+          ...(context.extraParams ?? {}),
+          generationType,
+          referenceFrameRoles: frameRoles,
+          ...(draft.conceptDetails ? { productionConceptDetails: draft.conceptDetails } : {}),
+          ...(draft.storyboardGuide ? { storyboardGuide: draft.storyboardGuide } : {}),
+        },
         apiConfig: context.apiConfig,
         resolution: context.resolution,
       });
@@ -1269,8 +1687,8 @@ export default function StoryboardReviewPage() {
     toast.success(t("mediaStudio.storyboardReviewDeleted"));
   }, [deleteReviewMutation, draft?.reviewId, refetchReviews, reviewId, setLocation]);
 
-  const reviewNotFound = !!reviewId && !isReviewLoading && review === null;
-  const isLoading = !!reviewId && !reviewNotFound && (isReviewLoading || !activeDraft);
+  const reviewNotFound = !!canonicalReviewId && !isReviewLoading && review === null;
+  const isLoading = !!canonicalReviewId && !reviewNotFound && (isReviewLoading || !activeDraft);
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 xl:h-dvh xl:overflow-hidden">
@@ -1292,6 +1710,64 @@ export default function StoryboardReviewPage() {
                 <Film className="h-5 w-5 text-cyan-600" />
                 {t("mediaStudio.storyboardReview")}
               </div>
+              {activeDraft ? (
+                <div className="mt-2 flex max-w-3xl flex-wrap items-center gap-2">
+                  {isEditingProjectName ? (
+                    <>
+                      <Input
+                        value={projectNameDraft}
+                        onChange={(event) => setProjectNameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveProjectName();
+                          if (event.key === "Escape") {
+                            setProjectNameDraft(currentProjectName);
+                            setIsEditingProjectName(false);
+                          }
+                        }}
+                        aria-label={locale === "th" ? "ชื่อ project" : "Project name"}
+                        className="h-9 w-full max-w-md bg-white sm:w-96"
+                        autoFocus
+                      />
+                      <Button type="button" size="sm" onClick={saveProjectName} disabled={!projectNameDraft.trim()}>
+                        <Check className="mr-2 h-4 w-4" />
+                        {locale === "th" ? "บันทึกชื่อ" : "Save name"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setProjectNameDraft(currentProjectName);
+                          setIsEditingProjectName(false);
+                        }}
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        {t("common.cancel")}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <h1 className="max-w-xl truncate text-base font-semibold text-slate-900 sm:text-lg">
+                        {currentProjectName}
+                      </h1>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => {
+                          setProjectNameDraft(currentProjectName);
+                          setIsEditingProjectName(true);
+                        }}
+                        aria-label={locale === "th" ? "แก้ไขชื่อ project" : "Edit project name"}
+                      >
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        {locale === "th" ? "แก้ชื่อ" : "Rename"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : null}
               <p className="mt-1 text-sm text-slate-600">
                 {t("mediaStudio.storyboardReviewPageDescription")}
               </p>
@@ -1327,11 +1803,16 @@ export default function StoryboardReviewPage() {
               onSelectNone={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: [] }))}
               onRegenerateTask={regenerateTask}
               onUpdateTaskPrompt={updateTaskPrompt}
+              conceptDetails={activeDraft.conceptDetails ?? ""}
+              onConceptDetailsChange={updateConceptDetails}
+              storyboardGuide={activeDraft.storyboardGuide ?? ""}
+              onStoryboardGuideChange={updateStoryboardGuide}
               onPlanScenePrompts={planScenePrompts}
               isPlanningScenePrompts={planStoryboardVideoPromptsMutation.isPending}
               onStartGenerationBatch={startStoryboardGenerationBatch}
               onCancelGeneration={cancelStoryboardGeneration}
               onReplaceReferenceFrame={replaceReferenceFrame}
+              onUpdateReferenceFrameRole={updateReferenceFrameRole}
               onUploadReferenceFrame={uploadReferenceFrameFiles}
               replacingReferenceFrameKey={replacingReferenceFrameKey}
               onUploadVideoSlot={uploadVideoToStoryboardSlot}
@@ -1393,27 +1874,53 @@ export default function StoryboardReviewPage() {
                   variant={mediaPickerKind === "audio" ? "default" : "outline"}
                   onClick={() => {
                     setMediaPickerKind("audio");
+                    setAudioSourceTab("library");
                     setSelectedLibraryItemId(null);
                   }}
                 >
                   {t("mediaStudio.storyboardReviewAudioTrack")}
                 </Button>
               </div>
-              <LibrarySearchPanel
-                query={librarySearchQuery}
-                onQueryChange={setLibrarySearchQuery}
-                isLoading={isLibrarySearchLoading}
-                results={librarySearchResults}
-                totalResults={librarySearchData?.total ?? 0}
-                hasMore={librarySearchData?.has_more ?? false}
-                errorMessage={librarySearchError?.message}
-                selectedItemId={selectedLibraryItemId}
-                itemTypeFilter={mediaPickerKind}
-                addToReferenceLabel={mediaPickerKind === "audio" ? t("mediaStudio.storyboardReviewAddAudio") : t("mediaStudio.storyboardReviewAddClip")}
-                canAddToReferenceItem={(item) => item.item_type.toLowerCase() === mediaPickerKind && Boolean(item.source_url)}
-                onAddToReference={addLibraryItemToStoryboard}
-                onSelect={addLibraryItemToStoryboard}
-              />
+              {mediaPickerKind === "audio" ? (
+                <div className="mb-2 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={audioSourceTab === "library" ? "default" : "ghost"}
+                    className={audioSourceTab === "library" ? "" : "bg-transparent"}
+                    onClick={() => setAudioSourceTab("library")}
+                  >
+                    {locale === "th" ? "คลังสื่อ" : "Library"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={audioSourceTab === "history" ? "default" : "ghost"}
+                    className={audioSourceTab === "history" ? "" : "bg-transparent"}
+                    onClick={() => setAudioSourceTab("history")}
+                  >
+                    {t("mediaStudio.storyboardReviewMediaHistory")}
+                  </Button>
+                </div>
+              ) : null}
+              {(mediaPickerKind !== "audio" || audioSourceTab === "library") ? (
+                <LibrarySearchPanel
+                  query={librarySearchQuery}
+                  onQueryChange={setLibrarySearchQuery}
+                  isLoading={isLibrarySearchLoading}
+                  results={librarySearchResults}
+                  totalResults={librarySearchData?.total ?? 0}
+                  hasMore={librarySearchData?.has_more ?? false}
+                  errorMessage={librarySearchError?.message}
+                  selectedItemId={selectedLibraryItemId}
+                  itemTypeFilter={mediaPickerKind}
+                  addToReferenceLabel={mediaPickerKind === "audio" ? t("mediaStudio.storyboardReviewAddAudio") : t("mediaStudio.storyboardReviewAddClip")}
+                  canAddToReferenceItem={(item) => item.item_type.toLowerCase() === mediaPickerKind && Boolean(item.source_url)}
+                  onAddToReference={addLibraryItemToStoryboard}
+                  onSelect={addLibraryItemToStoryboard}
+                />
+              ) : null}
+              {(mediaPickerKind !== "audio" || audioSourceTab === "history") ? (
               <div className="mt-3 rounded-lg border bg-white p-2">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="text-xs font-semibold uppercase text-slate-500">{t("mediaStudio.storyboardReviewMediaHistory")}</h3>
@@ -1429,23 +1936,44 @@ export default function StoryboardReviewPage() {
                     ) : (
                       historyMediaTasks.map((task) => {
                         const resultUrl = extractStoryboardMediaUrl(task, mediaPickerKind);
+                        const title = task.prompt || task.model || t("mediaStudio.storyboardReviewMediaHistoryItem");
                         return (
                           <div key={task.id || task.taskId} className="rounded-md border bg-white p-2">
-                            <div className="flex gap-2">
-                              <div className="flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
-                                {mediaPickerKind === "video" && resultUrl ? (
-                                  <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                                ) : mediaPickerKind === "audio" ? (
-                                  <Music2 className="h-4 w-4 text-slate-400" />
-                                ) : (
-                                  <Film className="h-4 w-4 text-slate-400" />
-                                )}
+                            {mediaPickerKind === "audio" && resultUrl ? (
+                              <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2.5">
+                                <div className="mb-2 flex flex-col items-center gap-2 text-center">
+                                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                                    <Music2 className="h-6 w-6" />
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="line-clamp-2 text-xs font-semibold text-amber-950" title={title}>{title}</div>
+                                    <div className="truncate text-[11px] text-amber-800/70">{task.model || task.mediaType}</div>
+                                  </div>
+                                </div>
+                                <audio
+                                  src={resultUrl}
+                                  controls
+                                  preload="metadata"
+                                  className="h-9 w-full"
+                                  onClick={(event) => event.stopPropagation()}
+                                  onDragStart={(event) => event.preventDefault()}
+                                />
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-xs font-medium text-slate-900">{task.prompt || task.model || t("mediaStudio.storyboardReviewMediaHistoryItem")}</div>
-                                <div className="truncate text-[11px] text-slate-500">{task.model || task.mediaType}</div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <div className="flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
+                                  {mediaPickerKind === "video" && resultUrl ? (
+                                    <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                  ) : (
+                                    <Film className="h-4 w-4 text-slate-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-xs font-medium text-slate-900">{title}</div>
+                                  <div className="truncate text-[11px] text-slate-500">{task.model || task.mediaType}</div>
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <Button
                               type="button"
                               size="sm"
@@ -1461,6 +1989,7 @@ export default function StoryboardReviewPage() {
                     )}
                 </div>
               </div>
+              ) : null}
             </div>
           </div>
 
@@ -1474,13 +2003,26 @@ export default function StoryboardReviewPage() {
               </div>
               <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
             </div>
+            <div className="relative mt-3">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={projectSearchQuery}
+                onChange={(event) => setProjectSearchQuery(event.target.value)}
+                placeholder={locale === "th" ? "ค้นหา project ด้วยชื่อ..." : "Search projects by name..."}
+                className="h-9 bg-white pl-9"
+              />
+            </div>
           </div>
           <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain pr-1">
             <div className="space-y-2 p-3 pr-2">
-              {(reviewProjectsData?.reviews ?? []).length === 0 ? (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-slate-500">{t("mediaStudio.storyboardReviewProjectsEmpty")}</div>
+              {filteredReviewProjects.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-slate-500">
+                  {projectSearchQuery.trim()
+                    ? (locale === "th" ? "ไม่พบ project ที่ตรงกับคำค้นหา" : "No projects match this search.")
+                    : t("mediaStudio.storyboardReviewProjectsEmpty")}
+                </div>
               ) : (
-                (reviewProjectsData?.reviews ?? []).map((item: any) => {
+                filteredReviewProjects.map((item: any) => {
                   const thumbnailUrl = getStoryboardReviewProjectThumbnail(item);
                   const showVideoThumbnail = thumbnailUrl ? isProbablyVideoUrl(thumbnailUrl) : false;
                   const showImageThumbnail = thumbnailUrl ? isProbablyImageUrl(thumbnailUrl) || !showVideoThumbnail : false;

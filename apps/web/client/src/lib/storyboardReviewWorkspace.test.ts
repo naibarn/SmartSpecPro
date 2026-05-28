@@ -1,12 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFirstLastFrameStoryboardTasks,
   mergeFresherStoryboardReviewTasks,
+  readStoryboardReviewDraft,
   replaceStoryboardVideoSlot,
   replaceStoryboardReferenceFrame,
   storyboardDraftToReviewTasks,
+  STORYBOARD_REVIEW_DRAFT_STORAGE_KEY,
   type StoryboardReviewDraft,
 } from "./storyboardReviewWorkspace";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("buildFirstLastFrameStoryboardTasks", () => {
   it("creates one queued video task per adjacent image pair", () => {
@@ -46,6 +52,12 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       resolution: "1080p",
       generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
     });
+    expect(tasks[0]?.prompt).toContain("Create an 8-second cinematic video.");
+    expect(tasks[0]?.prompt).toContain("Scene:\n");
+    expect(tasks[0]?.prompt).toContain("Action:\n");
+    expect(tasks[0]?.prompt).toContain("Camera:\n");
+    expect(tasks[0]?.prompt).toContain("Audio:\n");
+    expect(tasks[0]?.prompt).toContain("Dialogue:\nNo spoken dialogue.");
   });
 
   it("keeps marketplace metadata on sliced frame storyboard tasks", () => {
@@ -79,6 +91,52 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
     ]);
     expect(tasks[0]?.storyboardContext?.extraParams?.marketplaceContext).toEqual(marketplaceContext);
+  });
+
+  it("applies split storyboard speech and sound planner options to Veo prompts", () => {
+    const marketplaceContext = {
+      productId: "product-1",
+      platform: "tiktok_shop" as const,
+      productName: "โต๊ะข้างเตียง",
+    };
+
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        { url: "https://example.com/1.jpg", name: "Frame 1", marketplaceProduct: marketplaceContext },
+        { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        duration: 8,
+        marketplaceContext,
+        includeVoiceover: true,
+        speechMode: "th",
+        speechLanguage: "Thai",
+        includeSound: true,
+        storyboardGuide: "Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.",
+        promptTone: "sales",
+        promptLanguage: "th",
+        now: 12345,
+      },
+    );
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toContain("Storyboard guide for shot order and continuity: Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.");
+    expect(tasks[0]?.storyboardContext?.extraParams?.storyboardGuide).toContain("Shot order");
+    expect(tasks[0]?.prompt).toContain("Prompt tone: sales");
+    expect(tasks[0]?.prompt).toContain("Prompt planning language: th");
+    expect(tasks[0]?.prompt).toContain("Sound design: Soft ambient ecommerce product sound design");
+    expect(tasks[0]?.prompt).toContain("Dialogue must be spoken in natural Thai, central Thai accent.");
+    expect(tasks[0]?.prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "เริ่มจากปัญหาหน้างาน');
+    expect(tasks[0]?.storyboardContext?.extraParams?.storyboardPromptPlanner).toMatchObject({
+      includeVoiceover: true,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      includeSound: true,
+      tone: "sales",
+      language: "th",
+    });
   });
 
   it("does not create tasks without at least two usable images", () => {
@@ -160,6 +218,61 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     expect(storyboardDraftToReviewTasks(draft)[0]?.generationAspectRatio).toBe("9:16");
   });
 
+  it("renders review tasks in saved taskIds order after refresh or merge", () => {
+    const draft: StoryboardReviewDraft = {
+      version: 1,
+      updatedAt: 1000,
+      taskIds: ["shot-1", "inserted-1", "shot-2"],
+      selectedTaskIds: ["shot-1", "inserted-1", "shot-2"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+        {
+          id: "shot-2",
+          index: 2,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 2",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-2.mp4",
+        },
+        {
+          id: "inserted-1",
+          index: 1,
+          status: "completed",
+          type: "video",
+          prompt: "Inserted upload",
+          model: "Uploaded",
+          createdAt: 2000,
+          updatedAt: 2000,
+          url: "/files/inserted.mp4",
+          source: "imported",
+        },
+      ],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    };
+
+    expect(storyboardDraftToReviewTasks(draft).map((task) => task.id)).toEqual([
+      "shot-1",
+      "inserted-1",
+      "shot-2",
+    ]);
+  });
+
   it("replaces a video slot with the uploaded clip and invalidates stale render links", () => {
     const draft: StoryboardReviewDraft = {
       version: 1,
@@ -228,7 +341,10 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       createdAt: 900,
       updatedAt: 2000,
     });
-    expect(next.tasks[0]?.storyboardContext).toBeUndefined();
+    expect(next.tasks[0]?.storyboardContext).toMatchObject({
+      aspectRatio: "16:9",
+      model: "veo-3-1",
+    });
   });
 
   it("keeps fresher task media when merging a stale draft with a newer timestamp", () => {
@@ -272,6 +388,278 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       updatedAt: 4000,
       compoundStatus: "Recovered storyboard review",
       tasks: [{ id: "shot-1", updatedAt: 3000, url: "/files/v7.mp4" }],
+    });
+  });
+
+  it("keeps an imported inserted shot when a refreshed draft does not include it yet", () => {
+    const existing: StoryboardReviewDraft = {
+      version: 1,
+      reviewId: 12,
+      updatedAt: 3000,
+      taskIds: ["shot-1", "inserted-1", "shot-2"],
+      selectedTaskIds: ["shot-1", "inserted-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+        {
+          id: "inserted-1",
+          index: 1,
+          status: "completed",
+          type: "video",
+          prompt: "Inserted upload",
+          model: "Uploaded",
+          createdAt: 3000,
+          updatedAt: 3000,
+          url: "/files/inserted.mp4",
+          source: "imported",
+        },
+        {
+          id: "shot-2",
+          index: 2,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 2",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-2.mp4",
+        },
+      ],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    };
+    const incoming: StoryboardReviewDraft = {
+      ...existing,
+      updatedAt: 3500,
+      taskIds: ["shot-1", "shot-2"],
+      selectedTaskIds: ["shot-1"],
+      tasks: existing.tasks.filter((task) => task.id !== "inserted-1"),
+    };
+
+    expect(mergeFresherStoryboardReviewTasks(existing, incoming)).toMatchObject({
+      taskIds: ["shot-1", "inserted-1", "shot-2"],
+      selectedTaskIds: ["shot-1", "inserted-1"],
+      tasks: expect.arrayContaining([
+        expect.objectContaining({ id: "inserted-1", source: "imported", url: "/files/inserted.mp4" }),
+      ]),
+    });
+  });
+
+  it("keeps locally added companion audio when a stale refreshed draft does not include it yet", () => {
+    const existing: StoryboardReviewDraft = {
+      version: 1,
+      reviewId: 12,
+      updatedAt: 4000,
+      companionAudioUpdatedAt: 5000,
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+      ],
+      companionAudio: [
+        {
+          id: "audio-new",
+          url: "/files/new-audio.mp3",
+          title: "New narration",
+          prompt: "New narration",
+          model: "uvoice/tts-natural",
+          kind: "voiceover",
+          targetDurationSeconds: 45,
+        },
+      ],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    };
+    const incoming: StoryboardReviewDraft = {
+      ...existing,
+      updatedAt: 3500,
+      companionAudioUpdatedAt: 3000,
+      companionAudio: [],
+    };
+
+    expect(mergeFresherStoryboardReviewTasks(existing, incoming)).toMatchObject({
+      companionAudioUpdatedAt: 5000,
+      companionAudio: [
+        expect.objectContaining({ id: "audio-new", url: "/files/new-audio.mp3" }),
+      ],
+    });
+  });
+
+  it("keeps a newer local companion audio removal instead of restoring older server audio", () => {
+    const existing: StoryboardReviewDraft = {
+      version: 1,
+      reviewId: 12,
+      updatedAt: 5000,
+      companionAudioUpdatedAt: 5000,
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+      ],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    };
+    const incoming: StoryboardReviewDraft = {
+      ...existing,
+      updatedAt: 6000,
+      companionAudioUpdatedAt: 4000,
+      companionAudio: [
+        {
+          id: "audio-old",
+          url: "/files/old-audio.mp3",
+          title: "Old narration",
+          prompt: "Old narration",
+          model: "uvoice/tts-natural",
+          kind: "voiceover",
+        },
+      ],
+    };
+
+    expect(mergeFresherStoryboardReviewTasks(existing, incoming)).toMatchObject({
+      companionAudioUpdatedAt: 5000,
+      companionAudio: [],
+    });
+  });
+
+  it("does not let legacy audio without an explicit audio timestamp overwrite newer audio", () => {
+    const existing: StoryboardReviewDraft = {
+      version: 1,
+      reviewId: 12,
+      updatedAt: 5000,
+      companionAudioUpdatedAt: 5000,
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+      ],
+      companionAudio: [
+        {
+          id: "audio-new",
+          url: "/files/new-audio.mp3",
+          title: "New narration",
+          prompt: "New narration",
+          model: "uvoice/tts-natural",
+          kind: "voiceover",
+        },
+      ],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    };
+    const incoming = {
+      ...existing,
+      updatedAt: 6000,
+      companionAudioUpdatedAt: null,
+      companionAudio: [
+        {
+          id: "audio-old",
+          url: "/files/old-audio.mp3",
+          title: "Old music",
+          prompt: "Old music",
+          model: "imported",
+          kind: "music" as const,
+        },
+      ],
+    };
+
+    expect(mergeFresherStoryboardReviewTasks(existing, incoming)).toMatchObject({
+      companionAudioUpdatedAt: 5000,
+      companionAudio: [
+        expect.objectContaining({ id: "audio-new", url: "/files/new-audio.mp3" }),
+      ],
+    });
+  });
+
+  it("does not hydrate legacy stored audio without an explicit audio timestamp", () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+      },
+    });
+    storage.set(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      reviewId: 12,
+      updatedAt: Date.now(),
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Shot 1",
+          model: "veo",
+          createdAt: 1000,
+          updatedAt: 1000,
+          url: "/files/shot-1.mp4",
+        },
+      ],
+      companionAudio: [
+        {
+          id: "audio-old",
+          url: "/files/old-audio.mp3",
+          title: "Old music",
+          prompt: "Old music",
+          model: "imported",
+          kind: "music",
+        },
+      ],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+    }));
+
+    expect(readStoryboardReviewDraft()).toMatchObject({
+      companionAudio: [],
+      companionAudioUpdatedAt: null,
     });
   });
 });

@@ -1373,7 +1373,11 @@ export const mediaProductionRouter = router({
         !transition.ok
         && validateProductionRunTransition(run.status as ProductionRunStatus, "plan_generating").ok
         && validateProductionRunTransition("plan_generating", input.status as ProductionRunStatus).ok;
-      if (!transition.ok && !canUseImplicitPlanningStep) {
+      const canRestartReviewedWorkflow =
+        !transition.ok
+        && input.status === "plan_ready_for_review"
+        && transition.reasonCode !== "production_state_terminal";
+      if (!transition.ok && !canUseImplicitPlanningStep && !canRestartReviewedWorkflow) {
         throw new TRPCError({ code: "CONFLICT", message: transition.reasonCode ?? "Invalid production state transition" });
       }
       const now = new Date();
@@ -1662,6 +1666,8 @@ export const mediaProductionRouter = router({
           qualityGateSummary: (run as any).qualityGateSummary ?? {},
           tasks: clips,
           output: input.output,
+          conceptDetails: typeof (input.output as any)?.conceptDetails === "string" ? (input.output as any).conceptDetails : null,
+          storyboardGuide: typeof (input.output as any)?.storyboardGuide === "string" ? (input.output as any).storyboardGuide : null,
           updatedAt: Date.now(),
         };
         const [inserted] = await db
