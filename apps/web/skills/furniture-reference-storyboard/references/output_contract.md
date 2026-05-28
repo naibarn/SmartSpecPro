@@ -11,7 +11,8 @@ Required storyboard behavior:
 - For `canvas_9_16_grid_3x3_frame_9_16_exact`, describe a 9:16 final canvas with a 3x3 grid and exactly 9 distinct vertical frames.
 - The storyboard must use equal-sized panels.
 - The storyboard must be a seamless borderless edge-to-edge grid with zero white divider lines, zero black lines, zero gutters, zero margins, zero frame outlines, and zero separator lines.
-- The output image must not contain captions, frame numbers, labels, arrows, text boxes, or UI chrome unless explicitly requested.
+- The prompt must include `TEXT RENDERING POLICY`, and the output image must not contain added visible text of any kind, captions, frame numbers, labels, arrows, text boxes, UI chrome, badges, sale marks, watermarks, or promotional copy unless explicitly requested.
+- If recognizable character references are supplied for a 3x3 storyboard, include at least 2 referenced-person frames: one clear visible-face frame with the product visible and one clear visible-face product interaction frame. Use a front-facing or three-quarter camera angle by default. Back-of-head, over-shoulder, fully side/rear angle, tiny, hidden, cropped, masked, shadowed, or blurred faces do not satisfy the required identity frames.
 
 Required furniture fidelity behavior:
 - Every prompt must include a product reference lock.

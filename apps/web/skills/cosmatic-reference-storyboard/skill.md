@@ -80,6 +80,14 @@ Product packaging text, logos, and brand markings are not storyboard labels. Pre
 
 Descriptions may exist in the generated prompt text to guide each frame, but they must not be requested as visible text inside the generated storyboard image.
 
+## Default No-Extra-Text Rendering Rule
+
+Every generated prompt MUST explicitly include a `TEXT RENDERING POLICY` or negative constraint that says the generated image must contain no added visible text of any kind unless the user explicitly requests text in the image.
+
+Do not add captions, headlines, subheads, subtitles, labels, callouts, frame numbers, measurement text, arrows with text, badges, banners, stickers, price bubbles, sale marks, UI chrome, watermarks, or extra Thai/English words anywhere in the image.
+
+Allowed visible text is limited to text, logos, or markings that are physically part of the referenced product packaging or a referenced real-world environment. Do not invent new product claims, promotional copy, decorative typography, or background signs.
+
 ## Product Fidelity Rule
 
 Every generated prompt MUST explicitly preserve the exact product type shown in the reference images.
@@ -278,6 +286,8 @@ The prompt MUST explicitly forbid:
 - replacing the referenced person with a stock beauty model
 
 For skincare, cosmetic, beauty, and product-use storyboards, keep the same character identity across every frame where the person appears. The person can change pose, expression, camera angle, and lighting, but must remain recognizably the same person. If the model cannot preserve identity confidently in a frame, prefer a product-only shot, hands-only shot, or partial face crop that does not invent a new face.
+
+Whenever a generated image intentionally includes a person, choose a face-readable camera angle by default: front-facing or three-quarter view, sharp focus, well lit, unobstructed, and large enough to recognize. Avoid back-of-head, over-shoulder with no face, fully side/rear angles, hidden/cropped faces, or people looking fully away from camera unless the frame is explicitly product-only, hands-only, or partial-body without recognizable identity.
 
 When the product requires application on a face, the prompt must say: "same referenced person, face identity locked, no face swap, no generic beauty model, preserve facial proportions, hair length/style, age impression, smile character, and distinctive features from the character reference."
 

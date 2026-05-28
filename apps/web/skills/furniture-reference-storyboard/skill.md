@@ -729,6 +729,8 @@ If any panel description would lead to shifted backgrounds, mismatched lighting,
 
 Generated images must be image-only by default. If the user does not explicitly request text inside the image, do not render visible extra text.
 
+Every generated prompt MUST explicitly include `TEXT RENDERING POLICY` stating that the image must contain no added visible text of any kind unless the user explicitly requested text in the image.
+
 Forbidden by default:
 - captions, headlines, subheads, bullet points.
 - product feature callouts.
@@ -791,13 +793,15 @@ Use this structure:
 
 Do not write unnecessary text such as ethnicity labels, face-shape descriptions, eye/nose details, beauty judgments, or guessed biographical traits. The image reference already carries identity. The text prompt should only prevent common drift.
 
+Whenever a generated image intentionally includes a person, choose a face-readable camera angle by default: front-facing or three-quarter view, sharp focus, well lit, unobstructed, and large enough to recognize. Avoid back-of-head, over-shoulder with no face, fully side/rear angles, hidden/cropped faces, or people looking fully away from camera unless the frame is explicitly product-only, hands-only, or partial-body without recognizable identity.
+
 If identity preservation is not important for a product-detail frame, prefer hands-only, side/back/over-shoulder, or partial-body interaction instead of describing or inventing a new face.
 
 ## Required Prompt Block Order
 
 For each generated prompt, use this order:
 1. `OUTPUT FORMAT LOCK` - aspect ratio, single image vs storyboard, exact grid when requested, no captions/labels unless explicitly requested.
-2. `TEXT RENDERING POLICY` - no extra visible text by default; only requested or physical product text.
+2. `TEXT RENDERING POLICY` - explicitly say no added visible text of any kind by default; only user-requested text or physical product text.
 3. `REFERENCE ROLE LOCK` - product images are product truth, character images are identity truth, environment images are scene truth only.
 4. `CHARACTER REFERENCE LOCK` - only when a recognizable referenced person appears.
 5. `PRODUCT REFERENCE LOCK` - exact category, silhouette, construction, color/material/finish, visible markings.
