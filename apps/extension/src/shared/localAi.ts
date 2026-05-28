@@ -1434,6 +1434,7 @@ export async function generateProductBriefWithServerAI(input: {
   serverBaseUrl: string;
   token: string;
   deviceId?: string;
+  extensionOrigin?: string;
   extensionVersion: string;
   source: SanitizedLocalAIInput;
   languagePreference: AnalysisLanguagePreference;
@@ -1445,6 +1446,7 @@ export async function generateProductBriefWithServerAI(input: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${input.token}`,
         ...(input.deviceId ? { "X-Marketplace-Device-Id": input.deviceId } : {}),
+        ...(input.extensionOrigin ? { "X-Marketplace-Extension-Origin": input.extensionOrigin } : {}),
       },
       body: JSON.stringify({
         extensionVersion: input.extensionVersion,

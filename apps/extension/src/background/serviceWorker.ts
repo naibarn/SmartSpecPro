@@ -1,6 +1,7 @@
 declare const chrome: any;
 
 const DEVICE_ID_KEY = "deviceId";
+const DRAG_MEDIA_TTL_MS = 10 * 60 * 1000;
 const LOCAL_AI_MAX_CHARS = 30_000;
 const LOCAL_AI_MAX_IMAGES = 5;
 const LOCAL_AI_MAX_IMAGE_BYTES = 4_000_000;
@@ -15,6 +16,8 @@ const IMAGE_HOST_PATTERNS = [
   /(^|\.)byteimg\.com$/i,
   /(^|\.)ibytedtos\.com$/i,
 ];
+const dragMediaStore = new Map<string, { dataUrl: string; name: string; type: string; expiresAt: number }>();
+let activeDragMedia: { id: string; expiresAt: number } | null = null;
 
 function randomHex(bytes: number) {
   const array = new Uint8Array(bytes);
@@ -45,11 +48,40 @@ function isAllowedExternalSender(url: string | undefined) {
   }
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtOrigin(token: string): string {
+  const decoded = decodeJwtPayload(token);
+  return typeof decoded?.origin === "string" ? decoded.origin.trim() : "";
+}
+
+function assertTokenMatchesExtensionOrigin(token: string) {
+  const tokenOrigin = decodeJwtOrigin(token);
+  const localOrigin = `chrome-extension://${chrome.runtime.id}`;
+  if (tokenOrigin && tokenOrigin !== localOrigin) {
+    throw new Error("extension_origin_mismatch");
+  }
+}
+
 function isExtensionPageSender(sender: any) {
   return sender?.id === chrome.runtime.id
     && !sender?.tab
     && typeof sender?.url === "string"
     && sender.url.startsWith(`chrome-extension://${chrome.runtime.id}/`);
+}
+
+function isDragBridgeContentSender(sender: any) {
+  return sender?.id === chrome.runtime.id && Boolean(sender?.tab?.url) && isDragBridgeTargetUrl(sender.tab.url);
 }
 
 function cleanString(value: unknown, max: number) {
@@ -99,6 +131,53 @@ function validateMarketplaceImageUrl(rawUrl: unknown) {
   if (url.protocol !== "https:" || url.username || url.password) throw new Error("local_ai_image_url_not_allowed");
   if (!IMAGE_HOST_PATTERNS.some((pattern) => pattern.test(url.hostname))) throw new Error("local_ai_image_host_not_allowed");
   return url.toString();
+}
+
+function pruneDragMediaStore() {
+  const now = Date.now();
+  for (const [id, item] of dragMediaStore.entries()) {
+    if (item.expiresAt <= now) dragMediaStore.delete(id);
+  }
+  if (activeDragMedia && activeDragMedia.expiresAt <= now) activeDragMedia = null;
+}
+
+function isDragBridgeTargetUrl(url: unknown): boolean {
+  if (typeof url !== "string") return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && (
+      parsed.hostname === "labs.google"
+      || parsed.hostname.endsWith(".labs.google")
+      || parsed.hostname === "flow.google"
+      || parsed.hostname.endsWith(".flow.google")
+      || parsed.hostname.endsWith(".google.com")
+      || parsed.hostname === "magnific.ai"
+      || parsed.hostname.endsWith(".magnific.ai")
+      || parsed.hostname === "magnific.com"
+      || parsed.hostname.endsWith(".magnific.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function sendActiveDragMediaToTab(tab: any, id: string | null) {
+  if (!tab?.id) return;
+  const message = { type: "SMARTAIHUB_ACTIVE_DRAG_MEDIA", id };
+  chrome.tabs.sendMessage(tab.id, message).catch(() => {
+    if (!id || !isDragBridgeTargetUrl(tab.url)) return;
+    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["assets/content.js"] })
+      .then(() => chrome.tabs.sendMessage(tab.id, message).catch(() => undefined))
+      .catch(() => undefined);
+  });
+}
+
+function broadcastActiveDragMedia(id: string | null) {
+  chrome.tabs.query({}, (tabs: any[]) => {
+    for (const tab of tabs || []) {
+      sendActiveDragMediaToTab(tab, id);
+    }
+  });
 }
 
 async function imageUrlToBase64(rawUrl: unknown) {
@@ -218,6 +297,70 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
 });
 
 chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response: any) => void) => {
+  if (
+    message?.type !== "SMARTAIHUB_STORE_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_GET_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_START_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_END_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_COMPLETE_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA"
+  ) return false;
+  try {
+    pruneDragMediaStore();
+    if (message.type === "SMARTAIHUB_STORE_DRAG_MEDIA") {
+      if (!isExtensionPageSender(sender)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      const dataUrl = String(message.dataUrl || "");
+      const name = cleanString(message.name, 240) || "smartaihub-media";
+      const type = cleanString(message.mimeType, 120) || "application/octet-stream";
+      if (!id || !dataUrl.startsWith("data:") || dataUrl.length > 12_000_000) throw new Error("drag_media_invalid");
+      dragMediaStore.set(id, { dataUrl, name, type, expiresAt: Date.now() + DRAG_MEDIA_TTL_MS });
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (message.type === "SMARTAIHUB_START_DRAG_MEDIA") {
+      if (!isExtensionPageSender(sender)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      if (!id || !dragMediaStore.has(id)) throw new Error("drag_media_not_found");
+      activeDragMedia = { id, expiresAt: Date.now() + 60_000 };
+      broadcastActiveDragMedia(id);
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (message.type === "SMARTAIHUB_END_DRAG_MEDIA") {
+      if (!isExtensionPageSender(sender)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      if (!id || activeDragMedia?.id === id) {
+        activeDragMedia = null;
+        broadcastActiveDragMedia(null);
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (message.type === "SMARTAIHUB_COMPLETE_DRAG_MEDIA") {
+      if (!isDragBridgeContentSender(sender)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      if (!id || activeDragMedia?.id === id) {
+        activeDragMedia = null;
+        broadcastActiveDragMedia(null);
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (message.type === "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA") {
+      sendResponse(activeDragMedia ? { ok: true, id: activeDragMedia.id } : { ok: false, error: "active_drag_media_not_found" });
+      return true;
+    }
+    const id = cleanString(message.id, 160);
+    const item = id ? dragMediaStore.get(id) : undefined;
+    sendResponse(item ? { ok: true, ...item } : { ok: false, error: "drag_media_not_found" });
+  } catch (error) {
+    sendResponse({ ok: false, error: error instanceof Error ? error.message : "drag_media_failed" });
+  }
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response: any) => void) => {
   if (message?.type !== "LOCAL_AI_CHAT" && message?.type !== "LOCAL_AI_NATIVE_CHAT") return false;
   void (async () => {
     const result: any = message.type === "LOCAL_AI_NATIVE_CHAT"
@@ -248,6 +391,7 @@ chrome.runtime.onMessageExternal.addListener((message: any, sender: any, sendRes
       sendResponse({ ok: false, error: "device_binding_mismatch" });
       return;
     }
+    assertTokenMatchesExtensionOrigin(token);
     chrome.storage.local.set({ baseUrl, token, tokenExpiresAt, [DEVICE_ID_KEY]: localDeviceId }, () => {
       if (chrome.runtime.lastError) {
         sendResponse({ ok: false, error: chrome.runtime.lastError.message });

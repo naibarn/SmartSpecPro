@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import type { CategoryProductCandidate, ImageCandidate, PageDetection, ProductCapturePayload } from "../shared/types";
 import {
   buildInsightSyncRequest,
@@ -85,7 +86,7 @@ interface ProgressStep {
   status: "pending" | "active" | "done" | "error";
 }
 
-type PanelTab = "capture" | "products" | "localAI" | "ask" | "config";
+type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "ask" | "config";
 type ImageFilter = "all" | ImageCandidate["kind"];
 
 interface AskResult {
@@ -117,6 +118,118 @@ interface MarketplaceLiveSnapshot {
   reason: string;
 }
 
+interface ProductionDirectorReferenceImage {
+  id: string;
+  title: string;
+  url: string;
+  thumbnailUrl: string;
+  kind: string;
+  role?: string;
+  source?: string;
+}
+
+interface ProductionDirectorStoryboardGridFrame {
+  index: number;
+  row: number;
+  col: number;
+  url: string;
+  name?: string;
+  sourceGridUrl?: string;
+}
+
+interface ProductionDirectorProjectSummary {
+  productionRunId: string;
+  title: string;
+  summary: string;
+  status: string;
+  shotCount: number;
+  referenceImageCount: number;
+  platform: string | null;
+  audience: string | null;
+  thumbnailUrl: string | null;
+  updatedAt: string | null;
+  createdAt: string | null;
+}
+
+interface ProductionDirectorShot {
+  id: string;
+  order: number;
+  title: string;
+  durationSeconds: number | null;
+  shotType: string | null;
+  storyBeat: string;
+  storyboardPrompt: string;
+  storyboardGridPrompt?: string;
+  videoPrompt?: string;
+  storyboardGridImageUrl?: string;
+  storyboardGridFrames?: ProductionDirectorStoryboardGridFrame[];
+  referenceImageUrl?: string;
+  startFrameUrl?: string;
+  stopFrameUrl?: string;
+  script: string;
+  cameraIntent: string;
+  visualIntent: string;
+  audioIntent: string;
+  customerJourneyStage: string;
+  status: string;
+  referenceImages: ProductionDirectorReferenceImage[];
+}
+
+interface ProductionDirectorProjectDetail extends ProductionDirectorProjectSummary {
+  version: number;
+  referenceImages: ProductionDirectorReferenceImage[];
+  shots: ProductionDirectorShot[];
+}
+
+interface StoryboardReviewReferenceImage {
+  id: string;
+  title: string;
+  url: string;
+  role: string;
+}
+
+interface StoryboardReviewProjectSummary {
+  id: number;
+  title: string;
+  status: string;
+  clipCount: number;
+  completedClipCount: number;
+  thumbnailUrl: string | null;
+  videoEditorProjectId: number | null;
+  updatedAt: string | null;
+  createdAt: string | null;
+}
+
+interface StoryboardReviewClip {
+  id: string;
+  order: number;
+  status: string;
+  statusDetail: string;
+  durationSeconds: number | null;
+  model: string | null;
+  videoPrompt: string;
+  videoUrl?: string;
+  referenceImageUrl?: string;
+  startFrameUrl?: string;
+  stopFrameUrl?: string;
+  referenceImages: StoryboardReviewReferenceImage[];
+}
+
+interface StoryboardReviewProjectDetail extends StoryboardReviewProjectSummary {
+  conceptDetails: string;
+  clips: StoryboardReviewClip[];
+}
+
+interface ProductionMediaFileEntry {
+  status: "loading" | "ready" | "failed";
+  file?: File;
+  objectUrl?: string;
+  dragId?: string;
+  dataUrl?: string;
+}
+
+type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: "image" | "video" };
+
 const CAPTURE_STEPS = [
   "Detecting page",
   "Collecting DOM text",
@@ -133,8 +246,10 @@ const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.35";
-const EXTENSION_BUILD_LABEL = "2026-05-25 00:27 +07";
+const EXTENSION_VERSION = "0.1.61";
+const EXTENSION_BUILD_LABEL = "2026-05-28 19:52 +07";
+const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
+const SMARTAIHUB_DRAG_MEDIA_PREFIX = "smartaihubDragMedia:";
 
 function getLocalAIStatusView(input: {
   capability: LocalAICapability;
@@ -294,11 +409,36 @@ function dataUrlToBlob(dataUrl: string) {
   return new Blob([array], { type: mime });
 }
 
+function isLikelyImageBase64(value: string): boolean {
+  const compact = value.replace(/\s+/g, "");
+  return compact.length > 200
+    && compact.length % 4 === 0
+    && /^[A-Za-z0-9+/]+={0,2}$/.test(compact)
+    && (compact.startsWith("/9j/") || compact.startsWith("iVBOR") || compact.startsWith("UklGR") || compact.startsWith("R0lGOD"));
+}
+
+function normalizeInlineImageSource(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("data:image/")) return trimmed;
+  if (isLikelyImageBase64(trimmed)) {
+    const compact = trimmed.replace(/\s+/g, "");
+    const mime = compact.startsWith("/9j/") ? "image/jpeg"
+      : compact.startsWith("iVBOR") ? "image/png"
+      : compact.startsWith("UklGR") ? "image/webp"
+      : "image/gif";
+    return `data:${mime};base64,${compact}`;
+  }
+  return trimmed;
+}
+
 function resolveServerUrl(baseUrl: string, pathOrUrl: string): string {
+  const value = normalizeInlineImageSource(pathOrUrl);
+  if (!value) return "";
+  if (value.startsWith("data:image/") || value.startsWith("blob:")) return value;
   try {
-    return new URL(pathOrUrl, baseUrl).toString();
+    return new URL(value, baseUrl).toString();
   } catch {
-    return `${baseUrl}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+    return `${baseUrl}${value.startsWith("/") ? "" : "/"}${value}`;
   }
 }
 
@@ -433,7 +573,12 @@ function decodeJwtDeviceHash(token: string): string {
   return typeof decoded?.deviceIdHash === "string" ? decoded.deviceIdHash.trim() : "";
 }
 
-async function assertTokenMatchesDevice(token: string, deviceId: string) {
+function decodeJwtOrigin(token: string): string {
+  const decoded = decodeJwtPayload(token);
+  return typeof decoded?.origin === "string" ? decoded.origin.trim() : "";
+}
+
+async function assertTokenMatchesExtensionBinding(token: string, deviceId: string) {
   const tokenDeviceHash = decodeJwtDeviceHash(token);
   if (!tokenDeviceHash) {
     throw new Error("Token นี้ยังไม่ได้ผูกกับเครื่อง กรุณากด Connect และ generate token ใหม่จาก extension บนเครื่องนี้");
@@ -441,6 +586,11 @@ async function assertTokenMatchesDevice(token: string, deviceId: string) {
   const localHash = await sha256Hex(deviceId);
   if (tokenDeviceHash !== localHash) {
     throw new Error("Token นี้ผูกกับเครื่องอื่น กรุณา generate token ใหม่บนเครื่องนี้");
+  }
+  const tokenOrigin = decodeJwtOrigin(token);
+  const localOrigin = `chrome-extension://${chrome.runtime.id}`;
+  if (tokenOrigin && tokenOrigin !== localOrigin) {
+    throw new Error(`Token นี้ออกให้ Chrome Extension ID คนละตัว (${tokenOrigin}) แต่ตัวที่กำลังใช้อยู่คือ ${localOrigin} กรุณากด Connect SmartAIHub จาก extension ตัวนี้ใหม่`);
   }
 }
 
@@ -468,6 +618,10 @@ function userFriendlyErrorMessage(error: unknown, extensionOrigin?: string): str
     if (code === "extension_device_mismatch") {
       return "Token นี้ผูกกับ Chrome Extension คนละตัว/คนละเครื่อง กรุณากด Connect SmartAIHub เพื่อออก token ใหม่จาก extension นี้";
     }
+    if (code === "extension_origin_mismatch") {
+      const origin = extensionOrigin || "chrome-extension://<extension-id>";
+      return `Token นี้ออกให้ Chrome Extension ID คนละตัวกับตัวที่กำลังใช้อยู่ (${origin}) กรุณากด Replace token หรือ Connect SmartAIHub เพื่อออก token ใหม่จาก extension นี้`;
+    }
     if (code === "extension_token_mismatch" || code === "extension_pairing_expired" || code === "extension_pairing_inactive") {
       return "Token นี้ถูก revoke หรือ pairing ไม่ตรงแล้ว กรุณากด Connect SmartAIHub เพื่อออก token ใหม่";
     }
@@ -485,6 +639,28 @@ function userFriendlyErrorMessage(error: unknown, extensionOrigin?: string): str
   return raw || "Unexpected error";
 }
 
+function extensionAuthErrorCode(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error || "");
+  try {
+    const parsed = JSON.parse(raw);
+    return String(parsed?.error?.code ?? parsed?.code ?? "");
+  } catch {
+    return "";
+  }
+}
+
+function shouldReplaceExtensionToken(error: unknown): boolean {
+  return [
+    "extension_origin_mismatch",
+    "extension_device_mismatch",
+    "extension_device_required",
+    "extension_token_mismatch",
+    "extension_pairing_expired",
+    "extension_pairing_inactive",
+    "extension_pairing_not_found",
+  ].includes(extensionAuthErrorCode(error));
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "-";
   const time = new Date(value).getTime();
@@ -499,6 +675,62 @@ function tokenExpiryStatus(expiresAt: string | null | undefined) {
   if (remainingMs <= TOKEN_RENEWAL_WARNING_MS) return { label: "Token ใกล้หมดอายุใน 1 วัน กรุณาขอ token ใหม่", warning: true };
   const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
   return { label: `Token ใช้งานได้อีกประมาณ ${remainingDays} วัน`, warning: false };
+}
+
+function fileNameFromUrl(url: string, fallback: string): string {
+  try {
+    const parsed = new URL(url);
+    const lastSegment = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).at(-1) || "");
+    const cleaned = lastSegment.replace(/[\\/:*?"<>|]+/g, "-");
+    const fallbackExtension = fallback.match(/\.([a-z0-9]+)$/i)?.[1] || "";
+    if (cleaned.length <= 180 && /\.(jpe?g|png|webp|gif|mp4|webm|mov)$/i.test(cleaned)) return cleaned;
+    if (cleaned && fallbackExtension && !cleaned.includes(";base64")) return `${cleaned}.${fallbackExtension}`;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string }) {
+  event.dataTransfer.effectAllowed = "copy";
+  if (input.file) {
+    try {
+      event.dataTransfer.clearData();
+      event.dataTransfer.items.clear();
+      if (input.dragId) {
+        event.dataTransfer.setData(SMARTAIHUB_DRAG_MEDIA_MIME, input.dragId);
+      }
+      event.dataTransfer.items.add(input.file);
+      if (input.dragId) {
+        void chrome.runtime.sendMessage({ type: "SMARTAIHUB_START_DRAG_MEDIA", id: input.dragId });
+      }
+      return;
+    } catch {
+      event.preventDefault();
+      return;
+    }
+  }
+  event.preventDefault();
+}
+
+function endProductionMediaDrag(input: { dragId?: string }) {
+  if (!input.dragId) return;
+  void chrome.runtime.sendMessage({ type: "SMARTAIHUB_END_DRAG_MEDIA", id: input.dragId });
+}
+
+function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Unable to read media"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function createDragMediaId() {
+  const random = new Uint32Array(4);
+  crypto.getRandomValues(random);
+  return `${SMARTAIHUB_DRAG_MEDIA_PREFIX}${Array.from(random, (value) => value.toString(16).padStart(8, "0")).join("")}`;
 }
 
 function toEditableProduct(product: ProductCapturePayload): EditableProduct {
@@ -1320,6 +1552,19 @@ export default function App() {
   const [askQuestion, setAskQuestion] = useState("");
   const [askResult, setAskResult] = useState<AskResult | null>(null);
   const [askBusy, setAskBusy] = useState(false);
+  const [productionProjectSearch, setProductionProjectSearch] = useState("");
+  const [productionProjects, setProductionProjects] = useState<ProductionDirectorProjectSummary[]>([]);
+  const [selectedProductionProjectId, setSelectedProductionProjectId] = useState("");
+  const [selectedProductionProject, setSelectedProductionProject] = useState<ProductionDirectorProjectDetail | null>(null);
+  const [productionProjectsBusy, setProductionProjectsBusy] = useState(false);
+  const [productionProjectBusy, setProductionProjectBusy] = useState(false);
+  const [productionMediaFiles, setProductionMediaFiles] = useState<Record<string, ProductionMediaFileEntry>>({});
+  const [storyboardProjectSearch, setStoryboardProjectSearch] = useState("");
+  const [storyboardProjects, setStoryboardProjects] = useState<StoryboardReviewProjectSummary[]>([]);
+  const [selectedStoryboardProjectId, setSelectedStoryboardProjectId] = useState<number | null>(null);
+  const [selectedStoryboardProject, setSelectedStoryboardProject] = useState<StoryboardReviewProjectDetail | null>(null);
+  const [storyboardProjectsBusy, setStoryboardProjectsBusy] = useState(false);
+  const [storyboardProjectBusy, setStoryboardProjectBusy] = useState(false);
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [localAIProvider, setLocalAIProvider] = useState("noop");
   const abortLocalAIRef = useRef<AbortController | null>(null);
@@ -1327,6 +1572,7 @@ export default function App() {
   const autoInsightRunningRef = useRef(false);
   const productSourceRef = useRef<string | null>(null);
   const pageUrlRef = useRef<string | null>(null);
+  const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
   const localAIStatusView = useMemo(() => getLocalAIStatusView({
@@ -1414,6 +1660,26 @@ export default function App() {
     editable.categoryText,
     editable.descriptionText,
   ]);
+
+  useEffect(() => {
+    if (activeTab !== "production" || productionProjects.length > 0 || productionProjectsBusy || !settings.token) return;
+    run(() => loadProductionDirectorProjects());
+  }, [activeTab, settings.token]);
+
+  useEffect(() => {
+    if (activeTab !== "storyboard" || storyboardProjects.length > 0 || storyboardProjectsBusy || !settings.token) return;
+    run(() => loadStoryboardReviewProjects());
+  }, [activeTab, settings.token]);
+
+  useEffect(() => {
+    productionMediaFilesRef.current = productionMediaFiles;
+  }, [productionMediaFiles]);
+
+  useEffect(() => () => {
+    for (const entry of Object.values(productionMediaFilesRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+  }, []);
 
   useEffect(() => {
     const handler = (changes: Record<string, any>, areaName: string) => {
@@ -1661,6 +1927,14 @@ export default function App() {
       .sort((a, b) => b.score - a.score);
   }, [candidates, filters, ignoredUrls]);
 
+  useEffect(() => {
+    if (activeTab !== "products" || filteredCandidates.length === 0) return;
+    const timer = window.setTimeout(() => {
+      void prepareProductTabMediaFiles(filteredCandidates);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, filteredCandidates]);
+
   const selectedImageCount = useMemo(() => (
     product
       ? product.imageCandidates.filter((image) => selectedImages[image.url]).length
@@ -1795,7 +2069,7 @@ export default function App() {
     const nextExpiresAt = decodeJwtExpiresAt(nextToken);
     if (!nextExpiresAt) throw new Error("Token ไม่ถูกต้อง หรือไม่พบวันหมดอายุ");
     const deviceId = settings.deviceId || await getOrCreateDeviceId();
-    await assertTokenMatchesDevice(nextToken, deviceId);
+    await assertTokenMatchesExtensionBinding(nextToken, deviceId);
     const next = { ...settings, baseUrl: serverBaseUrl, token: nextToken, tokenExpiresAt: nextExpiresAt, deviceId };
     setSettings(next);
     setTokenInput("");
@@ -1956,7 +2230,7 @@ export default function App() {
     }
     if (settings.token) {
       try {
-        await assertTokenMatchesDevice(settings.token, deviceId);
+        await assertTokenMatchesExtensionBinding(settings.token, deviceId);
       } catch (error) {
         setTokenEditorOpen(true);
         throw error;
@@ -1966,6 +2240,7 @@ export default function App() {
       ...(contentType ? { "Content-Type": contentType } : {}),
       Authorization: `Bearer ${settings.token}`,
       "X-Marketplace-Device-Id": deviceId,
+      "X-Marketplace-Extension-Origin": extensionOrigin,
     };
   }
 
@@ -2253,11 +2528,12 @@ export default function App() {
         return createDeterministicProductBrief(source);
       }
       const deviceId = settings.deviceId || await getOrCreateDeviceId();
-      await assertTokenMatchesDevice(settings.token, deviceId);
+      await assertTokenMatchesExtensionBinding(settings.token, deviceId);
       const result = await generateProductBriefWithServerAI({
         serverBaseUrl,
         token: settings.token,
         deviceId,
+        extensionOrigin,
         extensionVersion: EXTENSION_VERSION,
         source,
         languagePreference: localAISettings.languagePreference,
@@ -2490,6 +2766,205 @@ export default function App() {
     }
   }
 
+  async function loadProductionDirectorProjects(search = productionProjectSearch) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setProductionProjectsBusy(true);
+    setStatus("Loading Production Director projects");
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "30");
+      if (search.trim()) params.set("query", search.trim());
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/production-director/projects?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const projects = Array.isArray(json.projects) ? json.projects as ProductionDirectorProjectSummary[] : [];
+      setProductionProjects(projects);
+      setStatus(`Loaded ${projects.length} Production Director projects`);
+      if (projects.length === 0) {
+        setSelectedProductionProjectId("");
+        setSelectedProductionProject(null);
+      } else if (!selectedProductionProjectId || !projects.some((project) => project.productionRunId === selectedProductionProjectId)) {
+        await loadProductionDirectorProject(projects[0].productionRunId);
+      }
+    } finally {
+      setProductionProjectsBusy(false);
+    }
+  }
+
+  async function loadProductionDirectorProject(productionRunId: string) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setProductionProjectBusy(true);
+    setSelectedProductionProjectId(productionRunId);
+    setProductionMediaFiles({});
+    setStatus("Loading storyboard prompts");
+    try {
+      const params = new URLSearchParams();
+      params.set("productionRunId", productionRunId);
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/production-director/project?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const project = json.project as ProductionDirectorProjectDetail | null | undefined;
+      setSelectedProductionProject(project ?? null);
+      if (project) {
+        void prepareProductionProjectMediaFiles(project);
+      }
+      setStatus("Production Director storyboard ready");
+    } finally {
+      setProductionProjectBusy(false);
+    }
+  }
+
+  async function loadStoryboardReviewProjects(search = storyboardProjectSearch) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setStoryboardProjectsBusy(true);
+    setStatus("Loading Storyboard Review projects");
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "30");
+      if (search.trim()) params.set("query", search.trim());
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/storyboard-review/projects?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const projects = Array.isArray(json.projects) ? json.projects as StoryboardReviewProjectSummary[] : [];
+      setStoryboardProjects(projects);
+      setStatus(`Loaded ${projects.length} Storyboard Review projects`);
+      if (projects.length === 0) {
+        setSelectedStoryboardProjectId(null);
+        setSelectedStoryboardProject(null);
+      } else if (!selectedStoryboardProjectId || !projects.some((project) => project.id === selectedStoryboardProjectId)) {
+        await loadStoryboardReviewProject(projects[0].id);
+      }
+    } finally {
+      setStoryboardProjectsBusy(false);
+    }
+  }
+
+  async function loadStoryboardReviewProject(reviewId: number) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setStoryboardProjectBusy(true);
+    setSelectedStoryboardProjectId(reviewId);
+    setProductionMediaFiles({});
+    setStatus("Loading storyboard review clips");
+    try {
+      const params = new URLSearchParams();
+      params.set("reviewId", String(reviewId));
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/storyboard-review/project?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const project = json.project as StoryboardReviewProjectDetail | null | undefined;
+      setSelectedStoryboardProject(project ?? null);
+      if (project) {
+        void prepareStoryboardReviewProjectMediaFiles(project);
+      }
+      setStatus("Storyboard Review clips ready");
+    } finally {
+      setStoryboardProjectBusy(false);
+    }
+  }
+
+  function productionMediaFileName(url: string, title: string, kind: "image" | "video", mimeType: string) {
+    const fallbackExtension = kind === "video" ? "mp4" : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
+    const fallback = `${title || kind}.${fallbackExtension}`.replace(/[\\/:*?"<>|]+/g, "-");
+    return fileNameFromUrl(url, fallback);
+  }
+
+  async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "image") {
+    const sourceUrl = rawUrl?.trim();
+    if (!sourceUrl) return;
+    const url = resolveServerUrl(serverBaseUrl, sourceUrl);
+    if (!url || productionMediaFiles[url]?.status === "ready" || productionMediaFiles[url]?.status === "loading") return;
+    setProductionMediaFiles((current) => ({ ...current, [url]: { status: "loading" } }));
+    try {
+      let blob: Blob;
+      if (url.startsWith("data:image/")) {
+        blob = dataUrlToBlob(url);
+      } else {
+        let response = await fetch(url);
+        if (!response.ok) {
+          response = await fetch(url, { headers: await extensionAuthHeaders() });
+        }
+        if (!response.ok) throw new Error(`Unable to fetch media ${response.status}`);
+        blob = await response.blob();
+      }
+      const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+      const file = new File([blob], productionMediaFileName(url, title, kind, mimeType), { type: mimeType });
+      const objectUrl = URL.createObjectURL(blob);
+      let dragId: string | undefined;
+      let dataUrl: string | undefined;
+      try {
+        dataUrl = await blobToDataUrl(blob);
+        dragId = createDragMediaId();
+        await chrome.runtime.sendMessage({
+          type: "SMARTAIHUB_STORE_DRAG_MEDIA",
+          id: dragId,
+          dataUrl,
+          name: file.name,
+          mimeType,
+        });
+      } catch {
+        dragId = undefined;
+        dataUrl = undefined;
+      }
+      setProductionMediaFiles((current) => {
+        const previous = current[url];
+        if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+        return { ...current, [url]: { status: "ready", file, objectUrl, dragId, dataUrl } };
+      });
+    } catch {
+      setProductionMediaFiles((current) => ({ ...current, [url]: { status: "failed" } }));
+    }
+  }
+
+  async function prepareDragMediaFiles(jobs: ProductionMediaPrepareJob[]) {
+    await Promise.allSettled(jobs.map((job) => prepareProductionMediaFile(job.url, job.title, job.kind ?? "image")));
+  }
+
+  async function prepareProductTabMediaFiles(items: CategoryProductCandidate[]) {
+    const jobs: ProductionMediaPrepareJob[] = items
+      .slice(0, 30)
+      .filter((item) => Boolean(item.imageUrl))
+      .map((item) => ({ url: item.imageUrl, title: item.title || "product-image", kind: "image" }));
+    await prepareDragMediaFiles(jobs);
+  }
+
+  async function prepareProductionProjectMediaFiles(project: ProductionDirectorProjectDetail) {
+    const jobs: ProductionMediaPrepareJob[] = [
+      ...project.referenceImages.map((image) => ({ url: image.url, title: image.title || image.role || image.kind })),
+      ...project.shots.flatMap((shot) => [
+        { url: shot.referenceImageUrl, title: `shot-${shot.order}-reference-frame` },
+        { url: shot.startFrameUrl, title: `shot-${shot.order}-start-frame` },
+        { url: shot.stopFrameUrl, title: `shot-${shot.order}-stop-frame` },
+        ...(shot.storyboardGridFrames ?? []).map((frame) => ({ url: frame.url, title: frame.name || `shot-${shot.order}-grid-frame-${frame.index + 1}` })),
+        ...shot.referenceImages.map((image) => ({ url: image.url, title: image.title || image.role || image.kind })),
+      ]),
+    ];
+    await prepareDragMediaFiles(jobs);
+  }
+
+  async function prepareStoryboardReviewProjectMediaFiles(project: StoryboardReviewProjectDetail) {
+    const jobs: ProductionMediaPrepareJob[] = [
+      ...project.clips.flatMap((clip) => [
+        { url: clip.referenceImageUrl, title: `clip-${clip.order}-reference-frame` },
+        { url: clip.startFrameUrl, title: `clip-${clip.order}-start-frame` },
+        { url: clip.stopFrameUrl, title: `clip-${clip.order}-stop-frame` },
+        ...clip.referenceImages.map((image) => ({ url: image.url, title: image.title || image.role })),
+      ]),
+    ];
+    await prepareDragMediaFiles(jobs);
+  }
+
   async function syncStructuredInsight(input: {
     source?: SanitizedLocalAIInput;
     brief?: ProductBrief;
@@ -2597,6 +3072,11 @@ export default function App() {
       await action();
     } catch (err: any) {
       setError(userFriendlyErrorMessage(err, extensionOrigin));
+      if (shouldReplaceExtensionToken(err)) {
+        setTokenEditorOpen(true);
+        setConnectFlowStarted(false);
+        setActiveTab("capture");
+      }
       setStatus("Error");
       setProgress((current) => current.map((step) => step.status === "active" ? { ...step, status: "error" } : step));
     }
@@ -2608,6 +3088,134 @@ export default function App() {
   const canDownloadLocalAIModel = localAISettings.preferLocalAI && localAICapability.availability === "downloadable";
   const storytellingInsightAttachable = canAttachStorytellingInsight(storytellingHandoff?.readiness);
   const tabButtonClass = (tab: PanelTab) => `tab-button${activeTab === tab ? " active" : ""}`;
+  async function copyProductionPrompt(label: string, value: string) {
+    const prompt = value.trim();
+    if (!prompt) {
+      setStatus("No prompt to copy");
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(prompt);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = prompt;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+      setStatus(`Copied ${label}`);
+    } catch {
+      setStatus("Copy failed");
+    }
+  }
+  const productionPromptBox = (label: string, value: string | undefined, empty: string) => {
+    const prompt = value?.trim() ?? "";
+    return (
+      <div className="production-prompt-box">
+        <div className="production-prompt-header">
+          <strong>{label}</strong>
+          <button className="button production-copy-button" type="button" disabled={!prompt} onClick={() => copyProductionPrompt(label, prompt)}>
+            Copy
+          </button>
+        </div>
+        <div>{prompt || empty}</div>
+      </div>
+    );
+  };
+  const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; title: string; kind?: "image" | "video" }) => {
+    const candidateUrls = (input.urls ?? [input.url])
+      .map((candidate) => candidate?.trim() ?? "")
+      .filter(Boolean)
+      .filter((candidate, index, list) => list.indexOf(candidate) === index);
+    const rawUrl = candidateUrls.find((candidate) => {
+      const resolved = resolveServerUrl(serverBaseUrl, candidate);
+      return productionMediaFiles[resolved]?.status !== "failed";
+    }) ?? candidateUrls[0] ?? "";
+    if (!rawUrl) {
+      return (
+        <div className="production-media-card empty">
+          <div className="production-media-empty">{input.kind === "video" ? "No video yet" : "No image yet"}</div>
+          <span>{input.label}</span>
+        </div>
+      );
+    }
+    const url = resolveServerUrl(serverBaseUrl, rawUrl);
+    const kind = input.kind ?? "image";
+    const fileEntry = productionMediaFiles[url];
+    const displayUrl = fileEntry?.objectUrl || url;
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        className={`production-media-card${fileEntry?.status === "loading" ? " loading" : ""}${fileEntry?.status === "failed" ? " failed" : ""}`}
+        draggable={Boolean(fileEntry?.file)}
+        onPointerDown={() => void prepareProductionMediaFile(rawUrl, input.title || input.label, kind)}
+        onMouseEnter={() => {
+          for (const candidate of candidateUrls) {
+            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+          }
+        }}
+        onDragStart={(event) => startProductionMediaDrag(event, { url, title: input.title || input.label, kind, file: fileEntry?.file, dragId: fileEntry?.dragId })}
+        onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+        onDoubleClick={() => chrome.tabs.create({ url })}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") chrome.tabs.create({ url });
+        }}
+        title={fileEntry?.file ? "Drag this image as a file into an upload drop zone. Double-click to open." : "Preparing file drag. Wait for file ready, or double-click to open."}
+      >
+        {kind === "video" ? (
+          <div className="production-video-thumb">▶</div>
+        ) : (
+          <img src={displayUrl} alt={input.title || input.label} draggable={false} />
+        )}
+        <span>{input.label}{fileEntry?.status === "loading" ? " · preparing" : fileEntry?.status === "ready" ? " · file ready" : ""}</span>
+      </div>
+    );
+  };
+  const draggableProductImage = (input: { url: string; className: string; alt: string; title: string; loading?: "eager" | "lazy" }) => {
+    const url = resolveServerUrl(serverBaseUrl, input.url);
+    const fileEntry = productionMediaFiles[url];
+    const displayUrl = fileEntry?.objectUrl || url;
+    return (
+      <img
+        className={input.className}
+        src={displayUrl}
+        alt={input.alt}
+        loading={input.loading ?? "lazy"}
+        decoding="async"
+        draggable={Boolean(fileEntry?.file)}
+        onPointerDown={() => void prepareProductionMediaFile(input.url, input.title, "image")}
+        onMouseEnter={() => void prepareProductionMediaFile(input.url, input.title, "image")}
+        onDragStart={(event) => startProductionMediaDrag(event, {
+          url,
+          title: input.title,
+          kind: "image",
+          file: fileEntry?.file,
+          dragId: fileEntry?.dragId,
+        })}
+        onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+        title={fileEntry?.file ? "Drag this image as a file into an upload drop zone." : "Preparing file drag. Hover or press once, then drag after file ready."}
+      />
+    );
+  };
+  const productionShotFrameUrls = (shot: ProductionDirectorShot, slot: "reference" | "start" | "stop") => {
+    const referenceUrls = shot.referenceImages.map((image) => image.url);
+    const gridUrls = (shot.storyboardGridFrames ?? []).map((frame) => frame.url);
+    if (slot === "reference") return [shot.referenceImageUrl, ...referenceUrls, gridUrls[0]];
+    if (slot === "start") return [shot.startFrameUrl, gridUrls[0], ...referenceUrls];
+    return [shot.stopFrameUrl, gridUrls.at(-1), ...referenceUrls];
+  };
+  const storyboardClipFrameUrls = (clip: StoryboardReviewClip, slot: "reference" | "start" | "stop") => {
+    const referenceUrls = clip.referenceImages.map((image) => image.url);
+    if (slot === "reference") return [clip.referenceImageUrl, ...referenceUrls, clip.startFrameUrl, clip.stopFrameUrl];
+    if (slot === "start") return [clip.startFrameUrl, clip.referenceImageUrl, ...referenceUrls];
+    return [clip.stopFrameUrl, referenceUrls[1], clip.referenceImageUrl, ...referenceUrls];
+  };
 
   return (
     <div className="app">
@@ -2644,6 +3252,22 @@ export default function App() {
           onClick={() => setActiveTab("localAI")}
         >
           AI Insights
+        </button>
+        <button
+          className={tabButtonClass("production")}
+          role="tab"
+          aria-selected={activeTab === "production"}
+          onClick={() => setActiveTab("production")}
+        >
+          Production
+        </button>
+        <button
+          className={tabButtonClass("storyboard")}
+          role="tab"
+          aria-selected={activeTab === "storyboard"}
+          onClick={() => setActiveTab("storyboard")}
+        >
+          Storyboard
         </button>
         <button
           className={tabButtonClass("ask")}
@@ -3037,7 +3661,13 @@ export default function App() {
             {filteredCandidates.slice(0, 30).map((candidate) => (
               <div className="candidate" key={candidate.url}>
                 <div className="row">
-                  {candidate.imageUrl ? <img className="thumb" src={candidate.imageUrl} alt="" /> : <div className="thumb" />}
+                  {candidate.imageUrl ? draggableProductImage({
+                    url: candidate.imageUrl,
+                    className: "thumb",
+                    alt: candidate.title || "Product image",
+                    title: candidate.title || "product-image",
+                    loading: "eager",
+                  }) : <div className="thumb" />}
                   <div style={{ flex: 1 }}>
                     <div>{candidate.title}</div>
                     <div className="muted">
@@ -3073,6 +3703,292 @@ export default function App() {
             ))}
           </div>
         ) : null}
+      </div>
+      ) : null}
+
+      {activeTab === "production" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Production Director">
+        <div className="section">
+          <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <strong>Production Director Projects</strong>
+              <div className="muted">Recent projects from SmartAIHub, newest first. Select a project to inspect storyboard prompts and reference images.</div>
+            </div>
+            <button className="button" disabled={productionProjectsBusy || !settings.token} onClick={() => run(() => loadProductionDirectorProjects())}>
+              {productionProjectsBusy ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+          {!settings.token ? (
+            <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Production Director projects.</div>
+          ) : null}
+          <div className="production-search-row">
+            <input
+              className="input"
+              placeholder="Search project name"
+              value={productionProjectSearch}
+              onChange={(event) => setProductionProjectSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") run(() => loadProductionDirectorProjects());
+              }}
+            />
+            <button className="button primary" disabled={productionProjectsBusy || !settings.token} onClick={() => run(() => loadProductionDirectorProjects())}>Search</button>
+          </div>
+        </div>
+
+        <div className="production-layout">
+          <div className="section production-project-list">
+            <div className="compact-summary">
+              <strong>Projects ({productionProjects.length})</strong>
+              <span className="muted">max 30</span>
+            </div>
+            {productionProjects.length > 0 ? productionProjects.map((project) => (
+              <button
+                type="button"
+                className={selectedProductionProjectId === project.productionRunId ? "production-project-card selected" : "production-project-card"}
+                key={project.productionRunId}
+                onClick={() => run(() => loadProductionDirectorProject(project.productionRunId))}
+              >
+                {project.thumbnailUrl ? <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" /> : <div className="production-project-thumb empty" />}
+                <span className="production-project-body">
+                  <span className="production-project-title">{project.title || project.productionRunId}</span>
+                  <span className="muted">{project.status} | {project.shotCount} shots | {formatDateTime(project.updatedAt)}</span>
+                  {project.summary ? <span className="production-project-summary">{project.summary}</span> : null}
+                </span>
+              </button>
+            )) : (
+              <div className="muted">{productionProjectsBusy ? "Loading projects..." : "No Production Director projects found."}</div>
+            )}
+          </div>
+
+          <div className="section production-storyboard-panel">
+            {productionProjectBusy ? (
+              <div className="muted">Loading selected project...</div>
+            ) : selectedProductionProject ? (
+              <>
+                <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <strong>{selectedProductionProject.title || selectedProductionProject.productionRunId}</strong>
+                    <div className="muted">
+                      {selectedProductionProject.status} | v{selectedProductionProject.version} | {selectedProductionProject.shots.length} shots | {formatDateTime(selectedProductionProject.updatedAt)}
+                    </div>
+                    {selectedProductionProject.summary ? <div className="production-project-summary">{selectedProductionProject.summary}</div> : null}
+                  </div>
+                </div>
+
+                {selectedProductionProject.referenceImages.length > 0 ? (
+                  <div className="production-reference-strip">
+                    {selectedProductionProject.referenceImages.slice(0, 30).map((image) => {
+                      const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
+                      const fileEntry = productionMediaFiles[imageUrl];
+                      return (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="production-reference-image"
+                          draggable={Boolean(fileEntry?.file)}
+                          onPointerDown={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
+                          onMouseEnter={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
+                          onDragStart={(event) => startProductionMediaDrag(event, {
+                            url: imageUrl,
+                            title: image.title || image.role || image.kind,
+                            kind: "image",
+                            file: fileEntry?.file,
+                            dragId: fileEntry?.dragId,
+                          })}
+                          onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                          onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
+                          }}
+                          key={`${image.id}-${image.url}`}
+                        >
+                          <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={image.title || image.kind} draggable={false} />
+                          <span>{image.role || image.kind}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                <div className="production-shot-list">
+                  {selectedProductionProject.shots.length > 0 ? selectedProductionProject.shots.map((shot) => (
+                    <div className="production-shot-card" key={shot.id}>
+                      <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <strong>Shot {shot.order}: {shot.title}</strong>
+                          <div className="muted">
+                            {shot.shotType || "shot"} | {shot.durationSeconds ?? "-"}s | {shot.status}
+                            {shot.customerJourneyStage ? ` | ${shot.customerJourneyStage}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      {shot.storyBeat ? <div className="muted">Story beat: {shot.storyBeat}</div> : null}
+                      <div className="production-shot-assets">
+                        {productionMediaCard({ label: "Reference image", urls: productionShotFrameUrls(shot, "reference"), title: `Shot ${shot.order} reference image` })}
+                        {productionMediaCard({ label: "Start frame", urls: productionShotFrameUrls(shot, "start"), title: `Shot ${shot.order} start frame` })}
+                        {productionMediaCard({ label: "Stop frame", urls: productionShotFrameUrls(shot, "stop"), title: `Shot ${shot.order} stop frame` })}
+                      </div>
+                      {productionPromptBox("3x3 storyboard image prompt", shot.storyboardGridPrompt || shot.storyboardPrompt || shot.visualIntent, "No 3x3 image prompt saved for this shot yet.")}
+                      {productionPromptBox("Video prompt", shot.videoPrompt || shot.storyboardPrompt || shot.visualIntent, "No video prompt saved for this shot yet.")}
+                      {shot.script ? (
+                        <details className="story-option-video">
+                          <summary>Script / voiceover</summary>
+                          <div className="muted">{shot.script}</div>
+                        </details>
+                      ) : null}
+                      {shot.referenceImages.length > 0 ? (
+                        <div className="production-reference-strip shot">
+                          {shot.referenceImages.map((image) => {
+                            const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
+                            const fileEntry = productionMediaFiles[imageUrl];
+                            return (
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                className="production-reference-image"
+                                draggable={Boolean(fileEntry?.file)}
+                                onPointerDown={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
+                                onMouseEnter={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
+                                onDragStart={(event) => startProductionMediaDrag(event, {
+                                  url: imageUrl,
+                                  title: image.title || image.role || image.kind,
+                                  kind: "image",
+                                  file: fileEntry?.file,
+                                  dragId: fileEntry?.dragId,
+                                })}
+                                onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                                onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
+                                }}
+                                key={`${shot.id}-${image.id}-${image.url}`}
+                              >
+                                <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={image.title || image.kind} draggable={false} />
+                                <span>{image.role || image.kind}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="muted">No reference images attached to this shot.</div>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="muted">This project has no storyboard shots yet.</div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="muted">Select a Production Director project to view its storyboard prompts.</div>
+            )}
+          </div>
+        </div>
+      </div>
+      ) : null}
+
+      {activeTab === "storyboard" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Storyboard Review">
+        <div className="section">
+          <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <strong>Storyboard Review Projects</strong>
+              <div className="muted">Recent Storyboard Review projects from SmartAIHub, newest first. Select a project to inspect clip frames and video prompts.</div>
+            </div>
+            <button className="button" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>
+              {storyboardProjectsBusy ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+          {!settings.token ? (
+            <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Storyboard Review projects.</div>
+          ) : null}
+          <div className="production-search-row">
+            <input
+              className="input"
+              placeholder="Search project name"
+              value={storyboardProjectSearch}
+              onChange={(event) => setStoryboardProjectSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") run(() => loadStoryboardReviewProjects());
+              }}
+            />
+            <button className="button primary" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>Search</button>
+          </div>
+        </div>
+
+        <div className="production-layout">
+          <div className="section production-project-list">
+            <div className="compact-summary">
+              <strong>Projects ({storyboardProjects.length})</strong>
+              <span className="muted">max 30</span>
+            </div>
+            {storyboardProjects.length > 0 ? storyboardProjects.map((project) => (
+              <button
+                type="button"
+                className={selectedStoryboardProjectId === project.id ? "production-project-card selected" : "production-project-card"}
+                key={project.id}
+                onClick={() => run(() => loadStoryboardReviewProject(project.id))}
+              >
+                {project.thumbnailUrl ? <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" /> : <div className="production-project-thumb empty" />}
+                <span className="production-project-body">
+                  <span className="production-project-title">{project.title || `Review ${project.id}`}</span>
+                  <span className="muted">{project.status} | {project.completedClipCount}/{project.clipCount} clips | {formatDateTime(project.updatedAt)}</span>
+                </span>
+              </button>
+            )) : (
+              <div className="muted">{storyboardProjectsBusy ? "Loading projects..." : "No Storyboard Review projects found."}</div>
+            )}
+          </div>
+
+          <div className="section production-storyboard-panel">
+            {storyboardProjectBusy ? (
+              <div className="muted">Loading selected project...</div>
+            ) : selectedStoryboardProject ? (
+              <>
+                <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <strong>{selectedStoryboardProject.title || `Review ${selectedStoryboardProject.id}`}</strong>
+                    <div className="muted">
+                      {selectedStoryboardProject.status} | {selectedStoryboardProject.completedClipCount}/{selectedStoryboardProject.clipCount} clips | {formatDateTime(selectedStoryboardProject.updatedAt)}
+                    </div>
+                  </div>
+                </div>
+                {selectedStoryboardProject.conceptDetails ? (
+                  <details className="story-option-video" style={{ marginTop: 8 }}>
+                    <summary>Concept details</summary>
+                    <div className="muted">{selectedStoryboardProject.conceptDetails}</div>
+                  </details>
+                ) : null}
+
+                <div className="production-shot-list">
+                  {selectedStoryboardProject.clips.length > 0 ? selectedStoryboardProject.clips.map((clip) => (
+                    <div className="production-shot-card" key={clip.id}>
+                      <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <strong>Clip {clip.order}</strong>
+                          <div className="muted">
+                            {clip.durationSeconds ?? "-"}s | {clip.status}
+                            {clip.model ? ` | ${clip.model}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      {clip.statusDetail ? <div className="muted">{clip.statusDetail}</div> : null}
+                      <div className="production-shot-assets">
+                        {productionMediaCard({ label: "Reference image", urls: storyboardClipFrameUrls(clip, "reference"), title: `Clip ${clip.order} reference image` })}
+                        {productionMediaCard({ label: "Start frame", urls: storyboardClipFrameUrls(clip, "start"), title: `Clip ${clip.order} start frame` })}
+                        {productionMediaCard({ label: "Stop frame", urls: storyboardClipFrameUrls(clip, "stop"), title: `Clip ${clip.order} stop frame` })}
+                      </div>
+                      {productionPromptBox("Video prompt", clip.videoPrompt, "No video prompt saved for this clip yet.")}
+                    </div>
+                  )) : (
+                    <div className="muted">This project has no storyboard review clips yet.</div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="muted">Select a Storyboard Review project to view clips.</div>
+            )}
+          </div>
+        </div>
       </div>
       ) : null}
 
@@ -3691,7 +4607,13 @@ export default function App() {
             {displayedProductImages.map((img) => (
               <label className={`image-option ${selectedImages[img.url] ? "selected" : ""}`} key={img.url}>
                 <input className="image-checkbox" type="checkbox" aria-label={`Select ${img.kind} image ${img.position ?? ""}`} checked={Boolean(selectedImages[img.url])} onChange={(e) => setSelectedImages((current) => ({ ...current, [img.url]: e.target.checked }))} />
-                <img className="image-thumb" src={img.url} alt={`${img.kind} product evidence`} loading="eager" decoding="async" />
+                {draggableProductImage({
+                  url: img.url,
+                  className: "image-thumb",
+                  alt: `${img.kind} product evidence`,
+                  title: `${img.kind}-${img.position ?? "image"}`,
+                  loading: "eager",
+                })}
                 <span className="image-kind">{img.kind} | {imageQualityLabel(img)}</span>
                 <span className="image-badges">
                   {imageBadges(img, heroImageUrl).map((badge) => <span className="image-badge" key={badge}>{badge}</span>)}

@@ -6,7 +6,14 @@ import { scanTikTokShopCategoryPage, scanTikTokShopProductPage } from "./capture
 
 declare const chrome: any;
 
+const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
+
 let marketplaceObserver: MutationObserver | null = null;
+let activeDragMediaId: string | null = null;
+const bridgedDragEvents = new WeakSet<DragEvent>();
+const dragMediaFileCache = new Map<string, Promise<File | null>>();
+let lastDragPreviewKey = "";
+let lastDragPreviewAt = 0;
 let observerTimer: number | null = null;
 let lastSnapshotKey = "";
 let observedUrl = location.href;
@@ -122,6 +129,232 @@ function onObservedClick(event: MouseEvent) {
   window.setTimeout(() => scheduleMarketplaceSnapshot("click"), 700);
   window.setTimeout(() => scheduleMarketplaceSnapshot("click_settled"), 1800);
 }
+
+function dataUrlToFile(dataUrl: string, name: string, type: string) {
+  const [header, base64] = dataUrl.split(",");
+  const mime = type || header.match(/data:(.*?);base64/)?.[1] || "application/octet-stream";
+  const bytes = atob(base64 || "");
+  const array = new Uint8Array(bytes.length);
+  for (let index = 0; index < bytes.length; index += 1) array[index] = bytes.charCodeAt(index);
+  return new File([array], name || "smartaihub-media", { type: mime });
+}
+
+function isLikelyUploadElement(element: Element | null): element is HTMLElement {
+  if (!(element instanceof HTMLElement)) return false;
+  const text = [
+    element.getAttribute("aria-label"),
+    element.getAttribute("data-testid"),
+    element.getAttribute("role"),
+    typeof element.className === "string" ? element.className : "",
+    element.textContent,
+  ].join(" ").toLowerCase();
+  return /upload|drop|file|image|media|reference|start|end|frame|drag|วาง|อัปโหลด|อัพโหลด|ลาก/.test(text);
+}
+
+function findUploadTarget(start: EventTarget | null): HTMLElement {
+  const element = start instanceof Element ? start : document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+  const explicit = element?.closest?.("input[type='file'], [data-testid*='upload' i], [aria-label*='upload' i], [role='button'], button, label");
+  if (explicit instanceof HTMLElement) return explicit;
+  let current: Element | null | undefined = element;
+  while (current && current !== document.body) {
+    if (isLikelyUploadElement(current)) return current;
+    current = current.parentElement;
+  }
+  return element instanceof HTMLElement ? element : document.body;
+}
+
+function setNearestFileInput(target: HTMLElement, files: FileList) {
+  const nearby = findNearestFileInput(target, files);
+  if (!nearby) return false;
+  try {
+    nearby.value = "";
+    nearby.files = files;
+    nearby.dispatchEvent(new Event("input", { bubbles: true }));
+    nearby.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function fileInputAcceptsFile(input: HTMLInputElement, file: File | undefined) {
+  const accept = input.accept.toLowerCase().split(",").map((item) => item.trim()).filter(Boolean);
+  if (!accept.length || !file) return true;
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+  return accept.some((item) => {
+    if (item === type) return true;
+    if (item.endsWith("/*")) return type.startsWith(item.slice(0, -1));
+    if (item.startsWith(".")) return name.endsWith(item);
+    return false;
+  });
+}
+
+function findNearestFileInput(target: HTMLElement, files: FileList) {
+  const candidates = Array.from(new Set<HTMLInputElement>([
+    ...(target instanceof HTMLInputElement && target.type === "file" ? [target] : []),
+    ...Array.from(target.querySelectorAll?.("input[type='file']") ?? []) as HTMLInputElement[],
+    ...Array.from(document.querySelectorAll<HTMLInputElement>("input[type='file']")),
+  ]));
+  return candidates.find((input) => fileInputAcceptsFile(input, files[0])) || candidates[0] || null;
+}
+
+function isGoogleFlowHost(hostname: string) {
+  return hostname === "labs.google"
+    || hostname.endsWith(".labs.google")
+    || hostname === "flow.google"
+    || hostname.endsWith(".flow.google")
+    || hostname.endsWith(".google.com");
+}
+
+function isMagnificHost(hostname: string) {
+  return hostname === "magnific.ai"
+    || hostname.endsWith(".magnific.ai")
+    || hostname === "magnific.com"
+    || hostname.endsWith(".magnific.com");
+}
+
+function canUseFileInputFallback(target: HTMLElement, files: FileList) {
+  const hostname = location.hostname.toLowerCase();
+  if (isGoogleFlowHost(hostname)) return false;
+  if (target instanceof HTMLInputElement && target.type === "file") return true;
+  return isMagnificHost(hostname) && Boolean(findNearestFileInput(target, files));
+}
+
+function dispatchFileDragEvents(target: HTMLElement, file: File, originalEvent: DragEvent, types: Array<"dragenter" | "dragover" | "drop">) {
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  const eventTargets = Array.from(new Set<EventTarget>([target, document, window]));
+  let dropWasHandled = false;
+  for (const type of types) {
+    const targetsForType = type === "drop" ? [target] : eventTargets;
+    for (const eventTarget of targetsForType) {
+      const event = new DragEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: originalEvent.clientX,
+        clientY: originalEvent.clientY,
+        dataTransfer: transfer,
+      });
+      bridgedDragEvents.add(event);
+      const wasNotCanceled = eventTarget.dispatchEvent(event);
+      if (type === "drop" && !wasNotCanceled) dropWasHandled = true;
+    }
+  }
+  if (types.includes("drop") && !dropWasHandled && canUseFileInputFallback(target, transfer.files)) {
+    setNearestFileInput(target, transfer.files);
+  }
+}
+
+function eventDragMediaId(event: DragEvent): string {
+  try {
+    return event.dataTransfer?.getData(SMARTAIHUB_DRAG_MEDIA_MIME) || activeDragMediaId || "";
+  } catch {
+    return activeDragMediaId || "";
+  }
+}
+
+async function activeDragMediaIdFromBackground(): Promise<string> {
+  if (activeDragMediaId) return activeDragMediaId;
+  const response = await chrome.runtime.sendMessage({ type: "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA" }).catch(() => null);
+  return response?.ok && response.id ? String(response.id) : "";
+}
+
+function dragMediaFileFromBackground(id: string): Promise<File | null> {
+  const existing = dragMediaFileCache.get(id);
+  if (existing) return existing;
+  const pending = chrome.runtime.sendMessage({ type: "SMARTAIHUB_GET_DRAG_MEDIA", id })
+    .then((response: any) => response?.ok && response.dataUrl ? dataUrlToFile(response.dataUrl, response.name, response.type) : null)
+    .catch(() => null);
+  dragMediaFileCache.set(id, pending);
+  return pending;
+}
+
+function finishSmartAIHubDrag(id: string) {
+  activeDragMediaId = null;
+  lastDragPreviewKey = "";
+  dragMediaFileCache.delete(id);
+  void chrome.runtime.sendMessage({ type: "SMARTAIHUB_COMPLETE_DRAG_MEDIA", id }).catch(() => undefined);
+}
+
+async function replaySmartAIHubDragPreview(event: DragEvent, id: string) {
+  const target = findUploadTarget(event.target);
+  const now = performance.now();
+  const key = `${id}:${event.type}:${Math.round(event.clientX / 12)}:${Math.round(event.clientY / 12)}`;
+  if (event.type === "dragover" && key === lastDragPreviewKey && now - lastDragPreviewAt < 120) return;
+  lastDragPreviewKey = key;
+  lastDragPreviewAt = now;
+  const file = await dragMediaFileFromBackground(id);
+  if (!file) return;
+  if (!activeDragMediaId && !event.dataTransfer?.types?.includes(SMARTAIHUB_DRAG_MEDIA_MIME)) return;
+  dispatchFileDragEvents(target, file, event, event.type === "dragenter" ? ["dragenter", "dragover"] : ["dragover"]);
+}
+
+function primeSmartAIHubDrop(event: DragEvent) {
+  if (bridgedDragEvents.has(event)) return;
+  const hasBridgePayload = event.dataTransfer?.types?.includes(SMARTAIHUB_DRAG_MEDIA_MIME) || Boolean(activeDragMediaId);
+  const id = eventDragMediaId(event);
+  if (!id) {
+    if (hasBridgePayload) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    }
+    void activeDragMediaIdFromBackground().then((activeId) => {
+      if (!activeId) return;
+      activeDragMediaId = activeId;
+      void replaySmartAIHubDragPreview(event, activeId);
+    });
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  void replaySmartAIHubDragPreview(event, id);
+}
+
+async function handleSmartAIHubMediaDrop(event: DragEvent) {
+  if (bridgedDragEvents.has(event)) return;
+  const hasBridgePayload = event.dataTransfer?.types?.includes(SMARTAIHUB_DRAG_MEDIA_MIME) || Boolean(activeDragMediaId);
+  let id = eventDragMediaId(event);
+  if (hasBridgePayload) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  }
+  if (!id) id = await activeDragMediaIdFromBackground();
+  if (!id) return;
+  if (!hasBridgePayload) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const file = await dragMediaFileFromBackground(id);
+  if (!file) return;
+  dispatchFileDragEvents(findUploadTarget(event.target), file, event, ["dragenter", "dragover", "drop"]);
+  finishSmartAIHubDrag(id);
+}
+
+window.addEventListener("dragenter", (event) => {
+  primeSmartAIHubDrop(event);
+}, true);
+
+window.addEventListener("dragover", (event) => {
+  primeSmartAIHubDrop(event);
+}, true);
+
+window.addEventListener("drop", (event) => {
+  void handleSmartAIHubMediaDrop(event);
+}, true);
+
+chrome.runtime.onMessage.addListener((message: any) => {
+  if (message?.type === "SMARTAIHUB_ACTIVE_DRAG_MEDIA") {
+    activeDragMediaId = typeof message.id === "string" && message.id ? message.id : null;
+    lastDragPreviewKey = "";
+    if (!activeDragMediaId) dragMediaFileCache.clear();
+  }
+  return false;
+});
 
 chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: (response: any) => void) => {
   try {
