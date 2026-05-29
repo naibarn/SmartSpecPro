@@ -23,4 +23,6 @@ When creating four story concepts for Production Director, return visual support
 - `storyboardThumbnailNotes`
 - `infographicPrompt`
 
+For every concept, keep `conceptDetails` concise but story-led: one distinct customer-journey or mini-story paragraph under 450 Thai characters or 80 English words. Do not use a Product / Details / Audience / Problem / Selling points label list and do not paste raw marketplace title/description text. Make the four concepts clearly different: awareness problem to relief, consideration doubts to confidence, fast visual demo, and post-purchase experience mini story. Do not include emoji, decorative symbols, bullets, or line breaks.
+
 `infographicPrompt` must be suitable for the existing image generation system and should request a beautiful realistic infographic with photorealistic supporting imagery, readable storyboard/timeline sections, and no unsupported product claims.

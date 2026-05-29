@@ -564,6 +564,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
       objectionsTrust: ["Use verified product evidence only"],
       useCase: "Small bedroom organization",
       conceptDetails: "Product name: Compact shelf. Summarized product details: foldable shelf for small bedrooms. Target audience: marketplace shoppers. Problem: unsure whether the product fits the room. Selling points: foldable and space saving.",
+      productFacts: "PRODUCT FACTS LOCK: Compact shelf.\nExact size: 30 x 30 x 40 cm.\nStructure/design: 3-tier shelf / Nordic style.\nUse cases: bedside lamp, books, water glass, alarm clock.\nDo not change product category, dimensions, tier/component count, style, or stated use cases.",
       sceneTimeline: [
         { timeRange: "0-3s", title: "Hook", detail: "Open with the cramped room problem." },
         { timeRange: "3-12s", title: "Problem", detail: "Show the before context." },
@@ -617,8 +618,16 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Choose a story concept before workflow generation");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Fast Problem-Solution");
     expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("30s timeline");
-    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Concept and details");
-    expect(screen.getAllByDisplayValue(/Product name: Compact shelf/i)).toHaveLength(4);
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("Concept journey");
+    const productFactFields = screen.getAllByRole("textbox", { name: /product facts/i }) as HTMLTextAreaElement[];
+    expect(productFactFields).toHaveLength(4);
+    expect(productFactFields[0].value).toContain("Exact size: 30 x 30 x 40 cm");
+    expect(productFactFields[0].value).toContain("3-tier shelf");
+    expect(productFactFields[0].value).toContain("bedside lamp");
+    const conceptDetailFields = screen.getAllByRole("textbox", { name: /concept journey/i }) as HTMLTextAreaElement[];
+    expect(conceptDetailFields).toHaveLength(4);
+    expect(conceptDetailFields[0].value).not.toMatch(/Product name:|Summarized product details:|Selling points:/i);
+    expect(conceptDetailFields[0].value.length).toBeGreaterThan(40);
     expect(screen.getByLabelText("Planning model")).toHaveValue("vision-thinking-model");
     expect(screen.getByLabelText("Default image generation model")).toHaveValue("image-default");
     expect(screen.getByLabelText("Default video generation model")).toHaveValue("video-default");
@@ -648,6 +657,97 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(onSelectStoryConcept).toHaveBeenCalledWith("proof-trust");
     fireEvent.click(screen.getByRole("button", { name: /generate workflow from this concept/i }));
     expect(onConfirmStoryConceptPlan).toHaveBeenCalledWith("problem-solution");
+  });
+
+  it("keeps generated concept details compact, clean, and journey-specific", () => {
+    const noisyDetails = [
+      "Product name: Kids dining chair ✅✨",
+      "Summarized product details: 🪑 A marketplace description with many decorative symbols, repeated claims, and a very long explanation that should not be copied wholesale into the downstream prompt. It keeps going with extra context about materials, safety, seat comfort, cleaning, moving around the house, and comparison-shopping wording that makes the field too noisy for prompt planning.",
+      "Target audience: Marketplace shoppers comparing products.",
+      "Problem: Unsure whether the chair fits real daily mealtime use.",
+      "Selling points: stable frame, easy-clean seat, safety belt, footrest, compact storage.",
+    ].join("\n");
+    const storyOption = {
+      id: "problem-solution",
+      storyOptionId: "story_option:problem_solution",
+      storyDimension: "problem_solution" as const,
+      title: "Noisy Concept",
+      angle: "Show a parent setting up the chair for a real meal.",
+      audience: "Marketplace shoppers",
+      painPoint: "Unsure whether the product fits daily mealtime.",
+      hook: "One chair for calmer mealtime",
+      sellingPoints: ["Easy-clean seat", "Safety belt", "Compact storage"],
+      objectionsTrust: ["Use verified product evidence only"],
+      useCase: "Daily meal setup for a baby learning to sit",
+      conceptDetails: noisyDetails,
+      productFacts: "PRODUCT FACTS LOCK: Kids dining chair.\nStructure/design: 3-point safety belt / footrest.\nUse cases: daily meal setup for a baby learning to sit.\nDo not change product category, dimensions, tier/component count, style, or stated use cases.",
+      sceneTimeline: [
+        { timeRange: "0-3s", title: "Hook", detail: "Open with the mealtime problem." },
+        { timeRange: "3-12s", title: "Problem", detail: "Show the before context." },
+        { timeRange: "12-23s", title: "Demo", detail: "Show the product in use." },
+        { timeRange: "23-30s", title: "CTA", detail: "Invite product detail review." },
+      ],
+      risks: [],
+      sourceSignals: [],
+    };
+
+    render(
+      <ProductionWorkspace
+        title="Launch teaser"
+        status="plan_ready_for_review"
+        summary="Create a short product video using approved evidence only."
+        productionRunId="run-feature-116"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        storyConceptWizard={{
+          status: "options_ready",
+          selectedId: "problem-solution",
+          options: [
+            storyOption,
+            { ...storyOption, id: "proof-trust", storyOptionId: "story_option:objection_trust", storyDimension: "objection_trust" as const, title: "Proof Concept" },
+            { ...storyOption, id: "quick-demo", storyOptionId: "story_option:quick_demo", storyDimension: "quick_demo" as const, title: "Demo Concept" },
+            { ...storyOption, id: "use-case-moment", storyOptionId: "story_option:use_case_moment", storyDimension: "use_case_moment" as const, title: "Use Case Concept" },
+          ],
+          contextSummary: "Choose one concept before generating a fresh workflow.",
+        }}
+        space={featureSpace}
+      />
+    );
+
+    const detailsByCard = [
+      "problem-solution",
+      "proof-trust",
+      "quick-demo",
+      "use-case-moment",
+    ].map((id) => (
+      within(screen.getByTestId(`production-story-option-${id}`)).getByLabelText(/concept journey/i) as HTMLTextAreaElement
+    ).value);
+
+    const productFactsByCard = [
+      "problem-solution",
+      "proof-trust",
+      "quick-demo",
+      "use-case-moment",
+    ].map((id) => (
+      within(screen.getByTestId(`production-story-option-${id}`)).getByLabelText(/product facts/i) as HTMLTextAreaElement
+    ).value);
+
+    expect(new Set(detailsByCard).size).toBe(4);
+    expect(new Set(productFactsByCard).size).toBe(1);
+    expect(productFactsByCard[0]).toContain("PRODUCT FACTS LOCK: Kids dining chair");
+    expect(productFactsByCard[0]).toContain("3-point safety belt");
+    detailsByCard.forEach((value) => {
+      expect(value.length).toBeLessThanOrEqual(520);
+      expect(value).not.toMatch(/[✅✨🪑]/u);
+      expect(value).not.toMatch(/Product name:|Summarized product details:|Selling points:/i);
+    });
+    expect(detailsByCard[0]).toMatch(/awareness|real friction/i);
+    expect(detailsByCard[1]).toMatch(/consideration|doubts/i);
+    expect(detailsByCard[2]).toMatch(/four-beat demo|fast/i);
+    expect(detailsByCard[3]).toMatch(/mini story|organized real-life/i);
   });
 
   it("shows story concept options after a production project exists", () => {

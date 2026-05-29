@@ -106,6 +106,7 @@ export interface ProductionStoryConceptOption {
   source?: "marketplace_insight" | "llm_synthesized" | "local_fallback";
   videoBrief?: Record<string, unknown>;
   conceptDetails?: string;
+  productFacts?: string;
   visualSummary?: string;
   keyVisualElements?: string[];
   storyboardThumbnailNotes?: string;
@@ -497,28 +498,189 @@ function buildConceptInfographicPrompt(option: ProductionStoryConceptOption): st
   ].filter(Boolean).join("\n");
 }
 
-function buildConceptDetailsText(option: ProductionStoryConceptOption, isThai: boolean): string {
-  if (option.conceptDetails?.trim()) return option.conceptDetails.trim();
-  const sellingPoints = option.sellingPoints.slice(0, 5).join(isThai ? " / " : " / ");
-  return isThai
+const CONCEPT_DETAILS_DISPLAY_MAX_CHARS = 520;
+const CONCEPT_DETAILS_DISPLAY_PART_MAX_CHARS = 90;
+const CONCEPT_DETAILS_DECORATIVE_SYMBOL_PATTERN = /[\p{Extended_Pictographic}\uFE0F\u20E3]/gu;
+
+function normalizeConceptDetailsText(value: unknown): string {
+  return String(value ?? "")
+    .replace(CONCEPT_DETAILS_DECORATIVE_SYMBOL_PATTERN, "")
+    .replace(/^[\s>*•·▪▫◦‣⁃\-=+|]+/gm, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function clampConceptDetailsText(value: unknown, maxChars = CONCEPT_DETAILS_DISPLAY_PART_MAX_CHARS): string {
+  const text = normalizeConceptDetailsText(value);
+  if (text.length <= maxChars) return text;
+  const sliced = text.slice(0, maxChars + 1);
+  const boundary = Math.max(
+    sliced.lastIndexOf("."),
+    sliced.lastIndexOf("!"),
+    sliced.lastIndexOf("?"),
+    sliced.lastIndexOf(","),
+    sliced.lastIndexOf("/"),
+    sliced.lastIndexOf(" "),
+  );
+  return sliced.slice(0, boundary >= Math.floor(maxChars * 0.65) ? boundary : maxChars).trim();
+}
+
+function joinCompactConceptDetails(parts: string[]): string {
+  return parts.reduce((output, part) => {
+    const text = normalizeConceptDetailsText(part);
+    if (!text) return output;
+    const candidate = output ? `${output} ${text}` : text;
+    if (candidate.length <= CONCEPT_DETAILS_DISPLAY_MAX_CHARS) return candidate;
+    return output || clampConceptDetailsText(text, CONCEPT_DETAILS_DISPLAY_MAX_CHARS);
+  }, "");
+}
+
+function isTemplateConceptDetailsText(value: unknown): boolean {
+  const text = normalizeConceptDetailsText(value);
+  if (!text) return false;
+  const labels = [
+    "สินค้า:",
+    "รายละเอียดย่อ:",
+    "แนวคิด:",
+    "กลุ่มเป้าหมาย:",
+    "ปัญหา:",
+    "จุดขาย:",
+    "Product name:",
+    "Product:",
+    "Brief details:",
+    "Summarized product details:",
+    "Concept:",
+    "Audience:",
+    "Problem:",
+    "Selling points:",
+  ];
+  const labelCount = labels.filter((label) => text.toLowerCase().includes(label.toLowerCase())).length;
+  return labelCount >= 3 || /จุดเด่นหลักของ|รีวิวสินค้า|Main value of|marketplace description/i.test(text);
+}
+
+function extractTemplateConceptSegment(text: string, labels: string[]): string {
+  const source = normalizeConceptDetailsText(text);
+  const stopLabels = [
+    "สินค้า",
+    "รายละเอียดย่อ",
+    "แนวคิด",
+    "กลุ่มเป้าหมาย",
+    "ปัญหา",
+    "จุดขาย",
+    "Product name",
+    "Product",
+    "Brief details",
+    "Summarized product details",
+    "Concept",
+    "Audience",
+    "Problem",
+    "Selling points",
+  ].filter((label) => !labels.some((activeLabel) => activeLabel.toLowerCase() === label.toLowerCase()));
+  const escapePattern = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = source.match(new RegExp(`(?:${labels.map(escapePattern).join("|")})\\s*[:：]?\\s*(.+?)(?=\\s+(?:${stopLabels.map(escapePattern).join("|")})\\s*[:：]?|$)`, "i"));
+  return normalizeConceptDetailsText(match?.[1] ?? "");
+}
+
+function inferConceptDetailsDimension(option: ProductionStoryConceptOption): NonNullable<ProductionStoryConceptOption["storyDimension"]> {
+  if (option.storyDimension) return option.storyDimension;
+  const marker = normalizeConceptDetailsText([option.storyOptionId, option.title, option.angle].filter(Boolean).join(" ")).toLowerCase();
+  if (/objection|proof|trust|ข้อกังวล|ความมั่นใจ|หลักฐาน/.test(marker)) return "objection_trust";
+  if (/quick|demo|เดโม|รวมประโยชน์/.test(marker)) return "quick_demo";
+  if (/use.case|real use|สถานการณ์|mini story|ใช้งานจริง/.test(marker)) return "use_case_moment";
+  return "problem_solution";
+}
+
+function buildJourneyConceptDetailsText(option: ProductionStoryConceptOption, isThai: boolean, rawDetails: string): string {
+  const productRef = clampConceptDetailsText(
+    extractTemplateConceptSegment(rawDetails, ["สินค้า", "Product name", "Product"])
+      || option.useCase
+      || (isThai ? "สินค้านี้" : "this product"),
+  );
+  const points = Array.from(new Set(option.sellingPoints
+    .filter((item) => !/จุดเด่นหลักของ|รีวิวสินค้า|Main value of|Relevant to/i.test(item))
+    .map((item) => clampConceptDetailsText(item))
+    .filter(Boolean)))
+    .slice(0, 3)
+    .join(isThai ? " / " : " / ");
+  const dimension = inferConceptDetailsDimension(option);
+  if (isThai) {
+    if (dimension === "objection_trust") {
+      return joinCompactConceptDetails([
+        `เล่าในช่วง consideration ของคนที่ยังลังเลว่าใช้จริงคุ้มไหมและเข้ากับพื้นที่ของตัวเองหรือเปล่า.`,
+        `ให้ภาพของ ${productRef} ตอบข้อกังวลด้วยขนาด บริบท และรายละเอียดที่มีหลักฐาน.`,
+        points ? `ย้ำเฉพาะจุดที่ตรวจสอบได้: ${points}.` : "",
+      ]);
+    }
+    if (dimension === "quick_demo") {
+      return joinCompactConceptDetails([
+        `ทำเป็นเดโมเร็ว 4 จังหวะ: ปัญหาก่อนใช้ → วาง ${productRef} เข้าฉาก → โชว์วิธีใช้หลัก → ปิดด้วยผลลัพธ์ที่เห็นภาพ.`,
+        points ? `ใช้ ${points} เป็นภาพพิสูจน์แทนคำขายยาว.` : "ให้ภาพพิสูจน์การใช้งานแทนคำขายยาว.",
+      ]);
+    }
+    if (dimension === "use_case_moment") {
+      return joinCompactConceptDetails([
+        `ทำเป็น mini story หลังผู้ใช้จัดมุมใหม่ด้วย ${productRef}.`,
+        `พาเห็นของใช้มีที่อยู่ หยิบง่ายขึ้น และห้องดูเป็นระเบียบในชีวิตจริง.`,
+      ]);
+    }
+    return joinCompactConceptDetails([
+      `เปิดจากปัญหาจริงของคนดูที่ยังไม่เห็นภาพการใช้งาน.`,
+      `พาเห็น ${productRef} เป็นทางออกผ่านสถานการณ์ก่อน-หลังและบริบทที่จับต้องได้.`,
+      points ? `แกนเรื่องเน้น ${points}.` : "",
+    ]);
+  }
+  if (dimension === "objection_trust") {
+    return joinCompactConceptDetails([
+      "Tell the consideration moment: the shopper is unsure whether it will fit their real routine.",
+      `Use ${productRef} to answer doubts with scale, context, and evidence-backed details.`,
+      points ? `Keep proof focused on ${points}.` : "",
+    ]);
+  }
+  if (dimension === "quick_demo") {
+    return joinCompactConceptDetails([
+      `Use a fast four-beat demo: before friction -> place ${productRef} -> show the core use -> end with a visible outcome.`,
+      points ? `Let visuals prove ${points} instead of long sales copy.` : "Let visuals prove the use case instead of long sales copy.",
+    ]);
+  }
+  if (dimension === "use_case_moment") {
+    return joinCompactConceptDetails([
+      `Make it a mini story after the user sets up ${productRef}.`,
+      "Show essentials in place, easier reach, and a more organized real-life moment.",
+    ]);
+  }
+  return joinCompactConceptDetails([
+    "Open on the audience's real friction before they know the product is the answer.",
+    `Show ${productRef} solving that moment through a concrete before/after use case.`,
+    points ? `Anchor the story on ${points}.` : "",
+  ]);
+}
+
+function buildProductFactsText(option: ProductionStoryConceptOption, isThai: boolean): string {
+  const productFacts = normalizeConceptDetailsText(option.productFacts);
+  if (productFacts) return productFacts;
+  const rawDetails = normalizeConceptDetailsText(option.conceptDetails);
+  const productName = extractTemplateConceptSegment(rawDetails, ["สินค้า", "Product name", "Product"]);
+  const productDetails = extractTemplateConceptSegment(rawDetails, ["รายละเอียดสินค้าที่สรุปมาแล้วคือ", "รายละเอียดย่อ", "Summarized product details", "Brief details"]);
+  if (!productName && !productDetails) return "";
+  return joinCompactConceptDetails(isThai
     ? [
-      `แนวคิด: ${option.title}`,
-      `รายละเอียด: ${option.angle}`,
-      option.audience ? `กลุ่มเป้าหมายคือ ${option.audience}` : "",
-      option.painPoint ? `ปัญหาหลักคือ ${option.painPoint}` : "",
-      sellingPoints ? `จุดขายที่ควรเล่าคือ ${sellingPoints}` : "",
-      option.hook ? `เปิดเรื่องด้วย hook ว่า ${option.hook}` : "",
-      option.useCase ? `สถานการณ์ใช้งานที่ควรเล่าคือ ${option.useCase}` : "",
-    ].filter(Boolean).join(" ")
+      productName ? `PRODUCT FACTS LOCK: ${productName}.` : "",
+      productDetails ? `รายละเอียดสินค้า: ${productDetails}.` : "",
+      "ห้ามเปลี่ยนประเภทสินค้า รูปทรง จำนวนชิ้น/ชั้น ขนาดโดยรวม หรือรายละเอียดสินค้าที่ระบุ.",
+    ]
     : [
-      `Concept: ${option.title}.`,
-      `Details: ${option.angle}.`,
-      option.audience ? `Target audience: ${option.audience}.` : "",
-      option.painPoint ? `Problem: ${option.painPoint}.` : "",
-      sellingPoints ? `Selling points: ${sellingPoints}.` : "",
-      option.hook ? `Hook: ${option.hook}.` : "",
-      option.useCase ? `Use case: ${option.useCase}.` : "",
-    ].filter(Boolean).join(" ");
+      productName ? `PRODUCT FACTS LOCK: ${productName}.` : "",
+      productDetails ? `Product details: ${productDetails}.` : "",
+      "Do not change product category, shape, component/tier count, overall scale, or stated product details.",
+    ]);
+}
+
+function buildConceptDetailsText(option: ProductionStoryConceptOption, isThai: boolean): string {
+  const rawDetails = normalizeConceptDetailsText(option.conceptDetails);
+  if (rawDetails && rawDetails.length <= CONCEPT_DETAILS_DISPLAY_MAX_CHARS && !isTemplateConceptDetailsText(rawDetails)) return rawDetails;
+  return buildJourneyConceptDetailsText(option, isThai, rawDetails);
 }
 
 function ProductionConceptCard(props: {
@@ -533,8 +695,10 @@ function ProductionConceptCard(props: {
 }) {
   const { option, selected, isThai } = props;
   const [copiedDetails, setCopiedDetails] = useState(false);
+  const [copiedProductFacts, setCopiedProductFacts] = useState(false);
   const infographicStatus = option.infographicStatus ?? (option.infographicUrl ? "ready" : option.infographicPrompt ? "prompt_ready" : "idle");
   const conceptDetails = buildConceptDetailsText(option, isThai);
+  const productFacts = buildProductFactsText(option, isThai);
   const handleCopyDetails = async () => {
     if (!conceptDetails) return;
     try {
@@ -543,6 +707,16 @@ function ProductionConceptCard(props: {
       window.setTimeout(() => setCopiedDetails(false), 1200);
     } catch {
       setCopiedDetails(false);
+    }
+  };
+  const handleCopyProductFacts = async () => {
+    if (!productFacts) return;
+    try {
+      await navigator.clipboard?.writeText(productFacts);
+      setCopiedProductFacts(true);
+      window.setTimeout(() => setCopiedProductFacts(false), 1200);
+    } catch {
+      setCopiedProductFacts(false);
     }
   };
   return (
@@ -635,10 +809,29 @@ function ProductionConceptCard(props: {
             </div>
           </div>
         ) : null}
+        {productFacts ? (
+          <div className="min-w-0 rounded-md border border-emerald-200 bg-white p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-normal text-emerald-700">
+                {isThai ? "รายละเอียดสินค้า" : "Product facts"}
+              </div>
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={handleCopyProductFacts}>
+                <Copy className="mr-1 h-3.5 w-3.5" />
+                {copiedProductFacts ? (isThai ? "คัดลอกแล้ว" : "Copied") : (isThai ? "คัดลอก" : "Copy")}
+              </Button>
+            </div>
+            <Textarea
+              value={productFacts}
+              readOnly
+              className="min-h-[110px] resize-y border-emerald-100 bg-emerald-50/40 text-xs leading-5 text-slate-800 shadow-none focus-visible:ring-emerald-200"
+              aria-label={isThai ? `รายละเอียดสินค้า ${option.title}` : `${option.title} product facts`}
+            />
+          </div>
+        ) : null}
         <div className="min-w-0 rounded-md border border-slate-200 bg-white p-2">
           <div className="mb-1 flex items-center justify-between gap-2">
             <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">
-              {isThai ? "แนวคิดและรายละเอียด" : "Concept and details"}
+              {isThai ? "แนวคิดวิดีโอ" : "Concept journey"}
             </div>
             <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={handleCopyDetails}>
               <Copy className="mr-1 h-3.5 w-3.5" />
@@ -649,7 +842,7 @@ function ProductionConceptCard(props: {
             value={conceptDetails}
             readOnly
             className="min-h-[140px] resize-y border-slate-100 bg-slate-50 text-xs leading-5 text-slate-800 shadow-none focus-visible:ring-sky-200"
-            aria-label={isThai ? `แนวคิดและรายละเอียด ${option.title}` : `${option.title} concept and details`}
+            aria-label={isThai ? `แนวคิดวิดีโอ ${option.title}` : `${option.title} concept journey`}
           />
         </div>
         <div className="flex min-w-0 flex-wrap gap-1">

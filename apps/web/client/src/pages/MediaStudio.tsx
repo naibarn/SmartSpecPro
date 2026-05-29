@@ -192,6 +192,12 @@ import {
 import { composePromptWithNotes, parseMediaStudioPromptPackage } from "@/lib/mediaStudioPromptPackage";
 import { applyMediaStudioAspectRatioPromptParams } from "@/lib/mediaStudioPromptParams";
 import {
+  buildProductionReferenceStoryboardConceptDetails,
+  buildProductionReferenceStoryboardGuide,
+  buildProductionReferenceStoryboardSceneDescriptions,
+  detectProductionReferenceStoryboardSkillIdFromText,
+} from "@/lib/productionReferenceStoryboard";
+import {
   VEO_STORYBOARD_SKILL_ID,
   buildMediaStudioToVeoSkillSync,
   buildVeoSkillToMediaStudioSync,
@@ -378,6 +384,20 @@ function mergeProductionReferenceStoryboardSkillOptions(
   });
 }
 
+function resolveProductionReferenceStoryboardSkillId(
+  preferredSkillId: string,
+  options: ProductionReferenceStoryboardSkillOption[],
+): string {
+  const normalizedPreferred = normalizeProductionReferenceStoryboardSkillId(preferredSkillId);
+  if (normalizedPreferred && options.some((option) => option.id === normalizedPreferred)) {
+    return normalizedPreferred;
+  }
+  if (options.some((option) => option.id === FURNITURE_REFERENCE_STORYBOARD_SKILL_ID)) {
+    return FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
+  }
+  return options[0]?.id ?? FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
+}
+
 function applyStoryboardPromptDuration(prompt: string, durationSeconds: number): string {
   const duration = Math.max(1, Math.round(durationSeconds));
   const replacement = `Create a ${duration}-second cinematic video.`;
@@ -389,6 +409,26 @@ function normalizeProductionReferenceStoryboardSkillId(value: unknown): string |
   return isProductionReferenceStoryboardSkillId(skillId) ? skillId : null;
 }
 
+function hasProductionReferenceStoryboardSkillValue(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.some(hasProductionReferenceStoryboardSkillValue);
+  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0;
+  return true;
+}
+
+function areProductionReferenceStoryboardSkillValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (Array.isArray(a) || Array.isArray(b) || (a && typeof a === "object") || (b && typeof b === "object")) {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch {
+      return false;
+    }
+  }
+  return String(a ?? "") === String(b ?? "");
+}
+
 function detectProductionReferenceStoryboardSkillId(space: ProductionSpace | null | undefined): string {
   if (!space) return FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
   const savedSkillId = [
@@ -397,7 +437,6 @@ function detectProductionReferenceStoryboardSkillId(space: ProductionSpace | nul
     space.brief?.constraints?.referenceStoryboardSkillId,
     space.storyConceptWizard?.referenceStoryboardSkillId,
   ].map(normalizeProductionReferenceStoryboardSkillId).find(Boolean);
-  if (savedSkillId) return savedSkillId;
 
   const searchableText = [
     space.brief?.title,
@@ -408,36 +447,28 @@ function detectProductionReferenceStoryboardSkillId(space: ProductionSpace | nul
       asset.title,
       asset.role,
       asset.zone,
+      getMarketplaceProductContextFromAsset(asset)?.categoryText,
+      getMarketplaceProductContextFromAsset(asset)?.productName,
       JSON.stringify(asset.provenance ?? {}),
     ]),
     ...(space.productEvidenceManifest?.products ?? []).flatMap((product) => [
       product.title,
       product.role,
+      product.productTruth && typeof product.productTruth === "object"
+        ? [
+            (product.productTruth as Record<string, unknown>).categoryText,
+            (product.productTruth as Record<string, unknown>).productName,
+            ((product.productTruth as Record<string, unknown>).metadata as Record<string, unknown> | undefined)?.category,
+          ].filter(Boolean).join(" ")
+        : "",
       JSON.stringify(product.productTruth ?? {}),
       JSON.stringify(product.provenance ?? {}),
     ]),
-  ].filter(Boolean).join(" ").toLowerCase();
-  const cosmeticSignals = [
-    "cosmetic",
-    "cosmetics",
-    "beauty",
-    "makeup",
-    "skincare",
-    "skin care",
-    "serum",
-    "cream",
-    "lipstick",
-    "คอสเมติก",
-    "เครื่องสำอาง",
-    "บิวตี้",
-    "สกินแคร์",
-    "เซรั่ม",
-    "ครีม",
-    "ลิป",
-  ];
-  return cosmeticSignals.some((signal) => searchableText.includes(signal))
-    ? COSMATIC_REFERENCE_STORYBOARD_SKILL_ID
-    : FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
+  ].filter(Boolean).join(" ");
+  if (searchableText.trim()) {
+    return detectProductionReferenceStoryboardSkillIdFromText(searchableText, FURNITURE_REFERENCE_STORYBOARD_SKILL_ID);
+  }
+  return savedSkillId || FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
 }
 const MEDIA_PRODUCTION_PLAN_VERIFIER_SKILL_ID = "media-production-plan-verifier";
 const MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT = 10;
@@ -1263,6 +1294,425 @@ function textContainsAny(text: string, terms: string[]) {
 
 const VOLATILE_MARKETPLACE_SIGNAL_KEY_PATTERN = /(price|rating|sold|sale|sales|discount|voucher|coupon|promotion|promo|freeShipping|reviewCount|ราคา|ยอดขาย|ส่วนลด|โปรโม|คูปอง)/i;
 const VOLATILE_MARKETPLACE_SIGNAL_TEXT_PATTERN = /(ราคา|฿|บาท|price|discount|ส่วนลด|โปรโม|โปรฯ|คูปอง|voucher|coupon|free shipping|ส่งฟรี|rating|เรตติ้ง|ดาว|stars?\b|ยอดขาย|ขายแล้ว|sold\b|sold count|sales volume|สั่งซื้อแล้ว)/i;
+const DECORATIVE_STORY_CONCEPT_SYMBOL_PATTERN = /[\p{Extended_Pictographic}\uFE0F\u20E3]/gu;
+const PRODUCTION_STORY_CONCEPT_DETAILS_MAX_CHARS = 520;
+const PRODUCTION_STORY_CONCEPT_DETAILS_PRODUCT_MAX_CHARS = 120;
+const PRODUCTION_STORY_CONCEPT_DETAILS_PART_MAX_CHARS = 90;
+
+type CompactProductionStoryConcept = Pick<ProductionStoryConceptOption, "title" | "angle" | "audience" | "painPoint" | "sellingPoints" | "useCase" | "hook">
+  & Partial<Pick<ProductionStoryConceptOption, "storyDimension" | "storyOptionId">>;
+
+function normalizeStoryConceptPromptText(value: unknown): string {
+  return String(value ?? "")
+    .replace(DECORATIVE_STORY_CONCEPT_SYMBOL_PATTERN, "")
+    .replace(/^[\s>*•·▪▫◦‣⁃\-=+|]+/gm, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function clampStoryConceptText(value: unknown, maxChars: number): string {
+  const text = normalizeStoryConceptPromptText(value);
+  if (text.length <= maxChars) return text;
+  const sliced = text.slice(0, maxChars + 1);
+  const boundaryIndexes = [
+    sliced.lastIndexOf("."),
+    sliced.lastIndexOf("!"),
+    sliced.lastIndexOf("?"),
+    sliced.lastIndexOf(","),
+    sliced.lastIndexOf("/"),
+    sliced.lastIndexOf(" "),
+  ];
+  const boundary = Math.max(...boundaryIndexes);
+  return sliced.slice(0, boundary >= Math.floor(maxChars * 0.65) ? boundary : maxChars).trim();
+}
+
+function inferStoryConceptLocaleFromText(values: unknown[]): "th" | "en" {
+  return values.some((value) => /[\u0E00-\u0E7F]/.test(String(value ?? ""))) ? "th" : "en";
+}
+
+function joinCompactStoryConceptParts(parts: string[], maxChars = PRODUCTION_STORY_CONCEPT_DETAILS_MAX_CHARS): string {
+  return parts.reduce((output, part) => {
+    const text = normalizeStoryConceptPromptText(part);
+    if (!text) return output;
+    const candidate = output ? `${output} ${text}` : text;
+    if (candidate.length <= maxChars) return candidate;
+    return output || clampStoryConceptText(text, maxChars);
+  }, "");
+}
+
+function escapeStoryConceptRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractStoryConceptDetailSegment(text: string, labels: string[]): string {
+  const source = normalizeStoryConceptPromptText(text);
+  if (!source) return "";
+  const stopLabels = [
+    "ชื่อสินค้า",
+    "สินค้า",
+    "รายละเอียดสินค้าที่สรุปมาแล้วคือ",
+    "รายละเอียดย่อ",
+    "แนวคิด",
+    "กลุ่มเป้าหมายคือ",
+    "กลุ่มเป้าหมาย",
+    "ปัญหาที่ต้องหยิบมาเล่าคือ",
+    "ปัญหา",
+    "จุดขายหลักคือ",
+    "จุดขาย",
+    "เปิดด้วยประโยค hook ว่า",
+    "Hook",
+    "จากนั้นพาไปเห็นการใช้งานจริงว่า",
+    "บริบทใช้จริง",
+    "Product name",
+    "Product",
+    "Summarized product details",
+    "Brief details",
+    "Concept",
+    "Target audience",
+    "Audience",
+    "Problem",
+    "Selling points",
+    "Opening hook",
+    "Use case",
+    "Real use case",
+  ].filter((label) => !labels.some((activeLabel) => activeLabel.toLowerCase() === label.toLowerCase()));
+  const labelPattern = labels.map(escapeStoryConceptRegExp).join("|");
+  const stopPattern = stopLabels.map(escapeStoryConceptRegExp).join("|");
+  const match = source.match(new RegExp(`(?:${labelPattern})\\s*[:：]?\\s*(.+?)(?=\\s+(?:${stopPattern})\\s*[:：]?|$)`, "i"));
+  return normalizeStoryConceptPromptText(match?.[1] ?? "");
+}
+
+function isTemplateStoryConceptDetailsText(value: unknown): boolean {
+  const text = normalizeStoryConceptPromptText(value);
+  if (!text) return false;
+  const templateLabels = [
+    "สินค้า:",
+    "รายละเอียดย่อ:",
+    "แนวคิด:",
+    "กลุ่มเป้าหมาย:",
+    "ปัญหา:",
+    "จุดขาย:",
+    "Product name:",
+    "Product:",
+    "Brief details:",
+    "Summarized product details:",
+    "Concept:",
+    "Audience:",
+    "Problem:",
+    "Selling points:",
+  ];
+  const labelCount = templateLabels.filter((label) => text.toLowerCase().includes(label.toLowerCase())).length;
+  return labelCount >= 3 || /จุดเด่นหลักของ|รีวิวสินค้า|Main value of|marketplace description/i.test(text);
+}
+
+function inferStoryConceptDimension(concept: CompactProductionStoryConcept): NonNullable<ProductionStoryConceptOption["storyDimension"]> {
+  if (concept.storyDimension) return concept.storyDimension;
+  const marker = normalizeStoryConceptPromptText([
+    concept.storyOptionId,
+    concept.title,
+    concept.angle,
+  ].filter(Boolean).join(" ")).toLowerCase();
+  if (/objection|proof|trust|ข้อกังวล|ความมั่นใจ|หลักฐาน/.test(marker)) return "objection_trust";
+  if (/quick|demo|เดโม|รวมประโยชน์/.test(marker)) return "quick_demo";
+  if (/use.case|real use|สถานการณ์|mini story|ใช้งานจริง/.test(marker)) return "use_case_moment";
+  return "problem_solution";
+}
+
+function compactProductBrand(value: string): string {
+  return normalizeStoryConceptPromptText(value).match(/^([A-Za-z][A-Za-z0-9-]*)\b/)?.[1] ?? "";
+}
+
+function compactProductReference(input: {
+  productName: string;
+  productDetails: string;
+  locale: "th" | "en";
+}): string {
+  const { productName, productDetails, locale } = input;
+  const source = `${productName} ${productDetails}`.toLowerCase();
+  const brand = compactProductBrand(productName);
+  const brandPrefix = brand ? `${brand} ` : "";
+  if (/โต๊ะ|ชั้นวาง|ข้างเตียง|นอร์ดิก|bedside|side table|shelf|nightstand/i.test(source)) {
+    return locale === "th"
+      ? `${brandPrefix}โต๊ะ/ชั้นวางข้างเตียงขนาดเล็ก`
+      : `${brandPrefix}compact bedside table or shelf`;
+  }
+  if (/เก้าอี้.*เด็ก|กินข้าวเด็ก|โต๊ะกินข้าวเด็ก|baby|high chair|kids dining/i.test(source)) {
+    return locale === "th"
+      ? `${brandPrefix}เก้าอี้ทานข้าวเด็ก`
+      : `${brandPrefix}kids dining chair`;
+  }
+  return clampStoryConceptText(productName || productDetails || (locale === "th" ? "สินค้านี้" : "this product"), PRODUCTION_STORY_CONCEPT_DETAILS_PART_MAX_CHARS);
+}
+
+function isLowValueStorySellingPoint(value: string, productName: string, productDetails: string): boolean {
+  const text = normalizeStoryConceptPromptText(value);
+  if (!text) return true;
+  if (/จุดเด่นหลักของ|รีวิวสินค้า|รายละเอียดสินค้า|Main value of|Relevant to|product details/i.test(text)) return true;
+  const normalized = normalizePlanningText(text);
+  const product = normalizePlanningText(productName);
+  const details = normalizePlanningText(productDetails);
+  return Boolean(
+    (product && normalized.includes(product.slice(0, 40)) && normalized.length > 55)
+    || (details && normalized === details)
+  );
+}
+
+function storyProductSignals(input: {
+  productName: string;
+  productDetails: string;
+  locale: "th" | "en";
+}) {
+  const { productName, productDetails, locale } = input;
+  const source = `${productName} ${productDetails}`.toLowerCase();
+  const productRef = compactProductReference(input);
+  if (/โต๊ะ|ชั้นวาง|ข้างเตียง|นอร์ดิก|bedside|side table|shelf|nightstand/i.test(source)) {
+    return locale === "th"
+      ? {
+        productRef,
+        friction: "ของใช้เล็ก ๆ อย่างมือถือ รีโมต หนังสือ หรือแก้วน้ำไม่มีที่อยู่ประจำ",
+        aspiration: "ห้องดูเป็นระเบียบขึ้นและหยิบของข้างตัวง่ายกว่าเดิม",
+        consideration: "โต๊ะเล็กจะวางของได้จริงไหม เข้ากับพื้นที่คอนโดหรือมุมข้างเตียงหรือเปล่า",
+        proofFocus: "เทียบขนาดกับเตียงหรือโซฟา โชว์ของที่วางได้ และให้เห็นมุมก่อน-หลัง",
+        quickSteps: ["ของกระจัดกระจายข้างเตียง", `วาง ${productRef} เข้ามุม`, "จัดมือถือ หนังสือ และแก้วน้ำให้มีที่อยู่", "ปิดด้วยมุมห้องที่ดูเรียบร้อยขึ้น"],
+        miniStory: `คืนแรกหลังจัดมุมใหม่ เจ้าของห้องวางโคมไฟเล็ก หนังสือ แก้วน้ำ และโทรศัพท์ไว้บน ${productRef}; เช้ามาไม่ต้องคลำหาของทั่วห้อง`,
+        fallbackBenefits: ["จัดของข้างเตียงให้เป็นที่", "ขนาดกะทัดรัด", "เข้ากับมุมเล็กในห้อง"],
+      }
+      : {
+        productRef,
+        friction: "small essentials like a phone, remote, book, or water glass do not have a consistent place",
+        aspiration: "the room feels more organized and bedside items are easier to reach",
+        consideration: "whether a compact table can actually hold daily items and fit a small room",
+        proofFocus: "show scale beside a bed or sofa, what fits on it, and a before/after room corner",
+        quickSteps: ["messy bedside items", `place the ${productRef}`, "organize phone, book, and drink", "end on a cleaner room corner"],
+        miniStory: `On the first night after refreshing the corner, the user places a lamp, book, drink, and phone on the ${productRef}; the next morning everything is easy to find`,
+        fallbackBenefits: ["keeps bedside items in one place", "compact size", "fits small room corners"],
+      };
+  }
+  if (/เก้าอี้.*เด็ก|กินข้าวเด็ก|โต๊ะกินข้าวเด็ก|baby|high chair|kids dining/i.test(source)) {
+    return locale === "th"
+      ? {
+        productRef,
+        friction: "มื้ออาหารของลูกต้องคอยจัดท่านั่งและหยิบของรอบตัวตลอดเวลา",
+        aspiration: "มื้ออาหารเป็นสัดส่วนขึ้นและพ่อแม่เห็นภาพการใช้งานจริงก่อนซื้อ",
+        consideration: "ลูกนั่งสบายไหม ใช้กับมื้ออาหารจริงได้ไหม และดูแลง่ายแค่ไหน",
+        proofFocus: "โชว์การจัดมุมกินข้าว ระยะเอื้อมถึง และรายละเอียดที่มีหลักฐานจากสินค้า",
+        quickSteps: ["ก่อนกินข้าวพื้นที่ยังไม่พร้อม", `จัด ${productRef} เข้ามุมอาหาร`, "วางถาดและของใช้ที่จำเป็น", "ปิดด้วยมื้ออาหารที่เป็นระเบียบขึ้น"],
+        miniStory: `มื้อแรกหลังจัดมุมอาหาร พ่อแม่วางลูกนั่งกับ ${productRef} เตรียมจาน ช้อน และผ้าเช็ดไว้ใกล้มือ ทำให้การกินข้าวดูควบคุมง่ายขึ้น`,
+        fallbackBenefits: ["จัดมุมกินข้าวให้เป็นสัดส่วน", "เห็นการใช้งานกับเด็กในชีวิตจริง", "ช่วยให้มื้ออาหารดูเป็นระเบียบ"],
+      }
+      : {
+        productRef,
+        friction: "mealtime requires constant repositioning and keeping essentials within reach",
+        aspiration: "parents can picture a more organized everyday meal setup before buying",
+        consideration: "whether the child can sit comfortably and the chair works for real meals",
+        proofFocus: "show the meal corner setup, reach, and only evidence-backed product details",
+        quickSteps: ["meal area before setup", `place the ${productRef}`, "arrange tray and essentials", "end with a calmer meal routine"],
+        miniStory: `During the first meal setup, the parent places the child in the ${productRef} and keeps the plate, spoon, and wipes nearby, making the routine easier to follow`,
+        fallbackBenefits: ["creates a dedicated meal spot", "shows real family use", "keeps mealtime more organized"],
+      };
+  }
+  return locale === "th"
+    ? {
+      productRef,
+      friction: "คนซื้อยังไม่เห็นภาพว่าสินค้าจะเข้าไปอยู่ในชีวิตประจำวันตรงไหน",
+      aspiration: "ตัดสินใจง่ายขึ้นเพราะเห็นสถานการณ์จริง ไม่ใช่แค่รายการคุณสมบัติ",
+      consideration: "ใช้จริงคุ้มไหม เข้ากับพื้นที่หรือพฤติกรรมของตัวเองหรือเปล่า",
+      proofFocus: "โชว์บริบทก่อนใช้ ระหว่างใช้ และผลลัพธ์ที่เห็นได้จากข้อมูลสินค้าเท่านั้น",
+      quickSteps: ["เริ่มจากปัญหาในชีวิตจริง", `นำ ${productRef} เข้าฉาก`, "โชว์วิธีใช้หลัก", "ปิดด้วยผลลัพธ์ที่ตรวจสอบได้"],
+      miniStory: `หลังลองใช้ ${productRef} ในสถานการณ์จริง คนใช้เริ่มเห็นว่ามันช่วยจัดการจุดเล็ก ๆ ในชีวิตประจำวันได้อย่างไร`,
+      fallbackBenefits: ["เห็นบริบทการใช้งานจริง", "ลดความลังเลก่อนซื้อ", "เล่าเฉพาะจุดที่มีข้อมูลรองรับ"],
+    }
+    : {
+      productRef,
+      friction: "the shopper cannot yet picture where the product fits into daily life",
+      aspiration: "the decision feels easier because the use case is concrete, not just a feature list",
+      consideration: "whether it is useful enough and fits their space or routine",
+      proofFocus: "show before, use, and evidence-backed outcome from the product data only",
+      quickSteps: ["start with a real-life friction", `bring in the ${productRef}`, "show the core use", "end with an evidence-safe outcome"],
+      miniStory: `After trying the ${productRef} in a real situation, the user sees how it solves one small daily friction`,
+      fallbackBenefits: ["shows a real use context", "reduces purchase hesitation", "stays grounded in evidence"],
+    };
+}
+
+function buildJourneyStoryConceptDetails(input: {
+  locale: "th" | "en";
+  productName: string;
+  productDetails: string;
+  concept: CompactProductionStoryConcept;
+}): string {
+  const { locale, productName, productDetails, concept } = input;
+  const dimension = inferStoryConceptDimension(concept);
+  const signals = storyProductSignals({ productName, productDetails, locale });
+  const sellingPoints = concept.sellingPoints
+    .filter((item) => !isLowValueStorySellingPoint(item, productName, productDetails))
+    .map((item) => clampStoryConceptText(item, PRODUCTION_STORY_CONCEPT_DETAILS_PART_MAX_CHARS))
+    .filter(Boolean)
+    .slice(0, 3);
+  const proofPoints = (sellingPoints.length ? sellingPoints : signals.fallbackBenefits).slice(0, 3).join(locale === "th" ? " / " : " / ");
+
+  if (locale === "th") {
+    if (dimension === "objection_trust") {
+      return joinCompactStoryConceptParts([
+        `เล่าในช่วง consideration ของคนที่ลังเลว่า ${signals.consideration}.`,
+        `ให้ภาพตอบข้อกังวลด้วย ${signals.proofFocus}.`,
+        `ย้ำเฉพาะจุดที่เห็นหรือมีข้อมูลรองรับ: ${proofPoints}.`,
+      ]);
+    }
+    if (dimension === "quick_demo") {
+      return joinCompactStoryConceptParts([
+        `ทำเป็นเดโมเร็ว 4 จังหวะ: ${signals.quickSteps.join(" → ")}.`,
+        `ให้ภาพพิสูจน์ว่า ${signals.productRef} ช่วยให้บริบทใช้งานชัดขึ้น โดยไม่ต้องอ่านข้อความขายยาว.`,
+      ]);
+    }
+    if (dimension === "use_case_moment") {
+      return joinCompactStoryConceptParts([
+        signals.miniStory,
+        `ปิดด้วยความรู้สึกหลังใช้ว่า ${signals.aspiration}.`,
+        `แนวนี้ขายผ่าน experience หลังซื้อ ไม่ใช่รายการคุณสมบัติ.`,
+      ]);
+    }
+    return joinCompactStoryConceptParts([
+      `เปิดจากปัญหา awareness: ${signals.friction}.`,
+      `พาเห็น ${signals.productRef} เป็นทางออกในชีวิตจริงผ่าน ${signals.proofFocus}.`,
+      `แกนเรื่องคือจากความหงุดหงิดเล็ก ๆ ไปสู่ ${signals.aspiration}.`,
+    ]);
+  }
+
+  if (dimension === "objection_trust") {
+    return joinCompactStoryConceptParts([
+      `Tell the consideration moment: ${signals.consideration}.`,
+      `Answer the doubt with ${signals.proofFocus}.`,
+      `Keep the proof evidence-safe: ${proofPoints}.`,
+    ]);
+  }
+  if (dimension === "quick_demo") {
+    return joinCompactStoryConceptParts([
+      `Use a fast four-beat demo: ${signals.quickSteps.join(" -> ")}.`,
+      `Let visuals prove how the ${signals.productRef} clarifies the use case without long sales copy.`,
+    ]);
+  }
+  if (dimension === "use_case_moment") {
+    return joinCompactStoryConceptParts([
+      signals.miniStory,
+      `End on the experience: ${signals.aspiration}.`,
+      `This concept sells through post-purchase feeling, not a feature list.`,
+    ]);
+  }
+  return joinCompactStoryConceptParts([
+    `Open on the awareness problem: ${signals.friction}.`,
+    `Show the ${signals.productRef} as the real-life answer through ${signals.proofFocus}.`,
+    `Move from small frustration to this outcome: ${signals.aspiration}.`,
+  ]);
+}
+
+function compactProductionStoryConceptDetails(input: {
+  locale?: "th" | "en";
+  productName?: string;
+  productDetails?: string;
+  rawDetails?: string;
+  fallbackDetails?: string;
+  concept: CompactProductionStoryConcept;
+}): string {
+  const rawDetails = normalizeStoryConceptPromptText(input.rawDetails);
+  if (rawDetails && rawDetails.length <= PRODUCTION_STORY_CONCEPT_DETAILS_MAX_CHARS && !isTemplateStoryConceptDetailsText(rawDetails)) return rawDetails;
+  const fallbackDetails = normalizeStoryConceptPromptText(input.fallbackDetails);
+  if (!rawDetails && fallbackDetails && fallbackDetails.length <= PRODUCTION_STORY_CONCEPT_DETAILS_MAX_CHARS && !isTemplateStoryConceptDetailsText(fallbackDetails)) return fallbackDetails;
+  const detailSource = rawDetails || fallbackDetails;
+
+  const concept = input.concept;
+  const locale = input.locale ?? inferStoryConceptLocaleFromText([
+    rawDetails,
+    fallbackDetails,
+    input.productName,
+    input.productDetails,
+    concept.title,
+    concept.angle,
+    concept.audience,
+    concept.painPoint,
+    concept.hook,
+    concept.useCase,
+    concept.sellingPoints,
+  ]);
+  const productName = clampStoryConceptText(
+    firstNonEmpty(input.productName, extractStoryConceptDetailSegment(detailSource, ["ชื่อสินค้า", "สินค้า", "Product name", "Product"])),
+    PRODUCTION_STORY_CONCEPT_DETAILS_PART_MAX_CHARS,
+  );
+  const productDetails = clampStoryConceptText(
+    firstNonEmpty(input.productDetails, extractStoryConceptDetailSegment(detailSource, ["รายละเอียดสินค้าที่สรุปมาแล้วคือ", "รายละเอียดย่อ", "Summarized product details", "Brief details"])),
+    PRODUCTION_STORY_CONCEPT_DETAILS_PRODUCT_MAX_CHARS,
+  );
+  return buildJourneyStoryConceptDetails({
+    locale,
+    productName,
+    productDetails,
+    concept,
+  });
+}
+
+function extractProductDimensionText(value: string): string {
+  const match = normalizeStoryConceptPromptText(value).match(/\b\d+(?:\.\d+)?\s*[x×*]\s*\d+(?:\.\d+)?\s*[x×*]\s*\d+(?:\.\d+)?\s*(?:cm|ซม\.?|เซนติเมตร)?/i);
+  return match?.[0]?.replace(/\s*[x×*]\s*/g, " x ").replace(/\s+/g, " ").trim() ?? "";
+}
+
+function extractProductTierText(value: string, locale: "th" | "en"): string {
+  const text = normalizeStoryConceptPromptText(value);
+  const thaiMatch = text.match(/(?:แบบ\s*)?\d+\s*ชั้น/);
+  if (thaiMatch?.[0]) return thaiMatch[0].replace(/\s+/g, " ").trim();
+  const englishMatch = text.match(/\b\d+\s*(?:tiers?|levels?|shelves)\b/i);
+  if (englishMatch?.[0]) return englishMatch[0].replace(/\s+/g, " ").trim();
+  return /ชั้นวาง|shelf|shelves/i.test(text) ? (locale === "th" ? "ชั้นวาง" : "shelf") : "";
+}
+
+function extractProductStyleText(value: string, locale: "th" | "en"): string {
+  const text = normalizeStoryConceptPromptText(value);
+  if (/นอร์ดิก|nordic/i.test(text)) return locale === "th" ? "สไตล์นอร์ดิก" : "Nordic style";
+  const thaiStyle = text.match(/สไตล์[ก-๙A-Za-z0-9 -]{2,24}/);
+  if (thaiStyle?.[0]) return thaiStyle[0].trim();
+  const englishStyle = text.match(/\b[A-Za-z][A-Za-z -]{2,24}\s+style\b/i);
+  return englishStyle?.[0]?.trim() ?? "";
+}
+
+function extractProductUseCaseText(value: string): string {
+  const text = normalizeStoryConceptPromptText(value);
+  const match = text.match(/(?:ไม่ว่าจะเป็น|เช่น|ได้แก่|such as|including)\s*([^.!?。]+)/i);
+  return clampStoryConceptText(match?.[1] ?? "", 180);
+}
+
+function buildProductionStoryProductFacts(input: {
+  goal: ProductionGoal;
+  productContext: PrimaryProductPlanningContext;
+  locale: "th" | "en";
+}): string {
+  const { goal, productContext, locale } = input;
+  const isThai = locale === "th";
+  const productName = normalizeStoryConceptPromptText(firstNonEmpty(productContext.productName, goal.title, goal.summary, isThai ? "สินค้า" : "the product"));
+  const productDescription = normalizeStoryConceptPromptText(firstNonEmpty(productContext.description, goal.summary));
+  const dimension = extractProductDimensionText(`${productName} ${productDescription}`);
+  const tier = extractProductTierText(`${productName} ${productDescription}`, locale);
+  const style = extractProductStyleText(`${productName} ${productDescription}`, locale);
+  const useCases = firstNonEmpty(
+    extractProductUseCaseText(productDescription),
+    productContext.useCases.find((item) => !isLowValueStorySellingPoint(item, productName, productDescription)),
+  );
+  const detailFallback = !dimension && !tier && !style && !useCases
+    ? clampStoryConceptText(productDescription, 220)
+    : "";
+
+  return [
+    `PRODUCT FACTS LOCK: ${productName}.`,
+    dimension ? (isThai ? `ขนาด: ${dimension}.` : `Exact size: ${dimension}.`) : "",
+    [tier, style].filter(Boolean).length
+      ? (isThai ? `โครงสร้าง/ดีไซน์: ${[tier, style].filter(Boolean).join(" / ")}.` : `Structure/design: ${[tier, style].filter(Boolean).join(" / ")}.`)
+      : "",
+    useCases ? (isThai ? `การใช้งาน: ${useCases}.` : `Use cases: ${useCases}.`) : "",
+    detailFallback ? (isThai ? `รายละเอียดสินค้า: ${detailFallback}.` : `Product details: ${detailFallback}.`) : "",
+    isThai
+      ? "ห้ามเปลี่ยนประเภทสินค้า ขนาด จำนวนชั้น/ส่วนประกอบ สไตล์ หรือการใช้งานที่ระบุ."
+      : "Do not change product category, dimensions, tier/component count, style, or stated use cases.",
+  ].filter(Boolean).join("\n");
+}
 
 function isVolatileMarketplaceSignalText(value: unknown): boolean {
   const text = String(value ?? "").trim();
@@ -1273,18 +1723,24 @@ function isVolatileMarketplaceSignalText(value: unknown): boolean {
 }
 
 function filterStableStoryConceptStrings(items: string[]): string[] {
-  return items.filter((item) => !isVolatileMarketplaceSignalText(item));
+  return items
+    .map((item) => normalizeStoryConceptPromptText(item))
+    .filter((item) => item && !isVolatileMarketplaceSignalText(item));
 }
 
 function stableStoryConceptText(value: unknown, fallback = ""): string {
-  const text = String(value ?? "").trim();
+  const text = normalizeStoryConceptPromptText(value);
   if (text && !isVolatileMarketplaceSignalText(text)) return text;
-  const fallbackText = String(fallback ?? "").trim();
+  const fallbackText = normalizeStoryConceptPromptText(fallback);
   return fallbackText && !isVolatileMarketplaceSignalText(fallbackText) ? fallbackText : "";
 }
 
 function sanitizeStableStoryConceptValue(value: unknown): unknown {
-  if (typeof value === "string" || typeof value === "number") {
+  if (typeof value === "string") {
+    const text = normalizeStoryConceptPromptText(value);
+    return text && !isVolatileMarketplaceSignalText(text) ? text : undefined;
+  }
+  if (typeof value === "number") {
     return isVolatileMarketplaceSignalText(value) ? undefined : value;
   }
   if (Array.isArray(value)) {
@@ -1310,6 +1766,7 @@ function sanitizeProductionStoryConceptOption(
     option.hook,
     option.useCase,
     option.conceptDetails,
+    option.productFacts,
     option.visualSummary,
     option.storyboardThumbnailNotes,
     option.infographicPrompt,
@@ -1348,7 +1805,22 @@ function sanitizeProductionStoryConceptOption(
     sellingPoints: stableSellingPoints.length ? stableSellingPoints : filterStableStoryConceptStrings(fallback.sellingPoints),
     objectionsTrust: stableObjectionsTrust.length ? stableObjectionsTrust : filterStableStoryConceptStrings(fallback.objectionsTrust),
     useCase: stableStoryConceptText(option.useCase, fallback.useCase),
-    conceptDetails: stableStoryConceptText(option.conceptDetails, fallback.conceptDetails),
+    conceptDetails: compactProductionStoryConceptDetails({
+      rawDetails: stableStoryConceptText(option.conceptDetails),
+      fallbackDetails: stableStoryConceptText(fallback.conceptDetails),
+      concept: {
+        title: stableStoryConceptText(option.title, fallback.title),
+        angle: stableStoryConceptText(option.angle, fallback.angle),
+        audience: stableStoryConceptText(option.audience, fallback.audience),
+        painPoint: stableStoryConceptText(option.painPoint, fallback.painPoint),
+        hook: stableStoryConceptText(option.hook, fallback.hook),
+        sellingPoints: stableSellingPoints.length ? stableSellingPoints : filterStableStoryConceptStrings(fallback.sellingPoints),
+        useCase: stableStoryConceptText(option.useCase, fallback.useCase),
+        storyDimension: option.storyDimension ?? fallback.storyDimension,
+        storyOptionId: stableStoryConceptText(option.storyOptionId, fallback.storyOptionId),
+      },
+    }),
+    productFacts: stableStoryConceptText(option.productFacts, fallback.productFacts),
     visualSummary: stableStoryConceptText(option.visualSummary, fallback.visualSummary),
     keyVisualElements: option.keyVisualElements ? filterStableStoryConceptStrings(option.keyVisualElements) : option.keyVisualElements,
     storyboardThumbnailNotes: stableStoryConceptText(option.storyboardThumbnailNotes, fallback.storyboardThumbnailNotes),
@@ -1379,8 +1851,14 @@ function sanitizeProductionStoryConceptWizard(
   };
 }
 
+function getSelectedProductionStoryConceptOption(
+  wizard: ProductionStoryConceptWizardState | null | undefined,
+): ProductionStoryConceptOption | null {
+  return wizard?.options.find((option) => option.id === wizard.selectedId) ?? wizard?.options[0] ?? null;
+}
+
 function getProductionStoryConceptDetails(wizard: ProductionStoryConceptWizardState | null | undefined): string {
-  const selected = wizard?.options.find((option) => option.id === wizard.selectedId) ?? wizard?.options[0] ?? null;
+  const selected = getSelectedProductionStoryConceptOption(wizard);
   if (!selected) return "";
   return firstNonEmpty(
     selected.conceptDetails,
@@ -1517,35 +1995,18 @@ function getPrimaryProductPlanningContext(productTruthContext: Record<string, un
 function buildProductionStoryConceptDetails(input: {
   goal: ProductionGoal;
   productContext: PrimaryProductPlanningContext;
-  concept: Pick<ProductionStoryConceptOption, "title" | "angle" | "audience" | "painPoint" | "sellingPoints" | "useCase" | "hook">;
+  concept: CompactProductionStoryConcept;
   locale: "th" | "en";
 }): string {
   const { goal, productContext, concept, locale } = input;
   const productName = firstNonEmpty(productContext.productName, goal.title, goal.summary, locale === "th" ? "สินค้า" : "the product");
   const productDescription = firstNonEmpty(productContext.description, goal.summary, concept.angle);
-  const sellingPoints = concept.sellingPoints.slice(0, 5).filter(Boolean).join(locale === "th" ? " / " : " / ");
-  if (locale === "th") {
-    return [
-      `ชื่อสินค้า ${productName}`,
-      productDescription ? `รายละเอียดสินค้าที่สรุปมาแล้วคือ ${productDescription}` : "",
-      concept.audience ? `กลุ่มเป้าหมายคือ ${concept.audience}` : "",
-      concept.painPoint ? `ปัญหาที่ต้องหยิบมาเล่าคือ ${concept.painPoint}` : "",
-      sellingPoints ? `จุดขายหลักคือ ${sellingPoints}` : "",
-      `แนวคิดนี้ชื่อ "${concept.title}" โดยเล่าในมุม ${concept.angle}`,
-      concept.hook ? `เปิดด้วยประโยค hook ว่า ${concept.hook}` : "",
-      concept.useCase ? `จากนั้นพาไปเห็นการใช้งานจริงว่า ${concept.useCase}` : "",
-    ].filter(Boolean).join(" ");
-  }
-  return [
-    `Product name: ${productName}.`,
-    productDescription ? `Summarized product details: ${productDescription}.` : "",
-    concept.audience ? `Target audience: ${concept.audience}.` : "",
-    concept.painPoint ? `Problem: ${concept.painPoint}.` : "",
-    sellingPoints ? `Selling points: ${sellingPoints}.` : "",
-    `Concept: "${concept.title}", told through this angle: ${concept.angle}.`,
-    concept.hook ? `Opening hook: ${concept.hook}.` : "",
-    concept.useCase ? `Real use case: ${concept.useCase}.` : "",
-  ].filter(Boolean).join(" ");
+  return compactProductionStoryConceptDetails({
+    locale,
+    productName,
+    productDetails: productDescription,
+    concept,
+  });
 }
 
 function buildProductionStoryConceptOptions(
@@ -1558,26 +2019,30 @@ function buildProductionStoryConceptOptions(
   const context = getPrimaryProductPlanningContext(productTruthContext, goal);
   const productName = context.productName || (isThai ? "สินค้า" : "the product");
   const descriptionSeed = context.description || goal.summary || productName;
+  const storySignals = storyProductSignals({
+    productName,
+    productDetails: descriptionSeed,
+    locale,
+  });
+  const productFacts = buildProductionStoryProductFacts({ goal, productContext: context, locale });
   const fallbackAudience = goal.audience || context.audiences[0] || (isThai ? "คนที่กำลังตัดสินใจซื้อสินค้าใน marketplace" : "marketplace shoppers comparing options");
-  const sellingPoints = context.sellingPoints.length ? context.sellingPoints : [
-    isThai ? `จุดเด่นหลักของ ${productName}` : `Main value of ${productName}`,
-    context.category ? (isThai ? `เหมาะกับหมวด ${context.category}` : `Relevant to ${context.category}`) : descriptionSeed,
-  ].filter(Boolean).slice(0, 4);
+  const contextSellingPoints = context.sellingPoints.filter((item) => !isLowValueStorySellingPoint(item, productName, descriptionSeed));
+  const sellingPoints = (contextSellingPoints.length ? contextSellingPoints : storySignals.fallbackBenefits).filter(Boolean).slice(0, 4);
   const hooks = context.hooks.length ? context.hooks : [
-    isThai ? `ถ้าคุณกำลังลังเลกับ ${productName} ลองดู 30 วินาทีนี้` : `If you are unsure about ${productName}, watch this 30-second check`,
-    isThai ? `ปัญหาเล็ก ๆ ที่ ${productName} ช่วยแก้ได้` : `The small problem ${productName} can help solve`,
+    isThai ? `เคยไหม ${storySignals.friction}` : `What if ${storySignals.friction}?`,
+    isThai ? `ก่อนซื้อ ลองดู ${storySignals.productRef} ในสถานการณ์จริง` : `Before buying, see the ${storySignals.productRef} in a real situation`,
   ];
   const painPoints = context.painPoints.length ? context.painPoints : [
-    isThai ? "ยังไม่แน่ใจว่าสินค้าตรงกับการใช้งานจริงหรือไม่" : "Unsure whether the product fits the real use case",
-    isThai ? "ต้องการเห็นหลักฐานก่อนตัดสินใจ" : "Needs proof before deciding",
+    storySignals.friction,
+    storySignals.consideration,
   ];
   const objections = context.objections.length ? context.objections : [
-    isThai ? "ต้องยืนยันคุณสมบัติจากข้อมูลสินค้า/หลักฐานก่อน claim" : "Claims must be grounded in product evidence before use",
-    isThai ? "ยังต้องตรวจความเหมาะสมกับการใช้งานจริงและคุณภาพจากข้อมูลสินค้า" : "Fit for the real use case and quality still need checking from product evidence",
+    storySignals.consideration,
+    isThai ? "ต้องเห็นบริบทจริงและใช้เฉพาะข้อมูลที่มีหลักฐานรองรับ" : "Needs real context and evidence-backed details only",
   ];
   const useCases = context.useCases.length ? context.useCases : [
-    isThai ? `ใช้ ${productName} ในสถานการณ์จริงให้เห็นภาพชัด` : `Show ${productName} in a concrete real-life use case`,
-    isThai ? "เปรียบเทียบก่อน/หลังแบบไม่ claim เกินหลักฐาน" : "Show before/after context without unsupported claims",
+    storySignals.proofFocus,
+    storySignals.miniStory,
   ];
   const sourceSignals = [
     context.insights && Object.keys(context.insights).length ? (isThai ? "มี marketplace AI insight" : "Marketplace AI insight available") : "",
@@ -1650,6 +2115,7 @@ function buildProductionStoryConceptOptions(
         hookFormula: hookTechnique,
         source: "marketplace_insight",
         videoBrief: option.videoBrief && typeof option.videoBrief === "object" ? sanitizeStableStoryConceptValue(option.videoBrief) as Record<string, unknown> : undefined,
+        productFacts,
         conceptDetails: buildProductionStoryConceptDetails({
           goal,
           productContext: context,
@@ -1661,6 +2127,8 @@ function buildProductionStoryConceptOptions(
             hook: conceptHook,
             sellingPoints: conceptSellingPoints,
             useCase: conceptUseCase,
+            storyOptionId: optionId,
+            storyDimension: meta.dimension,
           },
           locale,
         }),
@@ -1734,6 +2202,7 @@ function buildProductionStoryConceptOptions(
       hookTechnique: seededPick(MARKETPLACE_STORY_DIMENSION_META[seed.storyOptionId].defaultHooks, generationSeed, index + 23),
       hookFormula: seededPick(MARKETPLACE_STORY_DIMENSION_META[seed.storyOptionId].defaultHooks, generationSeed, index + 23),
       source: context.insights && Object.keys(context.insights).length ? "marketplace_insight" : "local_fallback",
+      productFacts,
       conceptDetails: buildProductionStoryConceptDetails({
         goal,
         productContext: context,
@@ -2161,6 +2630,7 @@ function normalizeGeneratedStoryConcepts(
       hookTechnique: firstNonEmpty(readStringValue(source, "hookTechnique"), readStringValue(source, "hook_technique"), base.hookTechnique),
       hookFormula: firstNonEmpty(readStringValue(source, "hookFormula"), readStringValue(source, "hook_formula"), base.hookFormula),
       conceptDetails: firstNonEmpty(readStringValue(source, "conceptDetails"), readStringValue(source, "concept_details"), readStringValue(source, "conceptAndDetails"), readStringValue(source, "concept_and_details"), base.conceptDetails),
+      productFacts: base.productFacts || firstNonEmpty(readStringValue(source, "productFacts"), readStringValue(source, "product_facts")),
       visualSummary: firstNonEmpty(readStringValue(source, "visualSummary"), readStringValue(source, "visual_summary"), base.visualSummary),
       keyVisualElements: readStringList(source, "keyVisualElements", readStringList(source, "key_visual_elements", base.keyVisualElements ?? [])).slice(0, 8),
       storyboardThumbnailNotes: firstNonEmpty(readStringValue(source, "storyboardThumbnailNotes"), readStringValue(source, "storyboard_thumbnail_notes"), base.storyboardThumbnailNotes),
@@ -6015,11 +6485,13 @@ export default function MediaStudio() {
   const autoGenerateTriggeredRef = useRef(false);
   const marketplaceStorytellingAppliedRef = useRef<string | null>(null);
   const persistedProductionRunIdsRef = useRef<Set<string>>(new Set());
+  const skipNextDynamicFormResetRef = useRef(false);
   const pendingProductionSpaceSaveCountRef = useRef(0);
   const productionSpaceSaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const productionSpaceDraftRevisionRef = useRef(0);
   const latestPersistedProductionSpaceVersionRef = useRef(0);
   const lastProductionStoryAutosaveHashRef = useRef("");
+  const lastProductionReferenceStoryboardImageSyncHashRef = useRef("");
   const appliedProductionTabSnapshotKeyRef = useRef("");
   const productionInfographicDirectFetchAtRef = useRef<Record<string, number>>({});
   const productionInfographicNotFoundTaskIdsRef = useRef<Set<string>>(new Set());
@@ -8436,6 +8908,7 @@ export default function MediaStudio() {
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
+  const planStoryboardVideoPromptsMutation = trpc.skills.planStoryboardVideoPrompts.useMutation();
   const syncMarketplaceInsightMutation = trpc.marketplaceCapture.syncInsight.useMutation();
   const saveProductionGoalMutation = trpc.mediaProduction.saveGoalVersion.useMutation();
   const saveProductionSpaceMutation = trpc.mediaProduction.saveSpace.useMutation();
@@ -9227,6 +9700,11 @@ export default function MediaStudio() {
 
   // Reset dynamic form values when skill changes (per-tab)
   useEffect(() => {
+    if (skipNextDynamicFormResetRef.current) {
+      skipNextDynamicFormResetRef.current = false;
+      setUseAdvancedMode(true);
+      return;
+    }
     setDynamicFormValues({});
     setUseAdvancedMode(true);
   }, [selectedSkillId, setDynamicFormValues, setUseAdvancedMode]);
@@ -14996,14 +15474,12 @@ export default function MediaStudio() {
         shotCount: storyboardShotCount,
       };
       const splitStoryboardGuide = [
-        activeProductionConceptDetails ? `Concept and details:\n${activeProductionConceptDetails}` : "",
-        splitMarketplaceContext ? `Product context:\n${JSON.stringify(splitMarketplaceContext, null, 2)}` : "",
-        `Storyboard source: ${uploadedImages.length} sliced image frames creating ${storyboardShotCount} ordered video shots.`,
-        `Storyboard timing: ${durationSeconds} seconds per shot, ${storyboardTotalDurationSeconds} seconds total video duration.`,
-        `Frame rule: each shot uses its own adjacent image pair as start/end frames. Preserve visual continuity from one generated clip to the next.`,
-        `Prompt planner options: voice=${splitStoryboardSpeechMode}, speechLanguage=${splitStoryboardSpeechLanguage || "auto"}, sound=${splitStoryboardIncludeSound ? "enabled" : "disabled"}, tone=${splitStoryboardTone}, language=${splitStoryboardPromptLanguage}.`,
+        `Source: ${uploadedImages.length} sliced frames, ${storyboardShotCount} adjacent start/end shots.`,
+        `Timing: ${durationSeconds}s per shot, ${storyboardTotalDurationSeconds}s total.`,
+        "Rule: preserve continuity between adjacent frame pairs.",
       ].filter(Boolean).join("\n\n");
-      const tasks = buildFirstLastFrameStoryboardTasks(uploadedImages, {
+      const splitProductionConceptDetails = activeProductionReferenceConceptDetails || activeProductionConceptDetails || null;
+      let tasks = buildFirstLastFrameStoryboardTasks(uploadedImages, {
         model: modelId,
         aspectRatio: splitFrameAutoCropEnabled ? splitFrameCropAspectRatio : (tabStates.video.aspectRatio || "auto"),
         duration: durationSeconds,
@@ -15012,7 +15488,7 @@ export default function MediaStudio() {
         apiConfig: buildApiConfigFromModelConfig(modelConfig),
         resolution: typeof extraParams.resolution === "string" ? extraParams.resolution : undefined,
         statusDetail: t('mediaStudio.splitStoryboardQueuedStatus'),
-        conceptDetails: activeProductionConceptDetails || null,
+        conceptDetails: splitProductionConceptDetails,
         storyboardGuide: splitStoryboardGuide,
         includeVoiceover: splitStoryboardSpeechMode !== "none",
         speechMode: splitStoryboardSpeechMode,
@@ -15025,6 +15501,88 @@ export default function MediaStudio() {
       if (tasks.length === 0) {
         toast.error(t('mediaStudio.splitStoryboardCreateFailed'));
         return;
+      }
+
+      if (splitStoryboardSpeechMode !== "none") {
+        toast.info(isThaiLocale ? "กำลังวิเคราะห์ภาพและสร้างบทพูดให้แต่ละช็อต..." : "Analyzing frames and planning shot-specific dialogue...");
+        try {
+          const planned = await planStoryboardVideoPromptsMutation.mutateAsync({
+            productMetadata: splitMarketplaceContext ?? null,
+            includeVoiceover: true,
+            speechMode: splitStoryboardSpeechMode,
+            speechLanguage: splitStoryboardSpeechLanguage,
+            includeSound: splitStoryboardIncludeSound,
+            tone: splitStoryboardTone,
+            language: splitStoryboardPromptLanguage,
+            conceptDetails: splitProductionConceptDetails || undefined,
+            storyboardGuide: splitStoryboardGuide || undefined,
+            slots: tasks.map((task) => ({
+              id: task.id,
+              index: task.index,
+              currentPrompt: task.prompt,
+              startFrameUrl: task.storyboardContext?.referenceImages?.[0]?.url || "",
+              endFrameUrl: task.storyboardContext?.referenceImages?.[1]?.url || "",
+              frameRoles: ["start", "stop"],
+              conceptDetails: splitProductionConceptDetails || undefined,
+              storyboardGuide: splitStoryboardGuide || undefined,
+              aspectRatio: task.storyboardContext?.aspectRatio ?? undefined,
+              durationSeconds: task.durationSeconds,
+              model: task.model,
+            })),
+          });
+          const plannedById = new Map(planned.slots.map((slot) => [slot.id, slot]));
+          tasks = tasks.map((task) => {
+            const slot = plannedById.get(task.id);
+            if (!slot) return task;
+            const prompt = buildVeo31StoryboardVideoPrompt({
+              visualPrompt: slot.videoPrompt || task.prompt,
+              durationSeconds: task.durationSeconds,
+              aspectRatio: task.storyboardContext?.aspectRatio ?? null,
+              frameRoles: ["start", "stop"],
+              conceptDetails: splitProductionConceptDetails,
+              storyboardGuide: splitStoryboardGuide,
+              includeVoiceover: true,
+              speechMode: splitStoryboardSpeechMode,
+              speechLanguage: splitStoryboardSpeechLanguage,
+              voiceoverScript: slot.voiceoverScript,
+              includeSound: splitStoryboardIncludeSound,
+              soundBrief: slot.soundBrief,
+            });
+            return {
+              ...task,
+              prompt,
+              statusDetail: slot.journeyStage
+                ? `Prompt planned: ${slot.journeyStage}`
+                : task.statusDetail,
+              storyboardContext: task.storyboardContext
+                ? {
+                    ...task.storyboardContext,
+                    extraParams: {
+                      ...(task.storyboardContext.extraParams ?? {}),
+                      storyboardPromptPlanner: {
+                        ...(task.storyboardContext.extraParams?.storyboardPromptPlanner ?? {}),
+                        skillId: "storyboard-video-customer-journey-prompt",
+                        journeyStage: slot.journeyStage,
+                        voiceoverScript: slot.voiceoverScript,
+                        speechMode: splitStoryboardSpeechMode,
+                        speechLanguage: splitStoryboardSpeechLanguage,
+                        soundBrief: slot.soundBrief,
+                        qualityNotes: slot.qualityNotes,
+                        globalVideoStrategy: planned.globalVideoStrategy,
+                        voiceoverFullScript: planned.voiceoverFullScript,
+                        soundFullBrief: planned.soundFullBrief,
+                      },
+                    },
+                  }
+                : task.storyboardContext,
+            };
+          });
+        } catch (error) {
+          console.warn("Failed to auto-plan split storyboard prompts with vision:", error);
+          toast.warning(isThaiLocale
+            ? "สร้าง Storyboard Review ต่อได้ แต่ระบบยังวิเคราะห์บทพูดจากภาพไม่สำเร็จ ให้กดสร้างพรอมต์ใหม่ในหน้า Review อีกครั้ง"
+            : "Storyboard Review can continue, but frame-aware dialogue planning failed. Regenerate prompts again in Review.");
+        }
       }
 
       const projectName = buildSplitStoryboardReviewProjectName({
@@ -15044,7 +15602,7 @@ export default function MediaStudio() {
         compoundStatus: t('mediaStudio.splitStoryboardReadyForReview', { count: tasks.length }),
         projectLink: null,
         renderJobId: null,
-        conceptDetails: activeProductionConceptDetails || null,
+        conceptDetails: splitProductionConceptDetails,
         storyboardGuide: splitStoryboardGuide,
         ...(splitMarketplaceContext ? { marketplaceContext: splitMarketplaceContext } : {}),
       };
@@ -15745,13 +16303,20 @@ export default function MediaStudio() {
     () => detectProductionReferenceStoryboardSkillId(productionWorkspaceSpace),
     [productionWorkspaceSpace],
   );
+  const resolvedProductionShotReferenceStoryboardSkillId = useMemo(
+    () => resolveProductionReferenceStoryboardSkillId(
+      detectedProductionShotReferenceStoryboardSkillId,
+      productionReferenceStoryboardSkillOptions,
+    ),
+    [detectedProductionShotReferenceStoryboardSkillId, productionReferenceStoryboardSkillOptions],
+  );
   useEffect(() => {
     productionShotReferenceSkillManualRef.current = false;
   }, [activeProductionRunId]);
   useEffect(() => {
     if (productionShotReferenceSkillManualRef.current) return;
-    setProductionShotReferenceStoryboardSkillId(detectedProductionShotReferenceStoryboardSkillId);
-  }, [activeProductionRunId, detectedProductionShotReferenceStoryboardSkillId]);
+    setProductionShotReferenceStoryboardSkillId(resolvedProductionShotReferenceStoryboardSkillId);
+  }, [activeProductionRunId, resolvedProductionShotReferenceStoryboardSkillId]);
   const productionStoryConceptStorageKey = useMemo(() => {
     const runKey = activeProductionRunId;
     if (!runKey) return null;
@@ -15761,9 +16326,157 @@ export default function MediaStudio() {
     () => sanitizeProductionStoryConceptWizard(productionStoryConceptWizard),
     [productionStoryConceptWizard],
   );
+  const activeProductionStoryConcept = useMemo(() => {
+    return getSelectedProductionStoryConceptOption(sanitizedProductionStoryConceptWizard);
+  }, [sanitizedProductionStoryConceptWizard]);
   const activeProductionConceptDetails = useMemo(() => {
     return getProductionStoryConceptDetails(sanitizedProductionStoryConceptWizard);
   }, [sanitizedProductionStoryConceptWizard]);
+  const activeProductionReferenceConceptDetails = useMemo(() => {
+    return buildProductionReferenceStoryboardConceptDetails({
+      concept: activeProductionStoryConcept,
+      fallbackConceptDetails: activeProductionConceptDetails,
+    });
+  }, [activeProductionConceptDetails, activeProductionStoryConcept]);
+  const productionReferenceStoryboardImageSkillSync = useMemo(() => {
+    const attachmentPack = buildProductionSkillAttachmentPack({
+      space: productionWorkspaceSpace,
+      referenceImages,
+      referenceVideos,
+      audioAssets: geminiOmniAudioAssets,
+      limit: MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT,
+    });
+    const productTruthContext = buildProductionProductTruthContext({
+      attachments: attachmentPack.attachments,
+      manifest: productionWorkspaceSpace.productEvidenceManifest,
+      handoff: marketplaceStorytellingImport.handoff,
+    });
+    const productContext = getPrimaryProductPlanningContext(productTruthContext, productionWorkspaceSpace.brief);
+    const storyboardGuide = buildProductionReferenceStoryboardGuide({
+      projectTitle: productionWorkspaceSpace.brief.title,
+      projectSummary: productionWorkspaceSpace.brief.summary,
+      concept: activeProductionStoryConcept,
+      fallbackConceptDetails: activeProductionConceptDetails,
+      locale: isThaiLocale ? "th" : "en",
+    });
+    const productFacts = String(activeProductionStoryConcept?.productFacts ?? "").trim();
+    const productionConceptDetails = activeProductionReferenceConceptDetails || activeProductionConceptDetails;
+    const sceneDescriptions = buildProductionReferenceStoryboardSceneDescriptions({
+      productFacts: productFacts || productionWorkspaceSpace.brief.brandTruth,
+      storyboardGuide,
+      concept: activeProductionStoryConcept,
+    });
+    const hasProductionReferenceInput = Boolean(
+      productionConceptDetails
+      || storyboardGuide
+      || productFacts
+      || attachmentPack.referenceProductImageUrls.length
+      || productContext.productName
+    );
+    if (!hasProductionReferenceInput) return null;
+
+    return {
+      skillId: resolveProductionReferenceStoryboardSkillId(
+        productionShotReferenceStoryboardSkillId || resolvedProductionShotReferenceStoryboardSkillId,
+        productionReferenceStoryboardSkillOptions,
+      ),
+      values: {
+        generation_mode: "multi_frame_storyboard",
+        storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspect_ratio: productionWorkspaceSpace.brief.aspectRatio ?? aspectRatio,
+        production_concept_details: productionConceptDetails,
+        storyboard_guide: storyboardGuide,
+        scene_descriptions: sceneDescriptions,
+        reference_product_images: attachmentPack.referenceProductImageUrls,
+        reference_character_images: attachmentPack.referenceCharacterImageUrls,
+        reference_environment_images: attachmentPack.referenceEnvironmentImageUrls,
+        marketplace_platform: productContext.platform || "auto",
+        product_shop_id: productContext.externalShopId,
+        product_item_id: productContext.externalProductId || productContext.productId,
+        product_source_url: productContext.sourceUrl,
+        product_shop_name: productContext.shopName,
+        product_title: productContext.productName,
+      },
+    };
+  }, [
+    activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
+    activeProductionStoryConcept,
+    aspectRatio,
+    geminiOmniAudioAssets,
+    isThaiLocale,
+    marketplaceStorytellingImport.handoff,
+    productionReferenceStoryboardSkillOptions,
+    productionShotReferenceStoryboardSkillId,
+    productionWorkspaceSpace,
+    referenceImages,
+    referenceVideos,
+    resolvedProductionShotReferenceStoryboardSkillId,
+  ]);
+  useEffect(() => {
+    if (!productionReferenceStoryboardImageSkillSync) return;
+    const syncHash = buildProductionStableHash({
+      productionRunId: activeProductionRunId,
+      selectedConceptId: activeProductionStoryConcept?.id ?? null,
+      skillId: productionReferenceStoryboardImageSkillSync.skillId,
+      values: productionReferenceStoryboardImageSkillSync.values,
+    });
+    if (lastProductionReferenceStoryboardImageSyncHashRef.current === syncHash) return;
+    lastProductionReferenceStoryboardImageSyncHashRef.current = syncHash;
+
+    const currentImageSkillId = tabStates.image.selectedSkillId;
+    if (activeTab === "image" && currentImageSkillId !== productionReferenceStoryboardImageSkillSync.skillId) {
+      skipNextDynamicFormResetRef.current = true;
+    }
+    const forceSyncedFields = new Set([
+      "generation_mode",
+      "production_concept_details",
+      "storyboard_guide",
+      "scene_descriptions",
+      "reference_product_images",
+      "reference_character_images",
+      "reference_environment_images",
+      "marketplace_platform",
+      "product_shop_id",
+      "product_item_id",
+      "product_source_url",
+      "product_shop_name",
+      "product_title",
+    ]);
+    setTabStates((prev) => {
+      const imageState = prev.image;
+      const nextDynamicFormValues = { ...imageState.dynamicFormValues };
+      let changed = false;
+
+      for (const [key, value] of Object.entries(productionReferenceStoryboardImageSkillSync.values)) {
+        if (!hasProductionReferenceStoryboardSkillValue(value)) continue;
+        if (!forceSyncedFields.has(key) && hasProductionReferenceStoryboardSkillValue(nextDynamicFormValues[key])) continue;
+        if (areProductionReferenceStoryboardSkillValuesEqual(nextDynamicFormValues[key], value)) continue;
+        nextDynamicFormValues[key] = value;
+        changed = true;
+      }
+
+      const nextSelectedSkillId = productionReferenceStoryboardImageSkillSync.skillId;
+      const shouldChangeSkill = imageState.selectedSkillId !== nextSelectedSkillId;
+      if (!changed && !shouldChangeSkill && imageState.useAdvancedMode) return prev;
+
+      return {
+        ...prev,
+        image: {
+          ...imageState,
+          selectedSkillId: nextSelectedSkillId,
+          useAdvancedMode: true,
+          dynamicFormValues: changed ? nextDynamicFormValues : imageState.dynamicFormValues,
+        },
+      };
+    });
+  }, [
+    activeProductionRunId,
+    activeProductionStoryConcept?.id,
+    activeTab,
+    productionReferenceStoryboardImageSkillSync,
+    tabStates.image.selectedSkillId,
+  ]);
 
   useEffect(() => {
     if (!activeProductionRunId) {
@@ -16190,7 +16903,7 @@ export default function MediaStudio() {
 
   const updateProductionShotReferenceStoryboardSkill = useCallback((skillId: string) => {
     productionShotReferenceSkillManualRef.current = true;
-    const nextSkillId = normalizeProductionReferenceStoryboardSkillId(skillId) ?? FURNITURE_REFERENCE_STORYBOARD_SKILL_ID;
+    const nextSkillId = resolveProductionReferenceStoryboardSkillId(skillId, productionReferenceStoryboardSkillOptions);
     setProductionShotReferenceStoryboardSkillId(nextSkillId);
     updateProductionSpaceDraft((space) => ({
       ...space,
@@ -16210,7 +16923,7 @@ export default function MediaStudio() {
         },
       },
     }), ["generationDefaults.referenceStoryboardSkillId", "brief.generationDefaults.referenceStoryboardSkillId", "brief.constraints.referenceStoryboardSkillId"], isThaiLocale ? "บันทึก skill สำหรับ prompt ภาพแล้ว" : "Reference prompt skill saved.");
-  }, [isThaiLocale, productionShotReferenceStoryboardSkillId, updateProductionSpaceDraft]);
+  }, [isThaiLocale, productionReferenceStoryboardSkillOptions, updateProductionSpaceDraft]);
 
   useEffect(() => {
     if (!productionStoryConceptWizard) return;
@@ -16402,7 +17115,7 @@ export default function MediaStudio() {
             skillId: selectedPlannerSkillId,
             userInputs: {
               mode: "marketplace_story_concept_synthesis",
-              instruction: "Return JSON only with story_concepts for exactly these four dimensions: story_option:problem_solution, story_option:objection_trust, story_option:quick_demo, story_option:use_case_moment. Use the provided product truth, attachments, and marketplace signals. Do not use price, discount, promotion, rating, rating score, sold count, sales volume, or best-seller/sales-performance signals anywhere in the four concepts, including title, angle, hook, painPoint, useCase, sellingPoints, objectionsTrust, conceptDetails, storyboard, infographic prompt, or visual text, because those values change over time. Base concepts on stable product facts instead: product type, materials, dimensions, design, usage context, buyer problem, benefits visible in the assets, and evidence-safe product details. The current product identity comes from production_goal, product_truth_context, and attached product images; ignore or repair any marketplace storyOption/supporting insight that mentions a different product/domain (for example laundry or washing-machine use cases when the goal/assets are a bedside table). Every painPoint, problem, hook, useCase, and storyboard beat must match the current product. For every concept, include conceptDetails as one complete narrative paragraph that can be copied into downstream work such as voice over scripting; it must include product name, summarized product details, target audience, problem, and selling points. Mix each dimension with a fitting narrative structure, emotional tone, and hook technique. Do not invent unsupported product facts.",
+              instruction: "Return JSON only with story_concepts for exactly these four dimensions: story_option:problem_solution, story_option:objection_trust, story_option:quick_demo, story_option:use_case_moment. Use the provided product truth, attachments, and marketplace signals. Do not use price, discount, promotion, rating, rating score, sold count, sales volume, or best-seller/sales-performance signals anywhere in the four concepts, including title, angle, hook, painPoint, useCase, sellingPoints, objectionsTrust, conceptDetails, storyboard, infographic prompt, or visual text, because those values change over time. Base concepts on stable product facts instead: product type, materials, dimensions, design, usage context, buyer problem, benefits visible in the assets, and evidence-safe product details. The current product identity comes from production_goal, product_truth_context, and attached product images; ignore or repair any marketplace storyOption/supporting insight that mentions a different product/domain (for example laundry or washing-machine use cases when the goal/assets are a bedside table). Every painPoint, problem, hook, useCase, and storyboard beat must match the current product. For every concept, include conceptDetails as one distinct customer-journey or mini-story paragraph, maximum 450 Thai characters or 80 English words. It must not be a label/template list such as Product/Details/Audience/Problem/Selling points, and it must not paste raw marketplace title/description text. Make the four concepts clearly different: problem_solution = awareness problem to relief, objection_trust = consideration doubts to confidence, quick_demo = fast visual proof/demo beats, use_case_moment = post-purchase experience mini story. Include product identity naturally once, top 2-3 evidence-safe points only when useful, and no emoji, decorative symbols, bullets, or line breaks. Mix each dimension with a fitting narrative structure, emotional tone, and hook technique. Do not invent unsupported product facts.",
               production_goal: goal,
               product_truth_context: stableConceptProductTruthContext,
               marketplace_supporting_insights: marketplaceSupportingInsights,
@@ -17080,7 +17793,7 @@ export default function MediaStudio() {
         skillId: selectedPlannerSkillId,
         userInputs: {
           mode: "marketplace_story_concept_synthesis",
-          instruction: "Return JSON only with story_concepts containing exactly one regenerated concept for the requested dimension. Preserve product truth and do not invent unsupported claims. Do not use price, discount, promotion, rating, rating score, sold count, sales volume, or best-seller/sales-performance signals anywhere in the regenerated concept, including title, angle, hook, painPoint, useCase, sellingPoints, objectionsTrust, conceptDetails, storyboard, infographic prompt, or visual text, because those values change over time. Use stable product facts instead: product type, materials, dimensions, design, usage context, buyer problem, benefits visible in the assets, and evidence-safe product details. The regenerated concept must match the current product identity from production_goal, product_truth_context, and attached product images; ignore stale marketplace insights from other domains. Include infographic_prompt, visual_summary, key_visual_elements, and storyboard_thumbnail_notes.",
+          instruction: "Return JSON only with story_concepts containing exactly one regenerated concept for the requested dimension. Preserve product truth and do not invent unsupported claims. Do not use price, discount, promotion, rating, rating score, sold count, sales volume, or best-seller/sales-performance signals anywhere in the regenerated concept, including title, angle, hook, painPoint, useCase, sellingPoints, objectionsTrust, conceptDetails, storyboard, infographic prompt, or visual text, because those values change over time. Use stable product facts instead: product type, materials, dimensions, design, usage context, buyer problem, benefits visible in the assets, and evidence-safe product details. The regenerated concept must match the current product identity from production_goal, product_truth_context, and attached product images; ignore stale marketplace insights from other domains. Include conceptDetails as one distinct customer-journey or mini-story paragraph, maximum 450 Thai characters or 80 English words. Do not use a label/template list such as Product/Details/Audience/Problem/Selling points, do not paste raw marketplace title/description text, and do not include emoji, decorative symbols, bullets, or line breaks. Shape the paragraph to the requested dimension: problem_solution = awareness problem to relief, objection_trust = consideration doubts to confidence, quick_demo = fast visual proof/demo beats, use_case_moment = post-purchase experience mini story. Include infographic_prompt, visual_summary, key_visual_elements, and storyboard_thumbnail_notes.",
           production_goal: goal,
           product_truth_context: stableConceptProductTruthContext,
           reference_images: planningAttachmentPack.referenceImages,
@@ -17133,6 +17846,8 @@ export default function MediaStudio() {
       toast.error(error instanceof Error ? error.message : String(error));
     }
   }, [
+    activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
     buildCurrentProductionGoal,
     executeCustomSkillMutation,
     isThaiLocale,
@@ -17524,9 +18239,9 @@ export default function MediaStudio() {
         shot_plan: productionDirector.plan.shot_plan ?? productionDirector.plan.shotPlan ?? [],
         asset_requirements: productionDirector.plan.asset_requirements ?? productionDirector.plan.assetRequirements ?? [],
         prompt_sequence: productionDirector.plan.prompt_sequence ?? productionDirector.plan.promptSequence ?? [],
-        conceptDetails: activeProductionConceptDetails || getProductionStoryConceptDetails(sanitizeProductionStoryConceptWizard(productionStoryConceptWizard)) || undefined,
+        conceptDetails: activeProductionReferenceConceptDetails || activeProductionConceptDetails || getProductionStoryConceptDetails(sanitizeProductionStoryConceptWizard(productionStoryConceptWizard)) || undefined,
         storyboardGuide: [
-          activeProductionConceptDetails ? `Concept and details:\n${activeProductionConceptDetails}` : "",
+          activeProductionReferenceConceptDetails ? `Concept and product facts:\n${activeProductionReferenceConceptDetails}` : "",
           productionDirector.plan.storyboard_outline || productionDirector.plan.storyboardOutline ? `Storyboard outline: ${JSON.stringify(productionDirector.plan.storyboard_outline ?? productionDirector.plan.storyboardOutline)}` : "",
           productionDirector.plan.scene_timeline || productionDirector.plan.sceneTimeline ? `Scene timeline: ${JSON.stringify(productionDirector.plan.scene_timeline ?? productionDirector.plan.sceneTimeline)}` : "",
           productionDirector.plan.shot_plan || productionDirector.plan.shotPlan ? `Shot plan: ${JSON.stringify(productionDirector.plan.shot_plan ?? productionDirector.plan.shotPlan)}` : "",
@@ -18703,10 +19418,12 @@ export default function MediaStudio() {
       `IMAGE INTENT: ${String(promptItem?.imagePrompt ?? shot.visualIntent ?? shot.storyBeat ?? "")}`,
       `VIDEO INTENT: ${String(promptItem?.videoPrompt ?? shot.visualIntent ?? shot.storyBeat ?? "")}`,
       nextShot ? `NEXT SHOT FOR STOP-FRAME CONTINUITY: ${nextShot.order}. ${String(nextPromptItem?.title ?? nextShot.title)} - ${String(nextPromptItem?.videoPrompt ?? nextPromptItem?.imagePrompt ?? nextShot.storyBeat ?? "")}` : "NEXT SHOT FOR STOP-FRAME CONTINUITY: final shot, create a clean end frame.",
+      activeProductionStoryConcept?.productFacts ? `PRODUCT FACTS FOR THIS STORY:\n${activeProductionStoryConcept.productFacts}` : "",
+      activeProductionReferenceConceptDetails ? `SELECTED CONCEPT / CUSTOMER JOURNEY: ${activeProductionReferenceConceptDetails}` : "",
       productionWorkspaceSpace.brief.constraintsText ? `CONSTRAINTS: ${productionWorkspaceSpace.brief.constraintsText}` : "",
       productionWorkspaceSpace.brief.brandTruth ? `PRODUCT / BRAND TRUTH: ${productionWorkspaceSpace.brief.brandTruth}` : "",
     ].filter(Boolean).join("\n");
-  }, [getProductionStoryboardPromptForShot, productionWorkspaceSpace]);
+  }, [activeProductionReferenceConceptDetails, activeProductionStoryConcept?.productFacts, getProductionStoryboardPromptForShot, productionWorkspaceSpace]);
 
   const getProductionShotReferenceAssets = useCallback((surface: "image" | "video" = "image") => {
     const productEvidenceAssets = buildProductionProductEvidenceReferenceInputs(
@@ -18809,14 +19526,25 @@ export default function MediaStudio() {
       const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, shotId);
       const mergedPromptItem = { ...(promptItem ?? {}), ...(promptDraft ?? {}) };
       const storyboardGuide = buildProductionShotStoryboardGuide(shotId);
-    const references = getProductionShotReferenceAssets("image");
-    const referenceUrls = Array.from(new Set(references.map((asset) => asset.url).filter(Boolean) as string[]));
-    const referenceUrlGroups = splitProductionReferenceImageUrlsByRole(references);
-    const productReferenceUrls = referenceUrlGroups.product;
-    const characterReferenceUrls = referenceUrlGroups.character;
-    const environmentReferenceUrls = referenceUrlGroups.environment;
-    const productionConceptDetails = activeProductionConceptDetails || "";
-    const planningModelSelection = selectProductionPlanningModelForContext({
+      const references = getProductionShotReferenceAssets("image");
+      const referenceUrls = Array.from(new Set(references.map((asset) => asset.url).filter(Boolean) as string[]));
+      const referenceUrlGroups = splitProductionReferenceImageUrlsByRole(references);
+      const productReferenceUrls = referenceUrlGroups.product;
+      const characterReferenceUrls = referenceUrlGroups.character;
+      const environmentReferenceUrls = referenceUrlGroups.environment;
+      const productTruthContext = buildProductionProductTruthContext({
+        attachments: references,
+        manifest: productionWorkspaceSpace.productEvidenceManifest,
+        handoff: marketplaceStorytellingImport.handoff,
+      });
+      const productContext = getPrimaryProductPlanningContext(productTruthContext, productionWorkspaceSpace.brief);
+      const productionConceptDetails = activeProductionReferenceConceptDetails || activeProductionConceptDetails || "";
+      const sceneDescriptions = buildProductionReferenceStoryboardSceneDescriptions({
+        productFacts: activeProductionStoryConcept?.productFacts || productionWorkspaceSpace.brief.brandTruth,
+        storyboardGuide,
+        concept: activeProductionStoryConcept,
+      });
+      const planningModelSelection = selectProductionPlanningModelForContext({
       modelMode: productionDirector.planningModelMode === "manual" ? "manual" : "auto",
       manualModelId: productionDirector.planningModelId.trim(),
       fallbackModelId: selectedLlmModelSelection.resolvedModelId,
@@ -18824,7 +19552,7 @@ export default function MediaStudio() {
       estimatedContextTokens: estimateProductionSkillContextTokens({
         production_concept_details: productionConceptDetails,
         storyboard_guide: storyboardGuide,
-        scene_descriptions: [storyboardGuide],
+        scene_descriptions: sceneDescriptions.length ? sceneDescriptions : [storyboardGuide],
         reference_product_images: productReferenceUrls,
         reference_character_images: characterReferenceUrls,
         reference_environment_images: environmentReferenceUrls,
@@ -18840,10 +19568,16 @@ export default function MediaStudio() {
         aspect_ratio: productionWorkspaceSpace.brief.aspectRatio ?? aspectRatio,
         production_concept_details: productionConceptDetails,
         storyboard_guide: storyboardGuide,
-        scene_descriptions: [storyboardGuide],
+        scene_descriptions: sceneDescriptions.length ? sceneDescriptions : [storyboardGuide],
         reference_product_images: productReferenceUrls,
         reference_character_images: characterReferenceUrls,
         reference_environment_images: environmentReferenceUrls,
+        marketplace_platform: productContext.platform || "auto",
+        product_shop_id: productContext.externalShopId,
+        product_item_id: productContext.externalProductId || productContext.productId,
+        product_source_url: productContext.sourceUrl,
+        product_shop_name: productContext.shopName,
+        product_title: productContext.productName,
         planning_context_pack: {
           selected_model: selectedPlanningModel,
           selected_model_context_tokens: planningModelSelection.option?.contextLength ?? null,
@@ -18924,11 +19658,14 @@ export default function MediaStudio() {
   }, [
     aspectRatio,
     activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
+    activeProductionStoryConcept,
     buildProductionShotStoryboardGuide,
     executeCustomSkillMutation,
     getProductionShotReferenceAssets,
     getProductionStoryboardPromptForShot,
     isThaiLocale,
+    marketplaceStorytellingImport.handoff,
     productionDirector.planningModelId,
     productionDirector.planningModelMode,
     productionPlanningModelOptions,
@@ -19288,7 +20025,7 @@ export default function MediaStudio() {
           durationSeconds,
           aspectRatio: aspect,
           conceptDetails: joinProductionShotPromptContext(
-            activeProductionConceptDetails,
+            activeProductionReferenceConceptDetails || activeProductionConceptDetails,
             productionWorkspaceSpace.brief.creativeDirection,
             productionWorkspaceSpace.brief.brandTruth,
             productionWorkspaceSpace.brief.constraintsText,
@@ -19466,6 +20203,7 @@ export default function MediaStudio() {
     }
     }, [
       activeProductionConceptDetails,
+      activeProductionReferenceConceptDetails,
       aspectRatio,
       buildProductionShotStoryboardGuide,
     createProductionShotQueueTask,

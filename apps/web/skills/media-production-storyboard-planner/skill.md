@@ -34,7 +34,7 @@ When `userInputs.mode` is `marketplace_story_concept_synthesis`, return JSON onl
       "sellingPoints": ["..."],
       "objectionsTrust": ["..."],
       "useCase": "...",
-      "conceptDetails": "One complete narrative paragraph ready to copy into downstream work such as voice over scripting. Include product name, summarized product details, target audience, problem, and selling points without unsupported claims.",
+      "conceptDetails": "One distinct customer-journey or mini-story paragraph, maximum 450 Thai characters or 80 English words. Do not use a Product/Details/Audience/Problem/Selling points label list. Do not paste raw marketplace title/description text. Shape the paragraph to this concept's dimension and make it meaningfully different from the other three concepts.",
       "narrativeStructure": "Problem → Solution",
       "emotionalTone": "Empathy Tone",
       "hookTechnique": "Hook แบบปัญหาโดนใจ",
@@ -62,6 +62,13 @@ Always provide exactly four concepts for:
 
 Mix each concept with a suitable storytelling structure, emotional tone, and short-video hook technique from the provided reference list. Use product truth, selected marketplace evidence, user-provided assets, and existing insight first. If evidence is missing, mark the concept review-safe instead of inventing product facts.
 
-For every concept, include `conceptDetails` as one complete copy-ready paragraph. It must explicitly cover product name, summarized product details, target audience, problem, and selling points in natural narration form, not a bullet list.
+For every concept, include `conceptDetails` as one distinct customer-journey or mini-story paragraph. Keep it under 450 Thai characters or 80 English words. Do not paste raw marketplace title/description text, and do not use a label/template list such as Product / Details / Audience / Problem / Selling points. Make the four concepts clearly different:
+
+- `problem_solution`: awareness problem to relief.
+- `objection_trust`: consideration doubts to confidence.
+- `quick_demo`: fast visual proof/demo beats.
+- `use_case_moment`: post-purchase experience mini story.
+
+Include product identity naturally once, use top evidence-safe points only when useful, and do not include emoji, decorative symbols, bullets, or line breaks.
 
 For every concept, include an `infographicPrompt` designed for the existing image generation system. The prompt should ask for a beautiful, realistic infographic with photorealistic supporting imagery, clear storyboard/timeline sections, and a visual summary that helps the user understand the concept at a glance. It must not invent unsupported product claims or alter product identity beyond the provided evidence.
