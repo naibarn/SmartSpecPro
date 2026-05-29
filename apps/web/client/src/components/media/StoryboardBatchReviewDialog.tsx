@@ -26,6 +26,8 @@ import {
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
 
+const STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS = [4, 6, 8, 10, 12, 15] as const;
+
 export interface StoryboardReviewTask {
   id: string;
   index: number;
@@ -72,10 +74,15 @@ interface StoryboardBatchReviewDialogProps {
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
   onUpdateTaskPrompt?: (taskId: string, prompt: string) => void | Promise<void>;
+  onUpdateTaskDuration?: (taskId: string, durationSeconds: number) => void | Promise<void>;
   conceptDetails?: string | null;
   onConceptDetailsChange?: (value: string) => void | Promise<void>;
   storyboardGuide?: string | null;
   onStoryboardGuideChange?: (value: string) => void | Promise<void>;
+  voiceoverFullScript?: string | null;
+  onVoiceoverFullScriptChange?: (value: string) => void | Promise<void>;
+  useVoiceoverScriptAsConcept?: boolean;
+  onUseVoiceoverScriptAsConceptChange?: (value: boolean) => void | Promise<void>;
   onPlanScenePrompts?: (options: StoryboardPromptPlannerOptions, taskId?: string) => void | Promise<void>;
   isPlanningScenePrompts?: boolean;
   onStartGenerationBatch?: () => void;
@@ -157,10 +164,15 @@ export function StoryboardBatchReviewPanel({
   onSelectNone,
   onRegenerateTask,
   onUpdateTaskPrompt,
+  onUpdateTaskDuration,
   conceptDetails,
   onConceptDetailsChange,
   storyboardGuide,
   onStoryboardGuideChange,
+  voiceoverFullScript,
+  onVoiceoverFullScriptChange,
+  useVoiceoverScriptAsConcept = false,
+  onUseVoiceoverScriptAsConceptChange,
   onPlanScenePrompts,
   isPlanningScenePrompts = false,
   onStartGenerationBatch,
@@ -207,6 +219,8 @@ export function StoryboardBatchReviewPanel({
   const [plannerIncludeSound, setPlannerIncludeSound] = useState(false);
   const [plannerTone, setPlannerTone] = useState<StoryboardPromptPlannerOptions["tone"]>("sales");
   const [plannerLanguage, setPlannerLanguage] = useState<StoryboardPromptPlannerOptions["language"]>(locale === "th" ? "th" : "auto");
+  const [isEditingVoiceoverFullScript, setIsEditingVoiceoverFullScript] = useState(false);
+  const [voiceoverFullScriptDraft, setVoiceoverFullScriptDraft] = useState(voiceoverFullScript ?? "");
   const [confirmAction, setConfirmAction] = useState<StoryboardConfirmAction | null>(null);
   const [copiedPromptTaskId, setCopiedPromptTaskId] = useState<string | null>(null);
   const [lightboxMedia, setLightboxMedia] = useState<StoryboardLightboxMedia>(null);
@@ -219,6 +233,12 @@ export function StoryboardBatchReviewPanel({
       : plannerSpeechMode === "other"
         ? plannerOtherSpeechLanguage.trim()
         : "";
+
+  useEffect(() => {
+    if (!isEditingVoiceoverFullScript) {
+      setVoiceoverFullScriptDraft(voiceoverFullScript ?? "");
+    }
+  }, [isEditingVoiceoverFullScript, voiceoverFullScript]);
 
   useEffect(() => {
     setDraftPrompts((prev) => {
@@ -450,7 +470,7 @@ export function StoryboardBatchReviewPanel({
         </div>
 
         <div className="mx-3 shrink-0 rounded-lg border bg-background px-3 py-2 sm:mx-6">
-          <div className="grid gap-2 lg:grid-cols-2">
+          <div className="grid gap-2 lg:grid-cols-3">
             <div className="min-w-0">
               <div className="mb-1 text-xs font-medium text-muted-foreground">
                 {locale === "th" ? "แนวคิดและรายละเอียด" : "Concept and details"}
@@ -478,6 +498,84 @@ export function StoryboardBatchReviewPanel({
                   ? "ข้อมูลลำดับช็อต คู่ภาพ start/end และแนวทาง continuity สำหรับใช้ตอนสร้าง prompt"
                   : "Shot order, start/end frame guidance, and continuity notes for prompt planning"}
               />
+            </div>
+            <div className="min-w-0">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {locale === "th" ? "บทพูดรวมที่นำไปใช้" : "Combined voiceover script"}
+                </span>
+                {onVoiceoverFullScriptChange ? (
+                  isEditingVoiceoverFullScript ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setVoiceoverFullScriptDraft(voiceoverFullScript ?? "");
+                          setIsEditingVoiceoverFullScript(false);
+                        }}
+                      >
+                        {locale === "th" ? "ยกเลิก" : "Cancel"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          const nextScript = voiceoverFullScriptDraft.trim();
+                          void Promise.resolve(onVoiceoverFullScriptChange(nextScript)).then(() => {
+                            if (nextScript) {
+                              void onUseVoiceoverScriptAsConceptChange?.(true);
+                            }
+                            setIsEditingVoiceoverFullScript(false);
+                          });
+                        }}
+                      >
+                        {locale === "th" ? "บันทึก" : "Save"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={() => {
+                        setVoiceoverFullScriptDraft(voiceoverFullScript ?? "");
+                        setIsEditingVoiceoverFullScript(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {locale === "th" ? "แก้ไข" : "Edit"}
+                    </Button>
+                  )
+                ) : null}
+              </div>
+              <Textarea
+                value={isEditingVoiceoverFullScript ? voiceoverFullScriptDraft : (voiceoverFullScript ?? "")}
+                onChange={(event) => setVoiceoverFullScriptDraft(event.target.value)}
+                readOnly={!isEditingVoiceoverFullScript}
+                className="min-h-[72px] resize-y text-xs leading-5"
+                placeholder={locale === "th"
+                  ? "ยังไม่มีบทพูดรวม สร้าง prompt พร้อมบทพูดก่อน หรือกดแก้ไขเพื่อใส่เอง"
+                  : "No combined script yet. Plan prompts with voiceover first or edit manually."}
+              />
+              <label className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={Boolean(useVoiceoverScriptAsConcept)}
+                  disabled={!onUseVoiceoverScriptAsConceptChange || !(voiceoverFullScript ?? voiceoverFullScriptDraft).trim()}
+                  onCheckedChange={(checked) => {
+                    void onUseVoiceoverScriptAsConceptChange?.(Boolean(checked));
+                  }}
+                />
+                <span>
+                  {locale === "th"
+                    ? "ใช้บทพูดนี้แทนแนวคิดและรายละเอียดเมื่อสร้าง prompt ใหม่"
+                    : "Use this script instead of concept/details when planning new prompts"}
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -698,6 +796,9 @@ export function StoryboardBatchReviewPanel({
               const draftPrompt = draftPrompts[task.id] ?? task.prompt;
               const canRegenerate = task.canRegenerate !== false;
               const isQueuedForGeneration = task.status === "queued";
+              const selectedShotDuration = STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS.includes(task.durationSeconds as typeof STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS[number])
+                ? Number(task.durationSeconds)
+                : 8;
               return (
                 <div
                   key={task.id}
@@ -826,6 +927,20 @@ export function StoryboardBatchReviewPanel({
                         </Badge>
                         {task.model ? <Badge variant="secondary">{task.model}</Badge> : null}
                         {task.isImported ? <Badge variant="outline">{t("mediaStudio.storyboardReviewImported")}</Badge> : null}
+                        <label className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-xs text-muted-foreground">
+                          <span>{locale === "th" ? "วินาที/shot" : "Sec/shot"}</span>
+                          <select
+                            value={String(selectedShotDuration)}
+                            disabled={task.status === "generating" || !onUpdateTaskDuration}
+                            onChange={(event) => void onUpdateTaskDuration?.(task.id, Number(event.target.value))}
+                            className="h-5 rounded border-0 bg-transparent p-0 text-xs font-medium text-foreground outline-none"
+                            aria-label={locale === "th" ? "ความยาววิดีโอต่อ shot" : "Video duration per shot"}
+                          >
+                            {STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS.map((seconds) => (
+                              <option key={seconds} value={seconds}>{seconds}s</option>
+                            ))}
+                          </select>
+                        </label>
                         {task.marketplaceProduct || task.generationExtraParams?.marketplaceContext ? (
                           <Button
                             type="button"

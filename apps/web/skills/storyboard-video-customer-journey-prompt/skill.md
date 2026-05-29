@@ -102,12 +102,15 @@ If `includeVoiceover` is true:
 - make the script continuous across slots as one ordered story, not separate standalone taglines
 - plan the full speech arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot
 - make each slot line naturally follow the previous slot and set up the next slot; avoid repeating the same opening phrase, benefit, or claim
+- size the full narration to the total storyboard duration. Use each slot's `durationSeconds` as that slot's speech budget; if a slot duration is missing, assume 8 seconds.
 - keep it natural for the slot duration. For an 8-10 second shot, write a line intended to fill most of that slot's speech time without rushed delivery.
 - align the spoken line with the visible shot, customer journey stage, concept/details guideline, and video_prompt
 - write only the spoken line, not visual direction, in `voiceover_script`
 - also include the same spoken line inside `video_prompt` under the `Dialogue:` section as a native-audio instruction. For Thai, the prompt must contain `Presenter พูดเป็นภาษาไทยว่า "[short Thai line]"`. For English, use `Presenter says, clearly: "[short English line]"`.
 - avoid fake discounts, fake guarantees, or unsupported claims
 - focus on benefit, use case, product detail, and emotional reason to buy
+- if `voiceoverFullScript` is provided and `useVoiceoverScriptAsConcept` is true, treat that edited script as the authoritative story/content source instead of the concept/details guideline; segment or lightly adapt it across ordered slots according to each slot duration while preserving meaning and order
+- if `voiceoverFullScript` is provided without `useVoiceoverScriptAsConcept`, use it as continuity context so regenerated lines stay compatible with the existing full narration
 - return `voiceover_full_script` as the exact ordered combination of all slot `voiceover_script` lines
 
 If `includeVoiceover` is false, use an empty string for every slot voiceover.

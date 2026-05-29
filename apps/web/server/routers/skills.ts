@@ -775,10 +775,18 @@ function buildStoryboardPlannerPrompt(input: {
   slots: Array<Record<string, unknown>>;
   conceptDetails?: string | null;
   storyboardGuide?: string | null;
+  voiceoverFullScript?: string | null;
+  useVoiceoverScriptAsConcept?: boolean;
 }): string {
   const speechMode = String(input.options.speechMode ?? "none");
   const speechLanguage = String(input.options.speechLanguage ?? "").trim();
   const includeSpeech = speechMode !== "none";
+  const suppliedVoiceoverFullScript = String(input.voiceoverFullScript ?? "").trim();
+  const useVoiceoverScriptAsConcept = Boolean(input.useVoiceoverScriptAsConcept && suppliedVoiceoverFullScript);
+  const totalDurationSeconds = input.slots.reduce((sum, slot) => {
+    const duration = Number(slot.durationSeconds);
+    return sum + (Number.isFinite(duration) && duration > 0 ? duration : 8);
+  }, 0);
   const nativeSpeechDirectiveExample = storyboardNativeSpeechDirectiveExample(speechMode, speechLanguage);
   const imageMap = input.slots.map((slot, index) => {
     const startImage = index * 2 + 1;
@@ -840,12 +848,26 @@ function buildStoryboardPlannerPrompt(input: {
       : "In Dialogue:, write exactly: No spoken dialogue.",
     input.conceptDetails ? ["", "Production concept and details guideline:", input.conceptDetails].join("\n") : "",
     input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
+    useVoiceoverScriptAsConcept
+      ? [
+        "",
+        "Authoritative edited voiceover script:",
+        suppliedVoiceoverFullScript,
+        "",
+        "The user chose to use this edited script instead of the concept/details as the primary content source. Segment or lightly adapt it across ordered slots according to each slot duration, while preserving its meaning and order.",
+      ].join("\n")
+      : suppliedVoiceoverFullScript
+        ? ["", "Existing combined voiceover script for continuity:", suppliedVoiceoverFullScript].join("\n")
+        : "",
     "",
     "Product metadata:",
     JSON.stringify(input.productMetadata ?? {}, null, 2),
     "",
     "Options:",
-    JSON.stringify(input.options, null, 2),
+    JSON.stringify({
+      ...input.options,
+      totalStoryboardDurationSeconds: totalDurationSeconds,
+    }, null, 2),
     "",
     includeSpeech
       ? [
@@ -854,8 +876,12 @@ function buildStoryboardPlannerPrompt(input: {
         "- Treat all slot.voiceover_script values as one continuous script split across ordered slots, not standalone taglines.",
         "- Plan the full story arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot.",
         "- Each line must naturally follow the previous slot and set up the next slot. Avoid repeating the same opening phrase, benefit, or sales claim in multiple slots.",
+        `- The complete voiceover_full_script must fit the total storyboard duration of about ${totalDurationSeconds} seconds. Treat each slot.durationSeconds as that slot's speech budget; if a slot duration is missing, use 8 seconds.`,
         "- The spoken line must fit the slot duration. For an 8-10 second shot, write a natural line intended to fill most of that slot's speech time without rushing.",
         "- The line must match the concept/details guideline, visible product use, journey stage, and video_prompt.",
+        useVoiceoverScriptAsConcept
+          ? "- Because useVoiceoverScriptAsConcept is true, base the spoken lines and story arc on the authoritative edited voiceover script, not on the concept/details text."
+          : "",
         "- Write the line as natural spoken speech only, not visual direction. Do not include price, rating, sales volume, promo, or unsupported claims.",
         "- Return voiceover_full_script as the exact ordered combination of all slot.voiceover_script lines.",
         "- Put the spoken line in slot.voiceover_script. Because includeVoiceover is true, slot.voiceover_script is REQUIRED and must not be empty for any slot.",
@@ -2948,6 +2974,8 @@ export const skillsRouter = router({
       language: z.enum(["auto", "th", "en"]).default("auto"),
       conceptDetails: z.string().trim().max(12000).optional(),
       storyboardGuide: z.string().trim().max(12000).optional(),
+      voiceoverFullScript: z.string().trim().max(12000).optional(),
+      useVoiceoverScriptAsConcept: z.boolean().default(false),
       slots: z.array(z.object({
         id: z.string().trim().min(1).max(255),
         index: z.number().int().min(0),
@@ -3030,6 +3058,11 @@ export const skillsRouter = router({
 
       const orderedSlots = [...input.slots].sort((a, b) => a.index - b.index);
       const referenceImages = orderedSlots.flatMap((slot) => [slot.startFrameUrl, slot.endFrameUrl]);
+      const suppliedVoiceoverFullScript = input.voiceoverFullScript ?? "";
+      const useVoiceoverScriptAsConcept = Boolean(input.useVoiceoverScriptAsConcept && suppliedVoiceoverFullScript.trim());
+      const effectiveConceptDetails = useVoiceoverScriptAsConcept
+        ? suppliedVoiceoverFullScript
+        : input.conceptDetails ?? null;
       const userPrompt = buildStoryboardPlannerPrompt({
         productMetadata: input.productMetadata ?? null,
         options: {
@@ -3045,20 +3078,23 @@ export const skillsRouter = router({
           includeSound: input.includeSound,
           tone: input.tone,
           language: input.language,
+          useVoiceoverScriptAsConcept,
         },
-        conceptDetails: input.conceptDetails ?? null,
+        conceptDetails: effectiveConceptDetails,
         storyboardGuide: input.storyboardGuide ?? null,
+        voiceoverFullScript: suppliedVoiceoverFullScript,
+        useVoiceoverScriptAsConcept,
         slots: orderedSlots.map((slot) => ({
           id: slot.id,
           index: slot.index,
           currentPrompt: slot.currentPrompt ?? "",
           frameRoles: slot.frameRoles ?? ["start", "stop"],
-          conceptDetails: slot.conceptDetails ?? input.conceptDetails ?? "",
+          conceptDetails: slot.conceptDetails ?? effectiveConceptDetails ?? "",
           storyboardGuide: slot.storyboardGuide ?? input.storyboardGuide ?? "",
           durationSeconds: slot.durationSeconds ?? null,
           aspectRatio: slot.aspectRatio ?? null,
           model: slot.model ?? null,
-          voiceoverFullScript: slot.voiceoverFullScript ?? "",
+          voiceoverFullScript: slot.voiceoverFullScript ?? suppliedVoiceoverFullScript,
           previousVoiceoverScript: slot.previousVoiceoverScript ?? "",
           nextVoiceoverScript: slot.nextVoiceoverScript ?? "",
           previousJourneyStage: slot.previousJourneyStage ?? "",
@@ -3159,7 +3195,7 @@ export const skillsRouter = router({
               startFrameUrl: inputSlot.startFrameUrl,
               endFrameUrl: inputSlot.endFrameUrl,
               frameRoles: inputSlot.frameRoles ?? ["start", "stop"],
-              conceptDetails: inputSlot.conceptDetails ?? input.conceptDetails ?? null,
+              conceptDetails: inputSlot.conceptDetails ?? effectiveConceptDetails ?? null,
               storyboardGuide: inputSlot.storyboardGuide ?? input.storyboardGuide ?? null,
               speechMode: input.speechMode,
               speechLanguage: input.speechLanguage ?? null,
@@ -3252,7 +3288,7 @@ export const skillsRouter = router({
           creditsUsed,
           globalVideoStrategy: parsed.global_video_strategy ?? parsed.globalVideoStrategy ?? {},
           slots,
-          voiceoverFullScript: String(parsed.voiceover_full_script ?? parsed.voiceoverFullScript ?? ""),
+          voiceoverFullScript: String(parsed.voiceover_full_script ?? parsed.voiceoverFullScript ?? "") || suppliedVoiceoverFullScript,
           soundFullBrief: String(parsed.sound_full_brief ?? parsed.soundFullBrief ?? ""),
         };
       } catch (error) {

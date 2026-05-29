@@ -222,6 +222,7 @@ import {
   resolveStoryboardClipDurationSeconds,
 } from "@/lib/mediaModelStoryboardTiming";
 import {
+  DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
   buildFirstLastFrameStoryboardTasks,
   getStoryboardCompanionAudioUpdatedAt,
   mergeFresherStoryboardReviewTasks,
@@ -309,10 +310,17 @@ const MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID = "media-production-storyboar
 const MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID = "media-products-storyboard-planner";
 const COSMATIC_REFERENCE_STORYBOARD_SKILL_ID = "cosmatic-reference-storyboard";
 const FURNITURE_REFERENCE_STORYBOARD_SKILL_ID = "furniture-reference-storyboard";
+const SPLIT_RESULT_REORDER_MIME = "application/x-smartspec-split-result-index";
 const PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS = [
   { id: FURNITURE_REFERENCE_STORYBOARD_SKILL_ID, label: "Furniture Reference Storyboard" },
   { id: COSMATIC_REFERENCE_STORYBOARD_SKILL_ID, label: "Cosmatic Reference Storyboard" },
 ];
+
+function applyStoryboardPromptDuration(prompt: string, durationSeconds: number): string {
+  const duration = Math.max(1, Math.round(durationSeconds));
+  const replacement = `Create a ${duration}-second cinematic video.`;
+  return prompt.replace(/Create an? \d+(?:\.\d+)?-second cinematic video\./i, replacement);
+}
 
 function normalizeProductionReferenceStoryboardSkillId(value: unknown): string | null {
   const skillId = typeof value === "string" ? value.trim() : "";
@@ -3165,6 +3173,7 @@ interface GenerationTask {
   type: MediaType;
   prompt: string;
   model: string;
+  durationSeconds?: number;
   createdAt: number;
   updatedAt: number;
   url?: string;
@@ -3199,6 +3208,8 @@ interface StoryboardReviewDraft {
   renderJobId: string | null;
   conceptDetails?: string | null;
   storyboardGuide?: string | null;
+  voiceoverFullScript?: string | null;
+  useVoiceoverScriptAsConcept?: boolean;
 }
 
 const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
@@ -3239,6 +3250,8 @@ function readStoryboardReviewDraft(): StoryboardReviewDraft | null {
       renderJobId: typeof parsed.renderJobId === "string" ? parsed.renderJobId : null,
       conceptDetails: typeof parsed.conceptDetails === "string" ? parsed.conceptDetails : null,
       storyboardGuide: typeof parsed.storyboardGuide === "string" ? parsed.storyboardGuide : null,
+      voiceoverFullScript: typeof parsed.voiceoverFullScript === "string" ? parsed.voiceoverFullScript : null,
+      useVoiceoverScriptAsConcept: Boolean(parsed.useVoiceoverScriptAsConcept),
     };
   } catch {
     return null;
@@ -6697,6 +6710,8 @@ export default function MediaStudio() {
   const [storyboardCompoundStatus, setStoryboardCompoundStatus] = useState<string | null>(null);
   const [storyboardProjectLink, setStoryboardProjectLink] = useState<string | null>(null);
   const [storyboardRenderJobId, setStoryboardRenderJobId] = useState<string | null>(null);
+  const [storyboardVoiceoverFullScript, setStoryboardVoiceoverFullScript] = useState("");
+  const [useStoryboardVoiceoverScriptAsConcept, setUseStoryboardVoiceoverScriptAsConcept] = useState(false);
   const [productionShotRenderJobId, setProductionShotRenderJobId] = useState<string | null>(null);
   const [isCompoundingProductionShotVideos, setIsCompoundingProductionShotVideos] = useState(false);
   const [productionShotCompoundStatus, setProductionShotCompoundStatus] = useState<string | null>(null);
@@ -6961,6 +6976,7 @@ export default function MediaStudio() {
   // Grid split state
   const [showSplitDialog, setShowSplitDialog] = useState(false);
   const [isSplitToolsPanelCollapsed, setIsSplitToolsPanelCollapsed] = useState(false);
+  const [isSplitScissorsDragOver, setIsSplitScissorsDragOver] = useState(false);
   const [splitToolsPanelWidth, setSplitToolsPanelWidth] = useState(() => getDefaultSplitToolsPanelWidth());
   const [splitToolsPanelTop, setSplitToolsPanelTop] = useState(72);
   const [splitImageUrl, setSplitImageUrl] = useState<string | null>(null);
@@ -6968,7 +6984,10 @@ export default function MediaStudio() {
   const [splitGridCols, setSplitGridCols] = useState(2);
   const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
   const [splitResults, setSplitResults] = useState<SplitResult[]>([]);
+  const [draggingSplitResultIndex, setDraggingSplitResultIndex] = useState<number | null>(null);
+  const [splitResultDragOverIndex, setSplitResultDragOverIndex] = useState<number | null>(null);
   const [isSplitting, setIsSplitting] = useState(false);
+  const [isAppendingSplitResults, setIsAppendingSplitResults] = useState(false);
   const [splitStoryboardVideoModelId, setSplitStoryboardVideoModelId] = useState("");
   const [splitStoryboardSpeechMode, setSplitStoryboardSpeechMode] = useState<StoryboardPromptPlannerOptions["speechMode"]>("none");
   const [splitStoryboardOtherSpeechLanguage, setSplitStoryboardOtherSpeechLanguage] = useState("");
@@ -7123,6 +7142,25 @@ export default function MediaStudio() {
     () => pickDefaultSplitStoryboardVideoModelId(splitStoryboardVideoModels),
     [splitStoryboardVideoModels],
   );
+  const selectedSplitStoryboardVideoModel = useMemo(() => {
+    const modelId = splitStoryboardVideoModelId || defaultSplitStoryboardVideoModelId;
+    return splitStoryboardVideoModels.find((model) => String(model.modelId ?? model.id ?? "") === modelId) ?? null;
+  }, [defaultSplitStoryboardVideoModelId, splitStoryboardVideoModelId, splitStoryboardVideoModels]);
+  const splitStoryboardShotDurationSeconds = useMemo(() => {
+    if (!selectedSplitStoryboardVideoModel) return DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+    const normalizedModel = {
+      ...selectedSplitStoryboardVideoModel,
+      id: selectedSplitStoryboardVideoModel.id ?? selectedSplitStoryboardVideoModel.modelId,
+      configJson: parseMediaModelConfig(selectedSplitStoryboardVideoModel.configJson) ?? selectedSplitStoryboardVideoModel.configJson,
+    };
+    return resolveStoryboardClipDurationSeconds({
+      model: normalizedModel,
+      selectedDurationSeconds: undefined,
+      fallbackSeconds: DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+    }) || DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+  }, [selectedSplitStoryboardVideoModel]);
+  const splitStoryboardShotCount = Math.max(0, splitResults.length - 1);
+  const splitStoryboardTotalDurationSeconds = splitStoryboardShotCount * splitStoryboardShotDurationSeconds;
   const splitStoryboardSpeechLanguage = useMemo(() => {
     if (splitStoryboardSpeechMode === "th") return "Thai";
     if (splitStoryboardSpeechMode === "en") return "English";
@@ -8290,6 +8328,8 @@ export default function MediaStudio() {
     setStoryboardCompoundStatus(draft.compoundStatus || t('mediaStudio.storyboardReviewRestored'));
     setStoryboardProjectLink(draft.projectLink);
     setStoryboardRenderJobId(draft.renderJobId);
+    setStoryboardVoiceoverFullScript(draft.voiceoverFullScript ?? "");
+    setUseStoryboardVoiceoverScriptAsConcept(Boolean(draft.useVoiceoverScriptAsConcept && draft.voiceoverFullScript?.trim()));
     setTrackedGenerationQueueTaskIds((prev) => {
       const next = new Set(prev);
       draft.tasks.forEach((task) => {
@@ -8356,6 +8396,8 @@ export default function MediaStudio() {
         setStoryboardCompoundStatus(canonicalDraft.compoundStatus || t('mediaStudio.storyboardReviewLoaded'));
         setStoryboardProjectLink(canonicalDraft.projectLink);
         setStoryboardRenderJobId(canonicalDraft.renderJobId);
+        setStoryboardVoiceoverFullScript(canonicalDraft.voiceoverFullScript ?? "");
+        setUseStoryboardVoiceoverScriptAsConcept(Boolean(canonicalDraft.useVoiceoverScriptAsConcept && canonicalDraft.voiceoverFullScript?.trim()));
       })
       .catch((error) => {
         storyboardReviewServerReconciledRef.current = null;
@@ -8387,6 +8429,8 @@ export default function MediaStudio() {
         productionDirector.plan?.scene_timeline ? `Scene timeline: ${JSON.stringify(productionDirector.plan.scene_timeline)}` : "",
         productionDirector.plan?.shot_plan ? `Shot plan: ${JSON.stringify(productionDirector.plan.shot_plan)}` : "",
       ].filter(Boolean).join("\n\n") || null,
+      voiceoverFullScript: storyboardVoiceoverFullScript.trim() || null,
+      useVoiceoverScriptAsConcept: Boolean(useStoryboardVoiceoverScriptAsConcept && storyboardVoiceoverFullScript.trim()),
     };
   }, [
     generationTasks,
@@ -8398,6 +8442,8 @@ export default function MediaStudio() {
     storyboardProjectLink,
     storyboardRenderJobId,
     storyboardReviewTaskIds,
+    storyboardVoiceoverFullScript,
+    useStoryboardVoiceoverScriptAsConcept,
   ]);
 
   const getStoryboardReviewName = useCallback((draft: StoryboardReviewDraft) => {
@@ -9600,9 +9646,54 @@ export default function MediaStudio() {
       || dataTransfer.getData("text/x-smartspec-media-type");
   };
 
-  const getDraggedMediaUrl = (dataTransfer: DataTransfer) => {
-    return dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain");
+  const getDraggedProductionAsset = (dataTransfer: DataTransfer): Partial<ProductionReferenceInput> | null => {
+    const raw = dataTransfer.getData("application/x-production-asset-json");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Partial<ProductionReferenceInput>;
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
   };
+
+  const getDraggedMediaUrl = (dataTransfer: DataTransfer) => {
+    const directUrl = dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain");
+    if (directUrl) return directUrl;
+    const asset = getDraggedProductionAsset(dataTransfer);
+    return typeof asset?.url === "string" ? asset.url : "";
+  };
+
+  const dataTransferHasAnyType = (dataTransfer: DataTransfer, candidates: string[]) => {
+    const types = Array.from(dataTransfer.types ?? []);
+    return candidates.some((candidate) => types.includes(candidate));
+  };
+
+  const canDataTransferProvideImage = (dataTransfer: DataTransfer, options?: { allowPotentialTextPayload?: boolean }) => {
+    const file = Array.from(dataTransfer.files ?? []).find((item) => item.type.startsWith("image/"));
+    if (file) return true;
+    const mediaType = getDraggedMediaType(dataTransfer);
+    const url = getDraggedMediaUrl(dataTransfer);
+    if (mediaType === "image" || isImageMediaUrl(url)) return true;
+    const asset = getDraggedProductionAsset(dataTransfer);
+    if (asset?.kind === "generated_media" && typeof asset.url === "string") return true;
+    if (!options?.allowPotentialTextPayload) return false;
+    return dataTransferHasAnyType(dataTransfer, [
+      "Files",
+      "text/uri-list",
+      "text/plain",
+      "application/x-smartspec-media-type",
+      "text/x-smartspec-media-type",
+      "application/x-production-asset-json",
+    ]);
+  };
+  const readImageFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read image file"));
+      reader.readAsDataURL(file);
+    });
   const getDraggedMarketplaceProductContext = (dataTransfer: DataTransfer): MarketplaceProductReferenceContext | null => {
     const raw = dataTransfer.getData("application/x-smartspec-marketplace-product")
       || dataTransfer.getData("text/x-smartspec-marketplace-product");
@@ -13149,6 +13240,7 @@ export default function MediaStudio() {
           prompt: task.prompt,
           url: task.url,
           model: task.model,
+          durationSeconds: task.durationSeconds,
           generationModelId: context?.model || task.model,
           referenceUrls: context?.referenceImages.map((image) => image.url),
           generationAspectRatio: context?.aspectRatio,
@@ -13266,11 +13358,12 @@ export default function MediaStudio() {
 
     const project = buildStoryboardVideoProject(
       selectedTasks.map((task) => ({
-        id: task.id,
-        prompt: task.prompt,
-        url: task.url!,
-        model: task.model,
-        generationModelId: task.generationModelId,
+          id: task.id,
+          prompt: task.prompt,
+          url: task.url!,
+          model: task.model,
+          durationSeconds: task.durationSeconds,
+          generationModelId: task.generationModelId,
         referenceUrls: task.referenceUrls,
         generationAspectRatio: task.generationAspectRatio,
         generationExtraParams: task.generationExtraParams,
@@ -13440,6 +13533,52 @@ export default function MediaStudio() {
     window.open(path, "_blank", "noopener,noreferrer");
   }, [buildStoryboardReviewDraft]);
 
+  const updateStoryboardTaskDuration = useCallback((taskId: string, durationSeconds: number) => {
+    const safeDuration = Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? durationSeconds
+      : DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+    const now = Date.now();
+    setGenerationTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        const nextExtraParams: Record<string, any> = {
+          ...(task.storyboardContext?.extraParams ?? {}),
+          storyboardShotDurationSeconds: safeDuration,
+        };
+        if (nextExtraParams.storyboardPromptPlanner && typeof nextExtraParams.storyboardPromptPlanner === "object") {
+          nextExtraParams.storyboardPromptPlanner = {
+            ...(nextExtraParams.storyboardPromptPlanner as Record<string, unknown>),
+            shotDurationSeconds: safeDuration,
+          };
+        }
+        return {
+          ...task,
+          status: task.status === "generating" ? task.status : "queued",
+          url: task.status === "generating" ? task.url : undefined,
+          error: undefined,
+          backendTaskId: task.status === "generating" ? task.backendTaskId : undefined,
+          providerTaskId: task.status === "generating" ? task.providerTaskId : undefined,
+          prompt: applyStoryboardPromptDuration(task.prompt, safeDuration),
+          durationSeconds: safeDuration,
+          updatedAt: now,
+          statusDetail: task.status === "generating"
+            ? task.statusDetail
+            : (isThaiLocale ? "ปรับความยาวแล้ว กรุณาสร้างคลิปใหม่" : "Duration changed. Regenerate this clip."),
+          storyboardContext: task.storyboardContext
+            ? {
+                ...task.storyboardContext,
+                duration: safeDuration,
+                extraParams: nextExtraParams,
+              }
+            : task.storyboardContext,
+        };
+      })
+    );
+    setStoryboardCompoundStatus(isThaiLocale
+      ? `ปรับความยาว shot เป็น ${safeDuration} วินาทีแล้ว`
+      : `Shot duration set to ${safeDuration}s.`);
+  }, [isThaiLocale, setGenerationTasks, setStoryboardCompoundStatus]);
+
   const regenerateStoryboardClip = useCallback(async (taskId: string, prompt: string) => {
     const task = generationTasks.find((item) => item.id === taskId);
     if (!task?.storyboardContext) {
@@ -13588,7 +13727,9 @@ export default function MediaStudio() {
     );
     const fallbackClipDuration = selectedStoryboardClipDurationSeconds ?? Math.max(0.25, tabStates.video.duration);
     const selectedDurationSeconds = completedSelectedTasks.reduce(
-      (sum, task) => sum + inferStoryboardClipDurationSeconds(task.prompt, fallbackClipDuration),
+      (sum, task) => sum + (Number.isFinite(Number(task.durationSeconds)) && Number(task.durationSeconds) > 0
+        ? Number(task.durationSeconds)
+        : inferStoryboardClipDurationSeconds(task.prompt, fallbackClipDuration)),
       0,
     );
     const targetDurationSeconds = Math.max(
@@ -13910,13 +14051,19 @@ export default function MediaStudio() {
       productionShotContext?: { shotId: string; sourceGridUrl?: string } | null;
     },
   ) => {
+    const shouldKeepExistingSplitResults = showSplitDialog
+      && mode === "split"
+      && splitResults.length > 0
+      && !options?.productionShotContext;
     setSplitMarketplaceContext(marketplaceCtx ?? null);
     setProductionShotSplitContext(mode === "split" ? options?.productionShotContext ?? null : null);
     const sourceUrl = toCanvasSafeImageUrl(imageUrl);
     const defaultFrameCropRatio = tabStates.video.aspectRatio === "16:9" ? "16:9" : "9:16";
     setIsSplitToolsPanelCollapsed(false);
     setSplitImageUrl(sourceUrl);
-    setSplitResults([]);
+    if (!shouldKeepExistingSplitResults) {
+      setSplitResults([]);
+    }
     setSplitPreviewUrl(null);
     setImageEditorMode(mode);
     setSplitFrameAutoCropEnabled(true);
@@ -14197,6 +14344,203 @@ export default function MediaStudio() {
     event.dataTransfer.setData("DownloadURL", `image/jpeg:${input.filename}:${input.url}`);
   };
 
+  const getSplitResultSequenceNumber = (result: SplitResult) => {
+    const position = splitResults.findIndex((item) => item.index === result.index);
+    return position >= 0 ? position + 1 : result.index + 1;
+  };
+
+  const handleSplitResultDragStart = (
+    event: React.DragEvent<HTMLDivElement>,
+    result: SplitResult,
+    sequenceNumber: number,
+  ) => {
+    startSplitToolsImageDrag(event, {
+      url: result.dataUrl,
+      title: `Split ${sequenceNumber}`,
+      filename: `split-image-${sequenceNumber}.jpg`,
+      index: result.index,
+    });
+    event.dataTransfer.effectAllowed = "copyMove";
+    event.dataTransfer.setData(SPLIT_RESULT_REORDER_MIME, String(result.index));
+    setDraggingSplitResultIndex(result.index);
+    setSplitResultDragOverIndex(result.index);
+  };
+
+  const handleSplitResultDragOver = (event: React.DragEvent<HTMLDivElement>, result: SplitResult) => {
+    if (draggingSplitResultIndex === null || draggingSplitResultIndex === result.index) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setSplitResultDragOverIndex(result.index);
+  };
+
+  const handleSplitResultDrop = (event: React.DragEvent<HTMLDivElement>, result: SplitResult) => {
+    const rawSourceIndex = event.dataTransfer.getData(SPLIT_RESULT_REORDER_MIME);
+    const sourceIndex = rawSourceIndex.trim() ? Number(rawSourceIndex) : draggingSplitResultIndex;
+    if (sourceIndex === null || !Number.isFinite(sourceIndex) || sourceIndex === result.index) {
+      setDraggingSplitResultIndex(null);
+      setSplitResultDragOverIndex(null);
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    setSplitResults((prev) => {
+      const fromIndex = prev.findIndex((item) => item.index === sourceIndex);
+      const toIndex = prev.findIndex((item) => item.index === result.index);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return prev;
+      }
+      const next = prev.slice();
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setDraggingSplitResultIndex(null);
+    setSplitResultDragOverIndex(null);
+  };
+
+  const handleSplitResultDragEnd = () => {
+    setDraggingSplitResultIndex(null);
+    setSplitResultDragOverIndex(null);
+  };
+
+  const appendSplitResultsFromImage = async (
+    sourceImageUrl: string,
+    marketplaceCtx?: MarketplaceProductReferenceContext | null,
+  ) => {
+    const sourceUrl = toCanvasSafeImageUrl(sourceImageUrl);
+    setIsAppendingSplitResults(true);
+    setIsSplitting(true);
+    try {
+      const results = await splitImage(
+        sourceUrl,
+        splitGridRows,
+        splitGridCols,
+        "image/jpeg",
+        0.92,
+        splitFrameAutoCropEnabled
+          ? { targetAspectRatio: splitFrameCropAspectRatio }
+          : {}
+      );
+      setSplitImageUrl(sourceUrl);
+      setImageEditorMode("split");
+      setSplitMarketplaceContext(marketplaceCtx ?? splitMarketplaceContext);
+      setProductionShotSplitContext(null);
+      setCropResult(null);
+      setSplitPreviewUrl(await createSplitPreview(sourceUrl, splitGridRows, splitGridCols));
+      setSplitResults((prev) => {
+        const nextIndex = prev.reduce((max, item) => Math.max(max, item.index), -1) + 1;
+        const appended = results.map((result, index) => ({
+          ...result,
+          index: nextIndex + index,
+        }));
+        return [...prev, ...appended];
+      });
+      toast.success(isThaiLocale
+        ? `ตัดภาพใหม่และต่อท้ายอีก ${results.length} รูปแล้ว`
+        : `Split the dropped image and appended ${results.length} frames.`);
+    } catch (error) {
+      console.error("Failed to append split results:", error);
+      toast.error(t('mediaStudio.failedToSplitImage'));
+    } finally {
+      setIsSplitting(false);
+      setIsAppendingSplitResults(false);
+      setIsSplitScissorsDragOver(false);
+    }
+  };
+
+  const handleSplitScissorsDragOver = (event: React.DragEvent<HTMLElement>) => {
+    if (canDataTransferProvideImage(event.dataTransfer, { allowPotentialTextPayload: true })) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      setIsSplitScissorsDragOver(true);
+    }
+  };
+
+  const appendSplitResultsFromDataTransfer = async (dataTransfer: DataTransfer) => {
+    const file = Array.from(dataTransfer.files ?? []).find((item) => item.type.startsWith("image/"));
+    const marketplaceCtx = getDraggedMarketplaceProductContext(dataTransfer);
+    if (file) {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      if (dataUrl) {
+        await appendSplitResultsFromImage(dataUrl, marketplaceCtx);
+        return true;
+      }
+      return false;
+    }
+
+    const url = getDraggedMediaUrl(dataTransfer);
+    const mediaType = getDraggedMediaType(dataTransfer);
+    const asset = getDraggedProductionAsset(dataTransfer);
+    const assetLooksLikeImage = asset?.kind === "generated_media" && typeof asset.url === "string";
+    if (url && (mediaType === "image" || isImageMediaUrl(url) || assetLooksLikeImage)) {
+      await appendSplitResultsFromImage(url, marketplaceCtx);
+      return true;
+    }
+    toast.error(isThaiLocale ? "วางได้เฉพาะรูปภาพเท่านั้น" : "Drop an image to split it.");
+    return false;
+  };
+
+  const handleSplitScissorsDrop = async (event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsSplitScissorsDragOver(false);
+    await appendSplitResultsFromDataTransfer(event.dataTransfer);
+  };
+
+  useEffect(() => {
+    if (!showSplitDialog || !isSplitToolsPanelCollapsed) return;
+
+    const rightEdgeDropWidth = 112;
+    const isRightEdgeDrop = (event: DragEvent) =>
+      typeof window !== "undefined" && event.clientX >= window.innerWidth - rightEdgeDropWidth;
+
+    const handleWindowDragOver = (event: DragEvent) => {
+      if (!event.dataTransfer || !isRightEdgeDrop(event)) {
+        setIsSplitScissorsDragOver(false);
+        return;
+      }
+      if (!canDataTransferProvideImage(event.dataTransfer, { allowPotentialTextPayload: true })) {
+        setIsSplitScissorsDragOver(false);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      setIsSplitScissorsDragOver(true);
+    };
+
+    const handleWindowDrop = (event: DragEvent) => {
+      if (!event.dataTransfer || !isRightEdgeDrop(event)) return;
+      if (!canDataTransferProvideImage(event.dataTransfer, { allowPotentialTextPayload: true })) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setIsSplitScissorsDragOver(false);
+      void appendSplitResultsFromDataTransfer(event.dataTransfer);
+    };
+
+    const handleWindowDragEnd = () => {
+      setIsSplitScissorsDragOver(false);
+    };
+
+    window.addEventListener("dragover", handleWindowDragOver, true);
+    window.addEventListener("drop", handleWindowDrop, true);
+    window.addEventListener("dragend", handleWindowDragEnd, true);
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver, true);
+      window.removeEventListener("drop", handleWindowDrop, true);
+      window.removeEventListener("dragend", handleWindowDragEnd, true);
+    };
+  }, [
+    appendSplitResultsFromDataTransfer,
+    canDataTransferProvideImage,
+    isSplitToolsPanelCollapsed,
+    showSplitDialog,
+  ]);
+
   // Execute the split
   const executeSplit = async () => {
     if (!splitImageUrl) return;
@@ -14212,7 +14556,22 @@ export default function MediaStudio() {
           ? { targetAspectRatio: splitFrameCropAspectRatio }
           : {}
       );
-      setSplitResults(results);
+      const shouldAppendToExistingResults = !productionShotSplitContext?.shotId && splitResults.length > 0;
+      setSplitResults((prev) => {
+        if (!shouldAppendToExistingResults || prev.length === 0) {
+          return results;
+        }
+        const nextIndex = prev.reduce((max, item) => Math.max(max, item.index), -1) + 1;
+        return [
+          ...prev,
+          ...results.map((result, index) => ({
+            ...result,
+            index: nextIndex + index,
+          })),
+        ];
+      });
+      setDraggingSplitResultIndex(null);
+      setSplitResultDragOverIndex(null);
       if (productionShotSplitContext?.shotId && results.length > 0) {
         setIsUploadingProductionShotSplitFrames(true);
         try {
@@ -14245,7 +14604,11 @@ export default function MediaStudio() {
         }
       }
       toast.success(
-        splitFrameAutoCropEnabled
+        shouldAppendToExistingResults
+          ? (isThaiLocale
+            ? `ตัดภาพใหม่และต่อท้ายอีก ${results.length} รูปแล้ว`
+            : `Split the new image and appended ${results.length} frames.`)
+          : splitFrameAutoCropEnabled
           ? t('mediaStudio.splitIntoImagesWithCrop', { count: results.length, ratio: splitFrameCropAspectRatio })
           : t('mediaStudio.splitIntoImages', { count: results.length })
       );
@@ -14280,14 +14643,15 @@ export default function MediaStudio() {
   };
 
   // Download a single split image
-  const handleDownloadSplit = (result: SplitResult) => {
-    downloadSplitImage(result, `split-image`);
+  const handleDownloadSplit = (result: SplitResult, sequenceNumber = getSplitResultSequenceNumber(result)) => {
+    downloadSplitImage(result, `split-image`, sequenceNumber);
   };
 
   // Remove a split image from the current result set
   const handleRemoveSplit = (result: SplitResult) => {
     setSplitResults((prev) => prev.filter((item) => item.index !== result.index));
-    toast.success(isThaiLocale ? `ลบภาพที่ ${result.index + 1} แล้ว` : `Removed image ${result.index + 1}.`);
+    const sequenceNumber = getSplitResultSequenceNumber(result);
+    toast.success(isThaiLocale ? `ลบภาพที่ ${sequenceNumber} แล้ว` : `Removed image ${sequenceNumber}.`);
   };
 
   // Download all split images
@@ -14304,7 +14668,7 @@ export default function MediaStudio() {
   };
 
   // Add split image as reference
-  const addSplitAsReference = async (result: SplitResult) => {
+  const addSplitAsReference = async (result: SplitResult, sequenceNumber = getSplitResultSequenceNumber(result)) => {
     if (referenceImages.length >= maxReferenceImages) {
       toast.error(t('mediaStudio.maxReferenceImagesError', { max: maxReferenceImages }));
       return;
@@ -14312,7 +14676,7 @@ export default function MediaStudio() {
     try {
       // Upload the split image
       const uploadResult = await uploadMutation.mutateAsync({
-        fileName: `split-image-${result.index + 1}.jpg`,
+        fileName: `split-image-${sequenceNumber}.jpg`,
         fileType: "image/jpeg",
         fileBase64: result.dataUrl,
       });
@@ -14320,7 +14684,7 @@ export default function MediaStudio() {
         ...prev,
         {
           url: uploadResult.url,
-          name: `Split ${result.index + 1}`,
+          name: `Split ${sequenceNumber}`,
           ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
         },
       ]);
@@ -14379,15 +14743,16 @@ export default function MediaStudio() {
     try {
       const uploadedImages: ReferenceImage[] = [];
 
-      for (const result of imagesToAdd) {
+      for (const [position, result] of imagesToAdd.entries()) {
+        const sequenceNumber = position + 1;
         const uploadResult = await uploadMutation.mutateAsync({
-          fileName: `split-image-${result.index + 1}.jpg`,
+          fileName: `split-image-${sequenceNumber}.jpg`,
           fileType: "image/jpeg",
           fileBase64: result.dataUrl,
         });
         uploadedImages.push({
           url: uploadResult.url,
-          name: `Split ${result.index + 1}`,
+          name: `Split ${sequenceNumber}`,
           ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
         });
       }
@@ -14426,15 +14791,16 @@ export default function MediaStudio() {
 
     try {
       const uploadedImages: ReferenceImage[] = [];
-      for (const result of [...splitResults].sort((a, b) => a.index - b.index)) {
+      for (const [position, result] of splitResults.entries()) {
+        const sequenceNumber = position + 1;
         const uploadResult = await uploadMutation.mutateAsync({
-          fileName: `storyboard-frame-${result.index + 1}.jpg`,
+          fileName: `storyboard-frame-${sequenceNumber}.jpg`,
           fileType: "image/jpeg",
           fileBase64: result.dataUrl,
         });
         uploadedImages.push({
           url: uploadResult.url,
-          name: `Frame ${result.index + 1}`,
+          name: `Frame ${sequenceNumber}`,
           ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
         });
       }
@@ -14462,12 +14828,23 @@ export default function MediaStudio() {
       const durationSeconds = resolveStoryboardClipDurationSeconds({
         model: normalizedModel,
         selectedDurationSeconds: undefined,
-        fallbackSeconds: tabStates.video.duration,
-      });
+        fallbackSeconds: DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+      }) || DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+      const storyboardShotCount = Math.max(0, uploadedImages.length - 1);
+      const storyboardTotalDurationSeconds = storyboardShotCount * durationSeconds;
+      extraParams.storyboardShotDurationSeconds = durationSeconds;
+      extraParams.storyboardTotalDurationSeconds = storyboardTotalDurationSeconds;
+      extraParams.storyboardPromptPlanner = {
+        ...extraParams.storyboardPromptPlanner,
+        shotDurationSeconds: durationSeconds,
+        totalDurationSeconds: storyboardTotalDurationSeconds,
+        shotCount: storyboardShotCount,
+      };
       const splitStoryboardGuide = [
         activeProductionConceptDetails ? `Concept and details:\n${activeProductionConceptDetails}` : "",
         splitMarketplaceContext ? `Product context:\n${JSON.stringify(splitMarketplaceContext, null, 2)}` : "",
-        `Storyboard source: ${uploadedImages.length} sliced image frames creating ${Math.max(0, uploadedImages.length - 1)} ordered video shots.`,
+        `Storyboard source: ${uploadedImages.length} sliced image frames creating ${storyboardShotCount} ordered video shots.`,
+        `Storyboard timing: ${durationSeconds} seconds per shot, ${storyboardTotalDurationSeconds} seconds total video duration.`,
         `Frame rule: each shot uses its own adjacent image pair as start/end frames. Preserve visual continuity from one generated clip to the next.`,
         `Prompt planner options: voice=${splitStoryboardSpeechMode}, speechLanguage=${splitStoryboardSpeechLanguage || "auto"}, sound=${splitStoryboardIncludeSound ? "enabled" : "disabled"}, tone=${splitStoryboardTone}, language=${splitStoryboardPromptLanguage}.`,
       ].filter(Boolean).join("\n\n");
@@ -24049,6 +24426,34 @@ export default function MediaStudio() {
                                         </Tooltip>
                                       </TooltipProvider>
                                     )}
+                                    {task.mediaType === "image" && showSplitDialog && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              disabled={isAppendingSplitResults}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const historyMarketplaceCtx = getMarketplaceContextFromTaskParameters(task.parameters);
+                                                void appendSplitResultsFromImage(resultUrl, historyMarketplaceCtx ?? null);
+                                              }}
+                                            >
+                                              {isAppendingSplitResults ? (
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                              ) : (
+                                                <Scissors className="h-5 w-5" />
+                                              )}
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            {isThaiLocale ? "ตัดรูปนี้ต่อท้ายชุดเดิม" : "Split this image and append frames"}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
                                     {task.mediaType === "image" && (
                                       <TooltipProvider>
                                         <Tooltip>
@@ -24943,12 +25348,20 @@ export default function MediaStudio() {
           type="button"
           variant="outline"
           size="icon"
-          className="fixed right-3 top-1/2 z-[58] h-11 w-11 -translate-y-1/2 rounded-l-xl rounded-r-none border-r-0 bg-white shadow-xl"
+          className={cn(
+            "fixed right-3 top-1/2 z-[58] h-11 w-11 -translate-y-1/2 rounded-l-xl rounded-r-none border-r-0 bg-white shadow-xl",
+            isSplitScissorsDragOver && "border-sky-400 bg-sky-50 text-sky-700 ring-2 ring-sky-200",
+            isAppendingSplitResults && "cursor-wait opacity-80",
+          )}
           aria-label={isThaiLocale ? "เปิดเครื่องมือแบ่งและตัดรูป" : "Expand image tools"}
-          title={isThaiLocale ? "เปิดเครื่องมือแบ่งและตัดรูป" : "Expand image tools"}
+          title={isThaiLocale ? "คลิกเพื่อเปิด หรือลากรูปมาวางเพื่อตัดภาพต่อท้าย" : "Click to expand, or drop an image to split and append frames"}
           onClick={() => setIsSplitToolsPanelCollapsed(false)}
+          onDragOver={handleSplitScissorsDragOver}
+          onDragLeave={() => setIsSplitScissorsDragOver(false)}
+          onDrop={(event) => void handleSplitScissorsDrop(event)}
+          aria-disabled={isAppendingSplitResults}
         >
-          <Scissors className="h-4 w-4" />
+          {isAppendingSplitResults ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scissors className="h-4 w-4" />}
         </Button>
       )}
 
@@ -25360,60 +25773,67 @@ export default function MediaStudio() {
                               </select>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="grid grid-cols-1 gap-2">
                             <Button
                               variant="default"
                               size="sm"
                               onClick={createStoryboardReviewFromSplits}
+                              className="min-h-10 w-full justify-center gap-2 whitespace-normal px-3 py-2 text-center leading-snug"
                               disabled={isCreatingSplitStoryboardReview || splitResults.length < 2 || splitStoryboardVideoModels.length === 0}
                             >
                               {isCreatingSplitStoryboardReview ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                               ) : (
-                                <Video className="h-4 w-4 mr-1" />
+                                <Video className="h-4 w-4 shrink-0" />
                               )}
-                              {t('mediaStudio.splitStoryboardSendToReview', { count: Math.max(0, splitResults.length - 1) })}
+                              <span className="min-w-0 break-words">
+                                {t('mediaStudio.splitStoryboardSendToReview', { count: Math.max(0, splitResults.length - 1) })}
+                              </span>
                             </Button>
-                            <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
-                              <Video className="h-4 w-4 mr-1" />
-                              {t('mediaStudio.addToVideoReference')}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={addAllSplitsToVideoReference}
+                              className="min-h-10 w-full justify-center gap-2 whitespace-normal px-3 py-2 text-center leading-snug"
+                            >
+                              <Video className="h-4 w-4 shrink-0" />
+                              <span className="min-w-0 break-words">
+                                {t('mediaStudio.addToVideoReference')}
+                              </span>
                             </Button>
                           </div>
+                          <p className="text-xs text-muted-foreground">
+                            {isThaiLocale
+                              ? `ความยาววิดีโอรวม: ${splitStoryboardTotalDurationSeconds} วินาที (${splitStoryboardShotCount} shot × ${splitStoryboardShotDurationSeconds} วินาที)`
+                              : `Total storyboard duration: ${splitStoryboardTotalDurationSeconds}s (${splitStoryboardShotCount} shots × ${splitStoryboardShotDurationSeconds}s)`}
+                          </p>
                         </div>
                       </div>
-                      <ScrollArea className="h-[420px]">
+                      <div className="pb-6">
                         <div className="grid grid-cols-3 gap-3 pr-2">
-                          {splitResults.map((result) => (
-                            <div
-                              key={result.index}
-                              className="relative group aspect-square cursor-grab overflow-hidden rounded-lg border transition-colors hover:border-blue-400 active:cursor-grabbing"
-                              draggable
-                              onDragStart={(event) => startSplitToolsImageDrag(event, {
-                                url: result.dataUrl,
-                                title: `Split ${result.index + 1}`,
-                                filename: `split-image-${result.index + 1}.jpg`,
-                                index: result.index,
-                              })}
-                              title={isThaiLocale ? "ลากรูปนี้ไปยังช่องที่รองรับรูปภาพ" : "Drag this image to an image drop target"}
-                            >
-                              <img src={result.dataUrl} alt={`Split ${result.index + 1}`} className="w-full h-full object-cover" draggable={false} />
-                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7 text-white hover:bg-white/20"
-                                        onClick={() => handleDownloadSplit(result)}
-                                      >
-                                        <Download className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                {referenceImages.length < maxReferenceImages && (
+                          {splitResults.map((result, position) => {
+                            const sequenceNumber = position + 1;
+                            const isDraggingSplitResult = draggingSplitResultIndex === result.index;
+                            const isSplitDropTarget = splitResultDragOverIndex === result.index
+                              && draggingSplitResultIndex !== null
+                              && draggingSplitResultIndex !== result.index;
+                            return (
+                              <div
+                                key={result.index}
+                                className={cn(
+                                  "relative group aspect-square cursor-grab overflow-hidden rounded-lg border transition-colors hover:border-blue-400 active:cursor-grabbing",
+                                  isDraggingSplitResult && "opacity-60 ring-2 ring-blue-500",
+                                  isSplitDropTarget && "border-blue-500 ring-2 ring-blue-300",
+                                )}
+                                draggable
+                                onDragStart={(event) => handleSplitResultDragStart(event, result, sequenceNumber)}
+                                onDragOver={(event) => handleSplitResultDragOver(event, result)}
+                                onDrop={(event) => handleSplitResultDrop(event, result)}
+                                onDragEnd={handleSplitResultDragEnd}
+                                title={isThaiLocale ? "ลากรูปนี้เพื่อเรียงลำดับหรือวางในช่องรูปภาพ" : "Drag to reorder or drop into an image target"}
+                              >
+                                <img src={result.dataUrl} alt={`Split ${sequenceNumber}`} className="w-full h-full object-cover" draggable={false} />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -25421,39 +25841,56 @@ export default function MediaStudio() {
                                           size="icon"
                                           variant="ghost"
                                           className="h-7 w-7 text-white hover:bg-white/20"
-                                          onClick={() => addSplitAsReference(result)}
+                                          onClick={() => handleDownloadSplit(result, sequenceNumber)}
                                         >
-                                          <ImagePlus className="h-4 w-4" />
+                                          <Download className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
-                                      <TooltipContent>{t('mediaStudio.useAsReference')}</TooltipContent>
+                                      <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
-                                )}
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7 text-white hover:bg-red-500/80"
-                                        onClick={() => handleRemoveSplit(result)}
-                                        aria-label={isThaiLocale ? `ลบภาพที่ ${result.index + 1}` : `Remove image ${result.index + 1}`}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{isThaiLocale ? "ลบภาพนี้" : "Remove this image"}</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                  {referenceImages.length < maxReferenceImages && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7 text-white hover:bg-white/20"
+                                            onClick={() => addSplitAsReference(result, sequenceNumber)}
+                                          >
+                                            <ImagePlus className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>{t('mediaStudio.useAsReference')}</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 text-white hover:bg-red-500/80"
+                                          onClick={() => handleRemoveSplit(result)}
+                                          aria-label={isThaiLocale ? `ลบภาพที่ ${sequenceNumber}` : `Remove image ${sequenceNumber}`}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{isThaiLocale ? "ลบภาพนี้" : "Remove this image"}</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-tl">
+                                  {sequenceNumber}
+                                </div>
                               </div>
-                              <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-tl">
-                                {result.index + 1}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   )}
                 </>
@@ -25750,12 +26187,23 @@ export default function MediaStudio() {
         onSelectAll={selectAllStoryboardTasks}
         onSelectNone={selectNoStoryboardTasks}
         onRegenerateTask={regenerateStoryboardClip}
+        onUpdateTaskDuration={updateStoryboardTaskDuration}
         conceptDetails={activeProductionConceptDetails}
         onConceptDetailsChange={(value) => {
           setProductionStoryConceptWizard((current) => current ? {
             ...current,
             options: current.options.map((option) => option.id === current.selectedId ? { ...option, conceptDetails: value } : option),
           } : current);
+        }}
+        voiceoverFullScript={storyboardVoiceoverFullScript}
+        onVoiceoverFullScriptChange={(value) => {
+          const nextValue = value.trim();
+          setStoryboardVoiceoverFullScript(nextValue);
+          setUseStoryboardVoiceoverScriptAsConcept(Boolean(nextValue));
+        }}
+        useVoiceoverScriptAsConcept={Boolean(useStoryboardVoiceoverScriptAsConcept && storyboardVoiceoverFullScript.trim())}
+        onUseVoiceoverScriptAsConceptChange={(value) => {
+          setUseStoryboardVoiceoverScriptAsConcept(Boolean(value && storyboardVoiceoverFullScript.trim()));
         }}
         onAutoCompound={autoCompoundStoryboardClips}
         onCreateProject={createStoryboardEditProject}

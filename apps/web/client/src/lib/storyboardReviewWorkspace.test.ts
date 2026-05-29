@@ -86,11 +86,42 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
 
     expect(tasks).toHaveLength(1);
     expect(tasks[0]?.marketplaceProduct).toEqual(marketplaceContext);
+    expect(tasks[0]?.durationSeconds).toBe(8);
+    expect(tasks[0]?.storyboardContext?.duration).toBe(8);
     expect(tasks[0]?.storyboardContext?.referenceImages).toEqual([
       { url: "https://example.com/1.jpg", name: "Frame 1", marketplaceProduct: marketplaceContext },
       { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
     ]);
-    expect(tasks[0]?.storyboardContext?.extraParams?.marketplaceContext).toEqual(marketplaceContext);
+    expect(tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      marketplaceContext,
+      storyboardShotDurationSeconds: 8,
+      storyboardTotalDurationSeconds: 8,
+    });
+  });
+
+  it("stores total storyboard timing from ordered frame count and shot duration", () => {
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        { url: "https://example.com/1.jpg" },
+        { url: "https://example.com/2.jpg" },
+        { url: "https://example.com/3.jpg" },
+        { url: "https://example.com/4.jpg" },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        duration: 6,
+        now: 12345,
+      },
+    );
+
+    expect(tasks).toHaveLength(3);
+    expect(tasks.map((task) => task.durationSeconds)).toEqual([6, 6, 6]);
+    expect(tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      storyboardShotDurationSeconds: 6,
+      storyboardTotalDurationSeconds: 18,
+    });
+    expect(tasks[2]?.prompt).toContain("Create a 6-second cinematic video.");
   });
 
   it("applies split storyboard speech and sound planner options to Veo prompts", () => {
@@ -660,6 +691,35 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     expect(readStoryboardReviewDraft()).toMatchObject({
       companionAudio: [],
       companionAudioUpdatedAt: null,
+    });
+  });
+
+  it("hydrates edited voiceover script planning preference from storage", () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+      },
+    });
+    storage.set(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      updatedAt: Date.now(),
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      voiceoverFullScript: "Edited full narration",
+      useVoiceoverScriptAsConcept: true,
+    }));
+
+    expect(readStoryboardReviewDraft()).toMatchObject({
+      voiceoverFullScript: "Edited full narration",
+      useVoiceoverScriptAsConcept: true,
     });
   });
 });

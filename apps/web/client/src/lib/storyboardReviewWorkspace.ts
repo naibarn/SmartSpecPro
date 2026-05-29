@@ -82,6 +82,10 @@ export interface StoryboardReviewDraft {
   conceptDetails?: string | null;
   /** Storyboard guide/instructions used as scene and voiceover planning context */
   storyboardGuide?: string | null;
+  /** User-editable combined narration used for prompt planning and speech regeneration */
+  voiceoverFullScript?: string | null;
+  /** When true, planner treats voiceoverFullScript as the primary concept/content source */
+  useVoiceoverScriptAsConcept?: boolean;
 }
 
 export interface FirstLastFrameStoryboardImage {
@@ -129,6 +133,14 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
 
 export const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
 const STORYBOARD_REVIEW_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+export const DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS = 8;
+
+function normalizeStoryboardShotDurationSeconds(value: unknown): number {
+  const duration = Number(value);
+  return Number.isFinite(duration) && duration > 0
+    ? duration
+    : DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+}
 
 export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewDraft> | null | undefined): StoryboardReviewDraft | null {
   if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.taskIds) || !Array.isArray(parsed.tasks)) {
@@ -163,6 +175,8 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     marketplaceContext: parsed.marketplaceContext ?? null,
     conceptDetails: typeof parsed.conceptDetails === "string" ? parsed.conceptDetails : null,
     storyboardGuide: typeof parsed.storyboardGuide === "string" ? parsed.storyboardGuide : null,
+    voiceoverFullScript: typeof parsed.voiceoverFullScript === "string" ? parsed.voiceoverFullScript : null,
+    useVoiceoverScriptAsConcept: Boolean(parsed.useVoiceoverScriptAsConcept),
   };
 }
 
@@ -403,6 +417,8 @@ export function buildFirstLastFrameStoryboardTasks(
   const now = options.now ?? Date.now();
   const idPrefix = options.idPrefix ?? "split-storyboard";
   const aspectRatio = options.aspectRatio.trim() || "auto";
+  const durationSeconds = normalizeStoryboardShotDurationSeconds(options.duration);
+  const totalDurationSeconds = Math.max(0, usableImages.length - 1) * durationSeconds;
   const promptTone = compactPromptPlannerOption(options.promptTone);
   const promptLanguage = compactPromptPlannerOption(options.promptLanguage);
   const speechMode = options.speechMode ?? "none";
@@ -425,6 +441,8 @@ export function buildFirstLastFrameStoryboardTasks(
     ...(options.extraParams ?? {}),
     generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
     referenceFrameRoles: ["start", "stop"] as StoryboardReferenceFrameRole[],
+    storyboardShotDurationSeconds: durationSeconds,
+    storyboardTotalDurationSeconds: totalDurationSeconds,
     ...(options.conceptDetails ? { productionConceptDetails: options.conceptDetails } : {}),
     ...(options.storyboardGuide ? { storyboardGuide: options.storyboardGuide } : {}),
     ...(options.marketplaceContext ? { marketplaceContext: options.marketplaceContext } : {}),
@@ -465,7 +483,7 @@ export function buildFirstLastFrameStoryboardTasks(
       type: "video",
       prompt: buildVeo31StoryboardVideoPrompt({
         visualPrompt,
-        durationSeconds: options.duration,
+        durationSeconds,
         aspectRatio,
         frameRoles: ["start", "stop"],
         conceptDetails: options.conceptDetails,
@@ -478,14 +496,14 @@ export function buildFirstLastFrameStoryboardTasks(
         soundBrief,
       }),
       model: options.model,
-      durationSeconds: options.duration,
+      durationSeconds,
       createdAt: now,
       updatedAt: now,
       statusDetail: options.statusDetail ?? "Queued for storyboard review. Confirm and regenerate when ready.",
       marketplaceProduct,
       storyboardContext: {
         aspectRatio,
-        duration: options.duration,
+        duration: durationSeconds,
         model: options.model,
         referenceImages: [
           {
@@ -663,7 +681,7 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
         prompt: task.prompt,
         url: task.url,
         model: task.model,
-        durationSeconds: task.durationSeconds,
+        durationSeconds: normalizeStoryboardShotDurationSeconds(task.durationSeconds ?? context?.duration),
         generationModelId: context?.model || task.model,
         referenceUrls: context?.referenceImages?.map((image) => image.url).filter(Boolean),
         generationAspectRatio: context?.aspectRatio ?? task.aspectRatio,

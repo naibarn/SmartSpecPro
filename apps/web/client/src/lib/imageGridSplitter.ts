@@ -354,10 +354,13 @@ export function blobToFile(blob: Blob, filename: string): File {
 /**
  * Download a single split result
  */
-export function downloadSplitImage(result: SplitResult, baseFilename: string): void {
+export function downloadSplitImage(result: SplitResult, baseFilename: string, displayIndex?: number): void {
   const link = document.createElement("a");
+  const sequenceNumber = typeof displayIndex === "number" && Number.isFinite(displayIndex)
+    ? Math.max(1, Math.floor(displayIndex))
+    : result.index + 1;
   link.href = result.dataUrl;
-  link.download = `${baseFilename}_${result.index + 1}.jpg`;
+  link.download = `${baseFilename}_${sequenceNumber}.jpg`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -371,8 +374,8 @@ export async function downloadAllSplitImages(
   results: SplitResult[],
   baseFilename: string
 ): Promise<void> {
-  for (const result of results) {
-    downloadSplitImage(result, baseFilename);
+  for (const [position, result] of results.entries()) {
+    downloadSplitImage(result, baseFilename, position + 1);
     // Small delay to prevent browser blocking multiple downloads
     await new Promise((r) => setTimeout(r, 200));
   }
