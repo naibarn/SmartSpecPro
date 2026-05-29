@@ -101,6 +101,7 @@ export const sanitizedLocalAIInputSchema = z.object({
   captureId: z.string().max(64).optional(),
   platform: z.enum(marketplacePlatforms),
   sourceUrl: z.string().url(),
+  affiliateUrl: z.string().url().nullable().optional(),
   capturedAt: z.string().max(80),
   pageTitle: z.string().max(500).optional(),
   locale: z.string().max(16).optional(),
@@ -154,6 +155,7 @@ const sourceRefSchema = z.object({
   platform: z.enum(marketplacePlatforms),
   captureId: z.string().max(64).optional(),
   url: z.string().url(),
+  affiliateUrl: z.string().url().nullable().optional(),
 });
 
 const boundedStringArray = (maxItems = 12, maxChars = 220) => z.array(z.string().max(maxChars)).max(maxItems).default([]);
@@ -351,6 +353,7 @@ export const marketplaceStorytellingHandoffSchema = z.object({
   insightIds: z.array(z.string().max(64)).max(20).default([]),
   productName: z.string().max(300),
   sourceUrl: z.string().url(),
+  affiliateUrl: z.string().url().nullable().optional(),
   platform: z.enum(marketplacePlatforms),
   storyFormat: z.enum(["product_review", "sales_demo", "brand_awareness", "before_after", "customer_journey", "tiktok_shop_trend", "shopee_support", "ugc_review", "cinematic_brand_story"]),
   readiness: z.enum(storytellingReadinessStates),
@@ -386,6 +389,7 @@ export const marketplaceCaptureInsightSyncSchema = z.object({
   source: z.object({
     platform: z.enum(marketplacePlatforms),
     url: z.string().url(),
+    affiliateUrl: z.string().url().nullable().optional(),
     capturedAt: z.string().max(80),
     captureId: z.string().max(64).optional(),
     marketplaceProductId: z.string().max(64).optional(),
@@ -478,7 +482,13 @@ export const categoryCandidateSchema = z.object({
   originalPriceText: z.string().max(128).nullable().optional(),
   discountText: z.string().max(64).nullable().optional(),
   soldCountText: z.string().max(128).nullable().optional(),
+  soldCountValue: z.number().int().min(0).nullable().optional(),
   ratingText: z.string().max(128).nullable().optional(),
+  commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
+  commissionRateText: z.string().max(128).nullable().optional(),
+  affiliateUrl: z.string().url().nullable().optional(),
+  affiliateLinkAvailable: z.boolean().nullable().optional(),
+  affiliateCardKey: z.string().max(512).nullable().optional(),
   imageUrl: z.string().max(4096).nullable().optional(),
   originalUrl: z.string().max(4096).optional(),
   cleanUrl: z.string().max(4096).optional(),
@@ -494,6 +504,7 @@ export const categoryCandidateSchema = z.object({
 export const createMarketplaceCaptureDraftSchema = z.object({
   platform: z.enum(marketplacePlatforms),
   sourceUrl: z.string().url(),
+  affiliateUrl: z.string().url().nullable().optional(),
   originalSourceUrl: z.string().max(4096).optional(),
   cleanSourceUrl: z.string().max(4096).optional(),
   canonicalSourceUrl: z.string().max(4096).nullable().optional(),
@@ -533,6 +544,7 @@ export const marketplaceConfirmProductSchema = z.object({
       currency: z.string().max(16).optional().default("THB"),
       discountText: z.string().max(64).nullable().optional(),
     }).optional().default({}),
+    affiliateUrl: z.string().url().nullable().optional(),
     commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
     rating: z.object({
       score: z.number().min(0).max(5).nullable().optional(),

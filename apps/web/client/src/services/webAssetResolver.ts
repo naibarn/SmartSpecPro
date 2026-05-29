@@ -18,8 +18,11 @@ const ALLOWED_EXTENSIONS = new Set([
   "jpg", "jpeg", "png", "webp", "gif",
 ]);
 
+type RemoteAssetMediaType = "audio" | "video" | "image";
+
 export class WebAssetResolver {
   private cache = new Map<string, string>();
+  private remoteImportCache = new Map<string, Promise<{ assetId: string; uri: string }>>();
 
   /**
    * Upload a file to the server and return the assigned asset ID and URI.
@@ -114,6 +117,46 @@ export class WebAssetResolver {
         if (abortFn) abortFn();
       },
     };
+  }
+
+  importRemoteAsset(
+    url: string,
+    options: { mediaType: RemoteAssetMediaType },
+  ): Promise<{ assetId: string; uri: string }> {
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl) {
+      return Promise.reject(new Error("Missing remote asset URL"));
+    }
+    const cacheKey = `${options.mediaType}:${normalizedUrl}`;
+    const cached = this.remoteImportCache.get(cacheKey);
+    if (cached) return cached;
+
+    const promise = (async () => {
+      const response = await fetch("/api/media-jobs/import-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          url: normalizedUrl,
+          mediaType: options.mediaType,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(`❌ Remote asset import failed (${response.status}): ${err.error || response.statusText}`);
+      }
+
+      const result = await response.json();
+      this.cache.set(result.assetId, result.uri);
+      return { assetId: result.assetId, uri: result.uri } as { assetId: string; uri: string };
+    })();
+
+    this.remoteImportCache.set(cacheKey, promise);
+    promise.catch(() => {
+      this.remoteImportCache.delete(cacheKey);
+    });
+    return promise;
   }
 
   /**
@@ -287,5 +330,6 @@ export class WebAssetResolver {
    */
   clearCache(): void {
     this.cache.clear();
+    this.remoteImportCache.clear();
   }
 }

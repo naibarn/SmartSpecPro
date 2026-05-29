@@ -31,6 +31,17 @@ function countText(value: number | null | undefined, fallback: string | null | u
   return fallback ?? null;
 }
 
+function normalizeOptionalHttpUrl(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const productionSupportingInsightTypes: LocalInsightType[] = [
   "product_brief",
   "review_insight",
@@ -396,6 +407,14 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
   const db = getDb();
   const productId = createMarketplaceId("mp");
   const product = parsed.product;
+  const captureRawPayload = (capture.rawPayloadJson ?? {}) as Record<string, unknown>;
+  const captureNormalized = (capture.normalizedResultJson ?? {}) as Record<string, unknown>;
+  const affiliateUrl = normalizeOptionalHttpUrl(
+    product.affiliateUrl
+      ?? capture.affiliateUrl
+      ?? captureRawPayload.affiliateUrl
+      ?? captureNormalized.affiliateUrl,
+  );
   const rawSoldCountText = product.rating.soldCountText ?? null;
   const soldCountNormalized = parseSoldCount(rawSoldCountText);
   const soldCountText = countText(soldCountNormalized, rawSoldCountText);
@@ -413,6 +432,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
           currency: product.price.currency ?? existing.currency ?? "THB",
           discountText: product.price.discountText ?? existing.discountText,
           commissionRatePercent: percent(product.commissionRatePercent) ?? existing.commissionRatePercent,
+          affiliateUrl: affiliateUrl ?? existing.affiliateUrl,
           sourceUrl: capture.sourceUrl,
           captureId,
           ratingScore: money(product.rating.score),
@@ -425,6 +445,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
             latestCapturedAt: new Date().toISOString(),
             latestCapturedByUserId: auth.userId,
             duplicateAccessType: duplicate.accessType,
+            latestAffiliateUrl: affiliateUrl ?? existing.affiliateUrl ?? null,
             latestProductDraft: product.platformRawJson,
           },
           updatedAt: new Date(),
@@ -471,6 +492,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     currency: product.price.currency ?? "THB",
     discountText: product.price.discountText ?? null,
     commissionRatePercent: percent(product.commissionRatePercent),
+    affiliateUrl,
     ratingScore: money(product.rating.score),
     reviewCountText,
     soldCountText,
@@ -481,7 +503,10 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
       claims: product.description.claims,
     },
     specsJson: product.description.specs,
-    platformRawJson: product.platformRawJson,
+    platformRawJson: {
+      ...(product.platformRawJson as Record<string, unknown> ?? {}),
+      affiliateUrl,
+    },
     coverImageAssetId,
     status: "active",
     createdAt: new Date(),
@@ -635,6 +660,7 @@ export async function listMarketplaceProductsWithAccess(
     ? or(
       ilike(marketplaceProducts.productName, `%${query}%`),
       ilike(marketplaceProducts.sourceUrl, `%${query}%`),
+      ilike(marketplaceProducts.affiliateUrl, `%${query}%`),
       ilike(marketplaceProducts.brand, `%${query}%`),
       ilike(marketplaceProducts.shopName, `%${query}%`),
       ilike(marketplaceProducts.externalProductId, `%${query}%`),
@@ -709,6 +735,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       ilike(marketplaceProducts.externalProductId, `%${query}%`),
       ilike(marketplaceProducts.externalShopId, `%${query}%`),
       ilike(marketplaceProducts.sourceUrl, `%${query}%`),
+      ilike(marketplaceProducts.affiliateUrl, `%${query}%`),
       ilike(marketplaceProducts.brand, `%${query}%`),
       ilike(marketplaceProducts.shopName, `%${query}%`),
     )
@@ -902,6 +929,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       externalProductId: row.product.externalProductId,
       externalShopId: row.product.externalShopId,
       sourceUrl: row.product.sourceUrl,
+      affiliateUrl: row.product.affiliateUrl,
       imageType: row.image.type,
       url: row.image.url,
       storageKey: row.image.storageKey,

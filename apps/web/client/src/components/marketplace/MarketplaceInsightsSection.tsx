@@ -280,6 +280,16 @@ function StorytellingHandoffView({ payload }: { payload: Record<string, any> }) 
           <div className="font-medium">{asArray(payload.customerJourneyStages).join(" -> ") || "-"}</div>
         </div>
       </div>
+      {payload.affiliateUrl ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50 p-2 text-sm">
+          <a className="max-w-full truncate text-emerald-700 underline" href={payload.affiliateUrl} target="_blank" rel="noreferrer">
+            Affiliate link
+          </a>
+          <button className="rounded border bg-white px-2 py-1 text-xs text-emerald-700" type="button" onClick={() => navigator.clipboard?.writeText(String(payload.affiliateUrl))}>
+            Copy
+          </button>
+        </div>
+      ) : null}
       <InlineList title="Blockers" items={asArray(payload.blockers)} />
       {storyOptions.length > 0 ? (
         <div>

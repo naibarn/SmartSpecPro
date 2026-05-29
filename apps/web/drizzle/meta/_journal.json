@@ -1247,6 +1247,13 @@
       "when": 1780000001000,
       "tag": "0191_uvoice_live_voice_options",
       "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1780000002000,
+      "tag": "0192_marketplace_affiliate_url",
+      "breakpoints": true
     }
   ]
 }

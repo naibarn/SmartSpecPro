@@ -1,4 +1,8 @@
-import type { StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
+import type {
+  StoryboardClipMediaType,
+  StoryboardClipTransition,
+  StoryboardCompanionAudioCandidate,
+} from "@/lib/storyboardVideoProject";
 import type { StoryboardReviewTask } from "@/components/media/StoryboardBatchReviewDialog";
 import { normalizeStoryboardMediaUrl } from "@/lib/storyboardReviewMedia";
 import {
@@ -40,6 +44,7 @@ export interface StoryboardGenerationTask {
   prompt: string;
   model: string;
   durationSeconds?: number;
+  transition?: StoryboardClipTransition;
   createdAt: number;
   updatedAt: number;
   url?: string;
@@ -61,6 +66,7 @@ export interface MarketplaceProductReferenceContext {
   shopId?: string | null;
   itemId?: string | null;
   sourceUrl?: string | null;
+  affiliateUrl?: string | null;
 }
 
 export interface StoryboardReviewDraft {
@@ -618,6 +624,7 @@ export function replaceStoryboardVideoSlot(
       id: input.taskId,
       index: currentTask?.index ?? slotIndex,
       prompt: currentTask?.prompt ?? input.importedTask.prompt,
+      transition: currentTask?.transition ?? input.importedTask.transition,
       storyboardContext: currentTask?.storyboardContext,
       marketplaceProduct: currentTask?.marketplaceProduct ?? input.importedTask.marketplaceProduct,
       createdAt: currentTask?.createdAt ?? input.importedTask.createdAt,
@@ -682,6 +689,8 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
         url: task.url,
         model: task.model,
         durationSeconds: normalizeStoryboardShotDurationSeconds(task.durationSeconds ?? context?.duration),
+        mediaType: task.type === "image" ? "image" as StoryboardClipMediaType : "video" as StoryboardClipMediaType,
+        transition: task.transition,
         generationModelId: context?.model || task.model,
         referenceUrls: context?.referenceImages?.map((image) => image.url).filter(Boolean),
         generationAspectRatio: context?.aspectRatio ?? task.aspectRatio,

@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { trpc } from "@/lib/trpc";
+import { Copy } from "lucide-react";
 
 function getProductId(pathname: string) {
   return pathname.match(/\/marketplace-capture\/products\/([^/]+)/)?.[1] ?? "";
@@ -47,6 +48,9 @@ export default function MarketplaceCaptureProductDetail() {
   const history = data.history ?? [];
   const health = data.health;
   const insights = [...((productInsights.data as any[] | undefined) ?? []), ...((captureInsights.data as any[] | undefined) ?? [])];
+  const copyAffiliateLink = () => {
+    if (item.affiliateUrl && navigator.clipboard) void navigator.clipboard.writeText(item.affiliateUrl);
+  };
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-8 text-slate-900">
       <div className="mx-auto max-w-5xl space-y-5">
@@ -56,6 +60,17 @@ export default function MarketplaceCaptureProductDetail() {
           <a className="mt-2 inline-block text-sm text-blue-700 underline" href={item.sourceUrl} target="_blank" rel="noreferrer">
             Source marketplace page
           </a>
+          {item.affiliateUrl ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <a className="max-w-xl truncate text-emerald-700 underline" href={item.affiliateUrl} target="_blank" rel="noreferrer">
+                Affiliate link
+              </a>
+              <button className="inline-flex items-center rounded border bg-white px-2 py-1 text-xs" type="button" onClick={copyAffiliateLink}>
+                <Copy className="mr-1 h-3.5 w-3.5" />
+                Copy
+              </button>
+            </div>
+          ) : null}
           <div className="mt-4 rounded-md border bg-slate-50 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded px-2 py-1 text-xs font-medium ${
@@ -76,6 +91,7 @@ export default function MarketplaceCaptureProductDetail() {
           <dl className="mt-6 grid gap-4 md:grid-cols-2">
             <div><dt className="text-sm font-medium text-slate-500">Price</dt><dd>{item.priceCurrent ?? "-"} {item.currency ?? "THB"}</dd></div>
             <div><dt className="text-sm font-medium text-slate-500">Commission</dt><dd>{item.commissionRatePercent ?? "-"}%</dd></div>
+            <div><dt className="text-sm font-medium text-slate-500">Affiliate link</dt><dd className="truncate">{item.affiliateUrl ?? "-"}</dd></div>
             <div><dt className="text-sm font-medium text-slate-500">Sold</dt><dd>{formatCount(item.soldCountNormalized, item.soldCountText)}</dd></div>
             <div><dt className="text-sm font-medium text-slate-500">Shop</dt><dd>{item.shopName ?? "-"}</dd></div>
             <div><dt className="text-sm font-medium text-slate-500">Rating</dt><dd>{item.ratingScore ?? "-"}</dd></div>

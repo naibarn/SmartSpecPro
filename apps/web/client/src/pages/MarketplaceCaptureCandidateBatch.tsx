@@ -61,7 +61,7 @@ export default function MarketplaceCaptureCandidateBatch() {
       URL.revokeObjectURL(url);
       return;
     }
-    const headers = ["id", "platform", "title", "sourceUrl", "priceText", "soldCountText", "discountText", "score"];
+    const headers = ["id", "platform", "title", "sourceUrl", "affiliateUrl", "priceText", "soldCountText", "discountText", "score"];
     const csv = [
       headers.join(","),
       ...filtered.map((row) => headers.map((header) => JSON.stringify(row[header] ?? "")).join(",")),
@@ -73,6 +73,10 @@ export default function MarketplaceCaptureCandidateBatch() {
     link.download = `marketplace-candidates-${batchId}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function itemAffiliateUrl(item: any) {
+    return item.affiliateUrl ?? item.rawJson?.affiliateUrl ?? null;
   }
 
   if (query.isLoading) return <main className="p-8">Loading candidate batch...</main>;
@@ -112,6 +116,19 @@ export default function MarketplaceCaptureCandidateBatch() {
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => (
             <article key={item.id} className="rounded-lg border bg-white p-4 shadow-sm">
+              {(() => {
+                const affiliateUrl = itemAffiliateUrl(item);
+                return affiliateUrl ? (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-emerald-100 bg-emerald-50 p-2 text-xs">
+                    <a className="max-w-full truncate text-emerald-700 underline" href={affiliateUrl} target="_blank" rel="noreferrer">
+                      {affiliateUrl}
+                    </a>
+                    <button className="rounded border bg-white px-2 py-1 text-emerald-700" type="button" onClick={() => navigator.clipboard?.writeText(affiliateUrl)}>
+                      Copy affiliate
+                    </button>
+                  </div>
+                ) : null;
+              })()}
               <div className="flex gap-3">
                 {item.imageUrl ? <img src={item.imageUrl} alt="" className="h-24 w-24 rounded-md object-contain" /> : <div className="h-24 w-24 rounded-md bg-slate-100" />}
                 <div className="min-w-0 flex-1">
@@ -128,6 +145,11 @@ export default function MarketplaceCaptureCandidateBatch() {
               </ul>
               <div className="mt-4 flex gap-2">
                 <a className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white" href={item.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
+                {itemAffiliateUrl(item) ? (
+                  <button className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700" type="button" onClick={() => navigator.clipboard?.writeText(itemAffiliateUrl(item))}>
+                    Copy affiliate
+                  </button>
+                ) : null}
                 <a className="rounded-md border bg-white px-3 py-2 text-sm" href={`/marketplace-capture?candidate=${encodeURIComponent(item.id)}`}>Keep for later</a>
               </div>
             </article>

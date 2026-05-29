@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ChevronLeft, Download, ExternalLink, Eye, Loader2, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, Loader2, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -120,6 +120,9 @@ function copyFor(language: string) {
       : "This product will be removed from Marketplace Capture and hidden from recommendations and product lists.",
     deleteDialogMeta: th ? "รายการที่จะลบ" : "Product to delete",
     deleteDialogWarning: th ? "การลบนี้ไม่สามารถย้อนกลับจากหน้านี้ได้" : "This action cannot be undone from this page.",
+    affiliateLink: th ? "ลิงก์ affiliate" : "Affiliate link",
+    copyAffiliate: th ? "คัดลอก affiliate" : "Copy affiliate",
+    copiedAffiliate: th ? "คัดลอกลิงก์ affiliate แล้ว" : "Affiliate link copied",
     cancel: th ? "ยกเลิก" : "Cancel",
     deleting: th ? "กำลังลบ..." : "Deleting...",
   };
@@ -203,7 +206,7 @@ export default function MarketplaceCaptureProducts() {
       .filter((product: any) => category === "all" || productCategory(product) === category)
       .filter((product: any) => {
         if (!needle) return true;
-        const text = `${product.productName ?? ""} ${product.brand ?? ""} ${product.shopName ?? ""} ${product.sourceUrl ?? ""} ${productCategory(product)}`.toLowerCase();
+        const text = `${product.productName ?? ""} ${product.brand ?? ""} ${product.shopName ?? ""} ${product.sourceUrl ?? ""} ${product.affiliateUrl ?? ""} ${productCategory(product)}`.toLowerCase();
         return text.includes(needle);
       })
       .filter((product: any) => {
@@ -246,7 +249,7 @@ export default function MarketplaceCaptureProducts() {
   }
 
   function downloadCsv(name: string, rows: any[]) {
-    const headers = ["id", "platform", "productName", "category", "sourceUrl", "priceCurrent", "commissionRatePercent", "soldCountText", "ratingScore", "reviewCountText", "health", "updatedAt"];
+    const headers = ["id", "platform", "productName", "category", "sourceUrl", "affiliateUrl", "priceCurrent", "commissionRatePercent", "soldCountText", "ratingScore", "reviewCountText", "health", "updatedAt"];
     const csv = [
       headers.join(","),
       ...rows.map((row) => headers.map((header) => JSON.stringify(
@@ -266,6 +269,12 @@ export default function MarketplaceCaptureProducts() {
 
   function openProductInNewTab(productId: string) {
     window.open(`/marketplace-capture/products/${productId}`, "_blank", "noopener,noreferrer");
+  }
+
+  function copyAffiliateLink(url: string | null | undefined) {
+    if (!url) return;
+    if (!navigator.clipboard) return;
+    void navigator.clipboard.writeText(url).then(() => toast.success(copy.copiedAffiliate));
   }
 
   function requestDeleteProduct(product: any) {
@@ -318,6 +327,18 @@ export default function MarketplaceCaptureProducts() {
         </div>
         <div className="mt-3 text-xs text-slate-500">{copy.lastChecked}: {product.health?.lastCheckedAt ? new Date(product.health.lastCheckedAt).toLocaleString() : "-"}</div>
         {product.health?.warnings?.[0]?.message ? <div className="mt-2 text-xs text-amber-700">{product.health.warnings[0].message}</div> : null}
+        {product.affiliateUrl ? (
+          <button
+            className="mt-3 inline-flex max-w-full items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+            onClick={(event) => {
+              event.stopPropagation();
+              copyAffiliateLink(product.affiliateUrl);
+            }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            <span className="truncate">{copy.affiliateLink}</span>
+          </button>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
@@ -514,6 +535,16 @@ export default function MarketplaceCaptureProducts() {
                   {copy.sourcePage}
                 </a>
               ) : null}
+              {panelProduct.affiliateUrl ? (
+                <button
+                  className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                  type="button"
+                  onClick={() => copyAffiliateLink(panelProduct.affiliateUrl)}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
+                  {copy.copyAffiliate}
+                </button>
+              ) : null}
               <button
                 className="inline-flex items-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={deleteProductMutation.isPending}
@@ -523,6 +554,14 @@ export default function MarketplaceCaptureProducts() {
                 {copy.deleteProduct}
               </button>
             </div>
+            {panelProduct.affiliateUrl ? (
+              <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm">
+                <div className="text-xs font-medium text-emerald-800">{copy.affiliateLink}</div>
+                <a className="mt-1 block truncate text-emerald-700 underline" href={panelProduct.affiliateUrl} target="_blank" rel="noreferrer">
+                  {panelProduct.affiliateUrl}
+                </a>
+              </div>
+            ) : null}
             {selectedProductDetail.isLoading ? <p className="mt-4 text-sm text-slate-500">Loading...</p> : null}
             {panelImages.length > 0 ? (
               <section className="mt-5">

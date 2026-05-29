@@ -159,6 +159,10 @@ class TestFFmpegArgSanitization:
         with pytest.raises(ValueError, match="metacharacter"):
             validate_provider_result_uri("https://cdn.example.com/file|cat.png?token=abc&size=stable")
 
+    def test_provider_result_uri_still_rejects_shell_metacharacters_in_query_values(self):
+        with pytest.raises(ValueError, match="metacharacter"):
+            validate_provider_result_uri("https://cdn.example.com/file.mp3?token=abc`id`&size=stable")
+
 
 # ========================================
 # Top-level validate_job_spec_security

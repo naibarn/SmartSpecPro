@@ -1301,8 +1301,12 @@ function ProductionFlowCanvasInner({
                   })
                   .filter((candidate) => candidate.withinCard)
                   .sort((a, b) => a.distance - b.distance)[0];
-                onAssetAddToCanvas?.(asset, position);
-                onAssetAssignToNode?.({ asset, nodeId: nodeAtDrop?.id ?? selectedNodeId });
+                const targetNodeId = nodeAtDrop?.id ?? selectedNodeId;
+                if (targetNodeId) {
+                  onAssetAssignToNode?.({ asset, nodeId: targetNodeId });
+                } else {
+                  onAssetAddToCanvas?.(asset, position);
+                }
               }
             }}
           >

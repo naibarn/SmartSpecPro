@@ -116,8 +116,14 @@ def validate_uri_no_ssrf(
     Returns the URI unchanged if safe.
     """
     parsed = urlparse(uri)
-    shell_checked_uri = parsed._replace(query="").geturl() if allow_query_metacharacters else uri
-    if _has_shell_metacharacters(shell_checked_uri):
+    if allow_query_metacharacters:
+        shell_checked_uri = parsed._replace(query="").geturl()
+        query_checked = parsed.query.replace("&", "")
+    else:
+        shell_checked_uri = uri
+        query_checked = ""
+
+    if _has_shell_metacharacters(shell_checked_uri) or _has_shell_metacharacters(query_checked):
         raise ValueError(f"URI contains shell metacharacters: {uri!r}")
 
     scheme = parsed.scheme.lower()
@@ -241,7 +247,7 @@ def validate_job_spec_security(spec_dict: dict) -> None:
     for asset in assets:
         uri = asset.get("uri", "")
         try:
-            validate_uri_no_ssrf(uri)
+            validate_uri_no_ssrf(uri, allow_query_metacharacters=True)
         except ValueError as e:
             errors.append(f"Asset {asset.get('assetId', '?')}: {e}")
 

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   marketplaceCandidateBatches,
@@ -54,6 +54,194 @@ function validateMarketplaceSourceUrl(platform: string, sourceUrl: string) {
   }
 }
 
+function normalizeOptionalHttpUrl(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+type MarketplaceCaptureSession = typeof marketplaceCaptureSessions.$inferSelect;
+type MarketplaceCandidateItem = typeof marketplaceCandidateItems.$inferSelect;
+
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function uniqueStrings(values: unknown[]): string[] {
+  const seen = new Set<string>();
+  for (const value of values) {
+    const text = typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+    if (text) seen.add(text);
+  }
+  return Array.from(seen);
+}
+
+function normalizeCommissionPercent(value: unknown): number | null {
+  const raw = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number(value.replace("%", "").trim())
+      : NaN;
+  if (!Number.isFinite(raw) || raw < 0 || raw > 100) return null;
+  return raw;
+}
+
+function normalizeCommissionText(value: unknown): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? text : null;
+}
+
+function appendEvidence(value: unknown, next: string) {
+  const existing = Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
+  return Array.from(new Set([...existing, next]));
+}
+
+async function findLatestCandidateForCapture(capture: MarketplaceCaptureSession, auth: { userId: number }) {
+  const db = getDb();
+  const raw = asRecord(capture.rawPayloadJson);
+  const shopeeUrl = asRecord(raw.shopeeUrl);
+  const tiktokUrl = asRecord(raw.tiktokUrl);
+  const productIds = uniqueStrings([
+    capture.externalProductId,
+    raw.externalProductId,
+    shopeeUrl.itemId,
+    tiktokUrl.productId,
+  ]);
+
+  if (productIds.length > 0) {
+    const filters = [
+      eq(marketplaceCandidateItems.userId, auth.userId),
+      eq(marketplaceCandidateItems.platform, capture.platform),
+      inArray(marketplaceCandidateItems.externalProductId, productIds),
+    ];
+    if (capture.externalShopId) {
+      filters.push(sql`(${marketplaceCandidateItems.externalShopId} = ${capture.externalShopId} OR ${marketplaceCandidateItems.externalShopId} IS NULL)`);
+    }
+    const order = capture.externalShopId
+      ? [
+        sql`CASE WHEN ${marketplaceCandidateItems.externalShopId} = ${capture.externalShopId} THEN 0 ELSE 1 END`,
+        sql`CASE WHEN ${marketplaceCandidateItems.affiliateUrl} IS NOT NULL THEN 0 ELSE 1 END`,
+        desc(marketplaceCandidateItems.createdAt),
+      ]
+      : [
+        sql`CASE WHEN ${marketplaceCandidateItems.affiliateUrl} IS NOT NULL THEN 0 ELSE 1 END`,
+        desc(marketplaceCandidateItems.createdAt),
+      ];
+    const [candidate] = await db.select().from(marketplaceCandidateItems)
+      .where(and(...filters))
+      .orderBy(...order)
+      .limit(1);
+    if (candidate) return candidate;
+  }
+
+  const sourceUrls = uniqueStrings([
+    normalizeOptionalHttpUrl(capture.sourceUrl),
+    normalizeOptionalHttpUrl(raw.sourceUrl),
+    normalizeOptionalHttpUrl(raw.originalSourceUrl),
+    normalizeOptionalHttpUrl(raw.cleanSourceUrl),
+    normalizeOptionalHttpUrl(raw.canonicalSourceUrl),
+  ]);
+  if (sourceUrls.length === 0) return null;
+
+  const [candidate] = await db.select().from(marketplaceCandidateItems)
+    .where(and(
+      eq(marketplaceCandidateItems.userId, auth.userId),
+      eq(marketplaceCandidateItems.platform, capture.platform),
+      inArray(marketplaceCandidateItems.sourceUrl, sourceUrls),
+    ))
+    .orderBy(
+      sql`CASE WHEN ${marketplaceCandidateItems.affiliateUrl} IS NOT NULL THEN 0 ELSE 1 END`,
+      desc(marketplaceCandidateItems.createdAt),
+    )
+    .limit(1);
+  return candidate ?? null;
+}
+
+function mergeMarketplaceCandidateFallback(capture: MarketplaceCaptureSession, candidate: MarketplaceCandidateItem | null) {
+  const raw = asRecord(capture.rawPayloadJson);
+  const normalized = asRecord(capture.normalizedResultJson ?? capture.llmResultJson);
+  const candidateRaw = asRecord(candidate?.rawJson);
+  const candidateAffiliateUrl = normalizeOptionalHttpUrl(candidate?.affiliateUrl ?? candidateRaw.affiliateUrl);
+  const captureAffiliateUrl = normalizeOptionalHttpUrl(capture.affiliateUrl);
+  const rawAffiliateUrl = normalizeOptionalHttpUrl(raw.affiliateUrl);
+  const normalizedAffiliateUrl = normalizeOptionalHttpUrl(normalized.affiliateUrl);
+  const effectiveAffiliateUrl = captureAffiliateUrl || rawAffiliateUrl || normalizedAffiliateUrl || candidateAffiliateUrl;
+
+  const rawCommissionPercent = normalizeCommissionPercent(raw.commissionRatePercent);
+  const normalizedCommissionPercent = normalizeCommissionPercent(normalized.commissionRatePercent);
+  const candidateCommissionPercent = normalizeCommissionPercent(candidateRaw.commissionRatePercent);
+  const effectiveCommissionPercent = normalizedCommissionPercent ?? rawCommissionPercent ?? candidateCommissionPercent;
+  const effectiveCommissionText = normalizeCommissionText(raw.commissionRateText)
+    || normalizeCommissionText(candidateRaw.commissionRateText)
+    || (effectiveCommissionPercent != null ? String(effectiveCommissionPercent) : null);
+
+  let changed = false;
+  const nextRaw = { ...raw };
+  const nextNormalized = { ...normalized };
+  const confidence = asRecord(nextNormalized.confidence);
+  const evidence = asRecord(nextNormalized.evidence);
+  let nextCaptureAffiliateUrl = capture.affiliateUrl;
+
+  if (effectiveAffiliateUrl && !captureAffiliateUrl) {
+    nextCaptureAffiliateUrl = effectiveAffiliateUrl;
+    changed = true;
+  }
+  if (effectiveAffiliateUrl && !rawAffiliateUrl) {
+    nextRaw.affiliateUrl = effectiveAffiliateUrl;
+    changed = true;
+  }
+  if (effectiveAffiliateUrl && !normalizedAffiliateUrl) {
+    nextNormalized.affiliateUrl = effectiveAffiliateUrl;
+    confidence.affiliateUrl = 1;
+    evidence.affiliateUrl = appendEvidence(evidence.affiliateUrl, "candidate:affiliate_url");
+    changed = true;
+  }
+  if (effectiveCommissionPercent != null && rawCommissionPercent == null) {
+    nextRaw.commissionRatePercent = effectiveCommissionPercent;
+    if (effectiveCommissionText) nextRaw.commissionRateText = effectiveCommissionText;
+    changed = true;
+  }
+  if (effectiveCommissionPercent != null && normalizedCommissionPercent == null) {
+    nextNormalized.commissionRatePercent = effectiveCommissionPercent;
+    confidence.commissionRate = 1;
+    evidence.commissionRate = appendEvidence(evidence.commissionRate, "candidate:commission_rate");
+    changed = true;
+  }
+
+  if (!changed) return { capture, changed: false };
+
+  const match = candidate ? {
+    candidateItemId: candidate.id,
+    candidateBatchId: candidate.batchId,
+    basis: candidate.externalProductId ? "externalProductId" : "sourceUrl",
+    matchedAt: new Date().toISOString(),
+    sourceUrl: candidate.sourceUrl,
+    title: candidate.title,
+  } : {
+    basis: "capture_payload",
+    matchedAt: new Date().toISOString(),
+  };
+  nextRaw.marketplaceCandidateMatch = match;
+  nextNormalized.marketplaceCandidateMatch = match;
+  nextNormalized.confidence = confidence;
+  nextNormalized.evidence = evidence;
+
+  return {
+    capture: {
+      ...capture,
+      affiliateUrl: nextCaptureAffiliateUrl,
+      rawPayloadJson: nextRaw,
+      normalizedResultJson: nextNormalized,
+    },
+    changed: true,
+  };
+}
+
 export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCaptureDraftInput, auth: { userId: number; tenantId?: string }) {
   const parsed = createMarketplaceCaptureDraftSchema.parse(input);
   const shopeeUrl = parsed.platform === "shopee" ? parseShopeeProductUrl(parsed.sourceUrl) : null;
@@ -66,10 +254,12 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
   validateMarketplaceSourceUrl(parsed.platform, sourceUrl);
   const externalProductId = parsed.externalProductId ?? shopeeUrl?.itemId ?? tiktokUrl?.productId ?? null;
   const externalShopId = parsed.externalShopId ?? shopeeUrl?.shopId ?? null;
+  const affiliateUrl = normalizeOptionalHttpUrl(parsed.affiliateUrl ?? (parsed.rawPayload as Record<string, unknown>)?.affiliateUrl);
   const now = new Date();
   const db = getDb();
   const rawPayloadJson = {
     ...(parsed.rawPayload as Record<string, unknown>),
+    affiliateUrl,
     originalSourceUrl: parsed.originalSourceUrl ?? shopeeUrl?.originalUrl ?? tiktokUrl?.originalUrl ?? parsed.sourceUrl,
     cleanSourceUrl: parsed.cleanSourceUrl ?? shopeeUrl?.cleanUrl ?? tiktokUrl?.cleanUrl ?? parsed.sourceUrl,
     canonicalSourceUrl: parsed.canonicalSourceUrl ?? shopeeUrl?.canonicalUrl ?? tiktokUrl?.canonicalUrl ?? null,
@@ -110,6 +300,7 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
     tenantId: auth.tenantId ?? null,
     pageType: parsed.pageType,
     sourceUrl,
+    affiliateUrl,
     pageTitle: parsed.pageTitle ?? null,
     externalProductId,
     externalShopId,
@@ -198,22 +389,36 @@ export async function getMarketplaceCaptureForUser(captureId: string, auth: { us
     .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)))
     .limit(1);
   if (!capture) throw marketplaceCaptureError("capture_not_found", "Capture not found", 404);
+  const candidate = await findLatestCandidateForCapture(capture, auth);
+  const enriched = mergeMarketplaceCandidateFallback(capture, candidate);
+  if (enriched.changed) {
+    await db.update(marketplaceCaptureSessions)
+      .set({
+        affiliateUrl: enriched.capture.affiliateUrl,
+        rawPayloadJson: enriched.capture.rawPayloadJson,
+        normalizedResultJson: enriched.capture.normalizedResultJson,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+  }
   const assets = await db.select().from(marketplaceCaptureAssets)
     .where(eq(marketplaceCaptureAssets.captureId, captureId))
     .orderBy(marketplaceCaptureAssets.sortOrder, marketplaceCaptureAssets.createdAt);
-  return { capture, assets };
+  return { capture: enriched.capture, assets };
 }
 
 export async function saveMarketplaceCaptureDraftEdits(captureId: string, input: unknown, auth: { userId: number }) {
   const parsed = marketplaceConfirmProductSchema.parse(input);
   const { capture } = await getMarketplaceCaptureForUser(captureId, auth);
   const product = parsed.product;
+  const affiliateUrl = normalizeOptionalHttpUrl(product.affiliateUrl ?? capture.affiliateUrl ?? (capture.rawPayloadJson as Record<string, unknown> | undefined)?.affiliateUrl);
   const savedDraft = {
     ...(capture.normalizedResultJson ?? {}),
     productName: product.productName,
     brand: product.brand ?? null,
     shop: { name: product.shopName ?? null, isMall: product.isMall ?? null },
     price: product.price,
+    affiliateUrl,
     commissionRatePercent: product.commissionRatePercent ?? null,
     rating: product.rating,
     description: {
@@ -235,7 +440,7 @@ export async function saveMarketplaceCaptureDraftEdits(captureId: string, input:
   };
   const db = getDb();
   await db.update(marketplaceCaptureSessions)
-    .set({ normalizedResultJson: savedDraft, updatedAt: new Date() })
+    .set({ affiliateUrl, normalizedResultJson: savedDraft, updatedAt: new Date() })
     .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
   return { captureId, status: capture.status, saved: true, savedAt: savedDraft.draftSavedAt };
 }
@@ -331,6 +536,7 @@ export async function saveMarketplaceCandidateBatch(input: unknown, auth: { user
       userId: auth.userId,
       platform: candidate.platform,
       sourceUrl,
+      affiliateUrl: normalizeOptionalHttpUrl(candidate.affiliateUrl),
       externalProductId: candidate.externalProductId ?? shopeeUrl?.itemId ?? tiktokUrl?.productId ?? null,
       externalShopId: candidate.externalShopId ?? shopeeUrl?.shopId ?? null,
       title: candidate.title,

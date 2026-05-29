@@ -1,4 +1,6 @@
 import importlib
+import json
+import socket
 from unittest.mock import MagicMock
 
 
@@ -157,6 +159,34 @@ def test_build_render_command_uses_trimmed_boundary_duration_for_storyboard_clip
     assert "shortest=1" not in fc
 
 
+def test_build_render_command_loops_image_assets_by_kind_without_extension(monkeypatch):
+    worker = _load_worker_module()
+    has_audio_stream = MagicMock(return_value=True)
+    monkeypatch.setattr(worker, "_has_audio_stream", has_audio_stream)
+    monkeypatch.setattr(worker, "_detect_letterbox_crop_filter", lambda _path, runner=None: None)
+
+    spec = _make_render_spec(transform=None, duration_ms=6000)
+    spec["inputs"]["assets"][0]["kind"] = "image"
+    spec["inputs"]["assets"][0]["uri"] = (
+        "http://host.docker.internal:3000/storage/asset-without-extension"
+    )
+    spec["inputs"]["assets"][0]["durationMs"] = 6000
+
+    cmd = worker.build_ffmpeg_command_for_render(spec)
+
+    input_index = cmd.index("-i")
+    assert cmd[input_index - 2:input_index + 2] == [
+        "-loop",
+        "1",
+        "-i",
+        "http://host.docker.internal:3000/storage/asset-without-extension",
+    ]
+    assert has_audio_stream.call_count == 0
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    assert "anullsrc=r=48000:cl=stereo[_sil0]" in fc
+    assert "trim=0:6.000000,setpts=PTS-STARTPTS[vnorm0]" in fc
+
+
 def test_build_render_command_crops_detected_letterbox_before_normalizing(monkeypatch):
     worker = _load_worker_module()
     monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)
@@ -292,3 +322,61 @@ def test_build_render_command_mixes_storyboard_companion_audio(monkeypatch):
     assert "volume=0.160000,apad,atrim=0:16.000000" in fc
     assert "[aoutv][exta0][exta1]amix=inputs=3:duration=longest:dropout_transition=0" in fc
     assert "atrim=0:16.000000,asetpts=PTS-STARTPTS[aout]" in fc
+
+
+def test_render_command_allows_signed_companion_audio_query(monkeypatch):
+    worker = _load_worker_module()
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("20.60.0.1", 0))
+        ],
+    )
+    monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)
+
+    signed_audio_url = (
+        "https://hearme.blob.core.windows.net/audiostorage/voice-storage/"
+        "feba0bfe11be9e8bbbe565e739e183b3-51458_tiger_API_clip.mp3"
+        "?se=2026-07-26T12%3A45%3A08Z&sr=b&sp=r"
+        "&sig=QF922ja76bbykFHtEhX3L9nE9dEi%2FBwGznYb1EWWZ2Q%3D&sv=2014-02-14"
+    )
+    spec = _make_render_spec(transform=None, duration_ms=4042, out_ms=4042)
+    spec["inputs"]["assets"][0]["uri"] = (
+        "http://host.docker.internal:3000/api/storage/files/media-jobs/assets/"
+        "CNC8agzuMHZunktL2TGpT/Shot000.mp4"
+    )
+    spec["inputs"]["assets"].append(
+        {
+            "assetId": "voice-1",
+            "kind": "audio",
+            "uri": signed_audio_url,
+            "durationMs": 40000,
+        }
+    )
+    spec["inputs"]["project"]["tracks"].append(
+        {
+            "trackId": "track-a1",
+            "type": "audio",
+            "clips": [
+                {
+                    "clipId": "voice-1",
+                    "assetId": "voice-1",
+                    "startMs": 0,
+                    "inMs": 0,
+                    "outMs": 40000,
+                    "durationMs": 40000,
+                    "volume": 1,
+                    "playbackRate": 1,
+                }
+            ],
+        }
+    )
+
+    parsed = worker.parse_job_spec(json.dumps(spec))
+    worker.validate_job_spec_security(parsed)
+    cmd = worker.build_ffmpeg_command_for_render(parsed)
+
+    assert signed_audio_url in cmd
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    assert "[aoutv][exta0]amix=inputs=2:duration=longest:dropout_transition=0" in fc

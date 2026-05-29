@@ -282,12 +282,14 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
           id: "inserted-1",
           index: 1,
           status: "completed",
-          type: "video",
+          type: "image",
           prompt: "Inserted upload",
           model: "Uploaded",
+          durationSeconds: 6,
+          transition: { name: "crossfade", durationMs: 500, alignment: "center" },
           createdAt: 2000,
           updatedAt: 2000,
-          url: "/files/inserted.mp4",
+          url: "/files/inserted.jpg",
           source: "imported",
         },
       ],
@@ -302,6 +304,13 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       "inserted-1",
       "shot-2",
     ]);
+    expect(storyboardDraftToReviewTasks(draft)[1]).toMatchObject({
+      mediaType: "image",
+      durationSeconds: 6,
+      transition: { name: "crossfade", durationMs: 500, alignment: "center" },
+      canRegenerate: false,
+      isImported: true,
+    });
   });
 
   it("replaces a video slot with the uploaded clip and invalidates stale render links", () => {

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronLeft, ExternalLink, Film, Layers, Loader2, Music2, Pencil, Search, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronLeft, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Music2, Pencil, Scissors, Search, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,30 @@ import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
-import { cropImageToAspect, loadImage } from "@/lib/imageGridSplitter";
+import {
+  COMMON_CROP_RATIOS,
+  COMMON_GRIDS,
+  createCropPreview,
+  createSplitPreview,
+  cropImageToAspect,
+  detectGrid,
+  downloadAllSplitImages,
+  downloadCroppedImage,
+  downloadSplitImage,
+  loadImage,
+  splitImage,
+  type CropResult,
+  type DetectedGrid,
+  type SplitResult,
+} from "@/lib/imageGridSplitter";
 import {
   buildStoryboardVideoProject,
   getStoryboardRenderResolution,
   inferStoryboardRenderAspectRatio,
+  normalizeStoryboardClipTransition,
+  type StoryboardClipMediaType,
   type StoryboardClipCandidate,
+  type StoryboardClipTransition,
   type StoryboardCompanionAudioCandidate,
   type StoryboardRenderAspectRatioMode,
 } from "@/lib/storyboardVideoProject";
@@ -78,7 +96,9 @@ function generationTypeForFrameRoles(roles: StoryboardReferenceFrameRole[]): str
 }
 
 type StoryboardMediaPickerKind = "video" | "audio";
+type StoryboardRightPanelTab = StoryboardMediaPickerKind | "history_gallery";
 type StoryboardAudioSourceTab = "library" | "history";
+type StoryboardImageEditorMode = "split" | "crop";
 
 function isProbablyVideoUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
@@ -88,6 +108,144 @@ function isProbablyVideoUrl(value: string): boolean {
 function isProbablyImageUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
   return normalized.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(normalized);
+}
+
+function isStoryboardVideoFile(file: File): boolean {
+  return file.type.startsWith("video/") || /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name);
+}
+
+function isStoryboardImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|avif|bmp|tiff|svg)$/i.test(file.name);
+}
+
+function isStoryboardMediaFile(file: File): boolean {
+  return isStoryboardVideoFile(file) || isStoryboardImageFile(file);
+}
+
+function isManagedStoryboardAssetUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (
+    trimmed.startsWith("/api/storage/files/")
+    || trimmed.startsWith("/uploads/")
+    || trimmed.startsWith("/api/v1/media/files/")
+    || trimmed.startsWith("data:")
+    || trimmed.startsWith("blob:")
+  ) {
+    return true;
+  }
+  if (typeof window === "undefined" || !/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.origin === window.location.origin
+      && (
+        parsed.pathname.startsWith("/api/storage/files/")
+        || parsed.pathname.startsWith("/uploads/")
+        || parsed.pathname.startsWith("/api/v1/media/files/")
+      );
+  } catch {
+    return false;
+  }
+}
+
+function shouldImportStoryboardRemoteAsset(value: string): boolean {
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) && !isManagedStoryboardAssetUrl(trimmed);
+}
+
+function isUsableStoryboardImageUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("/api/storage/files/") ||
+    trimmed.startsWith("/api/v1/media/files/") ||
+    trimmed.startsWith("/uploads/") ||
+    trimmed.startsWith("data:image/") ||
+    trimmed.startsWith("blob:")
+  );
+}
+
+function findStoryboardImageUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+  if (isUsableStoryboardImageUrl(value)) {
+    return normalizeStoryboardMediaUrl(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return null;
+    try {
+      return findStoryboardImageUrl(JSON.parse(trimmed), visited);
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== "object") return null;
+  if (visited.has(value)) return null;
+  visited.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findStoryboardImageUrl(item, visited);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const preferredKeys = [
+    "image_url",
+    "imageUrl",
+    "image",
+    "images",
+    "source_url",
+    "sourceUrl",
+    "resultUrl",
+    "result_url",
+    "url",
+    "output_url",
+    "outputUrl",
+    "file_url",
+    "fileUrl",
+    "outputs",
+    "resultJson",
+    "taskResult",
+  ];
+  for (const key of preferredKeys) {
+    const found = findStoryboardImageUrl(record[key], visited);
+    if (found) return found;
+  }
+  for (const [key, nestedValue] of Object.entries(record)) {
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey.includes("audio") || normalizedKey.includes("video")) continue;
+    const found = findStoryboardImageUrl(nestedValue, visited);
+    if (found) return found;
+  }
+  return null;
+}
+
+function toCanvasSafeStoryboardImageUrl(imageUrl: string): string {
+  if (!imageUrl || typeof window === "undefined") return imageUrl;
+  if (
+    imageUrl.startsWith("data:") ||
+    imageUrl.startsWith("blob:") ||
+    imageUrl.startsWith("/api/media/image-proxy?")
+  ) {
+    return imageUrl;
+  }
+
+  try {
+    const parsed = new URL(imageUrl, window.location.origin);
+    if (parsed.origin === window.location.origin && parsed.pathname.startsWith("/api/storage/files/") && parsed.protocol === "https:") {
+      return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
+    }
+    if (parsed.origin === window.location.origin) return parsed.toString();
+    if (parsed.protocol !== "https:") return parsed.toString();
+    return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
+  } catch {
+    return imageUrl;
+  }
 }
 
 function stripPromptCodeFence(value: string): string {
@@ -184,6 +342,36 @@ function dataUrlToMimeType(dataUrl: string, fallback = "image/jpeg"): string {
   return match?.[1] || fallback;
 }
 
+function dataUrlToFile(dataUrl: string, fileName: string): File {
+  const [header = "", payload = ""] = dataUrl.split(",", 2);
+  const mimeType = dataUrlToMimeType(dataUrl, "image/jpeg");
+  const isBase64 = /;base64/i.test(header);
+  const binary = isBase64 ? atob(payload) : decodeURIComponent(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new File([bytes], fileName, { type: mimeType });
+}
+
+function storyboardUploadExtensionForMime(mimeType: string, mediaType: "audio" | "video" | "image"): string {
+  const normalized = mimeType.toLowerCase();
+  if (normalized.includes("png")) return "png";
+  if (normalized.includes("webp")) return "webp";
+  if (normalized.includes("gif")) return "gif";
+  if (normalized.includes("wav")) return "wav";
+  if (normalized.includes("ogg")) return "ogg";
+  if (normalized.includes("flac")) return "flac";
+  if (normalized.includes("aac")) return "aac";
+  if (normalized.includes("webm")) return "webm";
+  if (normalized.includes("quicktime")) return "mov";
+  if (normalized.includes("x-matroska")) return "mkv";
+  if (normalized.includes("avi")) return "avi";
+  if (mediaType === "audio") return "mp3";
+  if (mediaType === "video") return "mp4";
+  return "jpg";
+}
+
 function readVideoMetadata(file: File): Promise<{
   durationSeconds?: number;
   aspectRatio?: "9:16" | "16:9";
@@ -206,6 +394,26 @@ function readVideoMetadata(file: File): Promise<{
       resolve({});
     };
     video.src = url;
+  });
+}
+
+function readImageMetadata(file: File): Promise<{
+  aspectRatio?: "9:16" | "16:9";
+}> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    const cleanup = () => URL.revokeObjectURL(url);
+    image.onload = () => {
+      const aspectRatio = inferVideoFrameAspectRatio(image.naturalWidth, image.naturalHeight);
+      cleanup();
+      resolve({ aspectRatio });
+    };
+    image.onerror = () => {
+      cleanup();
+      resolve({});
+    };
+    image.src = url;
   });
 }
 
@@ -432,10 +640,11 @@ function extractDurationSeconds(value: unknown, depth = 0): number | undefined {
   return undefined;
 }
 
-function createImportedVideoTask(input: {
+function createImportedMediaTask(input: {
   idPrefix: string;
   title: string;
   url: string;
+  mediaType: StoryboardClipMediaType;
   model?: string | null;
   importedLabel?: string;
   importedClipLabel?: string;
@@ -448,7 +657,7 @@ function createImportedVideoTask(input: {
     id: `${input.idPrefix}-${now}-${Math.random().toString(36).slice(2, 8)}`,
     index: input.index,
     status: "completed",
-    type: "video",
+    type: input.mediaType,
     prompt: input.title.trim() || `${input.importedClipLabel ?? "Imported clip"} ${input.index + 1}`,
     model: input.model?.trim() || (input.importedLabel ?? "Imported"),
     durationSeconds: input.durationSeconds,
@@ -503,6 +712,7 @@ export default function StoryboardReviewPage() {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCompounding, setIsCompounding] = useState(false);
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
+  const [rightPanelTab, setRightPanelTab] = useState<StoryboardRightPanelTab>("video");
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
   const [audioSourceTab, setAudioSourceTab] = useState<StoryboardAudioSourceTab>("library");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
@@ -514,6 +724,25 @@ export default function StoryboardReviewPage() {
   const [uploadingVideoSlotKey, setUploadingVideoSlotKey] = useState<string | null>(null);
   const [isCancellingGeneration, setIsCancellingGeneration] = useState(false);
   const [renderAspectRatioMode, setRenderAspectRatioMode] = useState<StoryboardRenderAspectRatioMode>("auto");
+  const [imageToolsSourceUrl, setImageToolsSourceUrl] = useState("");
+  const [imageToolsSourceTitle, setImageToolsSourceTitle] = useState("");
+  const [imageEditorMode, setImageEditorMode] = useState<StoryboardImageEditorMode>("split");
+  const [splitGridRows, setSplitGridRows] = useState(3);
+  const [splitGridCols, setSplitGridCols] = useState(3);
+  const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
+  const [detectedGrid, setDetectedGrid] = useState<DetectedGrid | null>(null);
+  const [splitResults, setSplitResults] = useState<SplitResult[]>([]);
+  const [isDetectingGrid, setIsDetectingGrid] = useState(false);
+  const [isSplitting, setIsSplitting] = useState(false);
+  const [cropAspectRatio, setCropAspectRatio] = useState("9:16");
+  const [cropFocus, setCropFocus] = useState({ x: 0.5, y: 0.5 });
+  const [cropScale, setCropScale] = useState(1);
+  const [cropPreviewUrl, setCropPreviewUrl] = useState<string | null>(null);
+  const [cropResult, setCropResult] = useState<CropResult | null>(null);
+  const [isCropping, setIsCropping] = useState(false);
+  const [galleryLightbox, setGalleryLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [isImageToolsPanelOpen, setIsImageToolsPanelOpen] = useState(false);
+  const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
   const generationCancelRequestedRef = useRef(false);
@@ -551,7 +780,7 @@ export default function StoryboardReviewPage() {
       },
     },
     {
-      enabled: Boolean(draft),
+      enabled: Boolean(draft) && rightPanelTab !== "history_gallery",
     },
   );
 
@@ -587,6 +816,19 @@ export default function StoryboardReviewPage() {
     },
     {
       enabled: Boolean(draft),
+      refetchOnWindowFocus: true,
+    },
+  );
+  const { data: imageHistoryData, isLoading: isImageHistoryLoading } = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 36,
+      offset: 0,
+      daysAgo: 30,
+    },
+    {
+      enabled: Boolean(draft) && rightPanelTab === "history_gallery",
       refetchOnWindowFocus: true,
     },
   );
@@ -684,6 +926,16 @@ export default function StoryboardReviewPage() {
   const historyMediaTasks = useMemo(
     () => ((mediaHistoryData?.tasks ?? []) as any[]).filter((task) => Boolean(extractStoryboardMediaUrl(task, mediaPickerKind))),
     [mediaHistoryData?.tasks, mediaPickerKind],
+  );
+  const imageHistoryTasks = useMemo(
+    () => ((imageHistoryData?.tasks ?? []) as any[])
+      .map((task) => ({
+        task,
+        url: findStoryboardImageUrl(task),
+        title: String(task?.prompt ?? task?.model ?? task?.mediaType ?? t("mediaStudio.storyboardReviewMediaHistoryItem")),
+      }))
+      .filter((item): item is { task: any; url: string; title: string } => Boolean(item.url)),
+    [imageHistoryData?.tasks, t],
   );
   const currentProjectName = activeDraft ? getStoryboardReviewName(activeDraft) : t("mediaStudio.storyboardReview");
   const filteredReviewProjects = useMemo(() => {
@@ -837,15 +1089,20 @@ export default function StoryboardReviewPage() {
     aspectRatio: string | undefined,
     fileName: string,
   ): Promise<string> => {
+    const uploadDataUrlIfNeeded = async (value: string) => {
+      if (!value.startsWith("data:image/")) return value;
+      return uploadReferenceFrameDataUrl(value, fileName, dataUrlToMimeType(value, "image/jpeg"));
+    };
+
     const targetAspectRatio = normalizeVideoFrameAspectRatio(aspectRatio);
     if (!targetAspectRatio) {
-      return imageUrl;
+      return uploadDataUrlIfNeeded(imageUrl);
     }
 
     try {
       const image = await loadImage(imageUrl);
       if (isCloseToAspectRatio(image.naturalWidth, image.naturalHeight, targetAspectRatio)) {
-        return imageUrl;
+        return uploadDataUrlIfNeeded(imageUrl);
       }
 
       const cropped = await cropImageToAspect(imageUrl, targetAspectRatio, "image/jpeg", 0.94);
@@ -959,6 +1216,22 @@ export default function StoryboardReviewPage() {
     ));
   }, [setAndSaveDraft]);
 
+  const updateStoryboardTaskTransition = useCallback((taskId: string, transition?: StoryboardClipTransition) => {
+    const normalizedTransition = normalizeStoryboardClipTransition(transition);
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      projectLink: null,
+      renderJobId: null,
+      compoundStatus: null,
+      tasks: current.tasks.map((task) => (
+        task.id === taskId
+          ? { ...task, transition: normalizedTransition, updatedAt: Date.now() }
+          : task
+      )),
+    }));
+  }, [setAndSaveDraft]);
+
   const removeStoryboardAudio = useCallback((audioId: string) => {
     const now = Date.now();
     emitStoryboardReviewClientDebug("audio.remove.requested", {
@@ -980,27 +1253,68 @@ export default function StoryboardReviewPage() {
     });
   }, [emitStoryboardReviewClientDebug, setAndSaveDraft]);
 
-  const addImportedVideoToStoryboard = useCallback((input: {
+  const importStoryboardAssetForRender = useCallback(async (
+    url: string,
+    mediaType: "audio" | "video" | "image",
+  ): Promise<string> => {
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl) {
+      return normalizedUrl;
+    }
+    if (normalizedUrl.startsWith("data:") || normalizedUrl.startsWith("blob:")) {
+      const fallbackMime = mediaType === "audio" ? "audio/mpeg" : mediaType === "video" ? "video/mp4" : "image/jpeg";
+      const file = normalizedUrl.startsWith("data:")
+        ? dataUrlToFile(
+            normalizedUrl,
+            `storyboard-${mediaType}-${Date.now()}.${storyboardUploadExtensionForMime(dataUrlToMimeType(normalizedUrl, fallbackMime), mediaType)}`,
+          )
+        : await fetch(normalizedUrl, { credentials: "include" })
+            .then((response) => response.blob())
+            .then((blob) => new File(
+              [blob],
+              `storyboard-${mediaType}-${Date.now()}.${storyboardUploadExtensionForMime(blob.type || fallbackMime, mediaType)}`,
+              { type: blob.type || fallbackMime },
+            ));
+      const result = await storyboardUploadAssetResolver.uploadAsset(file).promise;
+      return result.uri;
+    }
+    if (!shouldImportStoryboardRemoteAsset(normalizedUrl)) {
+      return normalizedUrl;
+    }
+    const result = await storyboardUploadAssetResolver.importRemoteAsset(normalizedUrl, { mediaType });
+    return result.uri;
+  }, []);
+
+  const addImportedMediaToStoryboard = useCallback((input: {
     idPrefix: string;
     title: string;
     url: string;
+    mediaType?: StoryboardClipMediaType;
     model?: string | null;
     durationSeconds?: number;
+    aspectRatio?: string;
   }) => {
     const url = input.url.trim();
     if (!url) {
       toast.error(t("mediaStudio.storyboardReviewNoVideoUrl"));
       return;
     }
+    const mediaType: StoryboardClipMediaType = input.mediaType ?? (isProbablyImageUrl(url) ? "image" : "video");
     setAndSaveDraft((current) => {
-      const task = createImportedVideoTask({
+      const task = createImportedMediaTask({
         idPrefix: input.idPrefix,
         title: input.title,
         url,
+        mediaType,
         model: input.model,
         importedLabel: t("mediaStudio.storyboardReviewImported"),
-        importedClipLabel: t("mediaStudio.storyboardReviewImportedClip"),
-        durationSeconds: input.durationSeconds,
+        importedClipLabel: mediaType === "image"
+          ? (locale === "th" ? "ภาพนิ่งที่นำเข้า" : "Imported image")
+          : t("mediaStudio.storyboardReviewImportedClip"),
+        durationSeconds: mediaType === "image"
+          ? input.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS
+          : input.durationSeconds,
+        aspectRatio: input.aspectRatio,
         index: current.taskIds.length,
       });
       return normalizeDraftTaskOrder(
@@ -1012,19 +1326,71 @@ export default function StoryboardReviewPage() {
         [...current.taskIds, task.id],
       );
     });
-    toast.success(t("mediaStudio.storyboardReviewVideoAdded"));
-  }, [setAndSaveDraft, t]);
+    toast.success(mediaType === "image"
+      ? (locale === "th" ? "เพิ่มภาพนิ่งเข้า Storyboard แล้ว" : "Image shot added to storyboard")
+      : t("mediaStudio.storyboardReviewVideoAdded"));
+  }, [locale, setAndSaveDraft, t]);
 
-  const uploadVideoToStoryboardSlot = useCallback(async (taskId: string, mode: "replace" | "insert-after", files?: FileList | File[]) => {
-    const file = files?.[0] ?? await new Promise<File | null>((resolve) => {
+  const uploadVideoToStoryboardSlot = useCallback(async (
+    taskId: string,
+    mode: "replace" | "insert-after",
+    media?: File | FileList | File[] | string | { url: string; mediaType: StoryboardClipMediaType },
+  ) => {
+    const selectedMedia = media ?? await new Promise<File | null>((resolve) => {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept = "video/*";
+      input.accept = "video/*,image/*";
       input.onchange = () => resolve(input.files?.[0] ?? null);
       input.click();
     });
-    if (!file) return;
-    if (!file.type.startsWith("video/")) {
+    if (!selectedMedia) return;
+
+    let file: File | null = null;
+    let uploadedUrl = "";
+    let mediaType: StoryboardClipMediaType = "video";
+    let title = "";
+    let durationSeconds: number | undefined;
+    let aspectRatio: "9:16" | "16:9" | undefined;
+
+    if (typeof selectedMedia === "string" || (typeof selectedMedia === "object" && !Array.isArray(selectedMedia) && "url" in selectedMedia)) {
+      const sourceUrl = (typeof selectedMedia === "string" ? selectedMedia : selectedMedia.url).trim();
+      if (!sourceUrl) return;
+      mediaType = typeof selectedMedia === "object" && !Array.isArray(selectedMedia) && "mediaType" in selectedMedia
+        ? selectedMedia.mediaType
+        : isProbablyImageUrl(sourceUrl) || sourceUrl.startsWith("data:image/") || sourceUrl.startsWith("blob:")
+        ? "image"
+        : "video";
+      if (sourceUrl.startsWith("data:image/")) {
+        const mimeType = dataUrlToMimeType(sourceUrl, "image/jpeg");
+        const extension = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+        file = dataUrlToFile(sourceUrl, `storyboard-shot-${taskId}-${Date.now()}.${extension}`);
+        title = file.name;
+      } else if (sourceUrl.startsWith("blob:")) {
+        const blob = await fetch(sourceUrl).then((response) => response.blob());
+        const extension = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : blob.type.startsWith("video/") ? "mp4" : "jpg";
+        file = new File([blob], `storyboard-shot-${taskId}-${Date.now()}.${extension}`, { type: blob.type || (mediaType === "image" ? "image/jpeg" : "video/mp4") });
+        title = file.name;
+      } else if (mediaType === "image" && !/^https?:\/\//i.test(sourceUrl)) {
+        const blob = await fetch(sourceUrl, { credentials: "include" }).then((response) => response.blob());
+        const extension = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+        file = new File([blob], `storyboard-shot-${taskId}-${Date.now()}.${extension}`, { type: blob.type || "image/jpeg" });
+        title = sourceUrl.split("/").pop()?.split("?")[0] || file.name;
+      } else {
+        uploadedUrl = normalizeStoryboardMediaUrl(sourceUrl);
+        title = sourceUrl.split("/").pop()?.split("?")[0] || (mediaType === "image" ? "Imported image" : "Imported clip");
+      }
+    } else {
+      file = selectedMedia instanceof File
+        ? selectedMedia
+        : Array.from(selectedMedia).find((candidate) =>
+          isStoryboardMediaFile(candidate)
+        ) ?? null;
+      if (!file) return;
+      mediaType = isStoryboardImageFile(file) ? "image" : "video";
+      title = file.name;
+    }
+
+    if (file && !isStoryboardMediaFile(file)) {
       toast.error(t("mediaStudio.storyboardReviewUploadVideoOnly"));
       return;
     }
@@ -1036,24 +1402,37 @@ export default function StoryboardReviewPage() {
     const key = `${taskId}:${mode}`;
     setUploadingVideoSlotKey(key);
     try {
-      const [uploadResult, videoMetadata] = await Promise.all([
-        storyboardUploadAssetResolver.uploadAsset(file).promise,
-        readVideoMetadata(file),
-      ]);
+      if (file) {
+        const [uploadResult, metadata] = await Promise.all([
+          storyboardUploadAssetResolver.uploadAsset(file).promise,
+          mediaType === "image" ? readImageMetadata(file) : readVideoMetadata(file),
+        ]);
+        uploadedUrl = uploadResult.uri;
+        durationSeconds = mediaType === "image" ? undefined : (metadata as { durationSeconds?: number }).durationSeconds;
+        aspectRatio = metadata.aspectRatio;
+      }
 
       setRenderJobId(null);
       const savedDraft = await persistDraftUpdate((current) => {
         const slotIndex = current.taskIds.indexOf(taskId);
         if (slotIndex < 0) return current;
-        const importedTask = createImportedVideoTask({
-          idPrefix: `uploaded-video-${mode}`,
-          title: file.name,
-          url: uploadResult.uri,
-          model: t("mediaStudio.storyboardReviewUploadedVideo"),
+        const targetTask = current.tasks.find((task) => task.id === taskId);
+        const importedTask = createImportedMediaTask({
+          idPrefix: `uploaded-${mediaType}-${mode}`,
+          title,
+          url: uploadedUrl,
+          mediaType,
+          model: mediaType === "image"
+            ? (locale === "th" ? "ภาพนิ่งที่อัปโหลด" : "Uploaded image")
+            : t("mediaStudio.storyboardReviewUploadedVideo"),
           importedLabel: t("mediaStudio.storyboardReviewImported"),
-          importedClipLabel: t("mediaStudio.storyboardReviewUploadedVideo"),
-          durationSeconds: videoMetadata.durationSeconds,
-          aspectRatio: videoMetadata.aspectRatio,
+          importedClipLabel: mediaType === "image"
+            ? (locale === "th" ? "ภาพนิ่งที่อัปโหลด" : "Uploaded image")
+            : t("mediaStudio.storyboardReviewUploadedVideo"),
+          durationSeconds: mediaType === "image"
+            ? targetTask?.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS
+            : durationSeconds,
+          aspectRatio,
           index: mode === "replace" ? slotIndex : slotIndex + 1,
         });
         return replaceStoryboardVideoSlot(current, {
@@ -1076,9 +1455,9 @@ export default function StoryboardReviewPage() {
     } finally {
       setUploadingVideoSlotKey(null);
     }
-  }, [persistDraftUpdate, t]);
+  }, [locale, persistDraftUpdate, t]);
 
-  const addImportedAudioToStoryboard = useCallback((input: {
+  const addImportedAudioToStoryboard = useCallback(async (input: {
     idPrefix: string;
     title: string;
     url: string;
@@ -1103,6 +1482,13 @@ export default function StoryboardReviewPage() {
       },
       before: summarizeStoryboardDraftForDebug(draftRef.current),
     });
+    let storedUrl = url;
+    try {
+      storedUrl = await importStoryboardAssetForRender(url, "audio");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("mediaStudio.storyboardReviewNoAudioUrl"));
+      return;
+    }
     setAndSaveDraft((current) => {
       if (current.companionAudio.length >= 2) {
         toast.error(t("mediaStudio.storyboardReviewAudioLimit"));
@@ -1111,12 +1497,19 @@ export default function StoryboardReviewPage() {
       const targetDurationSeconds = buildStoryboardVideoProject(
         storyboardDraftToReviewTasks(current)
           .filter((task) => current.selectedTaskIds.includes(task.id) && task.status === "completed" && task.url)
-          .map((task) => ({ id: task.id, prompt: task.prompt, url: task.url!, durationSeconds: task.durationSeconds })),
+          .map((task) => ({
+            id: task.id,
+            prompt: task.prompt,
+            url: task.url!,
+            durationSeconds: task.durationSeconds,
+            mediaType: task.mediaType,
+            transition: task.transition,
+          })),
       )?.settings.duration;
       const audio = createImportedAudioTrack({
         idPrefix: input.idPrefix,
         title: input.title,
-        url,
+        url: storedUrl,
         model: input.model,
         importedLabel: t("mediaStudio.storyboardReviewImported"),
         importedAudioLabel: t("mediaStudio.storyboardReviewImportedAudio"),
@@ -1137,7 +1530,7 @@ export default function StoryboardReviewPage() {
       return next;
     });
     toast.success(t("mediaStudio.storyboardReviewAudioAdded"));
-  }, [activeDraft?.companionAudio.length, emitStoryboardReviewClientDebug, setAndSaveDraft, t]);
+  }, [activeDraft?.companionAudio.length, emitStoryboardReviewClientDebug, importStoryboardAssetForRender, setAndSaveDraft, t]);
 
   const addLibraryItemToStoryboard = useCallback((item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
@@ -1147,7 +1540,7 @@ export default function StoryboardReviewPage() {
       return;
     }
     if (mediaPickerKind === "audio") {
-      addImportedAudioToStoryboard({
+      void addImportedAudioToStoryboard({
         idPrefix: `library-audio-${item.item_id}`,
         title: item.title,
         url: sourceUrl,
@@ -1156,13 +1549,14 @@ export default function StoryboardReviewPage() {
       });
       return;
     }
-    addImportedVideoToStoryboard({
+    addImportedMediaToStoryboard({
       idPrefix: `library-video-${item.item_id}`,
       title: item.title,
       url: sourceUrl,
+      mediaType: "video",
       model: item.model_name,
     });
-  }, [addImportedAudioToStoryboard, addImportedVideoToStoryboard, mediaPickerKind]);
+  }, [addImportedAudioToStoryboard, addImportedMediaToStoryboard, mediaPickerKind]);
 
   const addHistoryTaskToStoryboard = useCallback((task: any) => {
     const resultUrl = extractStoryboardMediaUrl(task, mediaPickerKind);
@@ -1171,7 +1565,7 @@ export default function StoryboardReviewPage() {
       return;
     }
     if (mediaPickerKind === "audio") {
-      addImportedAudioToStoryboard({
+      void addImportedAudioToStoryboard({
         idPrefix: `history-audio-${task.id || task.taskId || "item"}`,
         title: task.prompt || t("mediaStudio.storyboardReviewMediaHistoryAudio"),
         url: resultUrl,
@@ -1180,14 +1574,220 @@ export default function StoryboardReviewPage() {
       });
       return;
     }
-    addImportedVideoToStoryboard({
+    addImportedMediaToStoryboard({
       idPrefix: `history-video-${task.id || task.taskId || "item"}`,
       title: task.prompt || t("mediaStudio.storyboardReviewMediaHistoryClip"),
       url: resultUrl,
+      mediaType: "video",
       model: task.model,
       durationSeconds: extractDurationSeconds(task),
     });
-  }, [addImportedAudioToStoryboard, addImportedVideoToStoryboard, mediaPickerKind, t]);
+  }, [addImportedAudioToStoryboard, addImportedMediaToStoryboard, mediaPickerKind, t]);
+
+  const addImageUrlAsStoryboardShot = useCallback(async (imageUrl: string, title: string) => {
+    const sourceUrl = imageUrl.trim();
+    if (!sourceUrl) return;
+    try {
+      let storedUrl = sourceUrl;
+      let aspectRatio: "9:16" | "16:9" | undefined;
+      if (sourceUrl.startsWith("data:image/") || sourceUrl.startsWith("blob:") || !/^https?:\/\//i.test(sourceUrl)) {
+        const file = sourceUrl.startsWith("data:image/")
+          ? dataUrlToFile(
+              sourceUrl,
+              `storyboard-image-shot-${Date.now()}.${dataUrlToMimeType(sourceUrl).includes("png") ? "png" : "jpg"}`,
+            )
+          : await fetch(sourceUrl, { credentials: "include" })
+              .then((response) => response.blob())
+              .then((blob) => new File(
+                [blob],
+                `storyboard-image-shot-${Date.now()}.${blob.type.includes("png") ? "png" : "jpg"}`,
+                { type: blob.type || "image/jpeg" },
+              ));
+        const [uploadResult, metadata] = await Promise.all([
+          storyboardUploadAssetResolver.uploadAsset(file).promise,
+          readImageMetadata(file),
+        ]);
+        storedUrl = uploadResult.uri;
+        aspectRatio = metadata.aspectRatio;
+      }
+      addImportedMediaToStoryboard({
+        idPrefix: "history-image",
+        title,
+        url: storedUrl,
+        mediaType: "image",
+        model: locale === "th" ? "ภาพนิ่งที่นำเข้า" : "Imported image",
+        durationSeconds: DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+        aspectRatio,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (locale === "th" ? "เพิ่มภาพนิ่งไม่สำเร็จ" : "Failed to add image shot"));
+    }
+  }, [addImportedMediaToStoryboard, locale]);
+
+  const startStoryboardImageDrag = useCallback((
+    event: DragEvent<HTMLElement>,
+    input: { url: string; title: string; filename?: string },
+  ) => {
+    const filename = input.filename ?? `${input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "storyboard-image"}.jpg`;
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/uri-list", input.url);
+    event.dataTransfer.setData("text/plain", input.url);
+    event.dataTransfer.setData("application/x-smartspec-media-type", "image");
+    event.dataTransfer.setData("text/x-smartspec-media-type", "image");
+    event.dataTransfer.setData("DownloadURL", `image/jpeg:${filename}:${input.url}`);
+  }, []);
+
+  const downloadStoryboardImage = useCallback((url: string, title: string) => {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "storyboard-image"}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  const updateSplitPreview = useCallback(async (rows: number, cols: number, sourceUrl = imageToolsSourceUrl) => {
+    if (!sourceUrl) return;
+    setSplitGridRows(rows);
+    setSplitGridCols(cols);
+    setSplitResults([]);
+    try {
+      setSplitPreviewUrl(await createSplitPreview(sourceUrl, rows, cols));
+    } catch (error) {
+      console.warn("Failed to create storyboard split preview:", error);
+      setSplitPreviewUrl(null);
+    }
+  }, [imageToolsSourceUrl]);
+
+  const openStoryboardImageTools = useCallback(async (
+    imageUrl: string,
+    mode: StoryboardImageEditorMode = "split",
+    title = "History image",
+    options?: { rows?: number; cols?: number; forceGrid?: boolean },
+  ) => {
+    const sourceUrl = toCanvasSafeStoryboardImageUrl(imageUrl);
+    setRightPanelTab("history_gallery");
+    setIsImageToolsPanelOpen(true);
+    setImageToolsSourceUrl(sourceUrl);
+    setImageToolsSourceTitle(title);
+    setImageEditorMode(mode);
+    setSplitResults([]);
+    setCropResult(null);
+    setCropPreviewUrl(null);
+    setCropAspectRatio("9:16");
+    setCropFocus({ x: 0.5, y: 0.5 });
+    setCropScale(1);
+    setIsDetectingGrid(true);
+    window.requestAnimationFrame(() => {
+      imageToolsPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    try {
+      if (mode === "split" && options?.rows && options.cols && options.forceGrid) {
+        const sourceImage = await loadImage(sourceUrl);
+        setDetectedGrid({
+          rows: options.rows,
+          cols: options.cols,
+          confidence: 1,
+          cellWidth: sourceImage.naturalWidth / options.cols,
+          cellHeight: sourceImage.naturalHeight / options.rows,
+        });
+        setSplitGridRows(options.rows);
+        setSplitGridCols(options.cols);
+        setSplitPreviewUrl(await createSplitPreview(sourceUrl, options.rows, options.cols));
+        return;
+      }
+
+      const detected = await detectGrid(sourceUrl);
+      const rows = mode === "split" ? detected?.rows ?? 3 : splitGridRows;
+      const cols = mode === "split" ? detected?.cols ?? 3 : splitGridCols;
+      setDetectedGrid(detected);
+      setSplitGridRows(rows);
+      setSplitGridCols(cols);
+      setSplitPreviewUrl(mode === "split" ? await createSplitPreview(sourceUrl, rows, cols) : null);
+      if (mode === "crop") {
+        setCropPreviewUrl(await createCropPreview(sourceUrl, "9:16"));
+      }
+    } catch (error) {
+      console.warn("Failed to initialize storyboard image tools:", error);
+      toast.error(locale === "th" ? "เปิดเครื่องมือตัดภาพไม่สำเร็จ" : "Failed to open image tools");
+    } finally {
+      setIsDetectingGrid(false);
+    }
+  }, [locale, splitGridCols, splitGridRows, toast]);
+
+  useEffect(() => {
+    if (!imageToolsSourceUrl || imageEditorMode !== "crop") return;
+    let isCurrent = true;
+    void createCropPreview(imageToolsSourceUrl, cropAspectRatio, {
+      focusX: cropFocus.x,
+      focusY: cropFocus.y,
+      scale: cropScale,
+    })
+      .then((preview) => {
+        if (isCurrent) setCropPreviewUrl(preview);
+      })
+      .catch(() => {
+        if (isCurrent) setCropPreviewUrl(null);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [cropAspectRatio, cropFocus.x, cropFocus.y, cropScale, imageEditorMode, imageToolsSourceUrl]);
+
+  const executeSplit = useCallback(async () => {
+    if (!imageToolsSourceUrl) return;
+    setIsSplitting(true);
+    try {
+      const results = await splitImage(imageToolsSourceUrl, splitGridRows, splitGridCols, "image/jpeg", 0.92);
+      setSplitResults(results);
+      toast.success(locale === "th" ? `ตัดภาพเป็น ${results.length} รูปแล้ว` : `Split into ${results.length} images.`);
+    } catch (error) {
+      console.warn("Storyboard split failed:", error);
+      toast.error(locale === "th" ? "ตัดภาพไม่สำเร็จ" : "Failed to split image");
+    } finally {
+      setIsSplitting(false);
+    }
+  }, [imageToolsSourceUrl, locale, splitGridCols, splitGridRows, toast]);
+
+  const executeCrop = useCallback(async () => {
+    if (!imageToolsSourceUrl) return;
+    setIsCropping(true);
+    try {
+      const result = await cropImageToAspect(imageToolsSourceUrl, cropAspectRatio, "image/jpeg", 0.92, {
+        focusX: cropFocus.x,
+        focusY: cropFocus.y,
+        scale: cropScale,
+      });
+      setCropResult(result);
+      toast.success(locale === "th" ? `ตัดภาพ ${cropAspectRatio} แล้ว` : `Cropped to ${cropAspectRatio}.`);
+    } catch (error) {
+      console.warn("Storyboard crop failed:", error);
+      toast.error(locale === "th" ? "ครอปรูปไม่สำเร็จ" : "Failed to crop image");
+    } finally {
+      setIsCropping(false);
+    }
+  }, [cropAspectRatio, cropFocus.x, cropFocus.y, cropScale, imageToolsSourceUrl, locale, toast]);
+
+  const appendCropToSplitResults = useCallback(() => {
+    if (!cropResult) return;
+    setSplitResults((current) => [
+      ...current,
+      {
+        blob: cropResult.blob,
+        index: current.reduce((max, item) => Math.max(max, item.index), -1) + 1,
+        row: 0,
+        col: current.length,
+        dataUrl: cropResult.dataUrl,
+        width: cropResult.width,
+        height: cropResult.height,
+        sourceWidth: cropResult.width,
+        sourceHeight: cropResult.height,
+        targetAspectRatio: cropResult.ratio,
+      },
+    ]);
+    setImageEditorMode("split");
+    toast.success(locale === "th" ? "เพิ่มภาพครอปเข้าแถบรูปที่ตัดแล้ว" : "Added crop to split results.");
+  }, [cropResult, locale, toast]);
 
   const selectedRenderClips = useMemo<StoryboardClipCandidate[]>(() => {
     if (!draft) return [];
@@ -1199,6 +1799,8 @@ export default function StoryboardReviewPage() {
       url: task.url!,
       model: task.model,
       durationSeconds: task.durationSeconds,
+      mediaType: task.mediaType,
+      transition: task.transition,
       generationModelId: task.generationModelId,
       referenceUrls: task.referenceUrls,
       generationAspectRatio: task.generationAspectRatio,
@@ -1239,19 +1841,74 @@ export default function StoryboardReviewPage() {
     );
   }, [draft, effectiveRenderAspectRatio, selectedRenderClips]);
 
-  const buildSelectedProject = useCallback(() => {
-    return selectedRenderProject;
-  }, [selectedRenderProject]);
+  const buildPreparedSelectedProject = useCallback(async () => {
+    if (!draft || selectedRenderClips.length === 0) return null;
+
+    const preparedClips: StoryboardClipCandidate[] = [];
+    const clipUrlUpdates = new Map<string, string>();
+    for (const clip of selectedRenderClips) {
+      const mediaType = clip.mediaType ?? (isProbablyImageUrl(clip.url) ? "image" : "video");
+      const storedUrl = await importStoryboardAssetForRender(clip.url, mediaType === "image" ? "image" : "video");
+      preparedClips.push({ ...clip, url: storedUrl });
+      if (storedUrl !== clip.url) {
+        clipUrlUpdates.set(clip.id, storedUrl);
+      }
+    }
+
+    const preparedAudio: StoryboardCompanionAudioCandidate[] = [];
+    const audioUrlUpdates = new Map<string, string>();
+    for (const audio of draft.companionAudio) {
+      const storedUrl = await importStoryboardAssetForRender(audio.url, "audio");
+      preparedAudio.push({ ...audio, url: storedUrl });
+      if (storedUrl !== audio.url) {
+        audioUrlUpdates.set(audio.id, storedUrl);
+      }
+    }
+
+    if (clipUrlUpdates.size > 0 || audioUrlUpdates.size > 0) {
+      const now = Date.now();
+      await persistDraftUpdate((current) => ({
+        ...current,
+        updatedAt: now,
+        projectLink: null,
+        renderJobId: null,
+        tasks: current.tasks.map((task) => {
+          const nextUrl = clipUrlUpdates.get(task.id);
+          return nextUrl ? { ...task, url: nextUrl, updatedAt: now } : task;
+        }),
+        companionAudio: current.companionAudio.map((audio) => {
+          const nextUrl = audioUrlUpdates.get(audio.id);
+          return nextUrl ? { ...audio, url: nextUrl, updatedAt: now } : audio;
+        }),
+        companionAudioUpdatedAt: audioUrlUpdates.size > 0 ? now : current.companionAudioUpdatedAt,
+      }));
+    }
+
+    const reviewTasks = storyboardDraftToReviewTasks(draft);
+    return buildStoryboardVideoProject(
+      preparedClips,
+      {
+        projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
+        companionAudio: preparedAudio,
+        muteVideoClipAudio: preparedAudio.length > 0 || reviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
+        outputAspectRatio: effectiveRenderAspectRatio,
+      },
+    );
+  }, [draft, effectiveRenderAspectRatio, importStoryboardAssetForRender, persistDraftUpdate, selectedRenderClips]);
 
   const createProject = useCallback(async () => {
-    const project = buildSelectedProject();
-    if (!project || !draft) {
+    if (!draft || selectedRenderClips.length === 0) {
       toast.error(t("mediaStudio.storyboardReviewSelectCompletedProject"));
       return;
     }
     setIsCreatingProject(true);
-    setAndSaveDraft((current) => ({ ...current, compoundStatus: t("mediaStudio.storyboardReviewSavingProject") }));
+    setAndSaveDraft((current) => ({ ...current, compoundStatus: locale === "th" ? "กำลังเตรียมไฟล์สื่อก่อนบันทึกโปรเจกต์..." : "Preparing media assets before saving project..." }));
     try {
+      const project = await buildPreparedSelectedProject();
+      if (!project) {
+        toast.error(t("mediaStudio.storyboardReviewSelectCompletedProject"));
+        return;
+      }
       const clipCount = project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
       const result = await saveProjectMutation.mutateAsync({
         name: project.name,
@@ -1270,7 +1927,7 @@ export default function StoryboardReviewPage() {
     } finally {
       setIsCreatingProject(false);
     }
-  }, [buildSelectedProject, draft, saveProjectMutation, setAndSaveDraft]);
+  }, [buildPreparedSelectedProject, draft, locale, saveProjectMutation, selectedRenderClips.length, setAndSaveDraft, t]);
 
   const planScenePrompts = useCallback(async (options: StoryboardPromptPlannerOptions, targetTaskId?: string) => {
     if (!draft) return;
@@ -1564,14 +2221,18 @@ export default function StoryboardReviewPage() {
   }, [locale, setAndSaveDraft]);
 
   const autoCompound = useCallback(async () => {
-    const project = buildSelectedProject();
-    if (!project || !draft) {
+    if (!draft || selectedRenderClips.length === 0) {
       toast.error(t("mediaStudio.storyboardReviewSelectCompletedRender"));
       return;
     }
     setIsCompounding(true);
-    setAndSaveDraft((current) => ({ ...current, compoundStatus: t("mediaStudio.storyboardReviewStartingRender") }));
+    setAndSaveDraft((current) => ({ ...current, compoundStatus: locale === "th" ? "กำลังเตรียมไฟล์สื่อก่อน render..." : "Preparing media assets before render..." }));
     try {
+      const project = await buildPreparedSelectedProject();
+      if (!project) {
+        toast.error(t("mediaStudio.storyboardReviewSelectCompletedRender"));
+        return;
+      }
       const clipCount = project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
       const saved = await saveProjectMutation.mutateAsync({
         name: project.name,
@@ -1593,7 +2254,7 @@ export default function StoryboardReviewPage() {
     } finally {
       setIsCompounding(false);
     }
-  }, [buildSelectedProject, draft, saveProjectMutation, setAndSaveDraft, t]);
+  }, [buildPreparedSelectedProject, draft, locale, saveProjectMutation, selectedRenderClips.length, setAndSaveDraft, t]);
 
   const startStoryboardGenerationBatch = useCallback(() => {
     generationCancelRequestedRef.current = false;
@@ -1787,27 +2448,25 @@ export default function StoryboardReviewPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50 xl:h-dvh xl:overflow-hidden">
-      <header className="border-b bg-white px-3 py-3 sm:px-6 sm:py-4 xl:shrink-0">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+      <header className="border-b bg-white px-3 py-2 sm:px-4 xl:shrink-0">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => setLocation("/dashboard")}
-              className="w-fit shrink-0 text-slate-600 hover:text-slate-950"
+              className="h-8 w-fit shrink-0 px-2 text-xs text-slate-600 hover:text-slate-950"
             >
               <ChevronLeft className="mr-1 h-4 w-4" />
               {t("mediaStudio.storyboardReviewBackToDashboard")}
             </Button>
-            <div>
-              <div className="flex items-center gap-2 text-lg font-semibold text-slate-950 sm:text-xl">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-950 sm:text-lg">
                 <Film className="h-5 w-5 text-cyan-600" />
                 {t("mediaStudio.storyboardReview")}
-              </div>
-              {activeDraft ? (
-                <div className="mt-2 flex max-w-3xl flex-wrap items-center gap-2">
-                  {isEditingProjectName ? (
+                {activeDraft ? (
+                  isEditingProjectName ? (
                     <>
                       <Input
                         value={projectNameDraft}
@@ -1820,29 +2479,30 @@ export default function StoryboardReviewPage() {
                           }
                         }}
                         aria-label={locale === "th" ? "ชื่อ project" : "Project name"}
-                        className="h-9 w-full max-w-md bg-white sm:w-96"
+                        className="h-8 w-full max-w-md bg-white text-sm sm:w-96"
                         autoFocus
                       />
-                      <Button type="button" size="sm" onClick={saveProjectName} disabled={!projectNameDraft.trim()}>
-                        <Check className="mr-2 h-4 w-4" />
+                      <Button type="button" size="sm" className="h-8 px-2 text-xs" onClick={saveProjectName} disabled={!projectNameDraft.trim()}>
+                        <Check className="mr-1.5 h-3.5 w-3.5" />
                         {locale === "th" ? "บันทึกชื่อ" : "Save name"}
                       </Button>
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="h-8 px-2 text-xs"
                         onClick={() => {
                           setProjectNameDraft(currentProjectName);
                           setIsEditingProjectName(false);
                         }}
                       >
-                        <X className="mr-2 h-4 w-4" />
+                        <X className="mr-1.5 h-3.5 w-3.5" />
                         {t("common.cancel")}
                       </Button>
                     </>
                   ) : (
                     <>
-                      <h1 className="max-w-xl truncate text-base font-semibold text-slate-900 sm:text-lg">
+                      <h1 className="min-w-0 max-w-xl truncate text-base font-semibold text-slate-900">
                         {currentProjectName}
                       </h1>
                       <Button
@@ -1860,25 +2520,32 @@ export default function StoryboardReviewPage() {
                         {locale === "th" ? "แก้ชื่อ" : "Rename"}
                       </Button>
                     </>
-                  )}
-                </div>
-              ) : null}
-              <p className="mt-1 text-sm text-slate-600">
+                  )
+                ) : null}
+              </div>
+              <p className="mt-0.5 line-clamp-1 text-xs text-slate-600">
                 {t("mediaStudio.storyboardReviewPageDescription")}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LocaleToggle className="hidden sm:inline-flex" />
-            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setLocation("/media-studio")}>
+            <Button variant="outline" size="sm" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/media-studio")}>
               {t("mediaStudio.title")}
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-2 sm:gap-4 sm:p-4 xl:grid-cols-[minmax(0,1fr)_34rem] xl:overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_38rem]">
-        <section className="min-h-[70dvh] overflow-hidden rounded-lg border bg-white sm:min-h-[calc(100dvh-9rem)] xl:h-full xl:min-h-0">
+      <main
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2 xl:overflow-hidden",
+          rightPanelTab === "history_gallery" && imageToolsSourceUrl && isImageToolsPanelOpen
+            ? "xl:grid-cols-[minmax(0,1fr)_50rem] 2xl:grid-cols-[minmax(0,1fr)_56rem]"
+            : "xl:grid-cols-[minmax(0,1fr)_26rem] 2xl:grid-cols-[minmax(0,1fr)_30rem]",
+        )}
+      >
+        <section className="min-h-[72dvh] overflow-hidden rounded-lg border bg-white sm:min-h-[calc(100dvh-6rem)] xl:h-full xl:min-h-0">
           {isLoading ? (
             <div className="flex h-full min-h-[24rem] items-center justify-center text-slate-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -1899,6 +2566,7 @@ export default function StoryboardReviewPage() {
               onRegenerateTask={regenerateTask}
               onUpdateTaskPrompt={updateTaskPrompt}
               onUpdateTaskDuration={updateTaskDuration}
+              onUpdateTaskTransition={updateStoryboardTaskTransition}
               conceptDetails={activeDraft.conceptDetails ?? ""}
               onConceptDetailsChange={updateConceptDetails}
               storyboardGuide={activeDraft.storyboardGuide ?? ""}
@@ -1936,6 +2604,7 @@ export default function StoryboardReviewPage() {
               renderOutputLabel={renderOutputLabel}
               renderAspectRatioSourceLabel={renderAspectRatioSourceLabel}
               closeLabel={t("mediaStudio.storyboardReviewBackToDashboard")}
+              showCloseButton={false}
               className="h-full"
             />
           ) : (
@@ -1950,18 +2619,20 @@ export default function StoryboardReviewPage() {
         </section>
 
         <aside className="flex max-h-[calc(100dvh-1rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0 xl:max-h-none">
-          <div className="max-h-none shrink-0 space-y-3 overflow-y-visible border-b p-2.5 sm:p-3 xl:max-h-[62%] xl:overflow-y-auto xl:overscroll-contain">
+          <div className="max-h-none shrink-0 space-y-3 overflow-y-visible border-b p-2.5 sm:p-3 xl:max-h-[68%] xl:overflow-y-auto xl:overscroll-contain">
             <div className="rounded-xl border bg-slate-50/70 p-3">
               <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 className="text-sm font-semibold text-slate-950">{t("mediaStudio.storyboardReviewAddMedia")}</h2>
                 <p className="text-xs text-slate-500">{t("mediaStudio.storyboardReviewAddMediaDesc")}</p>
               </div>
-              <div className="mb-2 grid grid-cols-2 gap-2">
+              <div className="mb-2 grid grid-cols-3 gap-1.5">
                 <Button
                   type="button"
                   size="sm"
-                  variant={mediaPickerKind === "video" ? "default" : "outline"}
+                  variant={rightPanelTab === "video" ? "default" : "outline"}
+                  className="h-8 px-2 text-xs"
                   onClick={() => {
+                    setRightPanelTab("video");
                     setMediaPickerKind("video");
                     setSelectedLibraryItemId(null);
                   }}
@@ -1971,8 +2642,10 @@ export default function StoryboardReviewPage() {
                 <Button
                   type="button"
                   size="sm"
-                  variant={mediaPickerKind === "audio" ? "default" : "outline"}
+                  variant={rightPanelTab === "audio" ? "default" : "outline"}
+                  className="h-8 px-2 text-xs"
                   onClick={() => {
+                    setRightPanelTab("audio");
                     setMediaPickerKind("audio");
                     setAudioSourceTab("library");
                     setSelectedLibraryItemId(null);
@@ -1980,8 +2653,17 @@ export default function StoryboardReviewPage() {
                 >
                   {t("mediaStudio.storyboardReviewAudioTrack")}
                 </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={rightPanelTab === "history_gallery" ? "default" : "outline"}
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setRightPanelTab("history_gallery")}
+                >
+                  {locale === "th" ? "History Gallery" : "History Gallery"}
+                </Button>
               </div>
-              {mediaPickerKind === "audio" ? (
+              {rightPanelTab === "audio" ? (
                 <div className="mb-2 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
                   <Button
                     type="button"
@@ -2003,7 +2685,7 @@ export default function StoryboardReviewPage() {
                   </Button>
                 </div>
               ) : null}
-              {(mediaPickerKind !== "audio" || audioSourceTab === "library") ? (
+              {rightPanelTab !== "history_gallery" && (mediaPickerKind !== "audio" || audioSourceTab === "library") ? (
                 <LibrarySearchPanel
                   query={librarySearchQuery}
                   onQueryChange={setLibrarySearchQuery}
@@ -2020,13 +2702,13 @@ export default function StoryboardReviewPage() {
                   onSelect={addLibraryItemToStoryboard}
                 />
               ) : null}
-              {(mediaPickerKind !== "audio" || audioSourceTab === "history") ? (
-              <div className="mt-3 rounded-lg border bg-white p-2">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold uppercase text-slate-500">{t("mediaStudio.storyboardReviewMediaHistory")}</h3>
-                  {isMediaHistoryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" /> : null}
-                </div>
-                <div className="max-h-72 min-h-0 space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-80 sm:pr-2">
+              {rightPanelTab !== "history_gallery" && (mediaPickerKind !== "audio" || audioSourceTab === "history") ? (
+                <div className="mt-3 rounded-lg border bg-white p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-semibold uppercase text-slate-500">{t("mediaStudio.storyboardReviewMediaHistory")}</h3>
+                    {isMediaHistoryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" /> : null}
+                  </div>
+                  <div className="max-h-72 min-h-0 space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-80 sm:pr-2">
                     {historyMediaTasks.length === 0 && !isMediaHistoryLoading ? (
                       <div className="rounded-md border border-dashed p-3 text-xs text-slate-500">
                         {mediaPickerKind === "audio"
@@ -2087,8 +2769,362 @@ export default function StoryboardReviewPage() {
                         );
                       })
                     )}
+                  </div>
                 </div>
-              </div>
+              ) : null}
+              {rightPanelTab === "history_gallery" ? (
+                <div
+                  className={cn(
+                    "space-y-3",
+                    imageToolsSourceUrl && isImageToolsPanelOpen
+                      ? "xl:grid xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start xl:gap-3 xl:space-y-0 2xl:grid-cols-[minmax(0,1fr)_25rem]"
+                      : "",
+                  )}
+                >
+                  <div className="rounded-lg border bg-white p-2">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500">
+                        <History className="h-3.5 w-3.5" />
+                        History Gallery
+                      </h3>
+                      {isImageHistoryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" /> : null}
+                    </div>
+                    {imageHistoryTasks.length === 0 && !isImageHistoryLoading ? (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-slate-500">
+                        {locale === "th" ? "ยังไม่มีรูปใน History Gallery" : "No image history yet."}
+                      </div>
+                    ) : (
+                      <div className={cn(
+                        "grid max-h-[28rem] grid-cols-2 gap-2 overflow-y-auto overscroll-contain pr-1",
+                        imageToolsSourceUrl && isImageToolsPanelOpen ? "xl:max-h-[calc(100dvh-14rem)]" : "",
+                      )}>
+                        {imageHistoryTasks.map(({ task, url, title }) => {
+                          const cardKey = String(task.id ?? task.taskId ?? url);
+                          return (
+                            <div
+                              key={cardKey}
+                              className="overflow-hidden rounded-lg border bg-white shadow-sm"
+                              draggable
+                              onDragStart={(event) => startStoryboardImageDrag(event, {
+                                url,
+                                title,
+                                filename: `history-${cardKey}.jpg`,
+                              })}
+                              title={locale === "th" ? "ลากรูปนี้ไปวางที่ Start/End frame หรือปุ่มแทรกถัดไปได้" : "Drag this image into a Start/End frame or the insert-next button"}
+                            >
+                              <button
+                                type="button"
+                                className="group relative block aspect-square w-full overflow-hidden bg-slate-100"
+                                onClick={() => setGalleryLightbox({ url, title })}
+                              >
+                                <img src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} />
+                                <span className="absolute left-2 top-2 rounded-full bg-white/90 p-1 text-slate-700 shadow">
+                                  <History className="h-3.5 w-3.5" />
+                                </span>
+                              </button>
+                              <div className="flex items-center justify-between gap-1 border-t bg-white px-1.5 py-1">
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setGalleryLightbox({ url, title })} title={locale === "th" ? "ขยาย" : "Expand"}>
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void openStoryboardImageTools(url, "crop", title)} title={locale === "th" ? "ใช้เป็นรูปอ้างอิง / ครอป" : "Use as reference / crop"}>
+                                  <ImagePlus className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void openStoryboardImageTools(url, "split", title, { rows: 3, cols: 3, forceGrid: true })} title={locale === "th" ? "ตัดเป็น 3x3" : "Split as 3x3"}>
+                                  <Scissors className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void openStoryboardImageTools(url, "split", title)} title={locale === "th" ? "เปิดตัวแบ่ง grid" : "Open grid splitter"}>
+                                  <Grid3X3 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => void openStoryboardImageTools(url, "crop", title)} title={locale === "th" ? "ครอปภาพ" : "Crop image"}>
+                                  <Crop className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => downloadStoryboardImage(url, title)} title={locale === "th" ? "ดาวน์โหลด" : "Download"}>
+                                  <Download className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 w-full rounded-none border-x-0 border-b-0 text-[11px]"
+                                onClick={() => void addImageUrlAsStoryboardShot(url, title)}
+                              >
+                                <ImagePlus className="mr-1 h-3.5 w-3.5" />
+                                {locale === "th" ? "เพิ่มเป็น shot ภาพนิ่ง" : "Add image shot"}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {imageToolsSourceUrl && !isImageToolsPanelOpen ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-full justify-center border-sky-200 text-xs text-sky-700"
+                      onClick={() => setIsImageToolsPanelOpen(true)}
+                    >
+                      <Scissors className="mr-1.5 h-3.5 w-3.5" />
+                      {locale === "th" ? "เปิดเครื่องมือตัดภาพ" : "Open image tools"}
+                    </Button>
+                  ) : null}
+
+                  {isImageToolsPanelOpen ? (
+                  <div ref={imageToolsPanelRef} className="rounded-lg border border-sky-200 bg-white p-2 shadow-sm xl:sticky xl:top-2 xl:max-h-[calc(100dvh-5rem)] xl:overflow-y-auto xl:overscroll-contain">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500">
+                        <Scissors className="h-3.5 w-3.5" />
+                        {locale === "th" ? "เครื่องมือตัดภาพ" : "Image Tools"}
+                      </h3>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {imageToolsSourceUrl ? (
+                          <Badge variant="outline" className="max-w-[10rem] truncate text-[10px]">
+                            {imageToolsSourceTitle || "Image"}
+                          </Badge>
+                        ) : null}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0"
+                          onClick={() => setIsImageToolsPanelOpen(false)}
+                          title={locale === "th" ? "ยุบ panel ไปทางขวา" : "Collapse panel"}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    {!imageToolsSourceUrl ? (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-slate-500">
+                        {locale === "th" ? "เลือกรูปจาก History Gallery แล้วกดกรรไกรหรือครอป เพื่อเปิดเครื่องมือ" : "Pick an image from History Gallery, then use split or crop."}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Button type="button" size="sm" variant={imageEditorMode === "split" ? "default" : "outline"} className="h-8 text-xs" onClick={() => setImageEditorMode("split")}>
+                            <Scissors className="mr-1.5 h-3.5 w-3.5" />
+                            {locale === "th" ? "Split" : "Split"}
+                          </Button>
+                          <Button type="button" size="sm" variant={imageEditorMode === "crop" ? "default" : "outline"} className="h-8 text-xs" onClick={() => setImageEditorMode("crop")}>
+                            <Crop className="mr-1.5 h-3.5 w-3.5" />
+                            {locale === "th" ? "Crop" : "Crop"}
+                          </Button>
+                        </div>
+                        <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                          {imageEditorMode === "split" ? (
+                            isDetectingGrid ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
+                            ) : splitPreviewUrl ? (
+                              <img src={splitPreviewUrl} alt="Split preview" className="max-h-72 max-w-full object-contain" />
+                            ) : (
+                              <img src={imageToolsSourceUrl} alt="Source" className="max-h-72 max-w-full object-contain" />
+                            )
+                          ) : cropPreviewUrl ? (
+                            <img src={cropPreviewUrl} alt="Crop preview" className="max-h-72 max-w-full object-contain" />
+                          ) : (
+                            <img src={imageToolsSourceUrl} alt="Source" className="max-h-72 max-w-full object-contain" />
+                          )}
+                        </div>
+                        {imageEditorMode === "split" ? (
+                          <div className="space-y-3">
+                            {detectedGrid ? (
+                              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs text-emerald-800">
+                                {locale === "th"
+                                  ? `ตรวจพบ grid ${detectedGrid.rows}x${detectedGrid.cols}`
+                                  : `Detected ${detectedGrid.rows}x${detectedGrid.cols} grid`}
+                              </div>
+                            ) : null}
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {COMMON_GRIDS.slice(0, 9).map((grid) => (
+                                <Button
+                                  key={`${grid.rows}x${grid.cols}`}
+                                  type="button"
+                                  size="sm"
+                                  variant={splitGridRows === grid.rows && splitGridCols === grid.cols ? "default" : "outline"}
+                                  className="h-8 px-1 text-[10px]"
+                                  onClick={() => void updateSplitPreview(grid.rows, grid.cols)}
+                                >
+                                  {grid.rows}x{grid.cols}
+                                </Button>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                              <label className="grid gap-1 text-xs">
+                                <span className="text-slate-500">{locale === "th" ? "แถว" : "Rows"}</span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={10}
+                                  value={splitGridRows}
+                                  onChange={(event) => void updateSplitPreview(Math.min(10, Math.max(1, Number(event.target.value) || 1)), splitGridCols)}
+                                  className="h-8"
+                                />
+                              </label>
+                              <span className="pb-2 text-xs text-slate-400">x</span>
+                              <label className="grid gap-1 text-xs">
+                                <span className="text-slate-500">{locale === "th" ? "คอลัมน์" : "Cols"}</span>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={10}
+                                  value={splitGridCols}
+                                  onChange={(event) => void updateSplitPreview(splitGridRows, Math.min(10, Math.max(1, Number(event.target.value) || 1)))}
+                                  className="h-8"
+                                />
+                              </label>
+                            </div>
+                            <Button type="button" size="sm" className="h-8 w-full text-xs" onClick={() => void executeSplit()} disabled={isSplitting}>
+                              {isSplitting ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Scissors className="mr-1.5 h-3.5 w-3.5" />}
+                              {locale === "th" ? `ตัด ${splitGridRows * splitGridCols} รูป` : `Split ${splitGridRows * splitGridCols}`}
+                            </Button>
+                            {splitResults.length > 0 ? (
+                              <div className="space-y-2 border-t pt-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {locale === "th" ? `ผลลัพธ์ ${splitResults.length} รูป` : `${splitResults.length} results`}
+                                  </span>
+                                  <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => void downloadAllSplitImages(splitResults, "storyboard-split")}>
+                                    <Download className="mr-1 h-3.5 w-3.5" />
+                                    {locale === "th" ? "ทั้งหมด" : "All"}
+                                  </Button>
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  {splitResults.map((result, index) => {
+                                    const sequenceNumber = index + 1;
+                                    return (
+                                      <div
+                                        key={result.index}
+                                        className="group relative aspect-square cursor-grab overflow-hidden rounded-md border bg-slate-100 active:cursor-grabbing"
+                                        draggable
+                                        onDragStart={(event) => startStoryboardImageDrag(event, {
+                                          url: result.dataUrl,
+                                          title: `Split ${sequenceNumber}`,
+                                          filename: `split-${sequenceNumber}.jpg`,
+                                        })}
+                                        title={locale === "th" ? "ลากไปวางที่ Start/End frame หรือปุ่มแทรกถัดไป" : "Drag into a Start/End frame or the insert-next button"}
+                                      >
+                                        <img src={result.dataUrl} alt={`Split ${sequenceNumber}`} className="h-full w-full object-cover" draggable={false} />
+                                        <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">{sequenceNumber}</span>
+                                        <Button type="button" size="icon" variant="secondary" className="absolute left-1 top-1 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" onClick={() => downloadSplitImage(result, "storyboard-split", sequenceNumber)}>
+                                          <Download className="h-3 w-3" />
+                                        </Button>
+                                        <Button type="button" size="icon" variant="secondary" className="absolute left-1 top-8 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" onClick={() => void addImageUrlAsStoryboardShot(result.dataUrl, `Split ${sequenceNumber}`)} title={locale === "th" ? "เพิ่มเป็น shot ภาพนิ่ง" : "Add image shot"}>
+                                          <ImagePlus className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-4 gap-1.5">
+                              {COMMON_CROP_RATIOS.map((ratio) => (
+                                <Button
+                                  key={ratio.value}
+                                  type="button"
+                                  size="sm"
+                                  variant={cropAspectRatio === ratio.value ? "default" : "outline"}
+                                  className="h-8 px-1 text-xs"
+                                  onClick={() => {
+                                    setCropAspectRatio(ratio.value);
+                                    setCropResult(null);
+                                  }}
+                                >
+                                  {ratio.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <label className="grid gap-1 text-xs">
+                              <span className="flex items-center justify-between text-slate-500">
+                                <span>{locale === "th" ? "ขนาด crop" : "Crop size"}</span>
+                                <span>{Math.round(cropScale * 100)}%</span>
+                              </span>
+                              <Input
+                                type="range"
+                                min={20}
+                                max={100}
+                                value={Math.round(cropScale * 100)}
+                                onChange={(event) => {
+                                  setCropScale(Number(event.target.value) / 100);
+                                  setCropResult(null);
+                                }}
+                              />
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <label className="grid gap-1 text-xs">
+                                <span className="text-slate-500">{locale === "th" ? "แนวนอน" : "Horizontal"}</span>
+                                <Input
+                                  type="range"
+                                  min={0}
+                                  max={100}
+                                  value={Math.round(cropFocus.x * 100)}
+                                  onChange={(event) => {
+                                    setCropFocus((current) => ({ ...current, x: Number(event.target.value) / 100 }));
+                                    setCropResult(null);
+                                  }}
+                                />
+                              </label>
+                              <label className="grid gap-1 text-xs">
+                                <span className="text-slate-500">{locale === "th" ? "แนวตั้ง" : "Vertical"}</span>
+                                <Input
+                                  type="range"
+                                  min={0}
+                                  max={100}
+                                  value={Math.round(cropFocus.y * 100)}
+                                  onChange={(event) => {
+                                    setCropFocus((current) => ({ ...current, y: Number(event.target.value) / 100 }));
+                                    setCropResult(null);
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            <Button type="button" size="sm" className="h-8 w-full text-xs" onClick={() => void executeCrop()} disabled={isCropping}>
+                              {isCropping ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Crop className="mr-1.5 h-3.5 w-3.5" />}
+                              {locale === "th" ? `ครอป ${cropAspectRatio}` : `Crop ${cropAspectRatio}`}
+                            </Button>
+                            {cropResult ? (
+                              <div className="space-y-2 border-t pt-2">
+                                <div
+                                  className="cursor-grab overflow-hidden rounded-md border bg-slate-100 active:cursor-grabbing"
+                                  draggable
+                                  onDragStart={(event) => startStoryboardImageDrag(event, {
+                                    url: cropResult.dataUrl,
+                                    title: `Crop ${cropAspectRatio}`,
+                                    filename: `crop-${cropAspectRatio.replace(":", "x")}.jpg`,
+                                  })}
+                                  title={locale === "th" ? "ลากไปวางที่ Start/End frame หรือปุ่มแทรกถัดไป" : "Drag into a Start/End frame or the insert-next button"}
+                                >
+                                  <img src={cropResult.dataUrl} alt="Crop result" className="max-h-48 w-full object-contain" draggable={false} />
+                                </div>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => downloadCroppedImage(cropResult, "storyboard-crop")}>
+                                    <Download className="mr-1 h-3.5 w-3.5" />
+                                    {locale === "th" ? "ดาวน์โหลด" : "Download"}
+                                  </Button>
+                                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={appendCropToSplitResults}>
+                                    <ImagePlus className="mr-1 h-3.5 w-3.5" />
+                                    {locale === "th" ? "เพิ่มภาพ" : "Add image"}
+                                  </Button>
+                                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => void addImageUrlAsStoryboardShot(cropResult.dataUrl, `Crop ${cropAspectRatio}`)}>
+                                    <ImagePlus className="mr-1 h-3.5 w-3.5" />
+                                    {locale === "th" ? "เพิ่ม shot" : "Add shot"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>
@@ -2179,6 +3215,64 @@ export default function StoryboardReviewPage() {
           </div>
         </aside>
       </main>
+
+      {galleryLightbox ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-label={galleryLightbox.title}
+          onClick={() => setGalleryLightbox(null)}
+        >
+          <div className="flex max-h-full w-full max-w-6xl flex-col gap-3" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 text-white">
+              <div className="min-w-0 truncate text-sm font-medium">{galleryLightbox.title}</div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    void openStoryboardImageTools(galleryLightbox.url, "split", galleryLightbox.title);
+                    setGalleryLightbox(null);
+                  }}
+                >
+                  <Scissors className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "ตัดภาพ" : "Split"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    void openStoryboardImageTools(galleryLightbox.url, "crop", galleryLightbox.title);
+                    setGalleryLightbox(null);
+                  }}
+                >
+                  <Crop className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "ครอป" : "Crop"}
+                </Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setGalleryLightbox(null)}>
+                  <X className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "ปิด" : "Close"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
+              <img
+                src={galleryLightbox.url}
+                alt={galleryLightbox.title}
+                className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
+                draggable
+                onDragStart={(event) => startStoryboardImageDrag(event, {
+                  url: galleryLightbox.url,
+                  title: galleryLightbox.title,
+                })}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {renderJobId ? (
         <RenderProgressDialog

@@ -54,6 +54,9 @@ function isGenericMarketplaceCategory(value: unknown): boolean {
 }
 
 function normalizeLlmResult(parsed: Record<string, unknown>, fallback: Record<string, any>) {
+  const parsedAffiliateUrl = typeof (parsed as any).affiliateUrl === "string" && (parsed as any).affiliateUrl.trim()
+    ? (parsed as any).affiliateUrl.trim()
+    : null;
   const confidence = {
     ...fallback.confidence,
     ...((parsed as any).confidence ?? {}),
@@ -80,6 +83,7 @@ function normalizeLlmResult(parsed: Record<string, unknown>, fallback: Record<st
   return {
     ...fallback,
     ...parsed,
+    affiliateUrl: parsedAffiliateUrl ?? fallback.affiliateUrl ?? null,
     specs,
     confidence,
     images,
@@ -105,6 +109,9 @@ export async function analyzeMarketplaceCapture(captureId: string, input: unknow
   const discountText = String(raw.discountText ?? matchFirst(domText, [/(-\d+%)/]) ?? "");
   const ratingScoreText = String(raw.ratingScoreText ?? matchFirst(domText, [/(\d(?:\.\d)?)\s*(?:ดาว|stars?)/i]) ?? "");
   const categoryText = isGenericMarketplaceCategory(raw.categoryText) ? null : raw.categoryText ?? null;
+  const affiliateUrl = typeof raw.affiliateUrl === "string" && raw.affiliateUrl.trim()
+    ? raw.affiliateUrl.trim()
+    : capture.affiliateUrl ?? null;
   const mainImages = imageCandidates
     .filter((img) => img && (img.kind === "main" || img.kind === "unknown"))
     .map((img) => String(img.url || ""))
@@ -133,6 +140,7 @@ export async function analyzeMarketplaceCapture(captureId: string, input: unknow
   const result = {
     platform: capture.platform,
     sourceUrl: capture.sourceUrl,
+    affiliateUrl,
     externalProductId: capture.externalProductId,
     externalShopId: capture.externalShopId,
     productName,

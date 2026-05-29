@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, CheckCircle2, ExternalLink, PackageCheck, ShieldAlert } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Copy, ExternalLink, PackageCheck, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type {
@@ -122,6 +122,7 @@ export function ProductEvidenceTray({
               productTruthValue(productTruth, "performanceSignals.soldCountText"),
             ].filter(Boolean);
             const productDetailId = productTruthValue(productTruth, "productId") || product.productId;
+            const affiliateUrl = productTruthValue(productTruth, "affiliateUrl");
             const supportingInsightTypes = productTruthArray(productTruth, "supportingInsights.availableTypes");
             const supportingSummary = productTruthValue(productTruth, "supportingInsights.summary.shortSummary");
             const supportingHook = productTruthArray(productTruth, "supportingInsights.summary.hooks")[0];
@@ -152,6 +153,21 @@ export function ProductEvidenceTray({
                     {productTruthValue(productTruth, "sourceUrl") ? (
                       <div className="mt-2 truncate text-[11px] text-muted-foreground">
                         {productTruthValue(productTruth, "sourceUrl")}
+                      </div>
+                    ) : null}
+                    {affiliateUrl ? (
+                      <div className="mt-2 flex min-w-0 items-center gap-2 rounded border border-emerald-100 bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800">
+                        <span className="truncate">{affiliateUrl}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 shrink-0 gap-1 bg-white text-[11px]"
+                          onClick={() => navigator.clipboard?.writeText(affiliateUrl)}
+                        >
+                          <Copy className="h-3 w-3" />
+                          {isThai ? "คัดลอก" : "Copy"}
+                        </Button>
                       </div>
                     ) : null}
                     {supportingInsightTypes.length ? (

@@ -13,6 +13,7 @@ import struct
 import subprocess
 import tempfile
 from typing import Any
+from urllib.parse import urlparse
 
 import redis
 
@@ -79,6 +80,7 @@ def _validate_ffmpeg():
 _validate_ffmpeg()
 
 SHELL_METACHAR_RE = re.compile(r"[;|&`$(){}><]")
+URI_QUERY_SHELL_METACHAR_RE = re.compile(r"[;|`$(){}><]")
 
 # Strip all ASCII control characters (0x00-0x1f, 0x7f) for safe log/error output
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
@@ -94,6 +96,18 @@ _RENDER_FONT_WHITELIST = {
     "Poppins": "Poppins",
     "Ubuntu": "Ubuntu",
 }
+
+
+def _uri_contains_unsafe_shell_metacharacters(uri: str) -> bool:
+    """Allow signed URL query delimiters while still blocking shell syntax."""
+    parsed = urlparse(uri)
+    shell_checked_uri = parsed._replace(query="").geturl()
+    return bool(
+        SHELL_METACHAR_RE.search(shell_checked_uri)
+        or URI_QUERY_SHELL_METACHAR_RE.search(parsed.query)
+    )
+
+
 _DEFAULT_RENDER_FONT = "Noto Sans"
 _EDGE_BLEED_CROP_FILTER = "crop=trunc(iw*0.988/2)*2:trunc(ih*0.988/2)*2:(iw-ow)/2:(ih-oh)/2"
 
@@ -657,7 +671,7 @@ def parse_job_spec(spec_json: str) -> dict:
     # Validate asset URIs
     for asset in spec.get("inputs", {}).get("assets", []):
         uri = asset.get("uri", "")
-        if SHELL_METACHAR_RE.search(uri):
+        if _uri_contains_unsafe_shell_metacharacters(uri):
             raise ValueError(f"Asset URI contains shell metacharacters: {uri}")
 
     return spec
@@ -723,7 +737,7 @@ def _resolve_asset_path(uri: str, tmp_dir: str) -> str:
     Validates URI against SSRF before any network access.
     file:// scheme is blocked by validate_uri_no_ssrf.
     """
-    validate_uri_no_ssrf(uri)
+    validate_uri_no_ssrf(uri, allow_query_metacharacters=True)
     if uri.startswith("http://") or uri.startswith("https://"):
         import urllib.request
         filename = os.path.basename(uri.split("?")[0]) or "download"
@@ -764,7 +778,7 @@ def _safe_uri_for_ffmpeg(uri: str) -> str:
     Defense-in-depth: validates even though validate_job_spec_security()
     runs at task entry. FFmpeg handles http(s):// URIs natively.
     """
-    validate_uri_no_ssrf(uri)
+    validate_uri_no_ssrf(uri, allow_query_metacharacters=True)
     return uri
 
 
@@ -1015,6 +1029,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
     # Collect input files from assets
     assets = spec.get("inputs", {}).get("assets", [])
     asset_map = {a["assetId"]: a["uri"] for a in assets}
+    asset_kind_map = {a["assetId"]: a.get("kind", "") for a in assets}
     asset_duration_map = {a["assetId"]: a.get("durationMs", 0) for a in assets}
 
     input_files: list[str] = []
@@ -1044,7 +1059,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                 idx = len(input_files)
                 input_index[path] = idx
                 input_files.append(path)
-                if _is_image_uri(uri):
+                if asset_kind_map.get(clip["assetId"]) == "image" or _is_image_uri(uri):
                     image_inputs.add(idx)
                     silent_inputs.add(idx)
                 elif not _has_audio_stream(path, runner=runner):

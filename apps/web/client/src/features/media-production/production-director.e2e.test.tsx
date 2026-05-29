@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { ProductionSpace } from "@shared/mediaProduction";
+import type { ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
 
 vi.mock("@xyflow/react", async () => {
   const React = await import("react");
@@ -308,6 +308,22 @@ const featureSpaceTwoShots: ProductionSpace = {
     },
   ],
 };
+
+function createProductionAssetDataTransfer(asset: ProductionReferenceInput): DataTransfer {
+  const data = new Map<string, string>([
+    ["application/x-production-asset-id", asset.id],
+    ["application/x-production-asset-json", JSON.stringify(asset)],
+  ]);
+  return {
+    types: Array.from(data.keys()),
+    getData: (type: string) => data.get(type) ?? "",
+    setData: (type: string, value: string) => {
+      data.set(type, value);
+    },
+    dropEffect: "copy",
+    effectAllowed: "copy",
+  } as unknown as DataTransfer;
+}
 
 describe("Feature 116 Production Director deterministic evidence gate", () => {
   it("renders the production canvas, fixture assets, safeguards, and controls", () => {
@@ -1072,6 +1088,60 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(onConfigureNode).toHaveBeenCalledWith("image-node");
     expect(onConfigureNode).toHaveBeenCalledWith("video-node");
     expect(onConfigureNode).toHaveBeenCalledWith("tts-node");
+  });
+
+  it("adds a dropped production asset to the canvas only once when no node is targeted", () => {
+    const onAssetAddToCanvas = vi.fn();
+    const onAssetAssignToNode = vi.fn();
+
+    render(
+      <ProductionFlowCanvas
+        flowNodes={featureSpace.flowNodes}
+        flowEdges={featureSpace.flowEdges}
+        contextAssets={featureSpace.contextAssets}
+        selectedNodeId={null}
+        onAssetAddToCanvas={onAssetAddToCanvas}
+        onAssetAssignToNode={onAssetAssignToNode}
+      />
+    );
+
+    const asset = featureSpace.contextAssets[1];
+    fireEvent.drop(screen.getByTestId("production-flow-canvas-viewport"), {
+      clientX: 980,
+      clientY: 480,
+      dataTransfer: createProductionAssetDataTransfer(asset),
+    });
+
+    expect(onAssetAddToCanvas).toHaveBeenCalledTimes(1);
+    expect(onAssetAddToCanvas).toHaveBeenCalledWith(asset, expect.any(Object));
+    expect(onAssetAssignToNode).not.toHaveBeenCalled();
+  });
+
+  it("assigns a dropped production asset to the target node without also creating an asset node", () => {
+    const onAssetAddToCanvas = vi.fn();
+    const onAssetAssignToNode = vi.fn();
+
+    render(
+      <ProductionFlowCanvas
+        flowNodes={featureSpace.flowNodes}
+        flowEdges={featureSpace.flowEdges}
+        contextAssets={featureSpace.contextAssets}
+        selectedNodeId="image-node"
+        onAssetAddToCanvas={onAssetAddToCanvas}
+        onAssetAssignToNode={onAssetAssignToNode}
+      />
+    );
+
+    const asset = featureSpace.contextAssets[1];
+    fireEvent.drop(screen.getByTestId("production-flow-canvas-viewport"), {
+      clientX: 12,
+      clientY: 12,
+      dataTransfer: createProductionAssetDataTransfer(asset),
+    });
+
+    expect(onAssetAssignToNode).toHaveBeenCalledTimes(1);
+    expect(onAssetAssignToNode).toHaveBeenCalledWith({ asset, nodeId: "image-node" });
+    expect(onAssetAddToCanvas).not.toHaveBeenCalled();
   });
 
   it("separates run-this-node, run-all, and cancellation controls", () => {

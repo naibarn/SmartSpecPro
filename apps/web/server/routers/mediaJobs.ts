@@ -3,7 +3,7 @@ import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { validateJobSpec, VALID_JOB_TYPES } from "../../shared/types/mediaJob";
 import type { MediaJobSpec, MediaJobProgress } from "../../shared/types/mediaJob";
-import { validateWebJobSpec } from "../../shared/types/mediaJobValidation";
+import { sanitizeUri, validateWebJobSpec } from "../../shared/types/mediaJobValidation";
 import { nanoid } from "nanoid";
 import type { Express, Request, Response } from "express";
 import type { VideoEditorProject } from "../../client/src/types/videoEditor";
@@ -11,7 +11,7 @@ import { authorizeRequest } from "../_core/authz";
 import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
-import { storagePut } from "../storage";
+import { storagePut, storagePutFromPath } from "../storage";
 import { eq } from "drizzle-orm";
 import { promises as fs } from "fs";
 import path from "path";
@@ -1193,6 +1193,94 @@ export function registerMediaJobRoutes(app: Express) {
     "jpg", "jpeg", "png", "webp", "gif",
   ]);
   const MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB (support large video files)
+  const REMOTE_IMPORT_MEDIA_TYPES = new Set(["audio", "video", "image"]);
+  const REMOTE_IMPORT_DEFAULT_EXTENSION: Record<string, string> = {
+    audio: "mp3",
+    video: "mp4",
+    image: "jpg",
+  };
+  const REMOTE_IMPORT_CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
+    "audio/aac": "aac",
+    "audio/flac": "flac",
+    "audio/mp3": "mp3",
+    "audio/mpeg": "mp3",
+    "audio/ogg": "ogg",
+    "audio/wav": "wav",
+    "audio/webm": "webm",
+    "audio/x-wav": "wav",
+    "image/gif": "gif",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "video/avi": "avi",
+    "video/mp4": "mp4",
+    "video/quicktime": "mov",
+    "video/webm": "webm",
+    "video/x-matroska": "mkv",
+    "video/x-msvideo": "avi",
+  };
+
+  function normalizeRemoteImportMediaType(value: unknown): "audio" | "video" | "image" | null {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    return REMOTE_IMPORT_MEDIA_TYPES.has(normalized) ? normalized as "audio" | "video" | "image" : null;
+  }
+
+  function normalizeRemoteImportContentType(value: string | null | undefined): string {
+    return String(value || "application/octet-stream").split(";", 1)[0]?.trim().toLowerCase() || "application/octet-stream";
+  }
+
+  function isAllowedRemoteImportContentType(contentType: string, mediaType: "audio" | "video" | "image"): boolean {
+    return (
+      contentType === "application/octet-stream"
+      || contentType.startsWith(`${mediaType}/`)
+      || (mediaType === "audio" && contentType === "application/x-mpegurl")
+    );
+  }
+
+  function inferRemoteImportExtension(
+    sourceUrl: string,
+    contentType: string,
+    mediaType: "audio" | "video" | "image",
+  ): string {
+    const mapped = REMOTE_IMPORT_CONTENT_TYPE_EXTENSIONS[contentType];
+    if (mapped && ALLOWED_UPLOAD_EXTENSIONS.has(mapped)) return mapped;
+    try {
+      const parsed = new URL(sourceUrl);
+      const ext = parsed.pathname.split("/").pop()?.split(".").pop()?.toLowerCase() || "";
+      if (ext && ALLOWED_UPLOAD_EXTENSIONS.has(ext)) return ext;
+    } catch {
+      // Keep the default below.
+    }
+    return REMOTE_IMPORT_DEFAULT_EXTENSION[mediaType];
+  }
+
+  async function writeRemoteResponseToTempFile(params: {
+    response: globalThis.Response;
+    tempPath: string;
+    maxBytes: number;
+  }): Promise<number> {
+    if (!params.response.body) {
+      throw new Error("Remote asset response has no body");
+    }
+    const file = await fs.open(params.tempPath, "w");
+    let totalBytes = 0;
+    try {
+      for await (const chunk of params.response.body as any) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        totalBytes += buffer.length;
+        if (totalBytes > params.maxBytes) {
+          const error = new Error(`Remote asset exceeds maximum size of ${Math.round(params.maxBytes / (1024 * 1024))}MB`);
+          (error as any).statusCode = 413;
+          throw error;
+        }
+        await file.write(buffer);
+      }
+    } finally {
+      await file.close();
+    }
+    return totalBytes;
+  }
 
   // Use disk storage to avoid memory issues with large files
   const upload = multer({
@@ -1447,6 +1535,96 @@ export function registerMediaJobRoutes(app: Express) {
       } catch (e: any) {
         console.error("[MediaJobs Upload/Complete] Error:", e);
         res.status(500).json({ error: e.message || "Complete failed" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/media-jobs/import-url",
+    async (req: Request, res: Response) => {
+      const startTime = Date.now();
+      let tempPath: string | null = null;
+      try {
+        const authResult = await authenticateMediaJobRequest(req, res);
+        if (!authResult) return;
+
+        const { url, mediaType } = req.body as {
+          url?: string;
+          mediaType?: string;
+        };
+        const sourceUrlInput = typeof url === "string" ? url.trim() : "";
+        const normalizedMediaType = normalizeRemoteImportMediaType(mediaType);
+
+        if (!sourceUrlInput || !normalizedMediaType) {
+          res.status(400).json({ error: "Missing remote asset URL or media type" });
+          return;
+        }
+
+        let sourceUrl: string;
+        try {
+          sourceUrl = sanitizeUri(sourceUrlInput, "web_backend");
+        } catch {
+          res.status(400).json({ error: "Invalid or unsafe remote asset URL" });
+          return;
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+        let response: globalThis.Response;
+        try {
+          response = await fetch(sourceUrl, {
+            method: "GET",
+            redirect: "follow",
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        if (!response.ok) {
+          res.status(502).json({ error: `Remote asset fetch failed (${response.status})` });
+          return;
+        }
+
+        const contentType = normalizeRemoteImportContentType(response.headers.get("content-type"));
+        if (!isAllowedRemoteImportContentType(contentType, normalizedMediaType)) {
+          res.status(400).json({ error: `Remote asset is not a ${normalizedMediaType} file` });
+          return;
+        }
+
+        const contentLength = Number(response.headers.get("content-length") || 0);
+        if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_SIZE) {
+          res.status(413).json({
+            error: `Remote asset too large: ${(contentLength / (1024 * 1024 * 1024)).toFixed(1)}GB exceeds limit of ${MAX_UPLOAD_SIZE / (1024 * 1024 * 1024)}GB`,
+          });
+          return;
+        }
+
+        const assetId = nanoid(21);
+        const extension = inferRemoteImportExtension(sourceUrl, contentType, normalizedMediaType);
+        const filename = `${normalizedMediaType}-${Date.now()}-${nanoid(8)}.${extension}`;
+        const storageKey = `media-jobs/assets/${assetId}/${filename}`;
+        tempPath = path.join(os.tmpdir(), `media-import-${assetId}-${filename}`);
+        const bytes = await writeRemoteResponseToTempFile({
+          response,
+          tempPath,
+          maxBytes: MAX_UPLOAD_SIZE,
+        });
+
+        const { url: storageUrl } = await storagePutFromPath(storageKey, tempPath, contentType);
+        await fs.unlink(tempPath).catch(() => {});
+        tempPath = null;
+
+        const duration = Date.now() - startTime;
+        console.log("[MediaJobs ImportUrl] Success:", authResult.userId, assetId, normalizedMediaType, bytes, `(${duration}ms)`);
+        res.json({ assetId, uri: storageUrl, bytes, contentType });
+      } catch (e: any) {
+        if (tempPath) {
+          await fs.unlink(tempPath).catch(() => {});
+        }
+        const statusCode = e?.statusCode || (e?.name === "AbortError" ? 504 : 500);
+        console.error("[MediaJobs ImportUrl] Error:", e?.message || e);
+        res.status(statusCode).json({ error: e?.message || "Remote asset import failed" });
       }
     },
   );

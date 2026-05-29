@@ -81,6 +81,16 @@ export default function MarketplaceCapturePreview() {
             <a className="text-sm text-blue-700 underline" href={capture.sourceUrl} target="_blank" rel="noreferrer">
               {capture.sourceUrl}
             </a>
+            {form.affiliateUrl ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                <a className="max-w-xl truncate text-blue-700 underline" href={form.affiliateUrl} target="_blank" rel="noreferrer">
+                  Affiliate link
+                </a>
+                <button className="rounded border bg-white px-2 py-1 text-xs" type="button" onClick={() => navigator.clipboard?.writeText(form.affiliateUrl)}>
+                  Copy
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => analyzeMutation.mutate({ captureId, analyze: { forceRerun: true } })}>

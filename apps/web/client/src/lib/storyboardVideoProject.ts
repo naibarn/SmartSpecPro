@@ -7,7 +7,46 @@ import {
   generateId,
   type VideoEditorProject,
   type MediaLibraryAsset,
+  type ClipTransition,
+  type TransitionName,
 } from "@/types/videoEditor";
+
+export type StoryboardClipMediaType = "video" | "image";
+export type StoryboardClipTransition = ClipTransition;
+export type StoryboardClipTransitionName = TransitionName;
+
+export const STORYBOARD_DEFAULT_TRANSITION_DURATION_MS = 500;
+
+export const STORYBOARD_RENDER_TRANSITION_OPTIONS: Array<{
+  name: StoryboardClipTransitionName;
+  labelEn: string;
+  labelTh: string;
+}> = [
+  { name: "none", labelEn: "Cut", labelTh: "ตัดตรง" },
+  { name: "crossfade", labelEn: "Crossfade", labelTh: "ค่อย ๆ ซ้อนภาพ" },
+  { name: "wipeLeft", labelEn: "Wipe left", labelTh: "ปาดซ้าย" },
+  { name: "wipeRight", labelEn: "Wipe right", labelTh: "ปาดขวา" },
+  { name: "wipeUp", labelEn: "Wipe up", labelTh: "ปาดขึ้น" },
+  { name: "wipeDown", labelEn: "Wipe down", labelTh: "ปาดลง" },
+  { name: "slideLeft", labelEn: "Slide left", labelTh: "เลื่อนซ้าย" },
+  { name: "slideRight", labelEn: "Slide right", labelTh: "เลื่อนขวา" },
+  { name: "slideUp", labelEn: "Slide up", labelTh: "เลื่อนขึ้น" },
+  { name: "slideDown", labelEn: "Slide down", labelTh: "เลื่อนลง" },
+  { name: "zoomIn", labelEn: "Zoom in", labelTh: "ซูมเข้า" },
+  { name: "zoomOut", labelEn: "Zoom out", labelTh: "ซูมออก" },
+  { name: "circleOpen", labelEn: "Circle open", labelTh: "วงกลมเปิด" },
+  { name: "circleClose", labelEn: "Circle close", labelTh: "วงกลมปิด" },
+  { name: "diamondOpen", labelEn: "Diamond", labelTh: "ไดมอนด์" },
+  { name: "blur", labelEn: "Blur", labelTh: "เบลอ" },
+  { name: "pixelize", labelEn: "Pixelize", labelTh: "พิกเซล" },
+  { name: "radial", labelEn: "Radial", labelTh: "เรเดียล" },
+  { name: "smoothLeft", labelEn: "Smooth left", labelTh: "สมูธซ้าย" },
+  { name: "smoothRight", labelEn: "Smooth right", labelTh: "สมูธขวา" },
+];
+
+const STORYBOARD_RENDER_TRANSITION_NAMES = new Set<StoryboardClipTransitionName>(
+  STORYBOARD_RENDER_TRANSITION_OPTIONS.map((option) => option.name),
+);
 
 export interface StoryboardClipCandidate {
   id: string;
@@ -15,6 +54,8 @@ export interface StoryboardClipCandidate {
   url: string;
   model?: string;
   durationSeconds?: number;
+  mediaType?: StoryboardClipMediaType;
+  transition?: StoryboardClipTransition;
   generationModelId?: string;
   referenceUrls?: string[];
   generationAspectRatio?: string;
@@ -58,8 +99,46 @@ export interface StoryboardRenderAspectRatioDecision {
 }
 
 function inferFormatFromUrl(url: string): string {
+  const dataUrlMatch = url.match(/^data:([^;,]+)[;,]/i);
+  if (dataUrlMatch?.[1]) {
+    const mime = dataUrlMatch[1].toLowerCase();
+    if (mime === "image/jpeg") return "jpg";
+    const subtype = mime.split("/")[1];
+    if (subtype) return subtype.replace("x-", "");
+  }
   const match = url.match(/\.([a-z0-9]+)(?:\?|#|$)/i);
   return match?.[1]?.toLowerCase() || "mp4";
+}
+
+function inferStoryboardClipMediaType(url: string, explicitType?: StoryboardClipMediaType): StoryboardClipMediaType {
+  if (explicitType === "image" || explicitType === "video") return explicitType;
+  const normalized = url.split("?", 1)[0]?.toLowerCase() ?? "";
+  if (
+    url.startsWith("data:image/")
+    || /\.(jpg|jpeg|png|webp|gif|avif|bmp|tiff|svg)$/i.test(normalized)
+  ) {
+    return "image";
+  }
+  return "video";
+}
+
+export function normalizeStoryboardClipTransition(value: unknown): StoryboardClipTransition | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Partial<StoryboardClipTransition>;
+  const name = record.name;
+  if (!name || !STORYBOARD_RENDER_TRANSITION_NAMES.has(name) || name === "none") {
+    return undefined;
+  }
+  const durationMs = typeof record.durationMs === "number" && Number.isFinite(record.durationMs)
+    ? Math.round(record.durationMs)
+    : STORYBOARD_DEFAULT_TRANSITION_DURATION_MS;
+  return {
+    name,
+    durationMs: Math.min(2000, Math.max(200, durationMs)),
+    alignment: record.alignment === "start" || record.alignment === "end" || record.alignment === "center"
+      ? record.alignment
+      : "center",
+  };
 }
 
 export function getStoryboardRenderResolution(ratio: Exclude<StoryboardRenderAspectRatioMode, "auto">): { width: number; height: number } {
@@ -240,6 +319,7 @@ export function buildStoryboardVideoProject(
   const shouldRemoveDuplicateBoundaryFrames = options.removeDuplicateBoundaryFrames !== false;
   const boundaryFrameDuration = project.settings.fps > 0 ? 1 / project.settings.fps : 1 / 30;
   let cursor = 0;
+  let previousVisibleDuration = 0;
 
   for (let index = 0; index < completed.length; index += 1) {
     const clipSource = completed[index];
@@ -251,16 +331,23 @@ export function buildStoryboardVideoProject(
       ? Math.min(boundaryFrameDuration, Math.max(0, duration - 0.25))
       : 0;
     const visibleDuration = duration - boundaryTrim;
+    const mediaType = inferStoryboardClipMediaType(clipSource.url, clipSource.mediaType);
+    const transition = index > 0 ? normalizeStoryboardClipTransition(clipSource.transition) : undefined;
+    const transitionSeconds = transition
+      ? Math.min(transition.durationMs / 1000, visibleDuration, previousVisibleDuration)
+      : 0;
+    const clipStartTime = Math.max(0, cursor - transitionSeconds);
+    const inferredFormat = inferFormatFromUrl(clipSource.url);
     const mediaAsset: MediaLibraryAsset = {
       id: `storyboard-${clipSource.id}`,
-      type: "video",
+      type: mediaType,
       title: clipSource.prompt.trim().slice(0, 60) || `Clip ${index + 1}`,
       thumbnailUrl: clipSource.url,
       duration,
       url: clipSource.url,
       model: clipSource.model || "",
       createdAt: new Date(clipSource.createdAt || Date.now()),
-      format: inferFormatFromUrl(clipSource.url),
+      format: mediaType === "image" && inferredFormat === "mp4" ? "jpg" : inferredFormat,
       generationPrompt: clipSource.prompt,
       referenceUrls: clipSource.referenceUrls,
       generationModelId: clipSource.generationModelId || clipSource.model,
@@ -269,7 +356,7 @@ export function buildStoryboardVideoProject(
     };
 
     const asset = addAssetToProject(project, mediaAsset, clipSource.url);
-    const clip = addClipToTrack(videoTrack, asset, cursor);
+    const clip = addClipToTrack(videoTrack, asset, clipStartTime);
     clip.groupId = groupId;
     clip.duration = visibleDuration;
     clip.trimOut = visibleDuration;
@@ -284,7 +371,11 @@ export function buildStoryboardVideoProject(
     if (options.muteVideoClipAudio) {
       clip.volume = 0;
     }
-    cursor += visibleDuration;
+    if (transition) {
+      clip.inTransition = transition;
+    }
+    cursor = clipStartTime + visibleDuration;
+    previousVisibleDuration = visibleDuration;
   }
 
   const audioTrack = findTrackByType(project.timeline, "audio");

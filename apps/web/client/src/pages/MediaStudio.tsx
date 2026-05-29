@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { WebAssetResolver } from "@/services/webAssetResolver";
 import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useAuth } from "@/contexts/AuthContext";
@@ -311,10 +312,71 @@ const MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID = "media-products-storyboard-pl
 const COSMATIC_REFERENCE_STORYBOARD_SKILL_ID = "cosmatic-reference-storyboard";
 const FURNITURE_REFERENCE_STORYBOARD_SKILL_ID = "furniture-reference-storyboard";
 const SPLIT_RESULT_REORDER_MIME = "application/x-smartspec-split-result-index";
-const PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS = [
+type ProductionReferenceStoryboardSkillOption = { id: string; label: string };
+const PRODUCTION_REFERENCE_STORYBOARD_SKILL_TAG = "production-reference-storyboard";
+const PRODUCTION_REFERENCE_STORYBOARD_SKILL_ID_PATTERN = /^[a-z0-9][a-z0-9-]*-reference-storyboard$/;
+const PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS: ProductionReferenceStoryboardSkillOption[] = [
   { id: FURNITURE_REFERENCE_STORYBOARD_SKILL_ID, label: "Furniture Reference Storyboard" },
   { id: COSMATIC_REFERENCE_STORYBOARD_SKILL_ID, label: "Cosmatic Reference Storyboard" },
 ];
+const LEGACY_PRODUCTION_REFERENCE_STORYBOARD_SKILL_IDS = new Set(
+  PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS.map((skill) => skill.id),
+);
+
+function isProductionReferenceStoryboardSkillId(skillId: string): boolean {
+  return LEGACY_PRODUCTION_REFERENCE_STORYBOARD_SKILL_IDS.has(skillId)
+    || PRODUCTION_REFERENCE_STORYBOARD_SKILL_ID_PATTERN.test(skillId);
+}
+
+function formatProductionReferenceStoryboardSkillLabel(value: string): string {
+  const text = value.trim();
+  if (!text) return "Reference Storyboard";
+  if (text.includes(" ") && !text.includes("-")) return text;
+  return text
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function hasProductionReferenceStoryboardConfig(configJson: unknown): boolean {
+  if (!configJson || typeof configJson !== "object" || Array.isArray(configJson)) return false;
+  const mediaStudio = (configJson as Record<string, any>).media_studio;
+  if (!mediaStudio || typeof mediaStudio !== "object" || Array.isArray(mediaStudio)) return false;
+  const referenceStoryboard = (mediaStudio as Record<string, any>).production_reference_storyboard;
+  return referenceStoryboard === true
+    || (Boolean(referenceStoryboard) && typeof referenceStoryboard === "object" && referenceStoryboard.enabled === true);
+}
+
+function isProductionReferenceStoryboardCatalogSkill(skill: {
+  id: string;
+  tags?: string[];
+  configJson?: unknown;
+}): boolean {
+  return hasProductionReferenceStoryboardConfig(skill.configJson)
+    || (skill.tags ?? []).includes(PRODUCTION_REFERENCE_STORYBOARD_SKILL_TAG)
+    || LEGACY_PRODUCTION_REFERENCE_STORYBOARD_SKILL_IDS.has(skill.id);
+}
+
+function mergeProductionReferenceStoryboardSkillOptions(
+  dynamicOptions: ProductionReferenceStoryboardSkillOption[],
+): ProductionReferenceStoryboardSkillOption[] {
+  const optionsById = new Map<string, ProductionReferenceStoryboardSkillOption>();
+  for (const option of PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS) {
+    optionsById.set(option.id, option);
+  }
+  for (const option of dynamicOptions) {
+    if (!isProductionReferenceStoryboardSkillId(option.id)) continue;
+    optionsById.set(option.id, option);
+  }
+  return Array.from(optionsById.values()).sort((a, b) => {
+    const legacyRankA = PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS.findIndex((skill) => skill.id === a.id);
+    const legacyRankB = PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS.findIndex((skill) => skill.id === b.id);
+    if (legacyRankA >= 0 || legacyRankB >= 0) {
+      return (legacyRankA >= 0 ? legacyRankA : Number.MAX_SAFE_INTEGER)
+        - (legacyRankB >= 0 ? legacyRankB : Number.MAX_SAFE_INTEGER);
+    }
+    return a.label.localeCompare(b.label);
+  });
+}
 
 function applyStoryboardPromptDuration(prompt: string, durationSeconds: number): string {
   const duration = Math.max(1, Math.round(durationSeconds));
@@ -324,7 +386,7 @@ function applyStoryboardPromptDuration(prompt: string, durationSeconds: number):
 
 function normalizeProductionReferenceStoryboardSkillId(value: unknown): string | null {
   const skillId = typeof value === "string" ? value.trim() : "";
-  return PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS.some((skill) => skill.id === skillId) ? skillId : null;
+  return isProductionReferenceStoryboardSkillId(skillId) ? skillId : null;
 }
 
 function detectProductionReferenceStoryboardSkillId(space: ProductionSpace | null | undefined): string {
@@ -400,6 +462,7 @@ type MarketplaceStudioImage = {
   externalProductId?: string | null;
   externalShopId?: string | null;
   sourceUrl: string;
+  affiliateUrl?: string | null;
   imageType: string;
   url: string;
   width?: number | null;
@@ -417,6 +480,7 @@ type MarketplaceStudioProduct = {
   brand?: string | null;
   shopName?: string | null;
   sourceUrl?: string | null;
+  affiliateUrl?: string | null;
   externalProductId?: string | null;
   externalShopId?: string | null;
   categoryText?: string | null;
@@ -444,6 +508,7 @@ type MarketplaceProductReferenceContext = {
   shopId?: string | null;
   itemId?: string | null;
   sourceUrl?: string | null;
+  affiliateUrl?: string | null;
   priceCurrent?: string | number | null;
   priceOriginal?: string | number | null;
   currency?: string | null;
@@ -477,11 +542,25 @@ function isLikelyTaskNotFoundError(error: unknown): boolean {
 }
 
 function isProductionSpaceVersionStaleError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  const causeReason = typeof error === "object" && error
-    ? String((error as { data?: { cause?: { reason?: unknown } }; cause?: { reason?: unknown } }).data?.cause?.reason ?? (error as { cause?: { reason?: unknown } }).cause?.reason ?? "")
-    : "";
-  return `${causeReason} ${message}`.includes("space_version_stale");
+  const details = error as {
+    message?: unknown;
+    data?: { message?: unknown; cause?: unknown };
+    cause?: unknown;
+  };
+  const cause = details?.data?.cause ?? details?.cause;
+  let causeText = String(cause ?? "");
+  if (typeof cause === "object" && cause) {
+    try {
+      causeText = JSON.stringify(cause);
+    } catch {
+      causeText = String(cause);
+    }
+  }
+  return [
+    details?.message,
+    details?.data?.message,
+    causeText,
+  ].some((value) => String(value ?? "").includes("space_version_stale"));
 }
 
 function rebaseProductionSpaceChangedFields(
@@ -813,6 +892,7 @@ function buildProductTruthFromMarketplaceContext(
     shopId: context.shopId,
     itemId: context.itemId,
     sourceUrl: context.sourceUrl,
+    affiliateUrl: context.affiliateUrl,
     price: compactObject({
       current: context.priceCurrent,
       original: context.priceOriginal,
@@ -1020,6 +1100,7 @@ function buildProductionProductTruthContext(params: {
       productName: params.handoff.productName,
       platform: params.handoff.platform,
       sourceUrl: params.handoff.sourceUrl,
+      affiliateUrl: params.handoff.affiliateUrl ?? null,
       readiness: params.handoff.readiness,
       storyFormat: params.handoff.storyFormat,
       customerJourneyStages: params.handoff.customerJourneyStages,
@@ -1124,6 +1205,7 @@ type PrimaryProductPlanningContext = {
   platform: string;
   productName: string;
   sourceUrl: string;
+  affiliateUrl: string;
   brand: string;
   shopName: string;
   externalProductId: string;
@@ -1399,6 +1481,7 @@ function getPrimaryProductPlanningContext(productTruthContext: Record<string, un
     platform: readStringValue(truth, "platform"),
     productName: firstNonEmpty(readStringValue(truth, "productName"), readStringValue(primaryAsset, "title"), goal.title, goal.summary),
     sourceUrl: readStringValue(truth, "sourceUrl"),
+    affiliateUrl: readStringValue(truth, "affiliateUrl"),
     brand: readStringValue(truth, "brand"),
     shopName: readStringValue(truth, "shopName"),
     externalProductId: readStringValue(truth, "itemId"),
@@ -2686,6 +2769,7 @@ function buildMarketplaceHandoffFromStoryConcepts(params: {
 }): MarketplaceStorytellingHandoff | null {
   const context = getPrimaryProductPlanningContext(params.productTruthContext, params.goal);
   const sourceUrl = context.sourceUrl;
+  const affiliateUrl = context.affiliateUrl || null;
   const platform = context.platform === "tiktok_shop" ? "tiktok_shop" : "shopee";
   if (!sourceUrl || !/^https?:\/\//i.test(sourceUrl)) return null;
   const evidenceIds = ["title:product", "description:product", "image:product"];
@@ -2723,6 +2807,7 @@ function buildMarketplaceHandoffFromStoryConcepts(params: {
     insightIds: [],
     productName: context.productName || params.goal.title || params.goal.summary.slice(0, 120) || "Marketplace product",
     sourceUrl,
+    affiliateUrl,
     platform,
     storyFormat: "customer_journey",
     readiness: "ready_with_warnings",
@@ -2764,6 +2849,7 @@ function buildMediaStudioStorytellingInsightSyncRequest(params: {
     source: {
       platform: params.handoff.platform,
       url: params.handoff.sourceUrl,
+      affiliateUrl: params.handoff.affiliateUrl ?? undefined,
       capturedAt: new Date().toISOString(),
       marketplaceProductId: context.productId || undefined,
     },
@@ -2801,6 +2887,43 @@ const MEDIA_STUDIO_RIGHT_PANEL_COLLAPSED_KEY = "smartspec_media_studio_right_pan
 const HISTORY_GALLERY_MEDIA_TASK_MAX = 100;
 const HISTORY_GALLERY_PUBLIC_GALLERY_MAX = 100;
 const HISTORY_GALLERY_SHARED_GROUP_MAX = 50;
+const mediaStudioGeneratedAssetResolver = new WebAssetResolver();
+
+function isManagedMediaStudioAssetUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (
+    trimmed.startsWith("/api/storage/files/")
+    || trimmed.startsWith("/uploads/")
+    || trimmed.startsWith("/api/v1/media/files/")
+    || trimmed.startsWith("data:")
+    || trimmed.startsWith("blob:")
+  ) {
+    return true;
+  }
+  if (typeof window === "undefined" || !/^https?:\/\//i.test(trimmed)) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.origin === window.location.origin
+      && (
+        parsed.pathname.startsWith("/api/storage/files/")
+        || parsed.pathname.startsWith("/uploads/")
+        || parsed.pathname.startsWith("/api/v1/media/files/")
+      );
+  } catch {
+    return false;
+  }
+}
+
+async function persistGeneratedStoryboardAudioUrl(url: string): Promise<string> {
+  const normalizedUrl = url.trim();
+  if (!/^https?:\/\//i.test(normalizedUrl) || isManagedMediaStudioAssetUrl(normalizedUrl)) {
+    return normalizedUrl;
+  }
+  const result = await mediaStudioGeneratedAssetResolver.importRemoteAsset(normalizedUrl, { mediaType: "audio" });
+  return result.uri;
+}
 
 function getDefaultSplitToolsPanelWidth(): number {
   if (typeof window === "undefined") return 560;
@@ -2903,6 +3026,7 @@ function buildMarketplaceStorytellingPrompt(handoff: MarketplaceStorytellingHand
   return [
     `Marketplace Product Storytelling Draft: ${handoff.productName}`,
     `Source: ${handoff.sourceUrl}`,
+    handoff.affiliateUrl ? `Affiliate: ${handoff.affiliateUrl}` : "",
     `Format: ${handoff.storyFormat}`,
     `Readiness: ${handoff.readiness}`,
     `Customer journey: ${handoff.customerJourneyStages.join(" -> ")}`,
@@ -2923,6 +3047,7 @@ function buildMarketplaceStorytellingReferenceImages(handoff: MarketplaceStoryte
         platform: handoff.platform,
         productName: handoff.productName,
         sourceUrl: handoff.sourceUrl,
+        affiliateUrl: handoff.affiliateUrl ?? null,
       },
     }));
 }
@@ -3396,6 +3521,11 @@ const MEDIA_STUDIO_AUTO_LEARNING_SKILLS = new Set([
   "furniture-reference-storyboard",
 ]);
 
+function isMediaStudioAutoLearningSkill(skillId: string): boolean {
+  return MEDIA_STUDIO_AUTO_LEARNING_SKILLS.has(skillId)
+    || isProductionReferenceStoryboardSkillId(skillId);
+}
+
 function getMediaStudioAutoLearningConfig(configJson: unknown) {
   const root = configJson && typeof configJson === "object" && !Array.isArray(configJson)
     ? configJson as Record<string, any>
@@ -3765,7 +3895,7 @@ function buildSkillImprovementProposalFromPromptReview(input: {
   referenceImageCount: number;
   locale: PromptReviewLocale;
 }): MediaStudioSkillImprovementProposal | null {
-  if (!MEDIA_STUDIO_AUTO_LEARNING_SKILLS.has(input.skillId)) {
+  if (!isMediaStudioAutoLearningSkill(input.skillId)) {
     return null;
   }
 
@@ -6366,6 +6496,7 @@ export default function MediaStudio() {
             platform: handoff.platform,
             productName: handoff.productName,
               sourceUrl: handoff.sourceUrl,
+              affiliateUrl: handoff.affiliateUrl ?? null,
             },
           },
           geminiOmni: {
@@ -6379,6 +6510,7 @@ export default function MediaStudio() {
               productTruthNotes: prev.video.geminiOmni.productionDirector.productTruthNotes || [
                 `Product: ${handoff.productName}`,
                 `Source: ${handoff.sourceUrl}`,
+                handoff.affiliateUrl ? `Affiliate: ${handoff.affiliateUrl}` : "",
                 `Readiness: ${handoff.readiness}`,
                 `Supported claims: ${handoff.claims.filter((claim) => claim.status === "supported" || claim.status === "user_approved").map((claim) => claim.text).join("; ") || "none"}`,
               ].join("\n"),
@@ -7057,6 +7189,7 @@ export default function MediaStudio() {
   const isDesktopPlatform = skillRuntimePlatform === "tauri";
   // Fetch user-visible skills (respects per-user visibility settings)
   const { data: userVisibleSkillsRaw } = trpc.skills.getUserVisibleSkills.useQuery({
+    limit: 100,
     platform: skillRuntimePlatform,
     origin: "chat",
   });
@@ -7074,6 +7207,7 @@ export default function MediaStudio() {
       creditMultiplier: Number(s.creditMultiplier) || 1,
       enabledByDefault: s.enabledByDefault ?? true,
       priority: s.priority ?? 50,
+      tags: Array.isArray((s as any).tags) ? (s as any).tags.map(String) : [],
       configJson: (s as any).configJson ?? null,
       hasSkillFile: false,
       nativeBundleReady: Boolean((s as any).nativeBundleReady),
@@ -7084,6 +7218,15 @@ export default function MediaStudio() {
       executionMode: s.executionMode || "llm-only",
     }));
   }, [userVisibleSkillsRaw]);
+  const productionReferenceStoryboardSkillOptions = useMemo(() => {
+    const dynamicOptions = (skillsList ?? [])
+      .filter(isProductionReferenceStoryboardCatalogSkill)
+      .map((skill) => ({
+        id: skill.id,
+        label: formatProductionReferenceStoryboardSkillLabel(skill.name || skill.id),
+      }));
+    return mergeProductionReferenceStoryboardSkillOptions(dynamicOptions);
+  }, [skillsList]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
   const { data: imageMediaModels } = trpc.mediaModels.list.useQuery({ type: "image" });
   const { data: videoMediaModels } = trpc.mediaModels.list.useQuery({ type: "video" });
@@ -7723,6 +7866,7 @@ export default function MediaStudio() {
       shopId: item.externalShopId || meta?.externalShopId || null,
       itemId: item.externalProductId || meta?.externalProductId || null,
       sourceUrl: ("sourceUrl" in item ? item.sourceUrl : null) || meta?.sourceProductUrl || null,
+      affiliateUrl: ("affiliateUrl" in item ? item.affiliateUrl : null) || meta?.affiliateUrl || null,
       priceCurrent: item.priceCurrent ?? meta?.priceCurrent ?? meta?.price?.current ?? null,
       priceOriginal: item.priceOriginal ?? meta?.priceOriginal ?? meta?.price?.original ?? null,
       currency: item.currency ?? meta?.currency ?? meta?.price?.currency ?? null,
@@ -7772,6 +7916,12 @@ export default function MediaStudio() {
         patch.url = context.sourceUrl;
       }
 
+      if (context.affiliateUrl) {
+        patch.affiliate_url = context.affiliateUrl;
+        patch.product_affiliate_url = context.affiliateUrl;
+        patch.marketplace_affiliate_url = context.affiliateUrl;
+      }
+
       // Marketplace Platform Aliases
       if (context.platform) {
         patch.marketplace_platform = context.platform;
@@ -7800,18 +7950,20 @@ export default function MediaStudio() {
     const shopId = String(values.product_shop_id ?? values.marketplace_shop_id ?? values.shop_id ?? "").trim();
     const itemId = String(values.product_item_id ?? values.marketplace_item_id ?? values.item_id ?? values.product_id ?? "").trim();
     const sourceUrl = String(values.product_source_url ?? values.marketplace_source_url ?? values.source_url ?? values.product_url ?? values.url ?? "").trim();
+    const affiliateUrl = String(values.affiliate_url ?? values.product_affiliate_url ?? values.marketplace_affiliate_url ?? "").trim();
     const rawPlatform = String(values.marketplace_platform ?? values.platform ?? "").trim();
     const shopName = String(values.product_shop_name ?? values.shop_name ?? values.marketplace_shop_name ?? "").trim();
     const productName = String(values.product_title ?? values.product_name ?? values.marketplace_product_title ?? values.title ?? "").trim();
     const productId = String(values.marketplace_capture_product_id ?? values.capture_product_id ?? "").trim();
     const platform = rawPlatform === "tiktok_shop" || rawPlatform === "shopee" ? rawPlatform : "shopee";
-    if (!shopId && !itemId && !sourceUrl && !shopName && !productName && !productId) return null;
+    if (!shopId && !itemId && !sourceUrl && !affiliateUrl && !shopName && !productName && !productId) return null;
     return {
       productId: productId || null,
       platform,
       shopId: shopId || null,
       itemId: itemId || null,
       sourceUrl: sourceUrl || null,
+      affiliateUrl: affiliateUrl || null,
       shopName: shopName || null,
       productName: productName || null,
     };
@@ -7838,6 +7990,7 @@ export default function MediaStudio() {
       shopId: typeof context.shopId === "string" ? context.shopId : null,
       itemId: typeof context.itemId === "string" ? context.itemId : null,
       sourceUrl: typeof context.sourceUrl === "string" ? context.sourceUrl : null,
+      affiliateUrl: typeof context.affiliateUrl === "string" ? context.affiliateUrl : null,
     };
   }, []);
   const isMarketplaceImagesLoading = marketplaceImagesQuery.isLoading;
@@ -9703,12 +9856,14 @@ export default function MediaStudio() {
       const platform = parsed.platform === "shopee" || parsed.platform === "tiktok_shop" ? parsed.platform : null;
       if (!platform) return null;
       return {
+        productId: typeof parsed.productId === "string" ? parsed.productId : null,
         platform,
         productName: typeof parsed.productName === "string" ? parsed.productName : null,
         shopName: typeof parsed.shopName === "string" ? parsed.shopName : null,
         shopId: typeof parsed.shopId === "string" ? parsed.shopId : null,
         itemId: typeof parsed.itemId === "string" ? parsed.itemId : null,
         sourceUrl: typeof parsed.sourceUrl === "string" ? parsed.sourceUrl : null,
+        affiliateUrl: typeof parsed.affiliateUrl === "string" ? parsed.affiliateUrl : null,
       };
     } catch {
       return null;
@@ -10118,7 +10273,7 @@ export default function MediaStudio() {
         ...(Object.keys(segmentExtraParams).length > 0 ? { extraParams: segmentExtraParams } : {}),
         ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
       });
-      const audioUrl = await pollAudioTaskResult(submittedTask);
+      const audioUrl = await persistGeneratedStoryboardAudioUrl(await pollAudioTaskResult(submittedTask));
       const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, segment.targetDurationSeconds);
       const audio: StoryboardCompanionAudioCandidate = {
         id: `prepared-voiceover-generated-${Date.now()}-${segment.index}`,
@@ -11564,7 +11719,7 @@ export default function MediaStudio() {
             : {}),
           ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
         });
-        const audioUrl = await pollAudioTaskResult(task);
+        const audioUrl = await persistGeneratedStoryboardAudioUrl(await pollAudioTaskResult(task));
         const audioTargetDurationSeconds = params.targetDurationSeconds ?? targetDurationSeconds;
         const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, audioTargetDurationSeconds);
         return {
@@ -13866,7 +14021,7 @@ export default function MediaStudio() {
         ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
         ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
       });
-      const audioUrl = await pollAudioTaskResult(submittedTask);
+      const audioUrl = await persistGeneratedStoryboardAudioUrl(await pollAudioTaskResult(submittedTask));
       const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, targetDurationSeconds);
       const audioUpdatedAt = Date.now();
       const updatedAudio: StoryboardCompanionAudioCandidate = {
@@ -15050,6 +15205,18 @@ export default function MediaStudio() {
               {isThaiLocale ? "รายละเอียดสินค้า" : "Product detail"}
             </Button>
           )}
+          {context.affiliateUrl && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 gap-1 border-emerald-200 bg-white/80 text-emerald-800 hover:bg-emerald-50"
+              onClick={() => navigator.clipboard?.writeText(context.affiliateUrl || "")}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {isThaiLocale ? "คัดลอก affiliate" : "Copy affiliate"}
+            </Button>
+          )}
         </div>
         <div className="grid gap-2 text-xs text-sky-950 sm:grid-cols-2 lg:grid-cols-3">
           <div>
@@ -15082,6 +15249,24 @@ export default function MediaStudio() {
                   onClick={() => window.open(context.sourceUrl || "", "_blank", "noopener,noreferrer")}
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <span className="text-sky-800/70">affiliate URL</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-medium">{context.affiliateUrl || "-"}</span>
+              {context.affiliateUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 text-emerald-800"
+                  title={isThaiLocale ? "คัดลอก affiliate link" : "Copy affiliate link"}
+                  onClick={() => navigator.clipboard?.writeText(context.affiliateUrl || "")}
+                >
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
@@ -15839,6 +16024,7 @@ export default function MediaStudio() {
           productName: marketplaceHandoff.productName,
           platform: marketplaceHandoff.platform,
           sourceUrl: marketplaceHandoff.sourceUrl,
+          affiliateUrl: marketplaceHandoff.affiliateUrl ?? null,
           readiness: marketplaceHandoff.readiness,
           storyFormat: marketplaceHandoff.storyFormat,
           customerJourneyStages: marketplaceHandoff.customerJourneyStages,
@@ -15951,45 +16137,43 @@ export default function MediaStudio() {
         }
         return savedSpace;
       };
-      try {
-        const spaceToSave = sanitizeProductionSpaceWarnings(latestProductionSpaceDraftRef.current ?? sanitizedNextSpace);
-        const expectedVersion = latestPersistedProductionSpaceVersionRef.current || Number(spaceToSave.version ?? 0);
-        const saved = await saveProductionSpaceMutation.mutateAsync({
-          productionRunId: spaceToSave.productionRunId,
-          expectedVersion,
-          space: spaceToSave,
-          changedFields,
-        });
-        const savedSpace = applySavedSpace((saved as any)?.space as ProductionSpace | undefined, spaceToSave);
-        if (successMessage && productionSpaceDraftRevisionRef.current === draftRevision) toast.success(successMessage);
-        return savedSpace;
-      } catch (error) {
-        if (isProductionSpaceVersionStaleError(error)) {
+      let spaceToSave = sanitizeProductionSpaceWarnings(latestProductionSpaceDraftRef.current ?? sanitizedNextSpace);
+      let expectedVersion = latestPersistedProductionSpaceVersionRef.current || Number(spaceToSave.version ?? 0);
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const saved = await saveProductionSpaceMutation.mutateAsync({
+            productionRunId: spaceToSave.productionRunId,
+            expectedVersion,
+            space: spaceToSave,
+            changedFields,
+          });
+          const savedSpace = applySavedSpace((saved as any)?.space as ProductionSpace | undefined, spaceToSave);
+          if (successMessage && productionSpaceDraftRevisionRef.current === draftRevision) toast.success(successMessage);
+          return savedSpace;
+        } catch (error) {
+          if (!isProductionSpaceVersionStaleError(error) || attempt >= 2) {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(message);
+            throw error;
+          }
           const latestResult = await productionSpaceQuery.refetch();
           const latestSpace = (latestResult.data as any)?.space as ProductionSpace | undefined;
-          if (latestSpace?.schemaVersion === "1.0.0") {
-            latestPersistedProductionSpaceVersionRef.current = Number(latestSpace.version ?? latestPersistedProductionSpaceVersionRef.current);
-            const localDraft = latestProductionSpaceDraftRef.current ?? sanitizedNextSpace;
-            const rebasedSpace = sanitizeProductionSpaceWarnings(rebaseProductionSpaceChangedFields(latestSpace, localDraft, changedFields));
-            latestProductionSpaceDraftRef.current = rebasedSpace;
-            setProductionSpaceDraft(rebasedSpace);
-            const saved = await saveProductionSpaceMutation.mutateAsync({
-              productionRunId: rebasedSpace.productionRunId,
-              expectedVersion: Number(latestSpace.version ?? 0),
-              space: rebasedSpace,
-              changedFields,
-            });
-            const savedSpace = applySavedSpace((saved as any)?.space as ProductionSpace | undefined, rebasedSpace);
-            if (successMessage && productionSpaceDraftRevisionRef.current === draftRevision) toast.success(successMessage);
-            return savedSpace;
+          if (latestSpace?.schemaVersion !== "1.0.0") {
+            const message = error instanceof Error ? error.message : String(error);
+            toast.error(message);
+            throw error;
           }
+          latestPersistedProductionSpaceVersionRef.current = Number(latestSpace.version ?? latestPersistedProductionSpaceVersionRef.current);
+          const localDraft = latestProductionSpaceDraftRef.current ?? spaceToSave;
+          spaceToSave = sanitizeProductionSpaceWarnings(rebaseProductionSpaceChangedFields(latestSpace, localDraft, changedFields));
+          latestProductionSpaceDraftRef.current = spaceToSave;
+          setProductionSpaceDraft(spaceToSave);
+          expectedVersion = Number(latestSpace.version ?? 0);
         }
-        const message = error instanceof Error ? error.message : String(error);
-        toast.error(message);
-        throw error;
-      } finally {
-        pendingProductionSpaceSaveCountRef.current = Math.max(0, pendingProductionSpaceSaveCountRef.current - 1);
       }
+      return spaceToSave;
+    }).finally(() => {
+      pendingProductionSpaceSaveCountRef.current = Math.max(0, pendingProductionSpaceSaveCountRef.current - 1);
     });
     productionSpaceSaveChainRef.current = saveAfterPrevious.then(() => undefined, () => undefined);
     return saveAfterPrevious;
@@ -20746,7 +20930,7 @@ export default function MediaStudio() {
                   imageModelOptions={productionImageModelOptions}
                   videoModelOptions={productionVideoModelOptions}
                   storyboardReferenceSkillId={productionShotReferenceStoryboardSkillId}
-                  storyboardReferenceSkillOptions={PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS}
+                  storyboardReferenceSkillOptions={productionReferenceStoryboardSkillOptions}
                   onStoryboardReferenceSkillChange={updateProductionShotReferenceStoryboardSkill}
                   onGenerationDefaultChange={updateProductionGenerationDefaults}
                   onArchiveProject={() => runProductionLifecycleAction("archive")}
@@ -20895,7 +21079,7 @@ export default function MediaStudio() {
                   onUpdateStoryboardPrompt={updateProductionStoryboardPrompt}
                   shotGenerationState={productionShotGenerationState}
                   storyboardReferenceSkillId={productionShotReferenceStoryboardSkillId}
-                  storyboardReferenceSkillOptions={PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS}
+                  storyboardReferenceSkillOptions={productionReferenceStoryboardSkillOptions}
                   onStoryboardReferenceSkillChange={updateProductionShotReferenceStoryboardSkill}
                   onGenerateShotReferencePrompt={(shotId, skillId, prompt) => void generateProductionShotReferencePrompt(shotId, skillId, prompt)}
                   onGenerateShotStoryboardGridImage={(shotId, skillId, prompt) => void generateProductionShotStoryboardGridImageDirect(shotId, skillId, prompt)}
@@ -24714,6 +24898,18 @@ export default function MediaStudio() {
                               <ExternalLink className="h-4 w-4" />
                             </Button>
                           )}
+                          {selectedMarketplaceProduct.affiliateUrl && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 shrink-0 text-emerald-700"
+                              title={isThaiLocale ? "คัดลอก affiliate link" : "Copy affiliate link"}
+                              onClick={() => navigator.clipboard?.writeText(selectedMarketplaceProduct.affiliateUrl || "")}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -24834,6 +25030,22 @@ export default function MediaStudio() {
                                     >
                                       <ExternalLink className="h-3 w-3" />
                                       {isThaiLocale ? "สินค้า" : "Product"}
+                                    </Button>
+                                  )}
+                                  {product.affiliateUrl && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 gap-1 px-2 text-[11px] text-emerald-700"
+                                      title={isThaiLocale ? "คัดลอก affiliate link" : "Copy affiliate link"}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        navigator.clipboard?.writeText(product.affiliateUrl || "");
+                                      }}
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                      {isThaiLocale ? "Affiliate" : "Affiliate"}
                                     </Button>
                                   )}
                                 </div>

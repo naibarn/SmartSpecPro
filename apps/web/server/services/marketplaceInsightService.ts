@@ -187,7 +187,7 @@ function normalizeProductBriefFromServer(value: unknown, source: SanitizedLocalA
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const normalized = productBriefSchema.parse({
     schemaVersion: "1.0",
-    source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl },
+    source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
     productName: cleanText(raw.productName || source.product.title || source.pageTitle, 300) || "Untitled product",
     category: cleanText(raw.category || source.product.category, 200) || undefined,
     shortSummary: cleanText(raw.shortSummary, 800) || cleanText(source.product.description || source.product.title, 500),

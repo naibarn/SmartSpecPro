@@ -8,6 +8,7 @@ export interface ProductFormValue {
   currency: string;
   discountText: string;
   commissionRatePercent: string;
+  affiliateUrl: string;
   ratingScore: string;
   reviewCountText: string;
   soldCountText: string;
@@ -35,6 +36,7 @@ export function productFormFromExtraction(llm: any): ProductFormValue {
     currency: String(llm?.price?.currency ?? "THB"),
     discountText: String(llm?.price?.discountText ?? ""),
     commissionRatePercent: llm?.commissionRatePercent != null ? String(llm.commissionRatePercent) : "",
+    affiliateUrl: String(llm?.affiliateUrl ?? llm?.platformRawJson?.affiliateUrl ?? ""),
     ratingScore: llm?.rating?.score != null ? String(llm.rating.score) : "",
     reviewCountText: String(llm?.rating?.reviewCountText ?? ""),
     soldCountText: String(llm?.rating?.soldCountText ?? ""),
@@ -81,6 +83,7 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
         discountText: form.discountText || null,
       },
       commissionRatePercent: numberOrNull(form.commissionRatePercent),
+      affiliateUrl: form.affiliateUrl || null,
       rating: {
         score: numberOrNull(form.ratingScore),
         reviewCountText: form.reviewCountText || null,
@@ -102,7 +105,7 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
         },
       },
       images: imageSelection,
-      platformRawJson,
+      platformRawJson: { ...platformRawJson, affiliateUrl: form.affiliateUrl || null },
     },
   };
 }
@@ -177,6 +180,20 @@ export function ProductExtractedForm({
         <label className={labelClass}>Currency<input className={inputClass} value={value.currency} onChange={(e) => update("currency", e.target.value)} /></label>
         <label className={labelClass}>Discount<input className={inputClass} value={value.discountText} onChange={(e) => update("discountText", e.target.value)} /></label>
         <label className={labelClass}>Commission rate (%)<input className={inputClass} inputMode="decimal" value={value.commissionRatePercent} onChange={(e) => update("commissionRatePercent", e.target.value)} /></label>
+        <label className={labelClass}>Affiliate link
+          <div className="mt-1 flex gap-2">
+            <input className="w-full rounded-md border px-3 py-2 text-sm" value={value.affiliateUrl} onChange={(e) => update("affiliateUrl", e.target.value)} placeholder="https://s.shopee.co.th/..." />
+            <button
+              type="button"
+              className="rounded-md border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              disabled={!value.affiliateUrl.trim()}
+              onClick={() => navigator.clipboard?.writeText(value.affiliateUrl.trim())}
+            >
+              Copy
+            </button>
+          </div>
+          {fieldMeta("affiliateUrl")}
+        </label>
         <label className={labelClass}>Rating score<input className={inputClass} value={value.ratingScore} onChange={(e) => update("ratingScore", e.target.value)} />{fieldMeta("rating")}</label>
         <label className={labelClass}>Review count<input className={inputClass} value={value.reviewCountText} onChange={(e) => update("reviewCountText", e.target.value)} /></label>
         <label className={labelClass}>Sold count<input className={inputClass} value={value.soldCountText} onChange={(e) => update("soldCountText", e.target.value)} />{fieldMeta("soldCount")}</label>

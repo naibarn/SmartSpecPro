@@ -134,6 +134,43 @@ describe("buildStoryboardVideoProject", () => {
     expect(project?.settings.height).toBe(1920);
   });
 
+  it("builds imported still images as image assets with configured duration and render transitions", () => {
+    const project = buildStoryboardVideoProject([
+      {
+        id: "still-a",
+        prompt: "Uploaded still image",
+        url: "https://cdn.example.com/still-a",
+        mediaType: "image",
+        durationSeconds: 6,
+        generationAspectRatio: "9:16",
+      },
+      {
+        id: "still-b",
+        prompt: "Second still image",
+        url: "https://cdn.example.com/still-b",
+        mediaType: "image",
+        durationSeconds: 4,
+        transition: { name: "smoothLeft", durationMs: 750, alignment: "center" },
+        generationAspectRatio: "9:16",
+      },
+    ]);
+
+    const videoTrack = project?.timeline.tracks.find((track) => track.type === "video");
+    const firstClip = videoTrack?.clips[0];
+    const secondClip = videoTrack?.clips[1];
+    const firstAsset = firstClip ? project?.assets[firstClip.assetId] : undefined;
+    const secondAsset = secondClip ? project?.assets[secondClip.assetId] : undefined;
+
+    expect(firstAsset?.type).toBe("image");
+    expect(secondAsset?.type).toBe("image");
+    expect(firstClip?.duration).toBeCloseTo(6, 6);
+    expect(firstClip?.trimOut).toBeCloseTo(6, 6);
+    expect(secondClip?.startTime).toBeCloseTo(5.25, 6);
+    expect(secondClip?.duration).toBeCloseTo(4, 6);
+    expect(secondClip?.inTransition).toEqual({ name: "smoothLeft", durationMs: 750, alignment: "center" });
+    expect(project?.settings.duration).toBeCloseTo(9.25, 6);
+  });
+
   it("infers final render orientation from selected clips and allows explicit override", () => {
     const clips = [
       {
