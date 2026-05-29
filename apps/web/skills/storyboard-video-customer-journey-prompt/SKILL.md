@@ -67,6 +67,14 @@ Each slot prompt must:
 - avoid visible captions, subtitles, UI, price badges, new readable text, or extra labels unless already visible in the frames
 - be concise enough for Veo/Kling-style image-to-video generation, but specific enough to preserve product fidelity
 
+## Prompt Length and Deduplication Requirements
+
+- Keep each `video_prompt` concise, normally under 1,500 characters.
+- Do not paste product metadata, product facts lock, production concept, storyboard guide, planner options, or JSON verbatim into a slot prompt.
+- Use product/concept facts as a short lock once when needed, then focus the rest of the prompt on this slot's visible start/end frames and motion.
+- Never repeat the same product facts in Scene, Action, Camera, and Storyboard guide wording inside the same prompt.
+- Do not include a separate "Storyboard guide" paragraph inside `video_prompt`; convert the guide into concrete shot direction instead.
+
 Good slot prompts name the visible subject, product placement, hand/action, room/prop context, and endpoint state when those details are present. If the two frames are nearly identical, use subtle push-in, parallax, lighting shift, hand micro-movement, or product-settling motion instead of inventing new objects or actions.
 
 Every `video_prompt` must use this Veo 3.1 structure:
@@ -97,15 +105,19 @@ Dialogue:
 ## Voiceover Requirements
 
 If `includeVoiceover` is true:
-- create a natural spoken script per slot
+- create a natural spoken script per slot using the same customer-facing spoken-copy quality bar as `elevenlabs-beauty-dialogue`
 - use `speechMode` / `speechLanguage` when provided. `th` means Thai, `en` means English, and `other` means the caller-provided language.
+- use the selected Production Director concept/customer journey as the main source of the speech angle, so different selected concepts produce meaningfully different spoken content
 - make the script continuous across slots as one ordered story, not separate standalone taglines
 - plan the full speech arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot
 - make each slot line naturally follow the previous slot and set up the next slot; avoid repeating the same opening phrase, benefit, or claim
-- size the full narration to the total storyboard duration. Use each slot's `durationSeconds` as that slot's speech budget; if a slot duration is missing, assume 8 seconds.
-- keep it natural for the slot duration. For an 8-10 second shot, write a line intended to fill most of that slot's speech time without rushed delivery.
+- size the full narration to the total storyboard duration while avoiding empty silence at the end of clips. Use each slot's `speechBudgetSeconds` when provided; otherwise treat `durationSeconds` as the clip length and write slightly fuller spoken content.
+- for an 8-second shot, target about 9-10 seconds of natural spoken content. Veo 3.1 can complete a slightly longer line; avoid short 5-6 second dialogue that leaves a silent tail.
 - align the spoken line with the visible shot, customer journey stage, concept/details guideline, and video_prompt
 - write only the spoken line, not visual direction, in `voiceover_script`
+- use short, speakable ad-read phrasing: one idea per sentence, concrete pain or desired outcome, grounded benefit, and a natural close
+- for Thai, write natural central-Thai shopping-video speech, not formal presenter copy. Avoid stiff phrases such as `ปัญหาหน้างาน`, `ทางออกที่ใช้งานได้จริง`, `รายละเอียดสินค้า`, `จุดขายหลักคือ`, or `PRODUCT FACTS LOCK`
+- do not include `Speaker 1:`, `Speaker 2:`, ElevenLabs bracket audio tags, planning labels, timecodes, markdown, or visual-only directions in `voiceover_script`; native video prompts need clean spoken text inside the quoted dialogue
 - also include the same spoken line inside `video_prompt` under the `Dialogue:` section as a native-audio instruction. For Thai, the prompt must contain `Presenter พูดเป็นภาษาไทยว่า "[short Thai line]"`. For English, use `Presenter says, clearly: "[short English line]"`.
 - avoid fake discounts, fake guarantees, or unsupported claims
 - focus on benefit, use case, product detail, and emotional reason to buy

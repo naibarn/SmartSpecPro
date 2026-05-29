@@ -1971,8 +1971,12 @@ export default function StoryboardReviewPage() {
           .filter(Boolean)
           .join("\n");
       const editedVoiceoverFullScript = String(draft.voiceoverFullScript ?? "").trim();
-      const voiceoverFullScript = editedVoiceoverFullScript || existingVoiceoverFullScript;
       const useVoiceoverScriptAsConcept = Boolean(draft.useVoiceoverScriptAsConcept && editedVoiceoverFullScript);
+      const voiceoverFullScript = useVoiceoverScriptAsConcept
+        ? editedVoiceoverFullScript
+        : targetTaskId
+          ? (editedVoiceoverFullScript || existingVoiceoverFullScript)
+          : "";
       const effectiveConceptDetails = useVoiceoverScriptAsConcept
         ? editedVoiceoverFullScript
         : (draft.conceptDetails ?? "");

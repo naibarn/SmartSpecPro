@@ -84,6 +84,13 @@ _MODEL_RESOLUTION_STATS = {
     "passthrough_model": 0,
 }
 
+_INTERNAL_EXTRA_PARAM_KEYS = {
+    "marketplaceContext",
+    "marketplaceProduct",
+    "marketplace_context",
+    "marketplace_product",
+}
+
 
 def get_model_resolution_stats() -> dict[str, int]:
     """Expose model-resolution counters for observability/tests."""
@@ -94,6 +101,19 @@ def reset_model_resolution_stats() -> None:
     """Reset model-resolution counters."""
     for key in _MODEL_RESOLUTION_STATS:
         _MODEL_RESOLUTION_STATS[key] = 0
+
+
+def _iter_provider_extra_params(extra_params: Any):
+    if not isinstance(extra_params, dict):
+        return
+
+    for key, value in extra_params.items():
+        if value is None:
+            continue
+        normalized_key = str(key)
+        if normalized_key.startswith("__") or normalized_key in _INTERNAL_EXTRA_PARAM_KEYS:
+            continue
+        yield key, value
 
 
 def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str | None:
@@ -1382,10 +1402,8 @@ class KieAIProvider:
             input_params["num_images"] = kwargs["num_images"]
 
         # Merge extra_params from configJson-based dynamic fields
-        if extra_params and isinstance(extra_params, dict):
-            for key, value in extra_params.items():
-                if value is not None:
-                    input_params[key] = value
+        for key, value in _iter_provider_extra_params(extra_params):
+            input_params[key] = value
 
         # Add reference images for style transfer / img2img
         # The target field is driven by model config metadata passed through api_config.
@@ -1505,12 +1523,10 @@ class KieAIProvider:
             input_params["fps"] = kwargs["fps"]
 
         # Merge extra_params from configJson-based dynamic fields
-        if extra_params and isinstance(extra_params, dict):
-            for key, value in extra_params.items():
-                if value is not None:
-                    if requires_veo_4k_postprocess and str(key) == "resolution":
-                        continue
-                    input_params[key] = value
+        for key, value in _iter_provider_extra_params(extra_params):
+            if requires_veo_4k_postprocess and str(key) == "resolution":
+                continue
+            input_params[key] = value
 
         is_veo_generation_request = (
             _is_veo_endpoint(api_endpoint)
@@ -1713,10 +1729,8 @@ class KieAIProvider:
             input_params["output_format"] = kwargs["output_format"]
 
         # Merge extra_params from configJson-based dynamic fields
-        if extra_params and isinstance(extra_params, dict):
-            for key, value in extra_params.items():
-                if value is not None:
-                    input_params[key] = value
+        for key, value in _iter_provider_extra_params(extra_params):
+            input_params[key] = value
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode

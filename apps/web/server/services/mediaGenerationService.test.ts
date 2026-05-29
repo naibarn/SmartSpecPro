@@ -328,6 +328,47 @@ describe("MediaGenerationService retry behavior", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("omits Marketplace metadata from async image extra params sent to Python", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "test image prompt",
+        model: "google-banana-2",
+        apiConfig: { provider: "kie.ai" },
+        extraParams: {
+          google_search: false,
+          resolution: "4K",
+          marketplaceContext: {
+            platform: "shopee",
+            productName: "Nordic bedside table",
+          },
+          marketplaceProduct: {
+            platform: "shopee",
+            productName: "Duplicate product context",
+          },
+          __reserved_credits: 90,
+          __origin_surface: "media_studio",
+        },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params).toMatchObject({
+      google_search: false,
+      resolution: "4K",
+      __reserved_credits: 90,
+      __origin_surface: "media_studio",
+    });
+    expect(payload.extra_params).not.toHaveProperty("marketplaceContext");
+    expect(payload.extra_params).not.toHaveProperty("marketplaceProduct");
+  });
+
   it("adds reference image config metadata from the model configJson", async () => {
     vi.mocked(getModelById).mockReturnValue({
       id: "google-banana-2",

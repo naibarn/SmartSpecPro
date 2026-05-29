@@ -1,6 +1,7 @@
-import pytest
-import httpx
 from unittest.mock import AsyncMock, patch
+
+import httpx
+import pytest
 
 from app.llm_proxy.providers.kie_ai_provider import (
     KieAIProvider,
@@ -121,6 +122,40 @@ async def test_generate_image_uses_reference_image_config_metadata_for_url_field
     args, kwargs = provider.create_task.await_args
     assert kwargs == {}
     assert args[1]["reference_image"] == "https://cdn.example.com/ref.png"
+
+
+@pytest.mark.asyncio
+async def test_generate_image_omits_internal_metadata_extra_params_from_provider_payload():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="google-banana-2",
+        prompt="test prompt",
+        callback_url="",
+        resolution="4K",
+        output_format="jpg",
+        extra_params={
+            "google_search": False,
+            "marketplaceContext": {
+                "platform": "shopee",
+                "productName": "Nordic bedside table",
+            },
+            "__reserved_credits": 90,
+            "__origin_surface": "media_studio",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, _ = provider.create_task.await_args
+    payload = args[1]
+    assert payload["google_search"] is False
+    assert payload["resolution"] == "4K"
+    assert payload["output_format"] == "jpg"
+    assert "marketplaceContext" not in payload
+    assert "__reserved_credits" not in payload
+    assert "__origin_surface" not in payload
 
 
 @pytest.mark.asyncio

@@ -707,6 +707,15 @@ function storyboardNativeSpeechDirectiveExample(speechMode: string, speechLangua
   return `The presenter speaks in ${language}: "[slot.voiceover_script]"`;
 }
 
+function storyboardDialogueTargetSeconds(durationSeconds?: unknown): number {
+  const durationValue = Number(durationSeconds);
+  const duration = Number.isFinite(durationValue) && durationValue > 0
+    ? Math.round(durationValue * 10) / 10
+    : 8;
+  const extraSpeechSeconds = duration <= 8 ? 1.5 : duration <= 12 ? 1 : 0;
+  return Math.round(Math.max(1, duration + extraSpeechSeconds) * 2) / 2;
+}
+
 function getStoryboardPlannerProductName(productMetadata: Record<string, unknown> | null): string {
   if (!productMetadata) return "";
   for (const key of ["productName", "product_name", "title", "name"]) {
@@ -729,27 +738,42 @@ function buildFallbackStoryboardVoiceoverScript(input: {
 }): string {
   const productName = getStoryboardPlannerProductName(input.productMetadata);
   const language = storyboardSpeechLanguageLabel(input.speechMode, input.speechLanguage).toLowerCase();
+  const context = [
+    productName,
+    input.conceptDetails,
+    input.currentPrompt,
+    input.previousVoiceoverScript,
+    input.nextVoiceoverScript,
+  ].map((value) => String(value ?? "").replace(/\s+/g, " ").trim()).join(" ").toLowerCase();
+  const isContinuation = Boolean(input.previousVoiceoverScript || input.nextVoiceoverScript);
+  const isChildDining = /(เก้าอี้.*เด็ก|กินข้าวเด็ก|โต๊ะกินข้าวเด็ก|เด็ก\s*6\s*เดือน|high chair|baby)/i.test(context);
+  const isBedsideTable = /(โต๊ะข้างเตียง|ข้างเตียง|ชั้นวาง|bedside|nightstand|side table)/i.test(context);
 
   if (input.speechMode === "th" || language === "thai") {
-    if (input.previousVoiceoverScript || input.nextVoiceoverScript) {
-      return productName
-        ? `ต่อจากนั้น${productName}ช่วยให้เห็นผลลัพธ์ชัดขึ้น ก่อนปิดด้วยเหตุผลที่น่าเลือกใช้`
-        : "ต่อจากนั้นจะเห็นผลลัพธ์ชัดขึ้น ก่อนปิดด้วยเหตุผลที่น่าเลือกใช้";
+    if (isChildDining) {
+      return isContinuation
+        ? "พอลูกนั่งได้ระดับเดิมทุกมื้อ ผู้ปกครองก็ป้อนอาหารและดูแลได้ลื่นขึ้นค่ะ"
+        : "มื้ออาหารจะง่ายขึ้นมาก แค่เริ่มจากที่นั่งที่ปรับพอดีกับโต๊ะและรัดเข็มขัดให้เรียบร้อยค่ะ";
+    }
+    if (isBedsideTable) {
+      return isContinuation
+        ? "วางโคมไฟ หนังสือ หรือของใช้ประจำวันไว้ตรงนี้ หยิบง่ายและไม่ต้องกองไว้บนพื้นค่ะ"
+        : "มุมข้างเตียงรก ๆ แบบนี้ แค่มีที่วางของเป็นสัดส่วน ห้องก็ดูโล่งขึ้นทันทีค่ะ";
     }
     return productName
-      ? `${productName} ช่วยให้มุมนี้เป็นระเบียบและหยิบใช้ได้ง่ายขึ้น`
-      : "เปลี่ยนมุมรกให้เป็นระเบียบ หยิบของใช้ได้ง่ายขึ้น";
+      ? `ถ้าใช้งานจริงแล้วยังไม่ค่อยลงตัว ลองดูว่า${productName}ช่วยให้ขั้นตอนนี้ง่ายขึ้นยังไงค่ะ`
+      : "ถ้าใช้งานจริงแล้วยังไม่ค่อยลงตัว ลองดูวิธีทำให้มุมนี้ใช้ง่ายขึ้นค่ะ";
   }
 
   if (input.speechMode === "en" || language === "english") {
-    if (input.previousVoiceoverScript || input.nextVoiceoverScript) {
+    if (isContinuation) {
       return productName
-        ? `Then ${productName} makes the result clearer before the story closes with a practical reason to choose it.`
-        : "Then the result becomes clearer before the story closes with a practical reason to choose it.";
+        ? `${productName} keeps the daily items close, easy to reach, and off the floor.`
+        : "The closer details show how the daily items stay easier to reach.";
     }
     return productName
-      ? `${productName} keeps this corner tidy and easy to use.`
-      : "Turn this cluttered corner into an easier space to use.";
+      ? `If this setup still feels messy, see how ${productName} gives the essentials one clear place.`
+      : "If this setup still feels messy, start by giving the essentials one clear place.";
   }
 
   return productName
@@ -783,6 +807,8 @@ function buildStoryboardPlannerPrompt(input: {
   const includeSpeech = speechMode !== "none";
   const suppliedVoiceoverFullScript = String(input.voiceoverFullScript ?? "").trim();
   const useVoiceoverScriptAsConcept = Boolean(input.useVoiceoverScriptAsConcept && suppliedVoiceoverFullScript);
+  const globalConceptDetails = String(input.conceptDetails ?? "").trim();
+  const globalStoryboardGuide = String(input.storyboardGuide ?? "").trim();
   const totalDurationSeconds = input.slots.reduce((sum, slot) => {
     const duration = Number(slot.durationSeconds);
     return sum + (Number.isFinite(duration) && duration > 0 ? duration : 8);
@@ -794,6 +820,8 @@ function buildStoryboardPlannerPrompt(input: {
     const frameRoles = Array.isArray(slot.frameRoles) ? slot.frameRoles : ["start", "stop"];
     const firstRole = frameRoles[0] === "reference" ? "reference image" : frameRoles[0] === "stop" ? "stop/end frame" : "start frame";
     const secondRole = frameRoles[1] === "reference" ? "reference image" : frameRoles[1] === "start" ? "start frame" : "stop/end frame";
+    const slotConceptDetails = String(slot.conceptDetails ?? "").trim();
+    const slotStoryboardGuide = String(slot.storyboardGuide ?? "").trim();
     return {
       id: slot.id,
       index: slot.index,
@@ -808,9 +836,10 @@ function buildStoryboardPlannerPrompt(input: {
           : "Write motion and camera direction that follows the exact endpoint roles and uses reference-only images as guidance, not as frozen start/end frames.",
       ].join(" "),
       currentPrompt: slot.currentPrompt ?? "",
-      conceptDetails: slot.conceptDetails ?? input.conceptDetails ?? "",
-      storyboardGuide: slot.storyboardGuide ?? input.storyboardGuide ?? "",
+      conceptDetails: slotConceptDetails && slotConceptDetails !== globalConceptDetails ? slotConceptDetails : "",
+      storyboardGuide: slotStoryboardGuide && slotStoryboardGuide !== globalStoryboardGuide ? slotStoryboardGuide : "",
       durationSeconds: slot.durationSeconds ?? null,
+      speechBudgetSeconds: storyboardDialogueTargetSeconds(slot.durationSeconds ?? 8),
       aspectRatio: slot.aspectRatio ?? null,
       model: slot.model ?? null,
       voiceoverContinuity: {
@@ -841,12 +870,17 @@ function buildStoryboardPlannerPrompt(input: {
     "Start each slot.video_prompt with the unique visible action/camera direction for that shot, not with a repeated alias boilerplate sentence.",
     "Do not reuse the same generic transition prompt across slots. Do not merely paraphrase currentPrompt.",
     "Every slot.video_prompt must follow this Veo 3.1 section format exactly: Create an [duration]-second cinematic video. Then sections Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+    "Keep every slot.video_prompt concise, normally under 1,500 characters. Do not paste Production concept, Storyboard guide, Product metadata, or Options verbatim into slot.video_prompt.",
+    "Use product facts as a short lock once per prompt when needed; never repeat the same product/concept facts across Scene, Action, and Storyboard guide sections.",
     "Write the production direction in English, but keep any requested spoken line in the target spoken language inside quotes.",
+    "Voiceover quality bar: use the same customer-facing spoken-copy style as the elevenlabs-beauty-dialogue skill: short stop-scroll hook, conversational ad-read phrasing, one idea per sentence, grounded benefit, no stiff presenter wording.",
+    "For native video prompts, slot.voiceover_script must be pure spoken text only. Do not include Speaker 1/Speaker 2 prefixes, ElevenLabs bracket tags, planning labels, timecodes, markdown, or visual direction.",
+    "For Thai voiceover, write natural central-Thai shopping-video speech. Avoid phrases like ปัญหาหน้างาน, ทางออกที่ใช้งานได้จริง, รายละเอียดสินค้า, จุดขายหลักคือ, and any PRODUCT FACTS LOCK wording.",
     "In Audio:, separate ambient sound, sound design, dialogue language, lip-sync, subtitle, and no-extra-dialogue instructions from the visual description.",
     includeSpeech
       ? "In Dialogue:, put the exact spoken line in quotes. For Thai use this exact shape inside the section: " + nativeSpeechDirectiveExample + "."
       : "In Dialogue:, write exactly: No spoken dialogue.",
-    input.conceptDetails ? ["", "Production concept and details guideline:", input.conceptDetails].join("\n") : "",
+    input.conceptDetails ? ["", "Selected Production Director concept / customer journey (primary source for voiceover variety):", input.conceptDetails].join("\n") : "",
     input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
     useVoiceoverScriptAsConcept
       ? [
@@ -857,7 +891,13 @@ function buildStoryboardPlannerPrompt(input: {
         "The user chose to use this edited script instead of the concept/details as the primary content source. Segment or lightly adapt it across ordered slots according to each slot duration, while preserving its meaning and order.",
       ].join("\n")
       : suppliedVoiceoverFullScript
-        ? ["", "Existing combined voiceover script for continuity:", suppliedVoiceoverFullScript].join("\n")
+        ? [
+          "",
+          "Existing combined voiceover script for neighboring continuity only:",
+          suppliedVoiceoverFullScript,
+          "",
+          "Do not copy the existing script verbatim unless rewriting a single slot requires preserving a specific neighboring transition.",
+        ].join("\n")
         : "",
     "",
     "Product metadata:",
@@ -874,15 +914,18 @@ function buildStoryboardPlannerPrompt(input: {
         "Speech / voiceover instruction:",
         `- Include a concise spoken line for each slot in ${speechLanguage || speechMode}.`,
         "- Treat all slot.voiceover_script values as one continuous script split across ordered slots, not standalone taglines.",
+        "- Use the selected Production Director concept/customer journey as the main source of the speech angle, so different selected concepts produce meaningfully different spoken content.",
         "- Plan the full story arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot.",
         "- Each line must naturally follow the previous slot and set up the next slot. Avoid repeating the same opening phrase, benefit, or sales claim in multiple slots.",
         `- The complete voiceover_full_script must fit the total storyboard duration of about ${totalDurationSeconds} seconds. Treat each slot.durationSeconds as that slot's speech budget; if a slot duration is missing, use 8 seconds.`,
-        "- The spoken line must fit the slot duration. For an 8-10 second shot, write a natural line intended to fill most of that slot's speech time without rushing.",
+        "- Each slot includes speechBudgetSeconds. Write enough spoken content to fill that speech budget, not only the visible clip duration.",
+        "- For an 8-second shot, target about 9-10 seconds of natural spoken content. Veo 3.1 can finish a slightly longer line; avoid short 5-6 second lines that leave silence at the end.",
         "- The line must match the concept/details guideline, visible product use, journey stage, and video_prompt.",
+        "- Write like customer-facing ElevenLabs ad dialogue: short, specific, speakable, and emotionally clear. Convert planning notes into real spoken copy.",
         useVoiceoverScriptAsConcept
           ? "- Because useVoiceoverScriptAsConcept is true, base the spoken lines and story arc on the authoritative edited voiceover script, not on the concept/details text."
           : "",
-        "- Write the line as natural spoken speech only, not visual direction. Do not include price, rating, sales volume, promo, or unsupported claims.",
+        "- Write the line as natural spoken speech only, not visual direction. Do not include price, rating, sales volume, promo, unsupported claims, Speaker labels, bracket audio tags, planning labels, or timecodes.",
         "- Return voiceover_full_script as the exact ordered combination of all slot.voiceover_script lines.",
         "- Put the spoken line in slot.voiceover_script. Because includeVoiceover is true, slot.voiceover_script is REQUIRED and must not be empty for any slot.",
         `- Also include the same spoken line inside slot.video_prompt as a native-audio instruction using this exact shape: ${nativeSpeechDirectiveExample}.`,
@@ -943,6 +986,51 @@ function normalizeStoryboardPromptForDuplicateCheck(content: string): string {
     .trim();
 }
 
+function normalizeStoryboardVoiceoverForDuplicateCheck(content: string): string {
+  return String(content || "")
+    .replace(/^\s*Speaker\s+\d+\s*:\s*/gim, "")
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[“”"]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function buildStoryboardVoiceoverCounts(slots: StoryboardPlannerSlotResult[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const slot of slots) {
+    const normalized = normalizeStoryboardVoiceoverForDuplicateCheck(slot.voiceoverScript);
+    if (normalized) {
+      counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function isStoryboardVoiceoverTooShort(
+  content: string,
+  durationSeconds: unknown,
+  speechMode: string,
+  speechLanguage?: string | null,
+): boolean {
+  const normalized = normalizeStoryboardVoiceoverForDuplicateCheck(content);
+  if (!normalized) return true;
+
+  const targetSeconds = storyboardDialogueTargetSeconds(durationSeconds);
+  const language = storyboardSpeechLanguageLabel(speechMode, speechLanguage).toLowerCase();
+  if (speechMode === "th" || language === "thai") {
+    const spokenUnits = normalized.replace(/[^\u0E00-\u0E7FA-Za-z0-9]/g, "").length;
+    return spokenUnits < Math.round(targetSeconds * 9.5);
+  }
+
+  if (speechMode === "en" || language === "english") {
+    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    return wordCount < Math.round(targetSeconds * 2.1);
+  }
+
+  return normalized.length < Math.round(targetSeconds * 8);
+}
+
 function isGenericStoryboardTransitionPrompt(content: string): boolean {
   const normalized = normalizeStoryboardPromptForDuplicateCheck(content);
   return normalized.includes("create a smooth cinematic transition between the two frames while preserving the same subject");
@@ -972,11 +1060,15 @@ async function repairStoryboardSlotVideoPrompt(input: {
     "You are a senior AI video director for ecommerce video generation from storyboard images.",
     `Analyze the two attached images with vision. Image 1 role: ${frameRoles[0]}. Image 2 role: ${frameRoles[1]}.`,
     "Return one production-ready video prompt only. No markdown, no code fence, no title, no JSON, no explanation.",
-	    "The prompt must be specific to the visible objects, people, hands, room, props, product geometry, colors, materials, and declared image roles.",
-	    "Choose motion and camera direction that follows exact start/stop frames when declared; use reference-only images as guidance without treating them as frozen endpoints.",
-	    "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
-	    "Use the Veo 3.1 section format: Create an [duration]-second cinematic video. Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
-	  ].join("\n");
+    "The prompt must be specific to the visible objects, people, hands, room, props, product geometry, colors, materials, and declared image roles.",
+    "Choose motion and camera direction that follows exact start/stop frames when declared; use reference-only images as guidance without treating them as frozen endpoints.",
+    "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
+    "Keep the prompt under 1,500 characters. Do not paste product metadata, concept details, or storyboard guide verbatim; compress product facts into one short lock only if needed.",
+    "Use the Veo 3.1 section format: Create an [duration]-second cinematic video. Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+    includeSpeech
+      ? "The Dialogue section is required. Write one unique, natural customer-facing spoken line based on the actual two images, product details, and selected concept. Do not copy the current prompt dialogue."
+      : "The Dialogue section must be: No spoken dialogue.",
+  ].join("\n");
   const userPrompt = [
     `Shot ${input.slotIndex + 1}`,
     `Current prompt to replace: ${input.currentPrompt}`,
@@ -992,7 +1084,9 @@ async function repairStoryboardSlotVideoPrompt(input: {
     input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
     includeSpeech ? [
       "",
-      `Speech guideline for downstream planner context: spoken line language is ${input.speechLanguage || input.speechMode}. Keep any spoken idea short enough for about 8 seconds and aligned to the concept.`,
+      `Speech requirement: write a fresh spoken line in ${input.speechLanguage || input.speechMode}. It must match this exact image pair and product moment, sound like natural shopping-video speech, and be different from any repeated/generic line in the current prompt.`,
+      `Speech budget: write about ${storyboardDialogueTargetSeconds(input.durationSeconds ?? 8)} seconds of spoken content, even if the video clip is ${input.durationSeconds ?? 8} seconds. Avoid a short line that leaves silence at the end.`,
+      "Do not include Speaker labels, bracket audio tags, planning labels, timecodes, or visual direction inside the spoken line.",
     ].join("\n") : "",
     "",
     "Write the improved prompt in English. It must explicitly use local aliases only:",
@@ -3173,12 +3267,26 @@ export const skillsRouter = router({
             normalizedPromptCounts.set(normalized, (normalizedPromptCounts.get(normalized) ?? 0) + 1);
           }
         }
+        const normalizedVoiceoverCounts = buildStoryboardVoiceoverCounts(slots);
         const repairSlotIds = new Set(slots
           .filter((slot) => {
+            const sourceSlot = sourceSlotById.get(slot.id);
             const normalized = normalizeStoryboardPromptForDuplicateCheck(slot.videoPrompt);
+            const normalizedVoiceover = normalizeStoryboardVoiceoverForDuplicateCheck(slot.voiceoverScript);
+            const hasBadVoiceover = input.includeVoiceover && input.speechMode !== "none" && (
+              !normalizedVoiceover
+              || (normalizedVoiceoverCounts.get(normalizedVoiceover) ?? 0) > 1
+              || isStoryboardVoiceoverTooShort(
+                slot.voiceoverScript,
+                sourceSlot?.durationSeconds ?? 8,
+                input.speechMode,
+                input.speechLanguage ?? null,
+              )
+            );
             return !normalized
               || isGenericStoryboardTransitionPrompt(slot.videoPrompt)
-              || (normalizedPromptCounts.get(normalized) ?? 0) > 1;
+              || (normalizedPromptCounts.get(normalized) ?? 0) > 1
+              || hasBadVoiceover;
           })
           .map((slot) => slot.id));
 
@@ -3217,12 +3325,15 @@ export const skillsRouter = router({
           slots = slots.map((slot) => {
             const repaired = repairedPromptBySlotId.get(slot.id);
             if (!repaired) return slot;
+            const repairedPrompt = normalizeStoryboardSlotLocalImageAliases(repaired.prompt, slotPositionById.get(slot.id) ?? 0);
+            const repairedVoiceoverScript = extractStoryboardNativeSpeechText(repairedPrompt);
             return {
               ...slot,
-              videoPrompt: normalizeStoryboardSlotLocalImageAliases(repaired.prompt, slotPositionById.get(slot.id) ?? 0),
+              videoPrompt: repairedPrompt,
+              voiceoverScript: repairedVoiceoverScript || slot.voiceoverScript,
               qualityNotes: [
                 ...slot.qualityNotes,
-                "Auto-repaired from the slot's own start/end frames because the planner returned a generic or duplicate prompt.",
+                "Auto-repaired from the slot's own start/end frames because the planner returned generic or duplicate prompt/dialogue content.",
               ],
             };
           });
@@ -3252,8 +3363,28 @@ export const skillsRouter = router({
               || (finalNormalizedPromptCounts.get(normalized) ?? 0) > 1;
           })
           .map((slot) => slot.id);
+        const finalVoiceoverCounts = buildStoryboardVoiceoverCounts(slots);
+        const invalidVoiceoverSlotIds = input.includeVoiceover && input.speechMode !== "none"
+          ? slots
+            .filter((slot) => {
+              const sourceSlot = sourceSlotById.get(slot.id);
+              const normalizedVoiceover = normalizeStoryboardVoiceoverForDuplicateCheck(slot.voiceoverScript);
+              return !normalizedVoiceover
+                || (finalVoiceoverCounts.get(normalizedVoiceover) ?? 0) > 1
+                || isStoryboardVoiceoverTooShort(
+                  slot.voiceoverScript,
+                  sourceSlot?.durationSeconds ?? 8,
+                  input.speechMode,
+                  input.speechLanguage ?? null,
+                );
+            })
+            .map((slot) => slot.id)
+          : [];
         if (invalidPromptSlotIds.length > 0) {
           throw new Error(`Planner returned generic or duplicate prompts for slots: ${invalidPromptSlotIds.join(",")}`);
+        }
+        if (invalidVoiceoverSlotIds.length > 0) {
+          throw new Error(`Planner returned missing, duplicate, or too-short dialogue for slots: ${invalidVoiceoverSlotIds.join(",")}`);
         }
 
         const creditsUsed = Math.max(1, calculateCreditsForLLM(

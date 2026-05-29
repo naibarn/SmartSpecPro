@@ -25,6 +25,34 @@ function compactInlineText(text: string): string {
     .trim();
 }
 
+function compactPromptContext(text: string, maxLength = 320): string {
+  const compacted = compactInlineText(text).replace(/\s+/g, " ").trim();
+  if (compacted.length <= maxLength) return compacted;
+  return `${compacted.slice(0, maxLength).replace(/[\s,.;:|-]+$/g, "").trim()}...`;
+}
+
+function normalizePromptContext(text: string): string {
+  return compactInlineText(text).replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function promptContainsContext(promptText: string, contextText: string): boolean {
+  const context = normalizePromptContext(contextText);
+  if (context.length < 24) return false;
+  return normalizePromptContext(promptText).includes(context);
+}
+
+function removeDuplicatedPromptContext(text: string, duplicateText: string): string {
+  const value = compactInlineText(text);
+  const duplicate = compactInlineText(duplicateText);
+  if (!value || !duplicate || duplicate.length < 24) return value;
+  return value
+    .split(duplicate)
+    .join("")
+    .replace(/(?:^|\n)\s*(?:Concept and product facts|Product\/concept details)\s*:\s*(?=\n|$)/gi, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function isThaiSpeechMode(speechMode: StoryboardPromptSpeechMode, speechLanguage?: string | null): boolean {
   const mode = String(speechMode ?? "").trim().toLowerCase();
   const language = String(speechLanguage ?? "").trim().toLowerCase();
@@ -142,12 +170,13 @@ function describeFrameRoles(frameRoles?: readonly string[] | null): string {
   const roles = Array.isArray(frameRoles) && frameRoles.length >= 2 ? frameRoles : ["start", "stop"];
   const firstRole = roles[0] === "reference" ? "reference image" : roles[0] === "stop" ? "stop/end frame" : "start frame";
   const secondRole = roles[1] === "reference" ? "reference image" : roles[1] === "start" ? "start frame" : "stop/end frame";
-  return `Use @Image1 as the ${firstRole} and @Image2 as the ${secondRole}.`;
+  return `Use @Image1 as ${firstRole} and @Image2 as ${secondRole}.`;
 }
 
 function dialogueTargetSeconds(durationSeconds?: number | null): number {
   const duration = normalizeDurationSeconds(durationSeconds);
-  const target = duration <= 12 ? duration : duration - 1;
+  const extraSpeechSeconds = duration <= 8 ? 1.5 : duration <= 12 ? 1 : 0;
+  const target = duration <= 12 ? duration + extraSpeechSeconds : duration;
   return Math.round(Math.max(1, target) * 2) / 2;
 }
 
@@ -158,7 +187,9 @@ function buildDialoguePacingRule(
 ): string {
   const targetSeconds = dialogueTargetSeconds(durationSeconds);
   const secondsLabel = isThaiSpeechMode(speechMode, speechLanguage) ? `${targetSeconds} วินาที` : `${targetSeconds} seconds`;
-  return `Dialogue pacing: aim for the spoken line to fill about ${secondsLabel} of the clip at a natural pace, with no rushed delivery and no abrupt early cutoff.`;
+  const clipSeconds = normalizeDurationSeconds(durationSeconds);
+  const clipLabel = isThaiSpeechMode(speechMode, speechLanguage) ? `${clipSeconds} วินาที` : `${clipSeconds} seconds`;
+  return `Dialogue pacing: write enough spoken content for about ${secondsLabel}, even when the clip is ${clipLabel}; Veo 3.1 can finish a slightly longer line. Avoid a short 5-6 second line or silent tail.`;
 }
 
 function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoiceover: boolean): string {
@@ -171,7 +202,7 @@ function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoice
 
   if (input.includeSound && soundBrief) {
     lines.push(`Sound design: ${soundBrief}`);
-    lines.push("Keep sound low and clear so it never overpowers speech.");
+    lines.push("Keep speech clear.");
   } else if (hasVoiceover) {
     lines.push("Do not add background music, sound effects, foley, room tone, or ambient/environment audio.");
   } else {
@@ -187,9 +218,9 @@ function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoice
       const language = String(input.speechLanguage ?? "").trim() || "the requested language";
       lines.push(`Dialogue must be spoken naturally in ${language}.`);
     }
-    lines.push("Lip-sync the dialogue clearly.");
+    lines.push("Lip-sync clearly.");
     lines.push(buildDialoguePacingRule(input.durationSeconds, input.speechMode, input.speechLanguage));
-    lines.push("No subtitles. No extra dialogue.");
+    lines.push("No subtitles or extra dialogue.");
   } else {
     lines.push("No spoken dialogue.");
     lines.push("No subtitles.");
@@ -223,9 +254,9 @@ function buildDialogueAudioRules(
     const language = String(speechLanguage ?? "").trim() || "the requested language";
     lines.push(`Dialogue must be spoken naturally in ${language}.`);
   }
-  lines.push("Lip-sync the dialogue clearly.");
+  lines.push("Lip-sync clearly.");
   lines.push(buildDialoguePacingRule(durationSeconds, speechMode, speechLanguage));
-  lines.push("No subtitles. No extra dialogue.");
+  lines.push("No subtitles or extra dialogue.");
   return lines.join(" ");
 }
 
@@ -273,7 +304,7 @@ export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideo
       prompt = replacePromptSection(prompt, "Audio", buildAudioSection(input, hasVoiceover));
     }
     if (input.includeSound && soundBrief && !prompt.toLowerCase().includes(soundBrief.toLowerCase().slice(0, 48))) {
-      prompt = appendLineToSection(prompt, "Audio", `Sound design: ${soundBrief} Keep sound low and clear so it never overpowers speech.`);
+      prompt = appendLineToSection(prompt, "Audio", `Sound design: ${soundBrief} Keep speech clear.`);
     }
     if (hasVoiceover && !/Dialogue must be spoken/i.test(prompt)) {
       prompt = appendLineToSection(prompt, "Audio", buildDialogueAudioRules(input.speechMode, input.speechLanguage, input.durationSeconds));
@@ -290,38 +321,42 @@ export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideo
     return prompt;
   }
 
-  const conceptDetails = compactInlineText(input.conceptDetails ?? "");
-  const storyboardGuide = compactInlineText(input.storyboardGuide ?? "");
+  const rawConceptDetails = compactInlineText(input.conceptDetails ?? "");
+  const rawStoryboardGuide = compactInlineText(input.storyboardGuide ?? "");
   const aspectRatio = String(input.aspectRatio ?? "").trim();
   const action = visualPrompt || "Create a precise storyboard image-to-video movement from the attached reference frames.";
   const frameRoleLine = describeFrameRoles(input.frameRoles);
+  const conceptDetails = promptContainsContext(action, rawConceptDetails)
+    ? ""
+    : compactPromptContext(rawConceptDetails);
+  const storyboardGuide = compactPromptContext(removeDuplicatedPromptContext(rawStoryboardGuide, rawConceptDetails), 240);
 
   return [
     durationIntro(input.durationSeconds),
     "",
     "Scene:",
     [
-      "Use the attached storyboard frames as the visual truth for the location, product, people, props, mood, and atmosphere.",
+      "Frames are visual truth for location, product, people, props, mood, and atmosphere.",
       conceptDetails ? `Creative context: ${conceptDetails}` : "",
     ].filter(Boolean).join(" "),
     "",
     "Characters:",
     hasVoiceover
-      ? "Use only the visible person, hands, or natural presenter implied by the reference frames. Keep identity, wardrobe, and product scale consistent. Do not introduce new characters."
-      : "Use only people or hands visible in the reference frames. Keep identity, wardrobe, and product scale consistent. Do not introduce new characters.",
+      ? "Use only visible person, hands, or presenter implied by frames. Keep identity, wardrobe, product scale. No new characters."
+      : "Use only people or hands visible in frames. Keep identity, wardrobe, product scale. No new characters.",
     "",
     "Action:",
-    [action, storyboardGuide ? `Storyboard guide for shot order and continuity: ${storyboardGuide}` : ""].filter(Boolean).join(" "),
+    [action, storyboardGuide ? `Guide: ${storyboardGuide}` : ""].filter(Boolean).join(" "),
     "",
     "Camera:",
     [
       frameRoleLine,
       aspectRatio ? `Compose for ${aspectRatio}.` : "",
-      "Use a smooth cinematic camera move that fits the shot duration and preserves continuity between the endpoint frames.",
+      "Use a smooth move that fits duration and preserves endpoint continuity.",
     ].filter(Boolean).join(" "),
     "",
     "Lighting / Style:",
-    "Realistic ecommerce cinematic style, clean product fidelity, natural depth, consistent colors, and lighting that matches the reference frames.",
+    "Realistic ecommerce cinematic style, clean product fidelity, natural depth, consistent colors, matching reference lighting.",
     "",
     "Audio:",
     buildAudioSection(input, hasVoiceover),

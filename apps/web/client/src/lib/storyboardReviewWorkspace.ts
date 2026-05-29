@@ -362,7 +362,79 @@ function buildSplitStoryboardSoundBrief(options: BuildFirstLastFrameStoryboardTa
   const explicitBrief = compactPromptPlannerOption(options.soundBrief);
   if (explicitBrief) return explicitBrief;
   if (!options.includeSound) return "";
-  return "Soft ambient ecommerce product sound design with natural room tone and subtle movement accents.";
+  return "Soft ecommerce room tone with subtle product movement accents.";
+}
+
+function pickOrderedStoryboardLine(lines: string[], taskIndex: number, totalTasks: number): string {
+  if (lines.length === 0) return "";
+  const lastSlotIndex = Math.max(0, totalTasks - 1);
+  if (taskIndex <= 0) return lines[0]!;
+  if (taskIndex >= lastSlotIndex) return lines[lines.length - 1]!;
+  if (lines.length <= 2) return lines[0]!;
+
+  const middleLines = lines.slice(1, -1);
+  const middleSlotCount = Math.max(1, lastSlotIndex - 1);
+  const middlePosition = Math.max(0, taskIndex - 1);
+  const lineIndex = Math.min(
+    middleLines.length - 1,
+    Math.round((middlePosition / Math.max(1, middleSlotCount - 1)) * (middleLines.length - 1)),
+  );
+  return middleLines[lineIndex]!;
+}
+
+function buildNaturalThaiSplitStoryboardVoiceover(
+  options: BuildFirstLastFrameStoryboardTasksOptions,
+  taskIndex: number,
+  totalTasks: number,
+  productName: string,
+): string {
+  const context = [
+    productName,
+    options.conceptDetails,
+    options.storyboardGuide,
+  ].map(compactPromptPlannerOption).join(" ").toLowerCase();
+  const isChildDining = /(เก้าอี้.*เด็ก|กินข้าวเด็ก|โต๊ะกินข้าวเด็ก|เด็ก\s*6\s*เดือน|high chair|baby)/i.test(context);
+  const isBedsideTable = /(โต๊ะข้างเตียง|ข้างเตียง|ชั้นวาง|bedside|nightstand|side table)/i.test(context);
+
+  if (isChildDining) {
+    return pickOrderedStoryboardLine([
+      "มื้ออาหารจะง่ายขึ้นมาก แค่เริ่มจากที่นั่งที่ปรับพอดีกับโต๊ะ แล้วรัดเข็มขัดให้ลูกนั่งนิ่งสบายตั้งแต่มื้อแรกค่ะ",
+      "พอปรับระดับให้ใกล้โต๊ะ ลูกก็นั่งร่วมมื้ออาหารกับบ้านได้เป็นจังหวะขึ้น ผู้ปกครองป้อนข้าวได้ถนัดกว่าเดิมค่ะ",
+      "เข็มขัดนิรภัยช่วยจัดท่านั่งให้อยู่ตำแหน่งเดิม ไม่ต้องคอยขยับซ้ำบ่อย ๆ ระหว่างมื้อก็รู้สึกมั่นใจขึ้นค่ะ",
+      "ช็อตนี้ให้เห็นว่าพื้นที่กินข้าวไม่ต้องใหญ่ แค่จัดมุมให้พร้อมใช้ทุกมื้อ ของรอบตัวก็ดูเป็นระเบียบขึ้นค่ะ",
+      "พอลูกเริ่มชินกับที่นั่งเดิม มื้ออาหารก็ไหลลื่นกว่าเดิม ผู้ปกครองมีเวลาสนใจกับการกินมากกว่าการจัดท่าค่ะ",
+      "ของใช้รอบตัวถูกจัดไว้ใกล้มือ จะหยิบผ้า ช้อน หรือของจำเป็นระหว่างมื้อก็ไม่ต้องลุกไปหาให้วุ่นวายค่ะ",
+      "พอมุมกินข้าวเป็นระเบียบ บ้านก็ดูพร้อมสำหรับมื้อต่อไป ไม่ต้องเก็บตั้งต้นใหม่ทุกครั้งหลังใช้งานค่ะ",
+      "ทำซ้ำไม่กี่มื้อ มุมกินข้าวก็เป็นระเบียบและพร้อมใช้ทุกวัน ลูกนั่งคุ้นที่เดิม ส่วนผู้ปกครองก็จัดการง่ายขึ้นค่ะ",
+    ], taskIndex, totalTasks);
+  }
+
+  if (isBedsideTable) {
+    return pickOrderedStoryboardLine([
+      "มุมข้างเตียงรก ๆ แบบนี้ แค่มีที่วางของเป็นสัดส่วน ห้องก็ดูโล่งขึ้นทันที และหยิบของก่อนนอนได้ง่ายขึ้นค่ะ",
+      "เริ่มจากวางโต๊ะให้พอดีกับข้างเตียง ของที่ใช้บ่อยจะอยู่ใกล้มือขึ้น ไม่ต้องวางกองไว้บนพื้นหรือหัวเตียงค่ะ",
+      "โคมไฟกับนาฬิกามีที่วางชัดเจน ก่อนนอนก็ไม่ต้องย้ายของไปมา แถมตอนตื่นเช้ายังหยิบใช้งานได้ทันทีค่ะ",
+      "หนังสือหรือสมุดเล่มเล็ก ๆ เก็บไว้ชั้นล่างได้ มุมนี้เลยดูไม่แน่นเกินไป แต่ยังมีของจำเป็นอยู่ครบค่ะ",
+      "ของใช้ประจำวันอย่างแก้วน้ำหรือรีโมตมีตำแหน่งประจำ จะหยิบตอนเช้าหรือวางคืนก่อนนอนก็เป็นจังหวะเดิมค่ะ",
+      "พอจัดของแยกชั้น บนโต๊ะยังดูโล่ง แต่ของจำเป็นก็ยังอยู่ครบ ช่วยให้ห้องดูสะอาดขึ้นโดยไม่ต้องจัดใหญ่ค่ะ",
+      "ช็อตนี้ช่วยให้เห็นสเกลจริง ว่ามุมเล็ก ๆ ก็ใช้ประโยชน์ได้โดยไม่เกะกะ และยังเข้ากับห้องนอนได้ง่ายค่ะ",
+      "มองรวมแล้วห้องดูสะอาดขึ้น โดยไม่ต้องเปลี่ยนเฟอร์นิเจอร์ชิ้นใหญ่ แค่เพิ่มที่เก็บของให้เข้าที่มากขึ้นค่ะ",
+      "ถ้าอยากให้มุมเล็ก ๆ ดูพร้อมใช้ทุกวัน ตัวนี้ช่วยจัดของให้เข้าที่ได้ดี ทั้งโคมไฟ หนังสือ และของหยิบใช้บ่อยค่ะ",
+    ], taskIndex, totalTasks);
+  }
+
+  return pickOrderedStoryboardLine([
+    productName
+      ? `ถ้าใช้งานจริงแล้วยังไม่ค่อยลงตัว ลองดูว่า${productName}ช่วยให้ขั้นตอนนี้ง่ายขึ้นยังไง ตั้งแต่เริ่มจัดพื้นที่จนถึงตอนใช้ทุกวันค่ะ`
+      : "ถ้าใช้งานจริงแล้วยังไม่ค่อยลงตัว ลองดูวิธีทำให้มุมนี้ใช้ง่ายขึ้น ตั้งแต่การจัดพื้นที่จนถึงตอนหยิบใช้ทุกวันค่ะ",
+    "เริ่มจากมุมที่ยังจัดไม่เข้าที่ แล้วค่อย ๆ เห็นตำแหน่งใช้งานที่ชัดขึ้น ของที่ต้องใช้ก็ไม่กระจายเหมือนเดิมค่ะ",
+    "พอดูรายละเอียดใกล้ขึ้น จะเห็นว่าของแต่ละชิ้นมีหน้าที่ชัด ไม่ต้องเดาเวลาใช้ และไม่ต้องเสียเวลาหาซ้ำค่ะ",
+    "จุดที่น่าสนใจคือมันช่วยลดขั้นตอนเล็ก ๆ ที่ทำให้การใช้งานประจำวันสะดุด พอทุกอย่างอยู่ถูกที่ก็ไหลลื่นขึ้นค่ะ",
+    "พอจัดเข้ากับพื้นที่จริง มุมนี้จะดูเป็นระเบียบขึ้นโดยไม่ต้องทำอะไรซับซ้อน แค่มีตำแหน่งให้ของแต่ละอย่างค่ะ",
+    "ช็อตนี้ช่วยให้เห็นภาพการใช้จริง ว่าไม่ได้มีแค่สวย แต่ต้องหยิบใช้ได้สะดวก และเข้ากับจังหวะในบ้านได้จริงค่ะ",
+    "ช่วงท้ายจะเห็นผลลัพธ์รวม ว่าพื้นที่เล็ก ๆ ก็ดูพร้อมใช้และดูแลง่ายขึ้น โดยไม่ต้องเปลี่ยนอะไรเยอะค่ะ",
+    "พอทุกอย่างเข้าที่แล้ว มุมนี้ก็ดูพร้อมใช้ขึ้น ใช้งานจริงได้ง่ายขึ้น และช่วยให้ตัดสินใจได้ชัดกว่าเดิมค่ะ",
+  ], taskIndex, totalTasks);
 }
 
 function buildSplitStoryboardVoiceoverScript(
@@ -386,31 +458,23 @@ function buildSplitStoryboardVoiceoverScript(
   const isMiddle = !isFirst && !isLast;
 
   if (isThai) {
-    if (isFirst) return productName
-      ? `เริ่มจากปัญหาหน้างาน แล้วดูว่า${productName}ช่วยเปลี่ยนมุมนี้ได้อย่างไร`
-      : "เริ่มจากปัญหาหน้างาน แล้วค่อย ๆ เห็นทางออกที่ใช้งานได้จริง";
-    if (isMiddle) return productName
-      ? `พอดูรายละเอียดใกล้ขึ้น จะเห็นว่า${productName}ช่วยให้ใช้งานง่ายและเป็นระเบียบขึ้น`
-      : "พอดูรายละเอียดใกล้ขึ้น จะเห็นวิธีใช้งานที่ช่วยให้ทุกอย่างเป็นระเบียบขึ้น";
-    return productName
-      ? `สุดท้าย${productName}ทำให้พื้นที่ดูพร้อมใช้ขึ้น และตัดสินใจได้ง่ายกว่าเดิม`
-      : "สุดท้ายพื้นที่นี้ดูพร้อมใช้ขึ้น และตัดสินใจได้ง่ายกว่าเดิม";
+    return buildNaturalThaiSplitStoryboardVoiceover(options, taskIndex, totalTasks, productName);
   }
 
   if (isEnglish) {
     if (isFirst) return productName
-      ? `Start with the everyday problem, then see how ${productName} changes this space.`
-      : "Start with the everyday problem, then see the practical solution take shape.";
+      ? `If this setup still feels messy, see how ${productName} gives the essentials one clear place, so the space feels calmer and easier to use every day.`
+      : "If this setup still feels messy, start by giving the essentials one clear place, so the space feels calmer and easier to use every day.";
     if (isMiddle) return productName
-      ? `As the details get closer, ${productName} makes the space easier to use and organize.`
-      : "As the details get closer, the space becomes easier to use and organize.";
+      ? `${productName} keeps the daily items close, easy to reach, and off the floor, while the shot shows how the setup works in real use.`
+      : "The closer details show how the daily items stay easier to reach, while the setup still looks tidy and practical in real use.";
     return productName
-      ? `In the end, ${productName} makes the setup feel ready to use and easier to choose.`
-      : "In the end, the setup feels ready to use and easier to choose.";
+      ? `Once everything has its place, ${productName} makes this corner feel ready for every day, without needing a bigger change to the room.`
+      : "Once everything has its place, this corner feels ready for every day, without needing a bigger change to the room.";
   }
 
-  if (productName) return `Show this ${productName} moment clearly and naturally.`;
-  return "Show this storyboard moment clearly and naturally.";
+  if (productName) return `Show this ${productName} moment clearly and naturally, with enough spoken detail to fill the clip without a silent ending.`;
+  return "Show this storyboard moment clearly and naturally, with enough spoken detail to fill the clip without a silent ending.";
 }
 
 export function buildFirstLastFrameStoryboardTasks(
@@ -432,10 +496,6 @@ export function buildFirstLastFrameStoryboardTasks(
   const includeVoiceover = Boolean(options.includeVoiceover && String(speechMode ?? "none") !== "none");
   const includeSound = Boolean(options.includeSound);
   const soundBrief = buildSplitStoryboardSoundBrief(options);
-  const promptPlanningContext = [
-    promptTone ? `Prompt tone: ${promptTone}` : "",
-    promptLanguage && promptLanguage !== "auto" ? `Prompt planning language: ${promptLanguage}` : "",
-  ].filter(Boolean).join("\n");
   const hasPromptPlannerOptions = options.includeVoiceover !== undefined
     || options.speechMode !== undefined
     || options.speechLanguage !== undefined
@@ -476,11 +536,9 @@ export function buildFirstLastFrameStoryboardTasks(
       ?? null;
     const voiceoverScript = buildSplitStoryboardVoiceoverScript(options, taskIndex, usableImages.length - 1, marketplaceProduct);
     const visualPrompt = [
-      options.conceptDetails ? `Product/concept details: ${options.conceptDetails}` : "",
-      promptPlanningContext ? `Prompt planning options: ${promptPlanningContext}` : "",
-      `Shot ${taskIndex + 1}: use @Image1 as the exact start frame and @Image2 as the exact end frame.`,
-      "Create a smooth cinematic transition between the two frames while preserving the same subject, product identity, composition intent, colors, and visual continuity.",
-      "Do not introduce unrelated products, extra text, labels, UI, logos, or new characters.",
+      `Shot ${taskIndex + 1}: transition from @Image1 exact start frame to @Image2 exact end frame.`,
+      "Preserve visible product, people or hands, room, props, colors, composition, and continuity.",
+      "No new products, text, labels, UI, logos, or characters.",
     ].filter(Boolean).join(" ");
     return {
       id: `${idPrefix}-${now}-${taskIndex + 1}`,

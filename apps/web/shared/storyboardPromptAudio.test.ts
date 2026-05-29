@@ -54,9 +54,42 @@ describe("storyboard prompt audio helpers", () => {
     expect(prompt).toContain("Audio:\n");
     expect(prompt).toContain("Dialogue:\n");
     expect(prompt).toContain("Dialogue must be spoken in natural Thai, central Thai accent.");
-    expect(prompt).toContain("Dialogue pacing: aim for the spoken line to fill about 8 วินาที of the clip");
+    expect(prompt).toContain("Dialogue pacing: write enough spoken content for about 9.5 วินาที");
+    expect(prompt).toContain("Avoid a short 5-6 second line or silent tail.");
     expect(prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "โต๊ะนี้ช่วยให้มุมข้างเตียงหยิบของง่ายขึ้น"');
     expect(storyboardPromptHasVeo31Sections(prompt)).toBe(true);
+  });
+
+  it("deduplicates long concept details from storyboard guide prompts", () => {
+    const conceptDetails = [
+      "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก โต๊ะกินข้าวเด็ก เด็ก 6 เดือน 3 in 1.",
+      "รายละเอียดสินค้า: รีวิวเก้าอี้กินข้าวเด็ก.",
+      "ห้ามเปลี่ยนประเภทสินค้า ขนาด จำนวนชั้น/ส่วนประกอบ สไตล์ หรือการใช้งานที่ระบุ.",
+      "หลังซื้อ คืนแรกจัดมุมกินข้าวใหม่ให้อยู่ใกล้โต๊ะที่บ้าน เช้าวันถัดไปพาลูกนั่งโดยปรับระดับความสูงให้พอดีกับโต๊ะ แล้วคาดเข็มขัดนิรภัยเพื่อจัดท่านั่งให้ยึดตำแหน่ง พอทำซ้ำไม่กี่มื้อก็เริ่มชิน",
+    ].join(" ");
+
+    const prompt = buildVeo31StoryboardVideoPrompt({
+      visualPrompt: "Shot 1: transition from @Image1 exact start frame to @Image2 exact end frame.",
+      durationSeconds: 8,
+      aspectRatio: "9:16",
+      frameRoles: ["start", "stop"],
+      conceptDetails,
+      storyboardGuide: [
+        "Concept and product facts:",
+        conceptDetails,
+        "",
+        "Storyboard source: 9 sliced image frames creating 8 ordered video shots.",
+      ].join("\n"),
+      includeVoiceover: true,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      voiceoverScript: "เริ่มจากปัญหาหน้างาน แล้วค่อย ๆ เห็นทางออกที่ใช้งานได้จริง",
+      includeSound: false,
+    });
+
+    expect(prompt.match(/PRODUCT FACTS LOCK/g)).toHaveLength(1);
+    expect(prompt).not.toContain("Concept and product facts:");
+    expect(prompt.length).toBeLessThan(1800);
   });
 
   it("adds dialogue pacing guidance to existing Veo section prompts", () => {
@@ -89,7 +122,8 @@ describe("storyboard prompt audio helpers", () => {
       voiceoverScript: "โต๊ะนี้ช่วยให้หยิบของง่ายขึ้น",
     });
 
-    expect(prompt).toContain("Dialogue pacing: aim for the spoken line to fill about 8 วินาที of the clip");
+    expect(prompt).toContain("Dialogue pacing: write enough spoken content for about 9.5 วินาที");
+    expect(prompt).toContain("Veo 3.1 can finish a slightly longer line.");
     expect(prompt.match(/Dialogue pacing:/g)).toHaveLength(1);
   });
 

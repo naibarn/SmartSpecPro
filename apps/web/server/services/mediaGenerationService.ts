@@ -1166,6 +1166,21 @@ function isLikelyUrlLikeExtraParamKey(key: string): boolean {
   );
 }
 
+const CLIENT_ONLY_EXTRA_PARAM_KEYS = new Set([
+  "marketplaceContext",
+  "marketplaceProduct",
+  "marketplace_context",
+  "marketplace_product",
+]);
+
+function stripClientOnlyExtraParams(extraParams: Record<string, any>): Record<string, any> {
+  const sanitized = { ...extraParams };
+  for (const key of CLIENT_ONLY_EXTRA_PARAM_KEYS) {
+    delete sanitized[key];
+  }
+  return sanitized;
+}
+
 /**
  * Process extraParams and resolve relative media URLs only for URL-like keys.
  * This keeps plain text fields such as style_instructions untouched even when
@@ -1213,6 +1228,10 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
     }
   }
   return resolved;
+}
+
+function buildPythonBackendExtraParams(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
+  return resolveExtraParamsUrls(stripClientOnlyExtraParams(extraParams), publicUrl);
 }
 
 function assertValidAudioModelExtraParams(modelId: string, extraParams: Record<string, unknown> | undefined): void {
@@ -1755,7 +1774,7 @@ export class MediaGenerationService {
     // Add extra params from dynamic input fields
     // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = resolveExtraParamsUrls((request as any).extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl);
     }
 
     // Add reference images if provided (1-5 images)
@@ -1880,7 +1899,7 @@ export class MediaGenerationService {
     // Add extra params from dynamic input fields
     // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = resolveExtraParamsUrls((request as any).extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl);
     }
 
     // Add reference images for img2vid
@@ -2004,7 +2023,7 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (normalizedExtraParams) {
-      payload.extra_params = resolveExtraParamsUrls(normalizedExtraParams, request.publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(normalizedExtraParams, request.publicUrl);
     }
 
     this.logMediaRequest({
@@ -2098,7 +2117,7 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (request.extraParams) {
-      payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl);
     }
 
     // Add reference images if provided (1-5 images)
@@ -2247,7 +2266,7 @@ export class MediaGenerationService {
 
     // Add extraParams for additional model-specific parameters
     if (request.extraParams) {
-      payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl);
     }
 
     this.logMediaRequest({
@@ -2347,7 +2366,7 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (normalizedExtraParams) {
-      payload.extra_params = resolveExtraParamsUrls(normalizedExtraParams, request.publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(normalizedExtraParams, request.publicUrl);
     }
 
     this.logMediaRequest({

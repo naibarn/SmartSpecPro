@@ -130,6 +130,7 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       platform: "tiktok_shop" as const,
       productName: "โต๊ะข้างเตียง",
     };
+    const conceptDetails = "PRODUCT FACTS LOCK: โต๊ะข้างเตียงไม้ 2 ชั้น สำหรับจัดของข้างเตียง. ห้ามเปลี่ยนประเภทสินค้า ขนาด จำนวนชั้น หรือสไตล์สินค้า.";
 
     const tasks = buildFirstLastFrameStoryboardTasks(
       [
@@ -145,7 +146,8 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
         speechMode: "th",
         speechLanguage: "Thai",
         includeSound: true,
-        storyboardGuide: "Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.",
+        conceptDetails,
+        storyboardGuide: `Concept and product facts:\n${conceptDetails}\n\nShot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.`,
         promptTone: "sales",
         promptLanguage: "th",
         now: 12345,
@@ -153,13 +155,17 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     );
 
     expect(tasks).toHaveLength(1);
-    expect(tasks[0]?.prompt).toContain("Storyboard guide for shot order and continuity: Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.");
+    expect(tasks[0]?.prompt).toContain("Guide: Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.");
+    expect(tasks[0]?.prompt.match(/PRODUCT FACTS LOCK/g)).toHaveLength(1);
+    expect(tasks[0]?.prompt).not.toContain("Product/concept details:");
+    expect(tasks[0]?.prompt.length).toBeLessThan(1800);
     expect(tasks[0]?.storyboardContext?.extraParams?.storyboardGuide).toContain("Shot order");
-    expect(tasks[0]?.prompt).toContain("Prompt tone: sales");
-    expect(tasks[0]?.prompt).toContain("Prompt planning language: th");
-    expect(tasks[0]?.prompt).toContain("Sound design: Soft ambient ecommerce product sound design");
+    expect(tasks[0]?.prompt).not.toContain("Prompt planning options:");
+    expect(tasks[0]?.prompt).toContain("Sound design: Soft ecommerce room tone");
     expect(tasks[0]?.prompt).toContain("Dialogue must be spoken in natural Thai, central Thai accent.");
-    expect(tasks[0]?.prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "เริ่มจากปัญหาหน้างาน');
+    expect(tasks[0]?.prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "มุมข้างเตียงรก ๆ แบบนี้');
+    expect(tasks[0]?.prompt).not.toContain("ปัญหาหน้างาน");
+    expect(tasks[0]?.prompt).not.toContain("ทางออกที่ใช้งานได้จริง");
     expect(tasks[0]?.storyboardContext?.extraParams?.storyboardPromptPlanner).toMatchObject({
       includeVoiceover: true,
       speechMode: "th",
@@ -168,6 +174,42 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       tone: "sales",
       language: "th",
     });
+  });
+
+  it("uses natural Thai speech for child dining chair split storyboard prompts", () => {
+    const marketplaceContext = {
+      productId: "product-2",
+      platform: "tiktok_shop" as const,
+      productName: "เก้าอี้กินข้าวเด็ก",
+    };
+    const conceptDetails = "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก โต๊ะกินข้าวเด็ก เด็ก 6 เดือน 3 in 1. หลังซื้อปรับระดับให้พอดีกับโต๊ะ แล้วคาดเข็มขัดนิรภัยให้ลูกนั่งได้ตำแหน่งเดิมทุกมื้อ.";
+
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        { url: "https://example.com/1.jpg", name: "Frame 1", marketplaceProduct: marketplaceContext },
+        { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
+        { url: "https://example.com/3.jpg", name: "Frame 3", marketplaceProduct: marketplaceContext },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        duration: 8,
+        marketplaceContext,
+        includeVoiceover: true,
+        speechMode: "th",
+        speechLanguage: "Thai",
+        includeSound: false,
+        conceptDetails,
+        now: 12345,
+      },
+    );
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "มื้ออาหารจะง่ายขึ้นมาก');
+    expect(tasks[1]?.prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "ทำซ้ำไม่กี่มื้อ');
+    expect(tasks[0]?.prompt).not.toContain("Speaker 1:");
+    expect(tasks[0]?.prompt).not.toContain("[energetic]");
+    expect(tasks[0]?.prompt).not.toContain("ปัญหาหน้างาน");
   });
 
   it("does not create tasks without at least two usable images", () => {
