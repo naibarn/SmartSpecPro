@@ -40,7 +40,6 @@ interface Settings {
 interface CandidateFilters {
   keyword: string;
   minScore: string;
-  minSold: string;
   minRating: string;
   priceMax: string;
   discountMin: string;
@@ -55,6 +54,7 @@ interface EditableProduct {
   shopName: string;
   priceCurrentText: string;
   commissionRateText: string;
+  affiliateUrl: string;
   soldCountText: string;
   ratingScoreText: string;
   reviewCountText: string;
@@ -116,6 +116,21 @@ interface MarketplaceLiveSnapshot {
   product: ProductCapturePayload | null;
   observedAt: string;
   reason: string;
+}
+
+interface DiagnosticLogEntry {
+  at: string;
+  source: string;
+  host?: string;
+  path?: string;
+  event: string;
+  details?: unknown;
+}
+
+interface CategoryScanResponse {
+  candidates: CategoryProductCandidate[];
+  diagnostics?: Record<string, unknown> | null;
+  domDiagnostics?: Record<string, unknown> | null;
 }
 
 interface ProductionDirectorReferenceImage {
@@ -243,11 +258,14 @@ const DEFAULT_SMARTSPEC_BASE_URL = "https://smartaihub.app";
 const DEVICE_ID_KEY = "deviceId";
 const LOCAL_AI_SETTINGS_KEY = "localAISettings";
 const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
+const DIAGNOSTIC_LOG_KEY = "smartaihubDiagnosticLogs";
+const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.61";
-const EXTENSION_BUILD_LABEL = "2026-05-28 19:52 +07";
+const EXTENSION_VERSION = "0.1.71";
+const EXTENSION_BUILD_LABEL = "2026-05-29 10:43 +07";
+const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
 const SMARTAIHUB_DRAG_MEDIA_PREFIX = "smartaihubDragMedia:";
 
@@ -740,6 +758,7 @@ function toEditableProduct(product: ProductCapturePayload): EditableProduct {
     shopName: product.shopName || "",
     priceCurrentText: product.priceCurrentText || "",
     commissionRateText: product.commissionRatePercent != null ? String(product.commissionRatePercent) : product.commissionRateText || "",
+    affiliateUrl: product.affiliateUrl || "",
     soldCountText: appendNormalizedCount(product.soldCountText),
     ratingScoreText: product.ratingScoreText || "",
     reviewCountText: appendNormalizedCount(product.reviewCountText),
@@ -752,7 +771,7 @@ function toEditableProduct(product: ProductCapturePayload): EditableProduct {
 }
 
 function selectedImagesFromProduct(product: ProductCapturePayload) {
-  return Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && img.selected !== false]));
+  return Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && img.selected !== false && canAutoSelectImage(img)]));
 }
 
 function selectedImagesForProduct(product: ProductCapturePayload, selected: Record<string, boolean>) {
@@ -765,6 +784,16 @@ function imageDimension(image: ImageCandidate, axis: "width" | "height"): number
   if (Number.isFinite(direct) && direct > 0) return direct;
   const metadataValue = Number(image.metadata?.[axis]);
   return Number.isFinite(metadataValue) && metadataValue > 0 ? metadataValue : null;
+}
+
+function isBelowAutoSelectResolution(image: ImageCandidate): boolean {
+  const width = imageDimension(image, "width");
+  const height = imageDimension(image, "height");
+  return (width != null && width < MIN_AUTO_SELECTED_IMAGE_SIDE) || (height != null && height < MIN_AUTO_SELECTED_IMAGE_SIDE);
+}
+
+function canAutoSelectImage(image: ImageCandidate): boolean {
+  return !isBelowAutoSelectResolution(image);
 }
 
 function isLowQualityImage(image: ImageCandidate): boolean {
@@ -897,6 +926,7 @@ function buildReviewedProductPayload(input: {
   heroImageUrl: string;
 }): ProductCapturePayload {
   const { product, editable, selectedImages, heroImageUrl } = input;
+  const affiliateUrl = normalizedAffiliateUrl(editable.affiliateUrl);
   return {
     ...product,
     productName: editable.productName,
@@ -904,6 +934,7 @@ function buildReviewedProductPayload(input: {
     priceCurrentText: editable.priceCurrentText,
     commissionRatePercent: parsePercentInput(editable.commissionRateText),
     commissionRateText: editable.commissionRateText,
+    affiliateUrl,
     soldCountText: editable.soldCountText,
     ratingScoreText: editable.ratingScoreText,
     reviewCountText: editable.reviewCountText,
@@ -919,6 +950,7 @@ function buildReviewedProductPayload(input: {
       ...(editable.categoryText ? [] : ["missing_category"]),
       ...(editable.descriptionText ? [] : ["missing_description"]),
       ...(editable.commissionRateText && parsePercentInput(editable.commissionRateText) == null ? ["invalid_commission_rate"] : []),
+      ...(editable.affiliateUrl && !normalizedAffiliateUrl(editable.affiliateUrl) ? ["invalid_affiliate_url"] : []),
     ],
     fieldEvidence: {
       ...((product as any).fieldEvidence ?? {}),
@@ -927,6 +959,7 @@ function buildReviewedProductPayload(input: {
       shopName: { text: editable.shopName, source: "user_review", confidence: editable.shopName ? 0.9 : 0.2 },
       priceCurrentText: { text: editable.priceCurrentText, source: "user_review", confidence: editable.priceCurrentText ? 0.95 : 0.2, normalized: parseNumber(editable.priceCurrentText) },
       commissionRate: { text: editable.commissionRateText, source: "user_review", confidence: editable.commissionRateText ? 0.95 : 0.2, normalized: parsePercentInput(editable.commissionRateText) },
+      affiliateUrl: { text: affiliateUrl ?? "", source: "user_review", confidence: affiliateUrl ? 0.95 : 0.2, normalized: affiliateUrl },
       soldCountText: { text: editable.soldCountText, source: "user_review", confidence: editable.soldCountText ? 0.9 : 0.2, normalized: parseSold(editable.soldCountText) },
       ratingScoreText: { text: editable.ratingScoreText, source: "user_review", confidence: editable.ratingScoreText ? 0.9 : 0.2, normalized: parseRating(editable.ratingScoreText) },
       reviewCountText: { text: editable.reviewCountText, source: "user_review", confidence: editable.reviewCountText ? 0.9 : 0.2, normalized: parseSold(editable.reviewCountText) },
@@ -956,6 +989,7 @@ function buildDataQualityWarnings(input: {
     !editable.productName.trim() ? "ยังไม่มีชื่อสินค้า" : "",
     !editable.priceCurrentText.trim() ? "ยังไม่มีราคา" : "",
     editable.commissionRateText.trim() && parsePercentInput(editable.commissionRateText) == null ? "Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100" : "",
+    editable.affiliateUrl.trim() && !normalizedAffiliateUrl(editable.affiliateUrl) ? "Affiliate link ต้องเป็น URL แบบ http(s)" : "",
     editable.commissionRateText.trim() && !editable.priceCurrentText.trim() ? "มี commission rate แต่ยังไม่มีราคา จึงคำนวณ commission amount ไม่ได้" : "",
     !editable.categoryText.trim() ? "ยังไม่มีหมวดหมู่" : "",
     !editable.descriptionText.trim() ? "ยังไม่มีคำอธิบายสินค้า" : "",
@@ -1368,14 +1402,251 @@ function withoutRelatedProductImages(product: ProductCapturePayload): ProductCap
   };
 }
 
-function mergeCandidates(existing: CategoryProductCandidate[], incoming: CategoryProductCandidate[]) {
-  const byUrl = new Map<string, CategoryProductCandidate>();
-  for (const candidate of existing) byUrl.set(candidate.url, candidate);
-  for (const candidate of incoming) {
-    const previous = byUrl.get(candidate.url);
-    byUrl.set(candidate.url, previous ? { ...previous, ...candidate, score: Math.max(previous.score, candidate.score) } : candidate);
+function compactIdentityText(value: string | null | undefined): string {
+  return (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function normalizedUrlKey(value: string | null | undefined): string {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+  try {
+    const url = new URL(raw, "https://affiliate.shopee.co.th");
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const offerMatch = url.pathname.match(/\/offer\/product_offer\/(\d+)/i);
+    if (host.endsWith("shopee.co.th") && offerMatch?.[1]) return `shopee-offer:${offerMatch[1]}`;
+    const productMatch = url.pathname.match(/(?:^|[./-])i\.(\d+)\.(\d+)(?:$|[/?#-])/i) || url.pathname.match(/\/product\/(\d+)\/(\d+)/i);
+    if (host.endsWith("shopee.co.th") && productMatch?.[1] && productMatch?.[2]) return `shopee-product:${productMatch[1]}:${productMatch[2]}`;
+    url.search = "";
+    url.hash = "";
+    return `${host}${url.pathname.replace(/\/+$/, "")}`;
+  } catch {
+    return raw.split(/[?#]/, 1)[0].replace(/\/+$/, "").toLowerCase();
   }
-  return Array.from(byUrl.values()).sort((a, b) => b.score - a.score);
+}
+
+function isGenericListUrlKey(urlKey: string) {
+  return [
+    "affiliate.shopee.co.th/offer/product_offer",
+    "shopee.co.th",
+    "shopee.co.th/",
+    "shopee.co.th/search",
+  ].includes(urlKey.replace(/\/+$/, ""));
+}
+
+function candidateUrlIdentityKey(candidate: CategoryProductCandidate): string {
+  const sourceKey = normalizedUrlKey(candidate.sourceUrl);
+  const urls = [
+    candidate.canonicalUrl,
+    candidate.cleanUrl,
+    candidate.originalUrl,
+    candidate.url,
+    candidate.affiliateUrl,
+  ];
+  for (const value of urls) {
+    const key = normalizedUrlKey(value);
+    if (!key || key === sourceKey || isGenericListUrlKey(key)) continue;
+    return key;
+  }
+  return "";
+}
+
+function candidateContentKey(candidate: CategoryProductCandidate): string {
+  const titleKey = compactIdentityText(candidate.title);
+  const imageKey = normalizedUrlKey(candidate.imageUrl);
+  const priceKey = compactIdentityText(candidate.priceText);
+  const soldKey = compactIdentityText(candidate.soldCountText);
+  if (titleKey.length < 8 || !imageKey || !priceKey) return "";
+  return `${titleKey}:${imageKey}:${priceKey}:${soldKey}`;
+}
+
+function normalizedAffiliateUrl(value: string | null | undefined): string | null {
+  const raw = (value || "").trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function candidateStableKey(candidate: CategoryProductCandidate): string {
+  if (candidate.externalProductId) return `${candidate.platform}:product:${candidate.externalShopId || "*"}:${candidate.externalProductId}`;
+  const urlKey = candidateUrlIdentityKey(candidate);
+  if (urlKey) return `${candidate.platform}:url:${urlKey}`;
+  const contentKey = candidateContentKey(candidate);
+  if (contentKey) return `${candidate.platform}:content:${contentKey}`;
+  return `${candidate.platform}:fallback:${normalizedUrlKey(candidate.sourceUrl)}:${candidate.position}:${compactIdentityText(candidate.title)}:${candidate.priceText || ""}`;
+}
+
+function candidateIdentity(candidate: CategoryProductCandidate) {
+  return candidateStableKey(candidate);
+}
+
+function candidateMergeKeys(candidate: CategoryProductCandidate): string[] {
+  const keys: string[] = [];
+  if (candidate.externalProductId) keys.push(`${candidate.platform}:product:${candidate.externalShopId || "*"}:${candidate.externalProductId}`);
+  const urlKey = candidateUrlIdentityKey(candidate);
+  if (urlKey) keys.push(`${candidate.platform}:url:${urlKey}`);
+  const contentKey = candidateContentKey(candidate);
+  if (contentKey) keys.push(`${candidate.platform}:content:${contentKey}`);
+  if (candidate.affiliateCardKey) keys.push(`${candidate.platform}:card:${candidate.affiliateCardKey}`);
+  return keys.length ? Array.from(new Set(keys)) : [candidateStableKey(candidate)];
+}
+
+function mergeCandidateRecord(previous: CategoryProductCandidate, candidate: CategoryProductCandidate): CategoryProductCandidate {
+  const score = Math.max(previous.score, candidate.score);
+  const previousHasAffiliate = Boolean(previous.affiliateUrl);
+  const candidateHasAffiliate = Boolean(candidate.affiliateUrl);
+  const base = candidateHasAffiliate || (!previousHasAffiliate && candidate.score >= previous.score) ? candidate : previous;
+  const previousHasIdentityUrl = Boolean(candidateUrlIdentityKey(previous));
+  const candidateHasIdentityUrl = Boolean(candidateUrlIdentityKey(candidate));
+  const identityUrlSource = previousHasIdentityUrl ? previous : candidateHasIdentityUrl ? candidate : null;
+  const baseUrl = normalizedAffiliateUrl(base.url) && base.url === base.affiliateUrl
+    ? (previous.url === previous.affiliateUrl ? candidate.url : previous.url)
+    : base.url;
+  return {
+    ...previous,
+    ...candidate,
+    ...base,
+    externalProductId: previous.externalProductId || candidate.externalProductId,
+    externalShopId: previous.externalShopId || candidate.externalShopId,
+    url: candidateUrlIdentityKey(base) ? baseUrl : identityUrlSource?.url || baseUrl,
+    priceText: previous.priceText || candidate.priceText,
+    originalPriceText: previous.originalPriceText || candidate.originalPriceText,
+    discountText: previous.discountText || candidate.discountText,
+    soldCountText: previous.soldCountText || candidate.soldCountText,
+    soldCountValue: previous.soldCountValue ?? candidate.soldCountValue,
+    ratingText: previous.ratingText || candidate.ratingText,
+    commissionRatePercent: previous.commissionRatePercent ?? candidate.commissionRatePercent,
+    commissionRateText: previous.commissionRateText || candidate.commissionRateText,
+    affiliateUrl: normalizedAffiliateUrl(previous.affiliateUrl) || normalizedAffiliateUrl(candidate.affiliateUrl),
+    affiliateLinkAvailable: Boolean(previous.affiliateLinkAvailable || candidate.affiliateLinkAvailable),
+    affiliateCardKey: previous.affiliateCardKey || candidate.affiliateCardKey,
+    imageUrl: previous.imageUrl || candidate.imageUrl,
+    originalUrl: identityUrlSource?.originalUrl || previous.originalUrl || candidate.originalUrl,
+    cleanUrl: identityUrlSource?.cleanUrl || previous.cleanUrl || candidate.cleanUrl,
+    canonicalUrl: identityUrlSource?.canonicalUrl || previous.canonicalUrl || candidate.canonicalUrl,
+    badges: Array.from(new Set([...(previous.badges ?? []), ...(candidate.badges ?? [])])),
+    score,
+    scoreReasons: Array.from(new Set([...(previous.scoreReasons ?? []), ...(candidate.scoreReasons ?? [])])),
+    position: Math.min(previous.position ?? candidate.position, candidate.position ?? previous.position),
+  };
+}
+
+function mergeCandidates(existing: CategoryProductCandidate[], incoming: CategoryProductCandidate[]) {
+  const byKey = new Map<string, CategoryProductCandidate>();
+  const records: CategoryProductCandidate[] = [];
+  const upsert = (candidate: CategoryProductCandidate) => {
+    const incomingKeys = candidateMergeKeys(candidate);
+    const previous = incomingKeys.map((key) => byKey.get(key)).find(Boolean);
+    const next = previous ? mergeCandidateRecord(previous, candidate) : candidate;
+    if (previous) {
+      const index = records.indexOf(previous);
+      if (index >= 0) records[index] = next;
+    } else {
+      records.push(next);
+    }
+    const keys = new Set([
+      ...(previous ? candidateMergeKeys(previous) : []),
+      ...incomingKeys,
+      ...candidateMergeKeys(next),
+    ]);
+    for (const key of keys) byKey.set(key, next);
+  };
+  for (const candidate of existing) upsert(candidate);
+  for (const candidate of incoming) upsert(candidate);
+  return records.sort((a, b) => b.score - a.score);
+}
+
+function candidateListSignature(candidates: CategoryProductCandidate[]) {
+  return candidates
+    .slice(0, 80)
+    .map((candidate) => [
+      candidateStableKey(candidate),
+      candidate.affiliateUrl,
+      candidate.title,
+      candidate.priceText,
+      candidate.soldCountText,
+      candidate.imageUrl,
+    ].filter(Boolean).join("~"))
+    .join("|");
+}
+
+function findMatchingCandidateForProduct(product: ProductCapturePayload, candidates: CategoryProductCandidate[]): { candidate: CategoryProductCandidate; basis: "externalProductId" | "url" } | null {
+  if (product.externalProductId) {
+    const matched = candidates.find((candidate) => {
+      if (candidate.platform !== product.platform || candidate.externalProductId !== product.externalProductId) return false;
+      if (product.externalShopId && candidate.externalShopId && product.externalShopId !== candidate.externalShopId) return false;
+      return true;
+    });
+    if (matched) return { candidate: matched, basis: "externalProductId" };
+  }
+  const productUrlKeys = new Set([
+    normalizedUrlKey(product.canonicalSourceUrl),
+    normalizedUrlKey(product.cleanSourceUrl),
+    normalizedUrlKey(product.originalSourceUrl),
+    normalizedUrlKey(product.sourceUrl),
+  ].filter((key) => key && !isGenericListUrlKey(key)));
+  if (!productUrlKeys.size) return null;
+  const matched = candidates.find((candidate) => {
+    if (candidate.platform !== product.platform) return false;
+    const key = candidateUrlIdentityKey(candidate);
+    return Boolean(key && productUrlKeys.has(key));
+  });
+  return matched ? { candidate: matched, basis: "url" } : null;
+}
+
+function enrichProductWithMatchedCandidate(product: ProductCapturePayload, candidates: CategoryProductCandidate[]): ProductCapturePayload {
+  const match = findMatchingCandidateForProduct(product, candidates);
+  if (!match) return product;
+  const { candidate, basis } = match;
+  const affiliateUrl = normalizedAffiliateUrl(product.affiliateUrl) || normalizedAffiliateUrl(candidate.affiliateUrl);
+  const commissionRatePercent = product.commissionRatePercent ?? candidate.commissionRatePercent ?? null;
+  const commissionRateText = product.commissionRateText || candidate.commissionRateText || (commissionRatePercent != null ? String(commissionRatePercent) : null);
+  return {
+    ...product,
+    commissionRatePercent,
+    commissionRateText,
+    affiliateUrl,
+    affiliateMatch: {
+      candidateKey: candidateStableKey(candidate),
+      basis,
+      confidence: 1,
+      listSourceUrl: candidate.sourceUrl,
+      matchedAt: new Date().toISOString(),
+    },
+    fieldEvidence: {
+      ...(product.fieldEvidence ?? {}),
+      ...(commissionRateText ? {
+        commissionRate: {
+          text: commissionRateText,
+          source: `product_list_exact_match:${basis}`,
+          confidence: 1,
+          normalized: commissionRatePercent,
+        },
+      } : {}),
+      ...(affiliateUrl ? {
+        affiliateUrl: {
+          text: affiliateUrl,
+          source: `product_list_exact_match:${basis}`,
+          confidence: 1,
+          normalized: affiliateUrl,
+        },
+      } : {}),
+    },
+  };
+}
+
+function hasCandidateEnrichmentChange(before: ProductCapturePayload, after: ProductCapturePayload): boolean {
+  return (before.commissionRatePercent ?? null) !== (after.commissionRatePercent ?? null)
+    || (before.commissionRateText || "") !== (after.commissionRateText || "")
+    || (normalizedAffiliateUrl(before.affiliateUrl) || "") !== (normalizedAffiliateUrl(after.affiliateUrl) || "")
+    || (before.affiliateMatch?.candidateKey || "") !== (after.affiliateMatch?.candidateKey || "");
+}
+
+function isScannableListPage(page: PageDetection | null | undefined) {
+  return page?.pageType === "category" || page?.pageType === "shop" || page?.pageType === "search";
 }
 
 async function getActiveTab(): Promise<{ id: number; url: string }> {
@@ -1443,7 +1714,7 @@ async function saveQueue(queue: CategoryProductCandidate[]) {
 
 async function loadQueue(): Promise<CategoryProductCandidate[]> {
   const result = await chrome.storage.local.get(["queuedCandidates"]);
-  return Array.isArray(result.queuedCandidates) ? result.queuedCandidates : [];
+  return Array.isArray(result.queuedCandidates) ? mergeCandidates([], result.queuedCandidates) : [];
 }
 
 async function loadLocalAISettings(): Promise<LocalAISettings> {
@@ -1464,10 +1735,33 @@ async function saveLocalAIInsightCache(cache: Record<string, unknown>) {
   await chrome.storage.local.set({ [LOCAL_AI_CACHE_KEY]: cache });
 }
 
+function compactDiagnosticValue(value: unknown): unknown {
+  if (typeof value === "string") return value.length > 500 ? `${value.slice(0, 500)}...` : value;
+  if (Array.isArray(value)) return value.slice(0, 20).map(compactDiagnosticValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).slice(0, 40).map(([key, item]) => [key, compactDiagnosticValue(item)]));
+  }
+  return value;
+}
+
+async function appendDiagnosticLog(event: string, details: Record<string, unknown> = {}) {
+  const result = await chrome.storage.local.get([DIAGNOSTIC_LOG_KEY]);
+  const existing = Array.isArray(result[DIAGNOSTIC_LOG_KEY]) ? result[DIAGNOSTIC_LOG_KEY] as DiagnosticLogEntry[] : [];
+  const entry: DiagnosticLogEntry = {
+    at: new Date().toISOString(),
+    source: "panel",
+    event,
+    details: compactDiagnosticValue(details),
+  };
+  await chrome.storage.local.set({ [DIAGNOSTIC_LOG_KEY]: [...existing, entry].slice(-DIAGNOSTIC_LOG_LIMIT) });
+}
+
 const TIKTOK_START_URLS = [
   { label: "TikTok Shop TH", url: "https://www.tiktok.com/shop/th?source=ecommerce_shoppingguide" },
   { label: "TikTok Home Supplies", url: "https://www.tiktok.com/shop/th/c/home-supplies/600001" },
 ];
+
+const SHOPEE_AFFILIATE_PRODUCT_OFFER_URL = "https://affiliate.shopee.co.th/offer/product_offer";
 
 const SHOPEE_START_URLS = [
   { label: "Shopee Home", url: "https://shopee.co.th/" },
@@ -1487,7 +1781,6 @@ export default function App() {
   const [filters, setFilters] = useState<CandidateFilters>({
     keyword: "",
     minScore: "50",
-    minSold: "",
     minRating: "",
     priceMax: "",
     discountMin: "",
@@ -1501,7 +1794,7 @@ export default function App() {
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [lastObservedAt, setLastObservedAt] = useState("");
   const [lastObserveReason, setLastObserveReason] = useState("");
-  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   const [evidence, setEvidence] = useState<EvidenceSelection>({
     domHeader: true,
     domDescription: true,
@@ -1566,12 +1859,17 @@ export default function App() {
   const [storyboardProjectsBusy, setStoryboardProjectsBusy] = useState(false);
   const [storyboardProjectBusy, setStoryboardProjectBusy] = useState(false);
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
+  const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
+  const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
   const [localAIProvider, setLocalAIProvider] = useState("noop");
   const abortLocalAIRef = useRef<AbortController | null>(null);
   const autoInsightKeyRef = useRef<string | null>(null);
   const autoInsightRunningRef = useRef(false);
   const productSourceRef = useRef<string | null>(null);
   const pageUrlRef = useRef<string | null>(null);
+  const candidateListSignatureRef = useRef("");
+  const candidateListSourceUrlRef = useRef("");
+  const autoProductListScanUrlRef = useRef("");
   const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
@@ -1701,8 +1999,32 @@ export default function App() {
     return () => chrome.storage.onChanged.removeListener(handler);
   }, []);
 
+  useEffect(() => {
+    const current = product ?? liveProduct;
+    if (!current || candidates.length === 0) return;
+    const enriched = withoutRelatedProductImages(enrichProductWithMatchedCandidate(current, candidates));
+    if (!hasCandidateEnrichmentChange(current, enriched)) return;
+
+    const applyIfSameProduct = (existing: ProductCapturePayload | null) => {
+      if (!existing || existing.sourceUrl !== current.sourceUrl) return existing;
+      const next = withoutRelatedProductImages(enrichProductWithMatchedCandidate(existing, candidates));
+      return hasCandidateEnrichmentChange(existing, next) ? next : existing;
+    };
+
+    setProduct(applyIfSameProduct);
+    setLiveProduct(applyIfSameProduct);
+    setEditable((existing) => {
+      const incoming = toEditableProduct(enriched);
+      return {
+        ...existing,
+        commissionRateText: existing.commissionRateText || incoming.commissionRateText,
+        affiliateUrl: existing.affiliateUrl || incoming.affiliateUrl,
+      };
+    });
+  }, [candidates, product, liveProduct]);
+
   function applyProductForReview(nextProduct: ProductCapturePayload) {
-    nextProduct = withoutRelatedProductImages(nextProduct);
+    nextProduct = withoutRelatedProductImages(enrichProductWithMatchedCandidate(nextProduct, candidates));
     productSourceRef.current = nextProduct.sourceUrl;
     setReviewDraftStatus("");
     setProduct(nextProduct);
@@ -1730,7 +2052,7 @@ export default function App() {
   }
 
   function mergeProductImagesForReview(nextProduct: ProductCapturePayload) {
-    nextProduct = withoutRelatedProductImages(nextProduct);
+    nextProduct = withoutRelatedProductImages(enrichProductWithMatchedCandidate(nextProduct, candidates));
     productSourceRef.current = productSourceRef.current || nextProduct.sourceUrl;
     const mergeInto = (current: ProductCapturePayload | null) => {
       if (!current || current.sourceUrl !== nextProduct.sourceUrl) return nextProduct;
@@ -1766,6 +2088,8 @@ export default function App() {
         variantsText: current.variantsText || nextProduct.variantsText,
         sellerLocationText: current.sellerLocationText || nextProduct.sellerLocationText,
         descriptionText: current.descriptionText || nextProduct.descriptionText,
+        affiliateUrl: current.affiliateUrl || nextProduct.affiliateUrl,
+        affiliateMatch: current.affiliateMatch || nextProduct.affiliateMatch,
         specificationText: current.specificationText || nextProduct.specificationText,
         imageCandidates: mergeImageCandidates(current.imageCandidates, nextProduct.imageCandidates),
         fieldEvidence: { ...nextFieldEvidence, ...currentFieldEvidence },
@@ -1782,6 +2106,7 @@ export default function App() {
         shopName: current.shopName || incoming.shopName,
         priceCurrentText: current.priceCurrentText || incoming.priceCurrentText,
         commissionRateText: current.commissionRateText || incoming.commissionRateText,
+        affiliateUrl: current.affiliateUrl || incoming.affiliateUrl,
         soldCountText: current.soldCountText || incoming.soldCountText,
         ratingScoreText: current.ratingScoreText || incoming.ratingScoreText,
         reviewCountText: current.reviewCountText || incoming.reviewCountText,
@@ -1796,47 +2121,66 @@ export default function App() {
       const hasCurrentSelection = Object.values(current).some(Boolean);
       const next = { ...current };
       for (const image of nextProduct.imageCandidates) {
-        if (next[image.url] == null) next[image.url] = !hasCurrentSelection && image.kind === "main" && image.selected !== false;
+        if (next[image.url] == null) next[image.url] = !hasCurrentSelection && image.kind === "main" && image.selected !== false && canAutoSelectImage(image);
       }
       return next;
     });
-    setHeroImageUrl((current) => current || nextProduct.imageCandidates.find((img) => img.kind === "main" && img.selected !== false)?.url || nextProduct.imageCandidates.find((img) => img.kind === "main")?.url || "");
+    setHeroImageUrl((current) => current || nextProduct.imageCandidates.find((img) => img.kind === "main" && img.selected !== false && canAutoSelectImage(img))?.url || nextProduct.imageCandidates.find((img) => img.kind === "main" && canAutoSelectImage(img))?.url || "");
   }
 
-  function clearDetectedState() {
+  function clearDetectedState(options: { keepCandidates?: boolean } = {}) {
     productSourceRef.current = null;
     pageUrlRef.current = null;
-    setCandidates([]);
-    setIgnoredUrls(new Set());
+    if (!options.keepCandidates) {
+      candidateListSignatureRef.current = "";
+      candidateListSourceUrlRef.current = "";
+      autoProductListScanUrlRef.current = "";
+      setCandidates([]);
+      setIgnoredUrls(new Set());
+    }
     setProduct(null);
     setLiveProduct(null);
     setSelectedImages({});
     setHeroImageUrl("");
     setImageFilter("all");
     setReviewDraftStatus("");
-    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   }
 
-  function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean } = {}) {
+  function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean; updateCandidates?: boolean } = {}) {
     const pageChanged = Boolean(pageUrlRef.current && pageUrlRef.current !== snapshot.page.url);
-    const shouldReplaceList = Boolean(options.replace || pageChanged || snapshot.reason === "url_change");
     pageUrlRef.current = snapshot.page.url;
     setPage(snapshot.page);
-    if (shouldReplaceList) {
-      setCandidates(snapshot.candidates);
+
+    const incomingListSignature = candidateListSignature(snapshot.candidates);
+    const hasIncomingList = snapshot.candidates.length > 0;
+    const shouldUseIncomingList = Boolean(options.updateCandidates && hasIncomingList && isScannableListPage(snapshot.page));
+    const incomingListChanged = Boolean(
+      shouldUseIncomingList
+      && candidateListSignatureRef.current
+      && candidateListSignatureRef.current !== incomingListSignature,
+    );
+
+    if (shouldUseIncomingList && (options.replace || incomingListChanged || !candidateListSignatureRef.current)) {
+      candidateListSignatureRef.current = incomingListSignature;
+      candidateListSourceUrlRef.current = snapshot.page.url;
+      setCandidates(mergeCandidates([], snapshot.candidates));
       setIgnoredUrls(new Set());
-    } else if (snapshot.candidates.length > 0) {
+    } else if (shouldUseIncomingList) {
+      candidateListSignatureRef.current = incomingListSignature;
+      candidateListSourceUrlRef.current = snapshot.page.url;
       setCandidates((current) => mergeCandidates(current, snapshot.candidates));
     }
+
     if (snapshot.product) {
       const currentSource = productSourceRef.current;
-      const shouldReplaceProduct = shouldReplaceList || !currentSource || currentSource !== snapshot.product.sourceUrl;
+      const shouldReplaceProduct = pageChanged || !currentSource || currentSource !== snapshot.product.sourceUrl;
       if (shouldReplaceProduct) {
         applyProductForReview(snapshot.product);
       } else {
         mergeProductImagesForReview(snapshot.product);
       }
-    } else if (shouldReplaceList) {
+    } else if (pageChanged && snapshot.page.pageType !== "product") {
       setProduct(null);
       setLiveProduct(null);
       setSelectedImages({});
@@ -1845,10 +2189,12 @@ export default function App() {
     setLastObservedAt(snapshot.observedAt);
     setLastObserveReason(snapshot.reason);
     const candidateText = snapshot.candidates.length > 0
-      ? `${snapshot.candidates.length} products`
+      ? "product list page; Product List unchanged"
       : snapshot.product
         ? `${snapshot.product.imageCandidates.length} product images`
-        : "no product cards";
+        : candidateListSignatureRef.current
+          ? "no new product cards; keeping Product List"
+          : "no product cards";
     setStatus(`Live detected ${candidateText}`);
   }
 
@@ -1881,7 +2227,7 @@ export default function App() {
     sendToContent("START_MARKETPLACE_OBSERVER").catch(() => undefined);
     const restartObserver = (reason: string) => {
       window.setTimeout(() => {
-        clearDetectedState();
+        clearDetectedState({ keepCandidates: true });
         sendToContent("START_MARKETPLACE_OBSERVER")
           .then(() => sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT"))
           .then((snapshot) => applyLiveSnapshot(snapshot, { replace: true }))
@@ -1909,18 +2255,16 @@ export default function App() {
   const filteredCandidates = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase();
     const minScore = Number(filters.minScore) || 0;
-    const minSold = Number(filters.minSold) || 0;
     const minRating = Number(filters.minRating) || 0;
     const priceMax = Number(filters.priceMax) || 0;
     const discountMin = Number(filters.discountMin) || 0;
     return candidates
-      .filter((item) => !ignoredUrls.has(item.url))
+      .filter((item) => !ignoredUrls.has(candidateStableKey(item)))
       .filter((item) => item.score >= minScore)
       .filter((item) => !keyword || item.title.toLowerCase().includes(keyword))
       .filter((item) => !filters.mallOnly || item.badges.some((badge) => /mall|official/i.test(badge)))
       .filter((item) => !filters.freeShippingOnly || item.badges.some((badge) => /free[_\s-]?shipping|ส่งฟรี/i.test(badge)))
       .filter((item) => !filters.excludeSponsored || !item.badges.some((badge) => /sponsored/i.test(badge)))
-      .filter((item) => !minSold || (parseSold(item.soldCountText) ?? 0) >= minSold)
       .filter((item) => !minRating || (parseRating(item.ratingText) ?? 0) >= minRating)
       .filter((item) => !priceMax || (parseNumber(item.priceText) ?? Number.POSITIVE_INFINITY) <= priceMax)
       .filter((item) => !discountMin || (parsePercent(item.discountText) ?? 0) >= discountMin)
@@ -1934,6 +2278,16 @@ export default function App() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [activeTab, filteredCandidates]);
+
+  useEffect(() => {
+    if (activeTab !== "products" || candidates.length > 0 || !isScannableListPage(page) || !page?.url) return;
+    if (autoProductListScanUrlRef.current === page.url) return;
+    autoProductListScanUrlRef.current = page.url;
+    const timer = window.setTimeout(() => {
+      void run(scanCategory);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, candidates.length, page?.pageType, page?.url]);
 
   const selectedImageCount = useMemo(() => (
     product
@@ -1984,9 +2338,10 @@ export default function App() {
   }, [product]);
   const fieldEvidenceCount = useMemo(() => Object.keys(product?.fieldEvidence ?? {}).length, [product]);
   const commissionRateInvalid = Boolean(editable.commissionRateText.trim() && parsePercentInput(editable.commissionRateText) == null);
+  const affiliateUrlInvalid = Boolean(editable.affiliateUrl.trim() && !normalizedAffiliateUrl(editable.affiliateUrl));
   const queuedCurrentProduct = useMemo(() => {
     if (!product) return null;
-    return queue.find((item) => item.url === product.sourceUrl || item.externalProductId === product.externalProductId) ?? null;
+    return findMatchingCandidateForProduct(product, queue)?.candidate ?? null;
   }, [product, queue]);
   const dataQualityWarnings = useMemo(() => buildDataQualityWarnings({
     product,
@@ -2047,6 +2402,10 @@ export default function App() {
   function openShopeeSearch() {
     const keyword = starterKeyword.trim();
     openStarterUrl(keyword ? `https://shopee.co.th/search?keyword=${encodeURIComponent(keyword)}` : "https://shopee.co.th/");
+  }
+
+  function openShopeeAffiliateOffer() {
+    openStarterUrl(SHOPEE_AFFILIATE_PRODUCT_OFFER_URL);
   }
 
   function openTikTokSearch() {
@@ -2247,30 +2606,147 @@ export default function App() {
   async function detect() {
     setError("");
     setStatus("Detecting page");
-    clearDetectedState();
+    clearDetectedState({ keepCandidates: true });
     updateProgress("Detecting page");
     const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
     applyLiveSnapshot(snapshot, { replace: true });
     setActiveTab(snapshot.product ? "capture" : snapshot.candidates.length > 0 ? "products" : "capture");
-    setStatus(snapshot.product ? "Review latest detected details before upload" : `Detected ${snapshot.candidates.length} candidates`);
+    setStatus(snapshot.product
+      ? "Review latest detected details before upload"
+      : snapshot.candidates.length > 0
+        ? `Detected product list page. Click Scan visible products to refresh the Product List.`
+        : candidates.length > 0
+          ? "No new candidates detected; keeping current Product List"
+          : "Detected 0 candidates");
   }
 
   async function scanCategory() {
     setError("");
     setStatus("Scanning visible products");
-    const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCAN_CATEGORY", { limit: 100 });
-    setCandidates(response.candidates);
+    const response = await sendToContent<CategoryScanResponse>("SCAN_CATEGORY", { limit: 100 });
+    if (response.candidates.length > 0) {
+      const mergedCandidates = mergeCandidates([], response.candidates);
+      candidateListSignatureRef.current = candidateListSignature(mergedCandidates);
+      candidateListSourceUrlRef.current = page?.url || mergedCandidates[0]?.sourceUrl || "";
+      setCandidates(mergedCandidates);
+      setIgnoredUrls(new Set());
+    }
     setActiveTab("products");
-    setStatus(`Found ${response.candidates.length} candidates`);
+    setStatus(response.candidates.length > 0 ? `Found ${response.candidates.length} candidates` : "No candidates found; keeping current Product List");
+    await appendDiagnosticLog("product_list_scan", {
+      pageUrl: page?.url,
+      count: response.candidates.length,
+      keptExistingList: response.candidates.length === 0 && candidates.length > 0,
+      withAffiliateButtons: response.candidates.filter((candidate) => Boolean(candidate.affiliateLinkAvailable)).length,
+      withAffiliateUrls: response.candidates.filter((candidate) => Boolean(candidate.affiliateUrl)).length,
+      diagnostics: response.diagnostics ?? null,
+      domDiagnostics: response.domDiagnostics ?? null,
+    }).catch(() => undefined);
   }
 
   async function scrollScanCategory() {
     setError("");
     setStatus("Scrolling and scanning");
-    const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCROLL_AND_SCAN_CATEGORY", { steps: 5, limit: 100 });
-    setCandidates(response.candidates);
+    const response = await sendToContent<CategoryScanResponse>("SCROLL_AND_SCAN_CATEGORY", { steps: 5, limit: 100 });
+    if (response.candidates.length > 0) {
+      const mergedCandidates = mergeCandidates([], response.candidates);
+      candidateListSignatureRef.current = candidateListSignature(mergedCandidates);
+      candidateListSourceUrlRef.current = page?.url || mergedCandidates[0]?.sourceUrl || "";
+      setCandidates(mergedCandidates);
+      setIgnoredUrls(new Set());
+    }
     setActiveTab("products");
-    setStatus(`Found ${response.candidates.length} candidates`);
+    setStatus(response.candidates.length > 0 ? `Found ${response.candidates.length} candidates` : "No candidates found; keeping current Product List");
+    await appendDiagnosticLog("product_list_scroll_scan", {
+      pageUrl: page?.url,
+      count: response.candidates.length,
+      keptExistingList: response.candidates.length === 0 && candidates.length > 0,
+      withAffiliateButtons: response.candidates.filter((candidate) => Boolean(candidate.affiliateLinkAvailable)).length,
+      withAffiliateUrls: response.candidates.filter((candidate) => Boolean(candidate.affiliateUrl)).length,
+      diagnostics: response.diagnostics ?? null,
+      domDiagnostics: response.domDiagnostics ?? null,
+    }).catch(() => undefined);
+  }
+
+  async function captureAffiliateDiagnostics() {
+    setError("");
+    setStatus("Capturing page diagnostics");
+    const response = await sendToContent<{ diagnostics?: Record<string, unknown> | null }>("CAPTURE_AFFILIATE_DOM_DIAGNOSTICS");
+    await appendDiagnosticLog("affiliate_dom_manual_capture", {
+      pageUrl: page?.url,
+      diagnostics: response.diagnostics ?? null,
+    }).catch(() => undefined);
+    await loadDiagnosticLogs();
+    setActiveTab("config");
+    setStatus("Captured diagnostics in Config");
+  }
+
+  async function openProductListTab() {
+    setActiveTab("products");
+    setError("");
+    setStatus(candidates.length > 0 ? "Product List kept. Click Scan visible products to refresh." : "Click Scan visible products to collect Product List.");
+    try {
+      const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
+      applyLiveSnapshot(snapshot, { replace: false });
+      setStatus(isScannableListPage(snapshot.page)
+        ? "Product List ready. Click Scan visible products to refresh."
+        : candidates.length > 0
+          ? "Product List kept from previous scan"
+          : "Open a Shopee/TikTok list page, then click Scan visible products.");
+    } catch (error) {
+      if (candidates.length > 0) {
+        setStatus("Product List kept from previous scan");
+        return;
+      }
+      throw error;
+    }
+  }
+
+  async function requestShopeeAffiliateLink(candidate: CategoryProductCandidate) {
+    const key = candidateIdentity(candidate);
+    setAffiliateLinkBusy((current) => ({ ...current, [key]: true }));
+    setStatus("Getting Shopee affiliate link");
+    try {
+      const response = await sendToContent<{ affiliateUrl: string | null; diagnostics?: Record<string, unknown> }>("GET_SHOPEE_AFFILIATE_LINK", {
+        affiliateCardKey: candidate.affiliateCardKey,
+        title: candidate.title,
+        imageUrl: candidate.imageUrl,
+        priceText: candidate.priceText,
+        soldCountText: candidate.soldCountText,
+      });
+      await appendDiagnosticLog("affiliate_link_panel_request", {
+        ok: Boolean(response.affiliateUrl),
+        key,
+        title: candidate.title,
+        diagnostics: response.diagnostics ?? null,
+      }).catch(() => undefined);
+      if (!response.affiliateUrl) {
+        setStatus("Shopee did not expose an affiliate URL after click");
+        setError("กดปุ่มเอา ลิงก์แล้ว แต่หน้า Shopee ยังไม่เปิดเผย URL ใน DOM/ช่องข้อความให้ extension อ่านได้");
+        return;
+      }
+      const updateCandidate = (item: CategoryProductCandidate) => candidateStableKey(item) === key
+        ? {
+          ...item,
+          affiliateUrl: response.affiliateUrl,
+          badges: Array.from(new Set([...item.badges, "affiliate_url"])),
+          scoreReasons: Array.from(new Set([...item.scoreReasons, "พบ affiliate URL"])),
+        }
+        : item;
+      setCandidates((current) => mergeCandidates([], current.map(updateCandidate)));
+      setQueue((current) => {
+        const next = mergeCandidates([], current.map(updateCandidate));
+        saveQueue(next).catch(() => undefined);
+        return next;
+      });
+      const enrichedCandidate = updateCandidate(candidate);
+      setProduct((current) => current ? enrichProductWithMatchedCandidate(current, [enrichedCandidate]) : current);
+      setLiveProduct((current) => current ? enrichProductWithMatchedCandidate(current, [enrichedCandidate]) : current);
+      setEditable((current) => current.affiliateUrl ? current : { ...current, affiliateUrl: response.affiliateUrl || "" });
+      setStatus("Shopee affiliate link ready");
+    } finally {
+      setAffiliateLinkBusy((current) => ({ ...current, [key]: false }));
+    }
   }
 
   async function refreshLiveSnapshot() {
@@ -2313,13 +2789,14 @@ export default function App() {
   }
 
   function addQueue(candidate: CategoryProductCandidate) {
-    const next = [...queue.filter((item) => item.url !== candidate.url), candidate];
+    const key = candidateStableKey(candidate);
+    const next = mergeCandidates(queue.filter((item) => candidateStableKey(item) !== key), [candidate]);
     setQueue(next);
     saveQueue(next).catch(() => undefined);
   }
 
-  function removeQueue(url: string) {
-    const next = queue.filter((item) => item.url !== url);
+  function removeQueue(key: string) {
+    const next = queue.filter((item) => candidateStableKey(item) !== key);
     setQueue(next);
     saveQueue(next).catch(() => undefined);
   }
@@ -2343,6 +2820,7 @@ export default function App() {
     if (!product) return;
     if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
     if (commissionRateInvalid) throw new Error("Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100");
+    if (affiliateUrlInvalid) throw new Error("Affiliate link ต้องเป็น URL แบบ http(s)");
     const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
     const selected = reviewedProduct.imageCandidates.filter((img) => img.selected).map((img, position) => ({ ...img, position, selected: true }));
     const insightPreviewLines = productBrief ? [
@@ -2361,6 +2839,7 @@ export default function App() {
       "",
       `สินค้า: ${reviewedProduct.productName || "Untitled product"}`,
       `URL: ${reviewedProduct.sourceUrl}`,
+      reviewedProduct.affiliateUrl ? `Affiliate link: ${reviewedProduct.affiliateUrl}` : "Affiliate link: -",
       `จำนวนภาพที่จะ upload: ${selected.length}`,
       dataQualityWarnings.length ? `คำเตือนคุณภาพข้อมูล: ${dataQualityWarnings.length} รายการ` : "",
       ...insightPreviewLines,
@@ -2389,6 +2868,7 @@ export default function App() {
         pageType: product.pageType,
         externalProductId: product.externalProductId,
         externalShopId: product.externalShopId,
+        affiliateUrl: reviewedProduct.affiliateUrl,
         pageTitle: product.pageTitle,
         domText,
         htmlBlocks,
@@ -2477,7 +2957,7 @@ export default function App() {
     const analyzeJson = await analyze.json();
     setStatus("Preview ready");
     markProgressDone();
-    if (queuedCurrentProduct) removeQueue(queuedCurrentProduct.url);
+    if (queuedCurrentProduct) removeQueue(candidateStableKey(queuedCurrentProduct));
     await clearReviewDraft(product.sourceUrl).catch(() => undefined);
     setReviewDraftStatus("");
     chrome.tabs.create({
@@ -3021,7 +3501,7 @@ export default function App() {
     const evidenceIds = source.evidence.map((item) => item.id).slice(0, 20);
     const reviewInsight = {
       schemaVersion: "1.0",
-      source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl },
+      source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
       positiveThemes: brief.trustSignals.length ? brief.trustSignals : brief.keySellingPoints.slice(0, 3),
       negativeThemes: [],
       repeatedPhrases: [],
@@ -3037,7 +3517,7 @@ export default function App() {
     };
     const trendBrief = {
       schemaVersion: "1.0",
-      source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl },
+      source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
       contentType: source.platform === "tiktok_shop" ? "product_review" : "unknown",
       hookPattern: brief.suggestedHooks[0] || brief.shortSummary,
       structure: ["hook", "product proof", "objection handling", "CTA"],
@@ -3080,6 +3560,19 @@ export default function App() {
       setStatus("Error");
       setProgress((current) => current.map((step) => step.status === "active" ? { ...step, status: "error" } : step));
     }
+  }
+
+  async function loadDiagnosticLogs() {
+    const result = await chrome.storage.local.get([DIAGNOSTIC_LOG_KEY]);
+    const logs = Array.isArray(result[DIAGNOSTIC_LOG_KEY]) ? result[DIAGNOSTIC_LOG_KEY] as DiagnosticLogEntry[] : [];
+    setDiagnosticLogs(logs.slice(-80).reverse());
+    setStatus(`Loaded ${logs.length} diagnostic logs`);
+  }
+
+  async function clearDiagnosticLogs() {
+    await chrome.storage.local.remove([DIAGNOSTIC_LOG_KEY]);
+    setDiagnosticLogs([]);
+    setStatus("Diagnostic logs cleared");
   }
 
   const updateFilter = (key: keyof CandidateFilters, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
@@ -3241,7 +3734,7 @@ export default function App() {
           className={tabButtonClass("products")}
           role="tab"
           aria-selected={activeTab === "products"}
-          onClick={() => setActiveTab("products")}
+          onClick={() => run(openProductListTab)}
         >
           Product List
         </button>
@@ -3296,6 +3789,29 @@ export default function App() {
           <div className="muted">Choose the local model you want to use instead of Chrome Gemini Nano. Reviewed product text and selected images are sent only to the endpoint or host configured here.</div>
           <div className="warning" style={{ marginTop: 8 }}>
             Security: the background service worker accepts requests only from this extension page. Endpoints must be localhost/127.0.0.1, POST only, and one of the allowed paths. Content scripts cannot provide arbitrary URLs.
+          </div>
+          <div className="section">
+            <div className="row">
+              <div>
+                <strong>Diagnostics</strong>
+                <div className="muted">Local logs for Shopee Affiliate scanning, affiliate-link clicks, and Magnific drag/drop delivery.</div>
+              </div>
+              <div className="row" style={{ justifyContent: "flex-start" }}>
+                <button className="button" type="button" onClick={() => run(loadDiagnosticLogs)}>Load logs</button>
+                <button className="button" type="button" onClick={() => run(clearDiagnosticLogs)}>Clear</button>
+              </div>
+            </div>
+            {diagnosticLogs.length > 0 ? (
+              <div className="diagnostic-log-list">
+                {diagnosticLogs.map((entry, index) => (
+                  <pre className="diagnostic-log-entry" key={`${entry.at}-${entry.event}-${index}`}>
+                    {JSON.stringify(entry, null, 2)}
+                  </pre>
+                ))}
+              </div>
+            ) : (
+              <div className="muted" style={{ marginTop: 8 }}>No logs loaded. Click Load logs after reproducing a scan, link click, or Magnific drop.</div>
+            )}
           </div>
           <div className="grid" style={{ marginTop: 10 }}>
             <label>
@@ -3634,8 +4150,16 @@ export default function App() {
             <div>
               <strong>Product List</strong>
               <div className="muted">Filtered {filteredCandidates.length} / {candidates.length} products | Queue {queue.length}</div>
+              {candidateListSourceUrlRef.current ? (
+                <div className="muted">List source: {candidateListSourceUrlRef.current}</div>
+              ) : null}
             </div>
-            <button className="button" disabled={filteredCandidates.length === 0} onClick={() => run(sendCandidatesToSmartSpec)}>Send candidates</button>
+            <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button className="button primary" onClick={() => run(scanCategory)}>Scan visible products</button>
+              <button className="button" onClick={() => run(scrollScanCategory)}>Scroll & scan more</button>
+              <button className="button" onClick={() => run(captureAffiliateDiagnostics)}>Capture diagnostics</button>
+              <button className="button" disabled={filteredCandidates.length === 0} onClick={() => run(sendCandidatesToSmartSpec)}>Send candidates</button>
+            </div>
           </div>
         </div>
 
@@ -3645,7 +4169,6 @@ export default function App() {
             <div className="grid">
               <input className="input" placeholder="Keyword include" value={filters.keyword} onChange={(e) => updateFilter("keyword", e.target.value)} />
               <input className="input" placeholder="Min score" value={filters.minScore} onChange={(e) => updateFilter("minScore", e.target.value)} />
-              <input className="input" placeholder="Min sold" value={filters.minSold} onChange={(e) => updateFilter("minSold", e.target.value)} />
               <input className="input" placeholder="Min rating" value={filters.minRating} onChange={(e) => updateFilter("minRating", e.target.value)} />
               <input className="input" placeholder="Max price" value={filters.priceMax} onChange={(e) => updateFilter("priceMax", e.target.value)} />
               <input className="input" placeholder="Min discount %" value={filters.discountMin} onChange={(e) => updateFilter("discountMin", e.target.value)} />
@@ -3659,7 +4182,7 @@ export default function App() {
         {filteredCandidates.length > 0 ? (
           <div className="section">
             {filteredCandidates.slice(0, 30).map((candidate) => (
-              <div className="candidate" key={candidate.url}>
+              <div className="candidate" key={candidateIdentity(candidate)}>
                 <div className="row">
                   {candidate.imageUrl ? draggableProductImage({
                     url: candidate.imageUrl,
@@ -3671,16 +4194,43 @@ export default function App() {
                   <div style={{ flex: 1 }}>
                     <div>{candidate.title}</div>
                     <div className="muted">
-                      {candidate.priceText ?? "-"} | {candidate.ratingText ? `rating ${candidate.ratingText} | ` : ""}{appendNormalizedCount(candidate.soldCountText) || "-"} | score {candidate.score}
+                      {candidate.priceText ?? "-"} | {candidate.commissionRateText ? `${candidate.commissionRateText} | ` : ""}{candidate.ratingText ? `rating ${candidate.ratingText} | ` : ""}{appendNormalizedCount(candidate.soldCountText) || "-"} | score {candidate.score}
                     </div>
                   </div>
                 </div>
                 <div className="muted">{candidate.scoreReasons.join(", ")}</div>
+                {candidate.affiliateUrl ? (() => {
+                  const affiliateUrl = candidate.affiliateUrl ?? "";
+                  return (
+                    <a
+                      className="candidate-url"
+                      href={affiliateUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        chrome.tabs.create({ url: affiliateUrl });
+                      }}
+                    >
+                      {affiliateUrl}
+                    </a>
+                  );
+                })() : null}
                 <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
                   <button className="button" onClick={() => chrome.tabs.update({ url: candidate.url })}>Open</button>
                   <button className="button" onClick={() => chrome.tabs.create({ url: candidate.url })}>New tab</button>
+                  {candidate.affiliateLinkAvailable && !candidate.affiliateUrl ? (
+                    <button className="button" disabled={affiliateLinkBusy[candidateIdentity(candidate)]} onClick={() => run(() => requestShopeeAffiliateLink(candidate))}>
+                      {affiliateLinkBusy[candidateIdentity(candidate)] ? "Getting link..." : "เอา ลิงก์"}
+                    </button>
+                  ) : null}
+                  {candidate.affiliateUrl ? (
+                    <button className="button" onClick={() => navigator.clipboard?.writeText(candidate.affiliateUrl || "").then(() => setStatus("Affiliate link copied")).catch(() => setStatus("Could not copy affiliate link"))}>
+                      Copy link
+                    </button>
+                  ) : null}
                   <button className="button" onClick={() => addQueue(candidate)}>Queue</button>
-                  <button className="button" onClick={() => setIgnoredUrls(new Set([...ignoredUrls, candidate.url]))}>Ignore</button>
+                  <button className="button" onClick={() => setIgnoredUrls(new Set([...ignoredUrls, candidateStableKey(candidate)]))}>Ignore</button>
                 </div>
               </div>
             ))}
@@ -3695,10 +4245,10 @@ export default function App() {
           <div className="section">
             <strong>Queue ({queue.length})</strong>
             {queue.map((item) => (
-              <div className="row candidate" key={item.url}>
+              <div className="row candidate" key={candidateStableKey(item)}>
                 <span className="muted" style={{ flex: 1 }}>{item.title}</span>
                 <button className="button" onClick={() => chrome.tabs.create({ url: item.url })}>Open</button>
-                <button className="button" onClick={() => removeQueue(item.url)}>Remove</button>
+                <button className="button" onClick={() => removeQueue(candidateStableKey(item))}>Remove</button>
               </div>
             ))}
           </div>
@@ -4278,6 +4828,7 @@ export default function App() {
         <input className="input" placeholder="Keyword เช่น cleanser, ของใช้ในบ้าน" value={starterKeyword} onChange={(e) => setStarterKeyword(e.target.value)} />
         <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
           <button className="button" onClick={openShopeeSearch}>Shopee search</button>
+          <button className="button" onClick={openShopeeAffiliateOffer}>Shopee Affiliate</button>
           <button className="button" onClick={openTikTokSearch}>TikTok Shop search</button>
           {SHOPEE_START_URLS.map((item) => <button className="button" key={item.url} onClick={() => openStarterUrl(item.url)}>{item.label}</button>)}
           {TIKTOK_START_URLS.map((item) => <button className="button" key={item.url} onClick={() => openStarterUrl(item.url)}>{item.label}</button>)}
@@ -4409,6 +4960,20 @@ export default function App() {
           <input className="input" inputMode="decimal" placeholder="เช่น 8 หรือ 12.5" value={editable.commissionRateText} onChange={(e) => updateEditable("commissionRateText", e.target.value)} />
           <div className={commissionRateInvalid ? "warning" : "field-evidence"}>
             {commissionRateInvalid ? "Commission rate ต้องเป็นตัวเลข 0-100" : editable.commissionRateText ? "source: user_review | confidence 95%" : fieldEvidenceText(product, "commissionRate")}
+          </div>
+          <label className="muted">Affiliate link</label>
+          <div className="row" style={{ alignItems: "center" }}>
+            <input className="input" placeholder="https://s.shopee.co.th/..." value={editable.affiliateUrl} onChange={(e) => updateEditable("affiliateUrl", e.target.value)} />
+            <button
+              className="button"
+              disabled={!editable.affiliateUrl.trim()}
+              onClick={() => navigator.clipboard?.writeText(editable.affiliateUrl.trim()).then(() => setStatus("Affiliate link copied")).catch(() => setStatus("Could not copy affiliate link"))}
+            >
+              Copy
+            </button>
+          </div>
+          <div className={affiliateUrlInvalid ? "warning" : "field-evidence"}>
+            {affiliateUrlInvalid ? "Affiliate link ต้องเป็น URL แบบ http(s)" : editable.affiliateUrl ? "source: user_review | confidence 95%" : fieldEvidenceText(product, "affiliateUrl")}
           </div>
           <div className="business-preview">
             <strong>Business preview</strong>
@@ -4595,9 +5160,9 @@ export default function App() {
               <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge visible images</button>
             </div>
             <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main"])))}>Select main</button>
-              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "review"])))}>Select review</button>
-              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(visibleProductImages.map((img) => [img.url, true])))}>Select visible filter</button>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && canAutoSelectImage(img)])))}>Select main</button>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "review" && canAutoSelectImage(img)])))}>Select review</button>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(visibleProductImages.map((img) => [img.url, canAutoSelectImage(img)])))}>Select visible filter</button>
             </div>
           </div>
           {visibleProductImages.length > displayedProductImages.length ? (
@@ -4633,7 +5198,7 @@ export default function App() {
               setSelectedImages({});
               setHeroImageUrl("");
             }}>Select none</button>
-            <button className="button primary" disabled={!editable.productName || commissionRateInvalid} onClick={() => run(uploadAndAnalyze)}>
+            <button className="button primary" disabled={!editable.productName || commissionRateInvalid || affiliateUrlInvalid} onClick={() => run(uploadAndAnalyze)}>
               Upload selected
             </button>
           </div>

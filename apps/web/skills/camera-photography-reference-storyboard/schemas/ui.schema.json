@@ -1,0 +1,83 @@
+{
+  "ui:order": [
+    "generation_mode",
+    "reference_character_images",
+    "reference_product_images",
+    "product_label_text",
+    "label_fidelity",
+    "label_readability_mode",
+    "image_text_mode",
+    "image_text_language",
+    "image_text_custom_language",
+    "reference_environment_images",
+    "storyboard_layout_preset",
+    "aspect_ratio",
+    "cinematic_style",
+    "storyboard_guide",
+    "production_concept_details",
+    "scene_descriptions"
+  ],
+  "generation_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกโหมดที่เหมาะกับรูปและข้อมูลที่ใส่"
+  },
+  "reference_character_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปตัวละครมาวาง หรือกดเลือกรูปจากเครื่อง"
+  },
+  "reference_product_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปสินค้ากล้องและอุปกรณ์ถ่ายภาพมาวาง หรือกดเลือกรูปจากเครื่อง รูปสินค้าคือ source of truth หลัก"
+  },
+  "product_label_text": {
+    "ui:widget": "textarea",
+    "ui:help": "ใส่ข้อความ/มาร์กกิ้ง/ฉลาก/โลโก้/ขนาด/แท็กจริงที่ต้องล็อกสำหรับสินค้ากล้องและอุปกรณ์ถ่ายภาพ หนึ่งบรรทัดต่อหนึ่งรายการ"
+  },
+  "label_fidelity": {
+    "ui:widget": "select",
+    "ui:help": "เลือกเมื่อต้องการล็อกข้อความ ฉลาก โลโก้ แท็ก หรือมาร์กกิ้งจริงบนสินค้ากล้องและอุปกรณ์ถ่ายภาพให้ถูกต้อง"
+  },
+  "label_readability_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือก Product/detail lock เมื่อต้องการเฟรมเห็นรูปทรง สัดส่วน วัสดุ texture และรายละเอียดสินค้ากล้องและอุปกรณ์ถ่ายภาพชัดเจน"
+  },
+  "image_text_mode": {
+    "ui:widget": "select",
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ มาร์กกิ้ง/แท็ก/โลโก้/ข้อความจริงบนสินค้าไม่ถือเป็นข้อความเพิ่ม"
+  },
+  "image_text_language": {
+    "ui:widget": "select",
+    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ"
+  },
+  "image_text_custom_language": {
+    "ui:widget": "text",
+    "ui:help": "กรอกเมื่อเลือกภาษาอื่น เช่น Japanese, Korean, Chinese, Vietnamese, Arabic หรือ Spanish"
+  },
+  "reference_environment_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปฉาก/สถานที่มาวางเพื่อกำหนดบรรยากาศ แสง พื้นผิว และบริบทการใช้งานเท่านั้น ห้ามใช้แทนสินค้าจริง"
+  },
+  "storyboard_layout_preset": {
+    "ui:widget": "select",
+    "ui:help": "เลือกเลย์เอาต์ที่สัมพันธ์กับ Aspect Ratio ของภาพใหญ่ เช่น 9:16 ควรใช้ preset 9:16; ตัวเลือก crop-safe จะเว้นพื้นที่เผื่อ crop ภายหลังโดยไม่ตัดสินค้า/ตัวแบบ"
+  },
+  "aspect_ratio": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสัดส่วนที่เหมาะสม"
+  },
+  "cinematic_style": {
+    "ui:widget": "select",
+    "ui:help": "สไตล์มีผลกับแสง กล้อง และ mood เท่านั้น ห้ามเปลี่ยนรูปทรง สัดส่วน สี วัสดุ texture หรือมาร์กกิ้งของสินค้ากล้องและอุปกรณ์ถ่ายภาพ"
+  },
+  "storyboard_guide": {
+    "ui:widget": "textarea",
+    "ui:help": "ไม่บังคับ ใช้รับ Storyboard จาก Video Shot เพื่อคุมลำดับเรื่อง จังหวะ ภาพ สเกล และการใช้งานสินค้ากล้องและอุปกรณ์ถ่ายภาพ"
+  },
+  "production_concept_details": {
+    "ui:widget": "textarea",
+    "ui:help": "ไม่บังคับ ใช้รับแนวคิดจาก Production Director เพื่อคุมโทน กลุ่มเป้าหมาย ปัญหา hook และจุดขายแบบไม่ใช้ราคา rating หรือยอดขาย"
+  },
+  "scene_descriptions": {
+    "ui:widget": "textarea"
+  }
+}

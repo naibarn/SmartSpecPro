@@ -74,6 +74,7 @@ export interface SanitizedLocalAIInput {
   captureId?: string;
   platform: MarketplacePlatform;
   sourceUrl: string;
+  affiliateUrl?: string | null;
   capturedAt: string;
   pageTitle?: string;
   product: {
@@ -121,7 +122,7 @@ export interface SanitizedLocalAIInput {
 
 export interface ProductBrief {
   schemaVersion: "1.0";
-  source: { platform: MarketplacePlatform; captureId?: string; url: string };
+  source: { platform: MarketplacePlatform; captureId?: string; url: string; affiliateUrl?: string | null };
   productName: string;
   category?: string;
   shortSummary: string;
@@ -228,6 +229,7 @@ export interface MarketplaceStorytellingHandoff {
   insightIds: string[];
   productName: string;
   sourceUrl: string;
+  affiliateUrl?: string | null;
   platform: MarketplacePlatform;
   storyFormat: "product_review" | "sales_demo" | "brand_awareness" | "before_after" | "customer_journey" | "tiktok_shop_trend" | "shopee_support" | "ugc_review" | "cinematic_brand_story";
   readiness: "ready_for_storytelling" | "ready_with_warnings" | "needs_user_review" | "insufficient_evidence";
@@ -421,6 +423,7 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
     captureId,
     platform: product.platform,
     sourceUrl: product.sourceUrl,
+    affiliateUrl: product.affiliateUrl ?? null,
     capturedAt: new Date().toISOString(),
     pageTitle: cleanText(product.pageTitle, 500) || undefined,
     product: {
@@ -596,6 +599,7 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
     insightIds: [],
     productName: productBrief.productName,
     sourceUrl: source.sourceUrl,
+    affiliateUrl: source.affiliateUrl ?? null,
     platform: source.platform,
     storyFormat: source.platform === "tiktok_shop" ? "tiktok_shop_trend" : "sales_demo",
     readiness: blockers.length === 0 ? "ready_for_storytelling" : "needs_user_review",
@@ -1216,7 +1220,7 @@ export function normalizeProductBrief(value: any, source: SanitizedLocalAIInput)
   const evidenceIds = new Set(source.evidence.map((item) => item.id));
   const brief: ProductBrief = {
     schemaVersion: "1.0",
-    source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl },
+    source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
     productName: cleanText(value?.productName || source.product.title, 300) || "Untitled product",
     category: cleanText(value?.category || source.product.category, 200) || undefined,
     shortSummary: cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300),
@@ -1525,6 +1529,7 @@ export function buildInsightSyncRequest(input: {
     source: {
       platform: input.source.platform,
       url: input.source.sourceUrl,
+      affiliateUrl: input.source.affiliateUrl ?? undefined,
       capturedAt: input.source.capturedAt,
       captureId: input.source.captureId,
     },

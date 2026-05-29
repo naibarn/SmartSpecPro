@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/marketplace-extension",
-  "version": "0.1.61",
+  "version": "0.1.71",
   "private": true,
   "type": "module",
   "scripts": {

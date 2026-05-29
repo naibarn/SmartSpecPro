@@ -10,6 +10,7 @@ tags:
   - furniture
   - interior
   - product-fidelity
+  - production-reference-storyboard
 auto_trigger: false
 triggerPatterns:
   - furniture reference storyboard
@@ -32,6 +33,8 @@ execution_policy:
   fallbackPolicy: error
 config:
   media_studio:
+    production_reference_storyboard:
+      enabled: true
     auto_learning:
       enabled: true
       prompt_qa_after_auto_prompt: true

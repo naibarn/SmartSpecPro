@@ -1,0 +1,399 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JewelryReferenceStoryboardInput",
+  "type": "object",
+  "properties": {
+    "generation_mode": {
+      "title": "Generation Mode",
+      "description": "Choose how the storyboard prompt package should be generated. Use auto when you want the system to infer the best mode.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "single_frame",
+        "multi_frame_storyboard",
+        "separate_prompt_per_frame"
+      ],
+      "enumNames": [
+        "Auto",
+        "Single Frame",
+        "Multi-Frame Storyboard",
+        "Separate Prompt Per Frame"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ภาพเดี่ยว",
+        "สตอรี่บอร์ดหลายเฟรม",
+        "พรอมต์แยกต่อเฟรม"
+      ],
+      "default": "auto"
+    },
+    "reference_character_images": {
+      "title": "Reference Character Images",
+      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. For 3x3 storyboards, include the referenced person in some frames and require every intentional person frame to show a clear visible referenced face with the product visible for identity and scale. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "reference_product_images": {
+      "title": "Jewelry Reference Storyboard Product Reference Images",
+      "description": "Upload เครื่องประดับ product reference images. These are the highest-priority truth source. The generated prompt must preserve the exact jewelry product category, subtype, silhouette, physical proportions, component count, colorway, material, texture, finish, markings, labels, packaging, and scale from these images. Creative styling must not recolor, resize, redesign, simplify, or replace the product.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "product_label_text": {
+      "title": "Visible Marking / Label / Key Product Text",
+      "description": "Optional. Enter exact visible product text, labels, markings, package facts, size/dimension facts, tag text, engraving, printed pattern text, or UI-independent marks that must be preserved for this เครื่องประดับ product. One line per item. Do not force large readable text unless it is physically present or explicitly requested.",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "Tiny hallmark inside band\nPendant engraving\nBrand tag on clasp"
+      ]
+    },
+    "product_shop_id": {
+      "title": "Marketplace Shop ID",
+      "description": "Optional. Auto-filled when product references are dragged or added from Media Studio Marketplace. Preserve this as metadata for downstream storyboard/video planning, but do not render it as visible text in the generated image.",
+      "type": "string",
+      "default": ""
+    },
+    "product_item_id": {
+      "title": "Marketplace Item ID",
+      "description": "Optional. Auto-filled when product references are dragged or added from Media Studio Marketplace. Use this to identify the exact ecommerce item for downstream video planning, but do not render it as visible text in the generated image.",
+      "type": "string",
+      "default": ""
+    },
+    "product_source_url": {
+      "title": "Product Page URL",
+      "description": "Optional. Auto-filled from Media Studio Marketplace and used as the source link for the product. Keep it as metadata/context only; do not render the URL in the image.",
+      "type": "string",
+      "format": "uri",
+      "default": ""
+    },
+    "marketplace_platform": {
+      "title": "Marketplace Platform",
+      "description": "Optional. Marketplace platform for the source product, such as shopee or tiktok_shop. Use as metadata/context only.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "shopee",
+        "tiktok_shop"
+      ],
+      "enumNames": [
+        "Auto / not supplied",
+        "Shopee",
+        "TikTok Shop"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto / ไม่ได้ระบุ",
+        "Shopee",
+        "TikTok Shop"
+      ],
+      "default": "auto"
+    },
+    "product_shop_name": {
+      "title": "Shop Name",
+      "description": "Optional shop name from the marketplace source. Use as planning metadata only; do not render as visible text unless the user explicitly asks for a marketplace ad layout.",
+      "type": "string",
+      "default": ""
+    },
+    "product_title": {
+      "title": "Marketplace Product Title",
+      "description": "Optional product title from the marketplace source. Use it only to understand เครื่องประดับ product type and use case. Product reference images remain the source of truth for visual appearance.",
+      "type": "string",
+      "default": ""
+    },
+    "label_fidelity": {
+      "title": "Marking / Label Fidelity",
+      "description": "Controls how aggressively the prompt protects visible เครื่องประดับ product markings, labels, printed text, package facts, tags, engravings, logos, size marks, or supplied key facts.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "full_label_lock",
+        "brand_and_key_lines",
+        "layout_only_when_tiny"
+      ],
+      "enumNames": [
+        "Auto",
+        "Full marking lock",
+        "Brand/tag + key lines",
+        "Layout only when tiny"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ล็อกมาร์กกิ้ง/แท็กครบ",
+        "แบรนด์/แท็ก + บรรทัดสำคัญ",
+        "ล็อกเลย์เอาต์เมื่อเล็กมาก"
+      ],
+      "default": "full_label_lock"
+    },
+    "label_readability_mode": {
+      "title": "Marking / Detail Readability Mode",
+      "description": "Controls composition rules for visible markings and product-detail frames. Product/detail lock adds clear hero/detail views and avoids tiny lifestyle-only placement. For เครื่องประดับ products without readable markings, use this to prioritize exact shape, proportions, materials, texture, and small physical details.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "product_detail_lock",
+        "balanced_storyboard",
+        "lifestyle_priority"
+      ],
+      "enumNames": [
+        "Auto",
+        "Product/detail lock",
+        "Balanced storyboard",
+        "Lifestyle priority"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ล็อกเฟรมสินค้า/รายละเอียด",
+        "สมดุลระหว่างสินค้าและไลฟ์สไตล์",
+        "เน้นไลฟ์สไตล์"
+      ],
+      "default": "product_detail_lock"
+    },
+    "image_text_mode": {
+      "title": "Visible Text In Image",
+      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, measurement text, or comparison notes. Default is no added text. Physical product markings such as sewn labels, engraved logos, care tags, SKU stickers, printed dimensions, and decorative product text are preserved separately and do not count as added text.",
+      "type": "string",
+      "enum": [
+        "no_text",
+        "with_text"
+      ],
+      "enumNames": [
+        "No added text",
+        "Allow added text"
+      ],
+      "x-ui-enumNamesTh": [
+        "ไม่มีข้อความเพิ่มในภาพ",
+        "ให้มีข้อความเพิ่มในภาพ"
+      ],
+      "default": "no_text"
+    },
+    "image_text_language": {
+      "title": "Visible Text Language",
+      "description": "Language for added visible text when Visible Text In Image is set to Allow added text. Default is English. Choose Other and fill Custom Visible Text Language for another language. Ignored when no added text is selected.",
+      "type": "string",
+      "enum": [
+        "en",
+        "th",
+        "other"
+      ],
+      "enumNames": [
+        "English",
+        "Thai",
+        "Other language"
+      ],
+      "x-ui-enumNamesTh": [
+        "อังกฤษ",
+        "ไทย",
+        "ภาษาอื่น"
+      ],
+      "default": "en"
+    },
+    "image_text_custom_language": {
+      "title": "Custom Visible Text Language",
+      "description": "Optional. Fill this only when Visible Text Language is Other, for example Japanese, Korean, Chinese, Vietnamese, Arabic, or Spanish.",
+      "type": "string",
+      "default": ""
+    },
+    "reference_environment_images": {
+      "title": "Reference Environment Images",
+      "description": "Upload environment or location images to guide setting, lighting, surface, mood, and usage context for เครื่องประดับ. Environment images are scene references only; they must not override the referenced product geometry, material, colorway, markings, or scale.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "storyboard_layout_preset": {
+      "title": "Storyboard Layout Preset",
+      "description": "Choose a storyboard grid that matches the main image aspect ratio. Exact presets keep every frame at 1:1, 16:9, or 9:16. Crop-safe presets reserve extra margin so each frame can be cropped later without cutting off the product or subject.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "canvas_1_1_grid_1x1_frame_1_1_exact",
+        "canvas_1_1_grid_2x2_frame_1_1_exact",
+        "canvas_1_1_grid_3x3_frame_1_1_exact",
+        "canvas_16_9_grid_1x1_frame_16_9_exact",
+        "canvas_16_9_grid_2x2_frame_16_9_exact",
+        "canvas_16_9_grid_3x3_frame_16_9_exact",
+        "canvas_16_9_grid_2x1_crop_safe",
+        "canvas_16_9_grid_3x2_crop_safe",
+        "canvas_9_16_grid_1x1_frame_9_16_exact",
+        "canvas_9_16_grid_2x2_frame_9_16_exact",
+        "canvas_9_16_grid_3x3_frame_9_16_exact",
+        "canvas_9_16_grid_1x2_crop_safe",
+        "canvas_9_16_grid_2x3_crop_safe",
+        "canvas_4_3_grid_4x3_frame_1_1_exact",
+        "canvas_3_4_grid_3x4_frame_1_1_exact"
+      ],
+      "enumNames": [
+        "Auto - match selected aspect ratio",
+        "1:1 canvas / 1x1 / 1 square frame",
+        "1:1 canvas / 2x2 / 4 square frames",
+        "1:1 canvas / 3x3 / 9 square frames",
+        "16:9 canvas / 1x1 / 1 wide frame",
+        "16:9 canvas / 2x2 / 4 wide frames",
+        "16:9 canvas / 3x3 / 9 wide frames",
+        "16:9 canvas / 2x1 / 2 crop-safe frames",
+        "16:9 canvas / 3x2 / 6 crop-safe frames",
+        "9:16 canvas / 1x1 / 1 vertical frame",
+        "9:16 canvas / 2x2 / 4 vertical frames",
+        "9:16 canvas / 3x3 / 9 vertical frames",
+        "9:16 canvas / 1x2 / 2 crop-safe frames",
+        "9:16 canvas / 2x3 / 6 crop-safe frames",
+        "4:3 canvas / 4x3 / 12 square frames",
+        "3:4 canvas / 3x4 / 12 square frames"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto - ให้สัมพันธ์กับอัตราส่วนภาพที่เลือก",
+        "ภาพใหญ่ 1:1 / 1x1 / 1 เฟรมจัตุรัส",
+        "ภาพใหญ่ 1:1 / 2x2 / 4 เฟรมจัตุรัส",
+        "ภาพใหญ่ 1:1 / 3x3 / 9 เฟรมจัตุรัส",
+        "ภาพใหญ่ 16:9 / 1x1 / 1 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 2x2 / 4 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 3x3 / 9 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 2x1 / 2 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 16:9 / 3x2 / 6 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 9:16 / 1x1 / 1 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 2x2 / 4 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 3x3 / 9 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 1x2 / 2 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 9:16 / 2x3 / 6 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 4:3 / 4x3 / 12 เฟรมจัตุรัส",
+        "ภาพใหญ่ 3:4 / 3x4 / 12 เฟรมจัตุรัส"
+      ],
+      "default": "canvas_9_16_grid_3x3_frame_9_16_exact"
+    },
+    "aspect_ratio": {
+      "title": "Aspect Ratio",
+      "description": "Choose the target image or video aspect ratio. Use auto when you want the system to infer it from the uploaded references.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "9:16",
+        "16:9",
+        "1:1",
+        "4:3",
+        "4:5",
+        "3:4",
+        "2:3",
+        "21:9"
+      ],
+      "enumNames": [
+        "Auto",
+        "9:16 Vertical",
+        "16:9 Wide",
+        "1:1 Square",
+        "4:3 Landscape",
+        "4:5 Portrait",
+        "3:4 Portrait",
+        "2:3 Portrait",
+        "21:9 Cinematic Wide"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "9:16 แนวตั้ง",
+        "16:9 แนวนอน",
+        "1:1 จัตุรัส",
+        "4:3 แนวนอน",
+        "4:5 ภาพบุคคล",
+        "3:4 ภาพบุคคล",
+        "2:3 ภาพบุคคล",
+        "21:9 ภาพยนตร์กว้าง"
+      ],
+      "default": "auto"
+    },
+    "cinematic_style": {
+      "title": "Cinematic Style",
+      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced เครื่องประดับ product shape, proportions, colorway, material, texture, markings, labels, packaging, or scale.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "premium_commercial",
+        "cinematic_realism",
+        "luxury_beauty",
+        "minimal_studio",
+        "lifestyle_editorial",
+        "dramatic_low_key",
+        "bright_soft_light",
+        "documentary_natural",
+        "fashion_film",
+        "macro_product_detail",
+        "info_graphics_realistic",
+        "info_graphics"
+      ],
+      "enumNames": [
+        "Auto",
+        "Premium Commercial",
+        "Cinematic Realism",
+        "Luxury Beauty",
+        "Minimal Studio",
+        "Lifestyle Editorial",
+        "Dramatic Low Key",
+        "Bright Soft Light",
+        "Documentary Natural",
+        "Fashion Film",
+        "Macro Product Detail",
+        "Info Graphics Realistic",
+        "Info Graphics"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "โฆษณาพรีเมียม",
+        "สมจริงแบบภาพยนตร์",
+        "ลักชัวรีบิวตี้",
+        "สตูดิโอมินิมอล",
+        "ไลฟ์สไตล์เอดิทอเรียล",
+        "ดราม่า Low Key",
+        "แสงนุ่มสว่าง",
+        "ธรรมชาติแบบสารคดี",
+        "แฟชั่นฟิล์ม",
+        "มาโครรายละเอียดสินค้า",
+        "อินโฟกราฟิกสมจริง",
+        "อินโฟกราฟิก"
+      ],
+      "default": "auto"
+    },
+    "storyboard_guide": {
+      "title": "Storyboard Guide",
+      "description": "Optional storyboard, shot brief, or video-shot guide from Media Studio. When provided, every generated frame prompt must follow this guide's shot order, timing, story beat, action, camera intent, เครื่องประดับ product-use intent, scale/context, and continuity while preserving product-reference locks.",
+      "type": "string",
+      "default": ""
+    },
+    "production_concept_details": {
+      "title": "Production Concept Details",
+      "description": "Optional selected Production Director concept/details. Use this as the creative guideline for tone, audience, problem, hook, selling points, and storyboard intent while preserving all reference-image locks. Do not introduce price, rating, sales volume, promotions, or other volatile marketplace claims.",
+      "type": "string",
+      "default": ""
+    },
+    "scene_descriptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Scene Descriptions",
+      "description": "Describe desired scenes, actions, usage context, product dimensions, physical markings, exact text to preserve, and output needs for เครื่องประดับ. By default, prompts should not create captions, arrows, callouts, frame numbers, or measurement text in the image."
+    }
+  },
+  "required": [
+    "generation_mode",
+    "reference_product_images"
+  ]
+}

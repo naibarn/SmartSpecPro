@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoryboardSkillOutput",
+  "type": "string",
+  "minLength": 1,
+  "description": "Plain prompt text only. Do not return JSON, wrapper fields, markdown fences, labels, metadata, or review notes. Storyboards must be written as human-readable prompt text with scene or panel sections."
+}

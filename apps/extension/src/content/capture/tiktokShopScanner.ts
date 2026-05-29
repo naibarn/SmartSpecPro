@@ -33,6 +33,10 @@ function imageQuality(width?: number, height?: number): ImageCandidate["quality"
   return "high";
 }
 
+function canAutoSelectImage(width?: number, height?: number): boolean {
+  return (width == null || width >= 100) && (height == null || height >= 100);
+}
+
 function tinyMainImageWarning(candidate: ImageCandidate | undefined): string | undefined {
   if (!candidate || candidate.kind !== "main" || !candidate.selected) return undefined;
   if (candidate.width != null && candidate.height != null && (candidate.width < 300 || candidate.height < 300)) {
@@ -142,23 +146,25 @@ function collectTikTokImages() {
   const candidates: ImageCandidate[] = [];
   for (const [position, item] of visibleImages().entries()) {
     const kind = classifyImageZone(item.el, item.rect);
+    const width = Math.round(item.rect.width);
+    const height = Math.round(item.rect.height);
     candidates.push({
       url: item.url!,
       kind,
       source: "dom",
       evidenceId: `image.${kind}.${position}`,
       role: kind === "main" ? (position === 0 ? "primary" : "gallery") : kind,
-      quality: imageQuality(Math.round(item.rect.width), Math.round(item.rect.height)),
+      quality: imageQuality(width, height),
       position,
-      width: Math.round(item.rect.width),
-      height: Math.round(item.rect.height),
-      selected: kind === "main" && position < 12,
+      width,
+      height,
+      selected: kind === "main" && position < 12 && canAutoSelectImage(width, height),
       metadata: {
         zone: kind,
         top: Math.round(item.rect.top),
         left: Math.round(item.rect.left),
         alt: item.el instanceof HTMLImageElement ? item.el.alt : undefined,
-        warning: kind === "main" && position === 0 && (item.rect.width < 300 || item.rect.height < 300) ? "tiny_main_image" : undefined,
+        warning: kind === "main" && position === 0 && (width < 300 || height < 300) ? "tiny_main_image" : undefined,
       },
     });
   }

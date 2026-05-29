@@ -43,7 +43,13 @@ export interface CategoryProductCandidate {
   originalPriceText?: string | null;
   discountText?: string | null;
   soldCountText?: string | null;
+  soldCountValue?: number | null;
   ratingText?: string | null;
+  commissionRatePercent?: number | null;
+  commissionRateText?: string | null;
+  affiliateUrl?: string | null;
+  affiliateLinkAvailable?: boolean | null;
+  affiliateCardKey?: string | null;
   imageUrl?: string | null;
   originalUrl?: string;
   cleanUrl?: string;
@@ -63,6 +69,14 @@ export interface ProductCapturePayload {
   cleanSourceUrl?: string;
   canonicalSourceUrl?: string | null;
   sourceUrlFormat?: MarketplaceUrlFormat;
+  affiliateUrl?: string | null;
+  affiliateMatch?: {
+    candidateKey: string;
+    basis: "externalProductId" | "url";
+    confidence: number;
+    listSourceUrl?: string;
+    matchedAt: string;
+  } | null;
   pageType: PageType;
   externalProductId: string | null;
   externalShopId: string | null;

@@ -4,6 +4,9 @@ import { parseShopeeProductUrl } from "../utils/number";
 export function detectShopeePage(): PageDetection {
   const isShopee = /shopee\.co\.th$/.test(location.hostname) || /\.shopee\.co\.th$/.test(location.hostname);
   if (!isShopee) return { platform: null, pageType: "unknown", title: document.title, url: location.href };
+  if (location.hostname === "affiliate.shopee.co.th" && /^\/offer\/product_offer\/?$/i.test(location.pathname)) {
+    return { platform: "shopee", pageType: "category", title: document.title, url: location.href };
+  }
   if (/\/(cart|checkout|buyer|user|account|orders?|seller|chat|messages?)(\/|$)/i.test(location.pathname)) {
     return { platform: "shopee", pageType: "unknown", title: document.title, url: location.href };
   }

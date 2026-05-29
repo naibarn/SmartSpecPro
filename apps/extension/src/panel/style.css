@@ -392,6 +392,28 @@ button, input, textarea, select {
   overflow-wrap: anywhere;
 }
 
+.diagnostic-log-list {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.diagnostic-log-entry {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .config-guide {
   display: grid;
   gap: 8px;
@@ -563,6 +585,14 @@ button, input, textarea, select {
   border-radius: 8px;
   padding: 8px;
   margin-top: 8px;
+}
+
+.candidate-url {
+  display: block;
+  margin-top: 6px;
+  color: #2563eb;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .thumb {

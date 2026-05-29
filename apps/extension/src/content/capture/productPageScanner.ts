@@ -67,6 +67,10 @@ function imageQuality(width?: number, height?: number): ImageCandidate["quality"
   return "high";
 }
 
+function canAutoSelectImage(width?: number, height?: number): boolean {
+  return (width == null || width >= 100) && (height == null || height >= 100);
+}
+
 function tinyMainImageWarning(candidate: ImageCandidate | undefined): string | undefined {
   if (!candidate || candidate.kind !== "main" || !candidate.selected) return undefined;
   if (candidate.width != null && candidate.height != null && (candidate.width < 300 || candidate.height < 300)) {
@@ -170,7 +174,7 @@ function collectImages(kind: ImageCandidate["kind"], root: ParentNode = document
         position,
         width: image?.width,
         height: image?.height,
-        selected: kind === "main" && position < 8,
+        selected: kind === "main" && position < 8 && canAutoSelectImage(image?.width, image?.height),
         metadata: {
           alt: image?.alt || undefined,
           warning: kind === "main" && position === 0 && image?.width != null && image.height != null && (image.width < 300 || image.height < 300)
@@ -532,7 +536,7 @@ async function collectThumbnailImages(mainCutoffTop: number): Promise<ImageCandi
         position,
         width: image?.width,
         height: image?.height,
-        selected: position < 8,
+        selected: position < 8 && canAutoSelectImage(image?.width, image?.height),
         metadata: {
           warning: position === 0 && image?.width != null && image.height != null && (image.width < 300 || image.height < 300)
             ? "tiny_main_image"

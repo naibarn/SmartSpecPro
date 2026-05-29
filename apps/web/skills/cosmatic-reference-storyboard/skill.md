@@ -7,6 +7,7 @@ icon: sparkles
 tags:
   - shared-skill
   - imported
+  - production-reference-storyboard
 auto_trigger: false
 trigger_patterns: []
 enabled_by_default: false
@@ -16,6 +17,8 @@ execution_mode: llm-only
 strict_provider_pin: false
 config:
   media_studio:
+    production_reference_storyboard:
+      enabled: true
     auto_learning:
       enabled: true
       prompt_qa_after_auto_prompt: true
