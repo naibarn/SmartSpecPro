@@ -3,8 +3,14 @@ declare const chrome: any;
 export {};
 
 (() => {
-  const globalScope = globalThis as typeof globalThis & { __smartAIHubDragBridgeInstalled?: boolean };
-  if (globalScope.__smartAIHubDragBridgeInstalled) return;
+  const globalScope = globalThis as typeof globalThis & {
+    __smartAIHubDragBridgeInstalled?: boolean;
+    __smartAIHubDragBridgeRefresh?: () => void;
+  };
+  if (globalScope.__smartAIHubDragBridgeInstalled) {
+    globalScope.__smartAIHubDragBridgeRefresh?.();
+    return;
+  }
   globalScope.__smartAIHubDragBridgeInstalled = true;
 
   const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -239,6 +245,16 @@ export {};
     return response?.ok && response.id ? String(response.id) : "";
   }
 
+  function refreshActiveDragMedia() {
+    void chrome.runtime.sendMessage({ type: "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA" })
+      .then((response: any) => {
+        activeDragMediaId = response?.ok && response.id ? String(response.id) : null;
+        lastDragPreviewKey = "";
+        if (!activeDragMediaId) dragMediaFileCache.clear();
+      })
+      .catch(() => undefined);
+  }
+
   function dragMediaFileFromBackground(id: string): Promise<File | null> {
     const existing = dragMediaFileCache.get(id);
     if (existing) return existing;
@@ -341,7 +357,6 @@ export {};
     return false;
   });
 
-  void activeDragMediaIdFromBackground().then((activeId) => {
-    if (activeId) activeDragMediaId = activeId;
-  });
+  globalScope.__smartAIHubDragBridgeRefresh = refreshActiveDragMedia;
+  refreshActiveDragMedia();
 })();

@@ -18,6 +18,7 @@ const IMAGE_HOST_PATTERNS = [
 ];
 const dragMediaStore = new Map<string, { dataUrl: string; name: string; type: string; expiresAt: number }>();
 let activeDragMedia: { id: string; expiresAt: number } | null = null;
+let activeDragMediaClearTimer: ReturnType<typeof setTimeout> | null = null;
 
 function randomHex(bytes: number) {
   const array = new Uint8Array(bytes);
@@ -139,6 +140,28 @@ function pruneDragMediaStore() {
     if (item.expiresAt <= now) dragMediaStore.delete(id);
   }
   if (activeDragMedia && activeDragMedia.expiresAt <= now) activeDragMedia = null;
+}
+
+function clearActiveDragMedia(id: string | null = null) {
+  if (activeDragMediaClearTimer) {
+    clearTimeout(activeDragMediaClearTimer);
+    activeDragMediaClearTimer = null;
+  }
+  if (!id || activeDragMedia?.id === id) {
+    activeDragMedia = null;
+    broadcastActiveDragMedia(null);
+  }
+}
+
+function scheduleActiveDragMediaClear(id: string | null = null) {
+  if (activeDragMediaClearTimer) clearTimeout(activeDragMediaClearTimer);
+  activeDragMediaClearTimer = setTimeout(() => {
+    activeDragMediaClearTimer = null;
+    if (!id || activeDragMedia?.id === id) {
+      activeDragMedia = null;
+      broadcastActiveDragMedia(null);
+    }
+  }, 2500);
 }
 
 function isDragBridgeTargetUrl(url: unknown): boolean {
@@ -329,6 +352,10 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
       if (!isExtensionPageSender(sender)) throw new Error("drag_media_sender_not_allowed");
       const id = cleanString(message.id, 160);
       if (!id || !dragMediaStore.has(id)) throw new Error("drag_media_not_found");
+      if (activeDragMediaClearTimer) {
+        clearTimeout(activeDragMediaClearTimer);
+        activeDragMediaClearTimer = null;
+      }
       activeDragMedia = { id, expiresAt: Date.now() + 60_000 };
       broadcastActiveDragMedia(id);
       sendResponse({ ok: true });
@@ -338,8 +365,7 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
       if (!isExtensionPageSender(sender)) throw new Error("drag_media_sender_not_allowed");
       const id = cleanString(message.id, 160);
       if (!id || activeDragMedia?.id === id) {
-        activeDragMedia = null;
-        broadcastActiveDragMedia(null);
+        scheduleActiveDragMediaClear(id || null);
       }
       sendResponse({ ok: true });
       return true;
@@ -348,8 +374,7 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
       if (!isDragBridgeContentSender(sender)) throw new Error("drag_media_sender_not_allowed");
       const id = cleanString(message.id, 160);
       if (!id || activeDragMedia?.id === id) {
-        activeDragMedia = null;
-        broadcastActiveDragMedia(null);
+        clearActiveDragMedia(id || null);
       }
       sendResponse({ ok: true });
       return true;
