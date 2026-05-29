@@ -164,10 +164,17 @@ function isDragBridgeTargetUrl(url: unknown): boolean {
 function sendActiveDragMediaToTab(tab: any, id: string | null) {
   if (!tab?.id) return;
   const message = { type: "SMARTAIHUB_ACTIVE_DRAG_MEDIA", id };
+  const sendMessage = () => chrome.tabs.sendMessage(tab.id, message).catch(() => undefined);
+  if (id && isDragBridgeTargetUrl(tab.url)) {
+    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["assets/dragBridge.js"] })
+      .then(sendMessage)
+      .catch(sendMessage);
+    return;
+  }
   chrome.tabs.sendMessage(tab.id, message).catch(() => {
     if (!id || !isDragBridgeTargetUrl(tab.url)) return;
-    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["assets/content.js"] })
-      .then(() => chrome.tabs.sendMessage(tab.id, message).catch(() => undefined))
+    chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["assets/dragBridge.js"] })
+      .then(sendMessage)
       .catch(() => undefined);
   });
 }

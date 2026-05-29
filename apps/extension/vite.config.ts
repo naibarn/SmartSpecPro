@@ -11,6 +11,7 @@ export default defineConfig({
         panel: resolve(__dirname, "panel.html"),
         serviceWorker: resolve(__dirname, "src/background/serviceWorker.ts"),
         content: resolve(__dirname, "src/content/index.ts"),
+        dragBridge: resolve(__dirname, "src/content/dragBridge.ts"),
       },
       output: {
         entryFileNames: "assets/[name].js",
