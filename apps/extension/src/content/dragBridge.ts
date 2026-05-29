@@ -172,6 +172,23 @@ export {};
     }
   }
 
+  function fileFromDragEvent(event: DragEvent) {
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    const directFile = files.find((file) => file.type.startsWith("image/") || file.type.startsWith("video/")) || files[0];
+    if (directFile) return directFile;
+    try {
+      const items = Array.from(event.dataTransfer?.items ?? []);
+      for (const item of items) {
+        if (item.kind !== "file") continue;
+        const file = item.getAsFile();
+        if (file) return file;
+      }
+    } catch {
+      // Some pages expose a partial DataTransfer facade during cross-window drags.
+    }
+    return null;
+  }
+
   function hasBridgePayload(event: DragEvent) {
     return dataTransferTypes(event).includes(SMARTAIHUB_DRAG_MEDIA_MIME) || Boolean(activeDragMediaId);
   }
@@ -279,7 +296,7 @@ export {};
     if (event.type === "dragover" && key === lastDragPreviewKey && now - lastDragPreviewAt < 120) return;
     lastDragPreviewKey = key;
     lastDragPreviewAt = now;
-    const file = await dragMediaFileFromBackground(id);
+    const file = await dragMediaFileFromBackground(id) || fileFromDragEvent(event);
     if (!file) return;
     if (!activeDragMediaId && !dataTransferTypes(event).includes(SMARTAIHUB_DRAG_MEDIA_MIME)) return;
     dispatchFileDragEvents(target, file, event, event.type === "dragenter" ? ["dragenter", "dragover"] : ["dragover"]);
@@ -325,7 +342,7 @@ export {};
       event.preventDefault();
       event.stopPropagation();
     }
-    const file = await dragMediaFileFromBackground(id);
+    const file = await dragMediaFileFromBackground(id) || fileFromDragEvent(event);
     if (!file) return;
     const target = findUploadTarget(event.target);
     if (isMagnificHost(location.hostname.toLowerCase())) {

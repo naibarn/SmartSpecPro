@@ -263,11 +263,12 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.73";
-const EXTENSION_BUILD_LABEL = "2026-05-29 21:02 +07";
+const EXTENSION_VERSION = "0.1.74";
+const EXTENSION_BUILD_LABEL = "2026-05-29 21:19 +07";
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
 const SMARTAIHUB_DRAG_MEDIA_PREFIX = "smartaihubDragMedia:";
+let activeProductionDragMediaId: string | null = null;
 
 function getLocalAIStatusView(input: {
   capability: LocalAICapability;
@@ -709,7 +710,28 @@ function fileNameFromUrl(url: string, fallback: string): string {
   }
 }
 
-function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string }) {
+function storeDragMediaForBridge(input: { id: string; dataUrl: string; file: File }) {
+  return chrome.runtime.sendMessage({
+    type: "SMARTAIHUB_STORE_DRAG_MEDIA",
+    id: input.id,
+    dataUrl: input.dataUrl,
+    name: input.file.name,
+    mimeType: input.file.type || "application/octet-stream",
+  });
+}
+
+function startDragMediaBridge(input: { id: string; dataUrl?: string; file: File }) {
+  const start = () => chrome.runtime.sendMessage({ type: "SMARTAIHUB_START_DRAG_MEDIA", id: input.id });
+  if (!input.dataUrl) {
+    void start().catch(() => undefined);
+    return;
+  }
+  void storeDragMediaForBridge({ id: input.id, dataUrl: input.dataUrl, file: input.file })
+    .catch(() => undefined)
+    .then(() => start().catch(() => undefined));
+}
+
+function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string; dataUrl?: string }) {
   event.dataTransfer.effectAllowed = "copy";
   if (input.file) {
     try {
@@ -720,7 +742,8 @@ function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: s
       }
       event.dataTransfer.items.add(input.file);
       if (input.dragId) {
-        void chrome.runtime.sendMessage({ type: "SMARTAIHUB_START_DRAG_MEDIA", id: input.dragId });
+        activeProductionDragMediaId = input.dragId;
+        startDragMediaBridge({ id: input.dragId, dataUrl: input.dataUrl, file: input.file });
       }
       return;
     } catch {
@@ -732,8 +755,10 @@ function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: s
 }
 
 function endProductionMediaDrag(input: { dragId?: string }) {
-  if (!input.dragId) return;
-  void chrome.runtime.sendMessage({ type: "SMARTAIHUB_END_DRAG_MEDIA", id: input.dragId });
+  const id = activeProductionDragMediaId || input.dragId;
+  activeProductionDragMediaId = null;
+  if (!id) return;
+  void chrome.runtime.sendMessage({ type: "SMARTAIHUB_END_DRAG_MEDIA", id });
 }
 
 function blobToDataUrl(blob: Blob) {
@@ -3364,7 +3389,14 @@ export default function App() {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) return;
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
-    if (!url || productionMediaFiles[url]?.status === "ready" || productionMediaFiles[url]?.status === "loading") return;
+    const existing = productionMediaFiles[url];
+    if (!url || existing?.status === "loading") return;
+    if (existing?.status === "ready") {
+      if (existing.dragId && existing.dataUrl && existing.file) {
+        void storeDragMediaForBridge({ id: existing.dragId, dataUrl: existing.dataUrl, file: existing.file }).catch(() => undefined);
+      }
+      return;
+    }
     setProductionMediaFiles((current) => ({ ...current, [url]: { status: "loading" } }));
     try {
       let blob: Blob;
@@ -3653,7 +3685,7 @@ export default function App() {
             void prepareProductionMediaFile(candidate, input.title || input.label, kind);
           }
         }}
-        onDragStart={(event) => startProductionMediaDrag(event, { url, title: input.title || input.label, kind, file: fileEntry?.file, dragId: fileEntry?.dragId })}
+        onDragStart={(event) => startProductionMediaDrag(event, { url, title: input.title || input.label, kind, file: fileEntry?.file, dragId: fileEntry?.dragId, dataUrl: fileEntry?.dataUrl })}
         onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
         onDoubleClick={() => chrome.tabs.create({ url })}
         onKeyDown={(event) => {
@@ -3690,6 +3722,7 @@ export default function App() {
           kind: "image",
           file: fileEntry?.file,
           dragId: fileEntry?.dragId,
+          dataUrl: fileEntry?.dataUrl,
         })}
         onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
         title={fileEntry?.file ? "Drag this image as a file into an upload drop zone." : "Preparing file drag. Hover or press once, then drag after file ready."}
@@ -4344,6 +4377,7 @@ export default function App() {
                             kind: "image",
                             file: fileEntry?.file,
                             dragId: fileEntry?.dragId,
+                            dataUrl: fileEntry?.dataUrl,
                           })}
                           onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
                           onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
@@ -4405,6 +4439,7 @@ export default function App() {
                                   kind: "image",
                                   file: fileEntry?.file,
                                   dragId: fileEntry?.dragId,
+                                  dataUrl: fileEntry?.dataUrl,
                                 })}
                                 onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
                                 onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
