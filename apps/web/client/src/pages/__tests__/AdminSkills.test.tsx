@@ -197,6 +197,10 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.actions.skillStudio") return "Skill Studio";
       if (key === "admin.skillsPage.actions.importZip") return "Import ZIP";
       if (key === "admin.skillsPage.actions.createSkill") return "Create Skill";
+      if (key === "admin.skillsPage.productionReferenceStoryboard.badge") return "Production storyboard";
+      if (key === "admin.skillsPage.productionReferenceStoryboard.title") return "Media Studio Production Storyboard";
+      if (key === "admin.skillsPage.productionReferenceStoryboard.description") return "Show this skill in Media Studio > Production.";
+      if (key === "admin.skillsPage.productionReferenceStoryboard.enabledHelp") return "Persists config.media_studio.production_reference_storyboard.enabled.";
       if (key === "admin.skillsPage.tabs.skills") return `Skills (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.tabs.importFolders") return "Import";
       if (key === "admin.skillsPage.tabs.iscProposals") return "Proposals";
@@ -556,6 +560,74 @@ describe("AdminSkills", () => {
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
       `${window.location.origin}/agencies/agency-123/edit?autoExport=1&duplicateSkillName=Graph+Assistant&duplicateSkillDescription=Exported+from+agency.&duplicateSkillCategory=chat_assistant`,
     );
+  });
+
+  it("shows Media Studio production reference storyboard config in the list and edit dialog", async () => {
+    mockUseQuery.mockReturnValue({
+      data: [
+        {
+          id: 99,
+          slug: "furniture-reference-storyboard",
+          name: "Furniture Reference Storyboard",
+          description: "Storyboard skill.",
+          category: "image_prompt_generation",
+          version: "1.0.0",
+          author: null,
+          icon: "sofa",
+          tags: ["production-reference-storyboard"],
+          folderPath: "skills/furniture-reference-storyboard",
+          isAutoTrigger: false,
+          triggerPatterns: [],
+          isEnabled: true,
+          enabledByDefault: false,
+          visibleByDefault: false,
+          creditMultiplier: 1,
+          priority: 50,
+          availableModels: null,
+          defaultModel: null,
+          llmModelId: null,
+          preferredProviderId: null,
+          strictProviderPin: false,
+          systemPrompt: null,
+          skillContent: null,
+          knowledgebase: null,
+          configJson: {
+            media_studio: {
+              production_reference_storyboard: {
+                enabled: true,
+              },
+            },
+          },
+          executionMode: "llm-only",
+          sandboxProfileSlug: null,
+          requiresNetwork: null,
+          requiresBrowser: null,
+          maxRuntimeSeconds: null,
+          maxInputMb: null,
+          importSource: "folder",
+          importedFromZip: null,
+          createdBy: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          visibility: "private",
+          tenantId: null,
+          approvedBy: null,
+          approvedAt: null,
+          rejectionReason: null,
+          ownerName: null,
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Production storyboard").length).toBeGreaterThan(0);
+      expect(screen.getByText("Media Studio Production Storyboard")).toBeTruthy();
+      expect(screen.getByText(/config\.media_studio\.production_reference_storyboard\.enabled=true/)).toBeTruthy();
+    });
   });
 
   it("persists the legacy queue filter in the URL and shows priority badges on the maintenance tab", async () => {

@@ -769,6 +769,24 @@ function getAutoLearningConfig(configJson: Record<string, unknown> | null | unde
   };
 }
 
+function getProductionReferenceStoryboardConfig(configJson: Record<string, unknown> | null | undefined) {
+  const mediaStudio = configJson && typeof configJson === "object"
+    ? (configJson as Record<string, any>).media_studio
+    : null;
+  const productionReferenceStoryboard = mediaStudio && typeof mediaStudio === "object"
+    ? mediaStudio.production_reference_storyboard
+    : null;
+
+  return {
+    configured: Boolean(productionReferenceStoryboard && typeof productionReferenceStoryboard === "object"),
+    enabled: Boolean(
+      productionReferenceStoryboard
+      && typeof productionReferenceStoryboard === "object"
+      && productionReferenceStoryboard.enabled === true,
+    ),
+  };
+}
+
 function buildScheduleScopeJson(draft: {
   scopeCategory: string;
   scopeExecutionMode: string;
@@ -1025,6 +1043,7 @@ export default function AdminSkills() {
     if (found) {
       openedSkillIdFromQueryRef.current = openSkillIdFromQuery;
       const autoLearning = getAutoLearningConfig((found as any).configJson ?? null);
+      const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((found as any).configJson ?? null);
       setEditingSkill({
         ...(found as any),
         _autoLearningEnabled: autoLearning.enabled,
@@ -1033,6 +1052,8 @@ export default function AdminSkills() {
         _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
         _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
         _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
+        _productionReferenceStoryboardConfigured: productionReferenceStoryboard.configured,
+        _productionReferenceStoryboardEnabled: productionReferenceStoryboard.enabled,
       } as unknown as Skill);
     }
   }, [editingSkill, openSkillIdFromQuery, skills]);
@@ -3016,10 +3037,29 @@ export default function AdminSkills() {
     )
       ? existingConfigJson.media_studio as Record<string, unknown>
       : {};
+    const existingProductionReferenceStoryboard = (
+      existingMediaStudioConfig.production_reference_storyboard
+      && typeof existingMediaStudioConfig.production_reference_storyboard === "object"
+      && !Array.isArray(existingMediaStudioConfig.production_reference_storyboard)
+    )
+      ? existingMediaStudioConfig.production_reference_storyboard as Record<string, unknown>
+      : {};
+    const shouldPersistProductionReferenceStoryboard = Boolean(
+      (editingSkill as any)._productionReferenceStoryboardConfigured
+      || (editingSkill as any)._productionReferenceStoryboardEnabled,
+    );
     const nextConfigJson = {
       ...existingConfigJson,
       media_studio: {
         ...existingMediaStudioConfig,
+        ...(shouldPersistProductionReferenceStoryboard
+          ? {
+              production_reference_storyboard: {
+                ...existingProductionReferenceStoryboard,
+                enabled: (editingSkill as any)._productionReferenceStoryboardEnabled === true,
+              },
+            }
+          : {}),
         auto_learning: {
           enabled: (editingSkill as any)._autoLearningEnabled ?? false,
           prompt_qa_after_auto_prompt: (editingSkill as any)._autoLearningPromptQa ?? true,
@@ -3376,16 +3416,27 @@ export default function AdminSkills() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      skills?.map((skill) => (
+                      skills?.map((skill) => {
+                        const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((skill as any).configJson ?? null);
+                        return (
                         <TableRow key={skill.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {getCategoryIcon(skill.category)}
-                              <div>
+                              <div className="min-w-0 space-y-1">
                                 <div className="font-medium">{skill.name}</div>
                                 <div className="text-xs text-muted-foreground">
                                   {skill.slug}
                                 </div>
+                                {productionReferenceStoryboard.enabled && (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-sky-500 bg-sky-50 text-sky-700"
+                                    title="config.media_studio.production_reference_storyboard.enabled=true"
+                                  >
+                                    {t("admin.skillsPage.productionReferenceStoryboard.badge")}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </TableCell>
@@ -3552,6 +3603,7 @@ export default function AdminSkills() {
                                         : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
                                       const ep = (skill as any).executionPolicyJson ?? {};
                                       const autoLearning = getAutoLearningConfig((skill as any).configJson ?? null);
+                                      const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((skill as any).configJson ?? null);
                                       const orchestration = getOrchestrationConfig((skill as any).configJson ?? null);
                                       return applySandboxDefaults({
                                         ...(skill as any),
@@ -3588,6 +3640,8 @@ export default function AdminSkills() {
                                         _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
                                         _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
                                         _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
+                                        _productionReferenceStoryboardConfigured: productionReferenceStoryboard.configured,
+                                        _productionReferenceStoryboardEnabled: productionReferenceStoryboard.enabled,
                                         _orchestrationMode: orchestration.mode,
                                         _orchestrationEndpoint: orchestration.endpoint,
                                         _orchestrationSkillTargets: orchestration.skillTargets,
@@ -3612,7 +3666,8 @@ export default function AdminSkills() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -7066,6 +7121,39 @@ export default function AdminSkills() {
                     <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.enabledByDefaultShortHelp")}</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <Image className="mt-0.5 h-4 w-4 text-sky-700" />
+                    <div>
+                      <Label className="text-sm font-semibold text-sky-900">
+                        {t("admin.skillsPage.productionReferenceStoryboard.title")}
+                      </Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("admin.skillsPage.productionReferenceStoryboard.description")}
+                      </p>
+                      <code className="mt-2 inline-flex rounded bg-white/80 px-2 py-1 text-[11px] text-sky-900">
+                        config.media_studio.production_reference_storyboard.enabled=
+                        {String((editingSkill as any)._productionReferenceStoryboardEnabled === true)}
+                      </code>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={(editingSkill as any)._productionReferenceStoryboardEnabled === true}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        _productionReferenceStoryboardConfigured: true,
+                        _productionReferenceStoryboardEnabled: checked,
+                      } as any)
+                    }
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("admin.skillsPage.productionReferenceStoryboard.enabledHelp")}
+                </p>
               </div>
 
               <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
