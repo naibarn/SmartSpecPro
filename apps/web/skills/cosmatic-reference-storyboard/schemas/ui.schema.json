@@ -43,11 +43,11 @@
   },
   "image_text_mode": {
     "ui:widget": "select",
-    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ ข้อความบนฉลาก/แพ็กเกจจริงของสินค้าไม่ถือเป็นข้อความเพิ่ม"
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ ข้อความบนฉลาก/แพ็กเกจจริงของสินค้าไม่ถือเป็นข้อความเพิ่ม ยกเว้นเมื่อเลือก Cinematic Style เป็น Info Graphics Realistic / Info Graphics ระบบต้องสร้างข้อความอินโฟกราฟิกขนาดใหญ่"
   },
   "image_text_language": {
     "ui:widget": "select",
-    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ"
+    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ และใช้กับข้อความอินโฟกราฟิกเมื่อเลือก Info Graphics"
   },
   "image_text_custom_language": {
     "ui:widget": "text",
@@ -67,7 +67,7 @@
   },
   "cinematic_style": {
     "ui:widget": "select",
-    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสไตล์จาก reference"
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสไตล์จาก reference หากเลือก Info Graphics Realistic / Info Graphics จะ override ค่า no_text และสร้างข้อความอินโฟกราฟิกขนาดใหญ่แบบสั้นกระชับ"
   },
   "storyboard_guide": {
     "ui:widget": "textarea",

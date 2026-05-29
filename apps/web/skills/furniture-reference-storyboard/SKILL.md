@@ -69,7 +69,7 @@ Every generated prompt MUST independently repeat:
 - Product scale lock in every prompt, using exact numeric dimensions when supplied or inferred scale/proportion from product references when not supplied.
 - Compact/portable/convertible furniture scale guard when applicable.
 - Single-frame vs storyboard/collage output guard.
-- Default no-extra-text rendering guard.
+- Default no-extra-text rendering guard with infographic cinematic override.
 - Explicit storyboard-mode override guard.
 - Equal-frame storyboard grid guard.
 - Borderless storyboard presentation guard.
@@ -754,13 +754,23 @@ If any panel description would lead to shifted backgrounds, mismatched lighting,
 
 ## Default No-Extra-Text Rendering Rule
 
-Generated images must be image-only by default. Input `image_text_mode` controls added visible text in the generated image.
+Generated images must be image-only by default, except when an infographic cinematic style is selected. Input `image_text_mode` controls added visible text in the generated image. Infographic cinematic styles have higher priority than the no-text default.
 
-If `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include `TEXT RENDERING POLICY` stating that the image must contain no added visible text of any kind.
+If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, treat it as an explicit visible-text request even when `image_text_mode` is missing or `no_text`. Do NOT include a no-added-visible-text negative prompt. Every generated prompt MUST include `TEXT RENDERING POLICY` requiring a readable infographic layout with concise, large, intentional text.
 
-If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, label, or measurement design. Use `image_text_language` to choose the language for added visible text: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. The default language is English when not specified.
+For `info_graphics_realistic`, write the image prompt in this direction: "Create an info graphics realistic image using the attached furniture/product reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Keep the product photo-realistic and preserve the exact furniture geometry, proportions, material, texture, construction, markings, and scale.
 
-Forbidden by default:
+For `info_graphics`, write the image prompt in this direction: "Create a clean info graphics image using the attached furniture/product reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Use clean graphic shapes, icons, callout panels, and hierarchy while preserving the referenced product.
+
+Infographic text language follows `image_text_language`: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. If no language is specified, use English. If Thai is selected, use large concise Thai headline/callout text.
+
+Infer `[topic/key product benefit]` only from user-supplied `storyboard_guide`, `production_concept_details`, `product_title`, `product_label_text`, visible product facts, supplied dimensions/markings, or safe category/use-case facts. Use one large headline plus 2-4 short key points; avoid paragraphs and dense copy.
+
+If `cinematic_style` is not an infographic style and `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include `TEXT RENDERING POLICY` stating that the image must contain no added visible text of any kind.
+
+If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, label, or measurement design. Use `image_text_language` to choose the language for added visible text.
+
+Forbidden by default for non-infographic no-text mode:
 - captions, headlines, subheads, bullet points.
 - product feature callouts.
 - spec labels, frame numbers, measurement numbers, arrows.
@@ -768,14 +778,7 @@ Forbidden by default:
 - badges, banners, stickers, price bubbles, sale marks.
 - infographic labels, UI chrome, card labels, mockup text.
 
-When `image_text_mode` is `with_text`, keep added text short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, marketplace IDs, URLs, or volatile marketplace copy unless the user explicitly provided those exact words.
-
-Allowed only when physically part of the referenced product/environment:
-- sewn brand tags.
-- engraved logos or maker marks.
-- printed care labels.
-- physical product text or pattern text on mats/rugs.
-- tiny incidental background text not emphasized.
+When added text is allowed, keep it short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, marketplace IDs, URLs, or volatile marketplace copy unless the user explicitly provided those exact words.
 
 Product markings, labels, and brand marks are not added storyboard text. Preserve them when they are part of the referenced product, even when `image_text_mode` is `no_text`.
 
@@ -849,7 +852,7 @@ The referenced product must remain visible in every required person frame. A per
 
 For each generated prompt, use this order:
 1. `OUTPUT FORMAT LOCK` - aspect ratio, single image vs storyboard, exact grid when requested, no captions/labels unless explicitly requested.
-2. `TEXT RENDERING POLICY` - explicitly say no added visible text of any kind by default; only user-requested text or physical product text.
+2. `TEXT RENDERING POLICY` - explicitly say no added visible text for non-infographic defaults; for `info_graphics_realistic` or `info_graphics`, require large concise infographic text with one headline and 2-4 key points.
 3. `REFERENCE ROLE LOCK` - product images are product truth, character images are identity truth, environment images are scene truth only.
 4. `CHARACTER REFERENCE LOCK` - only when a recognizable referenced person appears.
 5. `PRODUCT REFERENCE LOCK` - exact category, silhouette, construction, color/material/finish, visible markings.

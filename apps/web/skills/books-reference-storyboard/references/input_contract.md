@@ -6,7 +6,7 @@ Expected request payload for Books Reference Storyboard:
 - `reference_character_images`: optional identity anchors for people.
 - `reference_environment_images`: optional scene, mood, lighting, and usage context only.
 - `product_label_text`: optional exact visible product text, markings, labels, package facts, dimensions, or tags to preserve.
-- `image_text_mode`: defaults to `no_text`; use `with_text` only for requested captions, infographics, labels, or callouts.
+- `image_text_mode`: defaults to `no_text` for non-infographic styles. `cinematic_style` = `info_graphics_realistic` or `info_graphics` overrides that default and requires concise large visible infographic text; use `image_text_language` for the text language.
 - `storyboard_guide` and `production_concept_details`: optional creative direction that must not override product-reference fidelity.
 
 Inputs should be explicit, current-run only, and deterministic.

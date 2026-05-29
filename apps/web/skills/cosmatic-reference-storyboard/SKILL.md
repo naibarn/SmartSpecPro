@@ -83,20 +83,21 @@ The rendered image MUST NOT contain:
 
 Product packaging text, logos, and brand markings are not storyboard labels. Preserve them when they are part of the referenced product.
 
-Descriptions may exist in the generated prompt text to guide each frame, but they must not be requested as visible text inside the generated storyboard image.
+Descriptions may exist in the generated prompt text to guide each frame. They must not be requested as visible text inside the generated storyboard image unless `image_text_mode` is `with_text` or `cinematic_style` is `info_graphics_realistic` / `info_graphics`.
 
 ## Default No-Extra-Text Rendering Rule
 
-Input `image_text_mode` controls added visible text in the generated image.
+Input `image_text_mode` controls added visible text in the generated image. Infographic cinematic styles have higher priority than the no-text default.
 
-- If `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include a `TEXT RENDERING POLICY` or negative constraint that says the generated image must contain no added visible text of any kind.
-- If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, or label design. Use `image_text_language` to choose the language for added visible text: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. The default language is English when not specified.
+- If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, treat it as an explicit visible-text request even when `image_text_mode` is missing or `no_text`. Do NOT include a no-added-visible-text negative prompt. Every generated prompt MUST include a `TEXT RENDERING POLICY` requiring a readable infographic layout with concise, large, intentional text.
+- For `info_graphics_realistic`, write the image prompt in this direction: "Create an info graphics realistic image using the attached product/reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Keep the product photo-realistic and preserve the exact product packaging, label hierarchy, cap/lid, colors, material, markings, and scale.
+- For `info_graphics`, write the image prompt in this direction: "Create a clean info graphics image using the attached product/reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Use clean graphic shapes, icons, callout panels, and hierarchy while preserving the referenced product.
+- Infographic text language follows `image_text_language`: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. If no language is specified, use English. If Thai is selected, use large concise Thai headline/callout text.
+- Infer `[topic/key product benefit]` only from user-supplied `storyboard_guide`, `production_concept_details`, `product_title`, `product_label_text`, visible package facts, or safe category/use-case facts. Use one large headline plus 2-4 short key points; avoid paragraphs and dense copy.
+- If `cinematic_style` is not an infographic style and `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include a `TEXT RENDERING POLICY` or negative constraint that says the generated image must contain no added visible text of any kind.
+- If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, or label design.
 
-When `image_text_mode` is `no_text`, do not add captions, headlines, subheads, subtitles, labels, callouts, frame numbers, measurement text, arrows with text, badges, banners, stickers, price bubbles, sale marks, UI chrome, watermarks, or extra Thai/English words anywhere in the image.
-
-When `image_text_mode` is `with_text`, keep added text short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, or volatile marketplace copy unless the user explicitly provided those exact words.
-
-Allowed visible text is limited to text, logos, or markings that are physically part of the referenced product packaging or a referenced real-world environment. Do not invent new product claims, promotional copy, decorative typography, or background signs.
+When added text is allowed, keep it short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, or volatile marketplace copy unless the user explicitly provided those exact words.
 
 Product packaging text, logos, and brand markings are not added storyboard text. Preserve them when they are part of the referenced product, even when `image_text_mode` is `no_text`.
 

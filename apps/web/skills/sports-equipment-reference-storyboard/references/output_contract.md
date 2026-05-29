@@ -9,6 +9,7 @@ Required storyboard behavior:
 - For `canvas_9_16_grid_3x3_frame_9_16_exact`, describe a 9:16 final canvas with a 3x3 grid and exactly 9 distinct vertical frames.
 - Use equal-sized panels and keep the storyboard edge-to-edge unless the user asks for another layout.
 - Include `TEXT RENDERING POLICY`, `PRODUCT REFERENCE LOCK`, `PRODUCT PHYSICAL PROPORTION LOCK`, and `PRODUCT SCALE LOCK`.
+- If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, `TEXT RENDERING POLICY` must require a readable infographic with one large headline and 2-4 short key points using the attached product/reference image; do not apply the no-added-visible-text policy in this case.
 - Preserve exact อุปกรณ์กีฬา product category, shape, proportions, material, texture, colorway, markings, package facts, and scale from current references.
 - Product references override environment references.
 - Reject current-reference contamination from old uploads, previous generations, unrelated people, unrelated rooms, or background objects.

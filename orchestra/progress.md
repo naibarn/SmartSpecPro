@@ -326,3 +326,16 @@
   - `npm run test --workspace=@smartspec/web -- server/services/__tests__/productReferenceStoryboardSkills.test.ts`: passed.
   - `npm run check --workspace=@smartspec/web`: passed.
   - Web service health: root route returned HTTP `200` after restart.
+
+## Reference Storyboard Infographic Text Override
+- SocratiCode status checked: green; search narrowed the conflict to reference storyboard skill no-text rules and infographic cinematic styles.
+- Root cause: `image_text_mode=no_text` default rules still applied when `cinematic_style` was `info_graphics_realistic` or `info_graphics`, so generated prompts could include no-visible-text negative policy.
+- Updated all 20 production reference storyboard skills, including furniture and cosmatic, so infographic cinematic styles override the no-text default and require concise, large readable infographic text.
+- Added prompt direction requiring the attached product/reference image as the main visual, one large headline, 2-4 short key points, and language selection from `image_text_language`; non-infographic styles still default to no added visible text.
+- Synced all 20 DB skill rows with refreshed `skillContent`, `systemPrompt`, `marketplaceContent`, content hashes, production tag/config, and restarted `smartspec-web.service`.
+- Verification:
+  - DB prompt override count: `20/20`.
+  - `npm run test --workspace=@smartspec/web -- server/services/__tests__/productReferenceStoryboardSkills.test.ts`: passed.
+  - `npm run check --workspace=@smartspec/web`: passed.
+  - `git diff --check -- apps/web/skills apps/web/server/services/__tests__/productReferenceStoryboardSkills.test.ts apps/web/client/src/pages/MediaStudio.tsx`: passed.
+  - Web service health: root route returned HTTP `200` after restart.

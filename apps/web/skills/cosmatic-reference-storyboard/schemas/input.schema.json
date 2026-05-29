@@ -113,7 +113,7 @@
     },
     "image_text_mode": {
       "title": "Visible Text In Image",
-      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, or measurement text. Default is no added text. Product packaging text, logos, and markings from the reference product are preserved separately and do not count as added text.",
+      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, or measurement text. Default is no added text for non-infographic styles. Info Graphics Realistic and Info Graphics override this default and require concise large visible infographic text. Product packaging text, logos, and markings from the reference product are preserved separately and do not count as added text.",
       "type": "string",
       "enum": [
         "no_text",
@@ -131,7 +131,7 @@
     },
     "image_text_language": {
       "title": "Visible Text Language",
-      "description": "Language for added visible text when Visible Text In Image is set to Allow added text. Default is English. Choose Other and fill Custom Visible Text Language for another language. Ignored when no added text is selected.",
+      "description": "Language for added visible text when Visible Text In Image is set to Allow added text. Default is English. Choose Other and fill Custom Visible Text Language for another language. Also used when an infographic cinematic style is selected. Ignored only when no added text is selected and the cinematic style is not Info Graphics Realistic or Info Graphics.",
       "type": "string",
       "enum": [
         "en",
@@ -270,7 +270,7 @@
     },
     "cinematic_style": {
       "title": "Cinematic Style",
-      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced product colors, cap/lid color, package material, logo, or label text. Warm or luxury styles may affect the room but must not tint or recolor the product packaging.",
+      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced product colors, cap/lid color, package material, logo, or label text. Warm or luxury styles may affect the room but must not tint or recolor the product packaging. Info Graphics Realistic and Info Graphics intentionally create text-forward infographic layouts with large concise readable text; they override the no-text default while still preserving the referenced product.",
       "type": "string",
       "enum": [
         "auto",

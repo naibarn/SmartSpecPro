@@ -172,14 +172,19 @@ Frame 7: cleaning/care frame.
 Frame 8: label/measurement detail.
 Frame 9: final nursery lifestyle scene.
 
-The rendered storyboard image must not contain visible frame numbers, captions, labels, text boxes, lower-thirds, subtitles, arrows with text, UI chrome, or layout typography unless `image_text_mode` is `with_text`.
+The rendered storyboard image must not contain visible frame numbers, captions, labels, text boxes, lower-thirds, subtitles, arrows with text, UI chrome, or layout typography unless `image_text_mode` is `with_text` OR `cinematic_style` is `info_graphics_realistic` or `info_graphics`.
 
 ## Default No-Extra-Text Rendering Rule
 
-Input `image_text_mode` controls added visible text in the generated image.
+Input `image_text_mode` controls added visible text in the generated image. Infographic cinematic styles have higher priority than the no-text default.
 
-- If `image_text_mode` is missing or `no_text`, every generated prompt must explicitly include a `TEXT RENDERING POLICY` saying the image contains no added visible text of any kind.
-- If `image_text_mode` is `with_text`, intentional added text is allowed only when it supports a requested storyboard, ad, infographic, callout, caption, headline, label, comparison, or measurement design. Use `image_text_language`: `en` for English, `th` for Thai, and `other` for `image_text_custom_language`. Default language is English.
+- If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, treat it as an explicit visible-text request even when `image_text_mode` is missing or `no_text`. Do NOT include a no-added-visible-text negative prompt. Every generated prompt must include a `TEXT RENDERING POLICY` requiring a readable infographic layout with concise, large, intentional text.
+- For `info_graphics_realistic`, write the image prompt in this direction: "Create an info graphics realistic image using the attached product/reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Keep the product photo-realistic and preserve the reference product's exact shape, proportions, material, texture, markings, and scale.
+- For `info_graphics`, write the image prompt in this direction: "Create a clean info graphics image using the attached product/reference image as the main visual, with large readable text, not too many words, only the key points about [topic/key product benefit]." Use clean graphic shapes, icons, callout panels, and hierarchy while preserving the reference product.
+- Infographic text language follows `image_text_language`: `en` for English, `th` for Thai, and `other` for `image_text_custom_language`. If no language is specified, use English. If Thai is selected, use large concise Thai headline/callout text.
+- Infer `[topic/key product benefit]` only from user-supplied `storyboard_guide`, `production_concept_details`, `product_title`, `product_label_text`, visible product facts, or safe category/use-case facts. Use one large headline plus 2-4 short key points; avoid paragraphs and dense copy.
+- If `cinematic_style` is not an infographic style and `image_text_mode` is missing or `no_text`, every generated prompt must explicitly include a `TEXT RENDERING POLICY` saying the image contains no added visible text of any kind.
+- If `image_text_mode` is `with_text`, intentional added text is allowed only when it supports a requested storyboard, ad, infographic, callout, caption, headline, label, comparison, or measurement design.
 
 When added text is allowed, keep it short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, certifications, health/safety claims, compatibility claims, badges, or marketplace copy unless the user supplied exact text.
 
@@ -195,7 +200,7 @@ If identity cannot be preserved confidently, use product-only, hands-only, parti
 
 Before finalizing, silently rewrite any prompt that violates these gates:
 - Reject any prompt that turns the product into a nicer generic catalog item instead of the exact referenced item.
-- Reject product category drift, changed proportions, changed material class, changed texture, changed print or pattern scale, invented labels, missing small parts, or mismatched colorway.
+- Reject product category drift, changed proportions, changed material class, changed texture, changed print or pattern scale, invented physical product labels, unsupported claims, missing small parts, or mismatched colorway. Intentional infographic overlay text is allowed only under the infographic/text rules above.
 - Reject environment-reference contamination: background objects, old uploads, or prior generations must not replace the current product reference.
 - Reject hidden-product frames unless the user explicitly asks for mood-only scenes; product storyboards must keep the product inspectable.
 - When multiple references conflict, select one hero SKU or clearly describe a product family without blending variants into one impossible hybrid.

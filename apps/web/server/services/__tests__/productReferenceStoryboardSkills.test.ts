@@ -45,6 +45,37 @@ describe("category reference storyboard skills", () => {
     }
   });
 
+  it("lets infographic cinematic styles override the no-text default", () => {
+    for (const skillId of productionReferenceStoryboardSkillIds) {
+      const skillDir = path.join(skillsRoot, skillId);
+      const skillContent = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8");
+      const mirroredSkillContent = fs.readFileSync(path.join(skillDir, "skill.md"), "utf-8");
+      const inputSchema = JSON.parse(
+        fs.readFileSync(path.join(skillDir, "schemas", "input.schema.json"), "utf-8"),
+      );
+      const uiSchema = JSON.parse(
+        fs.readFileSync(path.join(skillDir, "schemas", "ui.schema.json"), "utf-8"),
+      );
+
+      expect(mirroredSkillContent).toBe(skillContent);
+      expect(skillContent).toContain("Infographic cinematic styles have higher priority than the no-text default");
+      expect(skillContent).toContain("Do NOT include a no-added-visible-text negative prompt");
+      expect(skillContent).toContain("large readable text, not too many words, only the key points");
+      expect(skillContent).toContain("one large headline plus 2-4 short key points");
+      expect(inputSchema.properties.image_text_mode.description).toContain(
+        "Info Graphics Realistic and Info Graphics override this default",
+      );
+      expect(inputSchema.properties.image_text_language.description).toContain(
+        "infographic cinematic style",
+      );
+      expect(inputSchema.properties.cinematic_style.description).toContain(
+        "text-forward infographic layouts",
+      );
+      expect(uiSchema.image_text_mode["ui:help"]).toContain("Info Graphics Realistic / Info Graphics");
+      expect(uiSchema.cinematic_style["ui:help"]).toContain("override ค่า no_text");
+    }
+  });
+
   it("provide mirrored markdown, schemas, and category-specific fidelity contracts", () => {
     for (const [skillId, thaiCategory] of categorySkills) {
       const skillDir = path.join(skillsRoot, skillId);
