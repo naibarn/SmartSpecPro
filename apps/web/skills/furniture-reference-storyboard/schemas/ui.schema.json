@@ -6,6 +6,9 @@
     "product_label_text",
     "label_fidelity",
     "label_readability_mode",
+    "image_text_mode",
+    "image_text_language",
+    "image_text_custom_language",
     "reference_environment_images",
     "storyboard_layout_preset",
     "aspect_ratio",
@@ -37,6 +40,18 @@
   "label_readability_mode": {
     "ui:widget": "select",
     "ui:help": "เลือก Product/detail lock เมื่อต้องการเฟรมเห็นรายละเอียดสินค้า เช่น ตะเข็บ ล้อ ชั้น มือจับ วัสดุ หรือขนาดชัดเจน ไม่ใช่ prop เล็ก ๆ ในฉาก"
+  },
+  "image_text_mode": {
+    "ui:widget": "select",
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ มาร์กกิ้ง/แท็ก/โลโก้/ข้อความจริงบนสินค้าไม่ถือเป็นข้อความเพิ่ม"
+  },
+  "image_text_language": {
+    "ui:widget": "select",
+    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ"
+  },
+  "image_text_custom_language": {
+    "ui:widget": "text",
+    "ui:help": "กรอกเมื่อเลือกภาษาอื่น เช่น Japanese, Korean, Chinese, Vietnamese, Arabic หรือ Spanish"
   },
   "reference_environment_images": {
     "ui:widget": "imageUpload",

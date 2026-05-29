@@ -84,11 +84,18 @@ Descriptions may exist in the generated prompt text to guide each frame, but the
 
 ## Default No-Extra-Text Rendering Rule
 
-Every generated prompt MUST explicitly include a `TEXT RENDERING POLICY` or negative constraint that says the generated image must contain no added visible text of any kind unless the user explicitly requests text in the image.
+Input `image_text_mode` controls added visible text in the generated image.
 
-Do not add captions, headlines, subheads, subtitles, labels, callouts, frame numbers, measurement text, arrows with text, badges, banners, stickers, price bubbles, sale marks, UI chrome, watermarks, or extra Thai/English words anywhere in the image.
+- If `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include a `TEXT RENDERING POLICY` or negative constraint that says the generated image must contain no added visible text of any kind.
+- If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, or label design. Use `image_text_language` to choose the language for added visible text: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. The default language is English when not specified.
+
+When `image_text_mode` is `no_text`, do not add captions, headlines, subheads, subtitles, labels, callouts, frame numbers, measurement text, arrows with text, badges, banners, stickers, price bubbles, sale marks, UI chrome, watermarks, or extra Thai/English words anywhere in the image.
+
+When `image_text_mode` is `with_text`, keep added text short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, or volatile marketplace copy unless the user explicitly provided those exact words.
 
 Allowed visible text is limited to text, logos, or markings that are physically part of the referenced product packaging or a referenced real-world environment. Do not invent new product claims, promotional copy, decorative typography, or background signs.
+
+Product packaging text, logos, and brand markings are not added storyboard text. Preserve them when they are part of the referenced product, even when `image_text_mode` is `no_text`.
 
 ## Product Fidelity Rule
 

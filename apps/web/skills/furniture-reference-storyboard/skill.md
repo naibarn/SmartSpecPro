@@ -751,9 +751,11 @@ If any panel description would lead to shifted backgrounds, mismatched lighting,
 
 ## Default No-Extra-Text Rendering Rule
 
-Generated images must be image-only by default. If the user does not explicitly request text inside the image, do not render visible extra text.
+Generated images must be image-only by default. Input `image_text_mode` controls added visible text in the generated image.
 
-Every generated prompt MUST explicitly include `TEXT RENDERING POLICY` stating that the image must contain no added visible text of any kind unless the user explicitly requested text in the image.
+If `image_text_mode` is missing or `no_text`, every generated prompt MUST explicitly include `TEXT RENDERING POLICY` stating that the image must contain no added visible text of any kind.
+
+If `image_text_mode` is `with_text`, intentional added text is allowed only where it supports the requested storyboard, ad, infographic, callout, caption, headline, label, or measurement design. Use `image_text_language` to choose the language for added visible text: `en` means English, `th` means Thai, and `other` means use `image_text_custom_language`. The default language is English when not specified.
 
 Forbidden by default:
 - captions, headlines, subheads, bullet points.
@@ -763,12 +765,16 @@ Forbidden by default:
 - badges, banners, stickers, price bubbles, sale marks.
 - infographic labels, UI chrome, card labels, mockup text.
 
+When `image_text_mode` is `with_text`, keep added text short, readable, and in the selected language. Do not invent prices, discounts, ratings, sold counts, sales volume, claims, certifications, badges, marketplace IDs, URLs, or volatile marketplace copy unless the user explicitly provided those exact words.
+
 Allowed only when physically part of the referenced product/environment:
 - sewn brand tags.
 - engraved logos or maker marks.
 - printed care labels.
 - physical product text or pattern text on mats/rugs.
 - tiny incidental background text not emphasized.
+
+Product markings, labels, and brand marks are not added storyboard text. Preserve them when they are part of the referenced product, even when `image_text_mode` is `no_text`.
 
 ## Physical Text, Pattern Text, And Overlay Text Distinction Rule
 

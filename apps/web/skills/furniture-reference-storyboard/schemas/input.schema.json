@@ -163,6 +163,51 @@
       ],
       "default": "product_detail_lock"
     },
+    "image_text_mode": {
+      "title": "Visible Text In Image",
+      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, measurement text, or comparison notes. Default is no added text. Physical product markings such as sewn labels, engraved logos, care tags, SKU stickers, printed dimensions, and decorative product text are preserved separately and do not count as added text.",
+      "type": "string",
+      "enum": [
+        "no_text",
+        "with_text"
+      ],
+      "enumNames": [
+        "No added text",
+        "Allow added text"
+      ],
+      "x-ui-enumNamesTh": [
+        "ไม่มีข้อความเพิ่มในภาพ",
+        "ให้มีข้อความเพิ่มในภาพ"
+      ],
+      "default": "no_text"
+    },
+    "image_text_language": {
+      "title": "Visible Text Language",
+      "description": "Language for added visible text when Visible Text In Image is set to Allow added text. Default is English. Choose Other and fill Custom Visible Text Language for another language. Ignored when no added text is selected.",
+      "type": "string",
+      "enum": [
+        "en",
+        "th",
+        "other"
+      ],
+      "enumNames": [
+        "English",
+        "Thai",
+        "Other language"
+      ],
+      "x-ui-enumNamesTh": [
+        "อังกฤษ",
+        "ไทย",
+        "ภาษาอื่น"
+      ],
+      "default": "en"
+    },
+    "image_text_custom_language": {
+      "title": "Custom Visible Text Language",
+      "description": "Optional. Fill this only when Visible Text Language is Other, for example Japanese, Korean, Chinese, Vietnamese, Arabic, or Spanish.",
+      "type": "string",
+      "default": ""
+    },
     "reference_environment_images": {
       "title": "Reference Environment Images",
       "description": "Upload environment or location images to guide room type, architecture, floor/wall materials, lighting, color palette, and mood. Environment images are scene references only; they must not override the referenced product geometry, dimensions, colorway, material, or character identity.",
@@ -290,7 +335,9 @@
         "bright_soft_light",
         "documentary_natural",
         "fashion_film",
-        "macro_product_detail"
+        "macro_product_detail",
+        "info_graphics_realistic",
+        "info_graphics"
       ],
       "enumNames": [
         "Auto",
@@ -303,7 +350,9 @@
         "Bright Soft Light",
         "Documentary Natural",
         "Fashion Film",
-        "Macro Product Detail"
+        "Macro Product Detail",
+        "Info Graphics Realistic",
+        "Info Graphics"
       ],
       "x-ui-enumNamesTh": [
         "Auto",
@@ -316,7 +365,9 @@
         "แสงนุ่มสว่าง",
         "ธรรมชาติแบบสารคดี",
         "แฟชั่นฟิล์ม",
-        "มาโครรายละเอียดสินค้า"
+        "มาโครรายละเอียดสินค้า",
+        "อินโฟกราฟิกสมจริง",
+        "อินโฟกราฟิก"
       ],
       "default": "auto"
     },

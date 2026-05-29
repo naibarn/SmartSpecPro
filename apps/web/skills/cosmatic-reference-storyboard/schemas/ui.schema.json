@@ -6,6 +6,9 @@
     "product_label_text",
     "label_fidelity",
     "label_readability_mode",
+    "image_text_mode",
+    "image_text_language",
+    "image_text_custom_language",
     "reference_environment_images",
     "storyboard_layout_preset",
     "aspect_ratio",
@@ -37,6 +40,18 @@
   "label_readability_mode": {
     "ui:widget": "select",
     "ui:help": "เลือกล็อกเฟรมสินค้าให้อ่านฉลากได้ เพื่อบังคับให้มีเฟรม close-up/front-facing ที่สินค้าใหญ่พอ ไม่ใช่เป็น prop เล็ก ๆ ใน lifestyle shot"
+  },
+  "image_text_mode": {
+    "ui:widget": "select",
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ ข้อความบนฉลาก/แพ็กเกจจริงของสินค้าไม่ถือเป็นข้อความเพิ่ม"
+  },
+  "image_text_language": {
+    "ui:widget": "select",
+    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ"
+  },
+  "image_text_custom_language": {
+    "ui:widget": "text",
+    "ui:help": "กรอกเมื่อเลือกภาษาอื่น เช่น Japanese, Korean, Chinese, Vietnamese, Arabic หรือ Spanish"
   },
   "reference_environment_images": {
     "ui:widget": "imageUpload",
