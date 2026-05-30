@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["generated_image", "prompt"],
+  "properties": {
+    "generated_image": { "type": "object" },
+    "prompt": { "type": "string" },
+    "storyboard_guide": { "type": "string" },
+    "voiceover_script": { "type": "string" },
+    "product_context": { "type": "object" },
+    "product_truth": { "type": "string" },
+    "concept_details": { "type": "string" },
+    "expected_checks": { "type": "array", "items": { "type": "string" } },
+    "inspection_mode": { "type": "string" }
+  },
+  "additionalProperties": true
+}

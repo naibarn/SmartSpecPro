@@ -519,6 +519,7 @@ const MEDIA_PRODUCTION_PLANNING_ATTACHMENT_LIMIT = 10;
 const PRODUCTION_STORY_CONCEPT_STORAGE_PREFIX = "smartspec_media_studio_production_story_wizard_v1";
 const PRODUCTION_STORYBOARD_CLIP_DURATION_OPTIONS = [4, 5, 6, 6.7, 7.5, 8, 9, 10, 12, 15];
 const GEMINI_OMNI_VIDEO_DIRECTOR_SKILL_ID = "gemini-omni-video-director";
+const PRODUCTION_SHOT_IMAGE_QUALITY_QA_SKILL_ID = "production-shot-image-quality-qa";
 type MarketplaceStudioImage = {
   id: string;
   productId: string;
@@ -633,7 +634,211 @@ type MediaStudioQueueGenerationTask = QueueGenerationTask & {
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
 };
 
+type ProductionShotFrameImageQaStatus = "pending" | "pass" | "warning" | "needs_review";
+type ProductionShotFrameImageQaInspectionMode = "metadata_only" | "vision";
+type ProductionShotFrameImageQaResult = {
+  status: ProductionShotFrameImageQaStatus;
+  score: number;
+  threshold: number;
+  inspectionMode: ProductionShotFrameImageQaInspectionMode;
+  summary: string;
+  notes: string[];
+  checkedAt: string;
+};
+
+type ProductionShotFrameBatchSession = {
+  version: 1;
+  productionRunId: string;
+  skillId: string;
+  shotIds: string[];
+  nextIndex: number;
+  phase: "prompt" | "start_submit" | "start_wait" | "stop_submit" | "stop_wait" | "complete";
+  promptDrafts?: Record<string, Record<string, unknown>>;
+  lastTaskId?: string;
+  lastResultUrl?: string;
+  lastError?: string;
+  status: "running" | "paused" | "failed";
+  startedAt: number;
+  updatedAt: number;
+};
+
+const PRODUCTION_SHOT_FRAME_BATCH_SESSION_PREFIX = "smartspec_media_studio_production_shot_frame_batch_v1";
 const DENSE_PRODUCTION_SHOT_NODE_ID_PATTERN = /^shot-\d+-(script|image-prompt|image-output|video-prompt|video-output|audio-prompt|audio-output|qa)$/;
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringArrayFromUnknown(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map((item) => String(item ?? "").trim()).filter(Boolean);
+      } catch {
+        return [trimmed];
+      }
+    }
+    return trimmed.split(/[,\n|]+/g).map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function getProductionShotFrameBatchSessionStorageKey(productionRunId: string): string {
+  return `${PRODUCTION_SHOT_FRAME_BATCH_SESSION_PREFIX}:${productionRunId || "draft"}`;
+}
+
+function readProductionShotFrameBatchSession(productionRunId: string): ProductionShotFrameBatchSession | null {
+  if (typeof window === "undefined" || !productionRunId || productionRunId === "draft") return null;
+  try {
+    const raw = window.localStorage.getItem(getProductionShotFrameBatchSessionStorageKey(productionRunId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ProductionShotFrameBatchSession>;
+    if (parsed.version !== 1 || parsed.productionRunId !== productionRunId || !parsed.skillId || !Array.isArray(parsed.shotIds)) return null;
+    return {
+      version: 1,
+      productionRunId,
+      skillId: String(parsed.skillId),
+      shotIds: parsed.shotIds.map(String).filter(Boolean),
+      nextIndex: Math.max(0, Number(parsed.nextIndex) || 0),
+      phase: parsed.phase === "start_submit" || parsed.phase === "start_wait" || parsed.phase === "stop_submit" || parsed.phase === "stop_wait" || parsed.phase === "complete" ? parsed.phase : "prompt",
+      promptDrafts: asRecord(parsed.promptDrafts) as Record<string, Record<string, unknown>>,
+      lastTaskId: typeof parsed.lastTaskId === "string" ? parsed.lastTaskId : undefined,
+      lastResultUrl: typeof parsed.lastResultUrl === "string" ? parsed.lastResultUrl : undefined,
+      lastError: typeof parsed.lastError === "string" ? parsed.lastError : undefined,
+      status: parsed.status === "failed" || parsed.status === "paused" ? parsed.status : "running",
+      startedAt: Number(parsed.startedAt) || Date.now(),
+      updatedAt: Number(parsed.updatedAt) || Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeProductionShotFrameBatchSession(session: ProductionShotFrameBatchSession): void {
+  if (typeof window === "undefined" || !session.productionRunId || session.productionRunId === "draft") return;
+  window.localStorage.setItem(getProductionShotFrameBatchSessionStorageKey(session.productionRunId), JSON.stringify({
+    ...session,
+    updatedAt: Date.now(),
+  }));
+}
+
+function clearProductionShotFrameBatchSession(productionRunId: string): void {
+  if (typeof window === "undefined" || !productionRunId || productionRunId === "draft") return;
+  window.localStorage.removeItem(getProductionShotFrameBatchSessionStorageKey(productionRunId));
+}
+
+function buildProductionShotFrameImageQaResult(params: {
+  resultUrl?: string | null;
+  frameRole: "start" | "stop";
+  prompt: string;
+  modelSupportsReferences: boolean;
+  referenceProductImageUrls: string[];
+  referenceCharacterImageUrls: string[];
+  referenceEnvironmentImageUrls: string[];
+  continuityReferenceUrls: string[];
+}): ProductionShotFrameImageQaResult {
+  const notes: string[] = [];
+  const promptText = params.prompt.toLowerCase();
+  const hasResult = Boolean(String(params.resultUrl ?? "").trim());
+  const hasProductRefs = params.referenceProductImageUrls.length > 0;
+  const hasCharacterRefs = params.referenceCharacterImageUrls.length > 0;
+  const hasEnvironmentRefs = params.referenceEnvironmentImageUrls.length > 0;
+  const hasAnyRefs = hasProductRefs || hasCharacterRefs || hasEnvironmentRefs || params.continuityReferenceUrls.length > 0;
+  const hasProductLock = /product detail lock|product identity|product source of truth|สินค้า|product truth/i.test(params.prompt);
+  const hasCinematicLanguage = /(cinematic|lens|camera|lighting|depth of field|แสง|มุมกล้อง|ภาพยนตร์|เลนส์)/i.test(params.prompt);
+  const hasBackViewRisk = /(หันหลัง|ด้านหลัง|มุมหลัง|from behind|back view|rear view|over[- ]?shoulder)/i.test(params.prompt);
+  const hasNoTurnLock = /(ไม่หันหน้ากลับ|ห้ามหันกลับ|no face reveal|do not turn|must not turn|locked back view)/i.test(params.prompt);
+
+  if (!hasResult) notes.push("Generation result is not available yet; run QA again after the provider returns an image.");
+  if (hasAnyRefs && !params.modelSupportsReferences) notes.push("Selected image model does not support reference image URLs, so product/character/scene locking is weak.");
+  if (!hasProductRefs) notes.push("No product reference image was attached to this frame; product fidelity needs human review.");
+  if (hasProductRefs && !hasProductLock) notes.push("Prompt does not clearly state product-detail lock even though product references are attached.");
+  if (hasCharacterRefs && hasBackViewRisk && !hasNoTurnLock) notes.push("Back-view character cue detected without a no-turn lock; identity may drift in the video stage.");
+  if (!hasEnvironmentRefs) notes.push("No environment reference image is attached; lighting and room continuity may drift.");
+  if (params.frameRole === "stop" && params.continuityReferenceUrls.length === 0) notes.push("Stop frame has no generated continuity anchor from the current start frame or previous shot.");
+  if (!hasCinematicLanguage) notes.push("Prompt has weak camera/lighting language; cinematic quality may vary.");
+  if (promptText.includes("text overlay") || promptText.includes("subtitle") || promptText.includes("caption")) {
+    notes.push("Prompt mentions visible text/subtitle/caption; verify this does not conflict with no-text image policy.");
+  }
+
+  const hardReview = (hasAnyRefs && !params.modelSupportsReferences) || !hasProductRefs;
+  const status: ProductionShotFrameImageQaStatus = !hasResult ? "pending" : hardReview ? "needs_review" : notes.length > 0 ? "warning" : "pass";
+  const score = Math.max(0, Math.min(100,
+    96
+    - (hasResult ? 0 : 35)
+    - (hasProductRefs ? 0 : 24)
+    - (params.modelSupportsReferences || !hasAnyRefs ? 0 : 28)
+    - (hasProductLock ? 0 : 8)
+    - (hasCharacterRefs && hasBackViewRisk && !hasNoTurnLock ? 12 : 0)
+    - (hasEnvironmentRefs ? 0 : 5)
+    - (params.frameRole === "stop" && params.continuityReferenceUrls.length === 0 ? 10 : 0)
+    - (hasCinematicLanguage ? 0 : 4)
+  ));
+
+  return {
+    status,
+    score,
+    threshold: 80,
+    inspectionMode: "metadata_only",
+    summary: status === "pending"
+      ? "Metadata QA pending until the provider returns an image result."
+      : status === "pass"
+      ? "Metadata QA passed: product, character/environment refs, continuity anchors, and cinematic locks are present."
+      : status === "warning"
+        ? "Metadata QA warning: generated image exists, but review the listed continuity/product risks."
+        : "Metadata QA needs review before video generation.",
+    notes: notes.length > 0 ? notes : ["Metadata-only QA cannot inspect pixels; use human/vision review for final product and face fidelity."],
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+function buildProductionShotFrameQaPatch(
+  frameRole: "start" | "stop",
+  qa: ProductionShotFrameImageQaResult,
+): Record<string, unknown> {
+  const prefix = frameRole === "start" ? "startFrameQa" : "stopFrameQa";
+  return {
+    [`${prefix}Status`]: qa.status,
+    [`${prefix}Score`]: qa.score,
+    [`${prefix}Threshold`]: qa.threshold,
+    [`${prefix}InspectionMode`]: qa.inspectionMode,
+    [`${prefix}Summary`]: qa.summary,
+    [`${prefix}Notes`]: qa.notes,
+    [`${prefix}CheckedAt`]: qa.checkedAt,
+  };
+}
+
+function getMediaHistoryTaskProductionQaSummary(task: MediaHistoryTaskLite): {
+  label: string;
+  detail: string;
+  tone: string;
+} | null {
+  const parameters = asRecord(task.parameters);
+  const extraParams = asRecord(parameters.extraParams ?? parameters.extra_params);
+  const purpose = String(extraParams.purpose ?? parameters.purpose ?? "").toLowerCase();
+  if (!purpose.includes("production_shot") && !extraParams.productionRunId && !extraParams.production_run_id) return null;
+  const qaContract = asRecord(extraParams.qa_contract);
+  const mode = String(extraParams.qa_inspection_mode ?? qaContract.inspection_mode ?? "metadata_only");
+  const status = String(extraParams.post_generation_qa_status ?? extraParams.qa_status ?? "pending").toLowerCase();
+  const role = String(extraParams.frameRole ?? extraParams.frame_role ?? extraParams.videoGenerationMode ?? "").trim();
+  const label = mode === "vision" ? "Vision QA" : "QA metadata";
+  const tone = status.includes("pass")
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : status.includes("warning")
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : status.includes("review") || status.includes("fail")
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-slate-200 bg-white text-slate-700";
+  return {
+    label,
+    detail: [role, status === "pending" ? "pending" : status].filter(Boolean).join(" · "),
+    tone,
+  };
+}
 
 function isLikelyTaskNotFoundError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? "");
@@ -4230,6 +4435,9 @@ interface GenerationTask {
   videoQaStatus?: "pending" | "running" | "pass" | "warning" | "revise" | "human_review" | "block" | "unavailable";
   videoQaSummary?: string;
   videoQaResult?: Record<string, any>;
+  imageQaStatus?: "pending" | "running" | "pass" | "warning" | "needs_review" | "unavailable";
+  imageQaSummary?: string;
+  imageQaResult?: Record<string, any>;
   storyboardContext?: StoryboardVideoGenerationContext;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
   productionContext?: StoryboardProductionContext | null;
@@ -5604,6 +5812,47 @@ function normalizeGeminiOmniVideoQaResult(value: Record<string, any> | null | un
   return { status, score, issues: mergedIssues, proposedChanges, summary };
 }
 
+function normalizeProductionShotImageQaSkillResult(value: Record<string, any> | null | undefined): ProductionShotFrameImageQaResult {
+  const record = value ?? {};
+  const verdict = String(record.verdict ?? record.status ?? record.recommended_action ?? "needs_review").toLowerCase();
+  const status: ProductionShotFrameImageQaStatus =
+    verdict === "pass" || verdict === "accept" || verdict === "approve"
+      ? "pass"
+      : verdict === "warning"
+        ? "warning"
+        : verdict === "pending"
+          ? "pending"
+          : "needs_review";
+  const score = Math.max(0, Math.min(100, Number(
+    record.score
+      ?? record.quality_score
+      ?? record.qualityScores?.overall
+      ?? record.quality_scores?.overall
+      ?? (status === "pass" ? 90 : status === "warning" ? 75 : 55),
+  ) || 0));
+  const rawIssues = Array.isArray(record.issues)
+    ? record.issues
+    : Array.isArray(record.comments)
+      ? record.comments
+      : [];
+  const notes = rawIssues
+    .map((issue: any) => String(issue.message ?? issue.title ?? issue.comment ?? issue.category ?? "").trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  const inspectionMode = String(record.inspection_mode ?? record.inspectionMode ?? "").toLowerCase() === "vision"
+    ? "vision"
+    : "metadata_only";
+  return {
+    status,
+    score,
+    threshold: Math.max(0, Math.min(100, Number(record.threshold ?? 80) || 80)),
+    inspectionMode,
+    summary: String(record.summary ?? record.reviewer_notes ?? record.reviewerNotes ?? notes[0] ?? status).slice(0, 500),
+    notes: notes.length > 0 ? notes : [inspectionMode === "vision" ? "Vision QA completed without detailed issues." : "QA returned metadata-only result."],
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 function parseArrayFieldValue(
   raw: unknown,
   options: { splitLines?: boolean } = {},
@@ -6975,6 +7224,7 @@ export default function MediaStudio() {
   const [isGeneratingAllProductionShotPrompts, setIsGeneratingAllProductionShotPrompts] = useState(false);
   const [isGeneratingAllProductionShotFrameImages, setIsGeneratingAllProductionShotFrameImages] = useState(false);
   const [productionShotFrameBatchStatus, setProductionShotFrameBatchStatus] = useState<string | null>(null);
+  const [productionShotFrameBatchResumeSession, setProductionShotFrameBatchResumeSession] = useState<ProductionShotFrameBatchSession | null>(null);
   const [productionShotPromptSpeechMode, setProductionShotPromptSpeechMode] = useState<"none" | "th" | "en" | "other">("none");
   const [productionShotPromptOtherSpeechLanguage, setProductionShotPromptOtherSpeechLanguage] = useState("");
   const productionShotReferenceSkillManualRef = useRef(false);
@@ -11911,6 +12161,7 @@ export default function MediaStudio() {
   const [submittedSkillImprovementKeys, setSubmittedSkillImprovementKeys] = useState<Record<string, number>>({});
   const lastSilentAutoLearningSignalKeyRef = useRef<string | null>(null);
   const processedGeminiOmniVideoQaKeysRef = useRef<Set<string>>(new Set());
+  const processedProductionShotImageQaKeysRef = useRef<Set<string>>(new Set());
   const skillImprovementSkillLabel = currentSkill
     ? `${currentSkill.name || currentSkill.id} (${currentSkill.id})`
     : selectedSkillId;
@@ -17139,6 +17390,15 @@ export default function MediaStudio() {
     return [productionDirector.productionRunId, productionWorkspaceSpace.productionRunId]
       .find((value) => value && value !== "draft") ?? "";
   }, [productionDirector.productionRunId, productionWorkspaceSpace.productionRunId]);
+  useEffect(() => {
+    const session = readProductionShotFrameBatchSession(activeProductionRunId);
+    setProductionShotFrameBatchResumeSession(session);
+    if (session) {
+      setProductionShotFrameBatchStatus(isThaiLocale
+        ? `มี batch สร้าง Start/Stop ที่ค้างไว้ เริ่มต่อได้จาก shot ${session.nextIndex + 1}/${session.shotIds.length}`
+        : `A paused start/stop frame batch can resume from shot ${session.nextIndex + 1}/${session.shotIds.length}.`);
+    }
+  }, [activeProductionRunId, isThaiLocale]);
   const detectedProductionShotReferenceStoryboardSkillId = useMemo(
     () => detectProductionReferenceStoryboardSkillId(productionWorkspaceSpace),
     [productionWorkspaceSpace],
@@ -20422,6 +20682,101 @@ export default function MediaStudio() {
     return storyboardPrompts?.find((item) => item.shotId === shotId || Number(item.order) === Number(shot.order)) ?? null;
   }, []);
 
+  const setProductionShotContinuityAnchor = useCallback((
+    shotId: string,
+    slot: "reference" | "start" | "stop",
+    promptDraft?: Record<string, unknown>,
+  ) => {
+    const currentPrompt = {
+      ...(getProductionStoryboardPromptForShot(productionWorkspaceSpace, shotId) ?? {}),
+      ...(promptDraft ?? {}),
+    };
+    const url = String(
+      slot === "reference"
+        ? currentPrompt.referenceImageUrl
+        : slot === "start"
+          ? currentPrompt.startFrameUrl
+          : currentPrompt.stopFrameUrl,
+    ).trim();
+    if (!url) {
+      toast.error(isThaiLocale ? "ยังไม่มีภาพในช่องนี้ให้ใช้เป็น continuity anchor" : "This slot has no image to use as a continuity anchor.");
+      return;
+    }
+    const shot = productionWorkspaceSpace.shots.find((item) => item.id === shotId);
+    const nowIso = new Date().toISOString();
+    updateProductionSpaceDraft((space) => {
+      const storyboardNode = space.flowNodes.find((node) => node.id === "storyboard-card" || node.kind === "storyboard_planning");
+      const currentPrompts = [
+        storyboardNode?.outputRefs?.at(-1)?.metadata?.storyboardPrompts,
+        storyboardNode?.configSnapshot?.config?.storyboardPrompts,
+        storyboardNode?.metadata?.storyboardPrompts,
+      ].find((candidate) => Array.isArray(candidate)) as Record<string, unknown>[] | undefined;
+      const prompts = currentPrompts?.length ? currentPrompts : space.shots.map((item) => ({
+        shotId: item.id,
+        order: item.order,
+        title: item.title,
+      }));
+      const nextPrompts: Record<string, unknown>[] = prompts.map((item) => {
+        const isTarget = item.shotId === shotId || Number(item.order) === Number(shot?.order);
+        const cleared = {
+          ...item,
+          continuityAnchorApproved: false,
+          continuityAnchorUrl: undefined,
+          continuityAnchorSlot: undefined,
+          continuityAnchorShotId: undefined,
+          continuityAnchorApprovedAt: undefined,
+        };
+        if (!isTarget) return cleared;
+        return {
+          ...cleared,
+          ...currentPrompt,
+          shotId,
+          order: shot?.order ?? item.order,
+          title: currentPrompt.title ?? item.title ?? shot?.title,
+          continuityAnchorApproved: true,
+          continuityAnchorUrl: url,
+          continuityAnchorSlot: slot,
+          continuityAnchorShotId: shotId,
+          continuityAnchorApprovedAt: nowIso,
+        };
+      });
+      const promptText = nextPrompts.map((item) => `${item.timeRange ?? ""} ${item.title ?? ""}\n${item.videoPrompt ?? item.imagePrompt ?? item.script ?? ""}`.trim()).join("\n\n");
+      const flowNodes = space.flowNodes.map((node) => {
+        if (node.id !== "storyboard-card" && node.kind !== "storyboard_planning") return node;
+        return {
+          ...node,
+          metadata: {
+            ...(node.metadata ?? {}),
+            prompt: promptText,
+            storyboardPrompts: nextPrompts,
+          },
+          configSnapshot: {
+            snapshotId: node.configSnapshot?.snapshotId ?? `${node.id}:storyboard-card`,
+            version: Number(node.configSnapshot?.version ?? 0) + 1,
+            toolSurface: "production" as const,
+            adapter: "preview_only" as const,
+            config: {
+              ...(node.configSnapshot?.config ?? {}),
+              prompt: promptText,
+              storyboardPrompts: nextPrompts,
+            },
+            configHash: buildProductionStableHash({ nodeId: node.id, storyboardPrompts: nextPrompts }),
+            manuallyEdited: true,
+            createdAt: node.configSnapshot?.createdAt ?? nowIso,
+            updatedAt: nowIso,
+          },
+        };
+      });
+      return { ...space, flowNodes };
+    }, ["flowNodes.storyboard-card.storyboardPrompts"], isThaiLocale ? "ตั้งภาพนี้เป็น continuity anchor แล้ว" : "Continuity anchor set.");
+  }, [
+    getProductionStoryboardPromptForShot,
+    isThaiLocale,
+    productionWorkspaceSpace,
+    toast,
+    updateProductionSpaceDraft,
+  ]);
+
   const buildProductionShotStoryboardGuide = useCallback((shotId: string) => {
     const shots = [...productionWorkspaceSpace.shots].sort((a, b) => a.order - b.order);
     const shot = shots.find((item) => item.id === shotId);
@@ -21258,9 +21613,15 @@ export default function MediaStudio() {
     const previousPrompt = previousShot
       ? (getProductionStoryboardPromptForShot(productionWorkspaceSpace, previousShot.id) ?? {})
       : {};
-    const canonicalPrompt = orderedShots
+    const storyboardPrompts = orderedShots
       .map((shot) => getProductionStoryboardPromptForShot(productionWorkspaceSpace, shot.id) ?? {})
-      .find((item) => String((item as Record<string, unknown>).startFrameUrl ?? (item as Record<string, unknown>).referenceImageUrl ?? "").trim());
+      .filter((item) => Object.keys(item).length > 0);
+    const approvedAnchorPrompt = storyboardPrompts.find((item) =>
+      item.continuityAnchorApproved === true
+      && String(item.continuityAnchorUrl ?? "").trim()
+    );
+    const canonicalPrompt = approvedAnchorPrompt ?? storyboardPrompts
+      .find((item) => String(item.startFrameUrl ?? item.referenceImageUrl ?? "").trim());
     const urls: string[] = [];
     const add = (value: unknown) => {
       const url = String(value ?? "").trim();
@@ -21272,11 +21633,13 @@ export default function MediaStudio() {
       add(currentPrompt.startFrameUrl);
       add(currentPrompt.referenceImageUrl);
       add(currentPrompt.storyboardGridImageUrl);
+      add((approvedAnchorPrompt as Record<string, unknown> | undefined)?.continuityAnchorUrl);
       add((canonicalPrompt as Record<string, unknown> | undefined)?.startFrameUrl);
       add((canonicalPrompt as Record<string, unknown> | undefined)?.referenceImageUrl);
       add((previousPrompt as Record<string, unknown>).stopFrameUrl);
     } else {
       add((previousPrompt as Record<string, unknown>).stopFrameUrl);
+      add((approvedAnchorPrompt as Record<string, unknown> | undefined)?.continuityAnchorUrl);
       add((canonicalPrompt as Record<string, unknown> | undefined)?.startFrameUrl);
       add((canonicalPrompt as Record<string, unknown> | undefined)?.referenceImageUrl);
       add(currentPrompt.referenceImageUrl);
@@ -21379,6 +21742,22 @@ export default function MediaStudio() {
         reference_product_images: skillPackage.referenceProductImageUrls,
         reference_character_images: skillPackage.referenceCharacterImageUrls,
         reference_environment_images: skillPackage.referenceEnvironmentImageUrls,
+        qa_inspection_mode: "metadata_only",
+        post_generation_qa_status: "pending",
+        qa_contract: {
+          inspection_mode: "metadata_only",
+          product_reference_count: skillPackage.referenceProductImageUrls.length,
+          character_reference_count: skillPackage.referenceCharacterImageUrls.length,
+          environment_reference_count: skillPackage.referenceEnvironmentImageUrls.length,
+          continuity_reference_count: continuityReferenceUrls.length,
+          checks: [
+            "product reference attached and locked",
+            "character identity reference attached when a person appears",
+            "environment reference attached for lighting and room continuity",
+            "generated continuity anchor attached for stop frames",
+            "camera, lighting, cinematic realism language present in prompt",
+          ],
+        },
       };
       const extraParams = applyModelSyncTargets(normalizedModel as any, preferredExtraParams, {
         prompt: generationPrompt,
@@ -21409,6 +21788,16 @@ export default function MediaStudio() {
         fallbackTaskId: `production-${shotId}-${phase}-frame-${Date.now()}`,
         productionShotContext: { productionRunId: productionWorkspaceSpace.productionRunId, shotId, role: phase, surface: "image" },
       });
+      const frameQa = buildProductionShotFrameImageQaResult({
+        resultUrl: task.resultUrl,
+        frameRole: phase,
+        prompt: generationPrompt,
+        modelSupportsReferences: Boolean(modelSupport.imageUrls),
+        referenceProductImageUrls: skillPackage.referenceProductImageUrls,
+        referenceCharacterImageUrls: skillPackage.referenceCharacterImageUrls,
+        referenceEnvironmentImageUrls: skillPackage.referenceEnvironmentImageUrls,
+        continuityReferenceUrls,
+      });
       upsertProductionShotMediaNode({
         shotId,
         role: phase,
@@ -21433,11 +21822,13 @@ export default function MediaStudio() {
           directFrameRole: phase,
           frameResolution: resolutionSelection?.resolution,
           continuityReferenceUrls,
+          imageQa: frameQa,
         },
         config: {
           directFrameRole: phase,
           frameResolution: resolutionSelection?.resolution,
           continuityReferenceUrls,
+          imageQaInspectionMode: frameQa.inspectionMode,
         },
       });
       const taskId = task.backendTaskId || task.providerTaskId;
@@ -21445,10 +21836,12 @@ export default function MediaStudio() {
         startFramePrompt: generationPrompt,
         startFrameTaskId: taskId,
         ...(task.resultUrl ? { startFrameUrl: task.resultUrl } : {}),
+        ...buildProductionShotFrameQaPatch("start", frameQa),
       } : {
         stopFramePrompt: generationPrompt,
         stopFrameTaskId: taskId,
         ...(task.resultUrl ? { stopFrameUrl: task.resultUrl } : {}),
+        ...buildProductionShotFrameQaPatch("stop", frameQa),
       };
       updateProductionStoryboardPrompt(shotId, framePatch);
       toast.success(
@@ -21496,26 +21889,71 @@ export default function MediaStudio() {
   const generateAllProductionShotFrameImagesSequentially = useCallback(async (
     skillId: string,
     promptDrafts?: Record<string, Record<string, unknown>>,
+    resumeSession?: ProductionShotFrameBatchSession | null,
   ) => {
-    const shots = [...productionWorkspaceSpace.shots].sort((a, b) => a.order - b.order);
+    const orderedShots = [...productionWorkspaceSpace.shots].sort((a, b) => a.order - b.order);
+    const shots = resumeSession?.shotIds?.length
+      ? resumeSession.shotIds
+        .map((shotId) => orderedShots.find((shot) => shot.id === shotId))
+        .filter((shot): shot is ProductionShot => Boolean(shot))
+      : orderedShots;
     if (shots.length === 0) {
       toast.error(isThaiLocale ? "ยังไม่มี shot ให้สร้างภาพ" : "No shots are available for image generation.");
       return;
     }
+    if (resumeSession && resumeSession.nextIndex >= shots.length) {
+      clearProductionShotFrameBatchSession(resumeSession.productionRunId);
+      setProductionShotFrameBatchResumeSession(null);
+      setProductionShotFrameBatchStatus(isThaiLocale ? "batch เดิมเสร็จครบแล้ว" : "The previous batch is already complete.");
+      return;
+    }
     if (isGeneratingAllProductionShotFrameImages) return;
 
+    const productionRunId = activeProductionRunId || productionWorkspaceSpace.productionRunId;
+    const initialSession: ProductionShotFrameBatchSession = resumeSession ?? {
+      version: 1,
+      productionRunId,
+      skillId,
+      shotIds: shots.map((shot) => shot.id),
+      nextIndex: 0,
+      phase: "prompt",
+      promptDrafts,
+      status: "running",
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    let currentBatchSession = initialSession;
+    const persistBatchSession = (patch: Partial<ProductionShotFrameBatchSession>) => {
+      const nextSession: ProductionShotFrameBatchSession = {
+        ...currentBatchSession,
+        ...patch,
+        version: 1,
+        productionRunId,
+        skillId,
+        shotIds: currentBatchSession.shotIds.length ? currentBatchSession.shotIds : shots.map((shot) => shot.id),
+        status: patch.status ?? "running",
+        updatedAt: Date.now(),
+      };
+      currentBatchSession = nextSession;
+      writeProductionShotFrameBatchSession(nextSession);
+      setProductionShotFrameBatchResumeSession(nextSession);
+    };
+
     setIsGeneratingAllProductionShotFrameImages(true);
+    persistBatchSession({ status: "running", nextIndex: resumeSession?.nextIndex ?? 0, phase: resumeSession?.phase ?? "prompt" });
     setProductionShotFrameBatchStatus(isThaiLocale ? "เริ่มสร้างภาพ Start/Stop แบบเรียงช็อต..." : "Starting sequential start/stop frame generation...");
     try {
-      for (let index = 0; index < shots.length; index += 1) {
+      for (let index = Math.min(Math.max(0, resumeSession?.nextIndex ?? 0), shots.length - 1); index < shots.length; index += 1) {
         const shot = shots[index];
         let promptDraft: Record<string, unknown> = {
-          ...(getProductionStoryboardPromptForShot(productionWorkspaceSpace, shot.id) ?? {}),
+          ...(getProductionStoryboardPromptForShot(latestProductionSpaceDraftRef.current ?? productionWorkspaceSpace, shot.id) ?? {}),
           ...(promptDrafts?.[shot.id] ?? {}),
+          ...(resumeSession?.promptDrafts?.[shot.id] ?? {}),
         };
         const hasStartPrompt = Boolean(String(promptDraft.startFramePrompt ?? "").trim());
         const hasStopPrompt = Boolean(String(promptDraft.stopFramePrompt ?? "").trim());
         if (!hasStartPrompt || !hasStopPrompt) {
+          persistBatchSession({ nextIndex: index, phase: "prompt", lastTaskId: undefined, lastResultUrl: undefined, lastError: undefined });
           setProductionShotFrameBatchStatus(isThaiLocale
             ? `Shot ${index + 1}/${shots.length}: กำลังสร้าง prompt Start/Stop`
             : `Shot ${index + 1}/${shots.length}: generating start/stop prompts`);
@@ -21530,67 +21968,87 @@ export default function MediaStudio() {
           }
         }
 
-        setProductionShotFrameBatchStatus(isThaiLocale
-          ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Start frame`
-          : `Shot ${index + 1}/${shots.length}: submitting start frame`);
-        const startSubmission = await generateProductionShotFrameImageDirect(shot.id, "start", skillId, promptDraft);
-        const startUrl = startSubmission?.resultUrl
-          || await waitForProductionShotTaskResult({
-            taskId: startSubmission?.taskId,
-            label: `${shot.title} start frame`,
-            onStatus: (status) => {
-              setProductionShotFrameBatchStatus(isThaiLocale
-                ? `Shot ${index + 1}/${shots.length}: Start frame ${status}`
-                : `Shot ${index + 1}/${shots.length}: start frame ${status}`);
-            },
-          });
+        const existingStartUrl = String(promptDraft.startFrameUrl ?? "").trim();
+        let startTaskId: string | undefined;
+        const startUrl = existingStartUrl || await (async () => {
+          persistBatchSession({ nextIndex: index, phase: "start_submit", lastTaskId: undefined, lastResultUrl: undefined });
+          setProductionShotFrameBatchStatus(isThaiLocale
+            ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Start frame`
+            : `Shot ${index + 1}/${shots.length}: submitting start frame`);
+          const submitted = await generateProductionShotFrameImageDirect(shot.id, "start", skillId, promptDraft);
+          startTaskId = submitted?.taskId;
+          persistBatchSession({ nextIndex: index, phase: "start_wait", lastTaskId: startTaskId });
+          return submitted?.resultUrl
+            || await waitForProductionShotTaskResult({
+              taskId: startTaskId,
+              label: `${shot.title} start frame`,
+              onStatus: (status) => {
+                setProductionShotFrameBatchStatus(isThaiLocale
+                  ? `Shot ${index + 1}/${shots.length}: Start frame ${status}`
+                  : `Shot ${index + 1}/${shots.length}: start frame ${status}`);
+              },
+            });
+        })();
         if (!startUrl) {
           throw new Error(isThaiLocale ? `Shot ${index + 1}: ไม่พบผลลัพธ์ Start frame` : `Shot ${index + 1}: missing start-frame result`);
         }
         promptDraft = {
           ...promptDraft,
           startFrameUrl: startUrl,
-          startFrameTaskId: startSubmission?.taskId,
+          ...(startTaskId ? { startFrameTaskId: startTaskId } : {}),
         };
         updateProductionStoryboardPrompt(shot.id, {
           startFrameUrl: startUrl,
-          startFrameTaskId: startSubmission?.taskId,
+          ...(startTaskId ? { startFrameTaskId: startTaskId } : {}),
         });
+        persistBatchSession({ nextIndex: index, phase: "stop_submit", lastTaskId: startTaskId, lastResultUrl: startUrl });
 
-        setProductionShotFrameBatchStatus(isThaiLocale
-          ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Stop frame ด้วย Start frame เป็น continuity anchor`
-          : `Shot ${index + 1}/${shots.length}: submitting stop frame with the start frame as continuity anchor`);
-        const stopSubmission = await generateProductionShotFrameImageDirect(shot.id, "stop", skillId, promptDraft);
-        const stopUrl = stopSubmission?.resultUrl
-          || await waitForProductionShotTaskResult({
-            taskId: stopSubmission?.taskId,
-            label: `${shot.title} stop frame`,
-            onStatus: (status) => {
-              setProductionShotFrameBatchStatus(isThaiLocale
-                ? `Shot ${index + 1}/${shots.length}: Stop frame ${status}`
-                : `Shot ${index + 1}/${shots.length}: stop frame ${status}`);
-            },
-          });
+        const existingStopUrl = String(promptDraft.stopFrameUrl ?? "").trim();
+        let stopTaskId: string | undefined;
+        const stopUrl = existingStopUrl || await (async () => {
+          persistBatchSession({ nextIndex: index, phase: "stop_submit", lastTaskId: undefined, lastResultUrl: startUrl });
+          setProductionShotFrameBatchStatus(isThaiLocale
+            ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Stop frame ด้วย Start frame เป็น continuity anchor`
+            : `Shot ${index + 1}/${shots.length}: submitting stop frame with the start frame as continuity anchor`);
+          const submitted = await generateProductionShotFrameImageDirect(shot.id, "stop", skillId, promptDraft);
+          stopTaskId = submitted?.taskId;
+          persistBatchSession({ nextIndex: index, phase: "stop_wait", lastTaskId: stopTaskId, lastResultUrl: startUrl });
+          return submitted?.resultUrl
+            || await waitForProductionShotTaskResult({
+              taskId: stopTaskId,
+              label: `${shot.title} stop frame`,
+              onStatus: (status) => {
+                setProductionShotFrameBatchStatus(isThaiLocale
+                  ? `Shot ${index + 1}/${shots.length}: Stop frame ${status}`
+                  : `Shot ${index + 1}/${shots.length}: stop frame ${status}`);
+              },
+            });
+        })();
         if (!stopUrl) {
           throw new Error(isThaiLocale ? `Shot ${index + 1}: ไม่พบผลลัพธ์ Stop frame` : `Shot ${index + 1}: missing stop-frame result`);
         }
         updateProductionStoryboardPrompt(shot.id, {
           stopFrameUrl: stopUrl,
-          stopFrameTaskId: stopSubmission?.taskId,
+          ...(stopTaskId ? { stopFrameTaskId: stopTaskId } : {}),
         });
+        persistBatchSession({ nextIndex: index + 1, phase: index + 1 >= shots.length ? "complete" : "prompt", lastTaskId: stopTaskId, lastResultUrl: stopUrl });
         void refetchMediaHistory();
         await sleepMs(750);
       }
+      clearProductionShotFrameBatchSession(productionRunId);
+      setProductionShotFrameBatchResumeSession(null);
       setProductionShotFrameBatchStatus(isThaiLocale ? `สร้างภาพ Start/Stop ครบ ${shots.length} shot แล้ว` : `Generated start/stop frames for ${shots.length} shots.`);
       toast.success(isThaiLocale ? `สร้างภาพ Start/Stop ครบ ${shots.length} shot แล้ว` : `Generated start/stop frames for ${shots.length} shots.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      persistBatchSession({ status: "failed", lastError: message });
       setProductionShotFrameBatchStatus(isThaiLocale ? `หยุด batch: ${message}` : `Batch stopped: ${message}`);
       toast.error(message);
     } finally {
       setIsGeneratingAllProductionShotFrameImages(false);
     }
   }, [
+    activeProductionRunId,
     generateProductionShotFrameImageDirect,
     generateProductionShotReferencePrompt,
     getProductionStoryboardPromptForShot,
@@ -21601,6 +22059,23 @@ export default function MediaStudio() {
     toast,
     updateProductionStoryboardPrompt,
     waitForProductionShotTaskResult,
+  ]);
+
+  const resumeProductionShotFrameBatch = useCallback(() => {
+    const session = productionShotFrameBatchResumeSession
+      ?? readProductionShotFrameBatchSession(activeProductionRunId || productionWorkspaceSpace.productionRunId);
+    if (!session) {
+      toast.info(isThaiLocale ? "ไม่มี batch ค้างให้ทำต่อ" : "No paused frame batch is available.");
+      return;
+    }
+    void generateAllProductionShotFrameImagesSequentially(session.skillId, session.promptDrafts, session);
+  }, [
+    activeProductionRunId,
+    generateAllProductionShotFrameImagesSequentially,
+    isThaiLocale,
+    productionShotFrameBatchResumeSession,
+    productionWorkspaceSpace.productionRunId,
+    toast,
   ]);
 
   const generateProductionShotVideoDirect = useCallback(async (
@@ -22318,6 +22793,28 @@ export default function MediaStudio() {
               ? promptItem?.stopFrameUrl === item.resultUrl
               : promptItem?.videoUrl === item.resultUrl;
 
+      const qaPatch = item.context.role === "start" || item.context.role === "stop"
+        ? (() => {
+          const parameters = readRecord(item.historyTask?.parameters);
+          const extraParams = readRecord(parameters.extraParams ?? parameters.extra_params);
+          const qa = buildProductionShotFrameImageQaResult({
+            resultUrl: item.resultUrl,
+            frameRole: item.context.role,
+            prompt: String(
+              item.context.role === "start"
+                ? promptItem?.startFramePrompt
+                : promptItem?.stopFramePrompt,
+            ).trim() || item.task.prompt || item.historyTask?.prompt || "",
+            modelSupportsReferences: true,
+            referenceProductImageUrls: stringArrayFromUnknown(extraParams.reference_product_images),
+            referenceCharacterImageUrls: stringArrayFromUnknown(extraParams.reference_character_images),
+            referenceEnvironmentImageUrls: stringArrayFromUnknown(extraParams.reference_environment_images),
+            continuityReferenceUrls: stringArrayFromUnknown(extraParams.continuity_reference_images),
+          });
+          return buildProductionShotFrameQaPatch(item.context.role, qa);
+        })()
+        : {};
+
       if (!alreadySynced) {
         if (item.context.role === "storyboard_grid") {
           const parameters = readRecord(item.historyTask?.parameters);
@@ -22336,11 +22833,13 @@ export default function MediaStudio() {
           updateProductionStoryboardPrompt(item.context.shotId, {
             startFrameUrl: item.resultUrl,
             startFrameTaskId: item.taskId,
+            ...qaPatch,
           });
         } else if (item.context.role === "stop") {
           updateProductionStoryboardPrompt(item.context.shotId, {
             stopFrameUrl: item.resultUrl,
             stopFrameTaskId: item.taskId,
+            ...qaPatch,
           });
         } else {
           updateProductionStoryboardPrompt(item.context.shotId, {
@@ -22348,6 +22847,14 @@ export default function MediaStudio() {
             videoTaskId: item.taskId,
           });
         }
+      } else if (
+        Object.keys(qaPatch).length > 0
+        && (
+          (item.context.role === "start" && !promptItem?.startFrameQaStatus)
+          || (item.context.role === "stop" && !promptItem?.stopFrameQaStatus)
+        )
+      ) {
+        updateProductionStoryboardPrompt(item.context.shotId, qaPatch);
       }
 
       const nodeId = item.context.role === "storyboard_grid"
@@ -22383,6 +22890,9 @@ export default function MediaStudio() {
               frameRole: item.context.role,
               status: "completed",
               model: item.task.model,
+              ...(Object.keys(qaPatch).length > 0 ? {
+                imageQa: qaPatch,
+              } : {}),
             },
           };
           if (outputIndex >= 0) {
@@ -22653,6 +23163,128 @@ export default function MediaStudio() {
     restoreProductionSpaceMutation,
   ]);
 
+  const runProductionShotImageQaForTask = useCallback(async (task: GenerationTask) => {
+    const resultUrl = task.url;
+    const context = task.productionShotContext;
+    if (!resultUrl || task.type !== "image" || !context?.shotId || (context.role !== "start" && context.role !== "stop")) return;
+    const taskKey = [
+      task.backendTaskId || task.providerTaskId || task.id,
+      context.shotId,
+      context.role,
+      resultUrl,
+    ].join(":");
+    if (processedProductionShotImageQaKeysRef.current.has(taskKey)) return;
+    processedProductionShotImageQaKeysRef.current.add(taskKey);
+
+    setGenerationTasks((prev) => prev.map((item) => (
+      item.id === task.id
+        ? {
+          ...item,
+          imageQaStatus: "running",
+          statusDetail: isThaiLocale ? "กำลังตรวจคุณภาพภาพช็อต..." : "Checking production shot image quality...",
+        }
+        : item
+    )));
+
+    try {
+      const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, context.shotId);
+      const shot = productionWorkspaceSpace.shots.find((item) => item.id === context.shotId);
+      const referenceAssets = getProductionShotReferenceAssets("image");
+      const roleGroups = splitProductionReferenceImageUrlsByRole(referenceAssets);
+      const continuityUrls = [
+        String(promptItem?.continuityAnchorUrl ?? "").trim(),
+        String(promptItem?.startFrameUrl ?? "").trim(),
+        String(promptItem?.stopFrameUrl ?? "").trim(),
+      ].filter((url) => url && url !== resultUrl);
+      const qaResult = await executeCustomSkillMutation.mutateAsync({
+        skillId: PRODUCTION_SHOT_IMAGE_QUALITY_QA_SKILL_ID,
+        userInputs: {
+          generated_image: {
+            url: resultUrl,
+            task_id: task.backendTaskId || task.id,
+            provider_task_id: task.providerTaskId,
+            model: task.model,
+            frame_role: context.role,
+          },
+          prompt: task.prompt,
+          storyboard_guide: buildProductionShotStoryboardGuide(context.shotId),
+          voiceover_script: String(promptItem?.script ?? shot?.script ?? "").trim(),
+          product_context: buildCurrentProductionGoal().productContext ?? {},
+          product_truth: productionWorkspaceSpace.brief.brandTruth,
+          concept_details: activeProductionReferenceConceptDetails || activeProductionConceptDetails,
+          expected_checks: [
+            "product shape/material/count must match product references",
+            "character face/wardrobe must match character references when visible",
+            "avoid back-view identity drift unless no-turn lock is explicit",
+            "camera, lighting, depth, and color grade match the storyboard guide",
+            "frame content matches voiceover/script for this exact shot",
+          ],
+          inspection_mode: "vision_if_supported",
+        },
+        ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+        referenceImages: [
+          resultUrl,
+          ...roleGroups.product,
+          ...roleGroups.character,
+          ...roleGroups.environment,
+          ...continuityUrls,
+        ].filter(Boolean).slice(0, 8),
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+      });
+      const parsedQa = parseJsonSkillContent(qaResult.content || "") ?? {
+        verdict: "needs_review",
+        score: 0,
+        inspection_mode: "metadata_only",
+        reviewer_notes: qaResult.content || "Image QA returned non-JSON output.",
+        issues: [{
+          category: "image_qa_non_json",
+          severity: "warning",
+          message: "Image QA returned non-JSON output; review the generated frame manually.",
+        }],
+      };
+      const normalizedQa = normalizeProductionShotImageQaSkillResult(parsedQa);
+      const qaPatch = buildProductionShotFrameQaPatch(context.role, normalizedQa);
+      updateProductionStoryboardPrompt(context.shotId, qaPatch);
+      setGenerationTasks((prev) => prev.map((item) => (
+        item.id === task.id
+          ? {
+            ...item,
+            imageQaStatus: normalizedQa.status === "needs_review" ? "needs_review" : normalizedQa.status,
+            imageQaSummary: normalizedQa.summary,
+            imageQaResult: parsedQa,
+            statusDetail: normalizedQa.status === "pass"
+              ? (isThaiLocale ? "ผ่าน Image QA" : "Image QA passed")
+              : `${isThaiLocale ? "Image QA" : "Image QA"}: ${normalizedQa.summary}`,
+          }
+          : item
+      )));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setGenerationTasks((prev) => prev.map((item) => (
+        item.id === task.id
+          ? {
+            ...item,
+            imageQaStatus: "unavailable",
+            imageQaSummary: message,
+            statusDetail: isThaiLocale ? "สร้างภาพเสร็จแล้ว แต่ Image QA ไม่พร้อมใช้งาน" : "Image generated, but Image QA is unavailable.",
+          }
+          : item
+      )));
+    }
+  }, [
+    activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
+    buildCurrentProductionGoal,
+    buildProductionShotStoryboardGuide,
+    executeCustomSkillMutation,
+    getProductionShotReferenceAssets,
+    getProductionStoryboardPromptForShot,
+    isThaiLocale,
+    productionWorkspaceSpace,
+    selectedLlmModelSelection.resolvedModelId,
+    updateProductionStoryboardPrompt,
+  ]);
+
   const runGeminiOmniVideoQaForTask = useCallback(async (task: GenerationTask) => {
     const resultUrl = task.url;
     if (!resultUrl || task.type !== "video") return;
@@ -22782,11 +23414,14 @@ export default function MediaStudio() {
 
   useEffect(() => {
     for (const task of generationTasks) {
+      if (task.status === "completed" && task.url && task.imageQaStatus !== "running") {
+        void runProductionShotImageQaForTask(task);
+      }
       if (task.status === "completed" && task.url && task.videoQaStatus !== "running") {
         void runGeminiOmniVideoQaForTask(task);
       }
     }
-  }, [generationTasks, runGeminiOmniVideoQaForTask]);
+  }, [generationTasks, runGeminiOmniVideoQaForTask, runProductionShotImageQaForTask]);
 
   if (isLoading) {
     return (
@@ -23623,12 +24258,15 @@ export default function MediaStudio() {
                   onGenerateAllShotFrameImages={(skillId, prompts) => void generateAllProductionShotFrameImagesSequentially(skillId, prompts as any)}
                   isGeneratingAllShotFrameImages={isGeneratingAllProductionShotFrameImages}
                   shotFrameBatchStatus={productionShotFrameBatchStatus}
+                  hasResumableShotFrameBatch={Boolean(productionShotFrameBatchResumeSession)}
+                  onResumeShotFrameBatch={resumeProductionShotFrameBatch}
 	                  onOpenShotStoryboardGridSplit={(shotId, imageUrl) => openProductionShotGridSplit(shotId, imageUrl)}
                   onAssignShotMediaSlot={assignProductionShotMediaSlot}
                   onUploadShotMediaFile={uploadProductionShotMediaFile}
                   onCompoundShotVideos={compoundProductionShotVideos}
                   isCompoundingShotVideos={isCompoundingProductionShotVideos}
                   shotVideoCompoundStatus={productionShotCompoundStatus}
+                  onSetShotContinuityAnchor={setProductionShotContinuityAnchor}
                   onGenerateShotVideo={(shotId, skillId, prompt) => void generateProductionShotVideoDirect(shotId, skillId, prompt)}
                 />
                 <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -26962,6 +27600,7 @@ export default function MediaStudio() {
                               });
                               const libraryState = taskLibraryState[task.id];
                               const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+                              const productionQaSummary = getMediaHistoryTaskProductionQaSummary(task);
                               return (
                                 <div
                                   key={task.id}
@@ -27034,6 +27673,18 @@ export default function MediaStudio() {
                                       className="pointer-events-none absolute right-1 top-1 z-[1] rounded-full border bg-white/90 px-2 py-0.5 text-[10px] shadow-sm"
                                     >
                                       {task.sourceKind === "public_gallery" ? "Public" : "Group"}
+                                    </Badge>
+                                  )}
+                                  {productionQaSummary && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "pointer-events-none absolute bottom-12 left-1 z-[1] max-w-[calc(100%-0.5rem)] rounded-full px-2 py-0.5 text-[10px] shadow-sm",
+                                        productionQaSummary.tone,
+                                      )}
+                                      title={productionQaSummary.detail}
+                                    >
+                                      {productionQaSummary.label}: {productionQaSummary.detail}
                                     </Badge>
                                   )}
                                   {task.mediaType === "video" ? (

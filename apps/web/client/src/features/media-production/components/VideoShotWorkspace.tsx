@@ -50,6 +50,13 @@ export interface VideoShotWorkspaceProps extends VideoShotWorkspaceCallbacks {
   onGenerateAllShotFrameImages?: (skillId: string, prompts?: Record<string, StoryboardPromptItem>) => void;
   isGeneratingAllShotFrameImages?: boolean;
   shotFrameBatchStatus?: string | null;
+  hasResumableShotFrameBatch?: boolean;
+  onResumeShotFrameBatch?: () => void;
+  onSetShotContinuityAnchor?: (
+    shotId: string,
+    slot: "reference" | "start" | "stop",
+    prompt?: StoryboardPromptItem,
+  ) => void;
   onOpenShotStoryboardGridSplit?: (shotId: string, imageUrl: string, prompt?: StoryboardPromptItem) => void;
   onAssignShotMediaSlot?: (
     shotId: string,
@@ -111,6 +118,19 @@ type StoryboardPromptItem = {
   videoReadinessStatus?: "ready" | "warning" | "blocked" | string;
   videoReadinessNotes?: string[];
   videoReadinessCheckedAt?: string;
+  startFrameQaStatus?: "pending" | "pass" | "warning" | "needs_review" | string;
+  startFrameQaScore?: number;
+  startFrameQaSummary?: string;
+  startFrameQaNotes?: string[];
+  startFrameQaInspectionMode?: "metadata_only" | "vision" | string;
+  stopFrameQaStatus?: "pending" | "pass" | "warning" | "needs_review" | string;
+  stopFrameQaScore?: number;
+  stopFrameQaSummary?: string;
+  stopFrameQaNotes?: string[];
+  stopFrameQaInspectionMode?: "metadata_only" | "vision" | string;
+  continuityAnchorApproved?: boolean;
+  continuityAnchorUrl?: string;
+  continuityAnchorSlot?: "reference" | "start" | "stop" | string;
   promptSpeechMode?: "none" | "th" | "en" | "other" | string;
   promptSpeechLanguage?: string;
   promptIncludeSound?: boolean;
@@ -135,6 +155,23 @@ function nodeStatusTone(status: string) {
   if (status === "warning" || status === "disabled") return "border-amber-200 bg-amber-50 text-amber-700";
   if (status === "ready" || status === "approved" || status === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function frameQaTone(status: unknown) {
+  const normalized = String(status ?? "").trim();
+  if (normalized === "pass") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "warning" || normalized === "pending") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (normalized === "needs_review" || normalized === "failed") return "border-red-200 bg-red-50 text-red-700";
+  return "border-slate-200 bg-white text-slate-600";
+}
+
+function frameQaLabel(status: unknown, isThai: boolean) {
+  const normalized = String(status ?? "").trim();
+  if (normalized === "pass") return isThai ? "QA ผ่าน" : "QA pass";
+  if (normalized === "warning") return isThai ? "QA เตือน" : "QA warning";
+  if (normalized === "needs_review") return isThai ? "QA ต้องตรวจ" : "QA review";
+  if (normalized === "pending") return isThai ? "QA รอผล" : "QA pending";
+  return isThai ? "ยังไม่ QA" : "No QA";
 }
 
 function summarizeUnknown(value: unknown): string {
@@ -269,6 +306,22 @@ function storyboardPromptItemsFromSpace(space?: ProductionSpace | null): Storybo
         videoUrl: summarizeUnknown(item.videoUrl) || undefined,
         videoTaskId: summarizeUnknown(item.videoTaskId) || undefined,
         videoGenerationMode: summarizeUnknown(item.videoGenerationMode) || undefined,
+        videoReadinessStatus: summarizeUnknown(item.videoReadinessStatus) || undefined,
+        videoReadinessNotes: Array.isArray(item.videoReadinessNotes) ? item.videoReadinessNotes.map(summarizeUnknown).filter(Boolean) : undefined,
+        videoReadinessCheckedAt: summarizeUnknown(item.videoReadinessCheckedAt) || undefined,
+        startFrameQaStatus: summarizeUnknown(item.startFrameQaStatus) || undefined,
+        startFrameQaScore: Number.isFinite(Number(item.startFrameQaScore)) ? Number(item.startFrameQaScore) : undefined,
+        startFrameQaSummary: summarizeUnknown(item.startFrameQaSummary) || undefined,
+        startFrameQaNotes: Array.isArray(item.startFrameQaNotes) ? item.startFrameQaNotes.map(summarizeUnknown).filter(Boolean) : undefined,
+        startFrameQaInspectionMode: summarizeUnknown(item.startFrameQaInspectionMode) || undefined,
+        stopFrameQaStatus: summarizeUnknown(item.stopFrameQaStatus) || undefined,
+        stopFrameQaScore: Number.isFinite(Number(item.stopFrameQaScore)) ? Number(item.stopFrameQaScore) : undefined,
+        stopFrameQaSummary: summarizeUnknown(item.stopFrameQaSummary) || undefined,
+        stopFrameQaNotes: Array.isArray(item.stopFrameQaNotes) ? item.stopFrameQaNotes.map(summarizeUnknown).filter(Boolean) : undefined,
+        stopFrameQaInspectionMode: summarizeUnknown(item.stopFrameQaInspectionMode) || undefined,
+        continuityAnchorApproved: booleanUnknown(item.continuityAnchorApproved),
+        continuityAnchorUrl: summarizeUnknown(item.continuityAnchorUrl) || undefined,
+        continuityAnchorSlot: summarizeUnknown(item.continuityAnchorSlot) || undefined,
         promptSpeechMode: summarizeUnknown(item.promptSpeechMode) || undefined,
         promptSpeechLanguage: summarizeUnknown(item.promptSpeechLanguage) || undefined,
         promptIncludeSound: booleanUnknown(item.promptIncludeSound),
@@ -402,6 +455,9 @@ export function VideoShotWorkspace({
   onGenerateAllShotFrameImages,
   isGeneratingAllShotFrameImages = false,
   shotFrameBatchStatus,
+  hasResumableShotFrameBatch = false,
+  onResumeShotFrameBatch,
+  onSetShotContinuityAnchor,
   onOpenShotStoryboardGridSplit,
   onAssignShotMediaSlot,
   onUploadShotMediaFile,
@@ -691,12 +747,21 @@ export function VideoShotWorkspace({
     kind: "image" | "video",
     emptyLabel: string,
     testId: string,
+    options?: {
+      qaStatus?: string;
+      qaScore?: number;
+      qaSummary?: string;
+      qaNotes?: string[];
+      qaInspectionMode?: string;
+      anchorApproved?: boolean;
+      onSetAnchor?: () => void;
+    },
   ) => {
     const slotKey = `${shotId}:${slot}`;
     const isUploadingSlot = uploadingSlotKey === slotKey;
     return (
     <div
-      className="overflow-hidden rounded-md border bg-slate-50 transition-colors hover:border-sky-300"
+      className="relative overflow-hidden rounded-md border bg-slate-50 transition-colors hover:border-sky-300"
       data-testid={testId}
       onDragOver={(event) => {
         if (!onAssignShotMediaSlot && !onUploadShotMediaFile) return;
@@ -725,7 +790,7 @@ export function VideoShotWorkspace({
         onAssignShotMediaSlot(shotId, slot, media);
       }}
     >
-      <div className="flex aspect-[9/12] items-center justify-center">
+      <div className="relative flex aspect-[9/12] items-center justify-center">
         {isUploadingSlot ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2 text-center text-xs text-sky-700">
             <RefreshCw className="h-5 w-5 animate-spin" />
@@ -745,6 +810,44 @@ export function VideoShotWorkspace({
             <span className="break-words">{emptyLabel}</span>
           </div>
         )}
+        {url && options?.onSetAnchor && slot !== "video" ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className={`absolute right-1 top-1 h-7 rounded-full px-2 text-[10px] shadow-sm ${options.anchorApproved ? "border border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-100" : "bg-white/95"}`}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              options.onSetAnchor?.();
+            }}
+            data-testid={`${testId}-set-anchor`}
+          >
+            <Lock className="mr-1 h-3 w-3" />
+            {options.anchorApproved ? (isThai ? "Anchor" : "Anchor") : (isThai ? "ใช้ Anchor" : "Set anchor")}
+          </Button>
+        ) : null}
+        {url && slot !== "video" && options?.qaStatus ? (
+          <div className="pointer-events-none absolute bottom-1 left-1 right-1 flex flex-wrap gap-1">
+            <Badge
+              variant="outline"
+              className={`${frameQaTone(options.qaStatus)} max-w-full bg-white/95 text-[10px] shadow-sm`}
+              title={[
+                options.qaSummary,
+                ...(options.qaNotes ?? []),
+                options.qaInspectionMode ? `inspection: ${options.qaInspectionMode}` : "",
+              ].filter(Boolean).join("\n") || undefined}
+            >
+              {frameQaLabel(options.qaStatus, isThai)}
+              {typeof options.qaScore === "number" ? ` ${Math.round(options.qaScore)}` : ""}
+            </Badge>
+            {options.qaInspectionMode === "metadata_only" ? (
+              <Badge variant="outline" className="max-w-full border-slate-200 bg-white/95 text-[10px] text-slate-600 shadow-sm">
+                metadata
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className="border-t bg-white px-2 py-1 text-[11px] font-medium text-slate-600">
         {label}
@@ -838,8 +941,21 @@ export function VideoShotWorkspace({
             </div>
           ) : null}
           {shotFrameBatchStatus ? (
-            <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
-              {shotFrameBatchStatus}
+            <div className="mt-3 flex flex-col gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 sm:flex-row sm:items-center sm:justify-between">
+              <span>{shotFrameBatchStatus}</span>
+              {hasResumableShotFrameBatch ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-sky-300 bg-white"
+                  disabled={!onResumeShotFrameBatch || isGeneratingAllShotFrameImages}
+                  onClick={onResumeShotFrameBatch}
+                >
+                  <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                  {isThai ? "ทำต่อ batch เดิม" : "Resume batch"}
+                </Button>
+              ) : null}
             </div>
           ) : null}
           <div className="mt-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 md:grid-cols-[minmax(220px,360px)_minmax(0,1fr)] md:items-center">
@@ -990,6 +1106,22 @@ export function VideoShotWorkspace({
                         <Badge variant="outline" className={stopFrameUrl ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}>
                           {isThai ? "Stop image" : "Stop image"}
                         </Badge>
+                        {promptDraft.startFrameQaStatus ? (
+                          <Badge variant="outline" className={frameQaTone(promptDraft.startFrameQaStatus)} title={promptDraft.startFrameQaNotes?.join("\n") || promptDraft.startFrameQaSummary}>
+                            {isThai ? "Start" : "Start"} {frameQaLabel(promptDraft.startFrameQaStatus, isThai)}
+                          </Badge>
+                        ) : null}
+                        {promptDraft.stopFrameQaStatus ? (
+                          <Badge variant="outline" className={frameQaTone(promptDraft.stopFrameQaStatus)} title={promptDraft.stopFrameQaNotes?.join("\n") || promptDraft.stopFrameQaSummary}>
+                            {isThai ? "Stop" : "Stop"} {frameQaLabel(promptDraft.stopFrameQaStatus, isThai)}
+                          </Badge>
+                        ) : null}
+                        {promptDraft.continuityAnchorApproved ? (
+                          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                            <Lock className="mr-1 h-3 w-3" />
+                            {isThai ? `Anchor: ${promptDraft.continuityAnchorSlot ?? ""}` : `Anchor: ${promptDraft.continuityAnchorSlot ?? ""}`}
+                          </Badge>
+                        ) : null}
                         <Badge variant="outline" className={needsSpeechLine && !hasSpeechLine ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>
                           {needsSpeechLine && !hasSpeechLine
                             ? (isThai ? "ขาดบทพูด" : "Missing speech")
@@ -1074,9 +1206,28 @@ export function VideoShotWorkspace({
                   <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
 	                    <div className="grid gap-2">
 	                      <div className="grid grid-cols-2 gap-2">
-	                        {mediaPreview(shot.id, "reference", isThai ? "ภาพ reference" : "Reference image", referenceImageUrl, "image", isThai ? "ลากเฟรมมาวาง reference" : "Drop a frame here", `story-card-${shot.id}-reference-image`)}
-	                        {mediaPreview(shot.id, "start", isThai ? "Start frame" : "Start frame", startFrameUrl, "image", isThai ? "ลากเฟรมมาวาง start" : "Drop start frame", `story-card-${shot.id}-start-frame`)}
-	                        {mediaPreview(shot.id, "stop", isThai ? "Stop frame" : "Stop frame", stopFrameUrl, "image", isThai ? "ลากเฟรมมาวาง stop" : "Drop stop frame", `story-card-${shot.id}-stop-frame`)}
+	                        {mediaPreview(shot.id, "reference", isThai ? "ภาพ reference" : "Reference image", referenceImageUrl, "image", isThai ? "ลากเฟรมมาวาง reference" : "Drop a frame here", `story-card-${shot.id}-reference-image`, {
+	                          anchorApproved: promptDraft.continuityAnchorApproved && promptDraft.continuityAnchorSlot === "reference",
+	                          onSetAnchor: referenceImageUrl && onSetShotContinuityAnchor ? () => onSetShotContinuityAnchor(shot.id, "reference", promptDraft) : undefined,
+	                        })}
+	                        {mediaPreview(shot.id, "start", isThai ? "Start frame" : "Start frame", startFrameUrl, "image", isThai ? "ลากเฟรมมาวาง start" : "Drop start frame", `story-card-${shot.id}-start-frame`, {
+	                          qaStatus: promptDraft.startFrameQaStatus,
+	                          qaScore: promptDraft.startFrameQaScore,
+	                          qaSummary: promptDraft.startFrameQaSummary,
+	                          qaNotes: promptDraft.startFrameQaNotes,
+	                          qaInspectionMode: promptDraft.startFrameQaInspectionMode,
+	                          anchorApproved: promptDraft.continuityAnchorApproved && promptDraft.continuityAnchorSlot === "start",
+	                          onSetAnchor: startFrameUrl && onSetShotContinuityAnchor ? () => onSetShotContinuityAnchor(shot.id, "start", promptDraft) : undefined,
+	                        })}
+	                        {mediaPreview(shot.id, "stop", isThai ? "Stop frame" : "Stop frame", stopFrameUrl, "image", isThai ? "ลากเฟรมมาวาง stop" : "Drop stop frame", `story-card-${shot.id}-stop-frame`, {
+	                          qaStatus: promptDraft.stopFrameQaStatus,
+	                          qaScore: promptDraft.stopFrameQaScore,
+	                          qaSummary: promptDraft.stopFrameQaSummary,
+	                          qaNotes: promptDraft.stopFrameQaNotes,
+	                          qaInspectionMode: promptDraft.stopFrameQaInspectionMode,
+	                          anchorApproved: promptDraft.continuityAnchorApproved && promptDraft.continuityAnchorSlot === "stop",
+	                          onSetAnchor: stopFrameUrl && onSetShotContinuityAnchor ? () => onSetShotContinuityAnchor(shot.id, "stop", promptDraft) : undefined,
+	                        })}
 	                        {mediaPreview(shot.id, "video", isThai ? "วิดีโอช็อต" : "Shot video", videoUrl, "video", isThai ? "ลากวิดีโอมาวาง" : "Drop a video here", `story-card-${shot.id}-video`)}
 	                      </div>
 	                      {(storyboardGridImageUrl || storyboardGridFrames.length > 0) ? (

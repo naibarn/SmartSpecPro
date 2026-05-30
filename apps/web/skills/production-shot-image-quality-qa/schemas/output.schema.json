@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["skill_name", "skill_version", "contract_version", "verdict", "score", "threshold", "inspection_mode", "summary", "issues", "recommended_action", "revision_instructions"],
+  "properties": {
+    "skill_name": { "const": "production-shot-image-quality-qa" },
+    "skill_version": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "verdict": { "type": "string", "enum": ["pass", "warning", "needs_review", "block"] },
+    "score": { "type": "number" },
+    "threshold": { "type": "number" },
+    "inspection_mode": { "type": "string", "enum": ["vision", "metadata_only"] },
+    "summary": { "type": "string" },
+    "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "recommended_action": { "type": "string" },
+    "revision_instructions": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "required": ["category", "severity", "message"],
+      "properties": {
+        "category": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "error", "blocker"] },
+        "message": { "type": "string" },
+        "recommendation": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

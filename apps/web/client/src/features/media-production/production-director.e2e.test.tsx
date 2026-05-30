@@ -1902,13 +1902,16 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onStoryboardReferenceSkillChange = vi.fn();
     const onGenerateShotReferencePrompt = vi.fn();
     const onGenerateShotFrameImage = vi.fn();
+    const onGenerateAllShotFrameImages = vi.fn();
     const onOpenShotStoryboardGridSplit = vi.fn();
     const onAssignShotMediaSlot = vi.fn();
     const onGenerateShotVideo = vi.fn();
+    const onSetShotContinuityAnchor = vi.fn();
+    const onResumeShotFrameBatch = vi.fn();
     const videoReadySpace: ProductionSpace = {
       ...featureSpaceTwoShots,
       flowNodes: [
-        ...featureSpaceTwoShots.flowNodes,
+        ...featureSpaceTwoShots.flowNodes.filter((node) => node.id !== "storyboard-card"),
         {
           id: "storyboard-card",
           kind: "storyboard_planning",
@@ -1922,6 +1925,15 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
                 order: 1,
                 startFrameUrl: "https://example.test/shot-1-start.png",
                 stopFrameUrl: "https://example.test/shot-1-stop.png",
+                videoReadinessStatus: "warning",
+                videoReadinessNotes: ["Back-view cue needs no-turn lock."],
+                startFrameQaStatus: "warning",
+                startFrameQaScore: 72,
+                startFrameQaInspectionMode: "metadata_only",
+                startFrameQaNotes: ["No environment reference is attached."],
+                continuityAnchorApproved: true,
+                continuityAnchorSlot: "start",
+                continuityAnchorUrl: "https://example.test/shot-1-start.png",
               },
             ],
           },
@@ -1953,13 +1965,29 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         onStoryboardReferenceSkillChange={onStoryboardReferenceSkillChange}
         onGenerateShotReferencePrompt={onGenerateShotReferencePrompt}
         onGenerateShotFrameImage={onGenerateShotFrameImage}
+        onGenerateAllShotFrameImages={onGenerateAllShotFrameImages}
+        shotFrameBatchStatus="A paused start/stop frame batch can resume from shot 1/2."
+        hasResumableShotFrameBatch
+        onResumeShotFrameBatch={onResumeShotFrameBatch}
         onOpenShotStoryboardGridSplit={onOpenShotStoryboardGridSplit}
         onAssignShotMediaSlot={onAssignShotMediaSlot}
         onGenerateShotVideo={onGenerateShotVideo}
+        onSetShotContinuityAnchor={onSetShotContinuityAnchor}
       />
     );
 
     expect(screen.getByTestId("video-shot-storyboard-cards")).toHaveTextContent("Full storyboard prompt cards");
+    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Start QA warning");
+    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Anchor: start");
+    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Video warning");
+    fireEvent.click(screen.getByRole("button", { name: /resume batch/i }));
+    expect(onResumeShotFrameBatch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /generate all start\/stop frames/i }));
+    expect(onGenerateAllShotFrameImages).toHaveBeenCalledWith("furniture-reference-storyboard", expect.objectContaining({
+      "shot-1": expect.objectContaining({ startFrameUrl: "https://example.test/shot-1-start.png" }),
+    }));
+    fireEvent.click(within(screen.getByTestId("story-card-shot-1-start-frame")).getByTestId("story-card-shot-1-start-frame-set-anchor"));
+    expect(onSetShotContinuityAnchor).toHaveBeenCalledWith("shot-1", "start", expect.objectContaining({ startFrameUrl: "https://example.test/shot-1-start.png" }));
     fireEvent.change(screen.getByLabelText("Start/stop frame prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
     expect(onStoryboardReferenceSkillChange).toHaveBeenCalledWith("cosmatic-reference-storyboard");
 	    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Drop a video here");
