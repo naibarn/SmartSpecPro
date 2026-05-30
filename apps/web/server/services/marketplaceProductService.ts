@@ -42,6 +42,18 @@ function normalizeOptionalHttpUrl(value: unknown): string | null {
   }
 }
 
+function normalizeAttachableMediaUrl(value: unknown): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 const productionSupportingInsightTypes: LocalInsightType[] = [
   "product_brief",
   "review_insight",
@@ -319,6 +331,31 @@ async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform;
       inArray(marketplaceProductGroupShares.groupId, groupIds),
       eq(marketplaceProductGroupShares.permission, "read_update"),
       identityWhere,
+    ))
+    .limit(1);
+  return shared ? { product: shared.product, accessType: "group" as const, permission: shared.permission } : null;
+}
+
+async function getMarketplaceProductForUpdate(productId: string, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const [own] = await db.select().from(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .limit(1);
+  if (own) return { product: own, accessType: "owner" as const };
+
+  const groupIds = await getActiveGroupIds(auth);
+  if (!auth.tenantId || groupIds.length === 0) return null;
+  const [shared] = await db.select({
+    product: marketplaceProducts,
+    permission: marketplaceProductGroupShares.permission,
+  })
+    .from(marketplaceProductGroupShares)
+    .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+      inArray(marketplaceProductGroupShares.groupId, groupIds),
+      eq(marketplaceProductGroupShares.permission, "read_update"),
     ))
     .limit(1);
   return shared ? { product: shared.product, accessType: "group" as const, permission: shared.permission } : null;
@@ -1010,6 +1047,102 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
     history,
     shares,
     health: buildProductHealth(product, history),
+  };
+}
+
+export async function addMarketplaceProductImageFromUrl(input: {
+  productId: string;
+  url: string;
+  type?: "main" | "description" | "review" | "related_excluded";
+  title?: string | null;
+  source?: string | null;
+  originalSourceUrl?: string | null;
+  metadata?: Record<string, unknown>;
+}, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const access = await getMarketplaceProductForUpdate(input.productId, auth);
+  if (!access) {
+    throw new Error("Product not found or cannot be updated by this user");
+  }
+
+  const url = normalizeAttachableMediaUrl(input.url);
+  if (!url) {
+    throw new Error("Only HTTP(S) or internal media URLs can be attached to a product");
+  }
+
+  const [existing] = await db.select().from(marketplaceProductImages)
+    .where(and(eq(marketplaceProductImages.productId, input.productId), eq(marketplaceProductImages.url, url)))
+    .limit(1);
+  if (existing) {
+    return { productId: input.productId, image: existing, created: false };
+  }
+
+  const [sortRow] = await db.select({
+    maxSortOrder: sql<number>`coalesce(max(${marketplaceProductImages.sortOrder}), -1)`,
+  }).from(marketplaceProductImages)
+    .where(eq(marketplaceProductImages.productId, input.productId));
+
+  const image = {
+    id: createMarketplaceId("mpi"),
+    productId: input.productId,
+    captureAssetId: null,
+    type: input.type ?? "main",
+    url,
+    storageKey: null,
+    originalSourceUrl: normalizeAttachableMediaUrl(input.originalSourceUrl) ?? url,
+    sortOrder: Number(sortRow?.maxSortOrder ?? -1) + 1,
+    width: null,
+    height: null,
+    metadataJson: {
+      ...(input.metadata ?? {}),
+      source: input.source ?? "manual_media_panel_attach",
+      title: input.title ?? null,
+      addedByUserId: auth.userId,
+      addedAt: new Date().toISOString(),
+      accessType: access.accessType,
+    },
+  };
+
+  const [created] = await db.insert(marketplaceProductImages)
+    .values(image)
+    .returning();
+
+  await db.update(marketplaceProducts)
+    .set({ updatedAt: new Date() })
+    .where(eq(marketplaceProducts.id, input.productId));
+
+  return { productId: input.productId, image: created, created: true };
+}
+
+export async function removeMarketplaceProductImage(input: {
+  productId: string;
+  imageId: string;
+}, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const [image] = await db.select().from(marketplaceProductImages)
+    .where(and(eq(marketplaceProductImages.id, input.imageId), eq(marketplaceProductImages.productId, input.productId)))
+    .limit(1);
+  if (!image) {
+    throw new Error("Product image not found");
+  }
+
+  const access = await getMarketplaceProductForUpdate(input.productId, auth);
+  if (!access) {
+    throw new Error("Product not found or cannot be updated by this user");
+  }
+
+  await db.delete(marketplaceProductImages)
+    .where(and(eq(marketplaceProductImages.id, input.imageId), eq(marketplaceProductImages.productId, input.productId)));
+
+  await db.update(marketplaceProducts)
+    .set({ updatedAt: new Date() })
+    .where(eq(marketplaceProducts.id, input.productId));
+
+  return {
+    productId: input.productId,
+    imageId: input.imageId,
+    deleted: true,
+    sourceUrl: image.url,
   };
 }
 

@@ -3,7 +3,7 @@
  * Phase 2: Real-time render progress tracking
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { videoEditorRenderService } from '../../services/videoEditorService';
 import type { RenderJob } from '../../services/videoEditorService';
 
@@ -11,16 +11,20 @@ interface RenderProgressDialogProps {
   jobId: string;
   onComplete: (outputPath: string) => void;
   onCancel: () => void;
+  autoCompleteOnDone?: boolean;
 }
 
 export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
   jobId,
   onComplete,
-  onCancel
+  onCancel,
+  autoCompleteOnDone = false
 }) => {
   const [job, setJob] = useState<RenderJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const completedNotifiedRef = useRef(false);
 
   useEffect(() => {
     pollRenderStatus();
@@ -36,21 +40,31 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
     }
   }, [job?.status]);
 
+  const notifyComplete = (outputPath: string | undefined) => {
+    if (!outputPath || completedNotifiedRef.current) return;
+    completedNotifiedRef.current = true;
+    onComplete(outputPath);
+  };
+
   const pollRenderStatus = async () => {
     try {
-      await videoEditorRenderService.pollRenderJob(
+      const finalJob = await videoEditorRenderService.pollRenderJob(
         jobId,
         (updatedJob) => {
           setJob(updatedJob);
 
           if (updatedJob.status === 'completed') {
-            // Don't auto-close — let user click Download or Close
+            // Final handling happens after pollRenderJob resolves.
           } else if (updatedJob.status === 'failed') {
             setError(updatedJob.error || 'Render failed');
           }
         },
         2000
       );
+      setJob(finalJob);
+      if (autoCompleteOnDone && finalJob.status === 'completed') {
+        notifyComplete(finalJob.outputPath);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
@@ -117,6 +131,105 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
     const remaining = (elapsedTime / job.progress) * (1 - job.progress);
     return formatTime(Math.round(remaining));
   };
+
+  if (isMinimized) {
+    return (
+      <div className="render-progress-minimized">
+        <style>{`
+          .render-progress-minimized {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 2000;
+            width: min(360px, calc(100vw - 36px));
+            border: 1px solid #c7d2fe;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.96);
+            box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18);
+            padding: 12px;
+            color: #0f172a;
+            backdrop-filter: blur(10px);
+          }
+
+          .render-progress-minimized-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 700;
+          }
+
+          .render-progress-minimized-meta {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #475569;
+          }
+
+          .render-progress-minimized-bar {
+            margin-top: 10px;
+            height: 6px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e2e8f0;
+          }
+
+          .render-progress-minimized-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #0078d4, #00b294);
+            transition: width 0.3s ease;
+          }
+
+          .render-progress-minimized-actions {
+            display: flex;
+            gap: 8px;
+          }
+
+          .render-progress-mini-button {
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+          }
+
+          .render-progress-mini-button.primary {
+            border-color: #0284c7;
+            background: #0284c7;
+            color: #fff;
+          }
+        `}</style>
+        <div className="render-progress-minimized-header">
+          <span>{getStatusIcon()} {getStatusText()}</span>
+          <div className="render-progress-minimized-actions">
+            <button className="render-progress-mini-button primary" onClick={() => setIsMinimized(false)}>
+              Open
+            </button>
+            {(job?.status === 'pending' || job?.status === 'rendering') && (
+              <button className="render-progress-mini-button" onClick={handleCancel}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="render-progress-minimized-meta">
+          {job?.status === 'rendering'
+            ? `Elapsed ${formatTime(elapsedTime)} · ${getProgressPercentage()}%`
+            : error || `Job ${jobId}`}
+        </div>
+        <div className="render-progress-minimized-bar">
+          <div
+            className="render-progress-minimized-fill"
+            style={{ width: `${getProgressPercentage()}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="render-progress-overlay">
@@ -334,10 +447,10 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
               </button>
               <button
                 className="dialog-button close"
-                onClick={onCancel}
-                title="Close dialog — render continues in background"
+                onClick={() => setIsMinimized(true)}
+                title="Minimize dialog — render tracking continues in background"
               >
-                Close (Background)
+                Minimize
               </button>
             </>
           )}
@@ -356,7 +469,7 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
               )}
               <button
                 className="dialog-button close"
-                onClick={() => onComplete(job.outputPath)}
+                onClick={() => notifyComplete(job.outputPath)}
               >
                 Close
               </button>
@@ -380,9 +493,9 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
               </div>
               <button
                 className="dialog-button close"
-                onClick={handleCancel}
+                onClick={() => setIsMinimized(true)}
               >
-                Close
+                Minimize
               </button>
             </>
           )}
@@ -396,9 +509,9 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
               </div>
               <button
                 className="dialog-button close"
-                onClick={onCancel}
+                onClick={() => setIsMinimized(true)}
               >
-                Close
+                Minimize
               </button>
             </>
           )}

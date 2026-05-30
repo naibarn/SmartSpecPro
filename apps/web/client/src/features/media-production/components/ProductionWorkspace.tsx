@@ -1307,13 +1307,13 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const shotPromptSpeechMode = props.shotPromptSpeechMode ?? "none";
   const nextActionView = shouldUseShotPromptAction
     ? {
-        title: isThai ? "สร้าง prompt Start/Stop ทุก shot" : "Generate all start/stop prompts",
+        title: isThai ? "สร้าง Prompt Start/Stop ทุก Shot" : "Generate Start/Stop prompts for every shot",
         body: isThai
           ? "ใช้ค่าฟอร์มด้านบน แนวคิดจาก Production บทพูด และรายละเอียดสินค้า เพื่อเติม prompt ของทุก shot ให้พร้อมสร้างภาพ"
           : "Use the form above, selected Production concept, voiceover, and product details to fill every shot prompt.",
         label: props.isGeneratingAllShotPrompts
-          ? (isThai ? "กำลังสร้าง prompt..." : "Generating prompts...")
-          : (isThai ? "สร้าง prompt ทั้งหมด" : "Generate all prompts"),
+          ? (isThai ? "กำลังสร้าง Prompt ทุก Shot..." : "Generating all shot prompts...")
+          : (isThai ? "สร้าง Prompt Start/Stop ทุก Shot" : "Generate all Start/Stop prompts"),
         action: "shot_prompt_all" as const,
         disabled: props.isGeneratingAllShotPrompts || props.isPlanning || space.shots.length === 0,
       }

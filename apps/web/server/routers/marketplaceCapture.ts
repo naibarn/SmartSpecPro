@@ -12,12 +12,14 @@ import {
 } from "../services/marketplaceCaptureService";
 import { analyzeMarketplaceCapture } from "../services/marketplaceExtractionService";
 import {
+  addMarketplaceProductImageFromUrl,
   confirmMarketplaceCapture,
   deleteMarketplaceProduct,
   getMarketplaceProductWithAccess,
   getMarketplaceShareSettings,
   listMarketplaceProductImagesForMediaStudio,
   listMarketplaceProductsWithAccess,
+  removeMarketplaceProductImage,
   saveMarketplaceShareSetting,
 } from "../services/marketplaceProductService";
 import {
@@ -166,6 +168,25 @@ export const marketplaceCaptureRouter = router({
   getProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))
     .query(async ({ input, ctx }) => getMarketplaceProductWithAccess(input.productId, authFromCtx(ctx))),
+
+  addProductImageFromUrl: protectedProcedure
+    .input(z.object({
+      productId: z.string().min(1).max(64),
+      url: z.string().min(1).max(4096),
+      type: z.enum(["main", "description", "review", "related_excluded"]).optional().default("main"),
+      title: z.string().max(255).optional().nullable(),
+      source: z.string().max(128).optional().nullable(),
+      originalSourceUrl: z.string().max(4096).optional().nullable(),
+      metadata: z.record(z.unknown()).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => addMarketplaceProductImageFromUrl(input, authFromCtx(ctx))),
+
+  removeProductImage: protectedProcedure
+    .input(z.object({
+      productId: z.string().min(1).max(64),
+      imageId: z.string().min(1).max(64),
+    }))
+    .mutation(async ({ input, ctx }) => removeMarketplaceProductImage(input, authFromCtx(ctx))),
 
   deleteProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))

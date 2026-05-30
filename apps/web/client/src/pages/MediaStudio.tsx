@@ -256,6 +256,11 @@ import {
   mergeFresherStoryboardReviewTasks,
   type StoryboardProductionContext,
 } from "@/lib/storyboardReviewWorkspace";
+import {
+  buildRenderTraceabilityMetadata,
+  resolveStoryboardDraftMarketplaceProduct,
+  resolveStoryboardDraftProductionContext,
+} from "@/lib/mediaRenderTraceability";
 import { buildStoryboardVideoProject, type StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
 import {
   applyModelSyncTargets,
@@ -593,6 +598,33 @@ type MarketplaceProductReferenceContext = {
   health?: Record<string, unknown> | null;
   supportingInsights?: Record<string, unknown> | null;
 };
+
+function marketplaceProductContextKey(context: MarketplaceProductReferenceContext): string {
+  return [
+    context.productId,
+    context.sourceUrl,
+    context.itemId,
+    context.affiliateUrl,
+    context.productName,
+  ]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .find(Boolean) ?? JSON.stringify(context);
+}
+
+function dedupeMarketplaceProductContexts(
+  contexts: Array<MarketplaceProductReferenceContext | null | undefined>,
+): MarketplaceProductReferenceContext[] {
+  const seen = new Set<string>();
+  const results: MarketplaceProductReferenceContext[] = [];
+  for (const context of contexts) {
+    if (!context) continue;
+    const key = marketplaceProductContextKey(context);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push(context);
+  }
+  return results;
+}
 type MarketplaceStorytellingImportState = {
   insightId: string | null;
   handoff: MarketplaceStorytellingHandoff | null;
@@ -2880,6 +2912,7 @@ function buildProductionShotFrameSeedPrompt(params: {
     "Cinematic realism lock: natural lens perspective, real commercial-film lighting, believable depth, grounded shadows, realistic skin texture, non-plastic faces, and clear facial identity whenever a character appears.",
     "If a human appears, prefer a clear front or three-quarter face view unless the shot explicitly requires only hands or a back view that will never turn toward camera in the video.",
     "Product truth lock: preserve the attached product reference exactly. Do not add drawers, panels, shelves, doors, handles, different legs, different material, different color, or change the product silhouette, proportions, texture, scale, or visible part count.",
+    "Sequential continuity rule: generate Start frames before Stop frames where possible. If a previous generated frame is attached as a continuity anchor, match its product instance, character likeness, wardrobe cues, room lighting, camera color science, and perspective while still following this current shot contract.",
     "Story and voice contract:",
     params.storyboardGuide || "",
     "Current shot contract:",
@@ -3438,16 +3471,20 @@ function buildProductionShotImageGenerationPrompt(params: {
   frameRole: "storyboard_grid" | "reference" | "start" | "stop";
   shotSceneGuide?: string;
   referenceUrls: string[];
+  referenceContinuityImageUrls?: string[];
   referenceProductImageUrls?: string[];
   referenceCharacterImageUrls?: string[];
   referenceEnvironmentImageUrls?: string[];
 }): string {
+  const continuityUrls = new Set(params.referenceContinuityImageUrls ?? []);
   const productUrls = new Set(params.referenceProductImageUrls ?? []);
   const characterUrls = new Set(params.referenceCharacterImageUrls ?? []);
   const environmentUrls = new Set(params.referenceEnvironmentImageUrls ?? []);
   const referenceOrderMap = params.referenceUrls.map((url, index) => {
     const imageHandle = `@Image${index + 1}`;
-    const role = productUrls.has(url)
+    const role = continuityUrls.has(url)
+      ? "GENERATED CONTINUITY ANCHOR"
+      : productUrls.has(url)
       ? "PRODUCT SOURCE OF TRUTH"
       : characterUrls.has(url)
         ? "CHARACTER SOURCE OF TRUTH"
@@ -3459,6 +3496,9 @@ function buildProductionShotImageGenerationPrompt(params: {
   const productIndex = params.referenceUrls.findIndex((url) => productUrls.has(url));
   const characterIndex = params.referenceUrls.findIndex((url) => characterUrls.has(url));
   const environmentIndex = params.referenceUrls.findIndex((url) => environmentUrls.has(url));
+  const continuityHandles = params.referenceUrls
+    .map((url, index) => continuityUrls.has(url) ? `@Image${index + 1}` : "")
+    .filter(Boolean);
   const productHandle = productIndex >= 0 ? `@Image${productIndex + 1}` : "";
   const characterHandle = characterIndex >= 0 ? `@Image${characterIndex + 1}` : "";
   const environmentHandle = environmentIndex >= 0 ? `@Image${environmentIndex + 1}` : "";
@@ -3480,6 +3520,9 @@ function buildProductionShotImageGenerationPrompt(params: {
       ].join(" ")
     : "";
   const referenceRoleLock = [
+    continuityHandles.length
+      ? `${continuityHandles.join(", ")} are generated continuity anchors. Match their already-generated product instance, character likeness/wardrobe cues, room lighting, camera color science, perspective, and prop placement where compatible with the current shot. They are continuity anchors only; product/character/environment source references still win if any detail conflicts.`
+      : "",
     productHandle ? `${productHandle} is product truth only and must define the product appearance.` : "",
     characterHandle ? `${characterHandle} is character truth only and must define identity, face, hair, and wardrobe.` : "",
     environmentHandle ? `${environmentHandle} is environment truth only and must define room mood, lighting, and background style without overriding product or character truth.` : "",
@@ -3523,6 +3566,47 @@ function buildProductionShotImageGenerationPrompt(params: {
       characterIdentityLock,
     ].join("\n") : "",
   ].filter(Boolean).join("\n\n");
+}
+
+function mergeProductionFrameReferenceUrls(input: {
+  product?: string[];
+  character?: string[];
+  environment?: string[];
+  continuity?: string[];
+  fallback?: string[];
+  limit: number;
+}): string[] {
+  const limit = Math.max(0, Math.floor(input.limit));
+  if (limit <= 0) return [];
+  const selected: string[] = [];
+  const add = (url?: string | null) => {
+    const cleanUrl = String(url ?? "").trim();
+    if (!cleanUrl || selected.length >= limit || selected.includes(cleanUrl)) return;
+    selected.push(cleanUrl);
+  };
+
+  const product = input.product ?? [];
+  const character = input.character ?? [];
+  const environment = input.environment ?? [];
+  const continuity = input.continuity ?? [];
+  const fallback = input.fallback ?? [];
+
+  add(product[0]);
+  add(character[0]);
+  for (const url of continuity) add(url);
+  add(environment[0]);
+
+  for (const url of [
+    ...product.slice(1),
+    ...character.slice(1),
+    ...environment.slice(1),
+    ...fallback,
+  ]) {
+    add(url);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
 }
 
 function clearProductionConceptInfographicState(concept: ProductionStoryConceptOption): ProductionStoryConceptOption {
@@ -6889,6 +6973,8 @@ export default function MediaStudio() {
   const [productionShotReferenceStoryboardSkillId, setProductionShotReferenceStoryboardSkillId] = useState<string>(PRODUCT_REFERENCE_STORYBOARD_SKILL_ID);
   const [productionShotGenerationState, setProductionShotGenerationState] = useState<Record<string, Partial<Record<"referencePrompt" | "storyboardGridImage" | "referenceImage" | "startFrame" | "stopFrame" | "video", boolean>>>>({});
   const [isGeneratingAllProductionShotPrompts, setIsGeneratingAllProductionShotPrompts] = useState(false);
+  const [isGeneratingAllProductionShotFrameImages, setIsGeneratingAllProductionShotFrameImages] = useState(false);
+  const [productionShotFrameBatchStatus, setProductionShotFrameBatchStatus] = useState<string | null>(null);
   const [productionShotPromptSpeechMode, setProductionShotPromptSpeechMode] = useState<"none" | "th" | "en" | "other">("none");
   const [productionShotPromptOtherSpeechLanguage, setProductionShotPromptOtherSpeechLanguage] = useState("");
   const productionShotReferenceSkillManualRef = useRef(false);
@@ -7748,6 +7834,8 @@ export default function MediaStudio() {
   const [storyboardCompoundStatus, setStoryboardCompoundStatus] = useState<string | null>(null);
   const [storyboardProjectLink, setStoryboardProjectLink] = useState<string | null>(null);
   const [storyboardRenderJobId, setStoryboardRenderJobId] = useState<string | null>(null);
+  const storyboardRenderLibraryMetadataRef = useRef<Record<string, { title?: string; metadata: Record<string, unknown> }>>({});
+  const productionShotRenderLibraryMetadataRef = useRef<Record<string, { title?: string; metadata: Record<string, unknown> }>>({});
   const [storyboardVoiceoverFullScript, setStoryboardVoiceoverFullScript] = useState("");
   const [useStoryboardVoiceoverScriptAsConcept, setUseStoryboardVoiceoverScriptAsConcept] = useState(false);
   const [productionShotRenderJobId, setProductionShotRenderJobId] = useState<string | null>(null);
@@ -8933,6 +9021,30 @@ export default function MediaStudio() {
       affiliateUrl: typeof context.affiliateUrl === "string" ? context.affiliateUrl : null,
     };
   }, []);
+  function getMarketplaceContextFromProduction(): MarketplaceProductReferenceContext | null {
+    const assetContext = productionWorkspaceSpace.contextAssets
+      .map((asset) => getMarketplaceProductContextFromAsset(asset))
+      .find((context): context is MarketplaceProductReferenceContext => Boolean(context));
+    if (assetContext) return assetContext;
+
+    const referenceContext = getMarketplaceContextFromReferenceImages(referenceImages);
+    if (referenceContext) return referenceContext;
+
+    const fieldContext = getMarketplaceContextFromFields(dynamicFormValues);
+    if (fieldContext) return fieldContext;
+
+    const handoff = marketplaceStorytellingImport.handoff;
+    if (handoff) {
+      return {
+        platform: handoff.platform,
+        productName: handoff.productName,
+        sourceUrl: handoff.sourceUrl,
+        affiliateUrl: handoff.affiliateUrl ?? null,
+      };
+    }
+
+    return null;
+  }
   const isMarketplaceImagesLoading = marketplaceImagesQuery.isLoading;
   const isMarketplaceImagesFetchingNextPage = marketplaceImagesQuery.isFetchingNextPage;
   const marketplaceImagesError = marketplaceImagesQuery.error;
@@ -14601,8 +14713,28 @@ export default function MediaStudio() {
       const link = `/video-editor?projectId=${saved.id}`;
       setStoryboardProjectLink(link);
       const draft = buildStoryboardReviewDraft();
+      let renderTitle = "Storyboard Review - Final video";
+      let renderMetadata = buildRenderTraceabilityMetadata({
+        sourceFlow: "media_studio_storyboard_review_compound_render",
+        sourceSurface: "media_studio_storyboard_review",
+        videoEditorProjectId: saved.id,
+        clipCount,
+        selectedClipCount: selectedStoryboardTaskIds.size,
+      });
       if (storyboardReviewId && draft) {
         const reviewData = { ...draft, projectLink: link };
+        renderTitle = `${getStoryboardReviewName(draft)} - Final video`;
+        renderMetadata = buildRenderTraceabilityMetadata({
+          sourceFlow: "media_studio_storyboard_review_compound_render",
+          sourceSurface: "media_studio_storyboard_review",
+          title: getStoryboardReviewName(draft),
+          reviewId: storyboardReviewId,
+          videoEditorProjectId: saved.id,
+          clipCount: draft.tasks.length,
+          selectedClipCount: draft.selectedTaskIds.length,
+          productionContext: resolveStoryboardDraftProductionContext(reviewData),
+          marketplaceProduct: resolveStoryboardDraftMarketplaceProduct(reviewData),
+        });
         await saveStoryboardReviewMutation.mutateAsync({
           id: storyboardReviewId,
           name: getStoryboardReviewName(draft),
@@ -14618,7 +14750,10 @@ export default function MediaStudio() {
       clearStoryboardReviewDraft();
       void navigator.clipboard?.writeText(`${window.location.origin}${link}`).catch(() => undefined);
       const outputPath = `/tmp/storyboard-compound-${saved.id}.mp4`;
-      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath);
+      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath, {
+        sourceMetadata: renderMetadata,
+      });
+      storyboardRenderLibraryMetadataRef.current[jobId] = { title: renderTitle, metadata: renderMetadata };
       setStoryboardRenderJobId(jobId);
       setStoryboardCompoundStatus("Compound render started. Watch progress below.");
       setStoryboardReviewOpen(false);
@@ -14643,13 +14778,32 @@ export default function MediaStudio() {
     setStoryboardRenderJobId,
     setStoryboardReviewOpen,
     storyboardReviewId,
+    selectedStoryboardTaskIds.size,
   ]);
 
   const handleStoryboardRenderComplete = useCallback((outputPath: string) => {
+    const completedJobId = storyboardRenderJobId;
     setStoryboardRenderJobId(null);
     setStoryboardCompoundStatus(`Compound render complete: ${outputPath}`);
     toast.success("Compound video is ready");
-  }, [setStoryboardCompoundStatus, toast]);
+    if (completedJobId) {
+      const libraryMetadata = storyboardRenderLibraryMetadataRef.current[completedJobId];
+      delete storyboardRenderLibraryMetadataRef.current[completedJobId];
+      void addRenderToLibraryMutation
+        .mutateAsync({
+          jobId: completedJobId,
+          title: libraryMetadata?.title,
+          metadata: libraryMetadata?.metadata,
+        })
+        .then((result) => {
+          toast.success(result.created ? "Rendered video saved to Library" : "Rendered video is already in Library");
+        })
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error);
+          toast.warning(`Render completed, but saving to Library failed: ${message}`);
+        });
+    }
+  }, [addRenderToLibraryMutation, setStoryboardCompoundStatus, storyboardRenderJobId, toast]);
 
   const handleStoryboardRenderCancel = useCallback(() => {
     setStoryboardRenderJobId(null);
@@ -15280,7 +15434,7 @@ export default function MediaStudio() {
   }) => {
     setSelectedProductionShotId(shotId);
     setStudioWorkspaceTab("video_shot");
-    void openSplitDialog(imageUrl, "split", null, {
+    void openSplitDialog(imageUrl, "split", getMarketplaceContextFromProduction(), {
       rows: 3,
       cols: 3,
       forceGrid: true,
@@ -15297,7 +15451,7 @@ export default function MediaStudio() {
         ),
       },
     });
-  }, [openSplitDialog]);
+  }, [getMarketplaceContextFromProduction, openSplitDialog]);
 
   // Update split preview when grid changes
   const updateSplitPreview = async (rows: number, cols: number) => {
@@ -15886,6 +16040,7 @@ export default function MediaStudio() {
       return;
     }
     try {
+      const effectiveSplitMarketplaceContext = splitMarketplaceContext ?? getMarketplaceContextFromProduction();
       // Upload the split image
       const uploadResult = await uploadMutation.mutateAsync({
         fileName: `split-image-${sequenceNumber}.jpg`,
@@ -15897,7 +16052,7 @@ export default function MediaStudio() {
         {
           url: uploadResult.url,
           name: `Split ${sequenceNumber}`,
-          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+          ...(effectiveSplitMarketplaceContext ? { marketplaceProduct: effectiveSplitMarketplaceContext } : {}),
         },
       ]);
       toast.success(t('mediaStudio.addedAsReferenceImage'));
@@ -15915,6 +16070,7 @@ export default function MediaStudio() {
       return;
     }
     try {
+      const effectiveSplitMarketplaceContext = splitMarketplaceContext ?? getMarketplaceContextFromProduction();
       const uploadResult = await uploadMutation.mutateAsync({
         fileName: `crop-${cropAspectRatio.replace(":", "x")}.jpg`,
         fileType: "image/jpeg",
@@ -15925,7 +16081,7 @@ export default function MediaStudio() {
         {
           url: uploadResult.url,
           name: `Crop ${cropAspectRatio}`,
-          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+          ...(effectiveSplitMarketplaceContext ? { marketplaceProduct: effectiveSplitMarketplaceContext } : {}),
         },
       ]);
       toast.success(t('mediaStudio.addedCroppedImageAsReference'));
@@ -15953,6 +16109,7 @@ export default function MediaStudio() {
     toast.info(t('mediaStudio.addingToVideoReference', { count: imagesToAdd.length }));
 
     try {
+      const effectiveSplitMarketplaceContext = splitMarketplaceContext ?? getMarketplaceContextFromProduction();
       const uploadedImages: ReferenceImage[] = [];
 
       for (const [position, result] of imagesToAdd.entries()) {
@@ -15965,7 +16122,7 @@ export default function MediaStudio() {
         uploadedImages.push({
           url: uploadResult.url,
           name: `Split ${sequenceNumber}`,
-          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+          ...(effectiveSplitMarketplaceContext ? { marketplaceProduct: effectiveSplitMarketplaceContext } : {}),
         });
       }
 
@@ -16002,6 +16159,7 @@ export default function MediaStudio() {
     toast.info(t('mediaStudio.splitStoryboardUploading', { count: splitResults.length }));
 
     try {
+      const effectiveSplitMarketplaceContext = splitMarketplaceContext ?? getMarketplaceContextFromProduction();
       const uploadedImages: ReferenceImage[] = [];
       for (const [position, result] of splitResults.entries()) {
         const sequenceNumber = position + 1;
@@ -16013,7 +16171,7 @@ export default function MediaStudio() {
         uploadedImages.push({
           url: uploadResult.url,
           name: `Frame ${sequenceNumber}`,
-          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+          ...(effectiveSplitMarketplaceContext ? { marketplaceProduct: effectiveSplitMarketplaceContext } : {}),
         });
       }
 
@@ -16038,7 +16196,7 @@ export default function MediaStudio() {
       const extraParams: Record<string, any> = {
         ...defaultExtraParams,
         generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
-        ...(splitMarketplaceContext ? { marketplaceContext: splitMarketplaceContext } : {}),
+        ...(effectiveSplitMarketplaceContext ? { marketplaceContext: effectiveSplitMarketplaceContext } : {}),
         storyboardPromptPlanner: {
           includeVoiceover: splitStoryboardSpeechMode !== "none",
           speechMode: splitStoryboardSpeechMode,
@@ -16129,7 +16287,7 @@ export default function MediaStudio() {
         aspectRatio: splitFrameAutoCropEnabled ? splitFrameCropAspectRatio : (tabStates.video.aspectRatio || "auto"),
         duration: durationSeconds,
         extraParams,
-        marketplaceContext: splitMarketplaceContext ?? undefined,
+        marketplaceContext: effectiveSplitMarketplaceContext ?? undefined,
         apiConfig: buildApiConfigFromModelConfig(modelConfig),
         resolution: typeof extraParams.resolution === "string" ? extraParams.resolution : undefined,
         statusDetail: t('mediaStudio.splitStoryboardQueuedStatus'),
@@ -16154,7 +16312,7 @@ export default function MediaStudio() {
         toast.info(isThaiLocale ? "กำลังวิเคราะห์ภาพและสร้างบทพูดให้แต่ละช็อต..." : "Analyzing frames and planning shot-specific dialogue...");
         try {
           const planned = await planStoryboardVideoPromptsMutation.mutateAsync({
-            productMetadata: splitMarketplaceContext ?? null,
+            productMetadata: effectiveSplitMarketplaceContext ?? null,
             includeVoiceover: true,
             speechMode: splitStoryboardSpeechMode,
             speechLanguage: splitStoryboardSpeechLanguage,
@@ -16247,7 +16405,7 @@ export default function MediaStudio() {
       }
 
       const projectName = buildSplitStoryboardReviewProjectName({
-        marketplaceContext: splitMarketplaceContext,
+        marketplaceContext: effectiveSplitMarketplaceContext,
         productionProjectName: firstNonEmpty(productionDirector.title, productionDirector.goalSummary),
       });
       const draft: StoryboardReviewDraft = {
@@ -16268,7 +16426,7 @@ export default function MediaStudio() {
         storyboardGuide: splitStoryboardGuide,
         voiceoverFullScript: splitVoiceoverFullScript || null,
         useVoiceoverScriptAsConcept: false,
-        ...(splitMarketplaceContext ? { marketplaceContext: splitMarketplaceContext } : {}),
+        ...(effectiveSplitMarketplaceContext ? { marketplaceContext: effectiveSplitMarketplaceContext } : {}),
       };
       const savedReview = await saveStoryboardReviewMutation.mutateAsync({
         name: projectName,
@@ -17444,9 +17602,10 @@ export default function MediaStudio() {
   }, [productionSpaceQuery.data]);
 
   const buildCurrentProductionGoal = useCallback((): ProductionGoal => {
-    const marketplaceProducts = referenceImages
-      .map((image) => image.marketplaceProduct)
-      .filter(Boolean);
+    const marketplaceProducts = dedupeMarketplaceProductContexts([
+      ...referenceImages.map((image) => image.marketplaceProduct),
+      ...productionWorkspaceSpace.contextAssets.map((asset) => getMarketplaceProductContextFromAsset(asset)),
+    ]);
     const productTruthContext = buildProductionProductTruthContext({
       attachments: productionWorkspaceSpace.contextAssets,
       manifest: productionWorkspaceSpace.productEvidenceManifest,
@@ -20318,6 +20477,34 @@ export default function MediaStudio() {
     }));
   }, []);
 
+  const waitForProductionShotTaskResult = useCallback(async (params: {
+    taskId?: string | null;
+    label: string;
+    intervalMs?: number;
+    maxAttempts?: number;
+    onStatus?: (status: QueueGenerationTask["status"], attempt: number) => void;
+  }): Promise<string | null> => {
+    const taskId = String(params.taskId ?? "").trim();
+    if (!taskId) return null;
+    const intervalMs = params.intervalMs ?? 5_000;
+    const maxAttempts = params.maxAttempts ?? 240;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const currentTask = await trpcUtils.media.getTask.fetch({ taskId });
+      const status = normalizeQueueStatus((currentTask as any)?.status);
+      params.onStatus?.(status, attempt + 1);
+      const resultUrl = extractTaskResultUrl(currentTask as any);
+      if (resultUrl && status !== "failed" && status !== "cancelled") return resultUrl;
+      if (status === "completed") {
+        throw new Error(`${params.label} completed without a media URL`);
+      }
+      if (status === "failed" || status === "cancelled") {
+        throw new Error(String((currentTask as any)?.errorMessage ?? `${params.label} ${status}`));
+      }
+      await sleepMs(intervalMs);
+    }
+    throw new Error(`${params.label} timed out while waiting for the provider result`);
+  }, [extractTaskResultUrl, trpcUtils.media.getTask]);
+
   const findProductionMediaModel = useCallback((surface: "image" | "video", modelId?: string | null) => {
     const normalizedModelId = String(modelId ?? "").trim();
     if (!normalizedModelId) return undefined;
@@ -20773,6 +20960,8 @@ export default function MediaStudio() {
     getProductionStoryboardPromptForShot,
     isThaiLocale,
     productionShotReferenceStoryboardSkillId,
+    productionShotPromptSpeechLanguage,
+    productionShotPromptSpeechMode,
     productionStoryboardClipDurationSeconds,
     productionWorkspaceSpace,
     toast,
@@ -21054,6 +21243,49 @@ export default function MediaStudio() {
 	    upsertProductionShotMediaNode,
 	  ]);
 
+  const getProductionShotFrameContinuityReferenceUrls = useCallback((
+    shotId: string,
+    phase: "start" | "stop",
+    promptDraft?: Record<string, unknown>,
+  ) => {
+    const orderedShots = [...productionWorkspaceSpace.shots].sort((a, b) => a.order - b.order);
+    const currentIndex = orderedShots.findIndex((item) => item.id === shotId);
+    const currentPrompt = {
+      ...(getProductionStoryboardPromptForShot(productionWorkspaceSpace, shotId) ?? {}),
+      ...(promptDraft ?? {}),
+    } as Record<string, unknown>;
+    const previousShot = currentIndex > 0 ? orderedShots[currentIndex - 1] : null;
+    const previousPrompt = previousShot
+      ? (getProductionStoryboardPromptForShot(productionWorkspaceSpace, previousShot.id) ?? {})
+      : {};
+    const canonicalPrompt = orderedShots
+      .map((shot) => getProductionStoryboardPromptForShot(productionWorkspaceSpace, shot.id) ?? {})
+      .find((item) => String((item as Record<string, unknown>).startFrameUrl ?? (item as Record<string, unknown>).referenceImageUrl ?? "").trim());
+    const urls: string[] = [];
+    const add = (value: unknown) => {
+      const url = String(value ?? "").trim();
+      if (!url || urls.includes(url)) return;
+      urls.push(url);
+    };
+
+    if (phase === "stop") {
+      add(currentPrompt.startFrameUrl);
+      add(currentPrompt.referenceImageUrl);
+      add(currentPrompt.storyboardGridImageUrl);
+      add((canonicalPrompt as Record<string, unknown> | undefined)?.startFrameUrl);
+      add((canonicalPrompt as Record<string, unknown> | undefined)?.referenceImageUrl);
+      add((previousPrompt as Record<string, unknown>).stopFrameUrl);
+    } else {
+      add((previousPrompt as Record<string, unknown>).stopFrameUrl);
+      add((canonicalPrompt as Record<string, unknown> | undefined)?.startFrameUrl);
+      add((canonicalPrompt as Record<string, unknown> | undefined)?.referenceImageUrl);
+      add(currentPrompt.referenceImageUrl);
+      add(currentPrompt.storyboardGridImageUrl);
+    }
+
+    return urls;
+  }, [getProductionStoryboardPromptForShot, productionWorkspaceSpace]);
+
   const generateProductionShotFrameImageDirect = useCallback(async (
     shotId: string,
     phase: "start" | "stop",
@@ -21093,21 +21325,36 @@ export default function MediaStudio() {
         id: selectedModel.id ?? selectedModel.modelId,
         configJson: parseMediaModelConfig(selectedModel.configJson) ?? selectedModel.configJson,
       } : undefined;
+      const modelSupport = getModelReferenceInputSupport(normalizedModel as any);
       const aspect = productionWorkspaceSpace.brief.aspectRatio ?? aspectRatio;
       const maxImages = getModelReferenceImageLimit(normalizedModel as any) ?? 5;
       const referenceLimit = Math.max(0, Math.min(20, maxImages));
-      const referenceUrls = selectProductionRoleBalancedReferenceImageUrls({
+      const continuityReferenceUrls = getProductionShotFrameContinuityReferenceUrls(shotId, phase, promptDraft);
+      if (phase === "stop" && continuityReferenceUrls.length === 0) {
+        toast.warning(isThaiLocale
+          ? "เพื่อคุมความต่อเนื่อง ควรสร้าง Start frame ให้เสร็จก่อน แล้วค่อยสร้าง Stop frame"
+          : "For stronger continuity, generate the start frame first, then generate the stop frame.");
+      }
+      const referenceUrls = mergeProductionFrameReferenceUrls({
         product: skillPackage.referenceProductImageUrls,
         character: skillPackage.referenceCharacterImageUrls,
         environment: skillPackage.referenceEnvironmentImageUrls,
+        continuity: continuityReferenceUrls,
         fallback: skillPackage.referenceUrls,
         limit: referenceLimit,
       });
+      if (referenceUrls.length > 0 && normalizedModel && !modelSupport.imageUrls) {
+        toast.error(isThaiLocale
+          ? "โมเดลภาพที่เลือกไม่รองรับ reference images จึงไม่สามารถล็อกสินค้า/ตัวละคร/ฉากได้อย่างปลอดภัย กรุณาเลือก image-to-image หรือ reference-preserving model"
+          : "The selected image model does not support reference images, so product/character/environment locks cannot be preserved safely. Choose an image-to-image or reference-preserving model.");
+        return null;
+      }
       const generationPrompt = buildProductionShotImageGenerationPrompt({
         prompt,
         frameRole: phase,
         shotSceneGuide: skillPackage.storyboardGuide,
         referenceUrls,
+        referenceContinuityImageUrls: continuityReferenceUrls,
         referenceProductImageUrls: skillPackage.referenceProductImageUrls,
         referenceCharacterImageUrls: skillPackage.referenceCharacterImageUrls,
         referenceEnvironmentImageUrls: skillPackage.referenceEnvironmentImageUrls,
@@ -21128,6 +21375,7 @@ export default function MediaStudio() {
         storyboardGuide: skillPackage.storyboardGuide,
         generation_mode: "single_frame",
         required_frame_count: 1,
+        continuity_reference_images: continuityReferenceUrls,
         reference_product_images: skillPackage.referenceProductImageUrls,
         reference_character_images: skillPackage.referenceCharacterImageUrls,
         reference_environment_images: skillPackage.referenceEnvironmentImageUrls,
@@ -21184,22 +21432,25 @@ export default function MediaStudio() {
           sourceStoryboardGuide: skillPackage.storyboardGuide,
           directFrameRole: phase,
           frameResolution: resolutionSelection?.resolution,
+          continuityReferenceUrls,
         },
         config: {
           directFrameRole: phase,
           frameResolution: resolutionSelection?.resolution,
+          continuityReferenceUrls,
         },
       });
       const taskId = task.backendTaskId || task.providerTaskId;
-      updateProductionStoryboardPrompt(shotId, phase === "start" ? {
+      const framePatch = phase === "start" ? {
         startFramePrompt: generationPrompt,
-        startFrameUrl: task.resultUrl,
         startFrameTaskId: taskId,
+        ...(task.resultUrl ? { startFrameUrl: task.resultUrl } : {}),
       } : {
         stopFramePrompt: generationPrompt,
-        stopFrameUrl: task.resultUrl,
         stopFrameTaskId: taskId,
-      });
+        ...(task.resultUrl ? { stopFrameUrl: task.resultUrl } : {}),
+      };
+      updateProductionStoryboardPrompt(shotId, framePatch);
       toast.success(
         resolutionSelection?.resolution
           ? (phase === "start"
@@ -21209,8 +21460,17 @@ export default function MediaStudio() {
             ? (isThaiLocale ? "ส่งสร้าง Start frame แล้ว" : "Start frame submitted.")
             : (isThaiLocale ? "ส่งสร้าง Stop frame แล้ว" : "Stop frame submitted.")),
       );
+      return {
+        shotId,
+        phase,
+        taskId,
+        resultUrl: task.resultUrl,
+        status: task.status,
+        prompt: generationPrompt,
+      };
     } catch (error) {
       toast.error(error instanceof Error ? error.message : (isThaiLocale ? "ส่งสร้างภาพเฟรมไม่สำเร็จ" : "Failed to submit frame image"));
+      return null;
     } finally {
       setProductionShotActionBusy(shotId, action, false);
     }
@@ -21221,6 +21481,7 @@ export default function MediaStudio() {
     findProductionMediaModel,
     generateImageAsyncMutation,
     generateProductionShotReferencePrompt,
+    getProductionShotFrameContinuityReferenceUrls,
     getProductionShotSkillPackage,
     isThaiLocale,
     productionGenerationDefaults.imageModelId,
@@ -21230,6 +21491,116 @@ export default function MediaStudio() {
     setProductionShotActionBusy,
     updateProductionStoryboardPrompt,
     upsertProductionShotMediaNode,
+  ]);
+
+  const generateAllProductionShotFrameImagesSequentially = useCallback(async (
+    skillId: string,
+    promptDrafts?: Record<string, Record<string, unknown>>,
+  ) => {
+    const shots = [...productionWorkspaceSpace.shots].sort((a, b) => a.order - b.order);
+    if (shots.length === 0) {
+      toast.error(isThaiLocale ? "ยังไม่มี shot ให้สร้างภาพ" : "No shots are available for image generation.");
+      return;
+    }
+    if (isGeneratingAllProductionShotFrameImages) return;
+
+    setIsGeneratingAllProductionShotFrameImages(true);
+    setProductionShotFrameBatchStatus(isThaiLocale ? "เริ่มสร้างภาพ Start/Stop แบบเรียงช็อต..." : "Starting sequential start/stop frame generation...");
+    try {
+      for (let index = 0; index < shots.length; index += 1) {
+        const shot = shots[index];
+        let promptDraft: Record<string, unknown> = {
+          ...(getProductionStoryboardPromptForShot(productionWorkspaceSpace, shot.id) ?? {}),
+          ...(promptDrafts?.[shot.id] ?? {}),
+        };
+        const hasStartPrompt = Boolean(String(promptDraft.startFramePrompt ?? "").trim());
+        const hasStopPrompt = Boolean(String(promptDraft.stopFramePrompt ?? "").trim());
+        if (!hasStartPrompt || !hasStopPrompt) {
+          setProductionShotFrameBatchStatus(isThaiLocale
+            ? `Shot ${index + 1}/${shots.length}: กำลังสร้าง prompt Start/Stop`
+            : `Shot ${index + 1}/${shots.length}: generating start/stop prompts`);
+          const generatedPrompt = await generateProductionShotReferencePrompt(shot.id, skillId, promptDraft);
+          if (generatedPrompt) {
+            promptDraft = {
+              ...promptDraft,
+              startFramePrompt: generatedPrompt.startFramePrompt,
+              stopFramePrompt: generatedPrompt.stopFramePrompt,
+              videoPrompt: generatedPrompt.videoPrompt,
+            };
+          }
+        }
+
+        setProductionShotFrameBatchStatus(isThaiLocale
+          ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Start frame`
+          : `Shot ${index + 1}/${shots.length}: submitting start frame`);
+        const startSubmission = await generateProductionShotFrameImageDirect(shot.id, "start", skillId, promptDraft);
+        const startUrl = startSubmission?.resultUrl
+          || await waitForProductionShotTaskResult({
+            taskId: startSubmission?.taskId,
+            label: `${shot.title} start frame`,
+            onStatus: (status) => {
+              setProductionShotFrameBatchStatus(isThaiLocale
+                ? `Shot ${index + 1}/${shots.length}: Start frame ${status}`
+                : `Shot ${index + 1}/${shots.length}: start frame ${status}`);
+            },
+          });
+        if (!startUrl) {
+          throw new Error(isThaiLocale ? `Shot ${index + 1}: ไม่พบผลลัพธ์ Start frame` : `Shot ${index + 1}: missing start-frame result`);
+        }
+        promptDraft = {
+          ...promptDraft,
+          startFrameUrl: startUrl,
+          startFrameTaskId: startSubmission?.taskId,
+        };
+        updateProductionStoryboardPrompt(shot.id, {
+          startFrameUrl: startUrl,
+          startFrameTaskId: startSubmission?.taskId,
+        });
+
+        setProductionShotFrameBatchStatus(isThaiLocale
+          ? `Shot ${index + 1}/${shots.length}: ส่งสร้าง Stop frame ด้วย Start frame เป็น continuity anchor`
+          : `Shot ${index + 1}/${shots.length}: submitting stop frame with the start frame as continuity anchor`);
+        const stopSubmission = await generateProductionShotFrameImageDirect(shot.id, "stop", skillId, promptDraft);
+        const stopUrl = stopSubmission?.resultUrl
+          || await waitForProductionShotTaskResult({
+            taskId: stopSubmission?.taskId,
+            label: `${shot.title} stop frame`,
+            onStatus: (status) => {
+              setProductionShotFrameBatchStatus(isThaiLocale
+                ? `Shot ${index + 1}/${shots.length}: Stop frame ${status}`
+                : `Shot ${index + 1}/${shots.length}: stop frame ${status}`);
+            },
+          });
+        if (!stopUrl) {
+          throw new Error(isThaiLocale ? `Shot ${index + 1}: ไม่พบผลลัพธ์ Stop frame` : `Shot ${index + 1}: missing stop-frame result`);
+        }
+        updateProductionStoryboardPrompt(shot.id, {
+          stopFrameUrl: stopUrl,
+          stopFrameTaskId: stopSubmission?.taskId,
+        });
+        void refetchMediaHistory();
+        await sleepMs(750);
+      }
+      setProductionShotFrameBatchStatus(isThaiLocale ? `สร้างภาพ Start/Stop ครบ ${shots.length} shot แล้ว` : `Generated start/stop frames for ${shots.length} shots.`);
+      toast.success(isThaiLocale ? `สร้างภาพ Start/Stop ครบ ${shots.length} shot แล้ว` : `Generated start/stop frames for ${shots.length} shots.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setProductionShotFrameBatchStatus(isThaiLocale ? `หยุด batch: ${message}` : `Batch stopped: ${message}`);
+      toast.error(message);
+    } finally {
+      setIsGeneratingAllProductionShotFrameImages(false);
+    }
+  }, [
+    generateProductionShotFrameImageDirect,
+    generateProductionShotReferencePrompt,
+    getProductionStoryboardPromptForShot,
+    isGeneratingAllProductionShotFrameImages,
+    isThaiLocale,
+    productionWorkspaceSpace,
+    refetchMediaHistory,
+    toast,
+    updateProductionStoryboardPrompt,
+    waitForProductionShotTaskResult,
   ]);
 
   const generateProductionShotVideoDirect = useCallback(async (
@@ -21309,6 +21680,50 @@ export default function MediaStudio() {
         .filter((asset) => asset.kind === "source_video")
         .map((asset) => asset.url)
         .filter(Boolean) as string[];
+      const requestedSpeechMode = String(mergedPromptItem.promptSpeechMode ?? "").trim();
+      const scriptText = String(mergedPromptItem.script ?? shot.script ?? "").trim();
+      const readinessNotes: string[] = [];
+      const blockingReadinessNotes: string[] = [];
+      if (requestedSpeechMode && requestedSpeechMode !== "none" && !scriptText) {
+        blockingReadinessNotes.push(isThaiLocale ? "เลือกโหมดมีบทพูด แต่ช็อตนี้ยังไม่มี script" : "Speech mode is enabled but this shot has no script.");
+      }
+      if (contextReferenceImageGroups.product.length === 0) {
+        readinessNotes.push(isThaiLocale ? "ไม่มี product reference แยก role สำหรับช็อตนี้ ตรวจความถูกต้องของสินค้าเพิ่มก่อน render" : "No role-tagged product reference is attached to this shot; verify product fidelity before rendering.");
+      }
+      if (contextReferenceImageGroups.character.length > 0) {
+        const identityRiskText = [
+          rawVideoPrompt,
+          mergedPromptItem.startFramePrompt,
+          mergedPromptItem.stopFramePrompt,
+          prompt,
+        ].join("\n").toLowerCase();
+        const hasBackViewRisk = /(หันหลัง|ด้านหลัง|มุมหลัง|from behind|back view|rear view|over[- ]?shoulder)/i.test(identityRiskText);
+        const hasNoTurnLock = /(ไม่หันหน้ากลับ|ห้ามหันกลับ|no face reveal|do not turn|must not turn|locked back view)/i.test(identityRiskText);
+        if (hasBackViewRisk && !hasNoTurnLock) {
+          readinessNotes.push(isThaiLocale
+            ? "พบคำสั่งภาพบุคคลด้านหลัง ควรล็อกว่าไม่หันหน้ากลับในวิดีโอเพื่อกัน identity เพี้ยน"
+            : "A back-view character cue was detected; lock the motion so the person does not turn toward camera and drift identity.");
+        }
+      }
+      if (startFrameUrl === stopFrameUrl) {
+        readinessNotes.push(isThaiLocale ? "Start/Stop frame เป็นภาพเดียวกัน วิดีโออาจเคลื่อนไหวน้อย" : "Start and stop frame are identical; motion may be too subtle.");
+      }
+      if (rawVideoPrompt.length < 80) {
+        readinessNotes.push(isThaiLocale ? "Prompt วิดีโอค่อนข้างสั้น อาจคุม camera/action/product motion ได้ไม่พอ" : "The video prompt is short and may not constrain camera/action/product motion enough.");
+      }
+      const readinessStatus = blockingReadinessNotes.length > 0 ? "blocked" : readinessNotes.length > 0 ? "warning" : "ready";
+      updateProductionStoryboardPrompt(shotId, {
+        videoReadinessStatus: readinessStatus,
+        videoReadinessNotes: [...blockingReadinessNotes, ...readinessNotes],
+        videoReadinessCheckedAt: new Date().toISOString(),
+      });
+      if (blockingReadinessNotes.length > 0) {
+        toast.error(blockingReadinessNotes.join(" "));
+        return;
+      }
+      if (readinessNotes.length > 0) {
+        toast.warning(readinessNotes[0]);
+      }
       const maxImages = getModelReferenceImageLimit(normalizedModel as any) ?? 5;
       const primaryReferenceUrls = startFrameUrl && stopFrameUrl
         ? [startFrameUrl, stopFrameUrl]
@@ -21631,7 +22046,42 @@ export default function MediaStudio() {
         clipCount,
       });
       const outputPath = `/tmp/production-shot-compound-${saved.id}.mp4`;
-      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath);
+      const goal = buildCurrentProductionGoal();
+      const productContext = goal.productContext as { marketplaceHandoff?: unknown; marketplaceProducts?: unknown[] } | undefined;
+      const handoff = productContext?.marketplaceHandoff as Record<string, unknown> | null | undefined;
+      const referenceProduct = (Array.isArray(productContext?.marketplaceProducts) ? productContext?.marketplaceProducts[0] : null) as MarketplaceProductReferenceContext | null;
+      const marketplaceProduct = referenceProduct ?? (handoff ? {
+        productId: String(handoff.productId ?? handoff.marketplaceProductId ?? "").trim() || null,
+        platform: handoff.platform === "tiktok_shop" ? "tiktok_shop" as const : "shopee" as const,
+        productName: String(handoff.productName ?? "").trim() || null,
+        sourceUrl: String(handoff.sourceUrl ?? "").trim() || null,
+        affiliateUrl: String(handoff.affiliateUrl ?? "").trim() || null,
+      } : null);
+      const productionContext = buildStoryboardProductionContext({
+        productionRunId: productionWorkspaceSpace.productionRunId,
+        productionProjectTitle: firstNonEmpty(productionWorkspaceSpace.brief.title, productionDirector.title, productionDirector.goalSummary),
+        concept: activeProductionStoryConcept,
+        conceptDetails: activeProductionReferenceConceptDetails || activeProductionConceptDetails,
+        storyboardGuide: activeProductionReferenceConceptDetails || activeProductionConceptDetails,
+        voiceoverFullScript: buildProductionReferenceStoryboardVoiceoverScript({ concept: activeProductionStoryConcept }),
+      });
+      const renderMetadata = buildRenderTraceabilityMetadata({
+        sourceFlow: "media_studio_video_shot_compound_render",
+        sourceSurface: "media_studio_video_shot",
+        title: productionWorkspaceSpace.brief.title || "Video Shot",
+        videoEditorProjectId: saved.id,
+        clipCount,
+        selectedClipCount: clipCount,
+        productionContext,
+        marketplaceProduct,
+      });
+      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath, {
+        sourceMetadata: renderMetadata,
+      });
+      productionShotRenderLibraryMetadataRef.current[jobId] = {
+        title: `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`,
+        metadata: renderMetadata,
+      };
       setProductionShotRenderJobId(jobId);
       setProductionShotCompoundStatus(isThaiLocale ? "เริ่มรวมวิดีโอแล้ว รอดูความคืบหน้าในหน้าต่าง render" : "Video render started. Watch progress in the render dialog.");
       toast.success(isThaiLocale ? "เริ่มรวมวิดีโอแล้ว" : "Video render started");
@@ -21642,8 +22092,16 @@ export default function MediaStudio() {
       setIsCompoundingProductionShotVideos(false);
     }
   }, [
+    activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
+    activeProductionStoryConcept,
     buildProductionShotCompoundProject,
+    buildCurrentProductionGoal,
     isThaiLocale,
+    productionDirector.goalSummary,
+    productionDirector.title,
+    productionWorkspaceSpace.brief.title,
+    productionWorkspaceSpace.productionRunId,
     saveStoryboardProjectMutation,
     toast,
     videoEditorRenderService,
@@ -21655,10 +22113,13 @@ export default function MediaStudio() {
     setProductionShotCompoundStatus(isThaiLocale ? `รวมวิดีโอเสร็จแล้ว: ${outputPath}` : `Combined video ready: ${outputPath}`);
     toast.success(isThaiLocale ? "รวมวิดีโอเสร็จแล้ว" : "Combined video is ready");
     if (completedJobId) {
+      const libraryMetadata = productionShotRenderLibraryMetadataRef.current[completedJobId];
+      delete productionShotRenderLibraryMetadataRef.current[completedJobId];
       void addRenderToLibraryMutation
         .mutateAsync({
           jobId: completedJobId,
-          title: `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`,
+          title: libraryMetadata?.title ?? `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`,
+          metadata: libraryMetadata?.metadata,
         })
         .then((result) => {
           toast.success(result.created
@@ -23085,6 +23546,8 @@ export default function MediaStudio() {
                       setProductionSpaceDraft((current) => current ? { ...current, storyConceptWizard: undefined } : current);
                     }}
                     onOpenVideoShot={() => setStudioWorkspaceTab("video_shot")}
+                    onGenerateAllShotPrompts={generateAllProductionShotFramePromptsFromWorkflow}
+                    isGeneratingAllShotPrompts={isGeneratingAllProductionShotPrompts}
                     shotPromptSpeechMode={productionShotPromptSpeechMode}
                     shotPromptSpeechLanguage={productionShotPromptOtherSpeechLanguage}
                     onShotPromptSpeechModeChange={setProductionShotPromptSpeechMode}
@@ -23157,6 +23620,9 @@ export default function MediaStudio() {
 	                  onStoryboardReferenceSkillChange={updateProductionShotReferenceStoryboardSkill}
 	                  onGenerateShotReferencePrompt={(shotId, skillId, prompt) => void generateProductionShotReferencePrompt(shotId, skillId, prompt)}
 	                  onGenerateShotFrameImage={(shotId, phase, skillId, prompt) => void generateProductionShotFrameImageDirect(shotId, phase, skillId, prompt)}
+                  onGenerateAllShotFrameImages={(skillId, prompts) => void generateAllProductionShotFrameImagesSequentially(skillId, prompts as any)}
+                  isGeneratingAllShotFrameImages={isGeneratingAllProductionShotFrameImages}
+                  shotFrameBatchStatus={productionShotFrameBatchStatus}
 	                  onOpenShotStoryboardGridSplit={(shotId, imageUrl) => openProductionShotGridSplit(shotId, imageUrl)}
                   onAssignShotMediaSlot={assignProductionShotMediaSlot}
                   onUploadShotMediaFile={uploadProductionShotMediaFile}
@@ -28564,6 +29030,7 @@ export default function MediaStudio() {
           jobId={storyboardRenderJobId}
           onComplete={handleStoryboardRenderComplete}
           onCancel={handleStoryboardRenderCancel}
+          autoCompleteOnDone
         />
       )}
 
@@ -28572,6 +29039,7 @@ export default function MediaStudio() {
           jobId={productionShotRenderJobId}
           onComplete={handleProductionShotRenderComplete}
           onCancel={handleProductionShotRenderCancel}
+          autoCompleteOnDone
         />
       )}
 

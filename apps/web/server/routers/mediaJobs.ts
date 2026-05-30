@@ -227,6 +227,28 @@ function extractFirstArtifactUrl(result: unknown): string | null {
   return null;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function compactMetadata(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined && item !== null && item !== ""),
+  );
+}
+
+function extractRenderTraceabilityMetadata(spec: unknown, inputMetadata: unknown): Record<string, unknown> {
+  const specRecord = asRecord(spec);
+  const params = asRecord(specRecord.params);
+  const sourceMetadata = asRecord(params.sourceMetadata ?? params.renderTraceability ?? params.traceability);
+  return compactMetadata({
+    ...sourceMetadata,
+    ...asRecord(inputMetadata),
+  });
+}
+
 function getRenderLibraryTitle(spec: unknown, fallbackJobId: string, explicitTitle?: string): string {
   const title = explicitTitle?.trim();
   if (title) return title;
@@ -817,6 +839,7 @@ export const mediaJobsRouter = router({
       z.object({
         jobId: z.string().min(1),
         title: z.string().min(1).max(255).optional(),
+        metadata: z.record(z.unknown()).optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -871,6 +894,7 @@ export const mediaJobsRouter = router({
       const outputTarget = spec && typeof spec === "object"
         ? (spec as { output?: { target?: unknown } }).output?.target
         : null;
+      const traceabilityMetadata = extractRenderTraceabilityMetadata(spec, input.metadata);
       const { getDb } = await import("../db");
       const {
         createLibraryItem,
@@ -895,6 +919,8 @@ export const mediaJobsRouter = router({
             job_type: typeof jobType === "string" ? jobType : null,
             output_target: typeof outputTarget === "string" ? outputTarget : null,
             submitted_at: typeof meta.submittedAt === "number" ? meta.submittedAt : null,
+            ...traceabilityMetadata,
+            render_traceability: traceabilityMetadata,
           },
           sourceUrl,
           thumbnailUrl: null,
@@ -923,6 +949,7 @@ export const mediaJobsRouter = router({
           sourceMetadata: {
             ingestion: "render_to_library",
             mediaJobId: input.jobId,
+            ...traceabilityMetadata,
           },
           allowThrottle: true,
         },

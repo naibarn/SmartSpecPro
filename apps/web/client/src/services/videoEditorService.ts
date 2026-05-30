@@ -447,7 +447,7 @@ export class VideoEditorMediaLibrary {
 
 export class VideoEditorRenderService {
 
-  async startRender(projectJson: string, outputPath: string): Promise<string> {
+  async startRender(projectJson: string, outputPath: string, params?: Record<string, unknown>): Promise<string> {
     const safeOutputPath = sanitizeRenderOutputFilename(outputPath);
 
     if (isDesktop()) {
@@ -480,6 +480,7 @@ export class VideoEditorRenderService {
         specVersion: "0.1",
         jobType: "render_mp4_h264",
         inputs: { project: timeline, assets },
+        ...(params && Object.keys(params).length > 0 ? { params } : {}),
         output: { mode: "file", target: safeOutputPath },
       } as any);
       return jobId;

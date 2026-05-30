@@ -41,6 +41,11 @@ import {
   type StoryboardCompanionAudioCandidate,
   type StoryboardRenderAspectRatioMode,
 } from "@/lib/storyboardVideoProject";
+import {
+  buildRenderTraceabilityMetadata,
+  resolveStoryboardDraftMarketplaceProduct,
+  resolveStoryboardDraftProductionContext,
+} from "@/lib/mediaRenderTraceability";
 import { extractStoryboardMediaUrl, normalizeStoryboardMediaUrl } from "@/lib/storyboardReviewMedia";
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import { WebAssetResolver } from "@/services/webAssetResolver";
@@ -873,6 +878,7 @@ export default function StoryboardReviewPage() {
   const activeGenerationTaskIdRef = useRef<string | null>(null);
   const storyboardGenerationPollersRef = useRef<Map<string, string>>(new Map());
   const isStoryboardReviewMountedRef = useRef(true);
+  const renderLibraryMetadataRef = useRef<Record<string, { title?: string; metadata: Record<string, unknown> }>>({});
   const storedDraftReviewId = typeof draft?.reviewId === "number" && Number.isFinite(draft.reviewId) && draft.reviewId > 0
     ? draft.reviewId
     : null;
@@ -2432,7 +2438,22 @@ export default function StoryboardReviewPage() {
       });
       const link = `/video-editor?projectId=${saved.id}`;
       const outputPath = `/tmp/storyboard-compound-${saved.id}.mp4`;
-      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath);
+      const renderTitle = draft ? `${getStoryboardReviewName(draft)} - Final video` : undefined;
+      const renderMetadata = buildRenderTraceabilityMetadata({
+        sourceFlow: "storyboard_review_page_compound_render",
+        sourceSurface: "storyboard_review_page",
+        title: draft ? getStoryboardReviewName(draft) : null,
+        reviewId: draft?.reviewId ?? canonicalReviewId ?? null,
+        videoEditorProjectId: saved.id,
+        clipCount: draft?.tasks.length ?? clipCount,
+        selectedClipCount: selectedRenderClips.length,
+        productionContext: resolveStoryboardDraftProductionContext(draft),
+        marketplaceProduct: resolveStoryboardDraftMarketplaceProduct(draft),
+      });
+      const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath, {
+        sourceMetadata: renderMetadata,
+      });
+      renderLibraryMetadataRef.current[jobId] = { title: renderTitle, metadata: renderMetadata };
       setRenderJobId(jobId);
       setAndSaveDraft((current) => ({ ...current, projectLink: link, renderJobId: jobId, compoundStatus: t("mediaStudio.storyboardReviewRenderStartedStatus") }));
       toast.success(t("mediaStudio.storyboardReviewRenderStarted"));
@@ -2442,7 +2463,7 @@ export default function StoryboardReviewPage() {
     } finally {
       setIsCompounding(false);
     }
-  }, [buildPreparedSelectedProject, draft, locale, saveProjectMutation, selectedRenderClips.length, setAndSaveDraft, t]);
+  }, [buildPreparedSelectedProject, canonicalReviewId, draft, locale, saveProjectMutation, selectedRenderClips.length, setAndSaveDraft, t]);
 
   const pollStoryboardGenerationTask = useCallback(async (
     taskId: string,
@@ -3577,10 +3598,13 @@ export default function StoryboardReviewPage() {
               compoundStatus: t("mediaStudio.storyboardReviewRenderCompleteStatus", { outputPath }),
             }));
             toast.success(t("mediaStudio.storyboardReviewRenderComplete"));
+            const libraryMetadata = renderLibraryMetadataRef.current[completedJobId];
+            delete renderLibraryMetadataRef.current[completedJobId];
             void addRenderToLibraryMutation
               .mutateAsync({
                 jobId: completedJobId,
-                title: draft ? `${getStoryboardReviewName(draft)} - Final video` : undefined,
+                title: libraryMetadata?.title ?? (draft ? `${getStoryboardReviewName(draft)} - Final video` : undefined),
+                metadata: libraryMetadata?.metadata,
               })
               .then((result) => {
                 toast.success(
@@ -3598,6 +3622,7 @@ export default function StoryboardReviewPage() {
             setRenderJobId(null);
             setAndSaveDraft((current) => ({ ...current, renderJobId: null, compoundStatus: t("mediaStudio.storyboardReviewRenderCancelled") }));
           }}
+          autoCompleteOnDone
         />
       ) : null}
     </div>

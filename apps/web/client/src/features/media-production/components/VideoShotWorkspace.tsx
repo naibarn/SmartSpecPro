@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import {
   ArrowLeft,
+  AlertTriangle,
+  CheckCircle,
   Eye,
   ChevronDown,
   ChevronUp,
@@ -45,6 +47,9 @@ export interface VideoShotWorkspaceProps extends VideoShotWorkspaceCallbacks {
   onStoryboardReferenceSkillChange?: (skillId: string) => void;
   onGenerateShotReferencePrompt?: (shotId: string, skillId: string, prompt?: StoryboardPromptItem) => void;
   onGenerateShotFrameImage?: (shotId: string, phase: "start" | "stop", skillId: string, prompt?: StoryboardPromptItem) => void;
+  onGenerateAllShotFrameImages?: (skillId: string, prompts?: Record<string, StoryboardPromptItem>) => void;
+  isGeneratingAllShotFrameImages?: boolean;
+  shotFrameBatchStatus?: string | null;
   onOpenShotStoryboardGridSplit?: (shotId: string, imageUrl: string, prompt?: StoryboardPromptItem) => void;
   onAssignShotMediaSlot?: (
     shotId: string,
@@ -103,6 +108,9 @@ type StoryboardPromptItem = {
   videoUrl?: string;
   videoTaskId?: string;
   videoGenerationMode?: string;
+  videoReadinessStatus?: "ready" | "warning" | "blocked" | string;
+  videoReadinessNotes?: string[];
+  videoReadinessCheckedAt?: string;
   promptSpeechMode?: "none" | "th" | "en" | "other" | string;
   promptSpeechLanguage?: string;
   promptIncludeSound?: boolean;
@@ -391,6 +399,9 @@ export function VideoShotWorkspace({
   onStoryboardReferenceSkillChange,
   onGenerateShotReferencePrompt,
   onGenerateShotFrameImage,
+  onGenerateAllShotFrameImages,
+  isGeneratingAllShotFrameImages = false,
+  shotFrameBatchStatus,
   onOpenShotStoryboardGridSplit,
   onAssignShotMediaSlot,
   onUploadShotMediaFile,
@@ -482,6 +493,21 @@ export function VideoShotWorkspace({
     promptIncludeSound: videoPromptIncludeSound,
     promptTone: videoPromptTone,
   });
+  const frameReadyCounts = shots.reduce(
+    (counts, shot) => {
+      const promptDraft = getStoryboardPromptDraft(shot);
+      const mediaSummary = shotMediaById[shot.id] ?? { imageNodes: [], videoNodes: [] };
+      const startFrameUrl = outputUrl(shotOutputFromPrompt(promptDraft, "start")) || outputUrl(mediaSummary.startFrameOutput);
+      const stopFrameUrl = outputUrl(shotOutputFromPrompt(promptDraft, "stop")) || outputUrl(mediaSummary.stopFrameOutput);
+      if (String(promptDraft.startFramePrompt ?? "").trim()) counts.startPrompts += 1;
+      if (String(promptDraft.stopFramePrompt ?? "").trim()) counts.stopPrompts += 1;
+      if (startFrameUrl) counts.startFrames += 1;
+      if (stopFrameUrl) counts.stopFrames += 1;
+      if (videoPromptSpeechMode === "none" || String(promptDraft.script ?? "").trim()) counts.audioReady += 1;
+      return counts;
+    },
+    { startPrompts: 0, stopPrompts: 0, startFrames: 0, stopFrames: 0, audioReady: 0 },
+  );
   const readyShotVideoCount = shots.filter((shot) => {
     const promptDraft = getStoryboardPromptDraft(shot);
     const mediaSummary = shotMediaById[shot.id] ?? { imageNodes: [], videoNodes: [] };
@@ -535,6 +561,16 @@ export function VideoShotWorkspace({
 
   const handleSavePromptDraft = (shotId: string, promptDraft: StoryboardPromptItem) => {
     onUpdateStoryboardPrompt?.(shotId, promptDraft);
+  };
+  const handleGenerateAllShotFrameImages = () => {
+    const prompts = Object.fromEntries(shots.map((shot) => [
+      shot.id,
+      withVideoPromptPlannerOptions(getStoryboardPromptDraft(shot)),
+    ]));
+    for (const [shotId, promptDraft] of Object.entries(prompts)) {
+      onUpdateStoryboardPrompt?.(shotId, promptDraft);
+    }
+    onGenerateAllShotFrameImages?.(selectedReferenceSkillId, prompts);
   };
 
   const inferDroppedMediaType = (url: string, explicit?: string): "image" | "video" | "unknown" => {
@@ -764,6 +800,22 @@ export function VideoShotWorkspace({
               <Button
                 type="button"
                 variant="outline"
+                onClick={handleGenerateAllShotFrameImages}
+                disabled={!onGenerateAllShotFrameImages || isGeneratingAllShotFrameImages || shots.length === 0}
+                title={isThai ? "สร้าง Start frame แล้วรอเสร็จ ก่อนสร้าง Stop frame ของแต่ละ shot เพื่อคุม continuity" : "Generate each shot's start frame first, wait for completion, then generate its stop frame for continuity."}
+              >
+                {isGeneratingAllShotFrameImages ? (
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                )}
+                {isGeneratingAllShotFrameImages
+                  ? (isThai ? "กำลังสร้างเฟรมทุกช็อต" : "Generating all frames")
+                  : (isThai ? "สร้างภาพ Start/Stop ทุก Shot" : "Generate all start/stop frames")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => void onCompoundShotVideos?.()}
                 disabled={!onCompoundShotVideos || isCompoundingShotVideos || readyShotVideoCount === 0}
               >
@@ -783,6 +835,11 @@ export function VideoShotWorkspace({
           {shotVideoCompoundStatus ? (
             <div className="mt-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
               {shotVideoCompoundStatus}
+            </div>
+          ) : null}
+          {shotFrameBatchStatus ? (
+            <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+              {shotFrameBatchStatus}
             </div>
           ) : null}
           <div className="mt-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 md:grid-cols-[minmax(220px,360px)_minmax(0,1fr)] md:items-center">
@@ -806,6 +863,25 @@ export function VideoShotWorkspace({
 		                ? "ระบบจะสร้าง prompt ภาพ Start และ Stop แบบแยกช็อต เพื่อ generate ภาพเต็ม resolution ก่อนส่งต่อสร้างวิดีโอ ส่วนภาพจาก 3x3 ใน Tab Image ยังลากมาวางในช่องได้"
 		                : "Each shot gets separate full-resolution start and stop frame prompts before video generation. Frames from the Image tab 3x3 flow can still be dragged into slots."}
 		            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <Badge variant="outline" className="bg-white text-slate-700">
+              {isThai ? `Prompt Start ${frameReadyCounts.startPrompts}/${shots.length}` : `Start prompts ${frameReadyCounts.startPrompts}/${shots.length}`}
+            </Badge>
+            <Badge variant="outline" className="bg-white text-slate-700">
+              {isThai ? `Prompt Stop ${frameReadyCounts.stopPrompts}/${shots.length}` : `Stop prompts ${frameReadyCounts.stopPrompts}/${shots.length}`}
+            </Badge>
+            <Badge variant="outline" className={frameReadyCounts.startFrames === shots.length && shots.length ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "bg-white text-slate-700"}>
+              {isThai ? `Start frame ${frameReadyCounts.startFrames}/${shots.length}` : `Start frames ${frameReadyCounts.startFrames}/${shots.length}`}
+            </Badge>
+            <Badge variant="outline" className={frameReadyCounts.stopFrames === shots.length && shots.length ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "bg-white text-slate-700"}>
+              {isThai ? `Stop frame ${frameReadyCounts.stopFrames}/${shots.length}` : `Stop frames ${frameReadyCounts.stopFrames}/${shots.length}`}
+            </Badge>
+            <Badge variant="outline" className={videoPromptSpeechMode === "none" || frameReadyCounts.audioReady === shots.length ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}>
+              {videoPromptSpeechMode === "none"
+                ? (isThai ? "เสียง: ไม่ใส่บทพูด" : "Audio: no speech")
+                : (isThai ? `บทพูดพร้อม ${frameReadyCounts.audioReady}/${shots.length}` : `Speech ready ${frameReadyCounts.audioReady}/${shots.length}`)}
+            </Badge>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-white p-3">
             <select
@@ -870,6 +946,18 @@ export function VideoShotWorkspace({
 	              const storyboardGridImageUrl = promptDraft.storyboardGridImageUrl;
 	              const storyboardGridFrames = promptDraft.storyboardGridFrames ?? [];
 	              const shotReferences = shotReferenceAssetsById[shot.id] ?? [];
+              const readinessStatus = String(promptDraft.videoReadinessStatus ?? "").trim();
+              const readinessTone = readinessStatus === "blocked"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : readinessStatus === "warning"
+                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                  : readinessStatus === "ready"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : hasStartStopFrames
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-600";
+              const needsSpeechLine = videoPromptSpeechMode !== "none";
+              const hasSpeechLine = Boolean(String(promptDraft.script ?? "").trim());
               const isSelected = selectedShot?.id === shot.id;
               const busy = shotGenerationState?.[shot.id] ?? {};
               return (
@@ -891,6 +979,32 @@ export function VideoShotWorkspace({
                       <p className="mt-1 line-clamp-2 text-sm text-slate-700">
                         {shot.storyBeat || promptDraft.script || promptDraft.videoPrompt || promptDraft.imagePrompt}
                       </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                        <Badge variant="outline" className={promptDraft.startFramePrompt ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}>
+                          {promptDraft.startFramePrompt ? <CheckCircle className="mr-1 h-3 w-3" /> : <AlertTriangle className="mr-1 h-3 w-3" />}
+                          {isThai ? "Start prompt" : "Start prompt"}
+                        </Badge>
+                        <Badge variant="outline" className={startFrameUrl ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}>
+                          {isThai ? "Start image" : "Start image"}
+                        </Badge>
+                        <Badge variant="outline" className={stopFrameUrl ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}>
+                          {isThai ? "Stop image" : "Stop image"}
+                        </Badge>
+                        <Badge variant="outline" className={needsSpeechLine && !hasSpeechLine ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>
+                          {needsSpeechLine && !hasSpeechLine
+                            ? (isThai ? "ขาดบทพูด" : "Missing speech")
+                            : (isThai ? "เสียงพร้อม" : "Audio ready")}
+                        </Badge>
+                        <Badge variant="outline" className={readinessTone} title={(promptDraft.videoReadinessNotes ?? []).join("\n") || undefined}>
+                          {readinessStatus === "blocked"
+                            ? (isThai ? "วิดีโอติดเงื่อนไข" : "Video blocked")
+                            : readinessStatus === "warning"
+                              ? (isThai ? "วิดีโอมีจุดเสี่ยง" : "Video warning")
+                              : readinessStatus === "ready" || hasStartStopFrames
+                                ? (isThai ? "พร้อมสร้างวิดีโอ" : "Video ready")
+                                : (isThai ? "รอเฟรม" : "Waiting frames")}
+                        </Badge>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button type="button" variant="outline" size="sm" onClick={() => handleOpenShot(shot.id)}>
