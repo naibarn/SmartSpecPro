@@ -29,7 +29,7 @@
     },
     "reference_character_images": {
       "title": "Reference Character Images",
-      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. For 3x3 storyboards, include the referenced person in some frames and require every intentional person frame to show a clear visible referenced face with the product visible for identity and scale. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face.",
+      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. For 3x3 storyboards, include the referenced person in some frames and require every intentional person frame to show a clear visible referenced face with the product visible for identity and scale. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face. Use as clear face identity anchors for recurring people; preserve the same face and avoid waxy, plastic, CG-looking, blurred, cropped, or identity-swapped characters across shots.",
       "type": "array",
       "maxItems": 12,
       "items": {
@@ -42,7 +42,7 @@
     },
     "reference_product_images": {
       "title": "Watch And Eyewear Reference Storyboard Product Reference Images",
-      "description": "Upload นาฬิกาและแว่นตา product reference images. These are the highest-priority truth source. The generated prompt must preserve the exact watch or eyewear product category, subtype, silhouette, physical proportions, component count, colorway, material, texture, finish, markings, labels, packaging, and scale from these images. Creative styling must not recolor, resize, redesign, simplify, or replace the product.",
+      "description": "Upload นาฬิกาและแว่นตา product reference images. These are the highest-priority truth source. The generated prompt must preserve the exact watch or eyewear product category, subtype, silhouette, physical proportions, component count, colorway, material, texture, finish, markings, labels, packaging, and scale from these images. Creative styling must not recolor, resize, redesign, simplify, or replace the product. Treat these images as immutable product evidence; never add, remove, stretch, reshape, recolor, re-texture, relabel, simplify, or redesign the product.",
       "type": "array",
       "minItems": 1,
       "maxItems": 12,
@@ -322,7 +322,7 @@
     },
     "cinematic_style": {
       "title": "Cinematic Style",
-      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced นาฬิกาและแว่นตา product shape, proportions, colorway, material, texture, markings, labels, packaging, or scale. Info Graphics Realistic and Info Graphics intentionally create text-forward infographic layouts with large concise readable text; they override the no-text default while still preserving the referenced product.",
+      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced นาฬิกาและแว่นตา product shape, proportions, colorway, material, texture, markings, labels, packaging, or scale. Info Graphics Realistic and Info Graphics intentionally create text-forward infographic layouts with large concise readable text; they override the no-text default while still preserving the referenced product. Default storyboard prompts should favor cinematic photorealistic product-film quality with dimensional lighting, realistic lens/depth, and camera choices that match Storyboard Guide plus Voiceover Script; style must not change product geometry, material, labels, colorway, scale, or character identity.",
       "type": "string",
       "enum": [
         "auto",
@@ -377,19 +377,17 @@
       "type": "string",
       "default": ""
     },
-    "production_concept_details": {
-      "title": "Production Concept Details",
-      "description": "Optional selected Production Director concept/details. Use this as the creative guideline for tone, audience, problem, hook, selling points, and storyboard intent while preserving all reference-image locks. Do not introduce price, rating, sales volume, promotions, or other volatile marketplace claims.",
+    "voiceover_script": {
+      "title": "Voiceover Script / Dialogue",
+      "description": "Optional spoken dialogue, narration, or voiceover script from Media Studio. Use this together with Storyboard Guide as the primary shot-by-shot content source. Match each numbered/timed spoken line to the corresponding guide beat; parse shot markers even if whitespace is collapsed. Do not invent a different visual story. Product Detail / Product Facts and reference images still lock the real product, claims, scale, labels, character, and environment fidelity.",
       "type": "string",
       "default": ""
     },
-    "scene_descriptions": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "title": "Scene Descriptions",
-      "description": "Describe desired scenes, actions, usage context, product dimensions, physical markings, exact text to preserve, and output needs for นาฬิกาและแว่นตา. By default, prompts should not create captions, arrows, callouts, frame numbers, or measurement text in the image."
+    "production_concept_details": {
+      "title": "Product Detail / Product Facts",
+      "description": "Optional product details, product facts, selected concept context, and claim-safety notes from Media Studio. Use this to lock real product truth such as product type, model, size, countable parts, material, color, scale, use case, audience problem, hook, and selling points while preserving all reference-image locks. Do not introduce price, rating, sales volume, promotions, or other volatile marketplace claims.",
+      "type": "string",
+      "default": ""
     }
   },
   "required": [

@@ -1,129 +1,125 @@
 # Orchestra Plan
 
-## Task Classification - Product Category Reference Storyboard Skills
-- Scope: project
-- Risk: low
-- Affected domains: repo-backed Media Studio skills under `apps/web/skills`
-- Estimated file count: 162 new files across 18 skill packages
-- Chosen route: direct-inline-standard-light
-- Dispatch preference: direct-standard-light
-- Intent signals: user explicitly invoked Orchestra and requested end-to-end creation of 18 category-specific reference storyboard skills copied from the furniture reference storyboard pattern.
-- SocratiCode preflight: status green; narrowed to `apps/web/skills/furniture-reference-storyboard`, skill schema loading docs, and existing `apps/web/skills/*-reviewer` categories.
-- Planned implementation:
-  - Create one `*-reference-storyboard` skill package per requested product group.
-  - Preserve furniture-reference-storyboard operational conventions: `SKILL.md`, mirrored `skill.md`, JSON schemas, output contract, basic scripts, references, and lock metadata.
-  - Replace furniture-specific logic with category-specific product fidelity rules covering exact shape, proportions, material, texture, markings, scale, and common wrong substitutions.
-  - Keep shared storyboard rules: product reference dominance, reference role disambiguation, text rendering controls, equal grid layouts, plain prompt output, and QA rewrite gates.
-  - Validate JSON schemas, mirrored skill files, and generated package structure.
-
-## Current Task - Media Studio Split Append And Storyboard Duration
-- Scope: medium
-- Risk: low/medium UI workflow
-- Affected domains: Media Studio split tools, Storyboard Review panel, storyboard review workspace helpers/tests
-- Estimated file count: 4
-- chosen_route: direct-inline-standard-light
-- dispatch_preference: direct-standard-light
-- SocratiCode status: green
-- Planned changes:
-  - Allow dropping an image onto the collapsed scissors button to split that new image and append its frames to the current split results.
-  - Keep split result ordering user-controlled and send Storyboard Review tasks in the visible order.
-  - Calculate storyboard total duration as `(frame count - 1) * seconds per shot`, falling back to 8 seconds per shot when unknown.
-  - Show the total duration below the send-to-Storyboard button.
-  - Add per-shot duration controls in Storyboard Review with options 4/6/8/10/12/15 seconds, default 8 seconds.
-  - Make regenerated storyboard clips use their current per-shot duration.
-
-## Current Task
-Enable mouse drag-and-drop reordering for Media Studio split/crop result thumbnails in the image split tools panel.
-
-## Task Classification
-- Scope: small
-- Risk: low
-- Affected domains: Media Studio frontend image split tools
-- Estimated file count: 2
-- chosen_route: direct-edit-standard-light
-- dispatch_preference: direct-standard-light
-
-## Current Implementation Notes
-- Add internal drag metadata to split result thumbnails while preserving existing image drag payloads for external drop targets.
-- Reorder `splitResults` state when one thumbnail is dropped on another thumbnail.
-- Use the visible thumbnail order for Storyboard Review frame upload and generated shot sequence.
-- Keep original split metadata (`index`, `row`, `col`) intact for source provenance.
-
 ## Task
-Fix the Chrome extension Production tab so the selected Production Director project exposes every shot's 3x3 image prompt, video prompt, reference image, start frame, and stop frame with drag-and-drop usable outside the extension.
+Update every `*-reference-storyboard` skill so the old Scene Descriptions input is removed and replaced with a spoken script/voiceover input, while storyboard prompt generation follows Storyboard Guide + spoken script first and keeps product/reference fidelity locked.
 
 ## Classification
-- scope: medium
-- risk: medium
-- affected_domains: Chrome extension side panel, marketplace capture read API
-- estimated_file_count: 3
-- chosen_route: direct-inline-standard-light
-- task_summary: Extend the read-only Production Director extension contract and render draggable per-shot media/prompt cards.
-- bug_route: production extension data usability bug
+- scope: large
+- risk: low
+- affected_domains: skill schemas, skill prompt instructions, Media Studio production reference storyboard sync, focused tests
+- estimated_file_count: 60+
+- chosen_route: installed-skill-flow + direct-inline-standard-light
+- task_summary: Replace scene-description-driven storyboard prompt input with voiceover-script-driven prompt input across production reference storyboard skills.
+- bug_route: n/a
 - parallel_default: false
 - planned_agents: []
 - dispatch_preference: direct-standard-light
 
+## Skill Activation
+- orchestra: explicitly requested; owns routing, impact notes, gates, and progress artifacts.
+- brainstorming: used for compact design approval before behavior change.
+- skill-creator: used because the task updates existing skill contracts and instructions.
+
 ## SocratiCode Preflight
-- status: green
-- narrowed files:
-  - `/home/dev/projects/SmartSpecPro/apps/extension/src/panel/App.tsx`
-  - `/home/dev/projects/SmartSpecPro/apps/extension/src/panel/style.css`
-  - `/home/dev/projects/SmartSpecPro/apps/web/server/routes/marketplaceCapture.ts`
-- impact: route change is read-only and extends the project detail response; no auth, tenant filtering, or write behavior changed.
+- status: green; index and watcher active for `/home/dev/projects/SmartSpecPro`.
+- narrowed areas:
+  - `apps/web/skills/*-reference-storyboard/**`
+  - `apps/web/client/src/lib/productionReferenceStoryboard.ts`
+  - `apps/web/client/src/pages/MediaStudio.tsx`
+  - `apps/web/client/src/lib/productionReferenceStoryboard.test.ts`
+  - `apps/web/server/services/__tests__/productReferenceStoryboardSkills.test.ts`
+- impact:
+  - `apps/web/client/src/lib/productionReferenceStoryboard.ts`: SocratiCode reported no graph callers, but direct text references exist in MediaStudio and tests.
+  - `apps/web/client/src/pages/MediaStudio.tsx`: SocratiCode reported no graph callers; treat as user-facing production workflow surface.
 
-## Implementation Notes
-- Added shot fields for `storyboardGridPrompt`, `videoPrompt`, `referenceImageUrl`, `startFrameUrl`, and `stopFrameUrl`.
-- Kept legacy `storyboardPrompt` for backward compatibility.
-- Added standard drag payloads for media cards: `text/uri-list`, `text/plain`, `DownloadURL`, and image `text/html`.
-- Packaged the extension dashboard zip for version `0.1.40`.
+## Existing Worktree State
+- Existing dirty files overlap this task:
+  - `apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx`
+  - `apps/web/client/src/features/media-production/production-director.e2e.test.tsx`
+  - `apps/web/client/src/lib/productionReferenceStoryboard.test.ts`
+  - `apps/web/client/src/lib/productionReferenceStoryboard.ts`
+  - `apps/web/client/src/pages/MediaStudio.tsx`
+  - `apps/web/skills/media-production-storyboard-planner/SKILL.md`
+  - `apps/web/skills/media-production-storyboard-planner/skill.md`
+  - `apps/web/client/src/features/media-production/storyConceptVariation.ts`
+- Work with these changes; do not revert unrelated or prior user edits.
 
-## Task Classification - Shopee Affiliate Product Offer
-- Scope: medium
-- Risk: low
-- Affected domains: Chrome extension content scanner, side panel Product List UI
-- Estimated file count: 5
-- Chosen route: direct-inline-standard-light
-- Dispatch preference: direct-standard-light
-- Intent signals: user requested a concrete end-to-end extension behavior change across capture review navigation and product-list extraction.
-- SocratiCode preflight: status green; narrowed to `apps/extension/src/content/adapters/shopee.ts`, `apps/extension/src/content/capture/categoryScanner.ts`, `apps/extension/src/panel/App.tsx`, `apps/extension/src/panel/style.css`, and `apps/extension/src/shared/types.ts`.
+## Proposed Design
+Recommended approach: introduce `voiceover_script` as the replacement input for `scene_descriptions`.
 
-## Task Classification - Extension Release 0.1.62
-- Scope: small
-- Risk: low
-- Affected domains: Chrome extension release packaging, dashboard public release asset
-- Estimated file count: 4 plus generated zip
-- Chosen route: direct-edit
-- Dispatch preference: direct-standard-light
-- Intent signals: user requested a concrete extension version bump and dashboard package build.
-- SocratiCode preflight: status green; dashboard latest release path is `apps/web/client/public/releases` via `/api/desktop-releases/marketplace-extension/latest`.
+Design rules:
+- `storyboard_guide` remains the primary shot/visual/camera/timing contract.
+- `voiceover_script` is the spoken line/script contract. It should preserve shot numbering and timing when available.
+- Prompt logic must use `storyboard_guide` + `voiceover_script` as the primary storyboard content source, without inventing a new story when those fields already contain separated shots.
+- `production_concept_details` controls product concept, real product facts, audience, problem, hook, selling points, and claim safety.
+- `reference_product_images` lock product geometry/material/color/labels/scale.
+- `reference_character_images` lock recurring character identity.
+- `reference_environment_images` lock scene mood/location/lighting only and must not override product or character references.
 
-## Task Classification - Magnific Drag And Shopee Affiliate Link Diagnostics
-- Scope: medium
-- Risk: low
-- Affected domains: Chrome extension content drag bridge, Shopee Affiliate scanner, side panel Product List and Config diagnostics
-- Estimated file count: 7 plus generated zip
-- Chosen route: direct-inline-standard-light
-- Dispatch preference: direct-standard-light
-- Intent signals: user requested targeted implementation for a cross-surface extension bug and scanner workflow, plus future diagnostic logging.
-- SocratiCode preflight: status green; impact checks for `apps/extension/src/content/index.ts`, `apps/extension/src/content/capture/categoryScanner.ts`, and `apps/extension/src/background/serviceWorker.ts` showed no indexed callers.
+## Planned Changes
+- Replace schema field `scene_descriptions` with `voiceover_script` in every `apps/web/skills/*-reference-storyboard/schemas/input.schema.json`.
+- Replace UI order/help for `scene_descriptions` with `voiceover_script` in every matching `ui.schema.json`.
+- Update `SKILL.md`, `skill.md`, and reference contracts to remove Scene Descriptions as an input and document Storyboard Guide + Voiceover Script priority.
+- Update Media Studio sync to send `voiceover_script` instead of `scene_descriptions`.
+- Rename/update helper and tests from scene descriptions to voiceover script behavior.
 
-## Task Classification - Product List Detection And Persistence Fix
-- Scope: medium
-- Risk: low
-- Affected domains: Chrome extension content scanner, side panel Product List state, dashboard release packaging
-- Estimated file count: 5 plus generated zip
-- Chosen route: direct-inline-standard-light
-- Dispatch preference: direct-standard-light
-- Intent signals: user reported Product List showing 0 items on Shopee Affiliate and requested the list remain visible while navigating to other pages.
-- SocratiCode preflight: status green; narrowed to `apps/extension/src/content/capture/categoryScanner.ts`, `apps/extension/src/content/index.ts`, and `apps/extension/src/panel/App.tsx`; impact checks for the extension entry files showed no indexed callers.
+## Quality Gates Planned
+- Focused Vitest for production reference storyboard helper.
+- Focused Vitest for production reference storyboard skill schema contracts.
+- JSON parse validation for changed skill schemas.
+- Targeted `rg` verification that `scene_descriptions` no longer remains in the `*-reference-storyboard` skill set or production reference storyboard sync path.
 
-## Task Classification - Shopee Affiliate DOM Diagnostics
-- Scope: medium
-- Risk: low
-- Affected domains: Chrome extension content scanner diagnostics, side panel diagnostics UI, dashboard release packaging
-- Estimated file count: 4 plus generated zip
-- Chosen route: direct-inline-standard-light
-- Dispatch preference: direct-standard-light
-- Intent signals: user reported scan still returns 0 despite visible Shopee Affiliate cards and requested DOM/page details for the next debugging pass.
-- SocratiCode preflight: status green; narrowed to `apps/extension/src/content/capture/categoryScanner.ts`, `apps/extension/src/content/index.ts`, and `apps/extension/src/panel/App.tsx`; impact checks for the extension entry files showed no indexed callers.
+## Follow-Up Task: Cinematic Quality And Fidelity Locks
+
+User requested stronger image quality rules across every `*-reference-storyboard` skill:
+- higher-quality cinematic photorealism
+- dimensional lighting, camera, and depth aligned to `storyboard_guide` + `voiceover_script`
+- clear recurring character faces, stable identity across shots, natural human skin rather than plastic/CG-looking people
+- stricter product immutability from reference images: no added/removed parts, reshaping, recoloring, retexturing, relabeling, or material/geometry drift
+
+Classification:
+- scope: large
+- risk: low
+- route: installed-skill-flow + direct-inline-standard-light
+- domains: skill prompt contracts, skill schemas, focused tests
+- dispatch: no sub-agents; standard light direct update
+
+## Follow-Up Task: Shot Mapping And Product Fidelity From Test Output
+
+User supplied a real 3x3 Greenforst bedside-table test output where the storyboard looked pleasant but did not strictly map each generated panel to the Storyboard Guide + Voiceover Script, and the product drifted toward a generic bedside table.
+
+Plan:
+- Add a shot-by-shot frame mapping rule to all production reference storyboard skills.
+- Require explicit numbered/timed Storyboard Guide + Voiceover Script parsing, including collapsed whitespace.
+- Make category default 3x3 maps fallback-only when no explicit shot list exists.
+- Replace generic `SCENE DESCRIPTION` output guidance with frame-level `SHOT-BY-SHOT STORYBOARD PROMPT` guidance.
+- Add per-frame product fidelity matrix/QA requirements so countable product facts are repeated inside every product-visible frame.
+- Update helper/test expectations and run focused gates.
+
+## Follow-Up Task: Cinematic And Video Continuity From Second Output
+
+User supplied a second Greenforst 3x3 output after the shot-mapping changes. It improved sequence alignment but still showed:
+- flat/catalog-like lighting and not enough frame-level camera/light/color direction
+- a product-use frame with back/head/no clear face, risky for video identity continuity
+- a confirmation frame where the character is correct but the product changes into a different bedside table
+- readable/non-product prop text risk in no-text mode
+
+Plan:
+- Require a dedicated `CINEMATIC REALISM LOCK` plus per-frame camera/light/color notes.
+- Require video-safe person framing: clear front/three-quarter face for identity frames, otherwise hands-only/partial-body-without-head.
+- Require same canonical product instance across lifestyle/result/confirmation/CTA frames.
+- Forbid competing similar products from environment references.
+- Suppress readable non-product prop/background text in no-text mode.
+
+## Follow-Up Task: Unified Product Reference Storyboard Skill
+
+User proposed consolidating the 20 `*-reference-storyboard` skills into one shared skill because the storyboard/voiceover/cinematic/product-lock logic is now identical and only product-category fidelity rules differ.
+
+Plan:
+- Add one enabled `product-reference-storyboard` skill for Media Studio Production.
+- Add `product_category` input so Production can pass the detected product category into the skill.
+- Move product-specific rule differences into `references/product-categories/*.md` with 20 category files.
+- Keep legacy category skills on disk for compatibility but disable them from Production selection.
+- Update client routing to return the unified skill id while separately detecting product category.
+- Update server skill execution to append the selected category rule file for `product-reference-storyboard`.
+- Update focused tests and run JSON/schema, TypeScript, and diff checks.

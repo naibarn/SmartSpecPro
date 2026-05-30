@@ -1,0 +1,45 @@
+{
+  "name": "product-reference-storyboard",
+  "version": "1.0.0",
+  "target_platform": "agents_python",
+  "bundle_topology": "single-agent",
+  "entrypoints": {
+    "run": "scripts/run.sh",
+    "verify": "scripts/verify.sh"
+  },
+  "outputs": [
+    "SKILL.md",
+    "references/input_contract.md",
+    "references/output_contract.md",
+    "references/maintenance.md",
+    "references/category-index.md",
+    "references/product-categories/household_product.md",
+    "references/product-categories/computer_laptop.md",
+    "references/product-categories/electrical_appliance.md",
+    "references/product-categories/food_beverage.md",
+    "references/product-categories/electronics.md",
+    "references/product-categories/fashion_clothing.md",
+    "references/product-categories/shoes.md",
+    "references/product-categories/watch_eyewear.md",
+    "references/product-categories/mobile_tablet.md",
+    "references/product-categories/jewelry.md",
+    "references/product-categories/mother_baby.md",
+    "references/product-categories/pet_supplies.md",
+    "references/product-categories/sports_equipment.md",
+    "references/product-categories/camera_photography.md",
+    "references/product-categories/gaming_accessories.md",
+    "references/product-categories/automotive.md",
+    "references/product-categories/stationery.md",
+    "references/product-categories/books.md",
+    "references/product-categories/furniture.md",
+    "references/product-categories/cosmetics.md",
+    "skill.md"
+  ],
+  "supported_modes": [
+    "create",
+    "improve",
+    "maintenance"
+  ],
+  "compatibility_mirror_policy": "mirror-skill-md",
+  "subagent_manifest": null
+}

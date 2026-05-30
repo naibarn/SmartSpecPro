@@ -82,6 +82,13 @@ import { ProductionFlowCanvas } from "./components/ProductionFlowCanvas";
 import { ProductionWorkspace } from "./components/ProductionWorkspace";
 import { ProductEvidenceTray } from "./components/ProductEvidenceTray";
 import { VideoShotWorkspace } from "./components/VideoShotWorkspace";
+import {
+  buildProductionStoryVariationRecipe,
+  buildProductionStoryVoiceoverBeats,
+  PRODUCTION_STORY_CONCEPT_SHOT_COUNT,
+  PRODUCTION_STORY_CONCEPT_SHOT_COUNT_OPTIONS,
+  PRODUCTION_STORY_CONCEPT_SPEECH_BUDGET_SECONDS,
+} from "./storyConceptVariation";
 
 const featureSpace: ProductionSpace = {
   schemaVersion: "1.0.0",
@@ -551,6 +558,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onConfirmStoryConceptPlan = vi.fn();
     const onRegenerateStoryConcepts = vi.fn();
     const onGenerateStoryConceptInfographic = vi.fn();
+    const onStoryboardShotCountChange = vi.fn();
     const onStoryboardClipDurationSecondsChange = vi.fn();
     const onBriefChange = vi.fn();
     const storyOption = {
@@ -597,6 +605,9 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         planningModelMode="manual"
         selectedPlanningModel="vision-thinking-model"
         planningModelOptions={[{ modelId: "vision-thinking-model", name: "Vision Thinking Model", provider: "test", supportsThinking: true, supportsVision: true, contextLength: 1_000_000 }]}
+        storyboardShotCount={9}
+        storyboardShotCountOptions={[...PRODUCTION_STORY_CONCEPT_SHOT_COUNT_OPTIONS]}
+        onStoryboardShotCountChange={onStoryboardShotCountChange}
         storyboardClipDurationSeconds={10}
         storyboardClipDurationOptions={[5, 6, 8, 9, 10, 12, 15]}
         onStoryboardClipDurationSecondsChange={onStoryboardClipDurationSecondsChange}
@@ -607,7 +618,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
             storyOption,
             { ...storyOption, id: "proof-trust", title: "Proof-Led Review" },
             { ...storyOption, id: "lifestyle-use-case", title: "Lifestyle Use Case" },
-            { ...storyOption, id: "hook-demo-cta", title: "Hook, Demo, CTA" },
+            { ...storyOption, id: "hook-demo-cta", title: "Hook, Demo, CTA", sourceSignals: ["regenerating"] },
           ],
           contextSummary: "Choose one concept before generating a fresh workflow.",
         }}
@@ -632,18 +643,19 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(screen.getByLabelText("Default image generation model")).toHaveValue("image-default");
     expect(screen.getByLabelText("Default video generation model")).toHaveValue("video-default");
     expect(screen.getByLabelText("Duration seconds")).toHaveValue("30");
-    expect(screen.getByLabelText("Storyboard seconds per video")).toHaveValue("10");
-    expect(screen.getByLabelText("Seconds per storyboard video")).toHaveValue("10");
-    expect(screen.getByRole("option", { name: "5s / video (6 videos)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "6s / video (5 videos)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "9s / video (4 videos)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "12s / video (3 videos)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "15s / video (2 videos)" })).toBeInTheDocument();
-    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("3 videos/shots from 30s total ÷ 10s");
+    expect(screen.getByLabelText("Storyboard shot count")).toHaveValue("9");
+    expect(screen.getByLabelText("Storyboard concept shot count")).toHaveValue("9");
+    expect(screen.getByRole("option", { name: "6 shots (5s/shot)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "9 shots (3.3s/shot)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "15 shots (2s/shot)" })).toBeInTheDocument();
+    expect(screen.getByTestId("production-story-wizard")).toHaveTextContent("9 videos/shots from 30s total, about 3.3s per shot");
+    const regeneratingButton = within(screen.getByTestId("production-story-option-hook-demo-cta")).getByRole("button", { name: /regenerating/i });
+    expect(regeneratingButton).toBeDisabled();
+    expect(regeneratingButton).toHaveAttribute("aria-busy", "true");
     fireEvent.change(screen.getByLabelText("Duration seconds"), { target: { value: "56" } });
     expect(onBriefChange).toHaveBeenCalledWith(expect.objectContaining({ durationSeconds: 56 }));
-    fireEvent.change(screen.getByLabelText("Seconds per storyboard video"), { target: { value: "8" } });
-    expect(onStoryboardClipDurationSecondsChange).toHaveBeenCalledWith(8);
+    fireEvent.change(screen.getByLabelText("Storyboard concept shot count"), { target: { value: "12" } });
+    expect(onStoryboardShotCountChange).toHaveBeenCalledWith(12);
     fireEvent.click(screen.getByRole("button", { name: /regenerate 4 concepts/i }));
     expect(onRegenerateStoryConcepts).toHaveBeenCalledWith();
     fireEvent.click(within(screen.getByTestId("production-story-option-proof-trust")).getByRole("button", { name: /^regenerate$/i }));
@@ -748,6 +760,105 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(detailsByCard[1]).toMatch(/consideration|doubts/i);
     expect(detailsByCard[2]).toMatch(/four-beat demo|fast/i);
     expect(detailsByCard[3]).toMatch(/mini story|organized real-life/i);
+  });
+
+  it("builds and displays configurable-shot 60-second natural voiceover beats for story concepts", () => {
+    const productSignals = {
+      productRef: "compact bedside shelf",
+      friction: "bedside essentials keep spreading across the room",
+      aspiration: "the corner feels calmer and daily items are easier to reach",
+      consideration: "whether the shelf actually fits a small bedroom",
+      proofFocus: "show scale beside the bed, what fits on top, and the before-after corner",
+      quickSteps: ["messy bedside", "place the compact bedside shelf", "arrange phone, book, and drink", "end on a cleaner corner"],
+      miniStory: "On the first night, the user puts a lamp, book, drink, and phone on the compact bedside shelf.",
+      fallbackBenefits: ["keeps bedside items together", "compact size", "fits a small room corner"],
+    };
+    const recipe = buildProductionStoryVariationRecipe({
+      dimension: "objection_trust",
+      storyOptionId: "story_option:objection_trust",
+      generationSeed: "test-seed",
+      index: 1,
+      locale: "en",
+    });
+    const voiceoverBeats = buildProductionStoryVoiceoverBeats({
+      locale: "en",
+      dimension: "objection_trust",
+      productSignals,
+      variationRecipe: recipe,
+      sellingPoints: ["compact size", "easy-to-reach setup"],
+      objectionsTrust: ["whether it fits a small bedroom"],
+      useCase: "small bedroom organization",
+    });
+    expect(voiceoverBeats).toHaveLength(PRODUCTION_STORY_CONCEPT_SHOT_COUNT);
+    expect(voiceoverBeats[0]).toMatchObject({ startSec: 0, endSec: 6.7 });
+    expect(voiceoverBeats[PRODUCTION_STORY_CONCEPT_SHOT_COUNT - 1]).toMatchObject({ endSec: 60 });
+    expect(voiceoverBeats[0].speechBudgetSeconds).toBe(PRODUCTION_STORY_CONCEPT_SPEECH_BUDGET_SECONDS);
+    expect(new Set(voiceoverBeats.map((beat) => beat.cameraDirection)).size).toBeGreaterThan(4);
+    expect(voiceoverBeats.map((beat) => beat.voiceoverScript).join(" ")).toMatch(/Before buying|open the product details/i);
+    const twelveShotBeats = buildProductionStoryVoiceoverBeats({
+      locale: "en",
+      dimension: "objection_trust",
+      productSignals,
+      variationRecipe: recipe,
+      shotCount: 12,
+    });
+    expect(twelveShotBeats).toHaveLength(12);
+    expect(twelveShotBeats[11]).toMatchObject({ endSec: 60 });
+
+    const storyOption = {
+      id: "proof-trust",
+      storyOptionId: "story_option:objection_trust",
+      storyDimension: "objection_trust" as const,
+      title: "Proof-Led Review",
+      angle: "Answer the doubt with real scale and product detail.",
+      audience: "Marketplace shoppers",
+      painPoint: "Unsure whether the product fits the room.",
+      hook: "Before buying, check the real fit.",
+      sellingPoints: ["compact size", "easy-to-reach setup"],
+      objectionsTrust: ["whether it fits a small bedroom"],
+      useCase: "small bedroom organization",
+      conceptDetails: "Tell the consideration moment with scale, context, and evidence-backed details.",
+      productFacts: "PRODUCT FACTS LOCK: compact bedside shelf.",
+      variationRecipe: recipe,
+      voiceoverBeats,
+      sceneTimeline: voiceoverBeats.map((beat) => ({
+        timeRange: `${beat.startSec}-${beat.endSec}s`,
+        title: beat.title,
+        detail: beat.visualBeat,
+      })),
+      risks: [],
+      sourceSignals: ["LLM synthesis"],
+    };
+
+    render(
+      <ProductionWorkspace
+        title="Launch teaser"
+        status="plan_ready_for_review"
+        summary="Create a short product video using approved evidence only."
+        productionRunId="run-feature-116"
+        onTitleChange={() => {}}
+        onSummaryChange={() => {}}
+        onSave={() => {}}
+        onCreateFixturePlan={() => {}}
+        onOpenVideoShot={() => {}}
+        storyConceptWizard={{
+          status: "options_ready",
+          selectedId: "proof-trust",
+          options: [storyOption],
+        }}
+        space={featureSpace}
+      />
+    );
+
+    expect(screen.getByTestId("production-story-option-proof-trust")).toHaveTextContent("9 shots / 60 seconds");
+    const voiceoverField = screen.getByLabelText(/storyboard voiceover/i) as HTMLTextAreaElement;
+    expect(voiceoverField.value).toContain("1. 0-6.7s");
+    expect(voiceoverField.value).toContain("Before buying");
+    expect(voiceoverField.value).not.toContain("Camera:");
+    const conceptField = screen.getByLabelText(/concept journey/i) as HTMLTextAreaElement;
+    expect(conceptField.value).toContain("Shot-by-shot video concept");
+    expect(conceptField.value).toContain("Camera:");
+    expect(conceptField.value).toContain("about 10s");
   });
 
   it("shows story concept options after a production project exists", () => {
@@ -1790,14 +1901,37 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     const onUpdateStoryboardPrompt = vi.fn();
     const onStoryboardReferenceSkillChange = vi.fn();
     const onGenerateShotReferencePrompt = vi.fn();
-    const onGenerateShotStoryboardGridImage = vi.fn();
+    const onGenerateShotFrameImage = vi.fn();
     const onOpenShotStoryboardGridSplit = vi.fn();
     const onAssignShotMediaSlot = vi.fn();
     const onGenerateShotVideo = vi.fn();
+    const videoReadySpace: ProductionSpace = {
+      ...featureSpaceTwoShots,
+      flowNodes: [
+        ...featureSpaceTwoShots.flowNodes,
+        {
+          id: "storyboard-card",
+          kind: "storyboard_planning",
+          title: "Storyboard prompt cards",
+          status: "ready",
+          position: { x: 0, y: 240 },
+          metadata: {
+            storyboardPrompts: [
+              {
+                shotId: "shot-1",
+                order: 1,
+                startFrameUrl: "https://example.test/shot-1-start.png",
+                stopFrameUrl: "https://example.test/shot-1-stop.png",
+              },
+            ],
+          },
+        },
+      ],
+    };
 
     render(
       <VideoShotWorkspace
-        space={featureSpaceTwoShots}
+        space={videoReadySpace}
         selectedShotId="shot-1"
         onBackToProduction={() => {}}
         onSaveShot={onSaveShot}
@@ -1818,7 +1952,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
         ]}
         onStoryboardReferenceSkillChange={onStoryboardReferenceSkillChange}
         onGenerateShotReferencePrompt={onGenerateShotReferencePrompt}
-        onGenerateShotStoryboardGridImage={onGenerateShotStoryboardGridImage}
+        onGenerateShotFrameImage={onGenerateShotFrameImage}
         onOpenShotStoryboardGridSplit={onOpenShotStoryboardGridSplit}
         onAssignShotMediaSlot={onAssignShotMediaSlot}
         onGenerateShotVideo={onGenerateShotVideo}
@@ -1826,28 +1960,32 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     );
 
     expect(screen.getByTestId("video-shot-storyboard-cards")).toHaveTextContent("Full storyboard prompt cards");
-    fireEvent.change(screen.getByLabelText("3x3 storyboard image prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
+    fireEvent.change(screen.getByLabelText("Start/stop frame prompt skill"), { target: { value: "cosmatic-reference-storyboard" } });
     expect(onStoryboardReferenceSkillChange).toHaveBeenCalledWith("cosmatic-reference-storyboard");
 	    expect(screen.getByTestId("video-shot-storyboard-card-shot-1")).toHaveTextContent("Drop a video here");
 	    expect(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).queryByLabelText("Image prompt")).not.toBeInTheDocument();
 	    expect(screen.getByLabelText("Video prompt speech mode")).toHaveValue("none");
 	    expect(screen.getByLabelText("Video prompt tone")).toHaveValue("sales");
 	    fireEvent.change(screen.getByLabelText("Video prompt speech mode"), { target: { value: "th" } });
-	    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("3x3 storyboard image prompt"), { target: { value: "Updated reference prompt for card" } });
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /save this card/i }));
-    expect(onUpdateStoryboardPrompt).toHaveBeenCalledWith("shot-1", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card", storyboardGridPrompt: "Updated reference prompt for card" }));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate 3x3 image/i }));
-    expect(onGenerateShotStoryboardGridImage).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({ referenceStoryboardPrompt: "Updated reference prompt for card" }));
-    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate video/i }));
-	    expect(onGenerateShotVideo).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.any(Object));
-	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /skill prompt/i }));
-	    expect(onGenerateShotReferencePrompt).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({
-	      promptSpeechMode: "th",
-	      promptSpeechLanguage: "Thai",
-	      promptIncludeSound: false,
-	      promptTone: "sales",
-	      referenceStoryboardPrompt: "Updated reference prompt for card",
-	    }));
+		    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("Start-frame prompt"), { target: { value: "Updated start prompt for card" } });
+		    fireEvent.change(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByLabelText("Stop-frame prompt"), { target: { value: "Updated stop prompt for card" } });
+	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /save this card/i }));
+	    expect(onUpdateStoryboardPrompt).toHaveBeenCalledWith("shot-1", expect.objectContaining({ startFramePrompt: "Updated start prompt for card", stopFramePrompt: "Updated stop prompt for card" }));
+	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate start/i }));
+	    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "start", "furniture-reference-storyboard", expect.objectContaining({ startFramePrompt: "Updated start prompt for card" }));
+	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate stop/i }));
+	    expect(onGenerateShotFrameImage).toHaveBeenCalledWith("shot-1", "stop", "furniture-reference-storyboard", expect.objectContaining({ stopFramePrompt: "Updated stop prompt for card" }));
+	    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /generate video/i }));
+		    expect(onGenerateShotVideo).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.any(Object));
+		    fireEvent.click(within(screen.getByTestId("video-shot-storyboard-card-shot-1")).getByRole("button", { name: /start\/stop prompts/i }));
+		    expect(onGenerateShotReferencePrompt).toHaveBeenCalledWith("shot-1", "furniture-reference-storyboard", expect.objectContaining({
+		      promptSpeechMode: "th",
+		      promptSpeechLanguage: "Thai",
+		      promptIncludeSound: false,
+		      promptTone: "sales",
+		      startFramePrompt: "Updated start prompt for card",
+		      stopFramePrompt: "Updated stop prompt for card",
+		    }));
 
     expect(screen.getByText("Hook")).toBeInTheDocument();
     expect(screen.getByText("Image config node")).toBeInTheDocument();

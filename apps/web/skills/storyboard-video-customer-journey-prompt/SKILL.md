@@ -48,6 +48,10 @@ Then inspect every slot's start/end image pair with vision. For each slot, ident
 - Do not output `@Image3`, `@Image4`, `@Image5`, or any higher image alias in any slot prompt, because each slot generation receives only two reference images.
 - Do not invent a different product, colorway, room, character, shop, brand, or use case.
 - Keep product identity consistent across all slots.
+- Product fidelity is a hard lock: preserve the exact referenced product geometry, countable parts, proportions, material, color, and construction in every product-visible slot. Never add drawers, doors, extra panels, altered shelves, alternate materials, accessories that change the product, or a different product type.
+- Human identity is a hard lock: when a person appears, preserve the same face, hair, skin texture, age, wardrobe, and body continuity. Avoid waxy, plastic, CG-looking skin, face drift, blurred faces, or identity swaps.
+- If endpoint frames show only a back/side/cropped person, keep the motion non-revealing unless the same clear face is already visible in the references. Do not rotate the person to reveal an invented face.
+- Use cinematic realism in every slot: realistic lens language, dimensional lighting, natural shadows, believable camera movement, coherent color grade, and story-matched camera angle.
 - Keep the same story logic, lighting mood, and customer journey across slots.
 - Every slot must have a clear role in the sales journey.
 - Avoid repeating the same motion or same benefit in multiple slots.
@@ -64,6 +68,8 @@ Each slot prompt must:
 - make the motion/camera choice fit the actual visual change between the two frames
 - state what to preserve from both frames
 - state the customer-journey purpose of the slot
+- make the camera angle, movement, lens feel, lighting, color, depth, and human/product action match the Storyboard Guide and the matching spoken beat
+- preserve natural face visibility and realistic skin when a face is visible, and avoid back-to-front face reveals unless the same face is clearly referenced
 - avoid visible captions, subtitles, UI, price badges, new readable text, or extra labels unless already visible in the frames
 - be concise enough for Veo/Kling-style image-to-video generation, but specific enough to preserve product fidelity
 
@@ -122,7 +128,7 @@ If `includeVoiceover` is true:
 - avoid fake discounts, fake guarantees, or unsupported claims
 - focus on benefit, use case, product detail, and emotional reason to buy
 - if `voiceoverFullScript` is provided and `useVoiceoverScriptAsConcept` is true, treat that edited script as the authoritative story/content source instead of the concept/details guideline; segment or lightly adapt it across ordered slots according to each slot duration while preserving meaning and order
-- if `voiceoverFullScript` is provided without `useVoiceoverScriptAsConcept`, use it as continuity context so regenerated lines stay compatible with the existing full narration
+- if `voiceoverFullScript` is provided without `useVoiceoverScriptAsConcept`, use it together with the Storyboard Guide as the primary ordered narrative contract. Match each slot to the corresponding spoken beat; do not invent a different spoken story or visual story. You may tighten wording for duration, but preserve meaning, order, and product claims
 - return `voiceover_full_script` as the exact ordered combination of all slot `voiceover_script` lines
 
 If `includeVoiceover` is false, use an empty string for every slot voiceover.

@@ -39,9 +39,34 @@ When `userInputs.mode` is `marketplace_story_concept_synthesis`, return JSON onl
       "emotionalTone": "Empathy Tone",
       "hookTechnique": "Hook แบบปัญหาโดนใจ",
       "visualSummary": "One sentence describing the card's visual concept.",
-      "keyVisualElements": ["realistic product hero", "4-step storyboard timeline", "evidence-safe proof badge"],
+      "keyVisualElements": ["realistic product hero", "requested-shot storyboard timeline", "evidence-safe proof badge"],
       "storyboardThumbnailNotes": "How the infographic should summarize the idea visually.",
       "infographicPrompt": "Create a polished realistic infographic with photorealistic supporting imagery, readable storyboard beats, and no unsupported product claims...",
+      "variationRecipe": {
+        "journeyStage": "consideration to confidence",
+        "storyArc": "objection to proof",
+        "emotion": "trust and relief",
+        "speakingStyle": "friend answers the doubt",
+        "hookStyle": "objection question",
+        "cameraGrammar": "macro detail first, then reveal real-use context",
+        "pacing": "slow proof, then clear CTA",
+        "ctaStyle": "check product details first",
+        "visualLanguage": "proof-led marketplace review"
+      },
+      "voiceoverBeats": [
+        {
+          "order": 1,
+          "startSec": 0,
+          "endSec": 7.5,
+          "title": "Hook",
+          "journeyStage": "awareness",
+          "visualBeat": "What happens visually in this shot.",
+          "cameraDirection": "Specific camera angle or movement.",
+          "emotion": "The emotional intent for this shot.",
+          "voiceoverScript": "Natural spoken product-video line, not brochure copy.",
+          "speechBudgetSeconds": 10
+        }
+      ],
       "sceneTimeline": [
         { "timeRange": "0-3s", "title": "Hook", "detail": "..." },
         { "timeRange": "3-12s", "title": "Problem", "detail": "..." },
@@ -70,5 +95,7 @@ For every concept, include `conceptDetails` as one distinct customer-journey or 
 - `use_case_moment`: post-purchase experience mini story.
 
 Include product identity naturally once, use top evidence-safe points only when useful, and do not include emoji, decorative symbols, bullets, or line breaks.
+
+For every concept, include `variationRecipe` and `voiceoverBeats`. `variationRecipe` is the compact anti-duplication driver: vary customer journey stage, story arc, emotion, speaking style, hook style, camera grammar, pacing, CTA style, and visual language while staying faithful to the product truth. Use human-readable phrases, not internal underscore tokens. `voiceoverBeats` must contain exactly the requested `shot_count` from `required_storyboard_voiceover` when provided; allowed storyboard counts are 6, 7, 8, 9, 10, 12, and 15. The beats must total 60 seconds, with per-shot timing distributed evenly unless the caller provides a different total. Each beat must include `order`, `startSec`, `endSec`, `title`, `journeyStage`, `visualBeat`, `cameraDirection`, `emotion`, `voiceoverScript`, and `speechBudgetSeconds`; set `speechBudgetSeconds` to about 10. The `voiceoverScript` must sound like natural spoken dialogue in a real product video, not written brochure copy, and should be long enough for roughly 10 seconds of natural speech so the final video does not leave long silent gaps. It should flow continuously across all shots and emotionally match the selected concept. Keep camera movement and visual notes out of `voiceoverScript`; put them in `visualBeat` and `cameraDirection`.
 
 For every concept, include an `infographicPrompt` designed for the existing image generation system. The prompt should ask for a beautiful, realistic infographic with photorealistic supporting imagery, clear storyboard/timeline sections, and a visual summary that helps the user understand the concept at a glance. It must not invent unsupported product claims or alter product identity beyond the provided evidence.

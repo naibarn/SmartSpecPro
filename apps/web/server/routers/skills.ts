@@ -872,6 +872,9 @@ function buildStoryboardPlannerPrompt(input: {
     "Every slot.video_prompt must follow this Veo 3.1 section format exactly: Create an [duration]-second cinematic video. Then sections Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
     "Keep every slot.video_prompt concise, normally under 1,500 characters. Do not paste Production concept, Storyboard guide, Product metadata, or Options verbatim into slot.video_prompt.",
     "Use product facts as a short lock once per prompt when needed; never repeat the same product/concept facts across Scene, Action, and Storyboard guide sections.",
+    "Product fidelity hard lock: preserve the exact referenced product geometry, countable parts, proportions, material, color, and construction in every product-visible slot. Never add drawers, doors, extra panels, altered shelves, alternate materials, or a different product type.",
+    "Cinematic realism hard lock: use realistic lens language, dimensional lighting, natural shadows, believable camera movement, coherent color grade, and non-plastic human skin. Reject flat catalog, real-estate listing, waxy CG, or generic bright-room looks.",
+    "Human identity hard lock: when a person appears, preserve the same face, hair, skin texture, age, wardrobe, and body continuity. If the endpoint frames show only a back/side/cropped person, keep the motion non-revealing unless the same clear face is already visible; do not rotate to reveal an invented face.",
     "Write the production direction in English, but keep any requested spoken line in the target spoken language inside quotes.",
     "Voiceover quality bar: use the same customer-facing spoken-copy style as the elevenlabs-beauty-dialogue skill: short stop-scroll hook, conversational ad-read phrasing, one idea per sentence, grounded benefit, no stiff presenter wording.",
     "For native video prompts, slot.voiceover_script must be pure spoken text only. Do not include Speaker 1/Speaker 2 prefixes, ElevenLabs bracket tags, planning labels, timecodes, markdown, or visual direction.",
@@ -893,10 +896,10 @@ function buildStoryboardPlannerPrompt(input: {
       : suppliedVoiceoverFullScript
         ? [
           "",
-          "Existing combined voiceover script for neighboring continuity only:",
+          "Storyboard voiceover / dialogue contract:",
           suppliedVoiceoverFullScript,
           "",
-          "Do not copy the existing script verbatim unless rewriting a single slot requires preserving a specific neighboring transition.",
+          "Use this together with the Storyboard guide as the primary ordered narrative contract. Match each slot to the corresponding spoken beat; do not invent a different spoken story or visual story. You may tighten wording for duration, but preserve meaning, order, and product claims.",
         ].join("\n")
         : "",
     "",
@@ -915,6 +918,9 @@ function buildStoryboardPlannerPrompt(input: {
         `- Include a concise spoken line for each slot in ${speechLanguage || speechMode}.`,
         "- Treat all slot.voiceover_script values as one continuous script split across ordered slots, not standalone taglines.",
         "- Use the selected Production Director concept/customer journey as the main source of the speech angle, so different selected concepts produce meaningfully different spoken content.",
+        suppliedVoiceoverFullScript
+          ? "- Because a voiceover/dialogue contract was supplied, preserve its ordered meaning across slots and make the video_prompt, motion, and sound match those spoken beats."
+          : "",
         "- Plan the full story arc first: hook/problem in early slots, product detail/use/proof in middle slots, result/CTA in the final slot.",
         "- Each line must naturally follow the previous slot and set up the next slot. Avoid repeating the same opening phrase, benefit, or sales claim in multiple slots.",
         `- The complete voiceover_full_script must fit the total storyboard duration of about ${totalDurationSeconds} seconds. Treat each slot.durationSeconds as that slot's speech budget; if a slot duration is missing, use 8 seconds.`,
@@ -957,6 +963,8 @@ function buildStoryboardPlannerPrompt(input: {
     "- Identify what is visibly present in each attached image and respect whether it is a start frame, stop/end frame, or reference-only image.",
     "- Describe the most plausible subject/object motion, hand/product action, staging change, or camera move for that exact role pair.",
     "- Preserve visible product geometry, materials, colors, room/context, people, hands, props, and composition anchors from the frames.",
+    "- Preserve human identity and natural face/skin quality; avoid back-to-front face reveals unless the same face is clearly referenced in the endpoint frames.",
+    "- Use camera angle, movement, lens feel, lighting, color, and depth that match the Storyboard guide and spoken beat for that slot.",
     "- If the two frames are very similar, use subtle motion such as micro push-in, parallax, lighting, hand adjustment, or product reveal rather than inventing new action.",
     "",
     `Return exactly ${imageMap.length} slot object(s), one for every input slot id.`,
@@ -1046,6 +1054,7 @@ async function repairStoryboardSlotVideoPrompt(input: {
   frameRoles?: string[];
   conceptDetails?: string | null;
   storyboardGuide?: string | null;
+  voiceoverFullScript?: string | null;
   speechMode?: string | null;
   speechLanguage?: string | null;
   aspectRatio?: string | null;
@@ -1082,6 +1091,12 @@ async function repairStoryboardSlotVideoPrompt(input: {
     ].join("\n") : "",
     input.conceptDetails ? ["", "Production concept and details guideline:", input.conceptDetails].join("\n") : "",
     input.storyboardGuide ? ["", "Storyboard guide:", input.storyboardGuide].join("\n") : "",
+    input.voiceoverFullScript ? [
+      "",
+      "Storyboard voiceover / dialogue contract:",
+      input.voiceoverFullScript,
+      "The repaired prompt must keep this shot aligned with the corresponding ordered spoken beat. Do not create a different story.",
+    ].join("\n") : "",
     includeSpeech ? [
       "",
       `Speech requirement: write a fresh spoken line in ${input.speechLanguage || input.speechMode}. It must match this exact image pair and product moment, sound like natural shopping-video speech, and be different from any repeated/generic line in the current prompt.`,
@@ -2315,6 +2330,234 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
   return {};
 }
 
+const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
+const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS = new Set([
+  "household_product",
+  "computer_laptop",
+  "electrical_appliance",
+  "food_beverage",
+  "electronics",
+  "fashion_clothing",
+  "shoes",
+  "watch_eyewear",
+  "mobile_tablet",
+  "jewelry",
+  "mother_baby",
+  "pet_supplies",
+  "sports_equipment",
+  "camera_photography",
+  "gaming_accessories",
+  "automotive",
+  "stationery",
+  "books",
+  "furniture",
+  "cosmetics",
+]);
+
+const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_SIGNAL_RULES: Array<{ category: string; signals: string[] }> = [
+  {
+    category: "mother_baby",
+    signals: ["แม่และเด็ก", "สินค้าแม่และเด็ก", "เด็กอ่อน", "ทารก", "เก้าอี้กินข้าวเด็ก", "รถเข็นเด็ก", "ขวดนม", "ผ้าอ้อม", "baby", "infant", "toddler", "high chair", "stroller", "diaper"],
+  },
+  {
+    category: "mobile_tablet",
+    signals: ["มือถือ", "สมาร์ทโฟน", "โทรศัพท์", "แท็บเล็ต", "เคสมือถือ", "ฟิล์มกันรอย", "smartphone", "mobile phone", "tablet", "ipad", "phone case", "screen protector"],
+  },
+  {
+    category: "computer_laptop",
+    signals: ["คอมพิวเตอร์", "แล็ปท็อป", "โน้ตบุ๊ก", "โน๊ตบุ๊ค", "จอคอม", "คีย์บอร์ด", "เมาส์", "laptop", "notebook computer", "desktop computer", "monitor", "keyboard", "mouse"],
+  },
+  {
+    category: "camera_photography",
+    signals: ["กล้อง", "เลนส์", "ขาตั้งกล้อง", "กิมบอล", "แฟลช", "ไฟถ่ายภาพ", "camera", "lens", "tripod", "gimbal", "flash", "action camera", "photography"],
+  },
+  {
+    category: "gaming_accessories",
+    signals: ["เกม", "เกมส์", "เกมมิ่ง", "จอยเกม", "คอนโทรลเลอร์", "เครื่องเกม", "gaming", "game console", "controller", "gamepad", "gaming headset"],
+  },
+  {
+    category: "electrical_appliance",
+    signals: ["เครื่องใช้ไฟฟ้า", "ตู้เย็น", "เครื่องซักผ้า", "ไมโครเวฟ", "หม้อทอด", "เครื่องปั่น", "พัดลม", "เครื่องฟอกอากาศ", "กาต้มน้ำ", "appliance", "refrigerator", "washing machine", "microwave", "air fryer", "blender", "vacuum cleaner"],
+  },
+  {
+    category: "electronics",
+    signals: ["อุปกรณ์อิเล็กทรอนิกส์", "หูฟัง", "ลำโพง", "เราเตอร์", "สายชาร์จ", "พาวเวอร์แบงค์", "ไมโครโฟน", "รีโมต", "earbuds", "headphones", "speaker", "router", "charger", "power bank", "cable", "adapter", "remote", "gadget"],
+  },
+  {
+    category: "automotive",
+    signals: ["ยานยนต์", "รถยนต์", "มอเตอร์ไซค์", "หมวกกันน็อค", "กล้องติดรถ", "ยางรถ", "น้ำมันเครื่อง", "automotive", "motorcycle", "helmet", "dash cam", "car mount", "tire"],
+  },
+  {
+    category: "food_beverage",
+    signals: ["อาหาร", "เครื่องดื่ม", "ขนม", "ซอส", "กาแฟ", "ชา", "น้ำดื่ม", "ผงชงดื่ม", "food", "beverage", "snack", "sauce", "coffee", "tea", "drink"],
+  },
+  {
+    category: "pet_supplies",
+    signals: ["สัตว์เลี้ยง", "อาหารสัตว์", "ของใช้สัตว์", "ปลอกคอ", "สายจูง", "ทรายแมว", "pet", "pet food", "pet supplies", "collar", "leash", "litter"],
+  },
+  {
+    category: "shoes",
+    signals: ["รองเท้า", "สนีกเกอร์", "รองเท้าวิ่ง", "รองเท้าแตะ", "บูท", "ส้นสูง", "sneakers", "running shoes", "sandals", "slippers", "boots", "heels", "footwear"],
+  },
+  {
+    category: "fashion_clothing",
+    signals: ["เสื้อผ้า", "แฟชั่น", "เดรส", "กางเกง", "กระโปรง", "แจ็คเก็ต", "clothing", "fashion", "shirt", "dress", "pants", "skirt", "jacket", "activewear"],
+  },
+  {
+    category: "watch_eyewear",
+    signals: ["นาฬิกา", "แว่นตา", "แว่นกันแดด", "กรอบแว่น", "watch", "smart watch", "sunglasses", "eyewear", "glasses"],
+  },
+  {
+    category: "jewelry",
+    signals: ["เครื่องประดับ", "แหวน", "สร้อย", "ต่างหู", "กำไล", "จี้", "jewelry", "ring", "necklace", "pendant", "earrings", "bracelet"],
+  },
+  {
+    category: "sports_equipment",
+    signals: ["อุปกรณ์กีฬา", "ฟิตเนส", "ดัมเบล", "โยคะ", "ลูกบอล", "แร็กเก็ต", "sports equipment", "fitness", "dumbbell", "yoga", "ball", "racket"],
+  },
+  {
+    category: "books",
+    signals: ["หนังสือ", "นิยาย", "มังงะ", "การ์ตูน", "ตำรา", "แบบฝึกหัด", "นิตยสาร", "book", "textbook", "novel", "comic", "manga", "workbook", "magazine"],
+  },
+  {
+    category: "stationery",
+    signals: ["เครื่องเขียน", "ปากกา", "ดินสอ", "สมุด", "แฟ้ม", "กระดาษ", "ยางลบ", "stationery", "pen", "pencil", "marker", "notebook", "planner", "folder"],
+  },
+  {
+    category: "household_product",
+    signals: ["เครื่องใช้ในบ้าน", "ของใช้ในบ้าน", "อุปกรณ์ทำความสะอาด", "ที่เก็บของ", "กล่องเก็บของ", "เครื่องครัว", "ห้องน้ำ", "ซักผ้า", "household", "home goods", "cleaning tool", "organizer", "storage container", "kitchenware", "bathroom", "laundry"],
+  },
+  {
+    category: "cosmetics",
+    signals: ["คอสเมติก", "เครื่องสำอาง", "บิวตี้", "สกินแคร์", "เซรั่ม", "ครีม", "ลิป", "รองพื้น", "beauty", "cosmetic", "cosmetics", "makeup", "skincare", "serum", "cream", "lipstick", "foundation"],
+  },
+  {
+    category: "furniture",
+    signals: ["เฟอร์นิเจอร์", "โต๊ะ", "เก้าอี้", "ชั้นวาง", "ตู้", "โซฟา", "เตียง", "โต๊ะข้างเตียง", "โต๊ะวางของ", "ลิ้นชัก", "สตูล", "furniture", "table", "chair", "shelf", "shelves", "rack", "cabinet", "sofa", "bed", "desk", "nightstand", "bedside table", "drawer", "wardrobe", "stool"],
+  },
+];
+
+function normalizeProductReferenceStoryboardCategory(value: unknown): string | null {
+  const category = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, "_")
+    .replace(/[^a-z0-9_]/g, "");
+  if (!category || category === "auto") return null;
+  return PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS.has(category) ? category : null;
+}
+
+function normalizeProductReferenceStoryboardSearchText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function scoreProductReferenceStoryboardSignal(searchableText: string, signal: string): number {
+  const normalizedSignal = normalizeProductReferenceStoryboardSearchText(signal);
+  if (!normalizedSignal || !searchableText.includes(normalizedSignal)) return 0;
+  return normalizedSignal.length >= 12 ? 3 : normalizedSignal.includes(" ") ? 2 : 1;
+}
+
+function stringifyProductReferenceStoryboardInput(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) {
+    return value.map(stringifyProductReferenceStoryboardInput).filter(Boolean).join(" ");
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
+function inferProductReferenceStoryboardCategoryFromInputs(userInputs: Record<string, any>): string | null {
+  const searchableText = normalizeProductReferenceStoryboardSearchText([
+    userInputs.product_title,
+    userInputs.production_concept_details,
+    userInputs.storyboard_guide,
+    userInputs.voiceover_script,
+    userInputs.product_label_text,
+    userInputs.marketplace_category,
+    userInputs.marketplace_category_text,
+    userInputs.planning_context_pack,
+  ].map(stringifyProductReferenceStoryboardInput).filter(Boolean).join(" "));
+
+  if (!searchableText) return null;
+
+  let bestCategory: string | null = null;
+  let bestScore = 0;
+  for (const rule of PRODUCT_REFERENCE_STORYBOARD_CATEGORY_SIGNAL_RULES) {
+    const score = rule.signals.reduce(
+      (sum, signal) => sum + scoreProductReferenceStoryboardSignal(searchableText, signal),
+      0,
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      bestCategory = rule.category;
+    }
+  }
+
+  return bestScore > 0 ? bestCategory : null;
+}
+
+function resolveSkillFolderCandidates(skillSlug: string, folderPath?: string | null): string[] {
+  const candidates: string[] = [];
+  if (folderPath) {
+    candidates.push(
+      path.resolve(process.cwd(), folderPath),
+      path.resolve(process.cwd(), "..", folderPath),
+      path.resolve(process.cwd(), "apps", "web", folderPath),
+    );
+  }
+  candidates.push(
+    path.resolve(SKILLS_DIR, skillSlug),
+    path.resolve(process.cwd(), "skills", skillSlug),
+    path.resolve(process.cwd(), "..", "skills", skillSlug),
+    path.resolve(process.cwd(), "apps", "web", "skills", skillSlug),
+  );
+  return Array.from(new Set(candidates));
+}
+
+function appendProductReferenceStoryboardCategoryRules(
+  systemPrompt: string,
+  params: {
+    skillSlug: string;
+    folderPath?: string | null;
+    userInputs: Record<string, any>;
+  },
+): string {
+  if (params.skillSlug !== PRODUCT_REFERENCE_STORYBOARD_SKILL_ID) return systemPrompt;
+
+  const explicitCategory = normalizeProductReferenceStoryboardCategory(params.userInputs.product_category);
+  const inferredCategory = explicitCategory ?? inferProductReferenceStoryboardCategoryFromInputs(params.userInputs);
+  const category = inferredCategory;
+  if (!category) {
+    return `${systemPrompt}\n\n## Product Category Rule Runtime Note\nNo concrete product_category rule file was appended because product_category is auto or unsupported. Infer the category from Product Detail, product_title, marketplace context, and current reference_product_images; if uncertain, use only the shared PRODUCT REFERENCE LOCK and do not invent category-specific facts.`;
+  }
+
+  for (const skillDir of resolveSkillFolderCandidates(params.skillSlug, params.folderPath)) {
+    const categoryPath = path.join(skillDir, "references", "product-categories", `${category}.md`);
+    if (!fs.existsSync(categoryPath)) continue;
+    try {
+      const categoryRules = fs.readFileSync(categoryPath, "utf-8").trim();
+      if (categoryRules) {
+        const selectionNote = explicitCategory
+          ? `Selected product_category: ${category}.`
+          : `Auto-inferred product_category: ${category} from Product Detail, product title, storyboard guide, and voiceover inputs.`;
+        return `${systemPrompt}\n\n## Selected Product Category Rule File\n${selectionNote}\n${categoryRules}`;
+      }
+    } catch (error) {
+      console.warn(`[Skills] Failed to read product category rules at ${categoryPath}:`, error);
+    }
+  }
+
+  return `${systemPrompt}\n\n## Product Category Rule Runtime Note\nThe selected product_category '${category}' did not resolve to a category rule file. Continue with the shared PRODUCT REFERENCE LOCK and current product references only.`;
+}
+
 function resolveCustomPythonSkillScript(folderPath: string | null | undefined, skillSlug: string): string | null {
   const candidates: string[] = [];
 
@@ -2916,6 +3159,7 @@ export const skillsRouter = router({
       frameRoles: z.array(z.enum(["start", "stop", "reference"])).min(2).max(2).optional(),
       conceptDetails: z.string().trim().max(12000).optional(),
       storyboardGuide: z.string().trim().max(12000).optional(),
+      voiceoverFullScript: z.string().trim().max(12000).optional(),
       aspectRatio: z.string().trim().max(32).optional(),
       durationSeconds: z.number().positive().max(60).optional(),
       model: z.string().trim().max(255).optional(),
@@ -2953,6 +3197,10 @@ export const skillsRouter = router({
         `Analyze the two images with these roles: Image 1 = ${(input.frameRoles ?? ["start", "stop"])[0]}, Image 2 = ${(input.frameRoles ?? ["start", "stop"])[1]}.`,
         "Return one production-ready video prompt only. No markdown, no code fence, no title, no explanation.",
         "The prompt must preserve product identity, people identity, composition intent, text/logo fidelity, colors, lighting, and the declared frame/reference relationship.",
+        "Product fidelity is a hard lock: preserve the exact product geometry, countable parts, proportions, material, color, and visible construction from the reference frames. Never add drawers, doors, extra panels, different shelves, alternate materials, or a different product type.",
+        "Human identity is a hard lock: if a person appears, preserve the same face, hair, skin texture, age, wardrobe, and body continuity. Avoid waxy, plastic, CG-looking skin, face drift, blurred faces, or identity swaps.",
+        "If endpoint frames show only a back/side/cropped person, keep the motion non-revealing unless the same clear face is already visible in the references; do not rotate the person to reveal an invented face.",
+        "Use cinematic realism: realistic lens language, dimensional lighting, natural shadows, believable camera movement, and coherent color grade that matches the storyboard beat.",
         "Describe a natural camera move and subject/product motion that respects exact start/stop roles and treats reference-only images as guidance, not frozen endpoints.",
         "Keep it concise but specific, suitable for Veo/Kling-style image-to-video generation.",
       ].join("\n");
@@ -2985,6 +3233,12 @@ export const skillsRouter = router({
           "Storyboard guide:",
           input.storyboardGuide,
         ].join("\n") : "",
+        input.voiceoverFullScript ? [
+          "",
+          "Storyboard voiceover / dialogue contract:",
+          input.voiceoverFullScript,
+          "The improved prompt must remain aligned with the matching ordered spoken beat and must not create a different story.",
+        ].join("\n") : "",
         existingSpeechText && existingSpeechMode ? [
           "",
           "Native audio instruction from the current prompt:",
@@ -2996,6 +3250,9 @@ export const skillsRouter = router({
         `- @Image1 role: ${(input.frameRoles ?? ["start", "stop"])[0]}`,
         `- @Image2 role: ${(input.frameRoles ?? ["start", "stop"])[1]}`,
         "- preserve all visible product/package/brand details from both frames",
+        "- preserve exact product structure, material, countable parts, proportions, and color; do not add or replace components",
+        "- preserve human identity, natural facial detail, and realistic skin; if a face is not visible in the endpoints, do not invent a new face turn",
+        "- use cinematic camera language, dimensional lighting, natural shadows, and realistic color continuity",
         "- create only plausible movement between these two frames",
       ].filter(Boolean).join("\n");
 
@@ -3305,6 +3562,7 @@ export const skillsRouter = router({
               frameRoles: inputSlot.frameRoles ?? ["start", "stop"],
               conceptDetails: inputSlot.conceptDetails ?? effectiveConceptDetails ?? null,
               storyboardGuide: inputSlot.storyboardGuide ?? input.storyboardGuide ?? null,
+              voiceoverFullScript: inputSlot.voiceoverFullScript ?? suppliedVoiceoverFullScript,
               speechMode: input.speechMode,
               speechLanguage: input.speechLanguage ?? null,
               aspectRatio: inputSlot.aspectRatio ?? null,
@@ -3865,6 +4123,11 @@ export const skillsRouter = router({
           message: `Skill '${input.skillId}' has no content to execute`,
         });
       }
+      systemPrompt = appendProductReferenceStoryboardCategoryRules(systemPrompt, {
+        skillSlug: skill.slug,
+        folderPath: skill.folderPath,
+        userInputs: mergedUserInputs,
+      });
       systemPrompt = substituteTemplateVariables(systemPrompt, mergedUserInputs);
       if (promptLengthPlan) {
         systemPrompt = `${systemPrompt}\n\n${promptLengthPlan.directive}`;
@@ -4533,7 +4796,7 @@ export const skillsRouter = router({
       }).optional()
     )
     .query(async ({ input }) => {
-      await autoSyncSkillsFromFolder();
+      await autoSyncSkillsFromFolder({ force: true });
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -4604,7 +4867,7 @@ export const skillsRouter = router({
   getFromDb: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ input }) => {
-      await autoSyncSkillsFromFolder();
+      await autoSyncSkillsFromFolder({ force: true });
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 

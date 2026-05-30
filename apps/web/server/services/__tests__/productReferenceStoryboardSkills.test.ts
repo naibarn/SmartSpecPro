@@ -3,122 +3,189 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 const skillsRoot = path.resolve(__dirname, "..", "..", "..", "skills");
+const unifiedSkillId = "product-reference-storyboard";
 
-const categorySkills = [
-  ["household-product-reference-storyboard", "เครื่องใช้ในบ้าน"],
-  ["computer-laptop-reference-storyboard", "คอมพิวเตอร์และแล็ปท็อป"],
-  ["electrical-appliance-reference-storyboard", "เครื่องใช้ไฟฟ้า"],
-  ["food-beverage-reference-storyboard", "อาหารและเครื่องดื่ม"],
-  ["electronics-reference-storyboard", "อุปกรณ์อิเล็กทรอนิกส์"],
-  ["fashion-clothing-reference-storyboard", "เสื้อผ้าแฟชั่น"],
-  ["shoes-reference-storyboard", "รองเท้า"],
-  ["watch-eyewear-reference-storyboard", "นาฬิกาและแว่นตา"],
-  ["mobile-tablet-reference-storyboard", "มือถือและแท็บเล็ต"],
-  ["jewelry-reference-storyboard", "เครื่องประดับ"],
-  ["mother-baby-reference-storyboard", "สินค้าแม่และเด็ก"],
-  ["pet-supplies-reference-storyboard", "ของใช้และอาหารสัตว์"],
-  ["sports-equipment-reference-storyboard", "อุปกรณ์กีฬา"],
-  ["camera-photography-reference-storyboard", "กล้องและอุปกรณ์ถ่ายภาพ"],
-  ["gaming-accessories-reference-storyboard", "เกมส์และอุปกรณ์เสริม"],
-  ["automotive-reference-storyboard", "ยานยนต์"],
-  ["stationery-reference-storyboard", "เครื่องเขียน"],
-  ["books-reference-storyboard", "หนังสือ"],
+const productCategories = [
+  "household_product",
+  "computer_laptop",
+  "electrical_appliance",
+  "food_beverage",
+  "electronics",
+  "fashion_clothing",
+  "shoes",
+  "watch_eyewear",
+  "mobile_tablet",
+  "jewelry",
+  "mother_baby",
+  "pet_supplies",
+  "sports_equipment",
+  "camera_photography",
+  "gaming_accessories",
+  "automotive",
+  "stationery",
+  "books",
+  "furniture",
+  "cosmetics",
 ] as const;
 
-const productionReferenceStoryboardSkillIds = [
+const legacyProductionReferenceStoryboardSkillIds = [
+  "household-product-reference-storyboard",
+  "computer-laptop-reference-storyboard",
+  "electrical-appliance-reference-storyboard",
+  "food-beverage-reference-storyboard",
+  "electronics-reference-storyboard",
+  "fashion-clothing-reference-storyboard",
+  "shoes-reference-storyboard",
+  "watch-eyewear-reference-storyboard",
+  "mobile-tablet-reference-storyboard",
+  "jewelry-reference-storyboard",
+  "mother-baby-reference-storyboard",
+  "pet-supplies-reference-storyboard",
+  "sports-equipment-reference-storyboard",
+  "camera-photography-reference-storyboard",
+  "gaming-accessories-reference-storyboard",
+  "automotive-reference-storyboard",
+  "stationery-reference-storyboard",
+  "books-reference-storyboard",
   "furniture-reference-storyboard",
   "cosmatic-reference-storyboard",
-  ...categorySkills.map(([skillId]) => skillId),
 ] as const;
 
-describe("category reference storyboard skills", () => {
-  it("mark every production reference storyboard skill for Media Studio filtering", () => {
-    for (const skillId of productionReferenceStoryboardSkillIds) {
-      const skillDir = path.join(skillsRoot, skillId);
-      const skillContent = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8");
-      const mirroredSkillContent = fs.readFileSync(path.join(skillDir, "skill.md"), "utf-8");
+function readSkillFile(skillId: string, file: string): string {
+  return fs.readFileSync(path.join(skillsRoot, skillId, file), "utf-8");
+}
 
-      expect(mirroredSkillContent).toBe(skillContent);
-      expect(skillContent).toContain("production-reference-storyboard");
-      expect(skillContent).toContain("production_reference_storyboard:");
-      expect(skillContent).toContain("enabled: true");
+function readJson(skillId: string, file: string): any {
+  return JSON.parse(readSkillFile(skillId, file));
+}
+
+describe("unified product reference storyboard skill", () => {
+  it("exposes one production storyboard skill and disables the legacy category skills", () => {
+    const skillContent = readSkillFile(unifiedSkillId, "SKILL.md");
+    const mirroredSkillContent = readSkillFile(unifiedSkillId, "skill.md");
+
+    expect(mirroredSkillContent).toBe(skillContent);
+    expect(skillContent).toContain(`name: ${unifiedSkillId}`);
+    expect(skillContent).toContain("production-reference-storyboard");
+    expect(skillContent).toContain("production_reference_storyboard:");
+    expect(skillContent).toContain("enabled: true");
+    expect(skillContent).toContain("replaces the previous 20 category-specific");
+    expect(skillContent).toContain("product_category");
+    expect(skillContent).toContain("reference_product_images` are immutable physical evidence");
+    expect(skillContent).toContain("storyboard_guide` + `voiceover_script");
+    expect(skillContent).toContain("CINEMATIC REALISM LOCK");
+    expect(skillContent).toContain("CHARACTER FACE AND IDENTITY LOCK");
+    expect(skillContent).toContain("Avoid back-of-head");
+    expect(skillContent).toContain("A frame where the person is correct but the product changes is still a fatal failure");
+    expect(skillContent).toContain("Post-Introduction Product Visibility Rule");
+    expect(skillContent).toContain("Frame 8 / reconfirming-value / value-confirmation frames are product-critical");
+    expect(skillContent).toContain("Do not write person-only, bed-only, room-only");
+    expect(skillContent).toContain("Every frame must include these labels inside the frame description");
+    expect(skillContent).toContain("CAMERA/LIGHT/DEPTH");
+    expect(skillContent).toContain("HUMAN REALISM");
+    expect(skillContent).toContain("Rear/Back View Video Safety Rule");
+    expect(skillContent).toContain("VIDEO MOTION LOCK: rear-only shot");
+    expect(skillContent).toContain("A visible back-of-head frame that could later turn to camera is a fatal identity-continuity failure");
+    expect(skillContent).toContain("VIDEO IDENTITY SAFETY LOCK");
+    expect(skillContent).toContain("Wardrobe should come from the current character reference images");
+    expect(skillContent).toContain("no beauty-filter smoothing");
+    expect(skillContent).toContain("frame-level PRODUCT VERIFY phrase");
+    expect(skillContent).toContain("top surface + middle shelf + bottom shelf visible");
+    expect(skillContent).toContain("blank/unreadable book covers and spines");
+
+    for (const skillId of legacyProductionReferenceStoryboardSkillIds) {
+      const legacySkillContent = readSkillFile(skillId, "SKILL.md");
+      const legacyMirror = readSkillFile(skillId, "skill.md");
+
+      expect(legacyMirror).toBe(legacySkillContent);
+      expect(legacySkillContent).toContain("production_reference_storyboard:");
+      expect(legacySkillContent).toContain("enabled: false");
     }
   });
 
-  it("lets infographic cinematic styles override the no-text default", () => {
-    for (const skillId of productionReferenceStoryboardSkillIds) {
-      const skillDir = path.join(skillsRoot, skillId);
-      const skillContent = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8");
-      const mirroredSkillContent = fs.readFileSync(path.join(skillDir, "skill.md"), "utf-8");
-      const inputSchema = JSON.parse(
-        fs.readFileSync(path.join(skillDir, "schemas", "input.schema.json"), "utf-8"),
-      );
-      const uiSchema = JSON.parse(
-        fs.readFileSync(path.join(skillDir, "schemas", "ui.schema.json"), "utf-8"),
-      );
+  it("adds product_category as the product rule selector while keeping storyboard/script contracts", () => {
+    const inputSchema = readJson(unifiedSkillId, path.join("schemas", "input.schema.json"));
+    const uiSchema = readJson(unifiedSkillId, path.join("schemas", "ui.schema.json"));
+    const outputSchema = readJson(unifiedSkillId, path.join("schemas", "output.schema.json"));
+    const lock = readJson(unifiedSkillId, "skill.lock.json");
 
-      expect(mirroredSkillContent).toBe(skillContent);
-      expect(skillContent).toContain("Infographic cinematic styles have higher priority than the no-text default");
-      expect(skillContent).toContain("Do NOT include a no-added-visible-text negative prompt");
-      expect(skillContent).toContain("large readable text, not too many words, only the key points");
-      expect(skillContent).toContain("one large headline plus 2-4 short key points");
-      expect(inputSchema.properties.image_text_mode.description).toContain(
-        "Info Graphics Realistic and Info Graphics override this default",
-      );
-      expect(inputSchema.properties.image_text_language.description).toContain(
-        "infographic cinematic style",
-      );
-      expect(inputSchema.properties.cinematic_style.description).toContain(
-        "text-forward infographic layouts",
-      );
-      expect(uiSchema.image_text_mode["ui:help"]).toContain("Info Graphics Realistic / Info Graphics");
-      expect(uiSchema.cinematic_style["ui:help"]).toContain("override ค่า no_text");
+    expect(inputSchema.properties.product_category).toMatchObject({
+      title: "Product Category",
+      type: "string",
+      default: "auto",
+    });
+    expect(inputSchema.properties.product_category.enum).toEqual(["auto", ...productCategories]);
+    expect(inputSchema.properties.scene_descriptions).toBeUndefined();
+    expect(inputSchema.properties.voiceover_script.type).toBe("string");
+    expect(inputSchema.properties.voiceover_script.description).toContain("spoken dialogue");
+    expect(inputSchema.properties.production_concept_details.title).toBe("Product Detail / Product Facts");
+    expect(inputSchema.properties.production_concept_details.description).toContain("Product Detail / Product Facts");
+    expect(inputSchema.properties.reference_product_images.description).toContain("immutable product evidence");
+    expect(inputSchema.properties.reference_character_images.description).toContain("Avoid back-of-head");
+    expect(inputSchema.properties.cinematic_style.description).toContain("cinematic photorealistic product-film quality");
+
+    expect(uiSchema["ui:order"]).toContain("product_category");
+    expect(uiSchema["ui:order"].indexOf("product_category")).toBeGreaterThan(
+      uiSchema["ui:order"].indexOf("generation_mode"),
+    );
+    expect(uiSchema["ui:order"]).not.toContain("scene_descriptions");
+    expect(uiSchema["ui:order"]).toContain("voiceover_script");
+    expect(uiSchema.product_category["ui:widget"]).toBe("select");
+    expect(uiSchema.product_category["ui:help"]).toContain("เลือกหมวดสินค้า");
+    expect(outputSchema.type).toBe("string");
+    expect(lock.name).toBe(unifiedSkillId);
+    for (const category of productCategories) {
+      expect(lock.outputs).toContain(`references/product-categories/${category}.md`);
     }
   });
 
-  it("provide mirrored markdown, schemas, and category-specific fidelity contracts", () => {
-    for (const [skillId, thaiCategory] of categorySkills) {
-      const skillDir = path.join(skillsRoot, skillId);
-      const skillContent = fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8");
-      const mirroredSkillContent = fs.readFileSync(path.join(skillDir, "skill.md"), "utf-8");
-      const outputContract = fs.readFileSync(
-        path.join(skillDir, "references", "output_contract.md"),
-        "utf-8",
-      );
-      const inputSchema = JSON.parse(
-        fs.readFileSync(path.join(skillDir, "schemas", "input.schema.json"), "utf-8"),
-      );
-      const uiSchema = JSON.parse(
-        fs.readFileSync(path.join(skillDir, "schemas", "ui.schema.json"), "utf-8"),
-      );
-      const outputSchema = JSON.parse(
-        fs.readFileSync(path.join(skillDir, "schemas", "output.schema.json"), "utf-8"),
-      );
-      const lock = JSON.parse(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8"));
+  it("stores product-specific rules as 20 category reference files", () => {
+    const categoryDir = path.join(skillsRoot, unifiedSkillId, "references", "product-categories");
+    const files = fs.readdirSync(categoryDir).filter((file) => file.endsWith(".md")).sort();
 
-      expect(mirroredSkillContent).toBe(skillContent);
-      expect(skillContent).toContain(`name: ${skillId}`);
-      expect(skillContent).toContain(thaiCategory);
-      expect(skillContent).toContain("Reference Role Disambiguation Rule");
-      expect(skillContent).toContain("PRODUCT PHYSICAL PROPORTION LOCK");
-      expect(skillContent).toContain("TEXT RENDERING POLICY");
-      expect(skillContent).toContain("Fatal QA Gates");
-      expect(skillContent).toContain("image_text_mode");
-      expect(skillContent).toContain("all product fidelity rules are rewritten for this category");
+    expect(files).toEqual(productCategories.map((category) => `${category}.md`).sort());
 
-      expect(outputContract).toContain("plain prompt text only");
-      expect(outputContract).toContain("canvas_9_16_grid_3x3_frame_9_16_exact");
-      expect(outputContract).toContain(thaiCategory);
-      expect(outputSchema.type).toBe("string");
-
-      expect(inputSchema.properties.reference_product_images.description).toContain(thaiCategory);
-      expect(inputSchema.properties.image_text_mode.default).toBe("no_text");
-      expect(inputSchema.properties.image_text_language.default).toBe("en");
-      expect(inputSchema.properties.cinematic_style.enum).toContain("info_graphics_realistic");
-      expect(inputSchema.properties.cinematic_style.enum).toContain("info_graphics");
-      expect(uiSchema["ui:order"]).toContain("image_text_mode");
-      expect(uiSchema["ui:order"]).toContain("image_text_language");
-      expect(lock.name).toBe(skillId);
+    for (const category of productCategories) {
+      const categoryRules = fs.readFileSync(path.join(categoryDir, `${category}.md`), "utf-8");
+      expect(categoryRules).toContain(`Category id: \`${category}\``);
+      expect(categoryRules).toContain("## Product Fidelity Lock");
+      expect(categoryRules).toContain("## Common Wrong Substitutions To Reject");
+      expect(categoryRules).toContain("## Frame-Level Requirements");
+      expect(categoryRules).toContain("Repeat the category-specific lock inside every product-visible frame");
+      expect(categoryRules).toContain("clear front-facing or three-quarter face continuity");
     }
+
+    const furnitureRules = fs.readFileSync(path.join(categoryDir, "furniture.md"), "utf-8");
+    expect(furnitureRules).toContain("reject any drawer nightstand");
+    expect(furnitureRules).toContain("Frame 8 / reconfirming-value / confirmation frames must show the same 3-tier open shelf");
+  });
+
+  it("keeps the plain-text storyboard output contract strict", () => {
+    const outputContract = readSkillFile(unifiedSkillId, path.join("references", "output_contract.md"));
+    const inputContract = readSkillFile(unifiedSkillId, path.join("references", "input_contract.md"));
+
+    expect(inputContract).toContain("product_category");
+    expect(inputContract).toContain("Product Detail / Product Facts");
+    expect(inputContract).toContain("reference_product_images");
+    expect(outputContract).toContain("plain prompt text only");
+    expect(outputContract).toContain("canvas_9_16_grid_3x3_frame_9_16_exact");
+    expect(outputContract).toContain("source shot title/timing");
+    expect(outputContract).toContain("CINEMATIC REALISM LOCK");
+    expect(outputContract).toContain("CHARACTER FACE AND IDENTITY LOCK");
+    expect(outputContract).toContain("Use structured frame labels");
+    expect(outputContract).toContain("Each `CAMERA/LIGHT/DEPTH:` clause must specify");
+    expect(outputContract).toContain("Character wardrobe must come from current character reference images");
+    expect(outputContract).toContain("Back-facing, rear-only, over-shoulder-with-hair");
+    expect(outputContract).toContain("VIDEO MOTION LOCK: rear-only shot");
+    expect(outputContract).toContain("VIDEO IDENTITY SAFETY LOCK");
+    expect(outputContract).toContain("PRODUCT REFERENCE LOCK");
+    expect(outputContract).toContain("A frame where the person is correct but the product changes");
+    expect(outputContract).toContain("Frame 8 / reconfirming-value frames are product-critical");
+    expect(outputContract).toContain("wrong nightstand/drawer/table substitution");
+    expect(outputContract).toContain("frame-level `PRODUCT VERIFY:` phrase");
+    expect(outputContract).toContain("suppress readable non-product prop/background text");
+    expect(outputContract).toContain("blank or unreadable book covers and spines");
+    expect(outputContract).toContain("zero white divider lines");
+    expect(outputContract).toContain("A single generic `SCENE DESCRIPTION:` block");
   });
 });

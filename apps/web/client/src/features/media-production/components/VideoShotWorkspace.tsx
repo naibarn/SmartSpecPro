@@ -44,9 +44,7 @@ export interface VideoShotWorkspaceProps extends VideoShotWorkspaceCallbacks {
   storyboardReferenceSkillOptions?: Array<{ id: string; label: string }>;
   onStoryboardReferenceSkillChange?: (skillId: string) => void;
   onGenerateShotReferencePrompt?: (shotId: string, skillId: string, prompt?: StoryboardPromptItem) => void;
-  onGenerateShotReferenceImage?: (shotId: string, skillId: string, prompt?: StoryboardPromptItem) => void;
   onGenerateShotFrameImage?: (shotId: string, phase: "start" | "stop", skillId: string, prompt?: StoryboardPromptItem) => void;
-  onGenerateShotStoryboardGridImage?: (shotId: string, skillId: string, prompt?: StoryboardPromptItem) => void;
   onOpenShotStoryboardGridSplit?: (shotId: string, imageUrl: string, prompt?: StoryboardPromptItem) => void;
   onAssignShotMediaSlot?: (
     shotId: string,
@@ -71,6 +69,11 @@ type StoryboardGridFrame = {
   url: string;
   name?: string;
   sourceGridUrl?: string;
+  productionRunId?: string;
+  productionStoryConceptId?: string;
+  productionStoryConceptTitle?: string;
+  sourceShotId?: string;
+  productionContext?: Record<string, unknown>;
 };
 
 type StoryboardPromptItem = {
@@ -160,6 +163,13 @@ function storyboardGridFramesFromUnknown(value: unknown): StoryboardGridFrame[] 
       url,
       name: summarizeUnknown(record.name) || undefined,
       sourceGridUrl: summarizeUnknown(record.sourceGridUrl) || undefined,
+      productionRunId: summarizeUnknown(record.productionRunId) || undefined,
+      productionStoryConceptId: summarizeUnknown(record.productionStoryConceptId) || undefined,
+      productionStoryConceptTitle: summarizeUnknown(record.productionStoryConceptTitle) || undefined,
+      sourceShotId: summarizeUnknown(record.sourceShotId) || undefined,
+      productionContext: record.productionContext && typeof record.productionContext === "object" && !Array.isArray(record.productionContext)
+        ? record.productionContext as Record<string, unknown>
+        : undefined,
     });
   });
   frames.sort((a, b) => a.index - b.index);
@@ -380,7 +390,7 @@ export function VideoShotWorkspace({
   storyboardReferenceSkillOptions,
   onStoryboardReferenceSkillChange,
   onGenerateShotReferencePrompt,
-  onGenerateShotStoryboardGridImage,
+  onGenerateShotFrameImage,
   onOpenShotStoryboardGridSplit,
   onAssignShotMediaSlot,
   onUploadShotMediaFile,
@@ -486,6 +496,14 @@ export function VideoShotWorkspace({
     }));
   };
   const selectedStoryboardPromptDraft = draft ? storyboardPromptDrafts[draft.id] ?? selectedStoryboardPrompt : null;
+  const selectedShotMediaSummary = draft ? shotMediaById[draft.id] ?? ({ imageNodes: [], videoNodes: [] } as ShotMediaSummary) : null;
+  const selectedStartFrameUrl = selectedStoryboardPromptDraft
+    ? outputUrl(shotOutputFromPrompt(selectedStoryboardPromptDraft, "start")) || outputUrl(selectedShotMediaSummary?.startFrameOutput)
+    : undefined;
+  const selectedStopFrameUrl = selectedStoryboardPromptDraft
+    ? outputUrl(shotOutputFromPrompt(selectedStoryboardPromptDraft, "stop")) || outputUrl(selectedShotMediaSummary?.stopFrameOutput)
+    : undefined;
+  const selectedHasStartStopFrames = Boolean(selectedStartFrameUrl && selectedStopFrameUrl);
   const isDraftStale = Boolean(draft && selectedShot?.version !== undefined && draft.version !== undefined && draft.version < selectedShot.version);
   const fullShotEditorRef = useRef<HTMLDivElement | null>(null);
   const shotTitleInputRef = useRef<HTMLInputElement | null>(null);
@@ -616,6 +634,11 @@ export function VideoShotWorkspace({
       url: frame.url,
       name: frame.name || `Frame ${frame.index + 1}`,
       sourceGridUrl: frame.sourceGridUrl,
+      productionRunId: frame.productionRunId,
+      productionStoryConceptId: frame.productionStoryConceptId,
+      productionStoryConceptTitle: frame.productionStoryConceptTitle,
+      sourceShotId: frame.sourceShotId,
+      productionContext: frame.productionContext,
     };
     event.dataTransfer.effectAllowed = "copy";
     event.dataTransfer.setData("application/x-production-shot-split-frame", JSON.stringify(payload));
@@ -763,10 +786,10 @@ export function VideoShotWorkspace({
             </div>
           ) : null}
           <div className="mt-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 md:grid-cols-[minmax(220px,360px)_minmax(0,1fr)] md:items-center">
-	            <div className="grid gap-1">
-	              <Label htmlFor="video-shot-reference-storyboard-skill">
-	                {isThai ? "Skill สำหรับ prompt ภาพ Storyboard 3x3" : "3x3 storyboard image prompt skill"}
-	              </Label>
+		            <div className="grid gap-1">
+		              <Label htmlFor="video-shot-reference-storyboard-skill">
+		                {isThai ? "Skill สำหรับ prompt Start/Stop frame" : "Start/stop frame prompt skill"}
+		              </Label>
               <select
                 id="video-shot-reference-storyboard-skill"
                 value={selectedReferenceSkillId}
@@ -778,11 +801,11 @@ export function VideoShotWorkspace({
                 ))}
               </select>
             </div>
-	            <p className="text-xs leading-5 text-muted-foreground">
-	              {isThai
-	                ? "ระบบจะสร้าง prompt ภาพ 9 ช่องจากช็อตนี้ แล้วให้เลือกเฟรมไปวางเป็นภาพ reference, start frame และ stop frame หลังตัดภาพ"
-	                : "Each shot uses one 3x3 storyboard image prompt. After splitting, drag frames into the reference, start, and stop slots."}
-	            </p>
+		            <p className="text-xs leading-5 text-muted-foreground">
+		              {isThai
+		                ? "ระบบจะสร้าง prompt ภาพ Start และ Stop แบบแยกช็อต เพื่อ generate ภาพเต็ม resolution ก่อนส่งต่อสร้างวิดีโอ ส่วนภาพจาก 3x3 ใน Tab Image ยังลากมาวางในช่องได้"
+		                : "Each shot gets separate full-resolution start and stop frame prompts before video generation. Frames from the Image tab 3x3 flow can still be dragged into slots."}
+		            </p>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-slate-200 bg-white p-3">
             <select
@@ -843,6 +866,7 @@ export function VideoShotWorkspace({
 	              const startFrameUrl = outputUrl(startFrameOutput);
 	              const stopFrameUrl = outputUrl(stopFrameOutput);
 	              const videoUrl = outputUrl(videoOutput);
+	              const hasStartStopFrames = Boolean(startFrameUrl && stopFrameUrl);
 	              const storyboardGridImageUrl = promptDraft.storyboardGridImageUrl;
 	              const storyboardGridFrames = promptDraft.storyboardGridFrames ?? [];
 	              const shotReferences = shotReferenceAssetsById[shot.id] ?? [];
@@ -873,51 +897,54 @@ export function VideoShotWorkspace({
                         <Eye className="mr-1 h-3.5 w-3.5" />
                         {isThai ? "แก้เต็ม" : "Edit"}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={Boolean(busy.referencePrompt) || !onGenerateShotReferencePrompt}
+	                      <Button
+	                        type="button"
+	                        variant="outline"
+	                        size="sm"
+	                        disabled={Boolean(busy.referencePrompt) || !onGenerateShotReferencePrompt}
                         onClick={() => {
                           const nextPromptDraft = withVideoPromptPlannerOptions(promptDraft);
                           handleSavePromptDraft(shot.id, nextPromptDraft);
                           onGenerateShotReferencePrompt?.(shot.id, selectedReferenceSkillId, nextPromptDraft);
                         }}
-                      >
-                        <RefreshCw className={`mr-1 h-3.5 w-3.5 ${busy.referencePrompt ? "animate-spin" : ""}`} />
-                        {busy.referencePrompt ? (isThai ? "กำลังสร้าง prompt" : "Prompting") : (isThai ? "สร้าง prompt จาก skill" : "Skill prompt")}
-                      </Button>
+	                      >
+	                        <RefreshCw className={`mr-1 h-3.5 w-3.5 ${busy.referencePrompt ? "animate-spin" : ""}`} />
+	                        {busy.referencePrompt ? (isThai ? "กำลังสร้าง prompt" : "Prompting") : (isThai ? "สร้าง Prompt Start/Stop" : "Start/stop prompts")}
+	                      </Button>
 	                      <Button
 	                        type="button"
 	                        variant="outline"
 	                        size="sm"
-	                        disabled={Boolean(busy.storyboardGridImage) || !onGenerateShotStoryboardGridImage}
+	                        disabled={Boolean(busy.startFrame) || !onGenerateShotFrameImage}
 	                        onClick={() => {
 	                          const nextPromptDraft = withVideoPromptPlannerOptions(promptDraft);
 	                          handleSavePromptDraft(shot.id, nextPromptDraft);
-	                          onGenerateShotStoryboardGridImage?.(shot.id, selectedReferenceSkillId, nextPromptDraft);
+	                          onGenerateShotFrameImage?.(shot.id, "start", selectedReferenceSkillId, nextPromptDraft);
 	                        }}
 	                      >
-	                        <ImageIcon className={`mr-1 h-3.5 w-3.5 ${busy.storyboardGridImage ? "animate-pulse" : ""}`} />
-	                        {busy.storyboardGridImage ? (isThai ? "กำลังสร้างภาพ 3x3" : "Generating 3x3") : (isThai ? "สร้างภาพ Storyboard 3x3" : "Generate 3x3 image")}
+	                        <ImageIcon className={`mr-1 h-3.5 w-3.5 ${busy.startFrame ? "animate-pulse" : ""}`} />
+	                        {busy.startFrame ? (isThai ? "กำลังสร้าง Start" : "Generating start") : (isThai ? "สร้าง Start frame" : "Generate start")}
 	                      </Button>
-	                      {storyboardGridImageUrl ? (
-	                        <Button
-	                          type="button"
-	                          variant="outline"
-	                          size="sm"
-	                          disabled={!onOpenShotStoryboardGridSplit}
-	                          onClick={() => onOpenShotStoryboardGridSplit?.(shot.id, storyboardGridImageUrl, promptDraft)}
-	                        >
-	                          <Split className="mr-1 h-3.5 w-3.5" />
-	                          {isThai ? "ตัด 9 เฟรม" : "Split 9 frames"}
-	                        </Button>
-	                      ) : null}
+	                      <Button
+	                        type="button"
+	                        variant="outline"
+	                        size="sm"
+	                        disabled={Boolean(busy.stopFrame) || !onGenerateShotFrameImage}
+	                        onClick={() => {
+	                          const nextPromptDraft = withVideoPromptPlannerOptions(promptDraft);
+	                          handleSavePromptDraft(shot.id, nextPromptDraft);
+	                          onGenerateShotFrameImage?.(shot.id, "stop", selectedReferenceSkillId, nextPromptDraft);
+	                        }}
+	                      >
+	                        <ImageIcon className={`mr-1 h-3.5 w-3.5 ${busy.stopFrame ? "animate-pulse" : ""}`} />
+	                        {busy.stopFrame ? (isThai ? "กำลังสร้าง Stop" : "Generating stop") : (isThai ? "สร้าง Stop frame" : "Generate stop")}
+	                      </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        disabled={Boolean(busy.video) || !onGenerateShotVideo}
+                        disabled={Boolean(busy.video) || !onGenerateShotVideo || !hasStartStopFrames}
+                        title={!hasStartStopFrames ? (isThai ? "ต้องมี Start frame และ Stop frame ก่อนสร้างวิดีโอ" : "Start and stop frames are required before video generation.") : undefined}
                         onClick={() => {
                           const nextPromptDraft = withVideoPromptPlannerOptions(promptDraft);
                           handleSavePromptDraft(shot.id, nextPromptDraft);
@@ -1031,17 +1058,30 @@ export function VideoShotWorkspace({
                           className="min-h-[84px] bg-white"
                         />
 	                      </div>
-	                      <div className="grid gap-1.5">
-	                        <Label htmlFor={`story-card-reference-prompt-${shot.id}`}>{isThai ? "Prompt ภาพ Storyboard 3x3" : "3x3 storyboard image prompt"}</Label>
-	                        <Textarea
-	                          id={`story-card-reference-prompt-${shot.id}`}
-	                          value={promptDraft.referenceStoryboardPrompt ?? promptDraft.storyboardGridPrompt ?? ""}
-	                          disabled={shot.locked}
-	                          onChange={(event) => updateStoryboardPromptDraft(shot.id, { referenceStoryboardPrompt: event.target.value, storyboardGridPrompt: event.target.value })}
-	                          className="min-h-[120px] bg-white"
-	                          placeholder={isThai ? "Prompt นี้ถูกสร้างจาก Production Director หรือกดสร้าง prompt จาก skill เพื่อเติมใหม่" : "This prompt is seeded by Production Director, or regenerate it from the skill."}
-	                        />
-	                      </div>
+		                      <div className="grid gap-2 sm:grid-cols-2">
+		                        <div className="grid gap-1.5">
+		                          <Label htmlFor={`story-card-start-prompt-${shot.id}`}>{isThai ? "Prompt Start frame" : "Start-frame prompt"}</Label>
+		                          <Textarea
+		                            id={`story-card-start-prompt-${shot.id}`}
+		                            value={promptDraft.startFramePrompt ?? ""}
+		                            disabled={shot.locked}
+		                            onChange={(event) => updateStoryboardPromptDraft(shot.id, { startFramePrompt: event.target.value })}
+		                            className="min-h-[120px] bg-white"
+		                            placeholder={isThai ? "เฟรมเปิดของช็อตนี้ สร้างจาก Storyboard Guide + บทพูด" : "Opening frame for this shot, based on the guide and script."}
+		                          />
+		                        </div>
+		                        <div className="grid gap-1.5">
+		                          <Label htmlFor={`story-card-stop-prompt-${shot.id}`}>{isThai ? "Prompt Stop frame" : "Stop-frame prompt"}</Label>
+		                          <Textarea
+		                            id={`story-card-stop-prompt-${shot.id}`}
+		                            value={promptDraft.stopFramePrompt ?? ""}
+		                            disabled={shot.locked}
+		                            onChange={(event) => updateStoryboardPromptDraft(shot.id, { stopFramePrompt: event.target.value })}
+		                            className="min-h-[120px] bg-white"
+		                            placeholder={isThai ? "เฟรมจบของช็อตนี้ เพื่อส่งต่อการสร้างวิดีโอ" : "Ending frame for this shot before video generation."}
+		                          />
+		                        </div>
+		                      </div>
 	                      <div className="grid gap-1.5">
                         <Label htmlFor={`story-card-video-${shot.id}`}>{isThai ? "Prompt วิดีโอ" : "Video prompt"}</Label>
                         <Textarea
@@ -1389,35 +1429,34 @@ export function VideoShotWorkspace({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isThai ? "ข้อมูลนี้มาจาก Storyboard prompt card หลัก และเป็นข้อมูลตั้งต้นของการสร้างภาพ/วิดีโอของช็อตนี้" : "This mirrors the main Storyboard prompt card and feeds this shot's image/video generation."}
                     </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
+	                  </div>
+	                  <div className="flex flex-wrap gap-2">
+	                    <Button
+	                      type="button"
+	                      variant="outline"
+	                      size="sm"
+	                      disabled={Boolean(shotGenerationState?.[draft.id]?.startFrame) || !selectedStoryboardPromptDraft || !onGenerateShotFrameImage}
+	                      onClick={() => selectedStoryboardPromptDraft && onGenerateShotFrameImage?.(draft.id, "start", selectedReferenceSkillId, withVideoPromptPlannerOptions(selectedStoryboardPromptDraft))}
+	                    >
+	                      <ImageIcon className={`mr-1 h-3.5 w-3.5 ${shotGenerationState?.[draft.id]?.startFrame ? "animate-pulse" : ""}`} />
+	                      {shotGenerationState?.[draft.id]?.startFrame ? (isThai ? "กำลังสร้าง Start" : "Generating start") : (isThai ? "สร้าง Start frame" : "Generate start")}
+	                    </Button>
+	                    <Button
+	                      type="button"
+	                      variant="outline"
+	                      size="sm"
+	                      disabled={Boolean(shotGenerationState?.[draft.id]?.stopFrame) || !selectedStoryboardPromptDraft || !onGenerateShotFrameImage}
+	                      onClick={() => selectedStoryboardPromptDraft && onGenerateShotFrameImage?.(draft.id, "stop", selectedReferenceSkillId, withVideoPromptPlannerOptions(selectedStoryboardPromptDraft))}
+	                    >
+	                      <ImageIcon className={`mr-1 h-3.5 w-3.5 ${shotGenerationState?.[draft.id]?.stopFrame ? "animate-pulse" : ""}`} />
+	                      {shotGenerationState?.[draft.id]?.stopFrame ? (isThai ? "กำลังสร้าง Stop" : "Generating stop") : (isThai ? "สร้าง Stop frame" : "Generate stop")}
+	                    </Button>
+	                    <Button
                       type="button"
                       variant="outline"
                         size="sm"
-                        disabled={Boolean(shotGenerationState?.[draft.id]?.storyboardGridImage) || !selectedStoryboardPromptDraft || !onGenerateShotStoryboardGridImage}
-                        onClick={() => selectedStoryboardPromptDraft && onGenerateShotStoryboardGridImage?.(draft.id, selectedReferenceSkillId, withVideoPromptPlannerOptions(selectedStoryboardPromptDraft))}
-                    >
-                      <ImageIcon className={`mr-1 h-3.5 w-3.5 ${shotGenerationState?.[draft.id]?.storyboardGridImage ? "animate-pulse" : ""}`} />
-                      {shotGenerationState?.[draft.id]?.storyboardGridImage ? (isThai ? "กำลังสร้างภาพ 3x3" : "Generating 3x3") : (isThai ? "สร้างภาพ Storyboard 3x3" : "Generate 3x3 image")}
-                    </Button>
-                    {selectedStoryboardPromptDraft?.storyboardGridImageUrl ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!onOpenShotStoryboardGridSplit}
-                        onClick={() => onOpenShotStoryboardGridSplit?.(draft.id, selectedStoryboardPromptDraft.storyboardGridImageUrl!, selectedStoryboardPromptDraft)}
-                      >
-                        <Split className="mr-1 h-3.5 w-3.5" />
-                        {isThai ? "ตัด 9 เฟรม" : "Split 9 frames"}
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                        size="sm"
-                        disabled={Boolean(shotGenerationState?.[draft.id]?.video) || !selectedStoryboardPromptDraft || !onGenerateShotVideo}
+                        disabled={Boolean(shotGenerationState?.[draft.id]?.video) || !selectedStoryboardPromptDraft || !onGenerateShotVideo || !selectedHasStartStopFrames}
+                        title={!selectedHasStartStopFrames ? (isThai ? "ต้องมี Start frame และ Stop frame ก่อนสร้างวิดีโอ" : "Start and stop frames are required before video generation.") : undefined}
                         onClick={() => selectedStoryboardPromptDraft && onGenerateShotVideo?.(draft.id, selectedReferenceSkillId, withVideoPromptPlannerOptions(selectedStoryboardPromptDraft))}
                     >
                       {shotGenerationState?.[draft.id]?.video ? <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Play className="mr-1 h-3.5 w-3.5" />}
@@ -1436,17 +1475,28 @@ export function VideoShotWorkspace({
                       className="min-h-[140px] bg-white"
                     />
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="storyboard-grid-prompt">{isThai ? "Prompt ภาพ Storyboard 3x3" : "3x3 storyboard image prompt"}</Label>
-                    <Textarea
-                      id="storyboard-grid-prompt"
-                      value={selectedStoryboardPromptDraft?.referenceStoryboardPrompt ?? selectedStoryboardPromptDraft?.storyboardGridPrompt ?? ""}
-                      disabled={draft.locked}
-                      onChange={(event) => updateStoryboardPromptDraft(draft.id, { referenceStoryboardPrompt: event.target.value, storyboardGridPrompt: event.target.value })}
-                      className="min-h-[140px] bg-white"
-                      placeholder={isThai ? "ใช้ prompt เดียวเพื่อสร้างภาพ 9 ช่อง แล้วตัดเป็น reference/start/stop" : "Use one prompt to generate the 9-frame grid, then split it into reference/start/stop frames."}
-                    />
-                  </div>
+	                  <div className="grid gap-1.5">
+	                    <Label htmlFor="storyboard-start-frame-prompt">{isThai ? "Prompt Start frame" : "Start-frame prompt"}</Label>
+	                    <Textarea
+	                      id="storyboard-start-frame-prompt"
+	                      value={selectedStoryboardPromptDraft?.startFramePrompt ?? ""}
+	                      disabled={draft.locked}
+	                      onChange={(event) => updateStoryboardPromptDraft(draft.id, { startFramePrompt: event.target.value })}
+	                      className="min-h-[140px] bg-white"
+	                      placeholder={isThai ? "ภาพเปิดของช็อตนี้แบบเต็ม resolution ไม่ใช่ 3x3" : "Full-resolution opening frame for this shot, not a 3x3 grid."}
+	                    />
+	                  </div>
+	                  <div className="grid gap-1.5">
+	                    <Label htmlFor="storyboard-stop-frame-prompt">{isThai ? "Prompt Stop frame" : "Stop-frame prompt"}</Label>
+	                    <Textarea
+	                      id="storyboard-stop-frame-prompt"
+	                      value={selectedStoryboardPromptDraft?.stopFramePrompt ?? ""}
+	                      disabled={draft.locked}
+	                      onChange={(event) => updateStoryboardPromptDraft(draft.id, { stopFramePrompt: event.target.value })}
+	                      className="min-h-[140px] bg-white"
+	                      placeholder={isThai ? "ภาพจบของช็อตนี้แบบเต็ม resolution เพื่อใช้ส่งต่อสร้างวิดีโอ" : "Full-resolution ending frame for this shot before video generation."}
+	                    />
+	                  </div>
                   <div className="grid gap-1.5">
                     <Label htmlFor="storyboard-video-prompt">{isThai ? "Prompt วิดีโอ" : "Video prompt"}</Label>
                     <Textarea

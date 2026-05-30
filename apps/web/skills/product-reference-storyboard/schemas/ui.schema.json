@@ -1,0 +1,89 @@
+{
+  "ui:order": [
+    "generation_mode",
+    "product_category",
+    "reference_character_images",
+    "reference_product_images",
+    "product_label_text",
+    "label_fidelity",
+    "label_readability_mode",
+    "image_text_mode",
+    "image_text_language",
+    "image_text_custom_language",
+    "reference_environment_images",
+    "storyboard_layout_preset",
+    "aspect_ratio",
+    "cinematic_style",
+    "storyboard_guide",
+    "voiceover_script",
+    "production_concept_details"
+  ],
+  "generation_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกโหมดที่เหมาะกับรูปและข้อมูลที่ใส่"
+  },
+  "reference_character_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปตัวละครมาวาง หรือกดเลือกรูปจากเครื่อง"
+  },
+  "reference_product_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปสินค้ามาวาง หรือกดเลือกรูปจากเครื่อง รูปนี้คือหลักฐานจริงของสินค้า ห้ามให้ prompt เปลี่ยนรูปทรง วัสดุ สี จำนวนชิ้นส่วน หรือฉลาก"
+  },
+  "product_label_text": {
+    "ui:widget": "textarea",
+    "ui:help": "ใช้ใส่มาร์กกิ้ง/แท็ก/สติกเกอร์/โลโก้/ขนาดสินค้าที่ต้องล็อก เช่น Dimensions: 110 cm long x 50 cm wide x 12 cm thick"
+  },
+  "label_fidelity": {
+    "ui:widget": "select",
+    "ui:help": "เลือกเมื่อต้องการล็อกข้อความบนแท็ก โลโก้ สติกเกอร์ SKU ป้าย care label หรือขนาดสินค้าให้ถูกต้อง"
+  },
+  "label_readability_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือก Product/detail lock เมื่อต้องการเฟรมเห็นรายละเอียดสินค้า เช่น ตะเข็บ ล้อ ชั้น มือจับ วัสดุ หรือขนาดชัดเจน ไม่ใช่ prop เล็ก ๆ ในฉาก"
+  },
+  "image_text_mode": {
+    "ui:widget": "select",
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ มาร์กกิ้ง/แท็ก/โลโก้/ข้อความจริงบนสินค้าไม่ถือเป็นข้อความเพิ่ม ยกเว้นเมื่อเลือก Cinematic Style เป็น Info Graphics Realistic / Info Graphics ระบบต้องสร้างข้อความอินโฟกราฟิกขนาดใหญ่"
+  },
+  "image_text_language": {
+    "ui:widget": "select",
+    "ui:help": "ใช้เมื่อเลือกให้มีข้อความเพิ่มในภาพ ค่าเริ่มต้นคือภาษาอังกฤษ และใช้กับข้อความอินโฟกราฟิกเมื่อเลือก Info Graphics"
+  },
+  "image_text_custom_language": {
+    "ui:widget": "text",
+    "ui:help": "กรอกเมื่อเลือกภาษาอื่น เช่น Japanese, Korean, Chinese, Vietnamese, Arabic หรือ Spanish"
+  },
+  "reference_environment_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปห้อง/สถานที่มาวางเพื่อกำหนดบรรยากาศ แสง พื้น ผนัง และ layout เท่านั้น ห้ามใช้แทนสินค้าจริง"
+  },
+  "storyboard_layout_preset": {
+    "ui:widget": "select",
+    "ui:help": "เลือกเลย์เอาต์ที่สัมพันธ์กับ Aspect Ratio ของภาพใหญ่ เช่น 9:16 ควรใช้ preset 9:16; ตัวเลือก crop-safe จะเว้นพื้นที่เผื่อ crop ภายหลังโดยไม่ตัดสินค้า/ตัวแบบ"
+  },
+  "aspect_ratio": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสัดส่วนที่เหมาะสม"
+  },
+  "cinematic_style": {
+    "ui:widget": "select",
+    "ui:help": "สไตล์มีผลกับแสง กล้อง และ mood เท่านั้น ห้ามเปลี่ยนสี วัสดุ สเกล หรือรูปทรงของสินค้าอ้างอิง หากเลือก Info Graphics Realistic / Info Graphics จะ override ค่า no_text และสร้างข้อความอินโฟกราฟิกขนาดใหญ่แบบสั้นกระชับ"
+  },
+  "storyboard_guide": {
+    "ui:widget": "textarea",
+    "ui:help": "ไม่บังคับ ใช้รับ Storyboard จาก Video Shot เพื่อให้ prompt ทุกเฟรมสอดคล้องกับลำดับเรื่อง จังหวะ ภาพ สเกลห้อง และการใช้งานเฟอร์นิเจอร์"
+  },
+  "production_concept_details": {
+    "ui:widget": "textarea",
+    "ui:help": "รายละเอียดสินค้า / PRODUCT FACTS LOCK ใช้ล็อกชนิดสินค้า รุ่น ขนาด จำนวนชิ้นส่วน วัสดุ สี สเกล การใช้งานจริง และ claim safety; ใช้ร่วมกับ Storyboard Guide/Voiceover โดยห้ามใส่ราคา rating ยอดขาย หรือโปรโมชันที่ไม่ได้ให้มา"
+  },
+  "voiceover_script": {
+    "ui:widget": "textarea",
+    "ui:help": "บทพูด/voiceover ต่อ shot ใช้คู่กับ Storyboard Guide เพื่อ map Frame 1-9 ให้ตรงเรื่อง เสียงพูด มุมกล้อง และล็อกสินค้า ไม่ใช่แต่ง scene ใหม่จากศูนย์"
+  },
+  "product_category": {
+    "ui:widget": "select",
+    "ui:help": "เลือกหมวดสินค้าเพื่อโหลดกฎล็อกสินค้าที่ถูกประเภท เช่น furniture จะล็อกจำนวนชั้น/ขา/วัสดุ ส่วน cosmetics จะล็อกขวด/ฝา/ฉลาก; ค่า Auto ใช้เมื่อให้ระบบเดาจาก Product Detail และภาพอ้างอิง"
+  }
+}

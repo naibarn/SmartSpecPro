@@ -11,6 +11,11 @@ import { NodeConfigPanel } from "./NodeConfigPanel";
 import { ProductEvidenceTray } from "./ProductEvidenceTray";
 import { ProductionFlowCanvas } from "./ProductionFlowCanvas";
 import { evidenceStatusLabel, targetLabel } from "./displayLabels";
+import {
+  buildProductionStoryShotBriefText,
+  type ProductionStoryVariationRecipe,
+  type ProductionStoryVoiceoverBeat,
+} from "../storyConceptVariation";
 import type { ProductionCanvasCallbacks, ProductionLocale, ProductionWorkspaceViewState } from "./types";
 
 export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
@@ -31,6 +36,12 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   onConfirmStoryConceptPlan?: (conceptId: string) => void;
   onRegenerateStoryConcepts?: (conceptId?: string) => void;
   onGenerateStoryConceptInfographic?: (conceptId: string) => void;
+  onGenerateAllShotPrompts?: () => void;
+  isGeneratingAllShotPrompts?: boolean;
+  shotPromptSpeechMode?: "none" | "th" | "en" | "other";
+  shotPromptSpeechLanguage?: string;
+  onShotPromptSpeechModeChange?: (mode: "none" | "th" | "en" | "other") => void;
+  onShotPromptSpeechLanguageChange?: (language: string) => void;
   onResetStoryConcepts?: () => void;
   onOpenVideoShot: () => void;
   isSaving?: boolean;
@@ -64,6 +75,9 @@ export interface ProductionWorkspaceProps extends ProductionCanvasCallbacks {
   onPlanningModelChange?: (modelMode: ProductionPlanningSelection["modelMode"], modelId?: string) => void;
   storyboardBuildMode?: ProductionStoryboardBuildMode;
   onStoryboardBuildModeChange?: (mode: ProductionStoryboardBuildMode) => void;
+  storyboardShotCount?: number;
+  storyboardShotCountOptions?: number[];
+  onStoryboardShotCountChange?: (shotCount: number) => void;
   storyboardClipDurationSeconds?: number;
   storyboardClipDurationOptions?: number[];
   onStoryboardClipDurationSecondsChange?: (seconds: number) => void;
@@ -107,6 +121,8 @@ export interface ProductionStoryConceptOption {
   videoBrief?: Record<string, unknown>;
   conceptDetails?: string;
   productFacts?: string;
+  variationRecipe?: ProductionStoryVariationRecipe;
+  voiceoverBeats?: ProductionStoryVoiceoverBeat[];
   visualSummary?: string;
   keyVisualElements?: string[];
   storyboardThumbnailNotes?: string;
@@ -305,7 +321,8 @@ const platformOptions = [
   { value: "Website", en: "Website", th: "เว็บไซต์" },
 ];
 
-const defaultStoryboardClipDurationOptions = [5, 6, 8, 9, 10, 12, 15];
+const defaultStoryboardShotCountOptions = [6, 7, 8, 9, 10, 12, 15];
+const defaultStoryboardClipDurationOptions = [4, 5, 6, 6.7, 7.5, 8, 9, 10, 12, 15];
 const storyboardShotCountOptions = Array.from({ length: 12 }, (_, index) => index + 1);
 const baseDurationOptions = [6, 10, 15, 20, 30, 40, 45, 60, 90, 120];
 const durationOptions = Array.from(new Set([
@@ -485,7 +502,15 @@ function planningModelOptionLabel(option: ProductionPlanningModelOption): string
   ].filter(Boolean).join(" · ");
 }
 
-function buildConceptInfographicPrompt(option: ProductionStoryConceptOption): string {
+function buildConceptInfographicPrompt(option: ProductionStoryConceptOption, isThai: boolean): string {
+  const shotBrief = option.voiceoverBeats?.length
+    ? buildProductionStoryShotBriefText({
+      beats: option.voiceoverBeats,
+      locale: isThai ? "th" : "en",
+      overview: option.conceptDetails,
+      includeVoiceover: true,
+    })
+    : "";
   return option.infographicPrompt || [
     "Create a beautiful realistic infographic with photorealistic supporting images.",
     `Concept: ${option.title}`,
@@ -493,9 +518,38 @@ function buildConceptInfographicPrompt(option: ProductionStoryConceptOption): st
     `Hook: ${option.hook}`,
     option.visualSummary ? `Visual summary: ${option.visualSummary}` : "",
     option.keyVisualElements?.length ? `Key visual elements: ${option.keyVisualElements.join(", ")}` : "",
-    `Storyboard: ${option.sceneTimeline.map((scene) => `${scene.timeRange} ${scene.title} - ${scene.detail}`).join(" | ")}`,
+    shotBrief ? `Shot-by-shot video concept:\n${shotBrief}` : `Storyboard: ${option.sceneTimeline.map((scene) => `${scene.timeRange} ${scene.title} - ${scene.detail}`).join(" | ")}`,
+    option.voiceoverBeats?.length ? `Voiceover: ${option.voiceoverBeats.map((beat) => `${beat.order}. ${beat.voiceoverScript}`).join(" | ")}` : "",
     "Make the idea understandable at a glance, premium, clean, product-safe, and do not invent unsupported product claims.",
   ].filter(Boolean).join("\n");
+}
+
+function formatConceptSeconds(seconds: number): string {
+  return Number.isInteger(seconds) ? String(seconds) : seconds.toFixed(1).replace(/\.0$/, "");
+}
+
+function buildConceptVoiceoverText(option: ProductionStoryConceptOption, isThai: boolean): string {
+  const beats = option.voiceoverBeats ?? [];
+  if (!beats.length) return "";
+  return beats
+    .slice()
+    .sort((a, b) => Number(a.order) - Number(b.order))
+    .map((beat) => {
+      const start = formatConceptSeconds(Number(beat.startSec) || 0);
+      const end = formatConceptSeconds(Number(beat.endSec) || 0);
+      return `${beat.order}. ${start}-${end}s ${beat.title}\n${beat.voiceoverScript}`;
+    })
+    .join("\n\n");
+}
+
+function getConceptVoiceoverSummary(option: ProductionStoryConceptOption, isThai: boolean): string {
+  const beats = option.voiceoverBeats ?? [];
+  if (!beats.length) return "";
+  const totalSeconds = Math.max(...beats.map((beat) => Number(beat.endSec) || 0));
+  const speechBudget = Math.max(...beats.map((beat) => Number(beat.speechBudgetSeconds) || 0));
+  return isThai
+    ? `${beats.length} shot / ${formatConceptSeconds(totalSeconds)} วินาที / บทพูด ~${formatConceptSeconds(speechBudget)}s ต่อ shot`
+    : `${beats.length} shots / ${formatConceptSeconds(totalSeconds)} seconds / ~${formatConceptSeconds(speechBudget)}s voiceover per shot`;
 }
 
 const CONCEPT_DETAILS_DISPLAY_MAX_CHARS = 520;
@@ -679,8 +733,18 @@ function buildProductFactsText(option: ProductionStoryConceptOption, isThai: boo
 
 function buildConceptDetailsText(option: ProductionStoryConceptOption, isThai: boolean): string {
   const rawDetails = normalizeConceptDetailsText(option.conceptDetails);
-  if (rawDetails && rawDetails.length <= CONCEPT_DETAILS_DISPLAY_MAX_CHARS && !isTemplateConceptDetailsText(rawDetails)) return rawDetails;
-  return buildJourneyConceptDetailsText(option, isThai, rawDetails);
+  const overview = rawDetails && rawDetails.length <= CONCEPT_DETAILS_DISPLAY_MAX_CHARS && !isTemplateConceptDetailsText(rawDetails)
+    ? rawDetails
+    : buildJourneyConceptDetailsText(option, isThai, rawDetails);
+  if (option.voiceoverBeats?.length) {
+    return buildProductionStoryShotBriefText({
+      beats: option.voiceoverBeats,
+      locale: isThai ? "th" : "en",
+      overview,
+      includeVoiceover: true,
+    });
+  }
+  return overview;
 }
 
 function ProductionConceptCard(props: {
@@ -696,9 +760,13 @@ function ProductionConceptCard(props: {
   const { option, selected, isThai } = props;
   const [copiedDetails, setCopiedDetails] = useState(false);
   const [copiedProductFacts, setCopiedProductFacts] = useState(false);
+  const [copiedVoiceover, setCopiedVoiceover] = useState(false);
   const infographicStatus = option.infographicStatus ?? (option.infographicUrl ? "ready" : option.infographicPrompt ? "prompt_ready" : "idle");
   const conceptDetails = buildConceptDetailsText(option, isThai);
   const productFacts = buildProductFactsText(option, isThai);
+  const voiceoverText = buildConceptVoiceoverText(option, isThai);
+  const voiceoverSummary = getConceptVoiceoverSummary(option, isThai);
+  const isRegenerating = option.sourceSignals.some((signal) => /regenerating/i.test(signal));
   const handleCopyDetails = async () => {
     if (!conceptDetails) return;
     try {
@@ -717,6 +785,16 @@ function ProductionConceptCard(props: {
       window.setTimeout(() => setCopiedProductFacts(false), 1200);
     } catch {
       setCopiedProductFacts(false);
+    }
+  };
+  const handleCopyVoiceover = async () => {
+    if (!voiceoverText) return;
+    try {
+      await navigator.clipboard?.writeText(voiceoverText);
+      setCopiedVoiceover(true);
+      window.setTimeout(() => setCopiedVoiceover(false), 1200);
+    } catch {
+      setCopiedVoiceover(false);
     }
   };
   return (
@@ -789,7 +867,9 @@ function ProductionConceptCard(props: {
           <div className="mt-0.5 line-clamp-3 font-medium text-slate-900">{option.hook}</div>
         </div>
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Storyboard" : "30s timeline"}</div>
+          <div className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">
+            {voiceoverSummary || (isThai ? "Storyboard" : "30s timeline")}
+          </div>
           <div className="mt-1 grid gap-1">
             {option.sceneTimeline.slice(0, 4).map((scene) => (
               <div key={`${option.id}-${scene.timeRange}`} className="min-w-0 rounded border border-slate-100 bg-white px-2 py-1">
@@ -845,10 +925,33 @@ function ProductionConceptCard(props: {
             aria-label={isThai ? `แนวคิดวิดีโอ ${option.title}` : `${option.title} concept journey`}
           />
         </div>
+        {voiceoverText ? (
+          <div className="min-w-0 rounded-md border border-sky-200 bg-white p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-normal text-sky-700">
+                  {isThai ? "บทพูด Storyboard" : "Storyboard voiceover"}
+                </div>
+                <div className="text-[10px] text-slate-500">{voiceoverSummary}</div>
+              </div>
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-[11px]" onClick={handleCopyVoiceover}>
+                <Copy className="mr-1 h-3.5 w-3.5" />
+                {copiedVoiceover ? (isThai ? "คัดลอกแล้ว" : "Copied") : (isThai ? "คัดลอก" : "Copy")}
+              </Button>
+            </div>
+            <Textarea
+              value={voiceoverText}
+              readOnly
+              className="min-h-[210px] resize-y border-sky-100 bg-sky-50/40 text-xs leading-5 text-slate-800 shadow-none focus-visible:ring-sky-200"
+              aria-label={isThai ? `บทพูด storyboard ${option.title}` : `${option.title} storyboard voiceover`}
+            />
+          </div>
+        ) : null}
         <div className="flex min-w-0 flex-wrap gap-1">
           {option.narrativeStructure ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.narrativeStructure}</Badge> : null}
           {option.emotionalTone ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.emotionalTone}</Badge> : null}
           {option.hookTechnique ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.hookTechnique}</Badge> : null}
+          {option.variationRecipe?.cameraGrammar ? <Badge variant="outline" className="h-auto max-w-full whitespace-normal break-words bg-white text-[10px] leading-4">{option.variationRecipe.cameraGrammar}</Badge> : null}
         </div>
         {option.risks.length ? (
           <div className="min-w-0 rounded-md border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
@@ -862,9 +965,17 @@ function ProductionConceptCard(props: {
           {selected ? <CheckCircle className="mr-2 h-4 w-4" /> : <Route className="mr-2 h-4 w-4" />}
           {selected ? (isThai ? "เลือกอยู่" : "Selected") : (isThai ? "เลือกแนวคิด" : "Select concept")}
         </Button>
-        <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onRegenerate?.(option.id)} disabled={!props.onRegenerate}>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          {isThai ? "Regenerate ใบนี้" : "Regenerate"}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-auto min-h-9 whitespace-normal"
+          onClick={() => props.onRegenerate?.(option.id)}
+          disabled={!props.onRegenerate || isRegenerating || props.isPlanning}
+          aria-busy={isRegenerating}
+        >
+          {isRegenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCcw className="mr-2 h-4 w-4" />}
+          {isRegenerating ? (isThai ? "กำลัง Regenerate..." : "Regenerating...") : (isThai ? "Regenerate ใบนี้" : "Regenerate")}
         </Button>
         <Button type="button" variant="outline" size="sm" className="h-auto min-h-9 whitespace-normal" onClick={() => props.onGenerateInfographic?.(option.id)} disabled={!props.onGenerateInfographic}>
           {infographicStatus === "generating" || infographicStatus === "queued" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageIcon className="mr-2 h-4 w-4" />}
@@ -891,6 +1002,9 @@ function ProductionConceptBoard(props: {
   emptyState?: boolean;
   storyboardBuildMode?: ProductionStoryboardBuildMode;
   onStoryboardBuildModeChange?: (mode: ProductionStoryboardBuildMode) => void;
+  storyboardShotCount?: number;
+  storyboardShotCountOptions?: number[];
+  onStoryboardShotCountChange?: (shotCount: number) => void;
   storyboardClipDurationSeconds?: number;
   storyboardClipDurationOptions?: number[];
   totalDurationSeconds?: number;
@@ -903,11 +1017,15 @@ function ProductionConceptBoard(props: {
 }) {
   const [previewOption, setPreviewOption] = useState<ProductionStoryConceptOption | null>(null);
   const { storyWizard, isThai } = props;
-  const previewPrompt = previewOption ? buildConceptInfographicPrompt(previewOption) : "";
+  const previewPrompt = previewOption ? buildConceptInfographicPrompt(previewOption, isThai) : "";
+  const previewVoiceoverText = previewOption ? buildConceptVoiceoverText(previewOption, isThai) : "";
+  const shotCountOptions = props.storyboardShotCountOptions?.length ? props.storyboardShotCountOptions : defaultStoryboardShotCountOptions;
+  const storyboardShotCount = shotCountOptions.includes(Number(props.storyboardShotCount)) ? Number(props.storyboardShotCount) : 9;
   const clipDurationOptions = props.storyboardClipDurationOptions?.length ? props.storyboardClipDurationOptions : defaultStoryboardClipDurationOptions;
   const clipDurationSeconds = Number(props.storyboardClipDurationSeconds) > 0 ? Number(props.storyboardClipDurationSeconds) : clipDurationOptions[0] ?? 8;
   const totalDurationSeconds = Number(props.totalDurationSeconds) > 0 ? Number(props.totalDurationSeconds) : 0;
-  const derivedVideoCount = totalDurationSeconds > 0 ? Math.max(1, Math.ceil(totalDurationSeconds / clipDurationSeconds)) : 0;
+  const derivedVideoCount = totalDurationSeconds > 0 ? storyboardShotCount : 0;
+  const derivedClipDurationSeconds = totalDurationSeconds > 0 ? totalDurationSeconds / storyboardShotCount : clipDurationSeconds;
   return (
     <section className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm" data-testid="production-story-wizard">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -938,13 +1056,13 @@ function ProductionConceptBoard(props: {
           </select>
           <select
             className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
-            value={String(clipDurationSeconds)}
-            onChange={(event) => props.onStoryboardClipDurationSecondsChange?.(Number(event.target.value) || clipDurationSeconds)}
-            aria-label={isThai ? "วินาทีต่อวิดีโอ storyboard" : "Seconds per storyboard video"}
+            value={String(storyboardShotCount)}
+            onChange={(event) => props.onStoryboardShotCountChange?.(Number(event.target.value) || storyboardShotCount)}
+            aria-label={isThai ? "จำนวน shot แนวคิด storyboard" : "Storyboard concept shot count"}
           >
-            {clipDurationOptions.map((seconds) => (
-              <option key={seconds} value={seconds}>
-                {isThai ? `${seconds} วินาที/วิดีโอ` : `${seconds}s per video`}
+            {shotCountOptions.map((count) => (
+              <option key={count} value={count}>
+                {isThai ? `${count} shot` : `${count} shots`}
               </option>
             ))}
           </select>
@@ -985,8 +1103,8 @@ function ProductionConceptBoard(props: {
           <div>
             {derivedVideoCount
               ? (isThai
-                ? `เมื่อยืนยัน ระบบจะสร้าง ${derivedVideoCount} วิดีโอ/shot จากความยาวรวม ${totalDurationSeconds}s ÷ ${clipDurationSeconds}s`
-                : `On confirmation, the app will create ${derivedVideoCount} videos/shots from ${totalDurationSeconds}s total ÷ ${clipDurationSeconds}s.`)
+                ? `เมื่อยืนยัน ระบบจะสร้าง ${derivedVideoCount} วิดีโอ/shot จากความยาวรวม ${totalDurationSeconds}s เฉลี่ย ${formatConceptSeconds(derivedClipDurationSeconds)}s ต่อ shot`
+                : `On confirmation, the app will create ${derivedVideoCount} videos/shots from ${totalDurationSeconds}s total, about ${formatConceptSeconds(derivedClipDurationSeconds)}s per shot.`)
               : (isThai
                 ? "เมื่อยืนยัน ระบบจะสร้าง workflow ใหม่จากแนวคิดและ storyboard ที่เลือก"
                 : "On confirmation, the app will generate a workflow from the selected concept and storyboard.")}
@@ -1044,6 +1162,12 @@ function ProductionConceptBoard(props: {
                   <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">{isThai ? "Prompt ภาพรวม" : "Infographic prompt"}</div>
                   <div className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-slate-600">{previewPrompt}</div>
                 </div>
+                {previewVoiceoverText ? (
+                  <div className="min-w-0 rounded-lg border bg-white p-3">
+                    <div className="text-xs font-semibold uppercase tracking-normal text-slate-500">{isThai ? "บทพูด 9 shot" : "9-shot voiceover"}</div>
+                    <div className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-slate-600">{previewVoiceoverText}</div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -1121,10 +1245,8 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const formattedStatus = formatProductionStatus(props.status, isThai);
   const labelForOption = (option: { en: string; th: string }) => isThai ? option.th : option.en;
   const currentDuration = brief.durationSeconds ? String(brief.durationSeconds) : "";
-  const storyboardClipDurationOptions = props.storyboardClipDurationOptions?.length ? props.storyboardClipDurationOptions : defaultStoryboardClipDurationOptions;
-  const storyboardClipDurationSeconds = Number(props.storyboardClipDurationSeconds) > 0
-    ? Number(props.storyboardClipDurationSeconds)
-    : storyboardClipDurationOptions[0] ?? 8;
+  const storyboardShotCountOptions = props.storyboardShotCountOptions?.length ? props.storyboardShotCountOptions : defaultStoryboardShotCountOptions;
+  const storyboardShotCount = storyboardShotCountOptions.includes(Number(props.storyboardShotCount)) ? Number(props.storyboardShotCount) : 9;
   const hasCustomAspectRatio = brief.aspectRatio && !aspectRatioOptions.includes(brief.aspectRatio);
   const hasCustomLanguage = brief.language && !languageOptions.some((option) => option.value === brief.language);
   const hasCustomGoalType = brief.goalType && !goalTypeOptions.some((option) => option.value === brief.goalType);
@@ -1181,6 +1303,36 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
     isPlanning: props.isPlanning,
     isThai,
   });
+  const shouldUseShotPromptAction = props.displayMode === "workflow" && Boolean(props.onGenerateAllShotPrompts);
+  const shotPromptSpeechMode = props.shotPromptSpeechMode ?? "none";
+  const nextActionView = shouldUseShotPromptAction
+    ? {
+        title: isThai ? "สร้าง prompt Start/Stop ทุก shot" : "Generate all start/stop prompts",
+        body: isThai
+          ? "ใช้ค่าฟอร์มด้านบน แนวคิดจาก Production บทพูด และรายละเอียดสินค้า เพื่อเติม prompt ของทุก shot ให้พร้อมสร้างภาพ"
+          : "Use the form above, selected Production concept, voiceover, and product details to fill every shot prompt.",
+        label: props.isGeneratingAllShotPrompts
+          ? (isThai ? "กำลังสร้าง prompt..." : "Generating prompts...")
+          : (isThai ? "สร้าง prompt ทั้งหมด" : "Generate all prompts"),
+        action: "shot_prompt_all" as const,
+        disabled: props.isGeneratingAllShotPrompts || props.isPlanning || space.shots.length === 0,
+      }
+    : nextAction;
+  const handleNextActionClick = () => {
+    if (nextActionView.action === "shot_prompt_all") {
+      props.onGenerateAllShotPrompts?.();
+    } else if (nextActionView.action === "run" && selectedNode) {
+      props.onRunNode?.(selectedNode.id);
+    } else if (nextActionView.action === "output" && selectedNode) {
+      props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId);
+    } else if (nextActionView.action === "configure" && selectedNode) {
+      props.onConfigureNode?.(selectedNode.id);
+    } else if (nextActionView.action === "plan") {
+      props.onCreateFixturePlan();
+    } else {
+      document.querySelector("[data-testid='context-asset-board']")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  };
   const runScopeLabel = selectedNode
     ? workspaceNodeSurface(selectedNode) === "production"
       ? (isThai ? "สร้างพรอมป์ในระบบ" : "local prompt")
@@ -1477,24 +1629,18 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
                     </Badge>
                     {selectedNode ? <span className="truncate text-xs font-medium text-slate-700">{selectedNode.title}</span> : null}
                   </div>
-                  <div className="mt-1 truncate text-sm font-semibold text-slate-950">{nextAction.title}</div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={nextAction.action === "run" || nextAction.action === "output" ? "shrink-0 border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" : "shrink-0"}
-                  disabled={nextAction.disabled || (nextAction.action !== "attach" && !selectedNode && nextAction.action !== "plan")}
-                  onClick={() => {
-                    if (nextAction.action === "run" && selectedNode) props.onRunNode?.(selectedNode.id);
-                    else if (nextAction.action === "output" && selectedNode) props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId);
-                    else if (nextAction.action === "configure" && selectedNode) props.onConfigureNode?.(selectedNode.id);
-                    else if (nextAction.action === "plan") props.onCreateFixturePlan();
-                    else document.querySelector("[data-testid='context-asset-board']")?.scrollIntoView({ block: "start", behavior: "smooth" });
-                  }}
-                >
-                  {nextAction.label}
-                </Button>
+	                  <div className="mt-1 truncate text-sm font-semibold text-slate-950">{nextActionView.title}</div>
+	                </div>
+	                <Button
+	                  type="button"
+	                  variant="outline"
+	                  size="sm"
+	                  className={nextActionView.action === "run" || nextActionView.action === "output" || nextActionView.action === "shot_prompt_all" ? "shrink-0 border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" : "shrink-0"}
+	                  disabled={nextActionView.disabled || (nextActionView.action !== "attach" && nextActionView.action !== "shot_prompt_all" && !selectedNode && nextActionView.action !== "plan")}
+	                  onClick={handleNextActionClick}
+	                >
+	                  {nextActionView.label}
+	                </Button>
               </div>
             </div>
           </div>
@@ -1792,6 +1938,9 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
           onResetStoryConcepts={props.onResetStoryConcepts}
           storyboardBuildMode={props.storyboardBuildMode}
           onStoryboardBuildModeChange={props.onStoryboardBuildModeChange}
+          storyboardShotCount={props.storyboardShotCount}
+          storyboardShotCountOptions={props.storyboardShotCountOptions}
+          onStoryboardShotCountChange={props.onStoryboardShotCountChange}
           storyboardClipDurationSeconds={props.storyboardClipDurationSeconds}
           storyboardClipDurationOptions={props.storyboardClipDurationOptions}
           totalDurationSeconds={Number(brief.durationSeconds) || undefined}
@@ -1872,18 +2021,18 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
             ))}
           </datalist>
           <select
-            value={String(storyboardClipDurationSeconds)}
-            onChange={(event) => props.onStoryboardClipDurationSecondsChange?.(Number(event.target.value) || storyboardClipDurationSeconds)}
-            aria-label={isThai ? "วินาทีต่อวิดีโอ" : "Storyboard seconds per video"}
+            value={String(storyboardShotCount)}
+            onChange={(event) => props.onStoryboardShotCountChange?.(Number(event.target.value) || storyboardShotCount)}
+            aria-label={isThai ? "จำนวน shot storyboard" : "Storyboard shot count"}
             className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            {storyboardClipDurationOptions.map((seconds) => (
-              <option key={seconds} value={seconds}>
+            {storyboardShotCountOptions.map((count) => (
+              <option key={count} value={count}>
                 {Number(brief.durationSeconds) > 0
                   ? (isThai
-                    ? `${seconds}s / วิดีโอ (${Math.max(1, Math.ceil(Number(brief.durationSeconds) / seconds))} วิดีโอ)`
-                    : `${seconds}s / video (${Math.max(1, Math.ceil(Number(brief.durationSeconds) / seconds))} videos)`)
-                  : (isThai ? `${seconds}s / วิดีโอ` : `${seconds}s / video`)}
+                    ? `${count} shot (${formatConceptSeconds(Number(brief.durationSeconds) / count)}s/shot)`
+                    : `${count} shots (${formatConceptSeconds(Number(brief.durationSeconds) / count)}s/shot)`)
+                  : (isThai ? `${count} shot` : `${count} shots`)}
               </option>
             ))}
           </select>
@@ -1911,6 +2060,30 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
               <option key={option.value} value={option.value}>{labelForOption(option)}</option>
             ))}
           </select>
+          {shouldUseShotPromptAction ? (
+            <>
+              <select
+                value={shotPromptSpeechMode}
+                onChange={(event) => props.onShotPromptSpeechModeChange?.(event.target.value as "none" | "th" | "en" | "other")}
+                aria-label={isThai ? "โหมดบทพูดสำหรับ prompt วิดีโอทุก shot" : "All shot video prompt speech mode"}
+                className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              >
+                <option value="none">{isThai ? "ไม่ใส่บทพูดในวิดีโอ" : "No speech in video"}</option>
+                <option value="th">{isThai ? "ใส่บทพูดภาษาไทย" : "Thai speech"}</option>
+                <option value="en">{isThai ? "ใส่บทพูดภาษาอังกฤษ" : "English speech"}</option>
+                <option value="other">{isThai ? "ใส่บทพูดภาษาอื่น" : "Other speech language"}</option>
+              </select>
+              {shotPromptSpeechMode === "other" ? (
+                <Input
+                  value={props.shotPromptSpeechLanguage ?? ""}
+                  onChange={(event) => props.onShotPromptSpeechLanguageChange?.(event.target.value)}
+                  placeholder={isThai ? "ระบุภาษาบทพูด" : "Speech language"}
+                  aria-label={isThai ? "ภาษาบทพูดอื่น" : "Other speech language"}
+                  className="h-11 bg-white"
+                />
+              ) : null}
+            </>
+          ) : null}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <Textarea
@@ -1969,31 +2142,36 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
               {selectedNode ? <Badge variant="outline">{selectedNode.title}</Badge> : null}
               {runScopeLabel ? <Badge variant="outline">{runScopeLabel}</Badge> : null}
             </div>
-            <div className="mt-2 text-sm font-semibold text-slate-950">{nextAction.title}</div>
-            <div className="mt-1 text-xs leading-5 text-slate-700">{nextAction.body}</div>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {nextAction.action === "run" ? (
-              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !workspaceNodeCanRun(selectedNode)} onClick={() => selectedNode && props.onRunNode?.(selectedNode.id)}>
-                <Play className="mr-2 h-4 w-4" />
-                {selectedNodeOutputs > 0 || selectedNode?.status === "completed" ? "Regenerate" : nextAction.label}
-              </Button>
-            ) : nextAction.action === "output" ? (
-              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !selectedNodeLatestOutput} onClick={() => selectedNode && props.onOpenNodeOutput?.(selectedNode.id, selectedNodeLatestOutput?.outputRefId)}>
-                <Eye className="mr-2 h-4 w-4" />
-                {nextAction.label}
-              </Button>
-            ) : nextAction.action === "configure" ? (
-              <Button type="button" variant="outline" disabled={!selectedNode} onClick={() => selectedNode && props.onConfigureNode?.(selectedNode.id)}>
-                <Settings2 className="mr-2 h-4 w-4" />
-                {nextAction.label}
-              </Button>
-            ) : (
-              <Button type="button" variant="outline" disabled={nextAction.disabled} onClick={nextAction.action === "plan" ? props.onCreateFixturePlan : () => document.querySelector("[data-testid='context-asset-board']")?.scrollIntoView({ block: "start", behavior: "smooth" })}>
-                <ArrowRight className="mr-2 h-4 w-4" />
-                {nextAction.label}
-              </Button>
-            )}
+	            <div className="mt-2 text-sm font-semibold text-slate-950">{nextActionView.title}</div>
+	            <div className="mt-1 text-xs leading-5 text-slate-700">{nextActionView.body}</div>
+	          </div>
+	          <div className="flex shrink-0 flex-wrap gap-2">
+	            {nextActionView.action === "shot_prompt_all" ? (
+	              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={nextActionView.disabled} onClick={handleNextActionClick}>
+	                {props.isGeneratingAllShotPrompts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+	                {nextActionView.label}
+	              </Button>
+	            ) : nextActionView.action === "run" ? (
+	              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !workspaceNodeCanRun(selectedNode)} onClick={handleNextActionClick}>
+	                <Play className="mr-2 h-4 w-4" />
+	                {selectedNodeOutputs > 0 || selectedNode?.status === "completed" ? "Regenerate" : nextActionView.label}
+	              </Button>
+	            ) : nextActionView.action === "output" ? (
+	              <Button type="button" variant="outline" className="border-sky-800 bg-sky-800 text-white hover:bg-sky-900 hover:text-white" disabled={!selectedNode || !selectedNodeLatestOutput} onClick={handleNextActionClick}>
+	                <Eye className="mr-2 h-4 w-4" />
+	                {nextActionView.label}
+	              </Button>
+	            ) : nextActionView.action === "configure" ? (
+	              <Button type="button" variant="outline" disabled={!selectedNode} onClick={handleNextActionClick}>
+	                <Settings2 className="mr-2 h-4 w-4" />
+	                {nextActionView.label}
+	              </Button>
+	            ) : (
+	              <Button type="button" variant="outline" disabled={nextActionView.disabled} onClick={handleNextActionClick}>
+	                <ArrowRight className="mr-2 h-4 w-4" />
+	                {nextActionView.label}
+	              </Button>
+	            )}
           </div>
         </div>
       </section>

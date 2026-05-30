@@ -15,6 +15,7 @@ export interface StoryboardReferenceImage {
   url: string;
   name?: string;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
+  productionContext?: StoryboardProductionContext | null;
 }
 
 export type StoryboardReferenceFrameRole = "start" | "stop" | "reference";
@@ -34,6 +35,7 @@ export interface StoryboardVideoGenerationContext {
   resolution?: string;
   referenceVideoUrl?: string;
   useReferenceVideoUrlFallback?: boolean;
+  productionContext?: StoryboardProductionContext | null;
 }
 
 export interface StoryboardGenerationTask {
@@ -56,6 +58,7 @@ export interface StoryboardGenerationTask {
   aspectRatio?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
+  productionContext?: StoryboardProductionContext | null;
 }
 
 export interface MarketplaceProductReferenceContext {
@@ -67,6 +70,24 @@ export interface MarketplaceProductReferenceContext {
   itemId?: string | null;
   sourceUrl?: string | null;
   affiliateUrl?: string | null;
+}
+
+export interface StoryboardProductionContext {
+  productionRunId?: string | null;
+  productionProjectTitle?: string | null;
+  productionStoryConceptId?: string | null;
+  productionStoryConceptTitle?: string | null;
+  productionStoryConceptAngle?: string | null;
+  productionStoryConceptDetails?: string | null;
+  videoConcept?: string | null;
+  voiceoverFullScript?: string | null;
+  storyboardGuide?: string | null;
+  sourceGridUrl?: string | null;
+  sourceShotId?: string | null;
+  sourceShotTitle?: string | null;
+  sourceShotTimeRange?: string | null;
+  sourceShotScript?: string | null;
+  sourceShotVideoPrompt?: string | null;
 }
 
 export interface StoryboardReviewDraft {
@@ -84,6 +105,8 @@ export interface StoryboardReviewDraft {
   renderJobId: string | null;
   /** Marketplace product context attached to this storyboard for story/script generation */
   marketplaceContext?: MarketplaceProductReferenceContext | null;
+  /** Production project/concept context propagated from Media Studio into Storyboard Review */
+  productionContext?: StoryboardProductionContext | null;
   /** Production Director concept details used as creative guidance for prompt planning */
   conceptDetails?: string | null;
   /** Storyboard guide/instructions used as scene and voiceover planning context */
@@ -98,6 +121,7 @@ export interface FirstLastFrameStoryboardImage {
   url: string;
   name?: string;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
+  productionContext?: StoryboardProductionContext | null;
 }
 
 export interface ReplaceStoryboardReferenceFrameInput {
@@ -128,6 +152,8 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
   statusDetail?: string;
   conceptDetails?: string | null;
   storyboardGuide?: string | null;
+  voiceoverFullScript?: string | null;
+  productionContext?: StoryboardProductionContext | null;
   includeVoiceover?: boolean;
   speechMode?: StoryboardPromptSpeechMode;
   speechLanguage?: string | null;
@@ -140,6 +166,33 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
 export const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
 const STORYBOARD_REVIEW_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 export const DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS = 8;
+
+function normalizeStoryboardProductionContext(value: unknown): StoryboardProductionContext | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const context: StoryboardProductionContext = {};
+  ([
+    "productionRunId",
+    "productionProjectTitle",
+    "productionStoryConceptId",
+    "productionStoryConceptTitle",
+    "productionStoryConceptAngle",
+    "productionStoryConceptDetails",
+    "videoConcept",
+    "voiceoverFullScript",
+    "storyboardGuide",
+    "sourceGridUrl",
+    "sourceShotId",
+    "sourceShotTitle",
+    "sourceShotTimeRange",
+    "sourceShotScript",
+    "sourceShotVideoPrompt",
+  ] as const).forEach((key) => {
+    const text = typeof record[key] === "string" ? record[key].trim() : "";
+    if (text) context[key] = text;
+  });
+  return Object.keys(context).length > 0 ? context : null;
+}
 
 function normalizeStoryboardShotDurationSeconds(value: unknown): number {
   const duration = Number(value);
@@ -179,6 +232,7 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     projectLink: typeof parsed.projectLink === "string" ? parsed.projectLink : null,
     renderJobId: typeof parsed.renderJobId === "string" ? parsed.renderJobId : null,
     marketplaceContext: parsed.marketplaceContext ?? null,
+    productionContext: normalizeStoryboardProductionContext(parsed.productionContext),
     conceptDetails: typeof parsed.conceptDetails === "string" ? parsed.conceptDetails : null,
     storyboardGuide: typeof parsed.storyboardGuide === "string" ? parsed.storyboardGuide : null,
     voiceoverFullScript: typeof parsed.voiceoverFullScript === "string" ? parsed.voiceoverFullScript : null,
@@ -382,6 +436,65 @@ function pickOrderedStoryboardLine(lines: string[], taskIndex: number, totalTask
   return middleLines[lineIndex]!;
 }
 
+function extractStoryboardShotVoiceoverLines(script: string): string[] {
+  const normalized = String(script ?? "")
+    .replace(/\r/g, "\n")
+    .replace(/VOICEOVER\s+SCRIPT\s+BY\s+SHOT\s*:/gi, "\n")
+    .trim();
+  if (!normalized) return [];
+
+  const markers: Array<{ start: number; contentStart: number }> = [];
+  const markerPattern = /(^|[^\d])(\d{1,2})\.\s+/g;
+  let match: RegExpExecArray | null;
+  while ((match = markerPattern.exec(normalized)) !== null) {
+    const prefixLength = match[1]?.length ?? 0;
+    markers.push({
+      start: match.index + prefixLength,
+      contentStart: markerPattern.lastIndex,
+    });
+  }
+  if (markers.length === 0) {
+    const speechText = extractStoryboardNativeSpeechText(normalized);
+    return speechText ? [speechText] : [normalized].filter(Boolean);
+  }
+
+  return markers
+    .map((marker, index) => {
+      const nextStart = markers[index + 1]?.start ?? normalized.length;
+      return cleanStoryboardShotVoiceoverLine(normalized.slice(marker.contentStart, nextStart));
+    })
+    .filter(Boolean);
+}
+
+function cleanStoryboardShotVoiceoverLine(raw: string): string {
+  let text = raw
+    .replace(/^\s*\d+(?:\.\d+)?\s*[-–]\s*\d+(?:\.\d+)?\s*s?\s*/i, "")
+    .replace(/^\s*[\d.]+\s*s\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const speechMatch = text.match(/บทพูด\s*(?:\([^)]*\))?\s*[:：]\s*([\s\S]+)/i);
+  if (speechMatch?.[1]) {
+    text = speechMatch[1].trim();
+  } else {
+    const colonIndex = text.indexOf(":");
+    if (colonIndex >= 0 && colonIndex < 90) {
+      text = text.slice(colonIndex + 1).trim();
+    }
+  }
+  return text
+    .replace(/^(?:ภาพ|มุมกล้อง|อารมณ์)\s*[:：]\s*/i, "")
+    .replace(/^[-–:\s]+/, "")
+    .trim();
+}
+
+function pickStoryboardVoiceoverLine(lines: string[], taskIndex: number, totalTasks: number): string {
+  if (lines.length === 0) return "";
+  if (lines.length > totalTasks && taskIndex >= Math.max(0, totalTasks - 1)) {
+    return lines[lines.length - 1]!;
+  }
+  return lines[Math.min(Math.max(0, taskIndex), lines.length - 1)]!;
+}
+
 function buildNaturalThaiSplitStoryboardVoiceover(
   options: BuildFirstLastFrameStoryboardTasksOptions,
   taskIndex: number,
@@ -445,6 +558,14 @@ function buildSplitStoryboardVoiceoverScript(
 ): string {
   if (!options.includeVoiceover || String(options.speechMode ?? "none") === "none") return "";
 
+  const suppliedVoiceoverFullScript = compactPromptPlannerOption(options.voiceoverFullScript)
+    || compactPromptPlannerOption(options.productionContext?.voiceoverFullScript);
+  if (suppliedVoiceoverFullScript) {
+    const shotLines = extractStoryboardShotVoiceoverLines(suppliedVoiceoverFullScript);
+    const selectedLine = pickStoryboardVoiceoverLine(shotLines, taskIndex, totalTasks);
+    if (selectedLine) return selectedLine;
+  }
+
   const explicitSpeech = extractStoryboardNativeSpeechText(options.conceptDetails ?? "");
   if (explicitSpeech) return explicitSpeech;
 
@@ -496,6 +617,9 @@ export function buildFirstLastFrameStoryboardTasks(
   const includeVoiceover = Boolean(options.includeVoiceover && String(speechMode ?? "none") !== "none");
   const includeSound = Boolean(options.includeSound);
   const soundBrief = buildSplitStoryboardSoundBrief(options);
+  const productionContext = normalizeStoryboardProductionContext(options.productionContext) ?? undefined;
+  const voiceoverFullScript = compactPromptPlannerOption(options.voiceoverFullScript)
+    || compactPromptPlannerOption(productionContext?.voiceoverFullScript);
   const hasPromptPlannerOptions = options.includeVoiceover !== undefined
     || options.speechMode !== undefined
     || options.speechLanguage !== undefined
@@ -511,6 +635,14 @@ export function buildFirstLastFrameStoryboardTasks(
     storyboardTotalDurationSeconds: totalDurationSeconds,
     ...(options.conceptDetails ? { productionConceptDetails: options.conceptDetails } : {}),
     ...(options.storyboardGuide ? { storyboardGuide: options.storyboardGuide } : {}),
+    ...(voiceoverFullScript ? { voiceoverFullScript } : {}),
+    ...(productionContext ? {
+      productionContext,
+      ...(productionContext.productionRunId ? { productionRunId: productionContext.productionRunId } : {}),
+      ...(productionContext.productionStoryConceptId ? { productionStoryConceptId: productionContext.productionStoryConceptId } : {}),
+      ...(productionContext.productionStoryConceptTitle ? { productionStoryConceptTitle: productionContext.productionStoryConceptTitle } : {}),
+      ...(productionContext.videoConcept ? { productionVideoConcept: productionContext.videoConcept } : {}),
+    } : {}),
     ...(options.marketplaceContext ? { marketplaceContext: options.marketplaceContext } : {}),
     ...(hasPromptPlannerOptions
       ? {
@@ -534,10 +666,19 @@ export function buildFirstLastFrameStoryboardTasks(
       ?? endImage.marketplaceProduct
       ?? options.marketplaceContext
       ?? null;
+    const frameProductionContext = normalizeStoryboardProductionContext(startImage.productionContext)
+      ?? normalizeStoryboardProductionContext(endImage.productionContext)
+      ?? productionContext
+      ?? null;
     const voiceoverScript = buildSplitStoryboardVoiceoverScript(options, taskIndex, usableImages.length - 1, marketplaceProduct);
     const visualPrompt = [
       `Shot ${taskIndex + 1}: transition from @Image1 exact start frame to @Image2 exact end frame.`,
+      frameProductionContext?.sourceShotTitle ? `Source shot: ${frameProductionContext.sourceShotTitle}.` : "",
+      voiceoverScript ? `Dialogue/narration story beat: "${voiceoverScript}"` : "",
+      "The motion, camera, and visible action must express the same story beat as the Storyboard Guide and this dialogue; do not show a different product moment.",
       "Preserve visible product, people or hands, room, props, colors, composition, and continuity.",
+      "If a person appears, keep the same identity and show a clear natural face when the endpoint frames show a face; if the endpoint frames show only back/side view, keep the motion non-revealing and do not invent a new face.",
+      "Product fidelity lock: preserve the exact referenced product geometry, countable shelves/parts, proportions, color, and material; do not add drawers, doors, panels, accessories, or a different furniture type.",
       "No new products, text, labels, UI, logos, or characters.",
     ].filter(Boolean).join(" ");
     return {
@@ -565,6 +706,7 @@ export function buildFirstLastFrameStoryboardTasks(
       updatedAt: now,
       statusDetail: options.statusDetail ?? "Queued for storyboard review. Confirm and regenerate when ready.",
       marketplaceProduct,
+      productionContext: frameProductionContext,
       storyboardContext: {
         aspectRatio,
         duration: durationSeconds,
@@ -574,17 +716,24 @@ export function buildFirstLastFrameStoryboardTasks(
             url: startImage.url,
             name: startImage.name ?? `Frame ${taskIndex + 1}`,
             marketplaceProduct: startImage.marketplaceProduct ?? marketplaceProduct,
+            ...(normalizeStoryboardProductionContext(startImage.productionContext) ?? frameProductionContext
+              ? { productionContext: normalizeStoryboardProductionContext(startImage.productionContext) ?? frameProductionContext }
+              : {}),
           },
           {
             url: endImage.url,
             name: endImage.name ?? `Frame ${taskIndex + 2}`,
             marketplaceProduct: endImage.marketplaceProduct ?? marketplaceProduct,
+            ...(normalizeStoryboardProductionContext(endImage.productionContext) ?? frameProductionContext
+              ? { productionContext: normalizeStoryboardProductionContext(endImage.productionContext) ?? frameProductionContext }
+              : {}),
           },
         ],
         referenceVideos: [],
         extraParams,
         apiConfig: options.apiConfig,
         resolution: options.resolution,
+        productionContext: frameProductionContext,
       },
     };
   });
@@ -737,6 +886,9 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
             ...(context.resolution ? { resolution: context.resolution } : {}),
             ...(!context.extraParams?.marketplaceContext && (task.marketplaceProduct ?? draft.marketplaceContext)
               ? { marketplaceContext: task.marketplaceProduct ?? draft.marketplaceContext }
+              : {}),
+            ...(!context.extraParams?.productionContext && (task.productionContext ?? context.productionContext ?? draft.productionContext)
+              ? { productionContext: task.productionContext ?? context.productionContext ?? draft.productionContext }
               : {}),
           }
         : {};

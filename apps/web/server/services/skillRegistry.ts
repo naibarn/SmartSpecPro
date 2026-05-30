@@ -342,7 +342,7 @@ function scanSkillsFolder(): Array<{
  * Auto-sync skills from folder to database
  * Called on startup to ensure all folder skills are in database
  */
-export async function autoSyncSkillsFromFolder(): Promise<{
+export async function autoSyncSkillsFromFolder(options?: { force?: boolean }): Promise<{
   synced: string[];
   skipped: string[];
   errors: string[];
@@ -353,7 +353,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
     errors: [] as string[],
   };
 
-  if (_autoSyncCompleted) {
+  if (_autoSyncCompleted && !options?.force) {
     console.log("[SkillRegistry] Auto-sync already completed, skipping");
     return result;
   }
@@ -471,6 +471,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             contentHash: newHash,
             version: metadata.version || undefined,
             executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
+            configJson: metadata.config,
             ...(shouldUpdateCategory ? { category: normalizedCategory as any } : {}),
             ...(fileDefaultModel ? { defaultModel: fileDefaultModel } : {}),
             ...(fileTriggerPatterns ? { triggerPatterns: fileTriggerPatterns } : {}),

@@ -151,6 +151,7 @@ export function GenerationProgress({
 }: GenerationProgressProps) {
   const { t } = useScopedTranslation("media");
   const [internalExpanded, setInternalExpanded] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [idleDetailsOpen, setIdleDetailsOpen] = useState(false);
   const expanded = controlledExpanded ?? internalExpanded;
   const setExpanded = onExpandedChange ?? setInternalExpanded;
@@ -315,7 +316,7 @@ export function GenerationProgress({
 
   useEffect(() => {
     reclampPanelPosition();
-  }, [tasks.length, listExpanded, showTaskList, reclampPanelPosition]);
+  }, [tasks.length, listExpanded, showTaskList, isMinimized, reclampPanelPosition]);
 
   const handleDragStart = useCallback(
     (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -396,17 +397,93 @@ export function GenerationProgress({
         top: panelPosition.y,
       }
     : undefined;
+  const panelWidthClassName = isMinimized
+    ? "w-[min(18rem,calc(100vw-1rem))]"
+    : "w-[min(24rem,calc(100vw-1rem))]";
 
   return (
     <div
       ref={panelRef}
       data-testid="generation-progress-panel"
-      className={`pointer-events-none fixed z-[60] w-[min(24rem,calc(100vw-1rem))] ${panelPlacementClassName} ${
+      className={`pointer-events-none fixed z-[60] ${panelWidthClassName} ${panelPlacementClassName} ${
         isDragging ? "select-none" : ""
       } ${className}`}
       style={panelStyle}
     >
       <div className="pointer-events-auto overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-2xl backdrop-blur dark:border-slate-700/80 dark:bg-slate-950/95">
+        {isMinimized ? (
+          <div className="flex items-center gap-2 px-3 py-2">
+            <button
+              aria-label={t("dragToMove")}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white/80 text-slate-400 transition hover:border-sky-200 hover:text-sky-600 dark:border-slate-700/80 dark:bg-slate-950/80 dark:text-slate-500 dark:hover:border-sky-800 dark:hover:text-sky-300 ${
+                isDragging
+                  ? "cursor-grabbing border-sky-300 text-sky-600 dark:border-sky-700 dark:text-sky-300"
+                  : "cursor-grab"
+              }`}
+              data-testid="generation-progress-drag-handle"
+              onClick={(event) => event.preventDefault()}
+              onPointerDown={handleDragStart}
+              title={t("dragToMove")}
+              type="button"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              className="min-w-0 flex-1 text-left"
+              onClick={() => setIsMinimized(false)}
+              aria-label={t("generationQueue.expandQueue")}
+              data-testid="generation-progress-minimized-button"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                  {headerTitle}
+                </span>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {t("items", { count: tasks.length })}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                {processingCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    {t("generationQueue.processingCount", { count: processingCount })}
+                  </span>
+                ) : activeCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {t("generationQueue.activeCount", { count: activeCount })}
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    {t("generationQueue.idle")}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="rounded-full p-2 text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-950/60 dark:hover:text-rose-300"
+                aria-label={t("generationQueue.closeQueue")}
+                type="button"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsMinimized(false)}
+              className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+              aria-label={t("generationQueue.expandQueue")}
+              type="button"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+        <>
         <div className="border-b border-slate-200/80 px-4 py-3 dark:border-slate-700/80">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -470,24 +547,12 @@ export function GenerationProgress({
                 </button>
               )}
               <button
-                onClick={() => {
-                  if (isIdle) {
-                    setIdleDetailsOpen((prev) => !prev);
-                    return;
-                  }
-                  setExpanded(!expanded);
-                }}
+                onClick={() => setIsMinimized(true)}
                 className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                aria-label={
-                  isIdle
-                    ? (idleDetailsOpen ? t("generationQueue.hideDetails") : t("generationQueue.showDetails"))
-                    : (expanded ? t("generationQueue.collapseQueue") : t("generationQueue.expandQueue"))
-                }
+                aria-label={t("generationQueue.collapseQueue")}
                 type="button"
               >
-                {isIdle
-                  ? (idleDetailsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />)
-                  : (expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />)}
+                <ChevronDown className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -622,6 +687,8 @@ export function GenerationProgress({
               </button>
             </div>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

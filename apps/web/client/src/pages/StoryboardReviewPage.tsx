@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { Check, ChevronLeft, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Music2, Pencil, Scissors, Search, Trash2, Video, X } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   createCropPreview,
   createSplitPreview,
   cropImageToAspect,
+  DEFAULT_SPLIT_GRID,
   detectGrid,
   downloadAllSplitImages,
   downloadCroppedImage,
@@ -56,6 +57,7 @@ import {
   storyboardDraftToReviewTasks,
   writeStoryboardReviewDraft,
   type StoryboardGenerationTask,
+  type StoryboardProductionContext,
   type StoryboardReferenceFrameRole,
   type StoryboardReviewDraft,
 } from "@/lib/storyboardReviewWorkspace";
@@ -453,21 +455,92 @@ function buildStoryboardPlannedPrompt(input: {
   }).trim();
 }
 
+const STORYBOARD_PRODUCTION_CONTEXT_KEYS = [
+  "productionRunId",
+  "productionProjectTitle",
+  "productionStoryConceptId",
+  "productionStoryConceptTitle",
+  "productionStoryConceptAngle",
+  "productionStoryConceptDetails",
+  "videoConcept",
+  "voiceoverFullScript",
+  "storyboardGuide",
+  "sourceGridUrl",
+  "sourceShotId",
+  "sourceShotTitle",
+  "sourceShotTimeRange",
+  "sourceShotScript",
+  "sourceShotVideoPrompt",
+] as const satisfies readonly (keyof StoryboardProductionContext)[];
+
+function firstStoryboardText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (text) return text;
+  }
+  return "";
+}
+
+function normalizeReviewProductionContext(value: unknown): StoryboardProductionContext | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const context: StoryboardProductionContext = {};
+  for (const key of STORYBOARD_PRODUCTION_CONTEXT_KEYS) {
+    const text = firstStoryboardText(record[key]);
+    if (text) context[key] = text;
+  }
+  return Object.keys(context).length > 0 ? context : null;
+}
+
+function getTaskEmbeddedProductionContext(task?: StoryboardGenerationTask | null): StoryboardProductionContext | null {
+  return normalizeReviewProductionContext(task?.productionContext)
+    ?? normalizeReviewProductionContext(task?.storyboardContext?.productionContext)
+    ?? normalizeReviewProductionContext(task?.storyboardContext?.extraParams?.productionContext);
+}
+
+function getReviewProductionContext(
+  draft?: StoryboardReviewDraft | null,
+  task?: StoryboardGenerationTask | null,
+): StoryboardProductionContext | null {
+  return normalizeReviewProductionContext(draft?.productionContext)
+    ?? getTaskEmbeddedProductionContext(task);
+}
+
+function buildReviewProductionExtraParams(productionContext: StoryboardProductionContext | null): Record<string, unknown> {
+  if (!productionContext) return {};
+  return {
+    productionContext,
+    ...(productionContext.productionRunId ? { productionRunId: productionContext.productionRunId } : {}),
+    ...(productionContext.productionStoryConceptId ? { productionStoryConceptId: productionContext.productionStoryConceptId } : {}),
+    ...(productionContext.productionStoryConceptTitle ? { productionStoryConceptTitle: productionContext.productionStoryConceptTitle } : {}),
+    ...(productionContext.videoConcept ? { productionVideoConcept: productionContext.videoConcept } : {}),
+  };
+}
+
 function getStoryboardPlannerVoiceContext(task?: StoryboardGenerationTask | null): {
   voiceoverScript: string;
   journeyStage: string;
   voiceoverFullScript: string;
 } {
-  const planner = task?.storyboardContext?.extraParams?.storyboardPromptPlanner as Record<string, unknown> | undefined;
+  const extraParams = task?.storyboardContext?.extraParams;
+  const planner = extraParams?.storyboardPromptPlanner as Record<string, unknown> | undefined;
+  const productionContext = getTaskEmbeddedProductionContext(task);
   return {
     voiceoverScript: String(planner?.voiceoverScript ?? extractStoryboardNativeSpeechText(task?.prompt ?? "") ?? "").trim(),
     journeyStage: String(planner?.journeyStage ?? "").trim(),
-    voiceoverFullScript: String(planner?.voiceoverFullScript ?? "").trim(),
+    voiceoverFullScript: firstStoryboardText(
+      planner?.voiceoverFullScript,
+      extraParams?.voiceoverFullScript,
+      productionContext?.voiceoverFullScript,
+    ),
   };
 }
 
 function getStoryboardDraftVoiceoverFullScript(draft?: StoryboardReviewDraft | null): string {
-  const explicitScript = String(draft?.voiceoverFullScript ?? "").trim();
+  const explicitScript = firstStoryboardText(
+    draft?.voiceoverFullScript,
+    draft?.productionContext?.voiceoverFullScript,
+  );
   if (explicitScript) return explicitScript;
   const orderedTasks = (draft?.taskIds ?? [])
     .map((taskId) => draft?.tasks.find((task) => task.id === taskId))
@@ -482,8 +555,59 @@ function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-const STORYBOARD_GENERATION_POLL_ATTEMPTS = 90;
+const STORYBOARD_GENERATION_POLL_INTERVAL_MS = 5000;
+const STORYBOARD_GENERATION_POLL_RETRY_INTERVAL_MS = 15000;
 const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-20260527-2325";
+
+type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
+
+function normalizeStoryboardProviderTaskStatus(value: unknown): StoryboardProviderTaskStatus {
+  const status = String(value ?? "").trim().toLowerCase();
+  if (["completed", "complete", "done", "success", "succeeded"].includes(status)) return "completed";
+  if (["failed", "failure", "error", "errored"].includes(status)) return "failed";
+  if (["cancelled", "canceled"].includes(status)) return "cancelled";
+  if (["queued", "pending", "created", "submitted", "scheduled", "deferred"].includes(status)) return "queued";
+  return "processing";
+}
+
+function getStoryboardTaskPollId(task: Pick<StoryboardGenerationTask, "backendTaskId" | "providerTaskId">): string {
+  return String(task.providerTaskId || task.backendTaskId || "").trim();
+}
+
+function storyboardTaskTracksPollId(task: StoryboardGenerationTask, pollId: string): boolean {
+  const normalizedPollId = pollId.trim();
+  return normalizedPollId.length > 0
+    && [task.providerTaskId, task.backendTaskId].some((value) => String(value || "").trim() === normalizedPollId);
+}
+
+function extractStoryboardProviderTaskError(task: unknown, fallback: string): string {
+  if (!task || typeof task !== "object") return fallback;
+  const record = task as Record<string, unknown>;
+  for (const key of ["errorMessage", "error", "message", "statusDetail", "resultData"]) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
+}
+
+function updateTrackedStoryboardGenerationTask(
+  draft: StoryboardReviewDraft,
+  taskId: string,
+  pollId: string,
+  updates: Partial<StoryboardGenerationTask>,
+): StoryboardReviewDraft {
+  let changed = false;
+  const tasks = draft.tasks.map((task) => {
+    if (task.id !== taskId || !storyboardTaskTracksPollId(task, pollId)) return task;
+    const hasTaskChange = Object.entries(updates).some(([key, value]) => (
+      (task as unknown as Record<string, unknown>)[key] !== value
+    ));
+    if (!hasTaskChange) return task;
+    changed = true;
+    return { ...task, ...updates, updatedAt: Date.now() };
+  });
+  return changed ? { ...draft, updatedAt: Date.now(), tasks } : draft;
+}
 
 function summarizeStoryboardAudioForDebug(audio: Partial<StoryboardCompanionAudioCandidate> | null | undefined) {
   if (!audio) return null;
@@ -747,6 +871,8 @@ export default function StoryboardReviewPage() {
   const lastLocalResyncAtRef = useRef(0);
   const generationCancelRequestedRef = useRef(false);
   const activeGenerationTaskIdRef = useRef<string | null>(null);
+  const storyboardGenerationPollersRef = useRef<Map<string, string>>(new Map());
+  const isStoryboardReviewMountedRef = useRef(true);
   const storedDraftReviewId = typeof draft?.reviewId === "number" && Number.isFinite(draft.reviewId) && draft.reviewId > 0
     ? draft.reviewId
     : null;
@@ -787,6 +913,11 @@ export default function StoryboardReviewPage() {
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
+
+  useEffect(() => () => {
+    isStoryboardReviewMountedRef.current = false;
+    storyboardGenerationPollersRef.current.clear();
+  }, []);
 
   const emitStoryboardReviewClientDebug = useCallback((event: string, payload?: Record<string, unknown>) => {
     const currentReviewId = reviewId ?? draftRef.current?.reviewId ?? null;
@@ -1030,7 +1161,9 @@ export default function StoryboardReviewPage() {
     if (!current) return null;
     if (reviewId && current.reviewId !== reviewId) return null;
 
-    const next = ensureDraftNewerThan(updater(current), current);
+    const updated = updater(current);
+    if (updated === current) return current;
+    const next = ensureDraftNewerThan(updated, current);
     emitStoryboardReviewClientDebug("persistDraftUpdate.localWrite", {
       before: summarizeStoryboardDraftForDebug(current),
       nextDraft: summarizeStoryboardDraftForDebug(next),
@@ -1698,8 +1831,8 @@ export default function StoryboardReviewPage() {
       }
 
       const detected = await detectGrid(sourceUrl);
-      const rows = mode === "split" ? detected?.rows ?? 3 : splitGridRows;
-      const cols = mode === "split" ? detected?.cols ?? 3 : splitGridCols;
+      const rows = mode === "split" ? detected?.rows ?? DEFAULT_SPLIT_GRID.rows : splitGridRows;
+      const cols = mode === "split" ? detected?.cols ?? DEFAULT_SPLIT_GRID.cols : splitGridCols;
       setDetectedGrid(detected);
       setSplitGridRows(rows);
       setSplitGridCols(cols);
@@ -1962,24 +2095,61 @@ export default function StoryboardReviewPage() {
         .map((taskId) => draft.tasks.find((task) => task.id === taskId))
         .filter((task): task is StoryboardGenerationTask => Boolean(task));
       const draftTaskPositionById = new Map(orderedDraftTasks.map((task, index) => [task.id, index]));
+      const targetTask = targetTaskId
+        ? orderedDraftTasks.find((task) => task.id === targetTaskId) ?? null
+        : null;
+      const firstTaskProductionContext = orderedDraftTasks
+        .map((task) => getTaskEmbeddedProductionContext(task))
+        .find((context): context is StoryboardProductionContext => Boolean(context)) ?? null;
+      const effectiveProductionContext = normalizeReviewProductionContext(draft.productionContext)
+        ?? (targetTask ? getTaskEmbeddedProductionContext(targetTask) : null)
+        ?? firstTaskProductionContext;
+      const firstTaskConceptDetails = orderedDraftTasks
+        .map((task) => {
+          const productionContext = getTaskEmbeddedProductionContext(task);
+          return firstStoryboardText(
+            task.storyboardContext?.extraParams?.productionConceptDetails,
+            productionContext?.productionStoryConceptDetails,
+            productionContext?.videoConcept,
+          );
+        })
+        .find(Boolean) ?? "";
+      const firstTaskStoryboardGuide = orderedDraftTasks
+        .map((task) => firstStoryboardText(
+          task.storyboardContext?.extraParams?.storyboardGuide,
+          getTaskEmbeddedProductionContext(task)?.storyboardGuide,
+        ))
+        .find(Boolean) ?? "";
       const targetVoiceContext = targetTaskId
-        ? getStoryboardPlannerVoiceContext(orderedDraftTasks.find((task) => task.id === targetTaskId))
+        ? getStoryboardPlannerVoiceContext(targetTask)
         : null;
       const existingVoiceoverFullScript = targetVoiceContext?.voiceoverFullScript
         || orderedDraftTasks
           .map((task) => getStoryboardPlannerVoiceContext(task).voiceoverScript)
           .filter(Boolean)
           .join("\n");
-      const editedVoiceoverFullScript = String(draft.voiceoverFullScript ?? "").trim();
+      const editedVoiceoverFullScript = firstStoryboardText(draft.voiceoverFullScript);
       const useVoiceoverScriptAsConcept = Boolean(draft.useVoiceoverScriptAsConcept && editedVoiceoverFullScript);
       const voiceoverFullScript = useVoiceoverScriptAsConcept
         ? editedVoiceoverFullScript
-        : targetTaskId
-          ? (editedVoiceoverFullScript || existingVoiceoverFullScript)
-          : "";
+        : firstStoryboardText(
+          editedVoiceoverFullScript,
+          effectiveProductionContext?.voiceoverFullScript,
+          existingVoiceoverFullScript,
+        );
       const effectiveConceptDetails = useVoiceoverScriptAsConcept
         ? editedVoiceoverFullScript
-        : (draft.conceptDetails ?? "");
+        : firstStoryboardText(
+          draft.conceptDetails,
+          effectiveProductionContext?.productionStoryConceptDetails,
+          effectiveProductionContext?.videoConcept,
+          firstTaskConceptDetails,
+        );
+      const effectiveStoryboardGuide = firstStoryboardText(
+        draft.storyboardGuide,
+        effectiveProductionContext?.storyboardGuide,
+        firstTaskStoryboardGuide,
+      );
       const result = await planStoryboardVideoPromptsMutation.mutateAsync({
         productMetadata: productMetadata as Record<string, unknown> | null,
         includeVoiceover: options.includeVoiceover,
@@ -1989,7 +2159,7 @@ export default function StoryboardReviewPage() {
         tone: options.tone,
         language: options.language,
         conceptDetails: effectiveConceptDetails || undefined,
-        storyboardGuide: draft.storyboardGuide ?? undefined,
+        storyboardGuide: effectiveStoryboardGuide || undefined,
         voiceoverFullScript: voiceoverFullScript || undefined,
         useVoiceoverScriptAsConcept,
         slots: candidateTasks.map((task) => {
@@ -2007,7 +2177,7 @@ export default function StoryboardReviewPage() {
             endFrameUrl: task.referenceUrls?.[1] || "",
             frameRoles: sourceTask ? getTaskReferenceFrameRoles(sourceTask) : ["start", "stop"],
             conceptDetails: effectiveConceptDetails || undefined,
-            storyboardGuide: draft.storyboardGuide ?? undefined,
+            storyboardGuide: effectiveStoryboardGuide || undefined,
             aspectRatio: task.generationAspectRatio,
             durationSeconds: task.durationSeconds,
             model: task.generationModelId || task.model,
@@ -2025,6 +2195,7 @@ export default function StoryboardReviewPage() {
       });
       const plannedById = new Map(result.slots.map((slot) => [slot.id, slot]));
       const nextStatus = `${plannedStatusLabel} ${result.slots.length}/${candidateTasks.length}`;
+      const plannedVoiceoverFullScript = firstStoryboardText(result.voiceoverFullScript, voiceoverFullScript);
       setAndSaveDraft((current) => ({
         ...current,
         updatedAt: Date.now(),
@@ -2032,13 +2203,15 @@ export default function StoryboardReviewPage() {
         tasks: current.tasks.map((task) => {
           const planned = plannedById.get(task.id);
           if (!planned) return task;
+          const taskProductionContext = getTaskEmbeddedProductionContext(task) ?? effectiveProductionContext;
+          const productionExtraParams = buildReviewProductionExtraParams(taskProductionContext);
           const prompt = buildStoryboardPlannedPrompt({
             basePrompt: planned.videoPrompt || task.prompt,
             durationSeconds: task.storyboardContext?.duration ?? task.durationSeconds,
             aspectRatio: task.storyboardContext?.aspectRatio ?? task.aspectRatio ?? null,
             frameRoles: getTaskReferenceFrameRoles(task),
             conceptDetails: effectiveConceptDetails || null,
-            storyboardGuide: draft.storyboardGuide ?? null,
+            storyboardGuide: effectiveStoryboardGuide || null,
             includeVoiceover: options.includeVoiceover,
             speechMode: options.speechMode,
             speechLanguage: options.speechLanguage,
@@ -2054,12 +2227,19 @@ export default function StoryboardReviewPage() {
               ? `Prompt planned: ${planned.journeyStage}`
               : plannedStatusLabel,
             updatedAt: Date.now(),
+            productionContext: task.productionContext ?? taskProductionContext,
             storyboardContext: task.storyboardContext
               ? {
                   ...task.storyboardContext,
+                  productionContext: task.storyboardContext.productionContext ?? taskProductionContext,
                   extraParams: {
                     ...(task.storyboardContext.extraParams ?? {}),
+                    ...(effectiveConceptDetails ? { productionConceptDetails: effectiveConceptDetails } : {}),
+                    ...(effectiveStoryboardGuide ? { storyboardGuide: effectiveStoryboardGuide } : {}),
+                    ...(plannedVoiceoverFullScript ? { voiceoverFullScript: plannedVoiceoverFullScript } : {}),
+                    ...productionExtraParams,
                     storyboardPromptPlanner: {
+                      ...(task.storyboardContext.extraParams?.storyboardPromptPlanner ?? {}),
                       skillId: "storyboard-video-customer-journey-prompt",
                       journeyStage: planned.journeyStage,
                       voiceoverScript: planned.voiceoverScript,
@@ -2068,17 +2248,21 @@ export default function StoryboardReviewPage() {
                       soundBrief: planned.soundBrief,
                       qualityNotes: planned.qualityNotes,
                       globalVideoStrategy: result.globalVideoStrategy,
-                      voiceoverFullScript: result.voiceoverFullScript,
+                      voiceoverFullScript: plannedVoiceoverFullScript,
                       soundFullBrief: result.soundFullBrief,
+                      ...(taskProductionContext ? { productionContext: taskProductionContext } : {}),
                     },
                   },
                 }
               : task.storyboardContext,
           };
         }),
+        productionContext: current.productionContext ?? effectiveProductionContext ?? null,
+        conceptDetails: current.conceptDetails ?? (!useVoiceoverScriptAsConcept && effectiveConceptDetails ? effectiveConceptDetails : null),
+        storyboardGuide: current.storyboardGuide ?? (effectiveStoryboardGuide || null),
         voiceoverFullScript: useVoiceoverScriptAsConcept
           ? (current.voiceoverFullScript ?? null)
-          : (result.voiceoverFullScript || current.voiceoverFullScript || null),
+          : (plannedVoiceoverFullScript || current.voiceoverFullScript || null),
       }));
       toast.success(nextStatus);
     } catch (error) {
@@ -2260,6 +2444,116 @@ export default function StoryboardReviewPage() {
     }
   }, [buildPreparedSelectedProject, draft, locale, saveProjectMutation, selectedRenderClips.length, setAndSaveDraft, t]);
 
+  const pollStoryboardGenerationTask = useCallback(async (
+    taskId: string,
+    pollId: string,
+    options?: { cancelRef?: MutableRefObject<boolean> },
+  ): Promise<boolean> => {
+    const normalizedPollId = pollId.trim();
+    if (!normalizedPollId) return false;
+
+    const activePollId = storyboardGenerationPollersRef.current.get(taskId);
+    if (activePollId === normalizedPollId) return true;
+    storyboardGenerationPollersRef.current.set(taskId, normalizedPollId);
+
+    try {
+      while (isStoryboardReviewMountedRef.current) {
+        const latestTask = draftRef.current?.tasks.find((task) => task.id === taskId);
+        if (!latestTask || latestTask.status !== "generating" || !storyboardTaskTracksPollId(latestTask, normalizedPollId)) {
+          return true;
+        }
+
+        if (options?.cancelRef?.current) {
+          await cancelMediaTaskMutation.mutateAsync({ taskId: normalizedPollId }).catch(() => undefined);
+          setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+            status: "queued",
+            error: undefined,
+            statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
+          }));
+          return false;
+        }
+
+        let currentTask: unknown;
+        try {
+          currentTask = await trpcUtils.media.getTask.fetch({ taskId: normalizedPollId });
+        } catch {
+          await sleepMs(STORYBOARD_GENERATION_POLL_RETRY_INTERVAL_MS);
+          continue;
+        }
+
+        const status = normalizeStoryboardProviderTaskStatus((currentTask as Record<string, unknown> | null)?.status);
+        if (status === "completed") {
+          const completedUrl = extractStoryboardMediaUrl(currentTask, "video");
+          if (!completedUrl) {
+            const message = t("mediaStudio.storyboardReviewNoOutputUrl");
+            setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+              status: "error",
+              error: message,
+              statusDetail: message,
+            }));
+            return true;
+          }
+          setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+            status: "completed",
+            url: completedUrl,
+            error: undefined,
+            statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
+          }));
+          toast.success(t("mediaStudio.storyboardReviewClipRegenerated"));
+          return true;
+        }
+
+        if (status === "failed") {
+          const message = extractStoryboardProviderTaskError(currentTask, t("mediaStudio.storyboardReviewVideoGenerationFailed"));
+          setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+            status: "error",
+            error: message,
+            statusDetail: message,
+          }));
+          toast.error(message);
+          return true;
+        }
+
+        if (status === "cancelled") {
+          setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+            status: "queued",
+            error: undefined,
+            statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
+          }));
+          toast.info(t("mediaStudio.storyboardReviewGenerationCancelled"));
+          return false;
+        }
+
+        const statusDetail = status === "queued"
+          ? t("mediaStudio.storyboardReviewGenerationTaskStarted")
+          : t("mediaStudio.generationStatus.providerProcessing");
+        setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
+          status: "generating",
+          error: undefined,
+          statusDetail,
+        }));
+
+        await sleepMs(STORYBOARD_GENERATION_POLL_INTERVAL_MS);
+      }
+    } finally {
+      if (storyboardGenerationPollersRef.current.get(taskId) === normalizedPollId) {
+        storyboardGenerationPollersRef.current.delete(taskId);
+      }
+    }
+
+    return false;
+  }, [cancelMediaTaskMutation, setAndSaveDraft, t, trpcUtils.media.getTask]);
+
+  useEffect(() => {
+    if (!activeDraft) return;
+    for (const task of activeDraft.tasks) {
+      if (task.status !== "generating") continue;
+      const pollId = getStoryboardTaskPollId(task);
+      if (!pollId) continue;
+      void pollStoryboardGenerationTask(task.id, pollId);
+    }
+  }, [activeDraft, pollStoryboardGenerationTask]);
+
   const startStoryboardGenerationBatch = useCallback(() => {
     generationCancelRequestedRef.current = false;
     activeGenerationTaskIdRef.current = null;
@@ -2320,6 +2614,23 @@ export default function StoryboardReviewPage() {
       const context = task.storyboardContext;
       const frameRoles = getTaskReferenceFrameRoles(task);
       const generationType = generationTypeForFrameRoles(frameRoles);
+      const productionContext = getReviewProductionContext(draft, task);
+      const effectiveVoiceoverFullScript = firstStoryboardText(
+        draft.voiceoverFullScript,
+        productionContext?.voiceoverFullScript,
+        getStoryboardDraftVoiceoverFullScript(draft),
+      );
+      const effectiveConceptDetails = firstStoryboardText(
+        draft.conceptDetails,
+        productionContext?.productionStoryConceptDetails,
+        productionContext?.videoConcept,
+        context.extraParams?.productionConceptDetails,
+      );
+      const effectiveStoryboardGuide = firstStoryboardText(
+        draft.storyboardGuide,
+        productionContext?.storyboardGuide,
+        context.extraParams?.storyboardGuide,
+      );
       const startFrameUrl = context.referenceImages?.[0]?.url?.trim();
       const endFrameUrl = context.referenceImages?.[1]?.url?.trim();
       const generationPrompt = startFrameUrl && endFrameUrl
@@ -2328,8 +2639,9 @@ export default function StoryboardReviewPage() {
           startFrameUrl,
           endFrameUrl,
           frameRoles,
-          conceptDetails: draft.conceptDetails ?? undefined,
-          storyboardGuide: draft.storyboardGuide ?? undefined,
+          conceptDetails: effectiveConceptDetails || undefined,
+          storyboardGuide: effectiveStoryboardGuide || undefined,
+          voiceoverFullScript: effectiveVoiceoverFullScript || undefined,
           aspectRatio: context.aspectRatio,
           durationSeconds: context.duration ?? task.durationSeconds,
           model: context.model,
@@ -2352,8 +2664,10 @@ export default function StoryboardReviewPage() {
           ...(context.extraParams ?? {}),
           generationType,
           referenceFrameRoles: frameRoles,
-          ...(draft.conceptDetails ? { productionConceptDetails: draft.conceptDetails } : {}),
-          ...(draft.storyboardGuide ? { storyboardGuide: draft.storyboardGuide } : {}),
+          ...(effectiveConceptDetails ? { productionConceptDetails: effectiveConceptDetails } : {}),
+          ...(effectiveStoryboardGuide ? { storyboardGuide: effectiveStoryboardGuide } : {}),
+          ...(effectiveVoiceoverFullScript ? { voiceoverFullScript: effectiveVoiceoverFullScript } : {}),
+          ...buildReviewProductionExtraParams(productionContext),
         },
         apiConfig: context.apiConfig,
         resolution: context.resolution,
@@ -2384,36 +2698,9 @@ export default function StoryboardReviewPage() {
         }));
         return false;
       }
-      let completedUrl = immediateUrl;
+      const completedUrl = immediateUrl;
       if (!completedUrl && pollId) {
-        for (let attempt = 0; attempt < STORYBOARD_GENERATION_POLL_ATTEMPTS; attempt += 1) {
-          if (generationCancelRequestedRef.current) {
-            await cancelMediaTaskMutation.mutateAsync({ taskId: String(pollId) }).catch(() => undefined);
-            setAndSaveDraft((current) => updateDraftTask(current, taskId, {
-              status: "queued",
-              error: undefined,
-              statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
-            }));
-            return false;
-          }
-          const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
-          const status = String((currentTask as any)?.status || "").toLowerCase();
-          if (status === "completed" || status === "failed" || status === "cancelled") {
-            if (status === "cancelled") {
-              setAndSaveDraft((current) => updateDraftTask(current, taskId, {
-                status: "queued",
-                error: undefined,
-                statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
-              }));
-              toast.info(t("mediaStudio.storyboardReviewGenerationCancelled"));
-              return false;
-            }
-            if (status !== "completed") throw new Error((currentTask as any)?.errorMessage || t("mediaStudio.storyboardReviewVideoGenerationFailed"));
-            completedUrl = extractStoryboardMediaUrl(currentTask as any, "video");
-            break;
-          }
-          await sleepMs(2000);
-        }
+        return await pollStoryboardGenerationTask(taskId, String(pollId), { cancelRef: generationCancelRequestedRef });
       }
       if (!completedUrl) throw new Error(t("mediaStudio.storyboardReviewNoOutputUrl"));
       setAndSaveDraft((current) => updateDraftTask(current, taskId, {
@@ -2434,7 +2721,7 @@ export default function StoryboardReviewPage() {
       setRegeneratingTaskId(null);
       setIsCancellingGeneration(false);
     }
-  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, setAndSaveDraft, trpcUtils.media.getTask, t]);
+  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, pollStoryboardGenerationTask, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
     await deleteReviewMutation.mutateAsync({ id });

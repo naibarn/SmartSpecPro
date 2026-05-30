@@ -130,4 +130,19 @@ describe("GenerationProgress", () => {
       expect(panel.style.top).toBe("12px");
     });
   });
+
+  it("minimizes the queue panel and expands it again", () => {
+    renderQueue();
+
+    expect(screen.getByText(baseTask.prompt)).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("generationQueue.collapseQueue"));
+
+    expect(screen.getByTestId("generation-progress-minimized-button")).toBeTruthy();
+    expect(screen.queryByText(baseTask.prompt)).toBeNull();
+
+    fireEvent.click(screen.getByTestId("generation-progress-minimized-button"));
+
+    expect(screen.getByText(baseTask.prompt)).toBeTruthy();
+  });
 });

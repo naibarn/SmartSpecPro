@@ -55,6 +55,12 @@ export interface SplitImageOptions {
 }
 
 const SPLIT_PREVIEW_MAX_EDGE_PX = 1800;
+const GRID_DETECTION_ANALYSIS_MAX_EDGE_PX = 480;
+const DEFAULT_GRID_MIN_CONFIDENCE = 0.66;
+const NON_DEFAULT_GRID_MIN_CONFIDENCE = 0.74;
+const NON_DEFAULT_GRID_MIN_MARGIN = 0.06;
+const STANDARD_CELL_ASPECTS = [1, 16 / 9, 9 / 16, 4 / 3, 3 / 4, 4 / 5, 5 / 4];
+const COMMON_AI_OUTPUT_SIZES = [512, 768, 1024, 1080, 1280, 1344, 1536, 1792, 2048];
 
 // Common grid patterns used by AI image generators
 export const COMMON_GRIDS: GridDimension[] = [
@@ -70,6 +76,8 @@ export const COMMON_GRIDS: GridDimension[] = [
   { rows: 4, cols: 3, label: "4x3 (12 images)" },
   { rows: 4, cols: 4, label: "4x4 (16 images)" },
 ];
+
+export const DEFAULT_SPLIT_GRID: GridDimension = { rows: 3, cols: 3, label: "3x3 (9 images)" };
 
 export const COMMON_CROP_RATIOS: CropRatio[] = [
   { value: "1:1", label: "1:1" },
@@ -111,6 +119,250 @@ export async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
+interface GridLineEvidence {
+  available: boolean;
+  combined: number;
+}
+
+interface GridCandidateScore {
+  grid: GridDimension;
+  confidence: number;
+  cellWidth: number;
+  cellHeight: number;
+}
+
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1, value));
+}
+
+function isDefaultSplitGrid(grid: Pick<GridDimension, "rows" | "cols">): boolean {
+  return grid.rows === DEFAULT_SPLIT_GRID.rows && grid.cols === DEFAULT_SPLIT_GRID.cols;
+}
+
+function bestAspectScore(aspectRatio: number): number {
+  if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) return 0;
+  const tolerance = Math.log(1.35);
+  const bestDistance = STANDARD_CELL_ASPECTS.reduce((best, target) => {
+    const distance = Math.abs(Math.log(aspectRatio / target));
+    return Math.min(best, distance);
+  }, Number.POSITIVE_INFINITY);
+  return clamp01(1 - bestDistance / tolerance);
+}
+
+function commonCellSizeScore(cellWidth: number, cellHeight: number): number {
+  const bestWidthDistance = COMMON_AI_OUTPUT_SIZES.reduce(
+    (best, size) => Math.min(best, Math.abs(cellWidth - size)),
+    Number.POSITIVE_INFINITY,
+  );
+  const bestHeightDistance = COMMON_AI_OUTPUT_SIZES.reduce(
+    (best, size) => Math.min(best, Math.abs(cellHeight - size)),
+    Number.POSITIVE_INFINITY,
+  );
+  const bestDistance = Math.min(bestWidthDistance, bestHeightDistance);
+  return clamp01(1 - bestDistance / 96);
+}
+
+function scoreGridPrior(grid: GridDimension): number {
+  let score = 0;
+  const cells = grid.rows * grid.cols;
+  if (isDefaultSplitGrid(grid)) score += 0.14;
+  if (grid.rows === grid.cols) score += 0.03;
+  if (cells === 9) score += 0.03;
+  else if (cells <= 6) score += 0.015;
+  else if (cells > 12) score -= 0.03;
+  return score;
+}
+
+function toDetectedGrid(candidate: GridCandidateScore): DetectedGrid {
+  return {
+    rows: candidate.grid.rows,
+    cols: candidate.grid.cols,
+    confidence: Math.round(candidate.confidence * 100) / 100,
+    cellWidth: Math.round(candidate.cellWidth),
+    cellHeight: Math.round(candidate.cellHeight),
+  };
+}
+
+export function detectGridFromDimensions(
+  width: number,
+  height: number,
+  lineEvidenceByGrid: Record<string, GridLineEvidence | undefined> = {},
+): DetectedGrid | null {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+
+  const candidates = COMMON_GRIDS
+    .map((grid): GridCandidateScore | null => {
+      const cellWidth = width / grid.cols;
+      const cellHeight = height / grid.rows;
+      const aspectScore = bestAspectScore(cellWidth / cellHeight);
+      if (aspectScore < 0.38) return null;
+
+      const evidence = lineEvidenceByGrid[`${grid.rows}x${grid.cols}`];
+      const hasLineEvidence = Boolean(evidence?.available);
+      const lineScore = hasLineEvidence ? clamp01(evidence?.combined ?? 0) : 0;
+      let confidence = 0.25
+        + aspectScore * 0.42
+        + commonCellSizeScore(cellWidth, cellHeight) * 0.08
+        + scoreGridPrior(grid)
+        + lineScore * 0.34;
+
+      if (!hasLineEvidence) {
+        confidence = Math.min(confidence, isDefaultSplitGrid(grid) ? 0.68 : 0.67);
+      } else if (lineScore < 0.18) {
+        confidence = Math.min(confidence, isDefaultSplitGrid(grid) ? 0.65 : 0.64);
+      }
+
+      return {
+        grid,
+        confidence: clamp01(confidence),
+        cellWidth,
+        cellHeight,
+      };
+    })
+    .filter((candidate): candidate is GridCandidateScore => Boolean(candidate))
+    .sort((a, b) => b.confidence - a.confidence);
+
+  const best = candidates[0];
+  if (!best) return null;
+
+  const defaultCandidate = candidates.find((candidate) => isDefaultSplitGrid(candidate.grid));
+  if (isDefaultSplitGrid(best.grid)) {
+    return best.confidence >= DEFAULT_GRID_MIN_CONFIDENCE ? toDetectedGrid(best) : null;
+  }
+
+  const second = candidates[1];
+  const margin = second ? best.confidence - second.confidence : best.confidence;
+  if (best.confidence >= NON_DEFAULT_GRID_MIN_CONFIDENCE && margin >= NON_DEFAULT_GRID_MIN_MARGIN) {
+    return toDetectedGrid(best);
+  }
+
+  if (
+    defaultCandidate
+    && defaultCandidate.confidence >= DEFAULT_GRID_MIN_CONFIDENCE
+    && best.confidence - defaultCandidate.confidence < 0.12
+  ) {
+    return null;
+  }
+
+  return null;
+}
+
+function smoothProfile(profile: number[], radius = 2): number[] {
+  return profile.map((_, index) => {
+    let total = 0;
+    let count = 0;
+    for (let offset = -radius; offset <= radius; offset++) {
+      const value = profile[index + offset];
+      if (value !== undefined) {
+        total += value;
+        count += 1;
+      }
+    }
+    return count > 0 ? total / count : 0;
+  });
+}
+
+function percentile(values: number[], target: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * target)));
+  return sorted[index] ?? 0;
+}
+
+function scoreProfileAtPosition(profile: number[], ratio: number): number {
+  const center = Math.round(ratio * (profile.length - 1));
+  const radius = Math.max(2, Math.round(profile.length * 0.012));
+  let best = 0;
+  for (let offset = -radius; offset <= radius; offset++) {
+    best = Math.max(best, profile[center + offset] ?? 0);
+  }
+  return best;
+}
+
+function scoreGridLineProfile(profile: number[], divisions: number): number {
+  if (divisions <= 1 || profile.length < 8) return 0;
+  const smoothed = smoothProfile(profile);
+  const median = percentile(smoothed, 0.5);
+  const high = percentile(smoothed, 0.9);
+  const range = Math.max(1, high - median);
+  const scores: number[] = [];
+
+  for (let index = 1; index < divisions; index++) {
+    const boundaryScore = scoreProfileAtPosition(smoothed, index / divisions);
+    scores.push(clamp01((boundaryScore - median) / range));
+  }
+
+  if (scores.length === 0) return 0;
+  return scores.reduce((total, score) => total + score, 0) / scores.length;
+}
+
+function buildGridLineEvidence(
+  verticalProfile: number[],
+  horizontalProfile: number[],
+): Record<string, GridLineEvidence> {
+  const evidence: Record<string, GridLineEvidence> = {};
+  for (const grid of COMMON_GRIDS) {
+    const vertical = scoreGridLineProfile(verticalProfile, grid.cols);
+    const horizontal = scoreGridLineProfile(horizontalProfile, grid.rows);
+    evidence[`${grid.rows}x${grid.cols}`] = {
+      available: true,
+      combined: (vertical + horizontal) / 2,
+    };
+  }
+  return evidence;
+}
+
+function extractGridLineEvidence(img: HTMLImageElement): Record<string, GridLineEvidence> | null {
+  const width = img.naturalWidth;
+  const height = img.naturalHeight;
+  const scale = Math.min(1, GRID_DETECTION_ANALYSIS_MAX_EDGE_PX / Math.max(width, height));
+  const analysisWidth = Math.max(24, Math.round(width * scale));
+  const analysisHeight = Math.max(24, Math.round(height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = analysisWidth;
+  canvas.height = analysisHeight;
+
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+
+  ctx.drawImage(img, 0, 0, analysisWidth, analysisHeight);
+  const imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight).data;
+  const luma = new Float32Array(analysisWidth * analysisHeight);
+
+  for (let index = 0; index < luma.length; index++) {
+    const source = index * 4;
+    luma[index] = (imageData[source] ?? 0) * 0.2126
+      + (imageData[source + 1] ?? 0) * 0.7152
+      + (imageData[source + 2] ?? 0) * 0.0722;
+  }
+
+  const verticalProfile = new Array<number>(analysisWidth).fill(0);
+  const horizontalProfile = new Array<number>(analysisHeight).fill(0);
+
+  for (let x = 1; x < analysisWidth - 1; x++) {
+    let total = 0;
+    for (let y = 0; y < analysisHeight; y++) {
+      const rowOffset = y * analysisWidth;
+      total += Math.abs(luma[rowOffset + x + 1]! - luma[rowOffset + x - 1]!);
+    }
+    verticalProfile[x] = total / analysisHeight;
+  }
+
+  for (let y = 1; y < analysisHeight - 1; y++) {
+    let total = 0;
+    const rowOffset = y * analysisWidth;
+    const previousRowOffset = (y - 1) * analysisWidth;
+    const nextRowOffset = (y + 1) * analysisWidth;
+    for (let x = 0; x < analysisWidth; x++) {
+      total += Math.abs(luma[nextRowOffset + x]! - luma[previousRowOffset + x]!);
+    }
+    horizontalProfile[y] = total / analysisWidth;
+  }
+
+  return buildGridLineEvidence(verticalProfile, horizontalProfile);
+}
+
 /**
  * Detect if an image is likely a grid based on aspect ratio and common patterns
  * Returns detected grid with confidence score
@@ -120,57 +372,14 @@ export async function detectGrid(imageUrl: string): Promise<DetectedGrid | null>
     const img = await loadImage(imageUrl);
     const width = img.naturalWidth;
     const height = img.naturalHeight;
-    const aspectRatio = width / height;
-
-    // Common AI generator output sizes
-    const commonSizes = [512, 768, 1024, 1080, 1280, 1344, 1536, 1792, 2048];
-
-    let bestMatch: DetectedGrid | null = null;
-    let highestConfidence = 0;
-
-    for (const grid of COMMON_GRIDS) {
-      // Calculate expected cell dimensions
-      const cellWidth = width / grid.cols;
-      const cellHeight = height / grid.rows;
-      const cellAspect = cellWidth / cellHeight;
-
-      // Check if cells are roughly square or standard aspect ratios
-      const isSquareCell = Math.abs(cellAspect - 1) < 0.15;
-      const is16x9Cell = Math.abs(cellAspect - 16/9) < 0.15;
-      const is9x16Cell = Math.abs(cellAspect - 9/16) < 0.15;
-      const is4x3Cell = Math.abs(cellAspect - 4/3) < 0.15;
-      const is3x4Cell = Math.abs(cellAspect - 3/4) < 0.15;
-
-      if (isSquareCell || is16x9Cell || is9x16Cell || is4x3Cell || is3x4Cell) {
-        // Check if cell dimensions are close to common sizes
-        const isCommonWidth = commonSizes.some(s => Math.abs(cellWidth - s) < 50);
-        const isCommonHeight = commonSizes.some(s => Math.abs(cellHeight - s) < 50);
-
-        let confidence = 0.5; // Base confidence for matching aspect ratio
-
-        if (isSquareCell) confidence += 0.2;
-        if (isCommonWidth) confidence += 0.15;
-        if (isCommonHeight) confidence += 0.15;
-
-        // Prefer smaller grids (more likely to be AI-generated)
-        if (grid.rows * grid.cols <= 4) confidence += 0.1;
-        else if (grid.rows * grid.cols <= 9) confidence += 0.05;
-
-        if (confidence > highestConfidence) {
-          highestConfidence = confidence;
-          bestMatch = {
-            rows: grid.rows,
-            cols: grid.cols,
-            confidence,
-            cellWidth: Math.round(cellWidth),
-            cellHeight: Math.round(cellHeight),
-          };
-        }
-      }
+    let lineEvidence: Record<string, GridLineEvidence> | null = null;
+    try {
+      lineEvidence = extractGridLineEvidence(img);
+    } catch {
+      lineEvidence = null;
     }
 
-    // Only return if confidence is above threshold
-    return highestConfidence >= 0.6 ? bestMatch : null;
+    return detectGridFromDimensions(width, height, lineEvidence ?? undefined);
   } catch (error) {
     console.error("Error detecting grid:", error);
     return null;

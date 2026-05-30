@@ -14,8 +14,8 @@
     "aspect_ratio",
     "cinematic_style",
     "storyboard_guide",
-    "production_concept_details",
-    "scene_descriptions"
+    "voiceover_script",
+    "production_concept_details"
   ],
   "generation_mode": {
     "ui:widget": "select",
@@ -75,9 +75,10 @@
   },
   "production_concept_details": {
     "ui:widget": "textarea",
-    "ui:help": "ไม่บังคับ ใช้รับแนวคิดจาก Production Director เพื่อคุมโทน กลุ่มเป้าหมาย ปัญหา hook และจุดขายแบบไม่ใช้ราคา rating หรือยอดขาย"
+    "ui:help": "รายละเอียดสินค้า / PRODUCT FACTS LOCK ใช้ล็อกชนิดสินค้า รุ่น ขนาด จำนวนชิ้นส่วน วัสดุ สี สเกล การใช้งานจริง และ claim safety; ใช้ร่วมกับ Storyboard Guide/Voiceover โดยห้ามใส่ราคา rating ยอดขาย หรือโปรโมชันที่ไม่ได้ให้มา"
   },
-  "scene_descriptions": {
-    "ui:widget": "textarea"
+  "voiceover_script": {
+    "ui:widget": "textarea",
+    "ui:help": "บทพูด/voiceover ต่อ shot ใช้คู่กับ Storyboard Guide เพื่อ map Frame 1-9 ให้ตรงเรื่อง เสียงพูด มุมกล้อง และล็อกสินค้า ไม่ใช่แต่ง scene ใหม่จากศูนย์"
   }
 }

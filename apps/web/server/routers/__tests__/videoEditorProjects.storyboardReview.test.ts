@@ -52,6 +52,96 @@ describe("mergeFresherExistingReviewTasks", () => {
     });
   });
 
+  it("keeps incoming production metadata when preserving fresher stored task media", () => {
+    const productionContext = {
+      productionRunId: "run-123",
+      productionStoryConceptId: "concept-1",
+      productionStoryConceptTitle: "Problem solution",
+      videoConcept: "Organize the bedside corner with a three-tier shelf.",
+      voiceoverFullScript: "VOICEOVER SCRIPT BY SHOT: 1. เปิดปัญหา 2. สินค้าเข้ามาแก้",
+      storyboardGuide: "Shot 1 problem, Shot 2 solution.",
+    };
+    const existing = {
+      version: 1,
+      updatedAt: 3000,
+      productionContext: null,
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 5000,
+          url: "/files/fresh.mp4",
+          prompt: "Fresh generated prompt",
+          storyboardContext: {
+            extraParams: {
+              generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+            },
+          },
+        },
+      ],
+    };
+    const incoming = {
+      version: 1,
+      updatedAt: 6000,
+      productionContext,
+      conceptDetails: "Product detail lock",
+      storyboardGuide: productionContext.storyboardGuide,
+      voiceoverFullScript: productionContext.voiceoverFullScript,
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 4000,
+          url: "/files/stale.mp4",
+          prompt: "Incoming stale prompt",
+          productionContext,
+          storyboardContext: {
+            productionContext,
+            extraParams: {
+              productionContext,
+              productionRunId: productionContext.productionRunId,
+              productionStoryConceptId: productionContext.productionStoryConceptId,
+              storyboardGuide: productionContext.storyboardGuide,
+              voiceoverFullScript: productionContext.voiceoverFullScript,
+              storyboardPromptPlanner: {
+                voiceoverFullScript: productionContext.voiceoverFullScript,
+                productionContext,
+              },
+            },
+          },
+        },
+      ],
+    };
+
+    expect(mergeFresherExistingReviewTasks(existing, incoming)).toMatchObject({
+      updatedAt: 6000,
+      productionContext,
+      conceptDetails: "Product detail lock",
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 5000,
+          url: "/files/fresh.mp4",
+          prompt: "Fresh generated prompt",
+          productionContext,
+          storyboardContext: {
+            productionContext,
+            extraParams: {
+              generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+              productionContext,
+              productionRunId: "run-123",
+              productionStoryConceptId: "concept-1",
+              storyboardGuide: productionContext.storyboardGuide,
+              voiceoverFullScript: productionContext.voiceoverFullScript,
+              storyboardPromptPlanner: {
+                voiceoverFullScript: productionContext.voiceoverFullScript,
+                productionContext,
+              },
+            },
+          },
+        },
+      ],
+    });
+  });
+
   it("accepts incoming task media when it is at least as fresh as the stored task", () => {
     const existing = {
       tasks: [{ id: "shot-1", updatedAt: 1000, url: "/files/old.mp4" }],

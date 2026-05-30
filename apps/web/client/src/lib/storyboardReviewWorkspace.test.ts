@@ -158,7 +158,7 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     expect(tasks[0]?.prompt).toContain("Guide: Shot order: use Frame 1 as start and Frame 2 as end, then preserve continuity.");
     expect(tasks[0]?.prompt.match(/PRODUCT FACTS LOCK/g)).toHaveLength(1);
     expect(tasks[0]?.prompt).not.toContain("Product/concept details:");
-    expect(tasks[0]?.prompt.length).toBeLessThan(1800);
+    expect(tasks[0]?.prompt.length).toBeLessThan(2600);
     expect(tasks[0]?.storyboardContext?.extraParams?.storyboardGuide).toContain("Shot order");
     expect(tasks[0]?.prompt).not.toContain("Prompt planning options:");
     expect(tasks[0]?.prompt).toContain("Sound design: Soft ecommerce room tone");
@@ -174,6 +174,56 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       tone: "sales",
       language: "th",
     });
+  });
+
+  it("propagates production context and uses supplied shot voiceover lines", () => {
+    const productionContext = {
+      productionRunId: "run-123",
+      productionProjectTitle: "Bedside Shelf Launch",
+      productionStoryConceptId: "concept-problem-solution",
+      productionStoryConceptTitle: "Problem Solution",
+      videoConcept: "Messy bedside corner becomes organized with a 3-tier shelf.",
+      voiceoverFullScript: "VOICEOVER SCRIPT BY SHOT:1. 0-6.7s เปิดปัญหา: เคยไหม ของใช้เล็ก ๆ ข้างเตียงไม่มีที่อยู่ประจำ2. 6.7-13.3s ขยาย pain point: พอเจอทุกวัน มุมนั้นก็ใช้งานไม่ค่อยสบาย3. 13.3-20s สินค้าเข้ามาแก้: พอเอา Greenforst ชั้นวางข้างเตียงเข้ามา มุมนี้ก็เริ่มมีตำแหน่งชัดขึ้น",
+      storyboardGuide: "Shot 1 opens on clutter, Shot 2 expands the pain point, Shot 3 introduces the product.",
+      sourceGridUrl: "https://example.com/grid.jpg",
+    };
+
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        { url: "https://example.com/1.jpg", name: "Frame 1", productionContext },
+        { url: "https://example.com/2.jpg", name: "Frame 2", productionContext },
+        { url: "https://example.com/3.jpg", name: "Frame 3", productionContext },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        duration: 8,
+        includeVoiceover: true,
+        speechMode: "th",
+        speechLanguage: "Thai",
+        storyboardGuide: productionContext.storyboardGuide,
+        voiceoverFullScript: productionContext.voiceoverFullScript,
+        productionContext,
+        now: 12345,
+      },
+    );
+
+    expect(tasks).toHaveLength(2);
+    expect(tasks[0]?.productionContext).toMatchObject({
+      productionRunId: "run-123",
+      productionStoryConceptId: "concept-problem-solution",
+    });
+    expect(tasks[0]?.storyboardContext?.productionContext).toMatchObject({
+      productionRunId: "run-123",
+    });
+    expect(tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      productionRunId: "run-123",
+      productionStoryConceptId: "concept-problem-solution",
+      voiceoverFullScript: expect.stringContaining("VOICEOVER SCRIPT BY SHOT"),
+    });
+    expect(tasks[0]?.prompt).toContain("เคยไหม ของใช้เล็ก ๆ ข้างเตียงไม่มีที่อยู่ประจำ");
+    expect(tasks[1]?.prompt).toContain("พอเอา Greenforst ชั้นวางข้างเตียงเข้ามา");
+    expect(tasks[0]?.prompt).toContain("Product fidelity lock");
   });
 
   it("uses natural Thai speech for child dining chair split storyboard prompts", () => {

@@ -38,6 +38,83 @@ function getTaskUrl(task: unknown): string {
   return typeof url === "string" ? url : "";
 }
 
+function isStoryboardReviewRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeStoryboardPlannerMetadata(existingValue: unknown, incomingValue: unknown): unknown {
+  if (!isStoryboardReviewRecord(existingValue) && !isStoryboardReviewRecord(incomingValue)) {
+    return existingValue ?? incomingValue;
+  }
+  if (!isStoryboardReviewRecord(existingValue)) return incomingValue;
+  if (!isStoryboardReviewRecord(incomingValue)) return existingValue;
+  return {
+    ...incomingValue,
+    ...existingValue,
+    productionContext: existingValue.productionContext ?? incomingValue.productionContext,
+    voiceoverFullScript: existingValue.voiceoverFullScript ?? incomingValue.voiceoverFullScript,
+    soundFullBrief: existingValue.soundFullBrief ?? incomingValue.soundFullBrief,
+  };
+}
+
+function mergeStoryboardExtraParamsMetadata(existingValue: unknown, incomingValue: unknown): unknown {
+  if (!isStoryboardReviewRecord(existingValue) && !isStoryboardReviewRecord(incomingValue)) {
+    return existingValue ?? incomingValue;
+  }
+  if (!isStoryboardReviewRecord(existingValue)) return incomingValue;
+  if (!isStoryboardReviewRecord(incomingValue)) return existingValue;
+
+  const merged: Record<string, unknown> = {
+    ...incomingValue,
+    ...existingValue,
+    productionContext: existingValue.productionContext ?? incomingValue.productionContext,
+    productionRunId: existingValue.productionRunId ?? incomingValue.productionRunId,
+    productionStoryConceptId: existingValue.productionStoryConceptId ?? incomingValue.productionStoryConceptId,
+    productionStoryConceptTitle: existingValue.productionStoryConceptTitle ?? incomingValue.productionStoryConceptTitle,
+    productionVideoConcept: existingValue.productionVideoConcept ?? incomingValue.productionVideoConcept,
+    productionConceptDetails: existingValue.productionConceptDetails ?? incomingValue.productionConceptDetails,
+    storyboardGuide: existingValue.storyboardGuide ?? incomingValue.storyboardGuide,
+    voiceoverFullScript: existingValue.voiceoverFullScript ?? incomingValue.voiceoverFullScript,
+  };
+
+  const planner = mergeStoryboardPlannerMetadata(
+    existingValue.storyboardPromptPlanner,
+    incomingValue.storyboardPromptPlanner,
+  );
+  if (planner) merged.storyboardPromptPlanner = planner;
+
+  return merged;
+}
+
+function mergeStoryboardContextMetadata(existingValue: unknown, incomingValue: unknown): unknown {
+  if (!isStoryboardReviewRecord(existingValue) && !isStoryboardReviewRecord(incomingValue)) {
+    return existingValue ?? incomingValue;
+  }
+  if (!isStoryboardReviewRecord(existingValue)) return incomingValue;
+  if (!isStoryboardReviewRecord(incomingValue)) return existingValue;
+
+  return {
+    ...incomingValue,
+    ...existingValue,
+    marketplaceProduct: existingValue.marketplaceProduct ?? incomingValue.marketplaceProduct,
+    productionContext: existingValue.productionContext ?? incomingValue.productionContext,
+    extraParams: mergeStoryboardExtraParamsMetadata(existingValue.extraParams, incomingValue.extraParams),
+  };
+}
+
+function mergeFresherTaskMediaWithIncomingMetadata(existingTask: unknown, incomingTask: unknown): unknown {
+  if (!isStoryboardReviewRecord(existingTask) || !isStoryboardReviewRecord(incomingTask)) {
+    return existingTask;
+  }
+  return {
+    ...incomingTask,
+    ...existingTask,
+    marketplaceProduct: existingTask.marketplaceProduct ?? incomingTask.marketplaceProduct,
+    productionContext: existingTask.productionContext ?? incomingTask.productionContext,
+    storyboardContext: mergeStoryboardContextMetadata(existingTask.storyboardContext, incomingTask.storyboardContext),
+  };
+}
+
 function getCompanionAudioUpdatedAt(reviewData: unknown): number {
   if (!reviewData || typeof reviewData !== "object") return 0;
   const value = (reviewData as { companionAudioUpdatedAt?: unknown }).companionAudioUpdatedAt;
@@ -173,7 +250,7 @@ export function mergeFresherExistingReviewTasks(
       && getTaskUrl(existingTask) !== getTaskUrl(incomingTask)
     ) {
       changed = true;
-      return existingTask;
+      return mergeFresherTaskMediaWithIncomingMetadata(existingTask, incomingTask);
     }
     return incomingTask;
   });
