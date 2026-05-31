@@ -2073,7 +2073,7 @@ export const chatRouter = router({
               eq(userSkillVisibility.userId, ctx.user.id)
             )
           )
-          .where(eq(skillsTable.slug, input.skillId))
+          .where(and(eq(skillsTable.slug, input.skillId), eq(skillsTable.isEnabled, true)))
           .limit(1);
 
         const [groupShare] = accessCheck
@@ -2440,7 +2440,7 @@ export const chatRouter = router({
         const [skillRow] = await skillDb
           .select({ systemPrompt: skillsTable.systemPrompt, knowledgebase: skillsTable.knowledgebase })
           .from(skillsTable)
-          .where(eq(skillsTable.slug, input.skillId))
+          .where(and(eq(skillsTable.slug, input.skillId), eq(skillsTable.isEnabled, true)))
           .limit(1);
 
         // Build LLM messages — content can be string or multimodal array

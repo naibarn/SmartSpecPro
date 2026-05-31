@@ -3075,7 +3075,7 @@ export const skillsRouter = router({
           availableModels: skills.availableModels,
         })
           .from(skills)
-          .where(eq(skills.slug, input.skillId))
+          .where(and(eq(skills.slug, input.skillId), eq(skills.isEnabled, true)))
           .limit(1);
 
         if (!skill) {
@@ -3380,7 +3380,7 @@ export const skillsRouter = router({
           llmModelId: skills.llmModelId,
         })
         .from(skills)
-        .where(eq(skills.slug, skillSlug))
+        .where(and(eq(skills.slug, skillSlug), eq(skills.isEnabled, true)))
         .limit(1);
 
       let systemPrompt = skill?.skillContent || skill?.systemPrompt || "";
@@ -3987,7 +3987,7 @@ export const skillsRouter = router({
           executionPolicyJson: skills.executionPolicyJson,
         })
         .from(skills)
-        .where(eq(skills.slug, input.skillId))
+        .where(and(eq(skills.slug, input.skillId), eq(skills.isEnabled, true)))
         .limit(1);
 
       if (!skill) {
@@ -5794,6 +5794,39 @@ export const skillsRouter = router({
       // Refresh skill cache
       await refreshSkillCache();
 
+      return updated;
+    }),
+
+  /**
+   * Enable or disable a skill globally without editing the full skill payload.
+   */
+  toggleEnabled: adminProcedure
+    .input(z.object({ id: z.number(), isEnabled: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const [updated] = await dbInstance
+        .update(skills)
+        .set({
+          isEnabled: input.isEnabled,
+          updatedAt: new Date(),
+        })
+        .where(eq(skills.id, input.id))
+        .returning({
+          id: skills.id,
+          slug: skills.slug,
+          isEnabled: skills.isEnabled,
+        });
+
+      if (!updated) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Skill with id ${input.id} not found`,
+        });
+      }
+
+      await refreshSkillCache();
       return updated;
     }),
 

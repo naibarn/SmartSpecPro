@@ -1261,6 +1261,13 @@
       "when": 1780000003000,
       "tag": "0193_marketplace_auto_review_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1780000004000,
+      "tag": "0194_skills_enabled_defaults",
+      "breakpoints": true
     }
   ]
 }

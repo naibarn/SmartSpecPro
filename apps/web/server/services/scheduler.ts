@@ -137,7 +137,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       const [skillDef] = await db
         .select()
         .from(skills)
-        .where(eq(skills.slug, schedule.skillId))
+        .where(and(eq(skills.slug, schedule.skillId), eq(skills.isEnabled, true)))
         .limit(1);
 
       if (!skillDef) {

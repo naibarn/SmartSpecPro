@@ -2448,6 +2448,24 @@ export default function AdminSkills() {
     });
   }
 
+  function requestEligibleMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
+    const eligibleRecommendationIds = group.recommendations
+      .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
+      .map((item) => item.id);
+
+    if (eligibleRecommendationIds.length === 0) {
+      toast({
+        title: t("admin.skillsPage.maintenance.noActionableTitle"),
+        description: t("admin.skillsPage.maintenance.noActionableDescription"),
+      });
+      return;
+    }
+
+    applyMaintenanceRecommendationsMutation.mutate({
+      recommendationIds: eligibleRecommendationIds,
+    });
+  }
+
   function requestEligibleMaintenanceApplyForView() {
     applyMaintenanceRecommendationsMutation.mutate({
       recommendationIds: maintenanceEligibleRecommendationIds,
@@ -2558,6 +2576,25 @@ export default function AdminSkills() {
       toast({
         title: "Error",
         description: error.message || "Failed to update skill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleEnabledMutation = trpc.skills.toggleEnabled.useMutation({
+    onSuccess: (updatedSkill) => {
+      utils.skills.listFromDb.invalidate();
+      toast({
+        title: updatedSkill.isEnabled ? "Skill Enabled" : "Skill Disabled",
+        description: updatedSkill.isEnabled
+          ? "The skill is available to users again."
+          : "The skill is hidden from users and runtime execution.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to update skill status",
+        description: error.message || "Failed to update skill status",
         variant: "destructive",
       });
     },
@@ -3493,17 +3530,34 @@ export default function AdminSkills() {
                           </TableCell>
                           <TableCell>{skill.priority}</TableCell>
                           <TableCell>
-                            {skill.isEnabled ? (
-                              <Badge variant="outline" className="border-green-500 text-green-500">
-                                <CheckCircle2 className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.library.enabled")}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-red-500 text-red-500">
-                                <XCircle className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.library.disabled")}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={skill.isEnabled}
+                                disabled={toggleEnabledMutation.isPending}
+                                aria-label={
+                                  skill.isEnabled
+                                    ? `Disable ${skill.name}`
+                                    : `Enable ${skill.name}`
+                                }
+                                onCheckedChange={(checked) =>
+                                  toggleEnabledMutation.mutate({
+                                    id: skill.id,
+                                    isEnabled: Boolean(checked),
+                                  })
+                                }
+                              />
+                              {skill.isEnabled ? (
+                                <Badge variant="outline" className="border-green-500 text-green-500">
+                                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                                  {t("admin.skillsPage.library.enabled")}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="border-red-500 text-red-500">
+                                  <XCircle className="mr-1 h-3 w-3" />
+                                  {t("admin.skillsPage.library.disabled")}
+                                </Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">
@@ -4025,6 +4079,9 @@ export default function AdminSkills() {
                       const actionableRecommendationCount = group.recommendations
                         .filter(isMaintenanceRecommendationActionable)
                         .length;
+                      const eligibleRecommendationCount = group.recommendations
+                        .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
+                        .length;
                       const statusBadges = getMaintenanceGroupStatusBadges(group);
 
                       return (
@@ -4141,6 +4198,14 @@ export default function AdminSkills() {
                                   disabled={applyMaintenanceRecommendationsMutation.isPending || actionableRecommendationCount === 0}
                                 >
                                   {t("admin.skillsPage.maintenance.applyAll", { count: actionableRecommendationCount })}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => requestEligibleMaintenanceGroupApply(group)}
+                                  disabled={applyMaintenanceRecommendationsMutation.isPending || eligibleRecommendationCount === 0}
+                                >
+                                  {t("admin.skillsPage.maintenance.applyEligible", { count: eligibleRecommendationCount })}
                                 </Button>
                                 <Button
                                   variant="outline"
