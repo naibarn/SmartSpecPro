@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProductionFlowNode, ProductionNodeOutputRef, ProductionReferenceInput, ProductionSpace } from "@shared/mediaProduction";
 import { shotToDraft, type ProductionLocale, type ProductionShotDraft, type VideoShotWorkspaceCallbacks } from "./types";
@@ -52,6 +53,8 @@ export interface VideoShotWorkspaceProps extends VideoShotWorkspaceCallbacks {
   shotFrameBatchStatus?: string | null;
   hasResumableShotFrameBatch?: boolean;
   onResumeShotFrameBatch?: () => void;
+  autoImageQaEnabled?: boolean;
+  onAutoImageQaEnabledChange?: (enabled: boolean) => void;
   onSetShotContinuityAnchor?: (
     shotId: string,
     slot: "reference" | "start" | "stop",
@@ -457,6 +460,8 @@ export function VideoShotWorkspace({
   shotFrameBatchStatus,
   hasResumableShotFrameBatch = false,
   onResumeShotFrameBatch,
+  autoImageQaEnabled = true,
+  onAutoImageQaEnabledChange,
   onSetShotContinuityAnchor,
   onOpenShotStoryboardGridSplit,
   onAssignShotMediaSlot,
@@ -900,6 +905,17 @@ export function VideoShotWorkspace({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <div className="flex min-h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                <Switch
+                  checked={autoImageQaEnabled}
+                  onCheckedChange={(checked) => onAutoImageQaEnabledChange?.(checked)}
+                  disabled={!onAutoImageQaEnabledChange}
+                  aria-label={isThai ? "เปิดปิดการตรวจ Image QA อัตโนมัติหลังสร้างภาพ" : "Toggle automatic Image QA after frame generation"}
+                />
+                <span className="text-xs font-medium text-slate-700">
+                  {isThai ? "Auto Image QA" : "Auto Image QA"}
+                </span>
+              </div>
               <Button
                 type="button"
                 variant="outline"

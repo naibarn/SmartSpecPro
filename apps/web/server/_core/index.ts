@@ -121,6 +121,10 @@ import {
   initializeProductionExecutionReconciliationJob,
   shutdownProductionExecutionReconciliationJob,
 } from "../jobs/productionExecutionReconciliationJob";
+import {
+  initializeMarketplaceAutoReviewJob,
+  shutdownMarketplaceAutoReviewJob,
+} from "../jobs/marketplaceAutoReviewJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -1721,6 +1725,12 @@ async function main() {
   }
 
   try {
+    await initializeMarketplaceAutoReviewJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize marketplace auto-review job:", error);
+  }
+
+  try {
     const { startAutoTeamRecoverySweep } = await import("../services/autoTeamRecoveryService");
     startAutoTeamRecoverySweep();
   } catch (error) {
@@ -1841,6 +1851,7 @@ process.on("SIGTERM", async () => {
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
+  await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -1905,6 +1916,7 @@ process.on("SIGINT", async () => {
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
+  await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(

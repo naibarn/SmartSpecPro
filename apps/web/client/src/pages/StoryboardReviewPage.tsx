@@ -3598,12 +3598,26 @@ export default function StoryboardReviewPage() {
               compoundStatus: t("mediaStudio.storyboardReviewRenderCompleteStatus", { outputPath }),
             }));
             toast.success(t("mediaStudio.storyboardReviewRenderComplete"));
-            const libraryMetadata = renderLibraryMetadataRef.current[completedJobId];
+            const fallbackRenderTitle = draft ? `${getStoryboardReviewName(draft)} - Final video` : undefined;
+            const fallbackRenderMetadata = buildRenderTraceabilityMetadata({
+              sourceFlow: "storyboard_review_page_compound_render",
+              sourceSurface: "storyboard_review_page",
+              title: draft ? getStoryboardReviewName(draft) : null,
+              reviewId: draft?.reviewId ?? canonicalReviewId ?? null,
+              clipCount: draft?.tasks.length ?? null,
+              selectedClipCount: selectedRenderClips.length,
+              productionContext: resolveStoryboardDraftProductionContext(draft),
+              marketplaceProduct: resolveStoryboardDraftMarketplaceProduct(draft),
+            });
+            const libraryMetadata = renderLibraryMetadataRef.current[completedJobId] ?? {
+              title: fallbackRenderTitle,
+              metadata: fallbackRenderMetadata,
+            };
             delete renderLibraryMetadataRef.current[completedJobId];
             void addRenderToLibraryMutation
               .mutateAsync({
                 jobId: completedJobId,
-                title: libraryMetadata?.title ?? (draft ? `${getStoryboardReviewName(draft)} - Final video` : undefined),
+                title: libraryMetadata?.title ?? fallbackRenderTitle,
                 metadata: libraryMetadata?.metadata,
               })
               .then((result) => {

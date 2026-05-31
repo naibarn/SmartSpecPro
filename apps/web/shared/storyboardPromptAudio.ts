@@ -167,9 +167,17 @@ function durationIntro(durationSeconds?: number | null): string {
 }
 
 function describeFrameRoles(frameRoles?: readonly string[] | null): string {
-  const roles = Array.isArray(frameRoles) && frameRoles.length >= 2 ? frameRoles : ["start", "stop"];
-  const firstRole = roles[0] === "reference" ? "reference image" : roles[0] === "stop" ? "stop/end frame" : "start frame";
-  const secondRole = roles[1] === "reference" ? "reference image" : roles[1] === "start" ? "start frame" : "stop/end frame";
+  const roles = Array.isArray(frameRoles) && frameRoles.length > 0 ? frameRoles : ["start", "stop"];
+  const describeRole = (role: string | undefined) => {
+    if (role === "reference") return "reference image";
+    if (role === "single_storyboard") return "single storyboard frame";
+    if (role === "product_reference") return "product reference image";
+    if (role === "stop") return "stop/end frame";
+    return "start frame";
+  };
+  if (roles.length === 1) return `Use @Image1 as ${describeRole(roles[0])}.`;
+  const firstRole = describeRole(roles[0]);
+  const secondRole = describeRole(roles[1]);
   return `Use @Image1 as ${firstRole} and @Image2 as ${secondRole}.`;
 }
 
@@ -326,6 +334,9 @@ export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideo
   const aspectRatio = String(input.aspectRatio ?? "").trim();
   const action = visualPrompt || "Create a precise storyboard image-to-video movement from the attached reference frames.";
   const frameRoleLine = describeFrameRoles(input.frameRoles);
+  const isSingleStoryboardFrame = Array.isArray(input.frameRoles)
+    && input.frameRoles.length === 1
+    && input.frameRoles[0] === "single_storyboard";
   const conceptDetails = promptContainsContext(action, rawConceptDetails)
     ? ""
     : compactPromptContext(rawConceptDetails);
@@ -352,7 +363,9 @@ export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideo
     [
       frameRoleLine,
       aspectRatio ? `Compose for ${aspectRatio}.` : "",
-      "Use a smooth move that fits duration and preserves endpoint continuity.",
+      isSingleStoryboardFrame
+        ? "Use a subtle cinematic move from the storyboard frame, preserving composition, product geometry, character identity, lighting, and environment; do not invent a second endpoint."
+        : "Use a smooth move that fits duration and preserves endpoint continuity.",
     ].filter(Boolean).join(" "),
     "",
     "Lighting / Style:",

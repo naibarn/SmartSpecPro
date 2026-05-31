@@ -662,7 +662,28 @@ type ProductionShotFrameBatchSession = {
   updatedAt: number;
 };
 
+type MediaStudioRenderLibrarySession = {
+  version: 1;
+  source: "storyboard_review" | "video_shot";
+  jobId: string;
+  productionRunId?: string | null;
+  title?: string | null;
+  metadata?: Record<string, unknown>;
+  startedAt: number;
+  updatedAt: number;
+};
+
+type MediaHistoryProductionQaOverride = {
+  status?: string | null;
+  mode?: string | null;
+  role?: string | null;
+  summary?: string | null;
+};
+
 const PRODUCTION_SHOT_FRAME_BATCH_SESSION_PREFIX = "smartspec_media_studio_production_shot_frame_batch_v1";
+const MEDIA_STUDIO_RENDER_LIBRARY_SESSIONS_KEY = "smartspec_media_studio_render_library_sessions_v1";
+const PRODUCTION_SHOT_AUTO_IMAGE_QA_STORAGE_KEY = "smartspec_media_studio_production_shot_auto_image_qa_v1";
+const MEDIA_STUDIO_RENDER_LIBRARY_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DENSE_PRODUCTION_SHOT_NODE_ID_PATTERN = /^shot-\d+-(script|image-prompt|image-output|video-prompt|video-output|audio-prompt|audio-output|qa)$/;
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -729,6 +750,114 @@ function writeProductionShotFrameBatchSession(session: ProductionShotFrameBatchS
 function clearProductionShotFrameBatchSession(productionRunId: string): void {
   if (typeof window === "undefined" || !productionRunId || productionRunId === "draft") return;
   window.localStorage.removeItem(getProductionShotFrameBatchSessionStorageKey(productionRunId));
+}
+
+function readProductionShotAutoImageQaPreference(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(PRODUCTION_SHOT_AUTO_IMAGE_QA_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeProductionShotAutoImageQaPreference(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PRODUCTION_SHOT_AUTO_IMAGE_QA_STORAGE_KEY, enabled ? "true" : "false");
+  } catch {
+    // Ignore storage failures; the in-memory toggle still works for this session.
+  }
+}
+
+function sanitizeRenderLibrarySession(value: unknown): MediaStudioRenderLibrarySession | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Partial<MediaStudioRenderLibrarySession>;
+  const source = record.source === "storyboard_review" || record.source === "video_shot" ? record.source : null;
+  const jobId = typeof record.jobId === "string" ? record.jobId.trim() : "";
+  if (record.version !== 1 || !source || !jobId) return null;
+  const updatedAt = Number(record.updatedAt) || Number(record.startedAt) || Date.now();
+  if (Date.now() - updatedAt > MEDIA_STUDIO_RENDER_LIBRARY_SESSION_TTL_MS) return null;
+  const metadata = asRecord(record.metadata);
+  return {
+    version: 1,
+    source,
+    jobId,
+    productionRunId: typeof record.productionRunId === "string" ? record.productionRunId : null,
+    title: typeof record.title === "string" ? record.title : null,
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+    startedAt: Number(record.startedAt) || updatedAt,
+    updatedAt,
+  };
+}
+
+function readMediaStudioRenderLibrarySessions(): MediaStudioRenderLibrarySession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(MEDIA_STUDIO_RENDER_LIBRARY_SESSIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const sessions = parsed
+      .map(sanitizeRenderLibrarySession)
+      .filter((session): session is MediaStudioRenderLibrarySession => Boolean(session));
+    if (sessions.length !== parsed.length) {
+      window.localStorage.setItem(MEDIA_STUDIO_RENDER_LIBRARY_SESSIONS_KEY, JSON.stringify(sessions));
+    }
+    return sessions;
+  } catch {
+    return [];
+  }
+}
+
+function writeMediaStudioRenderLibrarySessions(sessions: MediaStudioRenderLibrarySession[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(MEDIA_STUDIO_RENDER_LIBRARY_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch {
+    // Ignore storage failures; render progress still works while the page is open.
+  }
+}
+
+function upsertMediaStudioRenderLibrarySession(session: MediaStudioRenderLibrarySession): void {
+  const sessions = readMediaStudioRenderLibrarySessions();
+  const nextSession = { ...session, version: 1 as const, updatedAt: Date.now() };
+  const index = sessions.findIndex((item) => item.jobId === session.jobId);
+  if (index >= 0) {
+    sessions[index] = nextSession;
+  } else {
+    sessions.push(nextSession);
+  }
+  writeMediaStudioRenderLibrarySessions(sessions);
+}
+
+function removeMediaStudioRenderLibrarySession(jobId: string): void {
+  if (!jobId) return;
+  writeMediaStudioRenderLibrarySessions(readMediaStudioRenderLibrarySessions().filter((session) => session.jobId !== jobId));
+}
+
+function findMediaStudioRenderLibrarySession(
+  source: MediaStudioRenderLibrarySession["source"],
+  productionRunId: string,
+): MediaStudioRenderLibrarySession | null {
+  const normalizedRunId = normalizeProductionRunId(productionRunId);
+  return readMediaStudioRenderLibrarySessions()
+    .filter((session) => {
+      if (session.source !== source) return false;
+      const sessionRunId = normalizeProductionRunId(session.productionRunId);
+      return normalizedRunId ? sessionRunId === normalizedRunId : !sessionRunId;
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
+}
+
+function getProductionStoryboardPromptItems(space?: ProductionSpace | null): Record<string, unknown>[] {
+  const storyboardNode = space?.flowNodes.find((node) => node.id === "storyboard-card" || node.kind === "storyboard_planning");
+  const prompts = [
+    storyboardNode?.outputRefs?.at(-1)?.metadata?.storyboardPrompts,
+    storyboardNode?.configSnapshot?.config?.storyboardPrompts,
+    storyboardNode?.metadata?.storyboardPrompts,
+  ].find((candidate) => Array.isArray(candidate));
+  return Array.isArray(prompts) ? prompts as Record<string, unknown>[] : [];
 }
 
 function buildProductionShotFrameImageQaResult(params: {
@@ -825,6 +954,18 @@ function getMediaHistoryTaskProductionQaSummary(task: MediaHistoryTaskLite): {
   const mode = String(extraParams.qa_inspection_mode ?? qaContract.inspection_mode ?? "metadata_only");
   const status = String(extraParams.post_generation_qa_status ?? extraParams.qa_status ?? "pending").toLowerCase();
   const role = String(extraParams.frameRole ?? extraParams.frame_role ?? extraParams.videoGenerationMode ?? "").trim();
+  return buildMediaHistoryProductionQaSummary({ status, mode, role });
+}
+
+function buildMediaHistoryProductionQaSummary(input: MediaHistoryProductionQaOverride): {
+  label: string;
+  detail: string;
+  tone: string;
+} {
+  const mode = String(input.mode ?? "metadata_only").trim().toLowerCase();
+  const status = String(input.status ?? "pending").trim().toLowerCase();
+  const role = String(input.role ?? "").trim();
+  const summary = String(input.summary ?? "").trim();
   const label = mode === "vision" ? "Vision QA" : "QA metadata";
   const tone = status.includes("pass")
     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -835,7 +976,7 @@ function getMediaHistoryTaskProductionQaSummary(task: MediaHistoryTaskLite): {
         : "border-slate-200 bg-white text-slate-700";
   return {
     label,
-    detail: [role, status === "pending" ? "pending" : status].filter(Boolean).join(" · "),
+    detail: [role, status === "pending" ? "pending" : status, summary].filter(Boolean).join(" · "),
     tone,
   };
 }
@@ -7225,6 +7366,7 @@ export default function MediaStudio() {
   const [isGeneratingAllProductionShotFrameImages, setIsGeneratingAllProductionShotFrameImages] = useState(false);
   const [productionShotFrameBatchStatus, setProductionShotFrameBatchStatus] = useState<string | null>(null);
   const [productionShotFrameBatchResumeSession, setProductionShotFrameBatchResumeSession] = useState<ProductionShotFrameBatchSession | null>(null);
+  const [productionShotAutoImageQaEnabled, setProductionShotAutoImageQaEnabled] = useState<boolean>(() => readProductionShotAutoImageQaPreference());
   const [productionShotPromptSpeechMode, setProductionShotPromptSpeechMode] = useState<"none" | "th" | "en" | "other">("none");
   const [productionShotPromptOtherSpeechLanguage, setProductionShotPromptOtherSpeechLanguage] = useState("");
   const productionShotReferenceSkillManualRef = useRef(false);
@@ -15005,6 +15147,16 @@ export default function MediaStudio() {
         sourceMetadata: renderMetadata,
       });
       storyboardRenderLibraryMetadataRef.current[jobId] = { title: renderTitle, metadata: renderMetadata };
+      upsertMediaStudioRenderLibrarySession({
+        version: 1,
+        source: "storyboard_review",
+        jobId,
+        productionRunId: normalizeProductionRunId(String(renderMetadata.productionRunId ?? "")) || null,
+        title: renderTitle,
+        metadata: renderMetadata,
+        startedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
       setStoryboardRenderJobId(jobId);
       setStoryboardCompoundStatus("Compound render started. Watch progress below.");
       setStoryboardReviewOpen(false);
@@ -15038,8 +15190,24 @@ export default function MediaStudio() {
     setStoryboardCompoundStatus(`Compound render complete: ${outputPath}`);
     toast.success("Compound video is ready");
     if (completedJobId) {
-      const libraryMetadata = storyboardRenderLibraryMetadataRef.current[completedJobId];
+      const draft = buildStoryboardReviewDraft();
+      const fallbackTitle = draft ? `${getStoryboardReviewName(draft)} - Final video` : "Storyboard Review - Final video";
+      const fallbackMetadata = buildRenderTraceabilityMetadata({
+        sourceFlow: "media_studio_storyboard_review_compound_render",
+        sourceSurface: "media_studio_storyboard_review",
+        title: draft ? getStoryboardReviewName(draft) : fallbackTitle,
+        reviewId: storyboardReviewId,
+        clipCount: draft?.tasks.length ?? selectedStoryboardTaskIds.size,
+        selectedClipCount: draft?.selectedTaskIds.length ?? selectedStoryboardTaskIds.size,
+        productionContext: resolveStoryboardDraftProductionContext(draft),
+        marketplaceProduct: resolveStoryboardDraftMarketplaceProduct(draft),
+      });
+      const libraryMetadata = storyboardRenderLibraryMetadataRef.current[completedJobId] ?? {
+        title: fallbackTitle,
+        metadata: fallbackMetadata,
+      };
       delete storyboardRenderLibraryMetadataRef.current[completedJobId];
+      removeMediaStudioRenderLibrarySession(completedJobId);
       void addRenderToLibraryMutation
         .mutateAsync({
           jobId: completedJobId,
@@ -15054,12 +15222,22 @@ export default function MediaStudio() {
           toast.warning(`Render completed, but saving to Library failed: ${message}`);
         });
     }
-  }, [addRenderToLibraryMutation, setStoryboardCompoundStatus, storyboardRenderJobId, toast]);
+  }, [
+    addRenderToLibraryMutation,
+    buildStoryboardReviewDraft,
+    getStoryboardReviewName,
+    selectedStoryboardTaskIds.size,
+    setStoryboardCompoundStatus,
+    storyboardRenderJobId,
+    storyboardReviewId,
+    toast,
+  ]);
 
   const handleStoryboardRenderCancel = useCallback(() => {
+    if (storyboardRenderJobId) removeMediaStudioRenderLibrarySession(storyboardRenderJobId);
     setStoryboardRenderJobId(null);
     setStoryboardCompoundStatus("Compound render cancelled");
-  }, [setStoryboardCompoundStatus]);
+  }, [setStoryboardCompoundStatus, storyboardRenderJobId]);
 
   const openStoryboardReviewPage = useCallback((reviewId?: number | null) => {
     const draft = buildStoryboardReviewDraft();
@@ -17391,6 +17569,9 @@ export default function MediaStudio() {
       .find((value) => value && value !== "draft") ?? "";
   }, [productionDirector.productionRunId, productionWorkspaceSpace.productionRunId]);
   useEffect(() => {
+    writeProductionShotAutoImageQaPreference(productionShotAutoImageQaEnabled);
+  }, [productionShotAutoImageQaEnabled]);
+  useEffect(() => {
     const session = readProductionShotFrameBatchSession(activeProductionRunId);
     setProductionShotFrameBatchResumeSession(session);
     if (session) {
@@ -17399,6 +17580,69 @@ export default function MediaStudio() {
         : `A paused start/stop frame batch can resume from shot ${session.nextIndex + 1}/${session.shotIds.length}.`);
     }
   }, [activeProductionRunId, isThaiLocale]);
+  useEffect(() => {
+    if (!activeProductionRunId) return;
+    const shotRenderSession = findMediaStudioRenderLibrarySession("video_shot", activeProductionRunId);
+    if (shotRenderSession && !productionShotRenderJobId) {
+      productionShotRenderLibraryMetadataRef.current[shotRenderSession.jobId] = {
+        title: shotRenderSession.title ?? undefined,
+        metadata: shotRenderSession.metadata ?? {},
+      };
+      setProductionShotRenderJobId(shotRenderSession.jobId);
+      setProductionShotCompoundStatus(isThaiLocale ? "พบงานรวมวิดีโอที่ยังทำงานอยู่ กำลังติดตามต่อ..." : "Resuming a pending video-shot render...");
+    }
+
+    const storyboardRenderSession = findMediaStudioRenderLibrarySession("storyboard_review", activeProductionRunId);
+    if (storyboardRenderSession && !storyboardRenderJobId) {
+      storyboardRenderLibraryMetadataRef.current[storyboardRenderSession.jobId] = {
+        title: storyboardRenderSession.title ?? undefined,
+        metadata: storyboardRenderSession.metadata ?? {},
+      };
+      setStoryboardRenderJobId(storyboardRenderSession.jobId);
+      setStoryboardCompoundStatus(isThaiLocale ? "พบงาน render Storyboard Review ที่ยังทำงานอยู่ กำลังติดตามต่อ..." : "Resuming a pending Storyboard Review render...");
+    }
+  }, [activeProductionRunId, isThaiLocale, productionShotRenderJobId, storyboardRenderJobId]);
+  const mediaHistoryProductionQaByTaskId = useMemo(() => {
+    const currentRunId = normalizeProductionRunId(activeProductionRunId || productionWorkspaceSpace.productionRunId);
+    const map = new Map<string, MediaHistoryProductionQaOverride>();
+    const addTaskIds = (taskIds: unknown[], override: MediaHistoryProductionQaOverride) => {
+      for (const taskIdValue of taskIds) {
+        const taskId = String(taskIdValue ?? "").trim();
+        if (taskId) map.set(taskId, override);
+      }
+    };
+
+    for (const promptItem of getProductionStoryboardPromptItems(productionWorkspaceSpace)) {
+      addTaskIds([promptItem.startFrameTaskId], {
+        status: String(promptItem.startFrameQaStatus ?? "pending"),
+        mode: String(promptItem.startFrameQaInspectionMode ?? "metadata_only"),
+        role: "start",
+        summary: typeof promptItem.startFrameQaSummary === "string" ? promptItem.startFrameQaSummary : null,
+      });
+      addTaskIds([promptItem.stopFrameTaskId], {
+        status: String(promptItem.stopFrameQaStatus ?? "pending"),
+        mode: String(promptItem.stopFrameQaInspectionMode ?? "metadata_only"),
+        role: "stop",
+        summary: typeof promptItem.stopFrameQaSummary === "string" ? promptItem.stopFrameQaSummary : null,
+      });
+    }
+
+    for (const task of generationTasks) {
+      const context = task.productionShotContext;
+      if (!context || (context.role !== "start" && context.role !== "stop")) continue;
+      const taskRunId = normalizeProductionRunId(context.productionRunId);
+      if (currentRunId && taskRunId !== currentRunId) continue;
+      const status = task.imageQaStatus;
+      if (!status || status === "running") continue;
+      addTaskIds([task.id, task.backendTaskId, task.providerTaskId], {
+        status,
+        mode: String(task.imageQaResult?.inspection_mode ?? task.imageQaResult?.inspectionMode ?? "vision"),
+        role: context.role,
+        summary: task.imageQaSummary,
+      });
+    }
+    return map;
+  }, [activeProductionRunId, generationTasks, productionWorkspaceSpace]);
   const detectedProductionShotReferenceStoryboardSkillId = useMemo(
     () => detectProductionReferenceStoryboardSkillId(productionWorkspaceSpace),
     [productionWorkspaceSpace],
@@ -17547,6 +17791,7 @@ export default function MediaStudio() {
       },
     };
   }, [
+    activeProductionRunId,
     activeProductionConceptDetails,
     activeProductionReferenceConceptDetails,
     activeProductionStoryConcept,
@@ -22557,6 +22802,16 @@ export default function MediaStudio() {
         title: `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`,
         metadata: renderMetadata,
       };
+      upsertMediaStudioRenderLibrarySession({
+        version: 1,
+        source: "video_shot",
+        jobId,
+        productionRunId: normalizeProductionRunId(productionWorkspaceSpace.productionRunId || activeProductionRunId) || null,
+        title: `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`,
+        metadata: renderMetadata,
+        startedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
       setProductionShotRenderJobId(jobId);
       setProductionShotCompoundStatus(isThaiLocale ? "เริ่มรวมวิดีโอแล้ว รอดูความคืบหน้าในหน้าต่าง render" : "Video render started. Watch progress in the render dialog.");
       toast.success(isThaiLocale ? "เริ่มรวมวิดีโอแล้ว" : "Video render started");
@@ -22588,8 +22843,38 @@ export default function MediaStudio() {
     setProductionShotCompoundStatus(isThaiLocale ? `รวมวิดีโอเสร็จแล้ว: ${outputPath}` : `Combined video ready: ${outputPath}`);
     toast.success(isThaiLocale ? "รวมวิดีโอเสร็จแล้ว" : "Combined video is ready");
     if (completedJobId) {
-      const libraryMetadata = productionShotRenderLibraryMetadataRef.current[completedJobId];
+      const goal = buildCurrentProductionGoal();
+      const productContext = goal.productContext as { marketplaceHandoff?: unknown; marketplaceProducts?: unknown[] } | undefined;
+      const handoff = productContext?.marketplaceHandoff as Record<string, unknown> | null | undefined;
+      const referenceProduct = (Array.isArray(productContext?.marketplaceProducts) ? productContext?.marketplaceProducts[0] : null) as MarketplaceProductReferenceContext | null;
+      const marketplaceProduct = referenceProduct ?? (handoff ? {
+        productId: String(handoff.productId ?? handoff.marketplaceProductId ?? "").trim() || null,
+        platform: handoff.platform === "tiktok_shop" ? "tiktok_shop" as const : "shopee" as const,
+        productName: String(handoff.productName ?? "").trim() || null,
+        sourceUrl: String(handoff.sourceUrl ?? "").trim() || null,
+        affiliateUrl: String(handoff.affiliateUrl ?? "").trim() || null,
+      } : null);
+      const fallbackTitle = `${productionWorkspaceSpace.brief.title || "Video Shot"} - Final video`;
+      const fallbackMetadata = buildRenderTraceabilityMetadata({
+        sourceFlow: "media_studio_video_shot_compound_render",
+        sourceSurface: "media_studio_video_shot",
+        title: productionWorkspaceSpace.brief.title || "Video Shot",
+        productionContext: buildStoryboardProductionContext({
+          productionRunId: productionWorkspaceSpace.productionRunId,
+          productionProjectTitle: firstNonEmpty(productionWorkspaceSpace.brief.title, productionDirector.title, productionDirector.goalSummary),
+          concept: activeProductionStoryConcept,
+          conceptDetails: activeProductionReferenceConceptDetails || activeProductionConceptDetails,
+          storyboardGuide: activeProductionReferenceConceptDetails || activeProductionConceptDetails,
+          voiceoverFullScript: buildProductionReferenceStoryboardVoiceoverScript({ concept: activeProductionStoryConcept }),
+        }),
+        marketplaceProduct,
+      });
+      const libraryMetadata = productionShotRenderLibraryMetadataRef.current[completedJobId] ?? {
+        title: fallbackTitle,
+        metadata: fallbackMetadata,
+      };
       delete productionShotRenderLibraryMetadataRef.current[completedJobId];
+      removeMediaStudioRenderLibrarySession(completedJobId);
       void addRenderToLibraryMutation
         .mutateAsync({
           jobId: completedJobId,
@@ -22608,12 +22893,25 @@ export default function MediaStudio() {
             : `Render completed, but saving to the library failed: ${message}`);
         });
     }
-  }, [addRenderToLibraryMutation, isThaiLocale, productionShotRenderJobId, productionWorkspaceSpace.brief.title, toast]);
+  }, [
+    activeProductionConceptDetails,
+    activeProductionReferenceConceptDetails,
+    activeProductionStoryConcept,
+    addRenderToLibraryMutation,
+    buildCurrentProductionGoal,
+    isThaiLocale,
+    productionDirector.goalSummary,
+    productionDirector.title,
+    productionShotRenderJobId,
+    productionWorkspaceSpace,
+    toast,
+  ]);
 
   const handleProductionShotRenderCancel = useCallback(() => {
+    if (productionShotRenderJobId) removeMediaStudioRenderLibrarySession(productionShotRenderJobId);
     setProductionShotRenderJobId(null);
     setProductionShotCompoundStatus(isThaiLocale ? "ยกเลิกการรวมวิดีโอแล้ว" : "Video render cancelled");
-  }, [isThaiLocale]);
+  }, [isThaiLocale, productionShotRenderJobId]);
 
   useEffect(() => {
     const historyLookup = new Map<string, MediaHistoryTaskLite>();
@@ -22624,6 +22922,16 @@ export default function MediaStudio() {
 
     const readRecord = (value: unknown): Record<string, unknown> =>
       value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+
+    const currentProductionRunId = normalizeProductionRunId(activeProductionRunId || productionWorkspaceSpace.productionRunId);
+    const isCurrentProductionShotContext = (context?: GenerationTask["productionShotContext"] | null) => {
+      if (!context?.shotId) return false;
+      const contextRunId = normalizeProductionRunId(context.productionRunId);
+      if (!currentProductionRunId || currentProductionRunId === "draft") {
+        return !contextRunId || contextRunId === currentProductionRunId;
+      }
+      return contextRunId === currentProductionRunId;
+    };
 
     const inferProductionShotContext = (
       task: GenerationTask,
@@ -22672,7 +22980,7 @@ export default function MediaStudio() {
         const context = inferProductionShotContext(task, historyTask);
         const normalizedStatus = historyTask ? normalizeQueueStatus(historyTask.status) : task.status === "completed" ? "completed" : undefined;
         const taskId = task.backendTaskId || task.providerTaskId || historyTask?.id || historyTask?.taskId || task.id;
-        if (!resultUrl || !context?.shotId || !taskId || (task.status !== "completed" && normalizedStatus !== "completed")) {
+        if (!resultUrl || !context?.shotId || !isCurrentProductionShotContext(context) || !taskId || (task.status !== "completed" && normalizedStatus !== "completed")) {
           return [];
         }
         return [{ task, historyTask, resultUrl, context, normalizedStatus, taskId }];
@@ -22697,7 +23005,7 @@ export default function MediaStudio() {
         backendTaskId: historyTask.id,
         providerTaskId: historyTask.taskId ?? undefined,
       }, historyTask);
-      if (!context?.shotId) continue;
+      if (!context?.shotId || !isCurrentProductionShotContext(context)) continue;
       completedShotTasks.push({
         task: {
           id: taskId,
@@ -22768,7 +23076,7 @@ export default function MediaStudio() {
 
     const newestCompletedShotTasks = new Map<string, typeof completedShotTasks[number]>();
     for (const item of completedShotTasks) {
-      const key = `${item.context.shotId}:${item.context.role}`;
+      const key = `${normalizeProductionRunId(item.context.productionRunId) || currentProductionRunId}:${item.context.shotId}:${item.context.role}`;
       const existing = newestCompletedShotTasks.get(key);
       const itemTime = getTaskTimestampMs(item.historyTask ?? item.task);
       const existingTime = existing ? getTaskTimestampMs(existing.historyTask ?? existing.task) : -1;
@@ -22778,7 +23086,7 @@ export default function MediaStudio() {
     }
 
     for (const item of newestCompletedShotTasks.values()) {
-      const syncKey = `${item.taskId}:${item.context.shotId}:${item.context.role}:${item.resultUrl}`;
+      const syncKey = `${normalizeProductionRunId(item.context.productionRunId) || currentProductionRunId}:${item.taskId}:${item.context.shotId}:${item.context.role}:${item.resultUrl}`;
       if (syncedProductionShotMediaTaskIdsRef.current.has(syncKey)) continue;
 
       const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, item.context.shotId);
@@ -23167,7 +23475,15 @@ export default function MediaStudio() {
     const resultUrl = task.url;
     const context = task.productionShotContext;
     if (!resultUrl || task.type !== "image" || !context?.shotId || (context.role !== "start" && context.role !== "stop")) return;
+    const currentProductionRunId = normalizeProductionRunId(activeProductionRunId || productionWorkspaceSpace.productionRunId);
+    const taskProductionRunId = normalizeProductionRunId(context.productionRunId);
+    if (currentProductionRunId && taskProductionRunId !== currentProductionRunId) return;
+    const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, context.shotId);
+    const existingFrameUrl = String(context.role === "start" ? promptItem?.startFrameUrl ?? "" : promptItem?.stopFrameUrl ?? "").trim();
+    const existingQaStatus = String(context.role === "start" ? promptItem?.startFrameQaStatus ?? "" : promptItem?.stopFrameQaStatus ?? "").trim();
+    if (existingFrameUrl === resultUrl && existingQaStatus && existingQaStatus !== "pending") return;
     const taskKey = [
+      taskProductionRunId || currentProductionRunId,
       task.backendTaskId || task.providerTaskId || task.id,
       context.shotId,
       context.role,
@@ -23187,7 +23503,6 @@ export default function MediaStudio() {
     )));
 
     try {
-      const promptItem = getProductionStoryboardPromptForShot(productionWorkspaceSpace, context.shotId);
       const shot = productionWorkspaceSpace.shots.find((item) => item.id === context.shotId);
       const referenceAssets = getProductionShotReferenceAssets("image");
       const roleGroups = splitProductionReferenceImageUrlsByRole(referenceAssets);
@@ -23272,6 +23587,7 @@ export default function MediaStudio() {
       )));
     }
   }, [
+    activeProductionRunId,
     activeProductionConceptDetails,
     activeProductionReferenceConceptDetails,
     buildCurrentProductionGoal,
@@ -23414,14 +23730,14 @@ export default function MediaStudio() {
 
   useEffect(() => {
     for (const task of generationTasks) {
-      if (task.status === "completed" && task.url && task.imageQaStatus !== "running") {
+      if (productionShotAutoImageQaEnabled && task.status === "completed" && task.url && task.imageQaStatus !== "running") {
         void runProductionShotImageQaForTask(task);
       }
       if (task.status === "completed" && task.url && task.videoQaStatus !== "running") {
         void runGeminiOmniVideoQaForTask(task);
       }
     }
-  }, [generationTasks, runGeminiOmniVideoQaForTask, runProductionShotImageQaForTask]);
+  }, [generationTasks, productionShotAutoImageQaEnabled, runGeminiOmniVideoQaForTask, runProductionShotImageQaForTask]);
 
   if (isLoading) {
     return (
@@ -24260,6 +24576,8 @@ export default function MediaStudio() {
                   shotFrameBatchStatus={productionShotFrameBatchStatus}
                   hasResumableShotFrameBatch={Boolean(productionShotFrameBatchResumeSession)}
                   onResumeShotFrameBatch={resumeProductionShotFrameBatch}
+                  autoImageQaEnabled={productionShotAutoImageQaEnabled}
+                  onAutoImageQaEnabledChange={setProductionShotAutoImageQaEnabled}
 	                  onOpenShotStoryboardGridSplit={(shotId, imageUrl) => openProductionShotGridSplit(shotId, imageUrl)}
                   onAssignShotMediaSlot={assignProductionShotMediaSlot}
                   onUploadShotMediaFile={uploadProductionShotMediaFile}
@@ -27600,7 +27918,11 @@ export default function MediaStudio() {
                               });
                               const libraryState = taskLibraryState[task.id];
                               const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
-                              const productionQaSummary = getMediaHistoryTaskProductionQaSummary(task);
+                              const productionQaOverride = mediaHistoryProductionQaByTaskId.get(task.id)
+                                ?? (task.taskId ? mediaHistoryProductionQaByTaskId.get(task.taskId) : undefined);
+                              const productionQaSummary = productionQaOverride
+                                ? buildMediaHistoryProductionQaSummary(productionQaOverride)
+                                : getMediaHistoryTaskProductionQaSummary(task);
                               return (
                                 <div
                                   key={task.id}

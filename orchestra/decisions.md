@@ -1,22 +1,37 @@
 # Orchestra Decisions
 
-[2026-05-30T01:51:24Z] DECISION: Start a fresh orchestra session.
-  Context: Existing `orchestra/` directory had no `snapshot.json`; archived prior files before creating new state.
-  Alternatives considered: Resume stale state; rejected because no active snapshot existed.
+[2026-05-31T07:55:32+07:00] DECISION: Archive the prior stale orchestra markdown state before writing the current Feature 117 planning state.
+  Context: Existing `orchestra/` files described older reference-storyboard work and could confuse the current deep-plan.
+  Outcome: Copied existing markdown files under `orchestra/archive/2026-05-31T07-55-32+0700/`.
 
-[2026-05-30T01:51:24Z] DECISION: Use `voiceover_script` as the replacement input name for `scene_descriptions`.
-  Context: Existing Media Studio concepts and planner already use `voiceover_script`/`voiceoverBeats`, and the user requested replacing scene description with spoken script.
-  Alternatives considered: `dialogue_script`; rejected because current production flow mostly uses voiceover/ad-read script wording.
+[2026-05-31T07:55:32+07:00] DECISION: Plan Feature 117 as a replacement inside the current Marketplace Auto Review run/stage pipeline.
+  Context: Feature 118 is already implemented and the user requires improvement of the existing behavior, not a parallel/shadow runtime.
+  Outcome: Deep-plan sections will preserve the entry points and durable stages while replacing deterministic planning and canvas-shaped execution.
 
-[2026-05-30T02:17:00Z] DECISION: Add explicit cinematic realism, face identity, and product immutability locks to every production reference storyboard skill.
-  Context: User requested higher-quality cinematic realistic images, better shot alignment to Storyboard Guide + Voiceover Script, clearer recurring character faces, natural non-plastic people, and stricter product fidelity from references.
-  Alternatives considered: Only changing `cinematic_style` schema descriptions; rejected because the behavior must be enforced inside each skill prompt contract and output contract.
+[2026-05-31T07:55:32+07:00] DECISION: Exclude node canvas from all Feature 117 implementation sections.
+  Context: User explicitly clarified node canvas will move to a future independent topic.
+  Outcome: Any current `ProductionSpace` or `flowNodes` dependency is treated as something to bypass or replace for this automation path.
 
-[2026-05-30T02:30:13Z] DECISION: Add explicit shot-by-shot frame mapping and per-frame product fidelity QA.
-  Context: User supplied a real generated 3x3 storyboard where the prompt described the intended journey but output frames still drifted into generic lifestyle/product shots and changed the bedside table geometry.
-  Alternatives considered: Adjusting only the example prompt; rejected because every production reference storyboard skill needs the same contract so the behavior generalizes across categories.
+[2026-05-31T07:55:32+07:00] DECISION: Keep LLM access gateway-only and credits platform-owned.
+  Context: User required all LLM calls to pass through the system LLM gateway and all credit deduction to remain correct and secure.
+  Outcome: Plan includes adapter contracts, credit idempotency, reservation gates, audit, and tests for direct-provider rejection.
 
-[2026-05-30T10:10:00+07:00] DECISION: Consolidate production reference storyboard execution into one skill with category rule files.
-  Context: User requested replacing the 20 near-duplicate `*-reference-storyboard` skills with one shared skill and product-category option because only product-specific fidelity rules differ.
-  Alternatives considered: Keep 20 skills and continue syncing duplicated prompt logic; rejected because every future storyboard/cinematic/face/product lock change would need 20 mirrored edits and increase drift risk.
-  Outcome: `product-reference-storyboard` is the only Production-enabled storyboard reference skill; legacy skills remain on disk but disabled from Production selection; `product_category` selects the relevant `references/product-categories/*.md` rule file.
+[2026-05-31T07:55:32+07:00] DECISION: Treat variant/SKU, API projection, artifact lineage, and operator recovery as first-class implementation contracts.
+  Context: Codebase review showed Marketplace Capture has early variant evidence but Auto Review product truth/API outputs remain mostly product/run-level; long-running media jobs also need safe recovery and traceability.
+  Outcome: Round 5 adds `ProductVariantSnapshot`, `MarketplaceAutoReviewApiProjection`, `MarketplaceAutoReviewArtifactLineage`, and operator recovery runbook/test requirements.
+
+[2026-05-31T07:55:32+07:00] DECISION: Treat shared-product authority, freshness, rights, and provider safety refusal as first-class preflight gates.
+  Context: Marketplace products can be group-shared, product health can be stale, marketplace assets have different usage rights, and provider moderation refusals are non-retryable.
+  Outcome: Round 6 adds `MarketplaceAutomationAccessSnapshot`, `ProductEvidenceFreshnessSnapshot`, `AssetRightsEnvelope`, background recheck, and provider moderation refusal tests.
+
+[2026-05-31T07:55:32+07:00] DECISION: Treat provider event trust, payload/storage budgets, retry/DLQ, migration dry-runs, and launch SLOs as first-class production gates.
+  Context: Current codebase already has durable media callback and DLQ foundations, but Feature 117's long-running auto-video flow needs explicit run/stage binding, replay safety, quota/transcode finalization checks, and alertable stuck-job recovery.
+  Outcome: Round 7 adds `MarketplaceAutoReviewProviderEventEnvelope`, `MarketplaceAutoReviewPayloadBudget`, `MarketplaceAutoReviewStorageQuotaPlan`, `MarketplaceAutoReviewRetryDlqPolicy`, SLO/alert requirements, and non-destructive migration/backfill checks.
+
+[2026-05-31T07:55:32+07:00] DECISION: Treat publishability gates as first-class contracts, not final-copy polish.
+  Context: Marketplace Capture can include screenshots, review content, private page regions, and audio assets; generated ads also need platform-specific safe areas and export constraints.
+  Outcome: Round 8 adds `MarketplaceEvidencePrivacyEnvelope`, `AudioRightsAndMixEnvelope`, `MarketplaceAutoReviewDistributionProfile`, and `CreativeFeedbackMemoryPolicy`.
+
+[2026-05-31T07:55:32+07:00] DECISION: Treat final media reuse as a governed lifecycle, not a one-time render artifact.
+  Context: Social/publishing adjacent specs include synthetic-media flags, current Auto Review carries source/affiliate URL metadata, and model/provider drift can change QA reliability after launch.
+  Outcome: Round 9 adds `SyntheticMediaDisclosureEnvelope`, `CtaLandingIntegrityEnvelope`, `AutomationQualityCalibrationPolicy`, and `PostPublishGovernanceEnvelope`.

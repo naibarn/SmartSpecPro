@@ -15,8 +15,8 @@ def test_openai_agents_is_exactly_pinned():
     requirements_path = PYTHON_BACKEND_ROOT / "requirements.txt"
     requirements_text = requirements_path.read_text(encoding="utf-8")
 
-    assert get_declared_openai_agents_version(requirements_path) == "0.14.2"
-    assert "openai-agents==0.14.2" in requirements_text
+    assert get_declared_openai_agents_version(requirements_path) == "0.17.4"
+    assert "openai-agents==0.17.4" in requirements_text
     assert "openai-agents>=" not in requirements_text
 
 
@@ -61,6 +61,7 @@ def test_only_allowed_python_files_import_agents_sdk():
     allowed = {
         "app/services/agency_swarm_adapter.py",
         "app/services/openai_agents_adapter.py",
+        "app/services/openai_agents_skill_runtime.py",
     }
     pattern = re.compile(
         r"(^|\n)\s*(from\s+agents(?:\.|\s)|import\s+agents(?:\s|$)|importlib\.import_module\([\"']agents[\"']\))"

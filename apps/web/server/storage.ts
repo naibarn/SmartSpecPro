@@ -11,6 +11,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -217,6 +218,11 @@ async function localStorageDelete(relKey: string): Promise<boolean> {
   }
 }
 
+async function localStorageExists(relKey: string): Promise<boolean> {
+  const key = normalizeKey(relKey);
+  return fs.existsSync(path.join(UPLOADS_DIR, key));
+}
+
 // ─── S3/R2 storage operations ────────────────────────────────────────────────
 
 async function s3StoragePut(
@@ -263,6 +269,24 @@ async function s3StorageDelete(
     return true;
   } catch (error: any) {
     if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function s3StorageExists(
+  config: S3Config,
+  relKey: string,
+): Promise<boolean> {
+  const key = normalizeKey(relKey);
+  try {
+    await config.client.send(
+      new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+    );
+    return true;
+  } catch (error: any) {
+    if (error.name === "NotFound" || error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
       return false;
     }
     throw error;
@@ -329,6 +353,10 @@ async function forgeStorageGet(
     method: "GET",
     headers: buildAuthHeaders(config.apiKey),
   });
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(`Storage download URL failed (${response.status} ${response.statusText}): ${message}`);
+  }
   return { key, url: (await response.json()).url };
 }
 
@@ -349,6 +377,19 @@ async function forgeStorageDelete(
     throw new Error(`Storage delete failed (${response.status} ${response.statusText}): ${message}`);
   }
   return true;
+}
+
+async function forgeStorageExists(
+  config: ForgeConfig,
+  relKey: string,
+): Promise<boolean> {
+  try {
+    await forgeStorageGet(config, relKey);
+    return true;
+  } catch (error: any) {
+    if (error?.message && String(error.message).includes("404")) return false;
+    throw error;
+  }
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -427,6 +468,18 @@ export async function storageDelete(relKey: string): Promise<boolean> {
       return s3StorageDelete(config, relKey);
     case "forge":
       return forgeStorageDelete(config, relKey);
+  }
+}
+
+export async function storageExists(relKey: string): Promise<boolean> {
+  const config = await getActiveStorageConfig();
+  switch (config.provider) {
+    case "local":
+      return localStorageExists(relKey);
+    case "s3":
+      return s3StorageExists(config, relKey);
+    case "forge":
+      return forgeStorageExists(config, relKey);
   }
 }
 

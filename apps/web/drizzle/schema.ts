@@ -11971,6 +11971,58 @@ export const marketplaceCaptureInsights = pgTable("marketplace_capture_insights"
   index("idx_marketplace_capture_insights_readiness").on(t.userId, t.storytellingReadiness),
 ]);
 
+export const marketplaceAutoReviewRuns = pgTable("marketplace_auto_review_runs", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productId: varchar("productId", { length: 64 }).notNull().references(() => marketplaceProducts.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  outputMode: varchar("outputMode", { length: 32 }).notNull(),
+  frameStrategy: varchar("frameStrategy", { length: 40 }).notNull(),
+  status: varchar("status", { length: 32 }).default("queued").notNull(),
+  currentStage: varchar("currentStage", { length: 64 }).default("queued").notNull(),
+  stageIndex: integer("stageIndex").default(0).notNull(),
+  stageCount: integer("stageCount").default(0).notNull(),
+  selectedConceptId: varchar("selectedConceptId", { length: 128 }),
+  storyboardReviewId: varchar("storyboardReviewId", { length: 128 }),
+  videoEditorProjectId: varchar("videoEditorProjectId", { length: 128 }),
+  renderJobId: varchar("renderJobId", { length: 128 }),
+  resultLibraryItemId: integer("resultLibraryItemId"),
+  resultJson: jsonb("resultJson").$type<Record<string, any>>().default({}).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, any>>().default({}).notNull(),
+  errorMessage: text("errorMessage"),
+  idempotencyKey: varchar("idempotencyKey", { length: 192 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_runs_idempotency_unique").on(t.userId, t.idempotencyKey),
+  uniqueIndex("marketplace_auto_review_runs_active_unique")
+    .on(t.userId, t.productId)
+    .where(sql`"status" IN ('queued', 'running', 'waiting_provider')`),
+  index("marketplace_auto_review_runs_product_idx").on(t.productId, t.createdAt),
+  index("marketplace_auto_review_runs_user_status_idx").on(t.userId, t.status, t.updatedAt),
+  index("marketplace_auto_review_runs_production_idx").on(t.productionRunId),
+]);
+
+export const marketplaceAutoReviewStages = pgTable("marketplace_auto_review_stages", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  stageKey: varchar("stageKey", { length: 64 }).notNull(),
+  stageOrder: integer("stageOrder").notNull(),
+  status: varchar("status", { length: 32 }).default("queued").notNull(),
+  providerTaskIdsJson: jsonb("providerTaskIdsJson").$type<string[]>().default([]).notNull(),
+  outputJson: jsonb("outputJson").$type<Record<string, any>>().default({}).notNull(),
+  errorMessage: text("errorMessage"),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_stages_unique").on(t.runId, t.stageKey),
+  index("marketplace_auto_review_stages_run_idx").on(t.runId, t.stageOrder),
+]);
+
 export const marketplaceUserShareSettings = pgTable("marketplace_user_share_settings", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -12000,5 +12052,9 @@ export type MarketplaceProductGroupShare = typeof marketplaceProductGroupShares.
 export type InsertMarketplaceProductGroupShare = typeof marketplaceProductGroupShares.$inferInsert;
 export type MarketplaceCaptureInsight = typeof marketplaceCaptureInsights.$inferSelect;
 export type InsertMarketplaceCaptureInsight = typeof marketplaceCaptureInsights.$inferInsert;
+export type MarketplaceAutoReviewRun = typeof marketplaceAutoReviewRuns.$inferSelect;
+export type InsertMarketplaceAutoReviewRun = typeof marketplaceAutoReviewRuns.$inferInsert;
+export type MarketplaceAutoReviewStage = typeof marketplaceAutoReviewStages.$inferSelect;
+export type InsertMarketplaceAutoReviewStage = typeof marketplaceAutoReviewStages.$inferInsert;
 export type MarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferSelect;
 export type InsertMarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferInsert;

@@ -20,7 +20,13 @@ The exact SDK pin lives in:
 
 Current pin:
 
-- `openai-agents==0.14.2`
+- `openai-agents==0.17.4`
+
+Compatibility note:
+
+- `agency-swarm==1.8.0` still pins `openai-agents==0.9.3` upstream. A clean full
+  `python-backend/requirements.txt` resolution requires isolating, upgrading, or
+  replacing the Agency Swarm dependency before deployment.
 
 Rules:
 

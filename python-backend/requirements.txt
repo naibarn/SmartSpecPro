@@ -19,8 +19,8 @@ langchain-community>=0.3.0
 langchain-openai>=0.2.0
 
 # LLM Providers
-openai>=2.26.0,<3
-openai-agents==0.14.2
+openai>=2.36.0,<3
+openai-agents==0.17.4
 anthropic>=0.40.0
 google-generativeai==0.3.2
 groq==0.4.1

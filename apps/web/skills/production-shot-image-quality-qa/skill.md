@@ -4,14 +4,36 @@ description: Reviews completed Production Video Shot start/stop images against s
 version: 1.0.0
 category: automation
 icon: image
-tags: [production, image-qa, storyboard, continuity, product-fidelity]
+tags:
+  - production
+  - image-qa
+  - storyboard
+  - continuity
+  - product-fidelity
 auto_trigger: false
 enabled_by_default: true
 credit_multiplier: 0.5
 priority: 83
 execution_mode: llm-only
+trigger_patterns: []
+strict_provider_pin: false
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
-
 # Production Shot Image Quality QA
 
 Assess the generated image and return JSON only.

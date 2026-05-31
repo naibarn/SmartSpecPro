@@ -1352,6 +1352,8 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
   retryOfAttemptId?: string;
   userToken?: string;
   publicUrl?: string;
+  forceExecutionGates?: boolean;
+  forceProviderDispatch?: boolean;
   creditLedger?: ProductionCreditLedger;
   mediaDispatcher?: ProductionMediaDispatcher;
 }): Promise<{ space: ProductionSpace; version: number; attempt: ProductionActionAttempt }> {
@@ -1373,7 +1375,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
   }
   const gates = resolveServerExecutionGates(current.space);
   const gateKey = getExecutionGateKey(params.scope);
-  if (!gates[gateKey]) {
+  if (!params.forceExecutionGates && !gates[gateKey]) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: `production_execution_disabled:${gateKey}` });
   }
   if (!params.confirmed) {
@@ -1442,7 +1444,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
     updatedAt: at,
     retryOfAttemptId: params.retryOfAttemptId,
   };
-  const providerDispatchEnabled = isProviderDispatchEnabled();
+  const providerDispatchEnabled = params.forceProviderDispatch ?? isProviderDispatchEnabled();
   const creditLedger = params.creditLedger ?? defaultCreditLedger;
   const mediaDispatcher = params.mediaDispatcher ?? defaultMediaDispatcher;
   let nextAttempt: ProductionActionAttempt = attempt;

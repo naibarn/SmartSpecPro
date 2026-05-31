@@ -1,5 +1,7 @@
+import crypto from "crypto";
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { signBearerToken } from "../_core/tokens";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
 import {
   getMarketplaceCaptureForUser,
@@ -23,6 +25,14 @@ import {
   saveMarketplaceShareSetting,
 } from "../services/marketplaceProductService";
 import {
+  advanceMarketplaceAutoReviewRun,
+  cancelMarketplaceAutoReviewRun,
+  getMarketplaceAutoReviewRun,
+  listMarketplaceAutoReviewRuns,
+  queueMarketplaceAutoReviewAdvance,
+  startMarketplaceAutoReviewRun,
+} from "../services/marketplaceAutoReviewService";
+import {
   applyMarketplaceClaimResolution,
   buildBasicStorytellingHandoffFromCapture,
   generateMarketplaceServerInsight,
@@ -38,6 +48,25 @@ function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ?? undefined;
   return { userId, tenantId };
+}
+
+function autoReviewRuntimeFromCtx(ctx: any) {
+  const userId = Number(ctx.user?.id);
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ?? undefined;
+  const fallbackToken = Number.isFinite(userId) && userId > 0
+    ? signBearerToken({
+      sub: String(userId),
+      type: "access",
+      userId,
+      tenantId,
+      scopes: ["media:generate"],
+      jti: `marketplace_auto_review_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    }, "6h")
+    : undefined;
+  return {
+    userToken: ctx.userToken || fallbackToken,
+    publicUrl: ctx.publicUrl,
+  };
 }
 
 export const marketplaceCaptureRouter = router({
@@ -187,6 +216,57 @@ export const marketplaceCaptureRouter = router({
       imageId: z.string().min(1).max(64),
     }))
     .mutation(async ({ input, ctx }) => removeMarketplaceProductImage(input, authFromCtx(ctx))),
+
+  startAutoReview: protectedProcedure
+    .input(z.object({
+      productId: z.string().min(1).max(64),
+      outputMode: z.enum(["storyboard_images", "full_video"]).default("storyboard_images"),
+      frameStrategy: z.enum(["auto", "storyboard_3x3_split", "video_shot_start_stop"]).optional().default("auto"),
+      audioStrategy: z.enum(["auto", "native_video_audio", "separate_tts_voiceover", "silent"]).optional().default("auto"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const auth = authFromCtx(ctx);
+      return startMarketplaceAutoReviewRun(input, auth, autoReviewRuntimeFromCtx(ctx));
+    }),
+
+  getAutoReviewRun: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => {
+      const auth = authFromCtx(ctx);
+      const result = await getMarketplaceAutoReviewRun(input.runId, auth);
+      if (["queued", "running", "waiting_provider"].includes(String(result.status))) {
+        queueMarketplaceAutoReviewAdvance(input.runId, auth, {
+          ...autoReviewRuntimeFromCtx(ctx),
+        }, 1_000);
+      }
+      return result;
+    }),
+
+  listAutoReviewRuns: protectedProcedure
+    .input(z.object({
+      productId: z.string().min(1).max(64).optional(),
+      limit: z.number().int().min(1).max(50).optional().default(10),
+    }).optional().default({}))
+    .query(async ({ input, ctx }) => {
+      const auth = authFromCtx(ctx);
+      const runs = await listMarketplaceAutoReviewRuns(input, auth);
+      for (const run of runs) {
+        if (["queued", "running", "waiting_provider"].includes(String(run.status))) {
+          queueMarketplaceAutoReviewAdvance(String(run.id), auth, {
+            ...autoReviewRuntimeFromCtx(ctx),
+          }, 1_000);
+        }
+      }
+      return runs;
+    }),
+
+  advanceAutoReviewRun: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) => advanceMarketplaceAutoReviewRun(input.runId, authFromCtx(ctx), autoReviewRuntimeFromCtx(ctx))),
+
+  cancelAutoReviewRun: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) => cancelMarketplaceAutoReviewRun(input.runId, authFromCtx(ctx))),
 
   deleteProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))

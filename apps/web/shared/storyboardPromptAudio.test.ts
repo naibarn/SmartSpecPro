@@ -60,6 +60,23 @@ describe("storyboard prompt audio helpers", () => {
     expect(storyboardPromptHasVeo31Sections(prompt)).toBe(true);
   });
 
+  it("describes single storyboard frame references without inventing a stop frame", () => {
+    const prompt = buildVeo31StoryboardVideoPrompt({
+      visualPrompt: "Animate the selected storyboard frame with a gentle product-focused camera move.",
+      durationSeconds: 8,
+      aspectRatio: "9:16",
+      frameRoles: ["single_storyboard"],
+      includeVoiceover: false,
+      speechMode: "none",
+      includeSound: false,
+    });
+
+    expect(prompt).toContain("Use @Image1 as single storyboard frame.");
+    expect(prompt).toContain("do not invent a second endpoint");
+    expect(prompt).not.toContain("@Image2");
+    expect(prompt).not.toContain("stop/end frame");
+  });
+
   it("deduplicates long concept details from storyboard guide prompts", () => {
     const conceptDetails = [
       "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก โต๊ะกินข้าวเด็ก เด็ก 6 เดือน 3 in 1.",
