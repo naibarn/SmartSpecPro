@@ -25,6 +25,7 @@ class VideoModel(str, Enum):
     KLING_2_6 = "kling-2.6"
     GROK_IMAGINE_T2V = "grok-imagine/text-to-video"
     GROK_IMAGINE_I2V = "grok-imagine/image-to-video"
+    GROK_IMAGINE_VIDEO_1_5 = "grok-imagine-video-1-5-preview"
     GROK_IMAGINE_UPSCALE = "grok-imagine/upscale"
 
 
@@ -128,6 +129,18 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "supports_durations": [6, 10, 15],
         "supports_resolutions": ["480p", "720p"],
         "supports_aspect_ratios": ["16:9", "9:16", "3:2", "2:3", "1:1"],
+    },
+    VideoModel.GROK_IMAGINE_VIDEO_1_5.value: {
+        "type": "video",
+        "name": "Grok Imagine Video 1.5 Preview",
+        "provider": "kie.ai",
+        "description": "xAI's Grok Imagine Video 1.5 image-to-video model with native audio",
+        "supports_durations": list(range(1, 16)),
+        "supports_resolutions": ["480p", "720p"],
+        "supports_aspect_ratios": ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"],
+        "max_prompt_length": 5000,
+        "requires_reference_image": True,
+        "max_reference_images": 1,
     },
     VideoModel.GROK_IMAGINE_UPSCALE.value: {
         "type": "video",

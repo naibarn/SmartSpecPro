@@ -196,6 +196,22 @@ const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "9:16", label: "9:16" },
 ];
 
+const GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "1:1", label: "1:1" },
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+  { value: "4:3", label: "4:3" },
+  { value: "3:4", label: "3:4" },
+  { value: "3:2", label: "3:2" },
+  { value: "2:3", label: "2:3" },
+];
+
+const GROK_IMAGINE_VIDEO_15_DURATION_OPTIONS = Array.from({ length: 15 }, (_, index) => {
+  const seconds = index + 1;
+  return { value: String(seconds), label: `${seconds}s` };
+});
+
 const GEMINI_OMNI_PRICING_TIERS = {
   default: 120,
   "720p-4s-without-video": 90,
@@ -1301,6 +1317,74 @@ const VIDEO_MODELS = [
           default: "natural" },
       ],
       pricingTiers: { "default": 75 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "grok-imagine-video-1-5-preview",
+    name: "Grok Imagine Video 1.5 Preview",
+    description: "xAI Grok Imagine Video 1.5 Preview - Image-to-video generation with native audio.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: [
+      "grok-imagine-video-1.5",
+      "grok-imagine-video-1-5",
+      "grok-video-1.5",
+      "grok-video-1-5",
+      "grok imagine video 1.5",
+    ],
+    creditCost: 125,
+    priority: 28,
+    sortOrder: 28,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-video-1-5-preview",
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine/1-5-preview",
+      generateType: "image-to-video",
+      hasAudio: true,
+      maxDuration: 15,
+      maxReferenceImages: 1,
+      supportedAspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
+      supportedResolutions: ["480p", "720p"],
+      supportedDurations: Array.from({ length: 15 }, (_, index) => index + 1),
+      storyboardClipDurationSeconds: 8,
+      inputFields: [
+        {
+          key: "image_urls",
+          label: "Source Image",
+          type: "image_urls",
+          required: true,
+          syncWith: "reference_images",
+          maxItems: 1,
+        },
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS,
+          default: "auto",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "resolution",
+          label: "Resolution",
+          type: "select",
+          options: [
+            { value: "480p", label: "480p" },
+            { value: "720p", label: "720p" },
+          ],
+          default: "480p",
+        },
+        {
+          key: "duration",
+          label: "Duration",
+          type: "select",
+          options: GROK_IMAGINE_VIDEO_15_DURATION_OPTIONS,
+          default: "8",
+        },
+      ],
+      pricingTiers: { default: 125 },
       pricingFormula: "flat",
     } as ModelDefinition,
   },

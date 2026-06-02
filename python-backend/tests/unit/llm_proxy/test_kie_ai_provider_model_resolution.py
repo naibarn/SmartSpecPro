@@ -50,6 +50,17 @@ def test_resolve_api_model_maps_gemini_omni_alias_to_kie_model():
     assert stats["fallback_alias_map"] == 2
 
 
+def test_resolve_api_model_maps_grok_imagine_video_15_aliases_to_kie_model():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("grok-imagine-video-1.5") == "grok-imagine-video-1-5-preview"
+    assert resolve_api_model("grok-video-1-5") == "grok-imagine-video-1-5-preview"
+    assert resolve_api_model("grok-imagine-video-1-5-preview") == "grok-imagine-video-1-5-preview"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 3
+
+
 @pytest.mark.asyncio
 async def test_generate_image_uses_db_model_id_and_endpoint_aliases():
     reset_model_resolution_stats()
@@ -181,6 +192,39 @@ async def test_generate_video_uses_db_kie_model_id_for_provider_payload():
     assert args[0] == "POST"
     assert args[1] == "veo/generate"
     assert kwargs["data"]["model"] == "veo3_fast"
+
+
+@pytest.mark.asyncio
+async def test_generate_video_builds_grok_imagine_video_15_payload():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-grok-15"}})
+
+    await provider.generate_video(
+        model="grok-imagine-video-1.5",
+        prompt="A cinematic product reveal with soft studio light.",
+        callback_url="",
+        wait_for_completion=False,
+        reference_image_urls=["https://cdn.example.com/product.png"],
+        resolution="720p",
+        duration=8,
+        aspect_ratio="16:9",
+        api_config={
+            "kie_model_id": "grok-imagine-video-1-5-preview",
+            "generate_type": "image-to-video",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "grok-imagine-video-1-5-preview"
+    assert args[1] == {
+        "prompt": "A cinematic product reveal with soft studio light.",
+        "duration": 8,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+        "image_urls": ["https://cdn.example.com/product.png"],
+    }
 
 
 @pytest.mark.asyncio
