@@ -116,6 +116,9 @@ describe("unified product reference storyboard skill", () => {
     });
     expect(inputSchema.properties.product_category.enum).toEqual(["auto", ...productCategories]);
     expect(inputSchema.properties.scene_descriptions).toBeUndefined();
+    expect(inputSchema.properties.maxPromptLength).toBeUndefined();
+    expect(inputSchema.properties.prompt_budget_chars).toBeUndefined();
+    expect(inputSchema.properties.max_output_chars).toBeUndefined();
     expect(inputSchema.properties.voiceover_script.type).toBe("string");
     expect(inputSchema.properties.voiceover_script.description).toContain("spoken dialogue");
     expect(inputSchema.properties.production_concept_details.title).toBe("Product Detail / Product Facts");
@@ -163,6 +166,7 @@ describe("unified product reference storyboard skill", () => {
   it("keeps the plain-text storyboard output contract strict", () => {
     const outputContract = readSkillFile(unifiedSkillId, path.join("references", "output_contract.md"));
     const inputContract = readSkillFile(unifiedSkillId, path.join("references", "input_contract.md"));
+    const skillContent = readSkillFile(unifiedSkillId, "SKILL.md");
 
     expect(inputContract).toContain("product_category");
     expect(inputContract).toContain("Product Detail / Product Facts");
@@ -187,5 +191,7 @@ describe("unified product reference storyboard skill", () => {
     expect(outputContract).toContain("blank or unreadable book covers and spines");
     expect(outputContract).toContain("zero white divider lines");
     expect(outputContract).toContain("A single generic `SCENE DESCRIPTION:` block");
+    expect(skillContent).not.toContain("contract anchors needed for runtime validation");
+    expect(outputContract).not.toContain("validation anchors in the plain prompt text");
   });
 });
