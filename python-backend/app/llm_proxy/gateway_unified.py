@@ -2330,7 +2330,13 @@ class LLMGateway:
                 try:
                     audio_data, active_selected_voice_id, active_debug_request_payload = await _generate_with_request(active_request)
                 except httpx.HTTPStatusError as primary_error:
-                    if primary_error.response.status_code == 403:
+                    has_explicit_voice_selection = bool(
+                        self._extract_audio_voice_hint(normalized_request)
+                    )
+                    if (
+                        primary_error.response.status_code == 403
+                        and not has_explicit_voice_selection
+                    ):
                         fallback_requests = self._build_uvoice_fallback_requests(normalized_request)
                         for fallback_request in fallback_requests:
                             fallback_voice_id = self._extract_audio_voice_hint(fallback_request)

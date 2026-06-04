@@ -565,6 +565,15 @@ type ProviderApiOptionsSource = {
 const UVOICE_PUBLIC_VOICE_FILTERS = ["Standard", "Natural", "Premium"] as const;
 type UvoiceVoiceTier = "standard" | "natural" | "premium";
 
+const UVOICE_UNAVAILABLE_VOICE_IDS_BY_TIER: Record<UvoiceVoiceTier, ReadonlySet<string>> = {
+  standard: new Set(),
+  natural: new Set([
+    "th-nalineenatural",
+    "th-ai868natural",
+  ]),
+  premium: new Set(),
+};
+
 function buildUvoiceVoiceSources(
   languageTag: "en" | "th",
   filters: readonly (typeof UVOICE_PUBLIC_VOICE_FILTERS)[number][],
@@ -741,6 +750,12 @@ function inferUvoiceVoiceTierFromModelId(modelId: string): UvoiceVoiceTier | nul
   return null;
 }
 
+function isKnownUnavailableUvoiceVoice(modelId: string, voiceId: string): boolean {
+  const tier = inferUvoiceVoiceTierFromModelId(modelId);
+  if (!tier) return false;
+  return UVOICE_UNAVAILABLE_VOICE_IDS_BY_TIER[tier].has(voiceId.trim().toLowerCase());
+}
+
 function getUvoiceVoiceOptionSources(modelId: string, _includeThai: boolean): ProviderApiOptionsSource[] {
   const tier = inferUvoiceVoiceTierFromModelId(modelId);
   const filters: readonly (typeof UVOICE_PUBLIC_VOICE_FILTERS)[number][] = tier === "premium"
@@ -807,7 +822,9 @@ async function fetchUvoiceCombinedVoiceOptions(
     const options = await fetchProviderApiFieldOptions("uvoice", source, query);
     merged.push(...options);
   }
-  return dedupeFieldOptions(merged);
+  return dedupeFieldOptions(merged).filter((option) =>
+    !isKnownUnavailableUvoiceVoice(modelId, option.value)
+  );
 }
 
 async function getUserTranslationLanguagePreference(

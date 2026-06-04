@@ -1706,6 +1706,8 @@ describe("media router DB-first model contract", () => {
           ok: true,
           json: async () => ([
             { voiceID: "TH-KittiNatural", displayName: "กิตติ (Beta)", age: "A", path: "voice-preview/th/kitti_natural.mp3" },
+            { voiceID: "TH-NalineeNatural", displayName: "นลินี (Beta)", age: "A", path: "voice-preview/th/nalinee_natural.mp3" },
+            { voiceID: "TH-Ai868Natural", displayName: "AI 868 (Beta)", age: "A", path: "voice-preview/th/ai868_natural.mp3" },
           ]),
         } as any;
       }

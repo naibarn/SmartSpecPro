@@ -254,8 +254,7 @@ async def test_generate_audio_retries_natural_tier_403_with_standard_fallback(ga
     request = AudioGenerationRequest(
         model="uvoice/tts-natural",
         text="สวัสดีครับ นี่คือข้อความทดสอบ",
-        apiConfig={"provider": "uvoice"},
-        extraParams={"voiceID": "TH-NalineeNatural"},
+        apiConfig={"provider": "uvoice", "voiceID": "TH-NalineeNatural"},
     )
 
     gateway._estimate_cost = AsyncMock(return_value=Decimal("0.02"))
@@ -289,9 +288,49 @@ async def test_generate_audio_retries_natural_tier_403_with_standard_fallback(ga
 
     first_call = uvoice_client.generate_audio.await_args_list[0]
     assert first_call.kwargs["model"] == "uvoice/tts-natural"
-    assert first_call.kwargs["extra_params"]["voiceID"] == "TH-NalineeNatural"
+    assert first_call.kwargs["api_config"]["voiceID"] == "TH-NalineeNatural"
 
     second_call = uvoice_client.generate_audio.await_args_list[1]
     assert second_call.kwargs["model"] == "uvoice/tts-standard"
     assert second_call.kwargs["voice_id"] == "TH-TigerSD"
     assert second_call.kwargs["extra_params"]["voiceID"] == "TH-TigerSD"
+
+
+@pytest.mark.asyncio
+async def test_generate_audio_does_not_fallback_when_uvoice_voice_id_is_explicit(gateway):
+    request = AudioGenerationRequest(
+        model="uvoice/tts-natural",
+        text="สวัสดีครับ นี่คือข้อความทดสอบ",
+        apiConfig={"provider": "uvoice"},
+        extraParams={"voiceID": "TH-NalineeNatural"},
+    )
+
+    gateway._estimate_cost = AsyncMock(return_value=Decimal("0.02"))
+
+    failed_request = httpx.Request("POST", "https://api.uvoice.ai/generate")
+    failed_response = httpx.Response(
+        403,
+        request=failed_request,
+        text='{"success":false,"message":"Error creating file"}',
+    )
+
+    uvoice_client = MagicMock()
+    uvoice_client.generate_audio = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "forbidden",
+            request=failed_request,
+            response=failed_response,
+        )
+    )
+    uvoice_client.aclose = AsyncMock()
+
+    with patch(UVOICE_PATCH, new=_uvoice_class_mock(uvoice_client)), \
+         patch(GET_PROVIDER_KEY_PATCH, new_callable=AsyncMock, return_value={"apiKey": "uv-key", "baseUrl": "https://api.uvoice.ai"}):
+        with pytest.raises(HTTPException) as exc_info:
+            await gateway.generate_audio(request, MagicMock(id=1))
+
+    assert exc_info.value.status_code == 500
+    assert uvoice_client.generate_audio.await_count == 1
+    first_call = uvoice_client.generate_audio.await_args_list[0]
+    assert first_call.kwargs["model"] == "uvoice/tts-natural"
+    assert first_call.kwargs["extra_params"]["voiceID"] == "TH-NalineeNatural"
