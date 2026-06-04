@@ -3,7 +3,7 @@
 # Multi-stage build for optimized image size
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:20.20.0-alpine AS deps
 WORKDIR /app
 
 # Copy root workspace files
@@ -19,7 +19,7 @@ COPY apps/web/package.json ./apps/web/
 RUN npm ci || npm install
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20.20.0-alpine AS builder
 WORKDIR /app
 
 # Copy deps
@@ -34,7 +34,7 @@ COPY package.json turbo.json tsconfig.base.json ./
 RUN cd apps/web && npm run build
 
 # Stage 3: Development
-FROM node:20-alpine AS development
+FROM node:20.20.0-alpine AS development
 WORKDIR /app
 
 ENV NODE_ENV=development
@@ -57,7 +57,7 @@ WORKDIR /app/apps/web
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # Stage 4: Production
-FROM node:20-alpine AS runner
+FROM node:20.20.0-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

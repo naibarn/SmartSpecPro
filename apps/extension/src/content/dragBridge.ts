@@ -104,6 +104,21 @@ export {};
     }
   }
 
+  function describeFileInput(input: HTMLInputElement | null) {
+    if (!input) return null;
+    return {
+      accept: input.accept || "",
+      disabled: input.disabled,
+      hidden: input.hidden,
+      multiple: input.multiple,
+      filesLength: input.files?.length ?? 0,
+      id: input.id || "",
+      name: input.name || "",
+      ariaLabel: input.getAttribute("aria-label") || "",
+      className: typeof input.className === "string" ? input.className : "",
+    };
+  }
+
   function fileInputAcceptsFile(input: HTMLInputElement, file: File | undefined) {
     const accept = input.accept.toLowerCase().split(",").map((item) => item.trim()).filter(Boolean);
     if (!accept.length || !file) return true;
@@ -130,6 +145,17 @@ export {};
     const nearby = findNearestFileInput(target, files);
     if (!nearby) return false;
     return setFileInputFiles(nearby, files);
+  }
+
+  function setNearestFileInputDetailed(target: HTMLElement, files: FileList) {
+    const input = findNearestFileInput(target, files);
+    if (!input) return { inputSet: false, input: null };
+    const inputSet = setFileInputFiles(input, files);
+    return { inputSet, input: describeFileInput(input) };
+  }
+
+  function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function isGoogleFlowShellHost(hostname: string) {
@@ -159,7 +185,7 @@ export {};
 
   function canUseFileInputFallback(target: HTMLElement, files: FileList) {
     const hostname = location.hostname.toLowerCase();
-    if (isGoogleFlowContext()) return false;
+    if (isGoogleFlowContext()) return Boolean(findNearestFileInput(target, files));
     if (target instanceof HTMLInputElement && target.type === "file") return true;
     return isMagnificHost(hostname) && Boolean(findNearestFileInput(target, files));
   }
@@ -203,7 +229,7 @@ export {};
     return types.includes("files") || types.includes(SMARTAIHUB_DRAG_MEDIA_MIME) || types.length === 0;
   }
 
-  function dispatchFileDragEvents(target: HTMLElement, file: File, originalEvent: DragEvent, types: Array<"dragenter" | "dragover" | "drop">) {
+  function dispatchFileDragEvents(target: HTMLElement, file: File, originalEvent: DragEvent, types: Array<"dragenter" | "dragover" | "dragleave" | "dragend" | "drop">) {
     const transfer = new DataTransfer();
     transfer.items.add(file);
     const eventTargets = Array.from(new Set<EventTarget>([target, document, window]));
@@ -229,6 +255,11 @@ export {};
     }
   }
 
+  async function dispatchGoogleFlowDragCleanup(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    await delay(40);
+    dispatchFileDragEvents(target, file, originalEvent, ["dragleave", "dragend"]);
+  }
+
   function deliverMagnificFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
     dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
     const transfer = new DataTransfer();
@@ -244,6 +275,41 @@ export {};
       fileSize: file.size,
       targetTag: target.tagName,
       targetClass: typeof target.className === "string" ? target.className : "",
+    });
+    return inputSet;
+  }
+
+  async function deliverGoogleFlowFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const initial = setNearestFileInputDetailed(target, transfer.files);
+    let inputSet = initial.inputSet;
+    let inputDetails = initial.input;
+    let retryUsed = false;
+    if (!inputSet) {
+      await delay(80);
+      const retry = setNearestFileInputDetailed(target, transfer.files);
+      inputSet = retry.inputSet;
+      inputDetails = retry.input || inputDetails;
+      retryUsed = true;
+    }
+    if (!inputSet) {
+      dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    } else {
+      await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
+    }
+    void recordDiagnosticLog("google_flow_drag_delivery", {
+      strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
+      fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
+      cleanupStep: inputSet ? "dragleave_dragend" : "drop",
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      targetTag: target.tagName,
+      targetClass: typeof target.className === "string" ? target.className : "",
+      fileInputCount: document.querySelectorAll("input[type='file']").length,
+      fileInput: inputDetails,
     });
     return inputSet;
   }
@@ -347,6 +413,8 @@ export {};
     const target = findUploadTarget(event.target);
     if (isMagnificHost(location.hostname.toLowerCase())) {
       deliverMagnificFileDrop(target, file, event);
+    } else if (isGoogleFlowContext()) {
+      await deliverGoogleFlowFileDrop(target, file, event);
     } else {
       dispatchFileDragEvents(target, file, event, ["dragenter", "dragover", "drop"]);
     }

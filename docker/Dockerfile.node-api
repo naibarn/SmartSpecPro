@@ -3,7 +3,7 @@
 # Multi-stage build for optimized image size
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:20.20.0-alpine AS deps
 WORKDIR /app
 
 # Copy root workspace files
@@ -25,7 +25,7 @@ RUN if [ -f pnpm-lock.yaml ]; then \
     fi
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20.20.0-alpine AS builder
 WORKDIR /app
 
 # Copy deps from stage 1
@@ -45,7 +45,7 @@ RUN cd apps/web && \
     fi
 
 # Stage 3: Production Runner
-FROM node:20-alpine AS runner
+FROM node:20.20.0-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

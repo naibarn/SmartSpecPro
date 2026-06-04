@@ -6,6 +6,7 @@
     "apps/*"
   ],
   "scripts": {
+    "preinstall": "node scripts/check-node-version.mjs",
     "dev:web": "turbo run dev --filter=@smartspec/web",
     "dev:desktop": "bash ./scripts/desktop-app.sh dev",
     "build:desktop": "bash ./scripts/desktop-app.sh build",
@@ -16,6 +17,9 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck"
   },
+  "engines": {
+    "node": ">=20.20.0 <21 || >=22.22.0"
+  },
   "packageManager": "npm@10.8.2",
   "devDependencies": {
     "turbo": "^2.5.0",
@@ -25,7 +29,7 @@
     "@xyflow/react": "^12.10.0",
     "d3-zoom": "^3.0.0",
     "posthog-js": "^1.347.2",
-    "posthog-node": "^5.24.15",
+    "posthog-node": "^5.35.14",
     "reactflow": "^11.11.4",
     "rg": "^0.0.2",
     "sharp": "^0.34.5"

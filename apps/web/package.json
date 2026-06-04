@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.20.0 <21 || >=22.22.0"
+  },
   "scripts": {
     "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
     "dev:tsx": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development tsx watch server/_core/index.ts",
@@ -172,7 +175,7 @@
     "pg": "^8.18.0",
     "postgres": "^3.4.9",
     "posthog-js": "^1.347.2",
-    "posthog-node": "^5.24.15",
+    "posthog-node": "^5.35.14",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.6",
     "react-day-picker": "^9.11.1",
