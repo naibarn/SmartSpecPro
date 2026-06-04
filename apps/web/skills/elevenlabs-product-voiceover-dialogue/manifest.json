@@ -1,0 +1,33 @@
+{
+  "name": "elevenlabs-product-voiceover-dialogue-skill-v22",
+  "version": "22.0.0",
+  "output": "plain_text",
+  "schemas": [
+    "schemas/input.schema.json",
+    "schemas/ui.schema.json",
+    "schemas/output.schema.json"
+  ],
+  "default_language": "English",
+  "supports_languages": [
+    "English",
+    "Thai",
+    "Japanese",
+    "Korean",
+    "Chinese",
+    "Vietnamese",
+    "Indonesian",
+    "Malay",
+    "Spanish",
+    "French",
+    "German",
+    "Arabic",
+    "Hindi",
+    "Portuguese",
+    "Italian"
+  ],
+  "notes": "v22 adds richer ElevenLabs Eleven v3 audio-tag direction for emotional voice prompts, including sparse natural-language tags, emotional arcs, style-to-tag mapping, non-verbal/pause/whisper cues, and guards against visual-only or unsuitable tags. Retains v18 optional image upload support.",
+  "description": "Plain-text ElevenLabs product voiceover/dialogue skill for ecommerce product videos, demos, storyboard narration, image-assisted listings, bilingual claim guard, and expressive Eleven v3 audio tags.",
+  "updated_at": "2026-05-17T00:00:00Z",
+  "supports_optional_image_uploads": true,
+  "image_upload_max_files": 5
+}

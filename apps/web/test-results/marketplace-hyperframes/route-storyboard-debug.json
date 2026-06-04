@@ -1,0 +1,171 @@
+{
+  "routeLog": [
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/auth.me",
+      "procedurePath": "auth.me",
+      "procedures": [
+        "auth.me"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/follows.getUrgentMessages?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "follows.getUrgentMessages",
+      "procedures": [
+        "follows.getUrgentMessages"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/scheduledMessages.getUrgentReminders?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "scheduledMessages.getUrgentReminders",
+      "procedures": [
+        "scheduledMessages.getUrgentReminders"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/scheduledMessages.getNotificationCount?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "scheduledMessages.getNotificationCount",
+      "procedures": [
+        "scheduledMessages.getNotificationCount"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/users.getPreferences?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "users.getPreferences",
+      "procedures": [
+        "users.getPreferences"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.getProduct?input=%7B%22json%22%3A%7B%22productId%22%3A%22product_1%22%7D%7D",
+      "procedurePath": "marketplaceCapture.getProduct",
+      "procedures": [
+        "marketplaceCapture.getProduct"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.listInsightsByProduct?input=%7B%22json%22%3A%7B%22productId%22%3A%22product_1%22%7D%7D",
+      "procedurePath": "marketplaceCapture.listInsightsByProduct",
+      "procedures": [
+        "marketplaceCapture.listInsightsByProduct"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.getAutoStoryboardReviewPlan?input=%7B%22json%22%3A%7B%22productId%22%3A%22product_1%22%7D%7D",
+      "procedurePath": "marketplaceCapture.getAutoStoryboardReviewPlan",
+      "procedures": [
+        "marketplaceCapture.getAutoStoryboardReviewPlan"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.listAutoReviewRuns?input=%7B%22json%22%3A%7B%22productId%22%3A%22product_1%22%2C%22limit%22%3A3%2C%22summary%22%3Atrue%7D%7D",
+      "procedurePath": "marketplaceCapture.listAutoReviewRuns",
+      "procedures": [
+        "marketplaceCapture.listAutoReviewRuns"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.getHyperframesRenderJob?input=%7B%22json%22%3A%7B%22renderJobId%22%3A%22hf_route_1%22%2C%22productId%22%3A%22product_1%22%2C%22runId%22%3A%22mar_1%22%7D%7D",
+      "procedurePath": "marketplaceCapture.getHyperframesRenderJob",
+      "procedures": [
+        "marketplaceCapture.getHyperframesRenderJob"
+      ],
+      "renderOutputKinds": [
+        "final_video:hf_output",
+        "snapshot:hf_snapshot"
+      ],
+      "renderArtifactKinds": [
+        "hyperframes_render_mp4:library:hf_output",
+        "hyperframes_snapshot:review:hf_snapshot"
+      ],
+      "responseBodySnippet": "{\"result\":{\"data\":{\"json\":{\"contractVersion\":\"hyperframes_marketplace_auto_review_v1\",\"render\":{\"schemaVersion\":1,\"contractVersion\":\"hyperframes_marketplace_auto_review_v1\",\"launchMode\":\"auto_storyboard_review\",\"tenantId\":\"tenant_route\",\"productId\":\"product_1\",\"runId\":\"mar_1\",\"renderJobId\":\"hf_route_1\",\"status\":\"completed\",\"progressPercent\":100,\"statusCopyId\":\"hyperframes.status.completed\",\"safeMessage\":\"Render complete and ready for review.\",\"safeDiagnostics\":[],\"repairActions\":[],\"polling\":{\"intervalMs\":0,\"maxIntervalMs\":0,\"etag\":\"hf_route_etag\"},\"templateId\":\"marketplace_storyboard_motion_9x9_v1\",\"templateVersion\":\"1.0.0\",\"templateContentHash\":\"hf_template\",\"platformPresetId\":\"generic_vertical_9_16\",\"platformPresetVersion\":\"1.0.0\",\"renderIntent\":\"final\",\"compositionMode\":\"storyboard_motion_preview\",\"compositionInputHash\":\"hf_input\",\"compositionHtmlHash\":\"hf_html\",\"runtimeProfileHash\":\"hf_runtime\",\"qaStatus\":\"passed\",\"outputRefs\":[{\"outputId\":\"hf_route_1_output\",\"kind\":\"final_video\",\"url\":\"https://cdn.example.test/hyperframes/final.mp4\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/output.mp4\",\"contentHash\":\"hf_output\",\"accessibleLabel\":\"Final HyperFrames video\"},{\"outputId\":\"hf_route_1_snapshot\",\"kind\":\"snapshot\",\"url\":\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23e0f2fe'/%3E%3Ccircle cx='160' cy='136' r='70' fill='%230ea5e9'/%3E%3Crect x='70' y='224' width='180' height='34' rx='17' fill='%230f172a'/%3E%3C/svg%3E\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/snapshot.png\",\"contentHash\":\"hf_snapshot\",\"accessibleLabel\":\"Safe area snapshot\"}],\"artifactRefs\":[{\"artifactId\":\"hf_route_1_output\",\"kind\":\"hyperframes_render_mp4\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/output.mp4\",\"contentHash\":\"hf_output\",\"mimeType\":\"video/mp4\",\"retentionClass\":\"library\",\"redacted\":true},{\"artifactId\":\"hf_route_1_snapshot\",\"kind\":\"hyperframes_snapshot\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/snapshot.png\",\"contentHash\":\"hf_snapshot\",\"mimeType\":\"image/png\",\"retentionClass\":\"review\",\"redacted\":true}],\"redaction\":{\"rawHtmlHidden\":true,\"signedUrlsHidden\":true,\"workerLogsHidden\":true,\"storageKeysHidden\":true},\"updatedAt\":\"2026-06-04T00:00:00.000Z\"},\"polling\":{\"intervalMs\":0,\"maxIntervalMs\":0,\"etag\":\"hf_route_etag\"},\"notModified\":false}}}}"
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/auth.me",
+      "procedurePath": "auth.me",
+      "procedures": [
+        "auth.me"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/follows.getUrgentMessages?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "follows.getUrgentMessages",
+      "procedures": [
+        "follows.getUrgentMessages"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/scheduledMessages.getUrgentReminders?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "scheduledMessages.getUrgentReminders",
+      "procedures": [
+        "scheduledMessages.getUrgentReminders"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/scheduledMessages.getNotificationCount?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "scheduledMessages.getNotificationCount",
+      "procedures": [
+        "scheduledMessages.getNotificationCount"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/users.getPreferences?input=%7B%22json%22%3Anull%2C%22meta%22%3A%7B%22values%22%3A%5B%22undefined%22%5D%7D%7D",
+      "procedurePath": "users.getPreferences",
+      "procedures": [
+        "users.getPreferences"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/marketplaceCapture.getHyperframesRenderJob?input=%7B%22json%22%3A%7B%22renderJobId%22%3A%22hf_route_1%22%2C%22productId%22%3A%22product_1%22%2C%22runId%22%3A%22mar_1%22%7D%7D",
+      "procedurePath": "marketplaceCapture.getHyperframesRenderJob",
+      "procedures": [
+        "marketplaceCapture.getHyperframesRenderJob"
+      ],
+      "renderOutputKinds": [
+        "final_video:hf_output",
+        "snapshot:hf_snapshot"
+      ],
+      "renderArtifactKinds": [
+        "hyperframes_render_mp4:library:hf_output",
+        "hyperframes_snapshot:review:hf_snapshot"
+      ],
+      "responseBodySnippet": "{\"result\":{\"data\":{\"json\":{\"contractVersion\":\"hyperframes_marketplace_auto_review_v1\",\"render\":{\"schemaVersion\":1,\"contractVersion\":\"hyperframes_marketplace_auto_review_v1\",\"launchMode\":\"auto_storyboard_review\",\"tenantId\":\"tenant_route\",\"productId\":\"product_1\",\"runId\":\"mar_1\",\"renderJobId\":\"hf_route_1\",\"status\":\"completed\",\"progressPercent\":100,\"statusCopyId\":\"hyperframes.status.completed\",\"safeMessage\":\"Render complete and ready for review.\",\"safeDiagnostics\":[],\"repairActions\":[],\"polling\":{\"intervalMs\":0,\"maxIntervalMs\":0,\"etag\":\"hf_route_etag\"},\"templateId\":\"marketplace_storyboard_motion_9x9_v1\",\"templateVersion\":\"1.0.0\",\"templateContentHash\":\"hf_template\",\"platformPresetId\":\"generic_vertical_9_16\",\"platformPresetVersion\":\"1.0.0\",\"renderIntent\":\"final\",\"compositionMode\":\"storyboard_motion_preview\",\"compositionInputHash\":\"hf_input\",\"compositionHtmlHash\":\"hf_html\",\"runtimeProfileHash\":\"hf_runtime\",\"qaStatus\":\"passed\",\"outputRefs\":[{\"outputId\":\"hf_route_1_output\",\"kind\":\"final_video\",\"url\":\"https://cdn.example.test/hyperframes/final.mp4\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/output.mp4\",\"contentHash\":\"hf_output\",\"accessibleLabel\":\"Final HyperFrames video\"},{\"outputId\":\"hf_route_1_snapshot\",\"kind\":\"snapshot\",\"url\":\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23e0f2fe'/%3E%3Ccircle cx='160' cy='136' r='70' fill='%230ea5e9'/%3E%3Crect x='70' y='224' width='180' height='34' rx='17' fill='%230f172a'/%3E%3C/svg%3E\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/snapshot.png\",\"contentHash\":\"hf_snapshot\",\"accessibleLabel\":\"Safe area snapshot\"}],\"artifactRefs\":[{\"artifactId\":\"hf_route_1_output\",\"kind\":\"hyperframes_render_mp4\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/output.mp4\",\"contentHash\":\"hf_output\",\"mimeType\":\"video/mp4\",\"retentionClass\":\"library\",\"redacted\":true},{\"artifactId\":\"hf_route_1_snapshot\",\"kind\":\"hyperframes_snapshot\",\"storageRef\":\"marketplace-auto-review/tenant_route/mar_1/hyperframes/hf_route_1/snapshot.png\",\"contentHash\":\"hf_snapshot\",\"mimeType\":\"image/png\",\"retentionClass\":\"review\",\"redacted\":true}],\"redaction\":{\"rawHtmlHidden\":true,\"signedUrlsHidden\":true,\"workerLogsHidden\":true,\"storageKeysHidden\":true},\"updatedAt\":\"2026-06-04T00:00:00.000Z\"},\"polling\":{\"intervalMs\":0,\"maxIntervalMs\":0,\"etag\":\"hf_route_etag\"},\"notModified\":false}}}}"
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/videoEditorProjects.listStoryboardReviews?input=%7B%22json%22%3A%7B%22limit%22%3A50%2C%22offset%22%3A0%7D%7D",
+      "procedurePath": "videoEditorProjects.listStoryboardReviews",
+      "procedures": [
+        "videoEditorProjects.listStoryboardReviews"
+      ]
+    },
+    {
+      "requestUrl": "http://127.0.0.1:3000/trpc/videoEditorProjects.debugStoryboardReviewClient",
+      "procedurePath": "videoEditorProjects.debugStoryboardReviewClient",
+      "procedures": [
+        "videoEditorProjects.debugStoryboardReviewClient"
+      ]
+    }
+  ],
+  "storyboardPanelDebug": {
+    "text": "Auto previewตรวจผล preview อัตโนมัติก่อน Manual render ยังเป็น fallback ได้HyperFrames renderRender complete and ready for review.บันทึกเข้า Libraryเปิด outputSnapshot comparisonSafe area snapshotManual render controls ยังพร้อมใช้เป็น retry หรือ fallback",
+    "buttons": [
+      "บันทึกเข้า Library"
+    ],
+    "links": [
+      {
+        "text": "เปิด output",
+        "href": "https://cdn.example.test/hyperframes/final.mp4"
+      }
+    ],
+    "images": [
+      {
+        "alt": "Safe area snapshot",
+        "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height="
+      }
+    ],
+    "renderStatus": {
+      "libraryReady": "true",
+      "buttonCount": 1,
+      "linkCount": 1
+    }
+  }
+}

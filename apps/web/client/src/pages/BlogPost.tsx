@@ -45,7 +45,7 @@ export default function BlogPost() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { relatedLinks } = useTenantSeoSnapshot(`/blog/${slug}`);
-  const seoImage = post && !isVideoMediaUrl(post.coverImage) ? post.coverImage : "/images/dashboard-preview.png";
+  const seoImage = post && !isVideoMediaUrl(post.coverImage) ? post.coverImage : "/images/dashboard-preview.jpg";
 
   useEffect(() => {
     if (!slug) return;

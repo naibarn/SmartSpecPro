@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductReferenceStoryboardPromptOptimizerInput",
+  "type": "object",
+  "required": ["source_prompt"],
+  "properties": {
+    "source_prompt": {
+      "title": "Source Prompt",
+      "description": "The product-reference-storyboard prompt to shorten. This is the source of truth; optimize it without inventing new shots, product facts, characters, claims, prices, ratings, badges, or visible text.",
+      "type": "string",
+      "minLength": 1
+    },
+    "target_max_chars": {
+      "title": "Hard Character Limit",
+      "description": "Hard maximum character count for the returned prompt. Default is 4500 for image-provider compatibility.",
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 4500,
+      "default": 4500
+    },
+    "preferred_target_chars": {
+      "title": "Preferred Character Target",
+      "description": "Preferred shorter target that leaves room for downstream system variance. Default is 4300.",
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 4500,
+      "default": 4300
+    },
+    "preserve_storyboard_contract": {
+      "title": "Preserve Storyboard Contract",
+      "description": "When true, preserve all detected frames, frame order, visual-only frame prose, shared CAMERA/LIGHT/DEPTH, shared PRODUCT VERIFY, and required product/text/realism locks. Do not keep STORY MATCH, HUMAN REALISM, or VISUAL labels inside frame text.",
+      "type": "boolean",
+      "default": true
+    },
+    "optimization_strength": {
+      "title": "Optimization Strength",
+      "description": "How aggressively to shorten the prompt. Auto starts moderate and becomes aggressive only if the prompt remains over the target.",
+      "type": "string",
+      "enum": ["auto", "light", "balanced", "aggressive"],
+      "enumNames": ["Auto", "Light", "Balanced", "Aggressive"],
+      "x-ui-enumNamesTh": ["อัตโนมัติ", "เบา", "สมดุล", "เข้มข้น"],
+      "default": "auto"
+    }
+  },
+  "additionalProperties": false
+}

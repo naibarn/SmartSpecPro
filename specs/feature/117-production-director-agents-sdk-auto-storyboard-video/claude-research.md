@@ -54,7 +54,7 @@ Current UI already allows:
 - render/library finalize and Storyboard Review/Video Editor projections already exist and should be preserved.
 - The codebase already has durable media callback event and callback DLQ tables/services, so Feature 117 should reuse or extend that foundation instead of inventing a separate callback ledger.
 - Existing render/transcode/media storage code has resource-limit concepts, but Feature 117 still needs explicit auto-review quota, payload, transcode, and finalization gates tied to run/stage timeline state.
-- Feature 113 already requires Marketplace Capture pre-upload review and redaction of account/header/user-personal regions. Feature 117 should preserve that privacy posture when captured evidence is reused for automatic ads.
+- Feature 113 already requires Marketplace Capture pre-upload review, prompt-injection hardening, and redaction of account/header/user-personal regions. Feature 117 should preserve that privacy and evidence-instruction-firewall posture when captured evidence is reused for automatic ads.
 - Feature 118 currently seeds audio strategy and Video Editor projection, while other media specs include subtitle/export profile concepts. Feature 117 should add explicit audio-rights and distribution-profile gates instead of assuming a 1080x1920 output is valid everywhere.
 - Social/publishing adjacent specs already mention synthetic media flags and platform-specific upload metadata, so Feature 117 should preserve synthetic disclosure/provenance decisions even if auto-posting is out of scope.
 - Current Feature 118 metadata includes source and affiliate URLs, but Feature 117 needs explicit CTA/landing integrity checks before generating ad-like CTA copy.
@@ -87,16 +87,25 @@ The risky parts are specific and solvable:
 - add a direct shot-payload media execution adapter,
 - preserve selected variant/SKU context before creative planning,
 - preserve shared-product authority, credit payer, and evidence freshness before creative planning,
+- prepare product reference asset packs so paid visual generation uses only approved, hosted, rights-safe, variant-bound product refs,
 - version/redact API projections for detail/list surfaces,
 - attach canonical artifact lineage to downstream outputs,
+- add stage completion evidence so stage status cannot claim success without required artifacts, QA, credit, policy, and lineage refs,
+- add SDK capability manifests so Python cannot register unapproved tools, handoffs, hosted SDK capabilities, sessions, traces, output schemas, persistence authority, or credit authority outside Node policy,
+- add production creative brief snapshots so one-click automation still has an auditable objective, audience, CTA, style, quality mode, and user-hint trust policy before Agents invent concepts,
 - provide operator recovery for stuck long-running jobs,
 - map provider safety/moderation refusals to non-retryable blockers instead of repeated paid retries,
 - bind provider callbacks/polling results to authenticated/trusted provider event envelopes before state changes,
 - enforce payload/trace and list/detail projection budgets,
 - enforce storage quota, re-hosting, transcode, codec, duration, resolution, byte-size, cleanup, and playability checks before final Library output,
 - define retry/DLQ/stage-lease behavior and launch SLO alerts before broad auto-video traffic,
-- add marketplace privacy, audio-rights, distribution-profile, and tenant-safe creative-memory controls,
+- add marketplace privacy, evidence-instruction-firewall, audio-rights, distribution-profile, and tenant-safe creative-memory controls,
 - add synthetic disclosure/provenance, CTA/landing integrity, QA calibration, and post-publish governance controls,
+- add source-attributed advertising policy rule packs so Thai/global/platform compliance can be versioned, replayed, and fixture-tested,
+- add campaign/batch governance, brand/seller voice policy, spend anomaly detection, and human review queue controls,
+- add publishable asset package controls for thumbnail/cover, titles/captions/descriptions, hashtags, transcript/subtitles, manifests, and checksums,
+- add input-change impact controls so product/evidence/policy/profile/user edits during long runs invalidate only affected downstream work,
+- add shot-frame vision QA and targeted media-unit repair so failed start/stop/storyboard frames or keyframes are regenerated without rerunning unrelated shots,
 - add QA gates that actually inspect generated outputs,
 - make every LLM call gateway-only,
 - make every paid operation credit-idempotent,
@@ -168,11 +177,13 @@ Feature 117 should add tests before implementation for:
 - media production runtime contracts,
 - gateway-only adapter behavior,
 - direct-provider rejection,
+- SDK capability manifest enforcement for tools, handoffs, hosted capabilities, sessions, traces, stream events, and resume/cancel identity,
+- production creative brief validation, safe defaults, ambiguous-brief review/blocking, user-hint claim evidence, and changed-brief invalidation,
 - credit idempotency,
 - direct shot-payload scheduling,
 - product truth and claim evidence,
 - product visual identity locks,
-- face/character continuity,
+- face/character/voice continuity,
 - audio continuity,
 - Thai advertising and visual warning overlays,
 - long-running resume and repair.
@@ -180,14 +191,21 @@ Feature 117 should add tests before implementation for:
 - payload/trace budget enforcement,
 - storage quota/transcode/final-output gating,
 - migration/backfill dry-run and launch SLO/alert checks.
-- marketplace privacy and final-media PII checks,
+- marketplace privacy, evidence-instruction-firewall, and final-media PII/injected-instruction checks,
 - audio rights/mix checks,
 - target distribution profile checks,
 - tenant-safe creative feedback memory checks.
 - synthetic disclosure/provenance and platform flag checks,
 - CTA/landing URL and offer integrity checks,
+- advertising policy rule-pack versioning, fixture replay, deprecation, and rollback checks,
+- stage completion evidence checks before downstream advancement,
 - QA calibration/human spot-check checks,
 - post-publish reuse invalidation checks.
+- campaign/batch governance, duplicate variation, spend anomaly, brand/seller policy, and human review queue checks.
+- publishable package, thumbnail, transcript/subtitle, platform metadata, manifest, and checksum checks.
+- input-change impact, stale approval invalidation, stale QA invalidation, credit re-estimation, and safe partial artifact reuse checks.
+- shot-frame vision QA, exact-unit targeted repair, and native-audio/voice-driven character drift repair checks.
+- product reference asset pack checks before visual generation, thumbnail generation, or repair.
 
 ## Value Assessment
 
@@ -198,7 +216,7 @@ Expected benefits:
 - fresher concepts from the same product without manual prompting,
 - fewer unsupported product claims,
 - lower chance of product image distortion,
-- lower chance of face/character continuity breaks,
+- lower chance of face/character/voice continuity breaks,
 - better natural Thai script and hook structure,
 - safer Thai/international ad compliance,
 - more reliable long-running completion through resumable checkpoints,
@@ -206,14 +224,23 @@ Expected benefits:
 - safer provider event handling without trusting spoofed/stale/out-of-order callbacks,
 - lower chance of stuck jobs silently looping or spending due to DLQ/retry/SLO gates,
 - fewer production incidents from oversized traces, quota failures, expired URLs, or unplayable renders,
-- fewer privacy incidents from marketplace/customer/reviewer/account data entering generated ads,
+- fewer privacy and prompt-injection incidents from marketplace/customer/reviewer/account/seller text entering generated ads,
 - fewer rights incidents from unlicensed music/SFX/voice/audio references,
 - better platform fit through explicit profile-safe captions, warnings, CTA, loudness, and export variants,
 - safer long-term creativity through tenant-isolated feedback memory,
 - better compliance for synthetic/AI-generated media disclosures,
 - fewer broken or misleading CTA/affiliate landing outputs,
 - safer broad rollout through QA calibration and spot-check gates,
+- clearer compliance operations because Thailand/global/platform rules are encoded as approved rule packs rather than hidden prompt text,
+- fewer false-complete runs because every stage transition is backed by explicit completion evidence,
 - safer asset reuse through post-publish invalidation governance,
+- safer high-volume creative automation through campaign caps, duplicate detection, spend anomaly pause, and scoped review approvals,
+- more consistent brand/seller tone without letting brand instructions override evidence or ad rules,
+- clearer human review operations for high-risk categories, comparison claims, batch approvals, and low-confidence automation,
+- more usable final outputs because thumbnails, captions, hashtags, transcripts, subtitles, manifests, and checksums are generated and verified as part of the workflow,
+- less wasted regeneration after product updates because safe artifacts can be reused while stale approvals, QA, and package refs are invalidated,
+- faster and safer repair because a bad start frame, stop frame, thumbnail, or clip can be regenerated at the exact failed unit scope,
+- lower chance of product mutation because generation and repair start from a vetted product reference pack rather than arbitrary marketplace images or previous generated approximations,
 - better explainability after an automated run.
 
 Main cost:

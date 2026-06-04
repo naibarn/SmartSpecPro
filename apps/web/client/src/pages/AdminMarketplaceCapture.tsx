@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { HyperframesOperatorDiagnosticsPanel } from "@/components/marketplaceCapture/HyperframesOperatorDiagnosticsPanel";
 import { trpc } from "@/lib/trpc";
 
 function fmtDate(value: unknown) {
@@ -58,6 +59,8 @@ export default function AdminMarketplaceCapture() {
               <StatCard label="Assets" value={data.stats.assets} />
               <StatCard label="Candidate batches" value={data.stats.candidateBatches} />
             </section>
+
+            <HyperframesOperatorDiagnosticsPanel />
 
             <section className="rounded-lg border bg-white p-4 shadow-sm">
               <h2 className="text-lg font-semibold">Recent Products</h2>

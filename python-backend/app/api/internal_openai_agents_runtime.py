@@ -146,12 +146,22 @@ def _resolve_native_workspace(raw_workspace: Any, body: AgentRuntimeRequest) -> 
     return base / safe_tenant / safe_request
 
 
-def _extract_native_skill_runtime_request(body: AgentRuntimeRequest) -> NativeSkillRuntimeRequest | None:
+def _native_skill_runtime_payload(body: AgentRuntimeRequest) -> dict[str, Any] | None:
     plan_context = body.planContext or {}
     native = plan_context.get("nativeSkillRuntime")
+    if not isinstance(native, dict):
+        raw_input = plan_context.get("input")
+        if isinstance(raw_input, dict):
+            native = raw_input.get("nativeSkillRuntime")
     if not isinstance(native, dict) or native.get("enabled") is not True:
         return None
+    return native
 
+
+def _extract_native_skill_runtime_request(body: AgentRuntimeRequest) -> NativeSkillRuntimeRequest | None:
+    native = _native_skill_runtime_payload(body)
+    if native is None:
+        return None
     skill_slug = str(native.get("skillSlug") or native.get("skill_slug") or "").strip()
     if not skill_slug:
         raise HTTPException(status_code=422, detail="nativeSkillRuntime.skillSlug is required")
@@ -367,6 +377,8 @@ def _native_runtime_result_to_agent_response(
 
 
 async def _run_native_skill_if_requested(body: AgentRuntimeRequest) -> AgentRuntimeResponse | None:
+    if body.surface == "media_production" and _native_skill_runtime_payload(body) is not None:
+        raise HTTPException(status_code=422, detail="nativeSkillRuntime is not allowed for media_production")
     native_request = _extract_native_skill_runtime_request(body)
     if native_request is None:
         return None

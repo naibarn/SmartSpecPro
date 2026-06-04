@@ -1,0 +1,41 @@
+{
+  "mode": "start_frame_to_video",
+  "output_type": "single_video_prompt",
+  "cinematic_intent": "Animate the attached portrait into a graceful cinematic shot while preserving the exact wardrobe, hair, makeup, lighting, and background.",
+  "reference_images": [
+    {
+      "image_id_or_path": "UPLOAD_START_FRAME",
+      "role": "start_frame",
+      "priority": 5,
+      "notes": "Use as first frame and identity ground truth."
+    }
+  ],
+  "start_frame": {
+    "enabled": true,
+    "image_id_or_path": "UPLOAD_START_FRAME",
+    "description": "vertical close beauty portrait, direct soft gaze, white lace off-shoulder dress, warm window light",
+    "lock_strength": "absolute"
+  },
+  "aspect_ratio": "9:16",
+  "preset": "soft_bridal_windowlight",
+  "duration": {
+    "single_shot_seconds": 6,
+    "total_seconds": 6,
+    "shot_duration_seconds": []
+  },
+  "camera_plan": {
+    "movement_preset": "slow_pull_back",
+    "camera_angle": "slightly_high_front",
+    "lens_language": "85mm_compressed_beauty",
+    "depth_of_field": "shallow",
+    "camera_height": "above_eye_level",
+    "camera_distance": "close_up",
+    "custom_camera_notes": "End in medium close-up revealing more lace neckline and shoulder line."
+  },
+  "subject_action": {
+    "action_preset": "look_down_then_lift_gaze",
+    "emotion": "serene",
+    "gaze_direction": "from_down_to_camera",
+    "custom_action_notes": ""
+  }
+}

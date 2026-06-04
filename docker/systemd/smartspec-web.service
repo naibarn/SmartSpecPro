@@ -16,9 +16,9 @@ Group=dev
 WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
 
 # Environment
-Environment="PATH=/home/dev/.nvm/versions/node/v24.13.0/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/dev/.nvm/versions/node/v20.20.0/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
-Environment="NODE_OPTIONS=--max-old-space-size=2048"
+Environment="NODE_OPTIONS=--max-old-space-size=8192"
 Environment="PORT=3000"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
@@ -27,7 +27,7 @@ ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 3000/tcp 2>/dev/null || true'
 ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep -q ":3000 " || exit 0; sleep 0.5; done; echo "WARN: port 3000 still in use after 10s"'
 
 # Start directly via tsx (not npm run start — avoids extra parent process)
-ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/npx tsx server/_core/index.ts
+ExecStart=/home/dev/.nvm/versions/node/v20.20.0/bin/npx tsx server/_core/index.ts
 
 # Verify server is actually responding after startup (wait up to 15s for cold start)
 ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 15s"; exit 1'

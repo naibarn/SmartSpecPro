@@ -9,6 +9,9 @@ import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
 import { isApiRequestPath } from "./apiPathGuard";
 
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm|zip)(\?.*)?$/i;
+const HTML_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=86400";
+const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const STATIC_NOT_FOUND_CACHE_CONTROL = "public, max-age=60";
 
 function isStaticAssetRequest(url: string): boolean {
   return STATIC_ASSET_REQUEST.test(url);
@@ -23,6 +26,32 @@ function sendApiFallbackJson(req: express.Request, res: express.Response): void 
       code: "API_ROUTE_NOT_HANDLED",
     },
   });
+}
+
+function registerHealthRoutes(app: Express): void {
+  const handler: express.RequestHandler = (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({
+      status: "ok",
+      service: "smartaihub-web",
+      uptimeSeconds: Math.round(process.uptime()),
+    });
+  };
+
+  app.get(["/health", "/healthz", "/api/health"], handler);
+}
+
+export function cacheControlForStaticFile(filePath: string): string | null {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === ".html") {
+    return HTML_CACHE_CONTROL;
+  }
+
+  if (filePath.split(path.sep).includes("assets")) {
+    return IMMUTABLE_ASSET_CACHE_CONTROL;
+  }
+
+  return null;
 }
 
 function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (header: string) => string | undefined }): string {
@@ -61,6 +90,7 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  registerHealthRoutes(app);
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -109,8 +139,9 @@ export function serveStatic(app: Express) {
   app.use(
     express.static(distPath, {
       setHeaders: (res, filePath) => {
-        if (path.extname(filePath).toLowerCase() === ".html") {
-          res.setHeader("Cache-Control", "no-store");
+        const cacheControl = cacheControlForStaticFile(filePath);
+        if (cacheControl) {
+          res.setHeader("Cache-Control", cacheControl);
         }
         if (path.extname(filePath).toLowerCase() === ".zip") {
           res.setHeader("Content-Type", "application/zip");
@@ -121,6 +152,8 @@ export function serveStatic(app: Express) {
     })
   );
 
+  registerHealthRoutes(app);
+
   // fall through to index.html if the file doesn't exist
   app.use("*", async (req, res, next) => {
     if (isApiRequestPath(req.originalUrl)) {
@@ -128,7 +161,7 @@ export function serveStatic(app: Express) {
     }
 
     if (isStaticAssetRequest(req.originalUrl)) {
-      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Cache-Control", STATIC_NOT_FOUND_CACHE_CONTROL);
       res.type("text/plain");
       return res.status(404).send("Not Found");
     }
@@ -137,7 +170,7 @@ export function serveStatic(app: Express) {
       const indexPath = path.resolve(distPath, "index.html");
       const template = await fs.promises.readFile(indexPath, "utf-8");
       const page = injectPublicSeoSnapshot(template, req.originalUrl, resolveBaseUrl(req));
-      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Cache-Control", HTML_CACHE_CONTROL);
       res.status(200).type("html").send(page);
     } catch (error) {
       next(error);

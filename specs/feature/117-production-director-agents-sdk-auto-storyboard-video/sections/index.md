@@ -52,37 +52,37 @@ END_MANIFEST -->
 ## Section Summaries
 
 ### section-01-contracts-and-schema
-Create shared contracts, metadata schema versioning, status detail, variant/access/freshness/rights snapshots, provider event envelopes, payload/storage budgets, retry/DLQ policy, privacy/audio/distribution/feedback/disclosure/CTA/calibration/post-publish contracts, API projections, lineage, and durable artifact shapes.
+Create shared contracts, metadata schema versioning, status detail, stage-completion-evidence gates, SDK capability manifests, production creative brief snapshots, variant/access/freshness/product-reference-pack/character-identity-pack/rights snapshots, provider event envelopes, payload/storage budgets, retry/DLQ policy, privacy/evidence-instruction-firewall/audio/distribution/feedback/disclosure/CTA/policy-rule-pack/calibration/post-publish/campaign-governance/brand-policy/review-queue/publishable-package/input-change-impact/shot-frame-vision/media-acceptance contracts, API projections, lineage, and durable artifact shapes.
 
 ### section-02-python-agents-gateway-runtime
-Extend the Python OpenAI Agents SDK boundary to `media_production` with gateway-only model traffic.
+Extend the Python OpenAI Agents SDK boundary to `media_production` with gateway-only model traffic and manifest-locked tools, handoffs, sessions, traces, hosted capability denials, and output schemas.
 
 ### section-03-node-runtime-client-and-preflight
-Build Node request construction, product evidence/variant/access/freshness/rights/privacy/audio/distribution/CTA/disclosure preflight, and permission envelope.
+Build Node request construction, product evidence/variant/access/freshness/product-reference-pack/character-identity-pack/rights/privacy/evidence-instruction-firewall/audio/distribution/CTA/disclosure/policy-rule-pack/campaign/brand/review/publishable-package/input-change-impact preflight, production creative brief snapshots, capability manifests, stage-completion-evidence drafts, and permission envelope.
 
 ### section-04-creative-planning-contracts
-Replace deterministic planning with Agents-generated concepts, storyboard, voiceover, distribution-aware shot payloads, CTA/disclosure-aware scripts, and tenant-safe novelty memory.
+Replace deterministic planning with creative-brief-grounded Agents-generated concepts, storyboard, voiceover, evidence-firewall-clean context, product-reference-pack-grounded and character-identity-pack-grounded shot payloads, distribution-aware shot payloads, CTA/disclosure/policy-rule-pack/brand-aware scripts, campaign-safe variation planning, publish metadata drafts, input-change-aware partial reuse, and tenant-safe novelty memory.
 
 ### section-05-ad-compliance-warning-overlays
-Add international and Thailand ad policy classification, privacy/social-proof/media-safety/rights/synthetic-disclosure/CTA blockers, plus visual warning/disclosure contracts.
+Add international and Thailand ad policy classification, source-attributed policy rule packs, privacy/social-proof/media-safety/rights/synthetic-disclosure/CTA blockers, plus visual warning/disclosure contracts.
 
 ### section-06-direct-media-execution
-Schedule image/video/audio from direct shot payloads, bypass node canvas, and harden provider event trust/replay handling.
+Schedule image/video/audio from direct shot payloads, bypass node canvas, require approved product reference asset packs for product-dependent visual dispatch and character identity asset packs for recurring person/voice dispatch, harden provider event trust/replay handling, trigger required frame vision QA, keep provider outputs candidate/quarantined until accepted, and complete stages only with evidence.
 
 ### section-07-visual-audio-continuity-qa
-Implement product, character, story, generated media, privacy, audio-rights/mix, distribution-profile, synthetic-disclosure, CTA, calibration, and audio QA plus repair decisions.
+Implement product, product-reference-pack, character-identity-pack, character, story, generated media, shot-frame vision, targeted media repair, media acceptance/quarantine, privacy, audio-rights/mix, distribution-profile, synthetic-disclosure, CTA, policy-rule-pack, calibration, campaign, brand-policy, review-queue, publishable-package, input-change-impact, and audio QA plus repair decisions.
 
 ### section-08-credit-billing-idempotency
-Enforce estimate/reserve/spend/refund idempotency for LLM, media, repair, audio, and render.
+Enforce estimate/reserve/spend/refund idempotency for LLM, vision QA, targeted media repair, media, audio, render, campaign/batch anomaly controls, and input-change credit re-estimation.
 
 ### section-09-ui-progress-and-output-links
-Update Marketplace Capture UI to show stage, variant, QA, credit, blocker, provider-event/DLQ, storage/payload, API projection, and output state.
+Update Marketplace Capture UI to show stage, stage-completion-evidence blockers, capability-manifest blockers, creative brief state, variant, product-reference readiness, policy-rule-pack state, QA, credit, blocker, targeted frame/clip repair, media acceptance/quarantine, governance/review queue, publishable-package, input-change impact, provider-event/DLQ, storage/payload, API projection, and output state.
 
 ### section-10-render-library-finalize
-Preserve Video Editor, render, final QA, and Media Library finalize with richer trace, storage/transcode/privacy/audio/distribution/disclosure/CTA/post-publish gates, and canonical lineage.
+Preserve Video Editor, render, final QA, and Media Library finalize with richer trace, stage-completion evidence, product-reference-pack and character-identity-pack lineage, storage/transcode/privacy/evidence-instruction-firewall/audio/distribution/disclosure/CTA/policy-rule-pack/post-publish/campaign/brand/review/publishable-package/input-change/shot-frame-vision/media-acceptance gates, and canonical lineage.
 
 ### section-11-rollout-migration-resume
-Handle migration from Feature 118, feature flags, resume/background recheck behavior, provider/DLQ recovery, calibration/spot-check gates, post-publish invalidation, launch SLOs, migration/backfill dry-runs, and no-shadow rollout.
+Handle migration from Feature 118, feature flags, resume/background recheck behavior, stage-completion-evidence rollout/recovery, SDK capability-manifest rollout/recovery, creative-brief rollout/recovery, product-reference-pack and character-identity-pack rollout/recovery, advertising-policy-rule-pack rollout/recovery, provider/DLQ recovery, targeted repair rollout, media acceptance/quarantine rollout, campaign/brand/review queue rollout, publishable-package rollout, input-change-impact rollout, calibration/spot-check gates, post-publish invalidation, launch SLOs, migration/backfill dry-runs, and no-shadow rollout.
 
 ### section-12-test-implementation-gates
 Wire focused unit/integration/E2E tests, operational hardening tests, and launch gates.

@@ -1,18 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronLeft, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Music2, Pencil, Scissors, Search, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronLeft, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
+import { HyperframesStoryboardReviewPanel } from "@/components/marketplaceCapture/HyperframesStoryboardReviewPanel";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import {
+  buildHyperframesRenderLibrarySession,
+  getHyperframesRenderLibraryReadyOutput,
+  removeMediaStudioRenderLibrarySession,
+  upsertMediaStudioRenderLibrarySession,
+} from "@/lib/mediaStudioRenderLibrarySessions";
 import {
   COMMON_CROP_RATIOS,
   COMMON_GRIDS,
@@ -50,6 +68,10 @@ import { extractStoryboardMediaUrl, normalizeStoryboardMediaUrl } from "@/lib/st
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import { WebAssetResolver } from "@/services/webAssetResolver";
 import {
+  buildHyperframesLibraryIdempotencyKey,
+  type HyperframesRenderStatusProjection,
+} from "@shared/hyperframes/contracts";
+import {
   DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
   clearStoryboardReviewDraft,
   getStoryboardCompanionAudioUpdatedAt,
@@ -77,7 +99,13 @@ const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
 
 function applyStoryboardPromptDuration(prompt: string, durationSeconds: number): string {
   const duration = Math.max(1, Math.round(durationSeconds));
-  return prompt.replace(/Create an? \d+(?:\.\d+)?-second cinematic video\./i, `Create a ${duration}-second cinematic video.`);
+  const speechTarget = Math.round((duration + (duration <= 8 ? 1.5 : duration <= 12 ? 1 : 0)) * 2) / 2;
+  return prompt
+    .replace(/Create an? \d+(?:\.\d+)?-second cinematic video\./i, `Create a ${duration}-second cinematic video.`)
+    .replace(
+      /Dialogue pacing:\s*write enough spoken content for about [^.;\n]+?(?:;|\.)(?:\s*Veo 3\.1 can finish a slightly longer line\.)?(?:\s*Avoid a short 5-6 second line or silent tail\.)?/i,
+      `Dialogue pacing: write enough spoken content for about ${speechTarget} วินาที, even when the clip is ${duration} วินาที; Veo 3.1 can finish a slightly longer line. Avoid a short 5-6 second line or silent tail.`
+    );
 }
 
 function normalizeReferenceFrameRole(value: unknown, fallback: StoryboardReferenceFrameRole): StoryboardReferenceFrameRole {
@@ -106,6 +134,15 @@ type StoryboardMediaPickerKind = "video" | "audio";
 type StoryboardRightPanelTab = StoryboardMediaPickerKind | "history_gallery";
 type StoryboardAudioSourceTab = "library" | "history";
 type StoryboardImageEditorMode = "split" | "crop";
+type StoryboardReviewDeleteTarget = {
+  id: number | null;
+  name: string;
+};
+type StoryboardVideoPreview = {
+  url: string;
+  title: string;
+  subtitle?: string | null;
+};
 
 function isProbablyVideoUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
@@ -556,6 +593,56 @@ function getStoryboardDraftVoiceoverFullScript(draft?: StoryboardReviewDraft | n
     .join("\n");
 }
 
+function getStoryboardDraftVoiceoverSummary(
+  draft: StoryboardReviewDraft | null | undefined,
+  locale: string,
+): string {
+  const orderedTasks = (draft?.taskIds ?? [])
+    .map((taskId) => draft?.tasks.find((task) => task.id === taskId))
+    .filter((task): task is StoryboardGenerationTask => Boolean(task));
+  const taskLines = orderedTasks
+    .map((task, index) => {
+      const script = getStoryboardPlannerVoiceContext(task).voiceoverScript;
+      if (!script) return "";
+      const label = locale === "th" ? `ช็อต ${index + 1}` : `Shot ${index + 1}`;
+      return `${label}: ${script}`;
+    })
+    .filter(Boolean);
+  if (taskLines.length > 0) {
+    return taskLines.join("\n\n");
+  }
+  return getStoryboardDraftVoiceoverFullScript(draft);
+}
+
+function formatStoryboardRecordingElapsed(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function pickStoryboardAudioRecordingMimeType(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  for (const mimeType of [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+    "audio/mp4",
+  ]) {
+    if (MediaRecorder.isTypeSupported(mimeType)) {
+      return mimeType;
+    }
+  }
+  return undefined;
+}
+
+function formatAudioInputDeviceLabel(device: MediaDeviceInfo, index: number, locale: string): string {
+  const label = device.label.trim();
+  if (label) return label;
+  return locale === "th" ? `ไมก์ ${index + 1}` : `Microphone ${index + 1}`;
+}
+
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -565,6 +652,30 @@ const STORYBOARD_GENERATION_POLL_RETRY_INTERVAL_MS = 15000;
 const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-20260527-2325";
 
 type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
+
+function buildHyperframesLibrarySaveKey(
+  render: HyperframesRenderStatusProjection | null | undefined,
+) {
+  const output = getHyperframesRenderLibraryReadyOutput(render);
+  if (
+    !render?.tenantId ||
+    !render.runId ||
+    !render.renderIntent ||
+    !render.compositionInputHash ||
+    !output?.contentHash ||
+    render.renderIntent === "preview" ||
+    render.renderIntent === "snapshot"
+  ) {
+    return null;
+  }
+  return buildHyperframesLibraryIdempotencyKey({
+    tenantId: render.tenantId,
+    runId: render.runId,
+    renderIntent: render.renderIntent,
+    compositionInputHash: render.compositionInputHash,
+    outputHash: output.contentHash,
+  });
+}
 
 function normalizeStoryboardProviderTaskStatus(value: unknown): StoryboardProviderTaskStatus {
   const status = String(value ?? "").trim().toLowerCase();
@@ -577,6 +688,185 @@ function normalizeStoryboardProviderTaskStatus(value: unknown): StoryboardProvid
 
 function getStoryboardTaskPollId(task: Pick<StoryboardGenerationTask, "backendTaskId" | "providerTaskId">): string {
   return String(task.providerTaskId || task.backendTaskId || "").trim();
+}
+
+function parseReviewIdFromSearch(search: string): number | null {
+  const params = new URLSearchParams(search);
+  const raw = params.get("reviewId");
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
+}
+
+function asLegacyObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function normalizeLegacyReviewData(value: unknown): Record<string, unknown> | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? asLegacyObject(parsed) : null;
+    } catch {
+      return null;
+    }
+  }
+  const objectValue = asLegacyObject(value);
+  return Object.keys(objectValue).length > 0 ? objectValue : null;
+}
+
+function normalizeLegacyStoryboardTaskStatus(value: unknown): StoryboardGenerationTask["status"] {
+  if (typeof value !== "string") return "queued";
+  const status = value.trim().toLowerCase();
+  if (["completed", "complete", "done", "success", "succeeded"].includes(status)) return "completed";
+  if (["failed", "failure", "error", "errored"].includes(status)) return "error";
+  if (["processing", "running", "generating", "active", "in_progress"].includes(status)) return "generating";
+  if (["pending", "queued", "created", "submitted", "scheduled", "deferred"].includes(status)) return "queued";
+  return "queued";
+}
+
+function asLegacyReviewValue(value: unknown): string | null {
+  if (typeof value === "string") {
+    const text = value.trim();
+    return text.length > 0 ? text : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function asLegacyImageUrl(value: unknown): string | null {
+  const text = asLegacyReviewValue(value);
+  return text && isProbablyImageUrl(text) ? text : null;
+}
+
+function asNumberValue(value: unknown): number | null {
+  const num = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number(value)
+      : NaN;
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeLegacyStoryboardReviewTask(
+  rawTask: unknown,
+  index: number,
+): StoryboardGenerationTask | null {
+  const task = asLegacyObject(rawTask);
+  const taskId = asLegacyReviewValue(task.id) ?? `legacy-task-${index + 1}`;
+  const prompt = asLegacyReviewValue(task.prompt)
+    ?? asLegacyReviewValue(task.videoPrompt)
+    ?? asLegacyReviewValue(task.title)
+    ?? `Clip ${index + 1}`;
+  const inferredAspectRatio = asLegacyReviewValue(task.aspectRatio)
+    ?? asLegacyReviewValue(task.aspect_ratio)
+    ?? "16:9";
+  const url = asLegacyReviewValue(task.url)
+    ?? asLegacyReviewValue(task.resultUrl)
+    ?? asLegacyReviewValue(task.videoUrl);
+  const rawType = asLegacyReviewValue(task.type)?.toLowerCase();
+
+  return {
+    id: taskId,
+    index: Number.isFinite(asNumberValue(task.index) ?? asNumberValue(task.order))
+      ? Math.max(Math.trunc(asNumberValue(task.index) ?? asNumberValue(task.order) ?? index), 0)
+      : index,
+    status: normalizeLegacyStoryboardTaskStatus(task.status),
+    type: (rawType === "image" || rawType === "img" || isProbablyImageUrl(url ?? "") || Boolean(asLegacyImageUrl(task.thumbnailUrl)))
+      ? "image"
+      : "video",
+    prompt,
+    model: asLegacyReviewValue(task.model) ?? "",
+    durationSeconds: asNumberValue(task.durationSeconds) ?? asNumberValue(task.duration) ?? undefined,
+    createdAt: asNumberValue(task.createdAt) ?? asNumberValue(task.created_at) ?? Date.now(),
+    updatedAt: asNumberValue(task.updatedAt) ?? asNumberValue(task.updated_at) ?? Date.now(),
+    url: url ? normalizeStoryboardMediaUrl(url) : undefined,
+    statusDetail: asLegacyReviewValue(task.statusDetail) ?? asLegacyReviewValue(task.status_detail) ?? undefined,
+    storyboardContext: {
+      aspectRatio: inferredAspectRatio,
+      duration: asNumberValue(task.duration) ?? asNumberValue(task.durationSeconds) ?? asNumberValue(task.duration_seconds) ?? undefined,
+      referenceImages: [
+        asLegacyImageUrl(task.startFrameUrl),
+        asLegacyImageUrl(task.stopFrameUrl),
+        asLegacyImageUrl(task.referenceImageUrl),
+        asLegacyImageUrl(task.thumbnailUrl),
+      ]
+        .filter(Boolean)
+        .map((item) => ({ url: item as string })),
+      referenceVideos: [asLegacyImageUrl(task.referenceVideoUrl)]
+        .filter(Boolean)
+        .map((item) => ({ url: item as string })),
+      apiConfig: {},
+      extraParams: {
+        ...(asLegacyObject(task.metadata)),
+      },
+    },
+  };
+}
+
+function normalizeLegacyStoryboardReviewDraft(
+  rawData: unknown,
+  reviewId: number,
+): StoryboardReviewDraft | null {
+  const record = normalizeLegacyReviewData(rawData);
+  if (!record) return null;
+  const tasksInput = Array.isArray(record.tasks)
+    ? record.tasks
+    : Array.isArray(record.clips)
+      ? record.clips
+      : [];
+  if (!Array.isArray(tasksInput) || tasksInput.length === 0) return null;
+
+  const tasks = tasksInput
+    .map((task, index) => normalizeLegacyStoryboardReviewTask(task, index))
+    .filter((task): task is StoryboardGenerationTask => Boolean(task));
+  if (tasks.length === 0) return null;
+
+  const taskIds = tasks.map((task) => task.id);
+  const selectedTaskIds = Array.isArray(record.selectedTaskIds)
+    ? record.selectedTaskIds.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+  const storyBible = asLegacyObject(record.storyBible);
+  const conceptDetails = asLegacyReviewValue(record.conceptDetails)
+    ?? asLegacyReviewValue(storyBible.productDetail)
+    ?? asLegacyReviewValue(storyBible.conceptId)
+    ?? null;
+  const storyboardGuide = asLegacyReviewValue(record.storyboardGuide)
+    ?? asLegacyReviewValue(storyBible.storyboardGuide)
+    ?? null;
+  const voiceoverFullScript = asLegacyReviewValue(record.voiceoverScript)
+    ?? asLegacyReviewValue(record.voiceoverFullScript)
+    ?? asLegacyReviewValue(storyBible.voiceoverScript)
+    ?? null;
+  const marketplaceContext = asLegacyObject(record.marketplaceProduct);
+  const productionContext = asLegacyObject(record.productionContext);
+  const updatedAt = asNumberValue(record.updatedAt) ?? asNumberValue(record.updated_at) ?? Date.now();
+
+  return {
+    version: 1,
+    reviewId,
+    name: asLegacyReviewValue(record.name) ?? `Storyboard review ${reviewId}`,
+    updatedAt,
+    taskIds,
+    selectedTaskIds,
+    tasks,
+    companionAudio: [],
+    companionAudioUpdatedAt: null,
+    compoundStatus: null,
+    projectLink: null,
+    renderJobId: asLegacyReviewValue(record.renderJobId),
+    marketplaceContext: Object.keys(marketplaceContext).length > 0
+      ? marketplaceContext as unknown as StoryboardReviewDraft["marketplaceContext"]
+      : null,
+    productionContext: Object.keys(productionContext).length > 0
+      ? productionContext as unknown as StoryboardReviewDraft["productionContext"]
+      : null,
+    conceptDetails,
+    storyboardGuide,
+    voiceoverFullScript,
+    useVoiceoverScriptAsConcept: Boolean(record.useVoiceoverScriptAsConcept),
+  };
 }
 
 function storyboardTaskTracksPollId(task: StoryboardGenerationTask, pollId: string): boolean {
@@ -806,6 +1096,7 @@ function createImportedAudioTrack(input: {
   model?: string | null;
   importedLabel?: string;
   importedAudioLabel?: string;
+  kind?: StoryboardCompanionAudioCandidate["kind"];
   durationSeconds?: number;
   targetDurationSeconds?: number;
 }): StoryboardCompanionAudioCandidate {
@@ -816,7 +1107,7 @@ function createImportedAudioTrack(input: {
     title: input.title.trim() || (input.importedAudioLabel ?? "Imported audio"),
     prompt: input.title.trim() || (input.importedAudioLabel ?? "Imported audio"),
     model: input.model?.trim() || (input.importedLabel ?? "Imported"),
-    kind: "music",
+    kind: input.kind ?? "music",
     startTimeSeconds: 0,
     actualDurationSeconds: input.durationSeconds,
     targetDurationSeconds: input.targetDurationSeconds,
@@ -827,13 +1118,15 @@ function createImportedAudioTrack(input: {
 }
 
 export default function StoryboardReviewPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { t, locale } = useScopedTranslation(["media", "common"]);
   const [, routeParams] = useRoute("/storyboard-review/:reviewId");
+  const search = useSearch();
+  const queryReviewId = parseReviewIdFromSearch(search);
   const parsedReviewId = routeParams?.reviewId ? Number(routeParams.reviewId) : null;
   const reviewId = typeof parsedReviewId === "number" && Number.isFinite(parsedReviewId) && parsedReviewId > 0
     ? parsedReviewId
-    : null;
+    : queryReviewId;
   const trpcUtils = trpc.useUtils();
 
   const [draft, setDraft] = useState<StoryboardReviewDraft | null>(() => reviewId ? null : readStoryboardReviewDraft());
@@ -844,6 +1137,13 @@ export default function StoryboardReviewPage() {
   const [rightPanelTab, setRightPanelTab] = useState<StoryboardRightPanelTab>("video");
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
   const [audioSourceTab, setAudioSourceTab] = useState<StoryboardAudioSourceTab>("library");
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioInputDeviceId, setSelectedAudioInputDeviceId] = useState("");
+  const [microphoneStatus, setMicrophoneStatus] = useState<"idle" | "checking" | "ready" | "error">("idle");
+  const [microphoneError, setMicrophoneError] = useState("");
+  const [isRecordingVoiceover, setIsRecordingVoiceover] = useState(false);
+  const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
+  const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
   const [isEditingProjectName, setIsEditingProjectName] = useState(false);
@@ -870,7 +1170,9 @@ export default function StoryboardReviewPage() {
   const [cropResult, setCropResult] = useState<CropResult | null>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [galleryLightbox, setGalleryLightbox] = useState<{ url: string; title: string } | null>(null);
+  const [videoPreview, setVideoPreview] = useState<StoryboardVideoPreview | null>(null);
   const [isImageToolsPanelOpen, setIsImageToolsPanelOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StoryboardReviewDeleteTarget | null>(null);
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
@@ -878,16 +1180,94 @@ export default function StoryboardReviewPage() {
   const activeGenerationTaskIdRef = useRef<string | null>(null);
   const storyboardGenerationPollersRef = useRef<Map<string, string>>(new Map());
   const isStoryboardReviewMountedRef = useRef(true);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef<number | null>(null);
   const renderLibraryMetadataRef = useRef<Record<string, { title?: string; metadata: Record<string, unknown> }>>({});
+  const hyperframesRenderLibrarySessionKeyRef = useRef<string | null>(null);
   const storedDraftReviewId = typeof draft?.reviewId === "number" && Number.isFinite(draft.reviewId) && draft.reviewId > 0
     ? draft.reviewId
     : null;
   const canonicalReviewId = reviewId ?? storedDraftReviewId;
+  const hyperframesSearchParams = useMemo(
+    () => new URLSearchParams(search),
+    [search],
+  );
+  const hyperframesRenderJobId = hyperframesSearchParams.get("hyperframesRenderJobId");
+  const hyperframesProductId = hyperframesSearchParams.get("productId") ?? undefined;
+  const hyperframesRunId = hyperframesSearchParams.get("runId") ?? undefined;
 
   const { data: review, isLoading: isReviewLoading } = trpc.videoEditorProjects.getStoryboardReview.useQuery(
     { id: canonicalReviewId ?? 0 },
     { enabled: typeof canonicalReviewId === "number" && Number.isFinite(canonicalReviewId) },
   );
+  const hyperframesRenderQuery = trpc.marketplaceCapture.getHyperframesRenderJob.useQuery(
+    {
+      renderJobId: hyperframesRenderJobId ?? "",
+      productId: hyperframesProductId,
+      runId: hyperframesRunId,
+    },
+    {
+      enabled: Boolean(hyperframesRenderJobId),
+      refetchInterval: query => {
+        const status = (query.state.data as any)?.render?.status;
+        return [
+          "completed",
+          "saved_to_library",
+          "failed",
+          "failed_permanent",
+          "dead_lettered",
+          "cancelled",
+          "template_disabled",
+          "stale_input_hash",
+        ].includes(String(status))
+          ? false
+          : 15_000;
+      },
+    },
+  );
+  const createHyperframesPreviewMutation =
+    trpc.marketplaceCapture.createHyperframesPreview.useMutation({
+      onSuccess: result => {
+        const nextRenderJobId = result.render?.renderJobId;
+        if (nextRenderJobId && typeof window !== "undefined") {
+          const params = new URLSearchParams(search);
+          params.set("hyperframesRenderJobId", nextRenderJobId);
+          if (result.render.productId) params.set("productId", result.render.productId);
+          if (result.render.runId) params.set("runId", result.render.runId);
+          setLocation(`${window.location.pathname}?${params.toString()}`);
+        }
+        void trpcUtils.marketplaceCapture.getHyperframesRenderJob.invalidate({
+          renderJobId: nextRenderJobId ?? "",
+          productId: result.render?.productId,
+          runId: result.render?.runId,
+        });
+        toast.success("สร้าง HyperFrames preview แล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const saveHyperframesRenderToLibraryMutation =
+    trpc.marketplaceCapture.saveHyperframesRenderToLibrary.useMutation({
+      onSuccess: result => {
+        removeMediaStudioRenderLibrarySession(result.render.renderJobId);
+        hyperframesRenderLibrarySessionKeyRef.current = null;
+        void Promise.all([
+          trpcUtils.marketplaceCapture.getHyperframesRenderJob.invalidate({
+            renderJobId: result.render.renderJobId,
+            productId: result.render.productId,
+            runId: result.render.runId,
+          }),
+          trpcUtils.library.search.invalidate(),
+        ]);
+        toast.success(
+          result.created
+            ? "บันทึก HyperFrames video เข้า Library แล้ว"
+            : "รายการนี้มีอยู่ใน Library แล้ว",
+        );
+      },
+      onError: error => toast.error(error.message),
+    });
   const { data: reviewProjectsData, refetch: refetchReviews } = trpc.videoEditorProjects.listStoryboardReviews.useQuery({ limit: 50, offset: 0 });
   const saveReviewMutation = trpc.videoEditorProjects.saveStoryboardReview.useMutation();
   const deleteReviewMutation = trpc.videoEditorProjects.deleteStoryboardReview.useMutation();
@@ -915,15 +1295,153 @@ export default function StoryboardReviewPage() {
       enabled: Boolean(draft) && rightPanelTab !== "history_gallery",
     },
   );
+  const hyperframesRenderProjection =
+    hyperframesRenderQuery.data?.render ??
+    createHyperframesPreviewMutation.data?.render ??
+    null;
+  const hyperframesContextAvailable = Boolean(
+    hyperframesRenderJobId || (hyperframesProductId && hyperframesRunId),
+  );
+  const hyperframesSnapshots = useMemo(
+    () =>
+      (hyperframesRenderProjection?.outputRefs ?? [])
+        .filter(ref => ref.kind === "snapshot")
+        .map((ref, index) => ({
+          id: ref.outputId,
+          label: ref.accessibleLabel || `Snapshot ${index + 1}`,
+          url: ref.url ?? null,
+          status: ref.url ? ("ready" as const) : ("missing" as const),
+        })),
+    [hyperframesRenderProjection],
+  );
+  const createHyperframesPreview = useCallback(() => {
+    if (!hyperframesProductId || !hyperframesRunId) {
+      toast.error("ยังไม่มี product/run context สำหรับ HyperFrames preview");
+      return;
+    }
+    createHyperframesPreviewMutation.mutate({
+      productId: hyperframesProductId,
+      runId: hyperframesRunId,
+    });
+  }, [createHyperframesPreviewMutation, hyperframesProductId, hyperframesRunId]);
+  const saveHyperframesRenderToLibrary = useCallback(() => {
+    const render = hyperframesRenderProjection;
+    const idempotencyKey = buildHyperframesLibrarySaveKey(render);
+    if (!render?.renderJobId || !render.productId || !render.runId || !idempotencyKey) {
+      toast.error("HyperFrames output ยังไม่พร้อมบันทึกเข้า Library");
+      return;
+    }
+    saveHyperframesRenderToLibraryMutation.mutate({
+      productId: render.productId,
+      runId: render.runId,
+      renderJobId: render.renderJobId,
+      idempotencyKey,
+    });
+  }, [hyperframesRenderProjection, saveHyperframesRenderToLibraryMutation]);
+
+  useEffect(() => {
+    if (hyperframesRenderProjection?.status === "saved_to_library") {
+      removeMediaStudioRenderLibrarySession(
+        hyperframesRenderProjection.renderJobId
+      );
+      hyperframesRenderLibrarySessionKeyRef.current = null;
+      return;
+    }
+    const session = buildHyperframesRenderLibrarySession(
+      hyperframesRenderProjection,
+      {
+        title: draft
+          ? `${getStoryboardReviewName(draft)} - HyperFrames video`
+          : "HyperFrames Marketplace Auto Review video",
+      }
+    );
+    const outputHash =
+      typeof session?.metadata?.outputHash === "string"
+        ? session.metadata.outputHash
+        : "";
+    const sessionKey = session
+      ? `${session.jobId}:${outputHash}:${session.title ?? ""}`
+      : "";
+    if (!session || hyperframesRenderLibrarySessionKeyRef.current === sessionKey)
+      return;
+    upsertMediaStudioRenderLibrarySession(session);
+    hyperframesRenderLibrarySessionKeyRef.current = sessionKey;
+  }, [draft, hyperframesRenderProjection]);
 
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
 
+  useEffect(() => {
+    if (!queryReviewId || routeParams?.reviewId) return;
+    const canonicalPath = `/storyboard-review/${queryReviewId}`;
+    if (location === canonicalPath) return;
+    if (location.startsWith("/storyboard-review?")) {
+      setLocation(canonicalPath);
+    }
+  }, [queryReviewId, location, routeParams?.reviewId, setLocation]);
+
   useEffect(() => () => {
     isStoryboardReviewMountedRef.current = false;
     storyboardGenerationPollersRef.current.clear();
   }, []);
+
+  const stopMicrophoneStream = useCallback(() => {
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+  }, []);
+
+  const refreshAudioInputDevices = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+      setMicrophoneStatus("error");
+      setMicrophoneError(locale === "th" ? "เบราว์เซอร์นี้ยังไม่รองรับการเลือกไมก์" : "This browser does not support microphone device selection.");
+      return;
+    }
+    setMicrophoneStatus("checking");
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioDevices = devices.filter((device) => device.kind === "audioinput");
+      setAudioInputDevices(audioDevices);
+      setSelectedAudioInputDeviceId((current) => (
+        current || audioDevices[0]?.deviceId || ""
+      ));
+      setMicrophoneStatus("ready");
+      setMicrophoneError("");
+    } catch (error) {
+      setMicrophoneStatus("error");
+      setMicrophoneError(error instanceof Error ? error.message : (locale === "th" ? "อ่านรายการไมก์ไม่สำเร็จ" : "Unable to read microphones."));
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    void refreshAudioInputDevices();
+    const mediaDevices = typeof navigator === "undefined" ? null : navigator.mediaDevices;
+    if (!mediaDevices?.addEventListener) return undefined;
+    const handleDeviceChange = () => {
+      void refreshAudioInputDevices();
+    };
+    mediaDevices.addEventListener("devicechange", handleDeviceChange);
+    return () => {
+      mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+    };
+  }, [refreshAudioInputDevices]);
+
+  useEffect(() => {
+    if (!isRecordingVoiceover || !recordingStartedAt) return undefined;
+    setRecordingElapsedSeconds(Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000)));
+    const intervalId = window.setInterval(() => {
+      setRecordingElapsedSeconds(Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000)));
+    }, 500);
+    return () => window.clearInterval(intervalId);
+  }, [isRecordingVoiceover, recordingStartedAt]);
+
+  useEffect(() => () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    stopMicrophoneStream();
+  }, [stopMicrophoneStream]);
 
   const emitStoryboardReviewClientDebug = useCallback((event: string, payload?: Record<string, unknown>) => {
     const currentReviewId = reviewId ?? draftRef.current?.reviewId ?? null;
@@ -998,7 +1516,9 @@ export default function StoryboardReviewPage() {
     const reviewRecord = review as any;
     if (!canonicalReviewId || !reviewRecord || Number(reviewRecord.id) !== canonicalReviewId) return;
 
-    const nextDraft = normalizeStoryboardReviewDraft(reviewRecord.reviewData);
+    const parsedLegacyData = normalizeLegacyReviewData(reviewRecord.reviewData);
+    const nextDraft = normalizeStoryboardReviewDraft(reviewRecord.reviewData)
+      ?? (parsedLegacyData ? normalizeLegacyStoryboardReviewDraft(parsedLegacyData, canonicalReviewId) : null);
     const rawIncoming = nextDraft ? {
       ...nextDraft,
       reviewId: canonicalReviewId,
@@ -1075,12 +1595,20 @@ export default function StoryboardReviewPage() {
     [imageHistoryData?.tasks, t],
   );
   const currentProjectName = activeDraft ? getStoryboardReviewName(activeDraft) : t("mediaStudio.storyboardReview");
+  const storyboardVoiceoverSummaryText = useMemo(
+    () => getStoryboardDraftVoiceoverSummary(activeDraft, locale),
+    [activeDraft, locale],
+  );
   const filteredReviewProjects = useMemo(() => {
     const reviews = (reviewProjectsData?.reviews ?? []) as any[];
     const query = projectSearchQuery.trim().toLowerCase();
     if (!query) return reviews;
     return reviews.filter((item) => String(item?.name ?? "").toLowerCase().includes(query));
   }, [projectSearchQuery, reviewProjectsData?.reviews]);
+  const storyboardAudioLimitReached = (activeDraft?.companionAudio.length ?? 0) >= 2;
+  const canRecordVoiceover = typeof navigator !== "undefined"
+    && Boolean(navigator.mediaDevices?.getUserMedia)
+    && typeof MediaRecorder !== "undefined";
 
   useEffect(() => {
     if (!isEditingProjectName) {
@@ -1601,6 +2129,7 @@ export default function StoryboardReviewPage() {
     title: string;
     url: string;
     model?: string | null;
+    kind?: StoryboardCompanionAudioCandidate["kind"];
     durationSeconds?: number;
   }) => {
     const url = input.url.trim();
@@ -1650,6 +2179,7 @@ export default function StoryboardReviewPage() {
         title: input.title,
         url: storedUrl,
         model: input.model,
+        kind: input.kind,
         importedLabel: t("mediaStudio.storyboardReviewImported"),
         importedAudioLabel: t("mediaStudio.storyboardReviewImportedAudio"),
         durationSeconds: input.durationSeconds,
@@ -1670,6 +2200,158 @@ export default function StoryboardReviewPage() {
     });
     toast.success(t("mediaStudio.storyboardReviewAudioAdded"));
   }, [activeDraft?.companionAudio.length, emitStoryboardReviewClientDebug, importStoryboardAssetForRender, setAndSaveDraft, t]);
+
+  const startVoiceoverRecording = useCallback(async () => {
+    if (!activeDraft) {
+      toast.error(locale === "th" ? "ยังไม่มี Storyboard Review ที่เปิดอยู่" : "No storyboard review is open.");
+      return;
+    }
+    if ((activeDraft.companionAudio.length ?? 0) >= 2) {
+      toast.error(t("mediaStudio.storyboardReviewAudioLimit"));
+      return;
+    }
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setMicrophoneStatus("error");
+      setMicrophoneError(locale === "th" ? "เบราว์เซอร์นี้ยังไม่รองรับการอัดเสียงจากไมก์" : "This browser does not support microphone recording.");
+      return;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      return;
+    }
+
+    try {
+      const audioConstraint: boolean | MediaTrackConstraints = selectedAudioInputDeviceId
+        ? { deviceId: { exact: selectedAudioInputDeviceId } }
+        : true;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+      const mimeType = pickStoryboardAudioRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      recordingStreamRef.current = stream;
+      mediaRecorderRef.current = recorder;
+      recordingChunksRef.current = [];
+      const startedAt = Date.now();
+      recordingStartedAtRef.current = startedAt;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = (event) => {
+        const error = (event as Event & { error?: Error }).error;
+        setMicrophoneStatus("error");
+        setMicrophoneError(error?.message ?? (locale === "th" ? "อัดเสียงไม่สำเร็จ" : "Recording failed."));
+      };
+      recorder.onstop = () => {
+        void (async () => {
+          const chunks = recordingChunksRef.current;
+          recordingChunksRef.current = [];
+          const recordedStartedAt = recordingStartedAtRef.current;
+          recordingStartedAtRef.current = null;
+          const durationSeconds = recordedStartedAt
+            ? Math.max(1, Math.round((Date.now() - recordedStartedAt) / 1000))
+            : undefined;
+          const blobType = recorder.mimeType || mimeType || "audio/webm";
+          const blob = new Blob(chunks, { type: blobType });
+          mediaRecorderRef.current = null;
+          stopMicrophoneStream();
+          if (!isStoryboardReviewMountedRef.current) return;
+          setIsRecordingVoiceover(false);
+          setRecordingStartedAt(null);
+          setRecordingElapsedSeconds(0);
+          if (!blob.size) {
+            toast.error(locale === "th" ? "ไม่พบเสียงที่อัดไว้" : "No recorded audio was captured.");
+            return;
+          }
+          const objectUrl = URL.createObjectURL(blob);
+          try {
+            const recordedAtLabel = new Date().toLocaleString(locale === "th" ? "th-TH" : "en-US");
+            await addImportedAudioToStoryboard({
+              idPrefix: "mic-voiceover",
+              title: locale === "th" ? `เสียงพากย์จากไมก์ ${recordedAtLabel}` : `Microphone voiceover ${recordedAtLabel}`,
+              url: objectUrl,
+              model: locale === "th" ? "อัดจากไมโครโฟน" : "Microphone recording",
+              kind: "voiceover",
+              durationSeconds,
+            });
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        })();
+      };
+
+      recorder.start();
+      setMicrophoneStatus("ready");
+      setMicrophoneError("");
+      setIsRecordingVoiceover(true);
+      setRecordingStartedAt(startedAt);
+      setRecordingElapsedSeconds(0);
+      void refreshAudioInputDevices();
+    } catch (error) {
+      stopMicrophoneStream();
+      mediaRecorderRef.current = null;
+      recordingStartedAtRef.current = null;
+      setIsRecordingVoiceover(false);
+      setRecordingStartedAt(null);
+      setMicrophoneStatus("error");
+      setMicrophoneError(error instanceof Error ? error.message : (locale === "th" ? "เปิดไมก์ไม่สำเร็จ" : "Unable to open microphone."));
+    }
+  }, [activeDraft, addImportedAudioToStoryboard, locale, refreshAudioInputDevices, selectedAudioInputDeviceId, stopMicrophoneStream, t]);
+
+  const stopVoiceoverRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      stopMicrophoneStream();
+      setIsRecordingVoiceover(false);
+      setRecordingStartedAt(null);
+      setRecordingElapsedSeconds(0);
+      return;
+    }
+    if (recorder.state === "inactive") {
+      mediaRecorderRef.current = null;
+      stopMicrophoneStream();
+      setIsRecordingVoiceover(false);
+      setRecordingStartedAt(null);
+      setRecordingElapsedSeconds(0);
+      return;
+    }
+
+    try {
+      if (recorder.state === "recording" && typeof recorder.requestData === "function") {
+        recorder.requestData();
+      }
+      recorder.stop();
+      setMicrophoneError("");
+      window.setTimeout(() => {
+        if (mediaRecorderRef.current !== recorder || recorder.state === "inactive") return;
+        mediaRecorderRef.current = null;
+        recordingStartedAtRef.current = null;
+        recordingChunksRef.current = [];
+        stopMicrophoneStream();
+        setIsRecordingVoiceover(false);
+        setRecordingStartedAt(null);
+        setRecordingElapsedSeconds(0);
+        setMicrophoneStatus("error");
+        setMicrophoneError(locale === "th" ? "หยุดอัดเสียงไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : "Unable to stop recording. Please try again.");
+      }, 1500);
+    } catch (error) {
+      mediaRecorderRef.current = null;
+      recordingStartedAtRef.current = null;
+      recordingChunksRef.current = [];
+      stopMicrophoneStream();
+      setIsRecordingVoiceover(false);
+      setRecordingStartedAt(null);
+      setRecordingElapsedSeconds(0);
+      setMicrophoneStatus("error");
+      setMicrophoneError(error instanceof Error ? error.message : (locale === "th" ? "หยุดอัดเสียงไม่สำเร็จ" : "Unable to stop recording."));
+    }
+  }, [locale, stopMicrophoneStream]);
 
   const addLibraryItemToStoryboard = useCallback((item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
@@ -1784,6 +2466,43 @@ export default function StoryboardReviewPage() {
     link.click();
     document.body.removeChild(link);
   }, []);
+
+  const downloadStoryboardMedia = useCallback((url: string, title: string, extension = "mp4") => {
+    const cleanExtension = extension.replace(/[^a-z0-9]+/gi, "").toLowerCase() || "mp4";
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "storyboard-media"}.${cleanExtension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  const previewLibraryVideo = useCallback((item: LibrarySearchResultItem) => {
+    const sourceUrl = extractStoryboardMediaUrl(item, "video");
+    if (!sourceUrl) {
+      toast.error(t("mediaStudio.storyboardReviewNoReusableUrl"));
+      return;
+    }
+    setSelectedLibraryItemId(item.item_id);
+    setVideoPreview({
+      url: sourceUrl,
+      title: item.title,
+      subtitle: `${item.item_type} • ${item.model_name || item.source || "Library"}`,
+    });
+  }, [t]);
+
+  const previewHistoryVideo = useCallback((task: any) => {
+    const sourceUrl = extractStoryboardMediaUrl(task, "video");
+    if (!sourceUrl) {
+      toast.error(t("mediaStudio.storyboardReviewNoReusableUrl"));
+      return;
+    }
+    setVideoPreview({
+      url: sourceUrl,
+      title: task.prompt || t("mediaStudio.storyboardReviewMediaHistoryClip"),
+      subtitle: task.model || task.mediaType || "Media History",
+    });
+  }, [t]);
 
   const updateSplitPreview = useCallback(async (rows: number, cols: number, sourceUrl = imageToolsSourceUrl) => {
     if (!sourceUrl) return;
@@ -2745,15 +3464,38 @@ export default function StoryboardReviewPage() {
   }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, pollStoryboardGenerationTask, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
-    await deleteReviewMutation.mutateAsync({ id });
-    if (draft?.reviewId === id || reviewId === id) {
-      clearStoryboardReviewDraft();
-      setLocation("/storyboard-review");
-      setDraft(null);
+    try {
+      await deleteReviewMutation.mutateAsync({ id });
+      if (draft?.reviewId === id || reviewId === id) {
+        clearStoryboardReviewDraft();
+        setLocation("/storyboard-review");
+        setDraft(null);
+      }
+      void refetchReviews();
+      toast.success(t("mediaStudio.storyboardReviewDeleted"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("mediaStudio.storyboardReviewDeleteFailed");
+      toast.error(message);
+      throw error;
     }
-    void refetchReviews();
-    toast.success(t("mediaStudio.storyboardReviewDeleted"));
-  }, [deleteReviewMutation, draft?.reviewId, refetchReviews, reviewId, setLocation]);
+  }, [deleteReviewMutation, draft?.reviewId, refetchReviews, reviewId, setLocation, t]);
+
+  const confirmDeleteReview = useCallback(async () => {
+    if (!deleteTarget) return;
+    try {
+      if (typeof deleteTarget.id === "number" && Number.isFinite(deleteTarget.id)) {
+        await deleteReview(deleteTarget.id);
+      } else {
+        clearStoryboardReviewDraft();
+        setDraft(null);
+        setLocation("/storyboard-review");
+        toast.success(t("mediaStudio.storyboardReviewDeleted"));
+      }
+      setDeleteTarget(null);
+    } catch {
+      // deleteReview already reports the error and keeps the confirmation open.
+    }
+  }, [deleteReview, deleteTarget, setLocation, t]);
 
   const reviewNotFound = !!canonicalReviewId && !isReviewLoading && review === null;
   const isLoading = !!canonicalReviewId && !reviewNotFound && (isReviewLoading || !activeDraft);
@@ -2831,6 +3573,18 @@ export default function StoryboardReviewPage() {
                         <Pencil className="mr-1.5 h-3.5 w-3.5" />
                         {locale === "th" ? "แก้ชื่อ" : "Rename"}
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => setDeleteTarget({ id: canonicalReviewId ?? null, name: currentProjectName })}
+                        disabled={deleteReviewMutation.isPending}
+                        aria-label={locale === "th" ? "ลบโปรเจกต์นี้" : "Delete this project"}
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        {locale === "th" ? "ลบโปรเจกต์" : "Delete project"}
+                      </Button>
                     </>
                   )
                 ) : null}
@@ -2848,6 +3602,27 @@ export default function StoryboardReviewPage() {
           </div>
         </div>
       </header>
+
+      {hyperframesContextAvailable ? (
+        <div className="border-b bg-sky-50 px-3 py-3 sm:px-4">
+          <HyperframesStoryboardReviewPanel
+            render={hyperframesRenderProjection}
+            snapshots={hyperframesSnapshots}
+            onCreatePreview={
+              !hyperframesRenderJobId && !hyperframesRenderProjection
+                ? createHyperframesPreview
+                : undefined
+            }
+            onRetry={() => void hyperframesRenderQuery.refetch()}
+            onSaveToLibrary={saveHyperframesRenderToLibrary}
+            loading={hyperframesRenderQuery.isLoading}
+            creatingPreview={createHyperframesPreviewMutation.isPending}
+            saving={saveHyperframesRenderToLibraryMutation.isPending}
+            manualFallbackVisible
+            locale={locale}
+          />
+        </div>
+      ) : null}
 
       <main
         className={cn(
@@ -2997,6 +3772,132 @@ export default function StoryboardReviewPage() {
                   </Button>
                 </div>
               ) : null}
+              {rightPanelTab === "audio" ? (
+                <div className="mb-3 space-y-3">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {locale === "th" ? "บทพากย์ทั้งหมด" : "Full voiceover script"}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {locale === "th" ? "ใช้เป็นสคริปต์อ่านขณะอัดเสียงจากไมก์" : "Use this as the read-along script while recording."}
+                        </p>
+                      </div>
+                      <Badge variant={storyboardVoiceoverSummaryText.trim() ? "secondary" : "outline"} className="rounded-full px-3">
+                        {storyboardVoiceoverSummaryText.trim()
+                          ? (locale === "th" ? "พร้อมอ่าน" : "Ready")
+                          : (locale === "th" ? "ยังไม่มีบทพูด" : "No script")}
+                      </Badge>
+                    </div>
+                    <Textarea
+                      value={storyboardVoiceoverSummaryText}
+                      readOnly
+                      className="min-h-[142px] resize-y rounded-lg border-slate-200 bg-slate-50/80 text-sm leading-6 text-slate-700 shadow-inner"
+                      placeholder={locale === "th"
+                        ? "บทพูดจากแต่ละช็อตจะแสดงรวมตรงนี้ สำหรับอ่านพากย์หรืออัดเสียงเอง"
+                        : "Shot voiceover lines will appear here for reading or recording manually."}
+                    />
+                  </div>
+
+                  <div className="rounded-lg border border-cyan-100 bg-gradient-to-b from-white to-cyan-50/30 p-3 shadow-sm">
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className={cn(
+                          "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                          isRecordingVoiceover ? "bg-red-50 text-red-600 ring-4 ring-red-100" : "bg-cyan-50 text-cyan-700",
+                        )}>
+                          <Mic className={cn("h-4 w-4", isRecordingVoiceover ? "animate-pulse" : "")} />
+                        </span>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold text-slate-950">
+                            {locale === "th" ? "อัดเสียงพากย์" : "Record voiceover"}
+                          </h3>
+                          <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                            {locale === "th"
+                              ? "ไฟล์ที่อัดจะถูกเพิ่มเป็นแทร็กเสียงของ Storyboard นี้"
+                              : "Recorded audio is attached as this storyboard's voiceover track."}
+                          </p>
+                        </div>
+                      </div>
+                      {isRecordingVoiceover ? (
+                        <Badge className="gap-1.5 rounded-full bg-red-600 px-3 py-1 text-white hover:bg-red-600">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                          {formatStoryboardRecordingElapsed(recordingElapsedSeconds)}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="space-y-3">
+                      <label className="grid gap-1.5 text-xs font-medium text-slate-600">
+                        <span>{locale === "th" ? "แหล่งไมก์" : "Microphone source"}</span>
+                        <select
+                          value={selectedAudioInputDeviceId}
+                          onChange={(event) => setSelectedAudioInputDeviceId(event.target.value)}
+                          disabled={isRecordingVoiceover}
+                          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <option value="">{locale === "th" ? "ไมก์เริ่มต้นของระบบ" : "System default microphone"}</option>
+                          {audioInputDevices.map((device, index) => (
+                            <option key={device.deviceId || `mic-${index}`} value={device.deviceId}>
+                              {formatAudioInputDeviceLabel(device, index, locale)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-10 min-w-0 rounded-md bg-cyan-600 px-2 text-white shadow-sm hover:bg-cyan-700"
+                          onClick={() => void startVoiceoverRecording()}
+                          disabled={isRecordingVoiceover || storyboardAudioLimitReached || !canRecordVoiceover}
+                        >
+                          <Mic className="mr-1.5 h-4 w-4 shrink-0" />
+                          <span className="truncate">{locale === "th" ? "เริ่มอัด" : "Record"}</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-10 min-w-0 rounded-md border-slate-200 bg-white px-2"
+                          onClick={stopVoiceoverRecording}
+                          disabled={!isRecordingVoiceover}
+                        >
+                          <Square className="mr-1.5 h-4 w-4 shrink-0" />
+                          <span className="truncate">{locale === "th" ? "หยุด" : "Stop"}</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-10 w-10 rounded-md border-slate-200 bg-white"
+                          onClick={() => void refreshAudioInputDevices()}
+                          disabled={microphoneStatus === "checking" || isRecordingVoiceover}
+                          aria-label={locale === "th" ? "โหลดรายการไมก์ใหม่" : "Refresh microphones"}
+                        >
+                          {microphoneStatus === "checking"
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <RefreshCw className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                    {microphoneError ? (
+                      <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        {microphoneError}
+                      </div>
+                    ) : null}
+                    {storyboardAudioLimitReached ? (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        {t("mediaStudio.storyboardReviewAudioLimit")}
+                      </div>
+                    ) : !canRecordVoiceover ? (
+                      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        {locale === "th" ? "เบราว์เซอร์นี้ยังไม่รองรับการอัดเสียงจากไมก์" : "This browser does not support microphone recording."}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
               {rightPanelTab !== "history_gallery" && (mediaPickerKind !== "audio" || audioSourceTab === "library") ? (
                 <LibrarySearchPanel
                   query={librarySearchQuery}
@@ -3011,6 +3912,7 @@ export default function StoryboardReviewPage() {
                   addToReferenceLabel={mediaPickerKind === "audio" ? t("mediaStudio.storyboardReviewAddAudio") : t("mediaStudio.storyboardReviewAddClip")}
                   canAddToReferenceItem={(item) => item.item_type.toLowerCase() === mediaPickerKind && Boolean(item.source_url)}
                   onAddToReference={addLibraryItemToStoryboard}
+                  onPreview={mediaPickerKind === "video" ? previewLibraryVideo : undefined}
                   onSelect={addLibraryItemToStoryboard}
                 />
               ) : null}
@@ -3055,19 +3957,54 @@ export default function StoryboardReviewPage() {
                               </div>
                             ) : (
                               <div className="flex gap-2">
-                                <div className="flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
+                                <button
+                                  type="button"
+                                  className="group relative flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100"
+                                  onClick={() => mediaPickerKind === "video" && resultUrl ? previewHistoryVideo(task) : undefined}
+                                  disabled={mediaPickerKind !== "video" || !resultUrl}
+                                  title={locale === "th" ? "ขยายดูวีดีโอ" : "Preview video"}
+                                >
                                   {mediaPickerKind === "video" && resultUrl ? (
-                                    <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                    <>
+                                      <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                      <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                                        <Maximize2 className="h-4 w-4 text-white" />
+                                      </span>
+                                    </>
                                   ) : (
                                     <Film className="h-4 w-4 text-slate-400" />
                                   )}
-                                </div>
+                                </button>
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-xs font-medium text-slate-900">{title}</div>
                                   <div className="truncate text-[11px] text-slate-500">{task.model || task.mediaType}</div>
                                 </div>
                               </div>
                             )}
+                            {mediaPickerKind === "video" && resultUrl ? (
+                              <div className="mt-2 flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 flex-1 text-xs"
+                                  onClick={() => previewHistoryVideo(task)}
+                                >
+                                  <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
+                                  {locale === "th" ? "ขยาย/เล่น" : "Preview"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 flex-1 text-xs"
+                                  onClick={() => downloadStoryboardMedia(resultUrl, title, "mp4")}
+                                >
+                                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                                  {locale === "th" ? "ดาวน์โหลด" : "Download"}
+                                </Button>
+                              </div>
+                            ) : null}
                             <Button
                               type="button"
                               size="sm"
@@ -3515,7 +4452,13 @@ export default function StoryboardReviewPage() {
                             {t("mediaStudio.storyboardReviewOpenEditor")}
                           </Button>
                         ) : null}
-                        <Button size="icon" variant="ghost" onClick={() => void deleteReview(item.id)} disabled={deleteReviewMutation.isPending}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDeleteTarget({ id: item.id, name: String(item.name ?? "") })}
+                          disabled={deleteReviewMutation.isPending}
+                          aria-label={locale === "th" ? "ลบโปรเจกต์" : "Delete project"}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -3527,6 +4470,50 @@ export default function StoryboardReviewPage() {
           </div>
         </aside>
       </main>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deleteReviewMutation.isPending) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {locale === "th" ? "ยืนยันการลบโปรเจกต์" : "Delete project?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {locale === "th"
+                ? `ต้องการลบ "${deleteTarget?.name ?? ""}" ถาวรหรือไม่? ระบบจะลบข้อมูลโปรเจกต์นี้ออกจริง ไม่ใช่แค่ซ่อน และไม่สามารถย้อนกลับได้`
+                : `Permanently delete "${deleteTarget?.name ?? ""}"? This removes the project data instead of hiding it, and cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteReviewMutation.isPending}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteReviewMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDeleteReview();
+              }}
+            >
+              {deleteReviewMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {locale === "th" ? "กำลังลบ..." : "Deleting..."}
+                </>
+              ) : (
+                locale === "th" ? "ลบถาวร" : "Delete permanently"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {galleryLightbox ? (
         <div
@@ -3585,6 +4572,59 @@ export default function StoryboardReviewPage() {
           </div>
         </div>
       ) : null}
+      {videoPreview ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3"
+          role="dialog"
+          aria-modal="true"
+          aria-label={videoPreview.title}
+          onClick={() => setVideoPreview(null)}
+        >
+          <div className="flex max-h-full w-full max-w-5xl flex-col gap-3" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 text-white">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{videoPreview.title}</div>
+                {videoPreview.subtitle ? (
+                  <div className="truncate text-xs text-white/70">{videoPreview.subtitle}</div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => downloadStoryboardMedia(videoPreview.url, videoPreview.title, "mp4")}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "ดาวน์โหลด" : "Download"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => window.open(videoPreview.url, "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "เปิดแท็บใหม่" : "Open"}
+                </Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setVideoPreview(null)}>
+                  <X className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "ปิด" : "Close"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
+              <video
+                src={videoPreview.url}
+                controls
+                playsInline
+                preload="metadata"
+                className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {renderJobId ? (
         <RenderProgressDialog
@@ -3626,6 +4666,7 @@ export default function StoryboardReviewPage() {
                     ? t("mediaStudio.storyboardReviewRenderLibrarySaved")
                     : t("mediaStudio.storyboardReviewRenderLibraryAlreadySaved"),
                 );
+                void trpcUtils.library.search.invalidate();
               })
               .catch((error) => {
                 const message = error instanceof Error ? error.message : String(error);

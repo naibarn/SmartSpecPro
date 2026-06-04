@@ -710,6 +710,7 @@ Format:
 - Include 3-5 realistic imperfections for photorealism
 - Specify physics (scale, lighting, placement)
 - Use natural, flowing descriptions
+- Return plain prompt text only. Do not return JSON, arrays, markdown code fences, schemas, metadata, or explanatory wrappers.
 - NEVER hallucinate nationality/ethnicity unless explicitly specified
 
 `;
@@ -1303,6 +1304,93 @@ function extractPromptFromStructuredJson(response: string): string {
   const normalized = response.trim();
   if (!normalized) return "";
 
+  const selectPromptText = (value: unknown): string => {
+    if (typeof value === "string") {
+      const text = value.trim();
+      if (!text) return "";
+      if (/^[\[{]/.test(text)) {
+        try {
+          const nested = selectPromptText(JSON.parse(text));
+          if (nested) return nested;
+        } catch {
+          // Keep text that only resembles JSON.
+        }
+      }
+      return text;
+    }
+
+    if (Array.isArray(value)) {
+      return value
+        .map(item => selectPromptText(item))
+        .map(item => item.trim())
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (!value || typeof value !== "object") return "";
+
+    const record = value as Record<string, unknown>;
+    const promptPackage = record.prompt_package;
+    if (
+      promptPackage &&
+      typeof promptPackage === "object" &&
+      !Array.isArray(promptPackage)
+    ) {
+      const packageRecord = promptPackage as Record<string, unknown>;
+      const prompt = selectPromptText(
+        packageRecord.master_prompt ??
+          packageRecord.final_prompt ??
+          packageRecord.prompt ??
+          packageRecord.per_image_prompts
+      );
+      if (prompt) return prompt;
+    }
+
+    const prompts = record.prompts;
+    if (prompts && typeof prompts === "object" && !Array.isArray(prompts)) {
+      const promptBundle = prompts as Record<string, unknown>;
+      const prompt = selectPromptText(
+        promptBundle.detailed ??
+          promptBundle.final ??
+          promptBundle.final_prompt ??
+          promptBundle.edit ??
+          promptBundle.structured ??
+          promptBundle.short ??
+          promptBundle.variants
+      );
+      if (prompt) return prompt;
+    }
+
+    const promptVariants = selectPromptText(record.prompt_variants);
+    if (promptVariants) return promptVariants;
+
+    for (const key of [
+      "prompt",
+      "prompt_text",
+      "promptText",
+      "final_prompt",
+      "finalPrompt",
+      "short_prompt",
+      "generated_prompt",
+      "image_prompt",
+      "video_prompt",
+      "scene_prompt",
+      "text",
+      "content",
+      "result",
+      "output",
+      "data",
+    ]) {
+      const prompt = selectPromptText(record[key]);
+      if (prompt) return prompt;
+    }
+
+    const promptSequence = selectPromptText(record.prompt_sequence);
+    if (promptSequence) return promptSequence;
+
+    return "";
+  };
+
   const candidates = new Set<string>([normalized]);
   const fencedMatch = normalized.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
   if (fencedMatch?.[1]) {
@@ -1318,42 +1406,8 @@ function extractPromptFromStructuredJson(response: string): string {
   for (const candidate of candidates) {
     try {
       const parsed = JSON.parse(candidate);
-      if (!parsed || typeof parsed !== "object") continue;
-
-      const prompts = (parsed as Record<string, unknown>).prompts;
-      if (prompts && typeof prompts === "object") {
-        const promptBundle = prompts as Record<string, unknown>;
-        const prompt =
-          typeof promptBundle.detailed === "string" ? promptBundle.detailed :
-          typeof promptBundle.edit === "string" ? promptBundle.edit :
-          typeof promptBundle.structured === "string" ? promptBundle.structured :
-          typeof promptBundle.short === "string" ? promptBundle.short :
-          "";
-        if (prompt.trim()) return prompt.trim();
-      }
-
-      const record = parsed as Record<string, unknown>;
-      const promptVariants = Array.isArray(record.prompt_variants) ? record.prompt_variants : [];
-      const variantPrompts = promptVariants
-        .map((item) => {
-          if (!item || typeof item !== "object") return "";
-          const variant = item as Record<string, unknown>;
-          return typeof variant.prompt === "string" ? variant.prompt :
-            typeof variant.edit_prompt === "string" ? variant.edit_prompt :
-            "";
-        })
-        .map((value) => value.trim())
-        .filter(Boolean);
-      if (variantPrompts.length > 0) {
-        return variantPrompts.join("\n\n");
-      }
-
-      for (const key of ["prompt", "prompt_text", "final_prompt", "short_prompt"]) {
-        const value = record[key];
-        if (typeof value === "string" && value.trim()) {
-          return value.trim();
-        }
-      }
+      const prompt = selectPromptText(parsed);
+      if (prompt) return prompt;
     } catch {
       // Try the next candidate.
     }

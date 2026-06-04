@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/auto-cinematic-video-prompt-skill/ui.schema.json",
+  "title": "Auto Cinematic Video Prompt Skill UI",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ui:order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "mode",
+        "output_type",
+        "cinematic_intent",
+        "reference_images",
+        "start_frame",
+        "stop_frame",
+        "aspect_ratio",
+        "resolution_target",
+        "frame_rate",
+        "duration",
+        "preset",
+        "camera_plan",
+        "subject_action",
+        "continuity_locks",
+        "start_stop_difference_policy",
+        "storyboard_preset",
+        "storyboard",
+        "motion_quality",
+        "lighting_and_grade",
+        "negative_prompt",
+        "language",
+        "prompt_style"
+      ]
+    },
+    "mode": {
+      "ui:widget": "select",
+      "ui:help": "Choose text-to-video, image-to-video, reference-to-video, start-frame, start-stop, or storyboard mode."
+    },
+    "output_type": {
+      "ui:widget": "select",
+      "ui:help": "Choose whether to generate one prompt, a batch of prompts, start/stop prompts, or a full storyboard package."
+    },
+    "cinematic_intent": {
+      "ui:widget": "textarea",
+      "ui:placeholder": "Example: Create an elegant cinematic bridal portrait video with a slow push-in from medium shot to intimate close-up.",
+      "ui:options": {
+        "rows": 3
+      }
+    },
+    "reference_images": {
+      "ui:field": "referenceImageArray",
+      "ui:help": "Attach 1 to 5 images for image-to-video or reference-to-video. Assign each image a role."
+    },
+    "start_frame": {
+      "ui:collapsible": true,
+      "ui:title": "Start Frame Settings"
+    },
+    "stop_frame": {
+      "ui:collapsible": true,
+      "ui:title": "Stop Frame Settings"
+    },
+    "aspect_ratio": {
+      "ui:widget": "radio",
+      "ui:help": "9:16 for vertical social video, 16:9 for cinematic widescreen, 1:1 for square."
+    },
+    "duration": {
+      "ui:collapsible": true,
+      "ui:title": "Timing"
+    },
+    "preset": {
+      "ui:widget": "select",
+      "ui:help": "Master look preset. Fine-tune with lighting, camera, and action fields."
+    },
+    "camera_plan": {
+      "ui:collapsible": true,
+      "ui:title": "Camera Placement and Movement"
+    },
+    "subject_action": {
+      "ui:collapsible": true,
+      "ui:title": "Subject Pose and Performance"
+    },
+    "continuity_locks": {
+      "ui:collapsible": true,
+      "ui:title": "Continuity Lock Strength",
+      "ui:help": "Use absolute for identity and wardrobe when using reference images."
+    },
+    "start_stop_difference_policy": {
+      "ui:collapsible": true,
+      "ui:title": "Anti-Duplicate Start/Stop Policy",
+      "ui:help": "Ensures start and stop frames differ by camera angle, pose, crop, gaze, or environment reveal."
+    },
+    "storyboard_preset": {
+      "ui:widget": "select",
+      "ui:help": "Use a preset shot structure or define shots manually."
+    },
+    "storyboard": {
+      "ui:field": "storyboardShotArray",
+      "ui:help": "Define shot-by-shot timing, camera placement, subject action, and visual priority."
+    },
+    "motion_quality": {
+      "ui:collapsible": true,
+      "ui:title": "Motion Quality"
+    },
+    "lighting_and_grade": {
+      "ui:collapsible": true,
+      "ui:title": "Lighting and Color Grade"
+    },
+    "negative_prompt": {
+      "ui:widget": "textarea",
+      "ui:options": {
+        "rows": 4
+      }
+    },
+    "language": {
+      "ui:widget": "radio"
+    },
+    "prompt_style": {
+      "ui:widget": "select"
+    },
+    "ui:submitButtonOptions": {
+      "norender": false,
+      "submitText": "Generate Cinematic Video Prompt"
+    },
+    "ui:groups": {
+      "Quick Setup": [
+        "mode",
+        "output_type",
+        "cinematic_intent",
+        "reference_images",
+        "aspect_ratio",
+        "preset"
+      ],
+      "Video Timing": [
+        "duration",
+        "frame_rate",
+        "resolution_target"
+      ],
+      "Motion Design": [
+        "camera_plan",
+        "subject_action",
+        "motion_quality"
+      ],
+      "Continuity": [
+        "continuity_locks",
+        "start_frame",
+        "stop_frame",
+        "start_stop_difference_policy"
+      ],
+      "Storyboard": [
+        "storyboard_preset",
+        "storyboard"
+      ],
+      "Prompt Output": [
+        "lighting_and_grade",
+        "negative_prompt",
+        "language",
+        "prompt_style"
+      ]
+    }
+  }
+}

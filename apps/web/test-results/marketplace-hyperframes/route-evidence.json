@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-06-04T14:07:17.115Z",
+  "routeLevel": true,
+  "authenticated": true,
+  "routes": [
+    "/marketplace-capture/products/product_1",
+    "/storyboard-review?hyperframesRenderJobId=hf_route_1&productId=product_1&runId=mar_1",
+    "/media-studio"
+  ],
+  "screenshots": [
+    "route-product-detail-390x844.png",
+    "route-storyboard-review-390x844.png",
+    "route-mediastudio-390x844.png"
+  ],
+  "overflow": {
+    "scrollWidth": 390,
+    "clientWidth": 390
+  },
+  "overflowElements": [],
+  "consoleErrors": [],
+  "pageErrors": []
+}

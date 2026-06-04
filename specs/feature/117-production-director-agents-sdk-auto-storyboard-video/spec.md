@@ -1,6 +1,6 @@
 # Feature 117: Production Director Agents SDK Auto Storyboard And Video
 
-Version: 1.10.0
+Version: 1.22.0
 Date: 2026-05-31
 Status: Proposed
 Supersedes:
@@ -272,6 +272,78 @@ Feature 118 should remain a factual implemented snapshot. Do not rewrite Feature
    - Automated QA confidence must be calibrated with fixtures, drift checks, and human spot-check sampling for high-risk or low-confidence outputs.
    - Final Library assets must carry reuse/expiry/takedown governance so stale claims, revoked rights, expired offers, or product removal can block reuse or trigger re-review.
 
+16. **High-volume automation must be campaign-safe, brand-safe, and reviewable.**
+   - Single-run automation and batch/variation automation must share the same gateway, credit, policy, QA, and timeline controls.
+   - The runtime must prevent duplicate, spam-like, or budget-abusive creative generation from the same product, seller, tenant, or campaign.
+   - Brand/seller voice may guide style, vocabulary, and CTA tone, but it must never override product truth, ad policy, rights, privacy, disclosure, or evidence rules.
+   - High-risk or high-volume batches must enter a scoped human review queue with clear SLA, approver role, approval scope, and timeout behavior before additional spend or publication.
+
+17. **Final output must include a publishable asset package, not only an MP4.**
+   - Final video outputs should carry platform-ready title/caption/description, hashtags, thumbnail/cover, transcript, subtitle sidecars or burn-in status, and a metadata manifest when the selected distribution profile requires them.
+   - Publish metadata, hashtags, thumbnail text, and cover frames are ad content and must pass the same evidence, Thai/international ad, privacy, rights, CTA, disclosure, and brand-policy checks as the video itself.
+   - Thumbnail/cover selection must preserve product identity and must not create misleading clickbait, unsupported before/after implication, fake discount, fake rating, fake certification, or face/product drift.
+   - Transcript and subtitles must be derived from approved spoken script/audio alignment, not visual prompts, hidden policy notes, or raw agent planning text.
+
+18. **Input changes during a long run must invalidate only the affected work.**
+   - Product fields, selected variant, product images, price snapshots, evidence retention, rights, brand policy, distribution profile, CTA links, warning/disclosure policy, or human review decisions can change while automation is running.
+   - The runtime must detect these changes, compute downstream impact, preserve unaffected safe artifacts, and recheck/repair/replan/regenerate only the affected stages.
+   - Old approvals, credit estimates, QA verdicts, publish metadata, thumbnails, and finalization decisions must not remain valid when their evidence or policy snapshot has changed.
+   - The UI timeline must show what changed, what was preserved, what must be redone, and whether the run is waiting for user/admin action.
+
+19. **Every generated frame/clip must pass gateway-routed vision QA before downstream use.**
+   - Storyboard grid cells, per-shot start frames, per-shot stop frames, video keyframes, thumbnails, and final render samples must be checked by structured vision QA when they affect product identity, character continuity, visual quality, or story continuity.
+   - If one start/stop/storyboard frame fails product fidelity, character identity, visual quality, prompt alignment, or continuity QA, the runtime must repair/regenerate only that frame and dependent downstream work.
+   - Passed frames, clips, audio, captions, and package artifacts must be preserved unless they depend on the failed frame or stale upstream contract.
+   - Vision QA LLM calls must go through the SmartSpecPro LLM gateway, consume `llm_visual_qa` credits, and record QA evidence and repair decisions.
+
+20. **Failed or unverified media must stay quarantined until accepted.**
+   - Newly generated frames, clips, audio, thumbnails, subtitles, and package artifacts start as candidates, not accepted outputs.
+   - Candidate artifacts cannot enter Storyboard Review, Video Edit, Library, publishable packages, positive creative memory, or future references until required QA passes.
+   - Failed artifacts may be retained only as internal audit/repair evidence or negative learning signals according to retention policy.
+   - Repaired artifacts must supersede failed artifacts explicitly so stale failed refs cannot be reused by background resume, UI projection, or manual review actions.
+
+21. **Product reference assets must be prepared before provider spend.**
+   - Marketplace product images are not interchangeable prompt attachments. The runtime must create a `ProductReferenceAssetPack` before any image, video, thumbnail, or visual-repair provider call uses the product as a reference.
+   - The pack must choose primary/supporting references, reject unsafe or low-confidence images, record crop/mask/fingerprint refs when available, and bind the result to product evidence, selected variant, asset rights, and freshness state.
+   - Provider payloads and repair payloads may reference only pack-approved product refs. Low-resolution, collage, mismatched-variant, remote-unhosted, private, rights-blocked, or misleading marketplace images must block, downgrade to a generic non-visual plan, or ask for better images before credits are spent.
+   - Any LLM vision used to classify or validate the reference pack must go through the SmartSpecPro LLM gateway and be recorded as `llm_visual_qa` usage.
+
+22. **Advertising policy rules must be versioned, testable, and source-attributed.**
+   - Thailand, global, and platform advertising rules must not live only as prompt text or informal comments. They must be encoded in an approved `AdvertisingPolicyRulePack`.
+   - Each rule pack must carry rule IDs, jurisdiction/profile, category triggers, source anchors, severity, allowed repair behavior, warning-template refs, fixture refs, effective dates, and approval status.
+   - Runs, approvals, warning overlays, QA verdicts, and final Library assets must reference the exact rule-pack version used.
+   - Policy pack changes must trigger fixture replay, spot-check, or review before broad promotion, especially for Thailand FDA/อย., OCPB/สคบ., platform ad policies, endorsement disclosure, and regulated categories.
+
+23. **Stage completion must be evidence-gated.**
+   - A stage cannot become `completed`, `completed_with_warnings`, `skipped`, or a run-terminal success only because code reached the end of a handler, a provider returned a URL, or an agent returned text.
+   - Every stage transition must persist `MarketplaceAutoReviewStageCompletionEvidence` that lists required evidence, present refs, missing refs, warnings, blockers, policy snapshot refs, credit refs, QA refs, lineage refs, and idempotency key.
+   - Manual advancement, background workers, operator recovery, and migration/backfill helpers must use the same completion evidence gate.
+   - Timeout, retry budget exhaustion, or stop policy may block/fail/cancel a stage, but must never mark it complete without route-required evidence.
+
+24. **SDK capabilities must be manifest-locked per stage attempt.**
+   - Node must build a `ProductionAgentsSdkCapabilityManifest` before each Agents-backed attempt and pass only approved agents, tools, handoffs, session policy, trace policy, output schemas, and credit/tool limits to Python.
+   - Python must register only manifest-listed capabilities. It must fail closed on unknown tools, hosted SDK tools, handoffs that widen scope, direct persistence, raw trace export, raw session persistence, or missing manifest hash.
+   - SDK tool outputs remain untrusted until Node verifies returned refs against platform state, permissions, credits, policy, and artifact lineage.
+   - Resume, cancel, retry, and repair attempts must use the original manifest hash or a new manifest tied to input-change impact and stage completion evidence.
+
+25. **Every automation run must have a production creative brief snapshot.**
+   - Before concept generation, Node must persist a `ProductionCreativeBriefSnapshot` that captures the run objective, audience/use context, target platform, tone/register, CTA intent, creative latitude, quality/speed mode, budget posture, user hints, avoid list, and auto-decision policy.
+   - Agents may elaborate the brief into creative options, but they must not treat user hints or seller notes as product facts unless those claims map to approved evidence or scoped approval.
+   - If the brief is too ambiguous for safe auto-selection, the run must use conservative evidence-safe defaults, request human review, or block before provider spend.
+   - Any brief change during a long run must create input-change impact and invalidate only the downstream concept, storyboard, script, metadata, media payload, QA, approval, and credit refs that depended on the old brief.
+
+26. **Marketplace evidence must pass an instruction firewall before Agents see it.**
+   - Marketplace DOM, OCR, reviews, seller descriptions, image alt text, filenames, comments, prior AI output, and uploaded evidence are data only. They must never become system/developer instructions, tool routing, budget policy, approval state, provider choice, or output routing.
+   - Node must create a `MarketplaceEvidenceInstructionFirewall` after privacy redaction and before creative brief/concept planning when any untrusted evidence could enter an LLM or Agents context.
+   - Instruction-like strings such as "ignore previous instructions", fake tool calls, fake schema fragments, policy bypass requests, hidden CSS/HTML text, prompt templates, credential requests, or provider-routing suggestions must be quarantined, escaped, or reduced to structured evidence refs before LLM spend.
+   - The firewall must fail closed before additional LLM/provider spend if it cannot separate product facts from adversarial instructions with enough confidence.
+
+27. **Recurring people and voices need a character identity asset pack before provider spend.**
+   - If a presenter, actor, hand model, synthetic character, or recurring voice appears across shots, Node must create `CharacterIdentityAssetPack` before storyboard media payloads, visual provider calls, video provider calls, TTS/voice calls, or continuity QA can use that identity.
+   - The pack must separate approved real-person references, synthetic/generic character references, hands-only references, voice profile refs, consent/rights refs, and blocked refs.
+   - The system must prefer product-only, hands-only, single-shot, or generic-person formats when consent, reference quality, face visibility, or voice consistency is not strong enough for safe recurring identity.
+   - Character/voice consistency QA must compare against this pack, not only prompt text or a vague phrase such as "same person".
+
 ---
 
 ## 4. Goals
@@ -286,6 +358,18 @@ Feature 118 should remain a factual implemented snapshot. Do not rewrite Feature
 8. Add layered QA for product truth, product visual fidelity, character/face continuity, story continuity, shot continuity, audio continuity, subtitle/voiceover timing, and final render readiness.
 9. Automatically repair failed stages where safe, without redoing passed work or spending duplicate credits.
 10. Persist traces, audit, checkpoints, action attempts, outputs, and QA verdicts so support and users can understand the completed run.
+11. Support repeated variation/campaign generation from the same product with duplicate prevention, spend anomaly control, brand/seller voice policy, and review queue governance.
+12. Produce a publishable asset package containing final media, thumbnail/cover, subtitle/transcript artifacts, platform metadata, and manifest refs when required by the distribution profile.
+13. Detect input/evidence/policy changes during long-running jobs and invalidate only the affected downstream work without losing safe artifacts or duplicating credit spend.
+14. Run per-frame/per-clip vision QA and targeted repair so failed start/stop/storyboard frames or video keyframes are regenerated without rerunning unrelated shots.
+15. Quarantine unverified/failed media units and route only accepted or explicitly warning-accepted artifacts to user-visible output surfaces.
+16. Prepare and validate product reference asset packs before visual generation so product identity locks have concrete, high-quality, rights-safe image anchors.
+17. Version advertising policy rule packs so Thai/global/platform compliance decisions are source-attributed, replayable, and test-covered.
+18. Gate every stage transition with persisted completion evidence so durable status, timeline, resume, and recovery cannot claim success without required refs.
+19. Lock SDK tools, handoffs, sessions, traces, hosted capabilities, and output schemas to a Node-approved capability manifest per stage attempt.
+20. Persist a production creative brief snapshot before concept generation so agent decisions remain goal-first, user-preference-aware, auditable, and safely invalidated when intent changes.
+21. Treat captured marketplace text and prior model output as untrusted data behind an instruction firewall so creative automation can use product evidence without letting page content steer Agents, tools, credit, policy, or provider routing.
+22. Prepare character identity asset packs before recurring people, hands, presenters, or voices are generated so face/voice continuity uses approved references, consent, and fallback rules rather than loose prompt wording.
 
 ---
 
@@ -312,13 +396,14 @@ Feature 118 should remain a factual implemented snapshot. Do not rewrite Feature
 2. User selects a product and approved product images.
 3. User clicks `Create Storyboard`.
 4. SmartSpecPro validates product identity, selected images, evidence-backed claims, and `MarketplaceStorytellingHandoff` readiness.
-5. Agents runtime creates fresh concepts from the product evidence.
-6. Runtime auto-selects the best concept unless user settings require concept choice.
-7. Runtime creates a `marketplaceAutoReviewRun` with durable stage rows and links it to a Production Director Project.
-8. Runtime generates storyboard shots, voiceover beats, captions, visual prompts, camera directions, and product claim mapping.
-9. Runtime generates storyboard image frames when the selected output mode is `storyboard_images`.
-10. Product Truth QA and Product Image Fidelity QA run before the storyboard is marked ready.
-11. Storyboard opens in Storyboard Review with product evidence, journey stages, claim IDs, image fidelity warnings, and readiness badges.
+5. SmartSpecPro prepares a product reference asset pack from approved images before any visual provider work.
+6. Agents runtime creates fresh concepts from the product evidence.
+7. Runtime auto-selects the best concept unless user settings require concept choice.
+8. Runtime creates a `marketplaceAutoReviewRun` with durable stage rows and links it to a Production Director Project.
+9. Runtime generates storyboard shots, voiceover beats, captions, visual prompts, camera directions, and product claim mapping.
+10. Runtime generates storyboard image frames when the selected output mode is `storyboard_images`.
+11. Product Truth QA and Product Image Fidelity QA run before the storyboard is marked ready.
+12. Storyboard opens in Storyboard Review with product evidence, journey stages, claim IDs, image fidelity warnings, and readiness badges.
 
 Storyboard creation may reserve image-generation credits when the user selected `storyboard_images`. It must not reserve video, audio, or render credits unless the user selected a video output mode or later upgrades the run to video.
 
@@ -331,6 +416,7 @@ Storyboard creation may reserve image-generation credits when the user selected 
    - at least one approved hero product image,
    - allowed marketplace platform,
    - product truth/evidence map,
+   - approved product reference asset pack,
    - target language/platform/duration,
    - budget policy.
 4. Runtime creates or reuses a `marketplaceAutoReviewRun`, stage rows, and linked Production Director Project.
@@ -523,7 +609,8 @@ The adapter must fail closed if:
 - direct provider credential is supplied,
 - required billing metadata is missing,
 - tenant/model policy denies the selected model,
-- gateway credit preflight fails.
+- gateway credit preflight fails,
+- the stage attempt lacks a valid SDK capability manifest hash.
 
 ### 8.4 SDK Tool Boundary
 
@@ -569,6 +656,99 @@ Not allowed:
 - unrestricted shell/code execution,
 - direct file system mutation outside approved media artifacts,
 - changing tenant policy or credit balances.
+
+### 8.5 SDK Capability Manifest, Handoff, Session, And Trace Firewall
+
+Feature 117 must not rely on Python-side convention to keep SDK capabilities bounded. Node must create an explicit manifest for every Agents-backed stage attempt.
+
+```ts
+interface ProductionAgentsSdkCapabilityManifest {
+  schemaVersion: "1.0";
+  tenantId: string;
+  userId: string;
+  runId: string;
+  stageKey: MarketplaceAutoReviewStageKey;
+  attemptId: string;
+  manifestHash: string;
+  allowedAgents: ProductionAgentRole[];
+  allowedHandoffs: Array<{
+    fromAgent: ProductionAgentRole;
+    toAgent: ProductionAgentRole;
+    reasonCodes: string[];
+    allowedToolNames: string[];
+    canWidenReadScope: false;
+    canWidenWriteScope: false;
+    canChangeCreditPolicy: false;
+  }>;
+  allowedTools: Array<{
+    name: string;
+    category:
+      | "read_state"
+      | "write_checkpoint"
+      | "credit_estimate"
+      | "credit_reservation"
+      | "schedule_media"
+      | "attach_artifact_ref"
+      | "qa_classifier"
+      | "handoff_projection"
+      | "render_schedule";
+    mutating: boolean;
+    nodeExecuted: boolean;
+    requiresApprovalRef: boolean;
+    creditCategory?: AgentsGatewayInvocationMetadata["creditCategory"];
+    idempotencyKey: string;
+    timeoutMs: number;
+    maxCallsPerAttempt: number;
+    outputTrust: "untrusted" | "node_verified_ref";
+  }>;
+  hostedSdkCapabilities: {
+    webSearch: false;
+    fileSearch: false;
+    computerUse: false;
+    codeInterpreter: false;
+    imageGeneration: false;
+    audioGeneration: false;
+    videoGeneration: false;
+    remoteMcp: false;
+    shell: false;
+  };
+  outputSchemas: Array<{
+    artifactKind: string;
+    schemaVersion: string;
+    required: boolean;
+  }>;
+  sessionPolicy: {
+    persistRawSdkSession: false;
+    checkpointRefsOnly: true;
+    resumeCursorRef?: string;
+    maxSessionEventBytes: number;
+  };
+  tracePolicy: {
+    captureSensitiveInputOutput: false;
+    externalSdkTraceExport: "disabled" | "development_only";
+    redactionProfileId: string;
+    maxTraceEventBytes: number;
+    platformTraceEventRefs: string[];
+  };
+  streamPolicy: {
+    normalizeEvents: true;
+    stableEventIds: true;
+    duplicateEventBehavior: "idempotent_noop";
+  };
+  approvedByNodeAt: string;
+}
+```
+
+Capability manifest rules:
+
+- Node is the only component allowed to create or widen the manifest.
+- Python validates the manifest before constructing agents, tools, handoffs, sessions, or trace processors.
+- Handoffs may narrow agent scope, but they must never add tools, write permissions, model policy, credit policy, connectors, hosted SDK capabilities, or persistence authority.
+- Hosted SDK capabilities remain disabled unless a future spec explicitly routes them through SmartSpecPro gateway, credit, permission, storage, and audit controls.
+- Python function tools may return structured intents or platform refs, but Node must perform or verify every mutating side effect before persisted state changes.
+- SDK traces and sessions must store refs, event summaries, schema validation results, and redacted metadata only. Raw prompts, raw product private evidence, raw provider payloads, signed URLs, cookies, tokens, and customer/reviewer PII must not be captured.
+- Stream events, resume cursors, cancellation, retry, and repair must include the manifest hash, stage attempt ID, idempotency key, and normalized event identity.
+- A manifest mismatch, unknown tool call, unregistered handoff, over-call-limit tool use, raw trace/session capture request, or hosted capability request blocks the attempt before additional LLM or provider spend.
 
 ---
 
@@ -785,7 +965,11 @@ interface ProductionAutomationRequest {
   selectedVariantSnapshot?: ProductVariantSnapshot;
   accessSnapshot?: MarketplaceAutomationAccessSnapshot;
   evidenceFreshnessSnapshot?: ProductEvidenceFreshnessSnapshot;
+  productReferenceAssetPack?: ProductReferenceAssetPack;
+  characterIdentityAssetPack?: CharacterIdentityAssetPack;
   assetRightsEnvelope?: AssetRightsEnvelope;
+  evidenceInstructionFirewall?: MarketplaceEvidenceInstructionFirewall;
+  creativeBriefSnapshot?: ProductionCreativeBriefSnapshot;
   productLibraryId?: string;
   sourceVideoIdForVariation?: string;
   selectedProductImageIds: string[];
@@ -818,6 +1002,98 @@ interface ProductionBudgetPolicy {
   stopIfEstimateExceedsBudget: boolean;
 }
 ```
+
+### 10.2.1 Production Creative Brief Snapshot
+
+The creative brief snapshot is the goal-first decision contract for each run. It prevents Agents from guessing core creative intent from product data alone and makes auto-selection, repair, and later invalidation explainable.
+
+```ts
+interface ProductionCreativeBriefSnapshot {
+  schemaVersion: "1.0";
+  runId: string;
+  source:
+    | "marketplace_default"
+    | "production_project_goal"
+    | "user_prompt"
+    | "tenant_default"
+    | "campaign_brief"
+    | "prior_library_variation";
+  action:
+    | "create_storyboard"
+    | "create_video"
+    | "auto_create_review_video"
+    | "auto_complete_project"
+    | "create_new_variation";
+  objective:
+    | "product_review"
+    | "buyer_checklist"
+    | "unboxing"
+    | "use_case_demo"
+    | "comparison_safe"
+    | "brand_story"
+    | "ugc_style"
+    | "tutorial"
+    | "offer_explainer"
+    | "creative_exploration";
+  targetAudience: {
+    label: string;
+    buyerStage: "awareness" | "consideration" | "decision" | "post_purchase" | "unspecified";
+    useContext?: string;
+    locale: "th" | "en" | "mixed" | "auto";
+  };
+  viewerPromise: {
+    safeSummary: string;
+    claimEvidenceRefs: string[];
+    volatileClaimRefs: string[];
+    requiresApprovalRefs: string[];
+  };
+  creativeLatitude: "conservative" | "balanced" | "exploratory";
+  qualityMode: "fast_draft" | "balanced" | "high_confidence";
+  autoDecisionPolicy: {
+    allowAutoConceptSelection: boolean;
+    allowAutoRepair: boolean;
+    requireHumanReviewIfAmbiguous: boolean;
+    maxConceptOptions: number;
+    maxAcceptedRisk: "low" | "medium" | "review_required";
+  };
+  stylePreferences: {
+    tone: Array<"friendly" | "expert" | "premium" | "playful" | "calm" | "creator_review" | "direct_response">;
+    languageRegister: "thai_polite" | "thai_casual" | "thai_creator" | "english" | "mixed";
+    pacing: "slow_clear" | "balanced" | "fast_social";
+    cameraLanguage?: string[];
+    avoidStyles: string[];
+  };
+  ctaIntent: "none" | "soft_check" | "learn_more" | "shop_now" | "compare_options" | "custom";
+  userHints: Array<{
+    text: string;
+    provenance: "user" | "tenant_default" | "campaign" | "prior_asset";
+    trustLevel: "style_only" | "claim_requires_evidence" | "approved_claim";
+    evidenceRefs: string[];
+  }>;
+  avoidList: string[];
+  decisionRefs: {
+    budgetPolicyRef?: string;
+    distributionProfileRef?: string;
+    brandPolicyRef?: string;
+    campaignGovernanceRef?: string;
+    policyRulePackRef?: string;
+  };
+  ambiguityStatus: "clear" | "safe_defaults_applied" | "needs_review" | "blocked";
+  snapshotHash: string;
+  createdAt: string;
+}
+```
+
+Creative brief rules:
+
+- Marketplace one-click automation may create a default brief, but the default must be persisted and visible in sanitized timeline/detail projection.
+- User hints are style or intent guidance by default, not product evidence.
+- Seller copy, marketplace OCR, reviews, filenames, and prior AI output cannot become brief instructions unless they pass the evidence instruction firewall and are reduced to safe style, fact, or claim refs.
+- A hint that implies a claim, comparison, performance result, discount, urgency, rating, certification, health/beauty/body effect, or official status must map to evidence/approval refs before concept generation can use it.
+- Auto-selection must cite the brief fields it optimized for: objective, target audience, platform, quality mode, creative latitude, and allowed risk.
+- `high_confidence` mode must prefer more QA, stricter auto-selection, and fewer risky creative leaps; `fast_draft` may reduce optional variants but cannot bypass product truth, policy, credit, or media QA.
+- `exploratory` creative latitude may diversify hooks and story shapes, but cannot loosen product truth, ad policy, product reference, or rights constraints.
+- Brief changes are input changes. They must create `RunInputChangeImpactEnvelope` before downstream refs are reused.
 
 ### 10.3 Runtime State
 
@@ -867,7 +1143,92 @@ type MarketplaceAutoReviewStageKey =
 
 Agent-specific substeps, QA verdicts, and repair decisions must be persisted under these stages or under a versioned successor table. They must not live only in transient SDK trace data.
 
-#### 10.3.1 Timeline Status Projection
+#### 10.3.1 Stage Completion Evidence
+
+The backend must derive status changes from a stage completion evidence envelope. This envelope is the transition guard for automatic advancement, manual advancement, recovery, and migration/backfill.
+
+```ts
+interface MarketplaceAutoReviewStageCompletionEvidence {
+  schemaVersion: "1.0";
+  runId: string;
+  stageKey: MarketplaceAutoReviewStageKey;
+  attemptId: string;
+  requestedTransition:
+    | "complete"
+    | "complete_with_warnings"
+    | "skip"
+    | "repair_required"
+    | "fail_retriable"
+    | "block_needs_user"
+    | "fail_terminal"
+    | "cancel";
+  transitionAllowed: boolean;
+  requiredEvidence: Array<{
+    kind:
+      | "product_evidence"
+      | "agent_artifact"
+      | "provider_task"
+      | "generated_media_acceptance"
+      | "product_reference_pack"
+      | "character_identity_pack"
+      | "qa_verdict"
+      | "shot_frame_vision_qa"
+      | "targeted_repair"
+      | "credit_event"
+      | "approval_decision"
+      | "policy_snapshot"
+      | "policy_rule_pack"
+      | "creative_brief"
+      | "access_snapshot"
+      | "freshness_snapshot"
+      | "asset_rights"
+      | "privacy_redaction"
+      | "evidence_instruction_firewall"
+      | "audio_rights_mix"
+      | "distribution_profile"
+      | "synthetic_disclosure"
+      | "cta_landing_integrity"
+      | "quality_calibration"
+      | "post_publish_governance"
+      | "campaign_governance"
+      | "brand_voice_policy"
+      | "human_review_queue"
+      | "input_change_impact"
+      | "provider_event"
+      | "payload_budget"
+      | "storage_quota"
+      | "retry_dlq"
+      | "artifact_lineage"
+      | "storage_or_rehost"
+      | "render_job"
+      | "publishable_package";
+    required: boolean;
+    present: boolean;
+    refs: string[];
+    missingReason?: string;
+  }>;
+  blockingReasonCodes: string[];
+  warningReasonCodes: string[];
+  nextAction?: MarketplaceAutoReviewTimelineItem["blocker"]["nextAction"];
+  evaluatedBy: "system" | "background_worker" | "operator" | "migration";
+  evaluatedAt: string;
+  idempotencyKey: string;
+}
+```
+
+Completion evidence rules:
+
+- `complete` requires all required evidence kinds to be present and non-blocking for the stage and output mode.
+- `complete_with_warnings` requires explicit policy allowance or approval refs for every warning that affects user-visible output.
+- `skip` requires a policy reason and proof that the skipped stage is not required for the selected output mode.
+- `repair_required` requires exact failed-unit refs, QA verdict refs, targeted repair plan refs, retry budget state, and credit reservation/release state when spend may be reused.
+- `fail_retriable` requires provider event refs, retry/DLQ policy refs, next retry window, and idempotency key.
+- `block_needs_user`, `fail_terminal`, and `cancel` require durable reason codes, safe next action, and credit reconciliation state when spend was reserved.
+- The required-evidence matrix must be explicit for each `stageKey + outputMode + requestedTransition` combination. It must not rely on a generic "artifact exists" check.
+- Timeline projection must be built from stage status plus completion evidence, not raw status strings alone.
+- Operator recovery cannot create completion evidence manually unless it attaches verified artifact, QA, credit, policy, and lineage refs.
+
+#### 10.3.2 Timeline Status Projection
 
 The product UI must not infer progress from raw stage keys alone. The backend must return or construct a stable timeline projection from canonical run/stage state so the user can clearly see:
 
@@ -887,6 +1248,7 @@ type MarketplaceAutoReviewTimelineItemStatus =
   | "awaiting_user"
   | "completed"
   | "completed_with_warnings"
+  | "completion_evidence_blocked"
   | "failed"
   | "cancelled"
   | "skipped";
@@ -920,6 +1282,8 @@ interface MarketplaceAutoReviewTimelineItem {
       | "approve_credit"
       | "approve_or_remove_claim"
       | "select_better_product_image"
+      | "upload_product_reference"
+      | "approve_limited_visual_use"
       | "approve_warning_text"
       | "retry_failed_stage"
       | "open_manual_review"
@@ -973,7 +1337,7 @@ Timeline rules:
 - The projection may include compact substeps for Agents, QA, credit, provider, repair, and render work, but substeps must not replace the canonical stage list.
 - The projection must be regenerated from persisted run/stage/artifact state so resume and refresh remain correct.
 
-#### 10.3.2 API Projection And Compatibility
+#### 10.3.3 API Projection And Compatibility
 
 The current Marketplace Capture router exposes `startAutoReview`, `getAutoReviewRun`, `listAutoReviewRuns`, `advanceAutoReviewRun`, and `cancelAutoReviewRun`. Feature 117 should keep these APIs compatible or replace them with an explicit versioned successor. The default implementation should prefer additive response fields so existing clients can keep reading `status`, `currentStage`, `stageIndex`, `stageCount`, `stages`, `metadataJson`, `resultJson`, and `links`.
 
@@ -1102,6 +1466,11 @@ interface AdvertisingComplianceProfile {
   schemaVersion: "1.0";
   regionProfile: "global_default" | "us_ftc" | "eu_consumer" | "thailand" | "platform_specific";
   platformProfile: "generic" | "tiktok" | "shopee" | "reels" | "shorts";
+  rulePackRef: {
+    rulePackId: string;
+    version: string;
+    evaluatedRuleIds: string[];
+  };
   netImpressionSummary: string;
   claims: Array<{
     claimId: string;
@@ -1125,6 +1494,7 @@ interface AdvertisingComplianceProfile {
       | "thai_label_or_license_mismatch"
       | "platform_policy_sensitive";
     allowed: boolean;
+    triggeredRuleIds: string[];
     requiredDisclosure?: string;
   }>;
   blockedPhrases: string[];
@@ -1175,6 +1545,54 @@ interface AdvertisingVisualWarningPlan {
     requireExactTextMatch: true;
     requireReadabilityPass: true;
   };
+}
+
+interface AdvertisingPolicyRulePack {
+  schemaVersion: "1.0";
+  rulePackId: string;
+  version: string;
+  status: "draft" | "approved" | "deprecated" | "blocked";
+  appliesTo: {
+    regionProfiles: Array<"global_default" | "thailand" | "platform_specific">;
+    platforms: Array<"tiktok" | "reels" | "shorts" | "shopee" | "tiktok_shop" | "generic">;
+    productCategoryTriggers: string[];
+    languageTags: string[];
+  };
+  sourceAnchors: Array<{
+    sourceType: "official_guidance" | "platform_policy" | "tenant_policy" | "legal_review" | "internal_policy";
+    label: string;
+    url?: string;
+    retrievedAt?: string;
+    sourceVersion?: string;
+  }>;
+  rules: Array<{
+    ruleId: string;
+    category:
+      | "truthfulness"
+      | "substantiation"
+      | "net_impression"
+      | "endorsement_or_affiliate_disclosure"
+      | "regulated_product"
+      | "thai_fda_or_ocpb"
+      | "platform_policy"
+      | "visual_warning"
+      | "thumbnail_or_metadata"
+      | "privacy_or_rights";
+    severity: "allow" | "warn" | "requires_approval" | "block";
+    triggerSignals: string[];
+    blockedPatterns: string[];
+    requiredEvidenceKinds: string[];
+    requiredWarningTemplateIds: string[];
+    allowedRepairActions: Array<"rewrite_claim" | "remove_claim" | "add_disclosure" | "add_warning_overlay" | "request_review" | "block">;
+    fixtureRefs: string[];
+  }>;
+  approval: {
+    approvedBy: "system_policy" | "admin" | "legal_review" | "tenant_policy";
+    approvedAt?: string;
+    expiresAt?: string;
+  };
+  effectiveFrom: string;
+  effectiveTo?: string;
 }
 
 interface ProductVariantSnapshot {
@@ -1245,6 +1663,60 @@ interface ProductEvidenceFreshnessSnapshot {
   }>;
   freshnessClass: "fresh" | "usable_with_limits" | "stale_needs_review" | "blocked";
   blockedVolatileClaimTypes: Array<"price" | "discount" | "stock" | "rating" | "sold_count" | "review_count" | "commission" | "campaign">;
+}
+
+interface ProductReferenceAssetPack {
+  schemaVersion: "1.0";
+  packId: string;
+  runId: string;
+  productId: string;
+  selectedVariantHash?: string;
+  primaryReference: ProductReferenceAsset;
+  supportReferences: ProductReferenceAsset[];
+  rejectedReferences: Array<{
+    imageId: string;
+    source: "platform_storage" | "marketplace_remote" | "user_upload" | "library";
+    reason:
+      | "low_resolution"
+      | "product_not_visible"
+      | "collage_or_multi_product"
+      | "wrong_variant"
+      | "rights_blocked"
+      | "remote_not_rehosted"
+      | "private_or_pii_risk"
+      | "watermark_or_platform_ui_dominant"
+      | "misleading_claim_text"
+      | "unsupported_logo_badge_or_certification";
+    evidenceRefs: string[];
+  }>;
+  identityAnchors: {
+    productVisualIdentityLockRef: string;
+    protectedAttributeRefs: string[];
+    visualFingerprintRefs: string[];
+    cropRefs: string[];
+    maskRefs: string[];
+    labelOcrRefs: string[];
+  };
+  providerUsePolicy: "approved_for_visual_generation" | "storyboard_only" | "needs_better_image" | "blocked";
+  requiredUserAction?: "select_better_image" | "upload_product_reference" | "approve_limited_visual_use" | "cancel_visual_generation";
+  qaRefs: string[];
+  preparedAt: string;
+}
+
+interface ProductReferenceAsset {
+  imageId: string;
+  assetRef: string;
+  evidenceId: string;
+  role: "primary_hero" | "variant_reference" | "detail_reference" | "packaging_reference" | "scale_reference";
+  source: "platform_storage" | "marketplace_remote_rehosted" | "user_upload" | "library";
+  width: number;
+  height: number;
+  quality: "high" | "usable" | "usable_with_limits" | "low" | "blocked";
+  productRegion?: { x: number; y: number; width: number; height: number };
+  perceptualHashRef?: string;
+  sourceImageHash: string;
+  visibleTextPolicy: "preserve_as_product_identity" | "ignore_as_untrusted_claim" | "block_if_used_as_claim";
+  allowedTransformations: Array<"crop_resize" | "background_context" | "lighting_match" | "deterministic_overlay_only">;
 }
 
 interface AssetRightsEnvelope {
@@ -1406,6 +1878,50 @@ interface MarketplaceEvidencePrivacyEnvelope {
   evaluatedAt: string;
 }
 
+interface MarketplaceEvidenceInstructionFirewall {
+  schemaVersion: "1.0";
+  runId: string;
+  sourceRefs: string[];
+  privacyEnvelopeRef: string;
+  rulePackRef: string;
+  firewallStatus: "passed" | "passed_with_quarantine" | "blocked";
+  evidenceContextPolicy: "structured_refs_only" | "quoted_escaped_blocks" | "blocked";
+  detectedInstructionFindings: Array<{
+    ref: string;
+    sourceKind:
+      | "marketplace_dom"
+      | "marketplace_ocr"
+      | "seller_description"
+      | "review_text"
+      | "rating_summary"
+      | "image_alt_text"
+      | "filename"
+      | "comment"
+      | "uploaded_evidence"
+      | "prior_ai_output";
+    pattern:
+      | "ignore_or_override_instruction"
+      | "fake_tool_call"
+      | "fake_schema_or_json_contract"
+      | "policy_bypass_request"
+      | "credit_or_budget_instruction"
+      | "provider_or_model_routing_instruction"
+      | "hidden_text_or_css"
+      | "credential_or_secret_request"
+      | "output_routing_instruction"
+      | "prompt_template_fragment";
+    action: "quarantined" | "escaped_as_data" | "reduced_to_fact_ref" | "blocked";
+    safeFactRefs: string[];
+  }>;
+  allowedForAgentContextRefs: string[];
+  quarantinedRefs: string[];
+  blockedRefs: string[];
+  blockedReasonCodes: string[];
+  confidence: "high" | "medium" | "low";
+  createdBeforeGatewaySpend: boolean;
+  evaluatedAt: string;
+}
+
 interface AudioRightsAndMixEnvelope {
   schemaVersion: "1.0";
   runId: string;
@@ -1562,6 +2078,294 @@ interface PostPublishGovernanceEnvelope {
   auditRefs: string[];
 }
 
+interface CampaignGenerationGovernanceEnvelope {
+  schemaVersion: "1.0";
+  tenantId: string;
+  userId: string;
+  productId: string;
+  runId: string;
+  campaignId?: string;
+  generationMode: "single" | "variation_set" | "campaign_batch";
+  batchIntent?: "creative_exploration" | "platform_variants" | "localized_variants" | "refresh_existing_asset" | "manual_single_run";
+  maxActiveRunsForProduct: number;
+  maxVariantsPerProductPerDay: number;
+  maxSimilarityScoreToRecentApprovedConcepts: number;
+  spendCapCredits: number;
+  rateLimitKeys: string[];
+  duplicateDetectionRefs: string[];
+  anomalySignals: Array<
+    | "duplicate_concept_pattern"
+    | "too_many_variants"
+    | "abnormal_repair_spend"
+    | "provider_refusal_spike"
+    | "policy_risk_spike"
+    | "tenant_budget_spike"
+    | "same_product_campaign_flood"
+  >;
+  approvalRequiredForBatch: boolean;
+  status: "passed" | "queued" | "needs_approval" | "blocked";
+  evaluatedAt: string;
+}
+
+interface BrandVoiceAndSellerPolicyEnvelope {
+  schemaVersion: "1.0";
+  tenantId: string;
+  productId: string;
+  runId: string;
+  sellerName?: string;
+  brandName?: string;
+  toneProfile: Array<"friendly" | "expert" | "premium" | "playful" | "calm" | "creator_review" | "direct_response">;
+  languageRegister: "thai_polite" | "thai_casual" | "thai_creator" | "english" | "mixed";
+  allowedPhrases: string[];
+  requiredPhrases: string[];
+  blockedPhrases: string[];
+  competitorMentionPolicy: "forbidden" | "generic_only" | "allowed_with_evidence_and_approval";
+  claimStylePolicy: "evidence_first" | "soft_recommendation" | "comparison_requires_approval" | "strict_neutral";
+  ctaStylePolicy: "soft_shop_cta" | "direct_buy_cta" | "learn_more" | "no_cta";
+  pronunciationHints: Array<{ term: string; pronunciation: string; language: string }>;
+  evidenceRefs: string[];
+  approvalId?: string;
+  status: "passed" | "needs_approval" | "blocked";
+}
+
+interface HumanReviewQueuePolicy {
+  schemaVersion: "1.0";
+  runId: string;
+  required: boolean;
+  reasons: Array<
+    | "regulated_category"
+    | "high_volume_batch"
+    | "budget_above_auto_policy"
+    | "brand_policy_exception"
+    | "competitor_or_comparison_claim"
+    | "low_confidence_qa"
+    | "synthetic_disclosure_required"
+    | "rights_or_privacy_exception"
+    | "post_publish_reuse_risk"
+  >;
+  approverRoles: Array<"owner" | "tenant_admin" | "brand_reviewer" | "legal_reviewer" | "policy_reviewer" | "operator">;
+  scope: "single_run" | "batch" | "export_variant" | "post_publish_reuse";
+  slaMinutes: number;
+  timeoutAction: "block" | "continue_if_low_risk" | "fail_terminal";
+  decisionRefs: string[];
+  status: "not_required" | "queued" | "approved" | "rejected" | "repair_requested" | "expired";
+}
+
+interface PublishableAssetPackageEnvelope {
+  schemaVersion: "1.0";
+  runId: string;
+  libraryItemId?: string;
+  distributionProfileId: string;
+  finalVideoRef: string;
+  thumbnailRefs: Array<{
+    refId: string;
+    source: "render_frame" | "approved_generated_image" | "user_selected_frame";
+    timestampSeconds?: number;
+    overlayText?: string;
+    productIdentityQaStatus: "passed" | "needs_repair" | "blocked";
+    misleadingRiskStatus: "passed" | "needs_review" | "blocked";
+  }>;
+  subtitleRefs: Array<{
+    refId: string;
+    format: "burned_in" | "srt" | "vtt" | "ass" | "none";
+    language: string;
+    source: "approved_script" | "tts_alignment" | "asr_verified" | "manual_edit";
+    timingStatus: "passed" | "needs_repair" | "blocked";
+  }>;
+  transcriptRef?: string;
+  platformMetadata: Array<{
+    platform: "tiktok" | "reels" | "shorts" | "facebook" | "shopee" | "lazada" | "website" | "custom";
+    title?: string;
+    captionOrDescription?: string;
+    hashtags: string[];
+    altText?: string;
+    ctaText?: string;
+    characterLimitStatus: "passed" | "needs_repair" | "not_applicable";
+    evidenceRefs: string[];
+    complianceStatus: "passed" | "needs_review" | "blocked";
+  }>;
+  metadataManifestRef: string;
+  checksumRefs: string[];
+  status: "passed" | "needs_repair" | "needs_review" | "blocked";
+  evaluatedAt: string;
+}
+
+interface RunInputChangeImpactEnvelope {
+  schemaVersion: "1.0";
+  runId: string;
+  previousSnapshotRefs: string[];
+  currentSnapshotRefs: string[];
+  detectedChanges: Array<{
+    changeKind:
+      | "product_field_changed"
+      | "selected_variant_changed"
+      | "product_image_added"
+      | "product_image_removed"
+      | "product_image_reordered"
+      | "price_or_offer_snapshot_changed"
+      | "source_url_or_landing_changed"
+      | "evidence_retention_or_purge_changed"
+      | "asset_rights_changed"
+      | "privacy_redaction_changed"
+      | "brand_policy_changed"
+      | "distribution_profile_changed"
+      | "warning_or_disclosure_policy_changed"
+      | "human_review_decision_changed"
+      | "storyboard_or_script_user_edit";
+    refId: string;
+    severity: "info" | "requires_recheck" | "invalidates_downstream" | "blocks_run";
+  }>;
+  impactedStages: Array<
+    | "product_preflight"
+    | "concept_story"
+    | "prompt_plan"
+    | "image_generation"
+    | "storyboard_review"
+    | "video_generation"
+    | "audio_generation"
+    | "video_edit"
+    | "render"
+    | "library_finalize"
+  >;
+  artifactActions: Array<{
+    artifactRef: string;
+    action: "preserve" | "recheck" | "repair" | "replan" | "regenerate" | "block_reuse" | "discard_if_unpublished";
+    reasonCode: string;
+  }>;
+  invalidatedApprovalRefs: string[];
+  invalidatedCreditEstimateRefs: string[];
+  invalidatedQaRefs: string[];
+  status: "no_change" | "recheck_required" | "repair_required" | "replan_required" | "blocked";
+  evaluatedAt: string;
+}
+
+interface ShotFrameVisionQaEnvelope {
+  schemaVersion: "1.0";
+  runId: string;
+  stageKey: MarketplaceAutoReviewStageKey;
+  shotId: string;
+  frameRole: "storyboard_grid_cell" | "storyboard_frame" | "start_frame" | "stop_frame" | "video_keyframe" | "thumbnail_cover" | "final_render_sample";
+  frameRef: string;
+  sourcePayloadRef: string;
+  referenceProductImageRefs: string[];
+  selectedVariantHash?: string;
+  characterContinuityLockRef?: string;
+  audioOrVoiceContextRef?: string;
+  qaModelCallRef: string;
+  gatewayUsageRef: string;
+  checks: {
+    productIdentity: "passed" | "needs_repair" | "blocked";
+    selectedVariant: "passed" | "not_applicable" | "needs_repair" | "blocked";
+    characterIdentity: "passed" | "not_applicable" | "needs_repair" | "blocked";
+    visualQuality: "passed" | "needs_repair" | "blocked";
+    storyAndPromptAlignment: "passed" | "needs_repair" | "blocked";
+    textArtifactSafety: "passed" | "needs_repair" | "blocked";
+    continuityEndpoint: "passed" | "not_applicable" | "needs_repair" | "blocked";
+  };
+  findings: Array<{
+    code:
+      | "product_mismatch"
+      | "wrong_variant"
+      | "product_distorted"
+      | "missing_product"
+      | "invented_product_detail"
+      | "character_face_drift"
+      | "speaking_identity_drift"
+      | "bad_lipsync_or_voice_identity_cue"
+      | "low_visual_quality"
+      | "prompt_misalignment"
+      | "unwanted_text_or_glyph"
+      | "story_continuity_break"
+      | "endpoint_mismatch";
+    severity: "warning" | "blocking" | "terminal";
+    evidenceRefs: string[];
+  }>;
+  status: "passed" | "needs_targeted_repair" | "blocked";
+  evaluatedAt: string;
+}
+
+interface TargetedMediaUnitRepairPlan {
+  schemaVersion: "1.0";
+  runId: string;
+  stageKey: MarketplaceAutoReviewStageKey;
+  shotId: string;
+  mediaUnit:
+    | "storyboard_grid_cell"
+    | "storyboard_frame"
+    | "start_frame"
+    | "stop_frame"
+    | "video_keyframe"
+    | "video_clip"
+    | "audio_segment"
+    | "subtitle_segment"
+    | "thumbnail_cover";
+  failedQaRef: string;
+  repairAction: "regenerate_same_payload" | "regenerate_with_tighter_refs" | "switch_to_product_only" | "reuse_approved_reference" | "manual_review_required" | "block";
+  preserveRefs: string[];
+  invalidateRefs: string[];
+  downstreamStagesToRecheck: MarketplaceAutoReviewStageKey[];
+  maxAttempts: number;
+  nextAttemptNumber: number;
+  creditEstimateRef?: string;
+  idempotencyKey: string;
+  status: "planned" | "running" | "succeeded" | "failed" | "blocked";
+}
+
+interface GeneratedMediaAcceptanceEnvelope {
+  schemaVersion: "1.0";
+  runId: string;
+  stageKey: MarketplaceAutoReviewStageKey;
+  artifactRef: string;
+  shotId?: string;
+  mediaUnit:
+    | "storyboard_grid_cell"
+    | "storyboard_frame"
+    | "start_frame"
+    | "stop_frame"
+    | "video_keyframe"
+    | "video_clip"
+    | "audio_segment"
+    | "subtitle_segment"
+    | "thumbnail_cover"
+    | "final_render"
+    | "metadata_manifest";
+  sourceTaskRef?: string;
+  sourceAttemptId: string;
+  qaRefs: string[];
+  repairPlanRefs: string[];
+  acceptanceState:
+    | "candidate"
+    | "qa_pending"
+    | "accepted"
+    | "accepted_with_warnings"
+    | "quarantined_failed_qa"
+    | "quarantined_policy_blocked"
+    | "superseded_by_repair"
+    | "discarded";
+  userVisible: boolean;
+  allowedSurfaces: Array<
+    | "internal_trace"
+    | "repair_context"
+    | "storyboard_review"
+    | "video_editor"
+    | "media_library"
+    | "publishable_package"
+    | "negative_feedback_memory_only"
+  >;
+  blockedSurfaces: Array<
+    | "storyboard_review"
+    | "video_editor"
+    | "media_library"
+    | "publishable_package"
+    | "future_reference"
+    | "positive_creative_memory"
+  >;
+  supersededByArtifactRef?: string;
+  reasonCodes: string[];
+  retentionPolicyId: string;
+  evaluatedAt: string;
+}
+
 interface ProductVisualIdentityLock {
   schemaVersion: "1.0";
   productId: string;
@@ -1593,8 +2397,10 @@ interface CharacterContinuityLock {
   schemaVersion: "1.0";
   continuityRequired: boolean;
   characterId: string;
+  identityAssetPackRef?: string;
   role: "presenter" | "user" | "hand_model" | "background_actor" | "none";
   referenceImageIds: string[];
+  referenceVoiceProfileId?: string;
   protectedAttributes: {
     faceVisibility: "required" | "allowed" | "avoid_face";
     ageRange?: string;
@@ -1605,7 +2411,67 @@ interface CharacterContinuityLock {
     speakingVoice?: string;
   };
   riskyShotPatterns: Array<"turn_around_reveal" | "face_reentry" | "profile_to_front" | "occlusion_then_reveal" | "multi_person_scene">;
-  fallbackIfRisky: "product_only" | "hands_only" | "single_presenter_shot" | "block_user";
+  allowedShotScopes: Array<"no_person" | "hands_only" | "single_shot" | "recurring_visible_face" | "recurring_voice_only">;
+  mustNeverRevealFace: boolean;
+  fallbackIfRisky: "product_only" | "hands_only" | "single_presenter_shot" | "generic_person" | "separate_tts" | "block_user";
+}
+
+interface CharacterIdentityAssetPack {
+  schemaVersion: "1.0";
+  runId: string;
+  characterId: string;
+  role: "presenter" | "user" | "hand_model" | "background_actor" | "voice_only" | "none";
+  sourceKind:
+    | "no_person"
+    | "hands_only"
+    | "synthetic_generic"
+    | "approved_reference"
+    | "library_persona_asset"
+    | "user_uploaded_reference"
+    | "provider_generated_seed";
+  consentStatus: "not_required" | "approved" | "missing" | "revoked" | "blocked";
+  consentApprovalRefs: string[];
+  referenceImageRefs: string[];
+  referenceVideoRefs: string[];
+  voiceProfileRefs: string[];
+  blockedReferenceRefs: Array<{
+    ref: string;
+    reason:
+      | "no_consent"
+      | "celebrity_or_public_figure_risk"
+      | "customer_or_reviewer_identity"
+      | "minor_or_age_sensitive"
+      | "low_quality"
+      | "face_not_visible"
+      | "conflicting_identity"
+      | "rights_blocked"
+      | "privacy_blocked";
+  }>;
+  continuityDescriptors: {
+    faceVisibilityPolicy: "no_face" | "face_allowed" | "face_required" | "single_shot_only";
+    visibleFaceAnchors: string[];
+    hairWardrobeBodyAnchors: string[];
+    handsOrBodyAnchors: string[];
+    voiceAnchors: string[];
+    forbiddenDrift: string[];
+  };
+  providerUsePolicy: {
+    allowFaceReference: boolean;
+    allowVoiceReference: boolean;
+    allowRecurringVisibleFace: boolean;
+    allowLipSync: boolean;
+    allowNativeVideoAudio: boolean;
+    requireProductOnlyFallbackOnDrift: boolean;
+  };
+  qaThresholds: {
+    faceContinuityMin?: number;
+    wardrobeContinuityMin?: number;
+    voiceContinuityMin?: number;
+    lipSyncRiskMax?: number;
+  };
+  fallbackPlan: "product_only" | "hands_only" | "single_presenter_shot" | "generic_person" | "separate_tts" | "block_user";
+  packStatus: "approved" | "approved_limited" | "needs_better_reference" | "requires_consent" | "blocked";
+  createdAt: string;
 }
 
 interface NaturalSpeechContract {
@@ -1742,6 +2608,8 @@ The runtime must use product truth in this order:
 
 User hints cannot override product evidence without creating a warning or review requirement.
 
+Before creative planning or visual provider dispatch, the runtime must also build a `ProductReferenceAssetPack` from approved product images. This pack is the only valid source of product image references for storyboard frames, start/stop frames, video keyframes, thumbnails, and visual repair attempts. It must reject images that are too small, remote-unhosted, wrong-variant, collage-like, dominated by marketplace UI/watermarks, privacy-risky, rights-blocked, or visually ambiguous. If no pack can reach `approved_for_visual_generation`, the run may continue only as a non-visual/generic storyboard when policy allows, or it must pause for `select_better_product_image` / `upload_product_reference` before provider credits are reserved.
+
 ### 11.4 Auto Creativity Rules
 
 LLM creativity should be used to create new review ideas, not new product facts.
@@ -1825,6 +2693,8 @@ Advertising compliance must produce a structured `AdvertisingComplianceProfile` 
 
 The policy profile should be versioned and source-attributed. At minimum, the platform should be able to map internal rules to official policy sources such as general truth-in-advertising, endorsement/disclosure, international advertising code, and target platform ad policies.
 
+Policy rules must be loaded from an approved `AdvertisingPolicyRulePack`, not from freeform LLM prompt text. The rule pack must map category triggers, blocked patterns, required evidence kinds, warning templates, and allowed repair actions to rule IDs that QA verdicts and approvals can cite. Draft, deprecated, expired, or blocked rule packs cannot authorize provider generation, final render, publishable package promotion, or reuse of a Library asset.
+
 ### 11.7 Thailand Advertising Compliance Profile
 
 When the product, seller, marketplace, user locale, target audience, caption language, or target platform indicates Thailand, the runtime must apply `regionProfile = "thailand"` in addition to the global default.
@@ -1895,6 +2765,14 @@ Initial policy source anchors:
 - TikTok Advertising Policies: `https://ads.tiktok.com/help/article/tiktok-advertising-policies`
 - Thailand Office of the Consumer Protection Board: `https://www.ocpb.go.th/`
 - Thailand FDA advertising/health product guidance: `https://www.fda.moph.go.th/`
+
+Rule-pack governance:
+
+- official/platform URLs are source anchors, not a substitute for encoded and approved rules;
+- policy changes must create a new rule-pack version instead of mutating old run decisions in place;
+- each new or widened rule pack must run fixture replay for claims, warnings, thumbnails, metadata, CTA, and Thai regulated-category examples before broad rollout;
+- if a rule pack expires, is deprecated, or is superseded by a stricter pack, active runs must compute impact through `RunInputChangeImpactEnvelope`;
+- final Library assets must keep the rule-pack refs used at generation time and must be rechecked before reuse when policy invalidation triggers apply.
 
 ---
 
@@ -1994,6 +2872,24 @@ The runtime must choose generation strategy based on capabilities:
 
 ### 13.2 Product Image Fidelity
 
+#### 13.2.0 Product Reference Asset Pack
+
+Every visual generation or repair payload must reference a prepared `ProductReferenceAssetPack`.
+
+Reference pack rules:
+
+- create the pack during `product_preflight` after access, freshness, rights, privacy, and selected-variant checks;
+- choose one primary hero reference and optional detail/packaging/variant references;
+- persist rejected image refs and reasons so the system cannot later silently reuse them;
+- include crop, product region, mask, visual fingerprint, perceptual hash, and OCR/label refs where available;
+- bind the pack to `ProductVisualIdentityLock`, `ProductVariantSnapshot`, `AssetRightsEnvelope`, and `ProductEvidenceFreshnessSnapshot`;
+- treat visible text on the product as identity evidence only when it is actually present, not as permission to invent new label/certification/claim text;
+- require platform-hosted/proxy-approved refs before paid provider dispatch;
+- block or request a better image when product visibility, resolution, variant certainty, rights, or privacy is not good enough for the requested output mode;
+- if LLM vision is used to classify the pack, call it only through the SmartSpecPro LLM gateway with `llm_visual_qa` credit tracking.
+
+Direct media execution, targeted repair, thumbnail selection, Storyboard Review, Video Edit, render, Library finalize, and future reference selection must consume only pack-approved product refs. A failed/generated artifact cannot become a new product reference unless a separate user-approved product reference ingestion flow exists outside this feature.
+
 For product review videos, the hero product image should be used as an identity anchor. Shot media payloads must carry:
 
 - source image ref,
@@ -2026,17 +2922,77 @@ Product fidelity QA must inspect generated storyboard frames, generated video ke
 
 When fidelity is uncertain, the safe default is repair or block. The runtime must not "explain away" a product mismatch as a creative variation.
 
+### 13.2.1 Per-Frame Vision QA And Targeted Repair
+
+Every generated visual unit that can become an anchor for later media must receive a `ShotFrameVisionQaEnvelope` before it is accepted:
+
+- each 3x3 storyboard grid cell after extraction;
+- each per-shot `start_frame`;
+- each per-shot `stop_frame`;
+- video keyframes sampled at start/middle/end and at scene/identity transitions;
+- thumbnail/cover candidates;
+- final render samples used for product, face, warning, subtitle, and CTA QA.
+
+Vision QA rules:
+
+- all vision-model QA calls must go through the SmartSpecPro LLM gateway and be recorded as `llm_visual_qa` credit usage;
+- the QA prompt/context must include product reference images, selected variant hash, protected product attributes, character identity asset pack refs and character continuity lock when present, shot intent, and allowed transformations;
+- the QA output must be structured, schema-validated, and persisted before advancing the stage;
+- the stage cannot mark `image_generation`, `storyboard_review`, `video_generation`, `video_edit`, `render`, or `library_finalize` complete while a required frame/keyframe QA status is `needs_targeted_repair` or `blocked`.
+
+Targeted repair rules:
+
+- if one `start_frame`, `stop_frame`, storyboard cell, thumbnail, or video keyframe fails, create `TargetedMediaUnitRepairPlan` for that exact `shotId + frameRole/mediaUnit`;
+- regenerate or repair only the failed unit and dependent downstream outputs;
+- preserve passed frames, clips, audio, subtitles, package metadata, and approvals that do not depend on the failed unit;
+- tighten repair payloads with explicit product refs, character identity pack refs, forbidden mutations, and negative findings from the failed QA;
+- after repair, rerun `ShotFrameVisionQaEnvelope` before the unit can be consumed by video generation, Storyboard Review, thumbnail packaging, or final render;
+- repeated failure after the configured attempt limit becomes `blocked_needs_user` or routes to manual review instead of regenerating the whole run.
+
+### 13.2.2 Generated Media Acceptance And Quarantine
+
+Generated media artifacts are not accepted just because a provider returned a URL. Each generated unit must move through a `GeneratedMediaAcceptanceEnvelope`.
+
+Acceptance states:
+
+- `candidate`: provider output exists but required QA is not complete;
+- `qa_pending`: QA has been scheduled or is running;
+- `accepted`: all required QA passed and the artifact can route to downstream surfaces;
+- `accepted_with_warnings`: policy allows the artifact with scoped approval or warning metadata;
+- `quarantined_failed_qa`: artifact failed QA and can be used only for internal audit/repair context;
+- `quarantined_policy_blocked`: artifact is blocked by policy, rights, privacy, safety, or consent rules;
+- `superseded_by_repair`: a repaired artifact has replaced this artifact;
+- `discarded`: artifact is no longer retained except minimal audit metadata.
+
+Routing rules:
+
+- Storyboard Review, Video Editor, Media Library, publishable package, and future reference selection may consume only `accepted` or policy-approved `accepted_with_warnings` artifacts;
+- failed or unverified artifacts must never appear as normal output links, thumbnails, user-downloadable assets, Video Editor clips, or positive creative-memory examples;
+- failed artifacts may be retained in internal trace, repair context, or negative feedback memory only when retention policy allows it;
+- a repaired artifact must explicitly supersede the failed artifact and update downstream lineage refs;
+- background resume and operator recovery must verify acceptance state before reusing any generated artifact ref.
+
 ### 13.3 Character And Face Continuity
 
 When a human presenter or character is used:
 
 - the runtime must decide whether continuity is required,
+- the runtime must create `CharacterIdentityAssetPack` before provider spend when the same person, hand model, character, or voice appears across multiple shots,
 - if required, it must anchor character references,
 - every generated shot must be checked against the anchor,
 - face changes across turn/reveal shots are blocking issues,
 - failed character continuity repairs must not alter the product to hide the issue.
 
-The runtime should avoid using a recurring human presenter unless the story benefits from it and continuity can be verified. Product-only, hands-only, or one-shot presenter formats are preferred when they reduce face-change risk without weakening the review.
+The runtime should avoid using a recurring human presenter unless the story benefits from it, consent/rights are valid, and continuity can be verified. Product-only, hands-only, generic-person, voice-only, or one-shot presenter formats are preferred when they reduce face-change risk without weakening the review.
+
+Character identity pack rules:
+
+- real-person references require scoped consent/rights refs before face or voice continuity can be used;
+- customer/reviewer faces, marketplace profile images, private seller faces, celebrity-like faces, minors, or unrelated people must block recurring identity unless an explicit approved policy exists;
+- synthetic/generic presenters may be used, but the pack must still record visible identity anchors, allowed shot scopes, voice profile refs, and fallback rules;
+- back-facing, cropped, masked, or hands-only shots must declare whether a face is allowed to appear later; if not, `mustNeverRevealFace` must block turn/reveal video payloads;
+- provider payloads and repair payloads must reference the pack-approved character/voice refs, not raw marketplace screenshots, failed generated people, or vague prompt phrases;
+- any LLM vision/audio used to create or validate the pack must go through the SmartSpecPro LLM gateway with `llm_visual_qa` or `llm_audio_qa` credit tracking.
 
 Character continuity QA must sample at least the start, middle, and end of each generated clip where the person appears. It must block:
 
@@ -2046,6 +3002,8 @@ Character continuity QA must sample at least the start, middle, and end of each 
 - inconsistent age, skin tone, hair, wardrobe, body type, or presenter role,
 - new unplanned people becoming the apparent reviewer,
 - lip-sync or speaking identity inconsistent with the voiceover plan.
+
+If native video audio or voice-driven generation causes character identity, facial expression, mouth movement, or speaking identity to drift, the failure belongs to the affected shot/clip. The runtime must repair the affected clip or switch that shot to a safer product-only, hands-only, or separate-TTS strategy rather than changing the approved product frames or regenerating unrelated shots.
 
 ### 13.4 Audio Continuity
 
@@ -2479,6 +3437,14 @@ Marketplace content, product descriptions, reviews, uploaded files, OCR, and pri
 - approved automation mode,
 - locked product identity constraints.
 
+Prompt-injection resistance must be implemented as a persisted evidence firewall, not only prompt wording:
+
+- run preflight must create `MarketplaceEvidenceInstructionFirewall` after `MarketplaceEvidencePrivacyEnvelope` and before any marketplace evidence is passed to Agents, LLM gateway calls, prompt planning, vision QA prompts, repair prompts, or metadata generation;
+- raw DOM/OCR/review/seller text may enter LLM context only as quoted, escaped, labelled untrusted evidence blocks or as structured evidence refs; system/developer instructions must never be constructed from marketplace text;
+- instruction-like marketplace content must be quarantined or reduced to safe fact refs before planning, and quarantined refs cannot influence tools, handoffs, model/provider selection, approval state, credit spend, output destinations, or final user-visible copy;
+- the SDK capability manifest, credit policy, advertising policy rule pack, creative brief, distribution profile, and output schema must be built from platform-trusted state, not from marketplace evidence content;
+- if the firewall cannot separate safe product facts from injected instructions, the run must block with a timeline-visible `evidence_instruction_blocked` state before additional LLM/provider spend.
+
 ### 18.3 Trace Redaction
 
 Traces must redact:
@@ -2602,6 +3568,8 @@ interface MarketplaceAutoReviewPolicySnapshot {
   pricingVersion: string;
   creditPolicyVersion: string;
   advertisingPolicyVersion: string;
+  advertisingPolicyRulePackId: string;
+  advertisingPolicyRulePackVersion: string;
   thailandPolicyProfileVersion?: string;
   warningTemplateVersion?: string;
   consentPolicyVersion?: string;
@@ -2735,7 +3703,9 @@ Feature 117 creates ad-like media from marketplace evidence, so it must protect 
 Marketplace privacy rules:
 
 - run preflight must create `MarketplaceEvidencePrivacyEnvelope` before any LLM planning call receives marketplace DOM text, screenshot OCR, review text, comments, or uploaded evidence;
+- run preflight must then create `MarketplaceEvidenceInstructionFirewall` before any gateway-routed LLM/vision/repair prompt receives marketplace evidence or prior AI output;
 - account headers, order/cart/checkout/payment data, chats/messages, email, phone, address, customer usernames, profile photos, reviewer identities, unrelated people, and private seller/account data must be removed, masked, internal-only, or blocked;
+- hidden or instruction-like marketplace text, fake prompt/schema/tool snippets, fake budget/provider instructions, or policy-bypass language must be quarantined, escaped, or converted to structured fact refs before Agents context is built;
 - review text and rating summaries are untrusted evidence and cannot become named testimonials, simulated reviewer quotes, review screenshots, review stars, or social-proof visuals unless the run has explicit evidence, rights, and approval;
 - final QA must inspect rendered visuals, captions, subtitles, warning overlays, and audio transcript for accidental PII or private marketplace data.
 
@@ -2793,6 +3763,85 @@ Post-publish governance rules:
 - if product evidence is deleted, rights are revoked, offer/landing evidence expires, policy changes, or a privacy/takedown complaint is recorded, the system must block reuse or require re-check before another export/publish;
 - external publish refs, when later supported, must be stored as refs only and never with plaintext platform credentials.
 
+### 18.15 Campaign Governance, Brand Voice, And Human Review Queue
+
+Feature 117 must support repeated creative generation from the same product without becoming duplicate ad spam, uncontrolled spend, or brand-inconsistent output.
+
+Campaign and batch governance rules:
+
+- create `CampaignGenerationGovernanceEnvelope` before any variation set or campaign batch starts;
+- batch generation uses the same run/stage, gateway, credit, QA, policy, and timeline controls as a single run;
+- enforce tenant/user/product/campaign active-run caps, daily variant caps, spend caps, rate-limit keys, and duplicate creative similarity thresholds before new provider reservations;
+- abnormal repair spend, provider refusal spikes, policy-risk spikes, duplicate concept patterns, or same-product campaign floods must pause additional paid work and show a timeline-safe blocker;
+- batch approval, when required, must authorize only the scoped campaign/run/artifact set and must not become blanket approval for future changed evidence or policy snapshots.
+
+Brand and seller voice rules:
+
+- create `BrandVoiceAndSellerPolicyEnvelope` when the selected product, seller, tenant, or campaign has tone, style, phrase, pronunciation, or CTA guidance;
+- brand/seller voice can guide hook style, wording, Thai politeness/register, pronunciation, CTA tone, and pacing;
+- brand/seller voice cannot override product evidence, Thai/international ad policy, asset rights, privacy redaction, synthetic disclosure, CTA integrity, or QA blockers;
+- competitor names, comparison claims, official-sounding badges, superlatives, or brand-adjacent claims must be forbidden unless evidence and policy approval explicitly allow them;
+- internal compliance notes, negative QA reasons, or private seller instructions must never leak into final voiceover, captions, overlays, metadata, or UI copy.
+
+Human review queue rules:
+
+- create `HumanReviewQueuePolicy` whenever high-volume batch generation, regulated categories, budget over policy, low-confidence QA, brand exceptions, rights/privacy exceptions, competitor/comparison claims, or post-publish reuse risk requires a human decision;
+- review queue decisions must include approver role, affected refs, run/stage scope, policy snapshot, SLA, timeout action, and idempotency key;
+- approval is scoped to the exact evidence, artifact, policy snapshot, output mode, export variant, and campaign batch being reviewed;
+- rejection must create targeted repair, replan, or terminal blocker without discarding completed safe artifacts;
+- expired or missing review decisions must pause or block according to policy instead of silently continuing to spend or publish.
+
+### 18.16 Publishable Asset Package, Thumbnail, Transcript, And Metadata Manifest
+
+Feature 117 should finish with a usable asset package, not only a raw video file. For distribution profiles that need post copy, thumbnails, subtitles, transcripts, or metadata, the final package must be generated and checked as part of the run.
+
+Publishable package rules:
+
+- create `PublishableAssetPackageEnvelope` before `library_finalize` when the distribution profile requires title/caption/description, hashtags, thumbnail/cover, transcript, subtitle sidecar, alt text, metadata manifest, or checksums;
+- title, social caption, description, hashtags, alt text, thumbnail overlay text, and CTA metadata are ad content and must pass product truth, Thai/international ad compliance, CTA integrity, privacy, rights, disclosure, brand/seller policy, and distribution-profile checks;
+- platform metadata must respect platform character limits, hashtag count limits, link policy, affiliate/material-connection disclosure, and safe wording for regulated categories;
+- no publish metadata may include internal QA notes, raw prompt text, policy reasoning, private seller instructions, hidden marketplace evidence, or customer/reviewer identities.
+
+Thumbnail and cover rules:
+
+- thumbnail/cover may be extracted from an approved frame, selected by the user, or generated only from approved product-safe references;
+- thumbnail must not mutate product identity, show a different variant, invent packaging/logos/badges, create fake before/after, fake discount, fake rating, fake certification, or misleading result claims;
+- face/character continuity rules apply to thumbnails when a presenter or person appears;
+- thumbnail overlay text, when present, must be deterministic text rendering or controlled composition and must pass OCR/readability, safe area, and ad compliance checks.
+
+Transcript and subtitle rules:
+
+- transcript and subtitle text must come from approved voiceover/script, TTS alignment, verified ASR, or manual edit; video/image prompts and internal planning text are forbidden subtitle sources;
+- subtitle artifacts must declare burn-in versus sidecar mode, language, timing source, and QA status;
+- transcript/subtitle timing must match the final rendered audio after repair and render, not only the planned storyboard timing;
+- final metadata manifest must include refs for final media, thumbnails, subtitles/transcripts, checksums, duration/resolution/codec summary, distribution profile, QA, credit, lineage, disclosure, CTA, and governance envelopes.
+
+### 18.17 Input Change Impact, Approval Invalidation, And Partial Reuse
+
+Feature 117 runs can last long enough for product data, images, price snapshots, rights, policy, or user edits to change mid-run. The automation must not either restart everything blindly or continue with stale approvals. It must compute impact and preserve only safe artifacts.
+
+Input change impact rules:
+
+- create `RunInputChangeImpactEnvelope` whenever background advancement, manual refresh, repair, render, finalization, or reuse detects a newer product/evidence/policy snapshot than the one used by the current stage;
+- compare product fields, selected variant hash, product image refs/order, price/offer snapshot, source/affiliate/landing URL, evidence retention/purge state, asset rights, privacy redaction, evidence instruction firewall, production creative brief, brand/seller policy, distribution profile, warning/disclosure policy, human review decisions, and user storyboard/script edits;
+- if a change affects only metadata or publish packaging, preserve generated media and repair only metadata/package artifacts;
+- if a change affects product identity, selected variant, product image reference, claim evidence, rights, or privacy, recheck or invalidate every downstream concept, prompt, media payload, generated asset, QA verdict, approval, and publishable package that depended on the stale ref;
+- if an approved artifact remains visually/product-truth safe, preserve it with a new recheck verdict instead of regenerating paid media.
+
+Approval, QA, and credit invalidation rules:
+
+- approval decisions are valid only for their exact evidence, policy snapshot, artifact refs, output mode, and export variant;
+- credit estimates and reservations must be recomputed when changed inputs alter provider, duration, output count, repair scope, render profile, package requirements, or distribution profile;
+- QA verdicts must be re-run when their evidence refs, policy snapshot, model/provider snapshot, generated media refs, or final audio/render refs change;
+- invalidated approvals/QA/credit refs must remain auditable but cannot authorize further spend, render, publication, or reuse.
+
+Timeline and partial reuse rules:
+
+- timeline must show the changed input, impacted stages, preserved artifacts, invalidated artifacts, next action, and whether the run is doing recheck, repair, replan, regenerate, or block;
+- invalidation must be idempotent so repeated refresh/resume does not repeatedly discard artifacts or duplicate charges;
+- user/admin edits to storyboard, script, CTA, distribution profile, brand policy, or warning text must trigger the same impact analysis before continuing;
+- terminal blockers must preserve partial outputs and explain which changed input made continuation unsafe.
+
 ---
 
 ## 19. Observability And Audit
@@ -2804,6 +3853,9 @@ Persist:
 - SDK version,
 - adapter version,
 - gateway model metadata,
+- production creative brief snapshot,
+- evidence instruction firewall refs,
+- character identity asset pack refs,
 - concept set,
 - selected concept,
 - planner output,
@@ -2813,6 +3865,16 @@ Persist:
 - reservations,
 - deductions,
 - refunds/releases,
+- campaign governance decisions,
+- brand/seller voice policy decisions,
+- human review queue decisions,
+- publishable asset package decisions,
+- thumbnail/subtitle/transcript/metadata manifest refs,
+- input change impact decisions,
+- product reference asset pack decisions,
+- advertising policy rule-pack refs and triggered rule IDs,
+- stage completion evidence refs,
+- SDK capability manifest refs,
 - provider task IDs,
 - render job IDs,
 - repair attempts,
@@ -2838,11 +3900,14 @@ Required metrics:
 - average time to final video,
 - cost per completed video,
 - creative quality score distribution,
+- creative brief default/ambiguity/review-required rate,
 - hook truth-risk block rate,
 - advertising compliance block rate,
 - QA repair rate by reason code,
 - product fidelity failure rate,
 - face continuity failure rate,
+- character identity pack blocked/limited/fallback rate,
+- voice identity drift repair rate,
 - natural speech failure rate,
 - audio continuity failure rate,
 - unsupported claim block rate,
@@ -2871,7 +3936,23 @@ Required metrics:
 - synthetic disclosure required/missing rate,
 - CTA/landing integrity failure rate,
 - QA calibration spot-check rate,
-- post-publish invalidation/recheck rate.
+- post-publish invalidation/recheck rate,
+- publishable package completion/block rate,
+- thumbnail QA failure rate,
+- subtitle/transcript timing failure rate,
+- platform metadata compliance failure rate,
+- metadata manifest/checksum failure rate,
+- input-change recheck rate,
+- downstream invalidation rate,
+- preserved-artifact reuse rate after input change,
+- stale-approval invalidation rate,
+- product reference pack blocked/needs-better-image rate,
+- policy rule-pack fixture replay failure rate,
+- stage completion evidence block rate.
+- SDK capability manifest denial rate by reason code.
+- creative brief change invalidation rate.
+- evidence instruction firewall block/quarantine rate.
+- attempted evidence policy/provider/credit override rate.
 
 ---
 
@@ -2985,11 +4066,17 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - SDK model client uses SmartSpecPro LLM gateway only.
 - Missing gateway metadata fails closed.
 - Direct provider credentials fail closed.
+- SDK capability manifests validate allowed agents, tools, handoffs, output schemas, session policy, trace policy, hosted capability denials, and manifest hash.
 - Runtime output validates against schemas.
 - Tool calls require permission, idempotency, and audit metadata.
+- Unknown tool calls, handoffs that widen scope, raw trace/session capture, hosted SDK capabilities, and over-call-limit tool use fail before additional spend.
+- Production creative brief snapshots validate objective, audience/use context, viewer promise, creative latitude, quality mode, auto-decision policy, style preferences, CTA intent, user hint trust levels, ambiguity state, and snapshot hash.
 - Product variant snapshots validate selected options, evidence refs, price snapshot refs, volatility policy, and variant hash.
 - Access snapshots validate owner/group permission, allowed actions, credit payer, and background recheck policy.
 - Evidence freshness snapshots validate stale product handling, raw evidence purge state, source page state, image readiness, and blocked volatile claim types.
+- Product reference asset packs validate primary/supporting/rejected references, crop/mask/fingerprint refs, selected variant binding, provider use policy, and required user action before visual provider spend.
+- Advertising policy rule packs validate source anchors, jurisdiction/profile, category triggers, rule IDs, blocked patterns, required evidence kinds, warning template refs, allowed repair actions, fixture refs, approval status, and effective dates.
+- Stage completion evidence envelopes validate requested transition, required evidence kinds, present/missing refs, warning/blocking reason codes, evaluator, and idempotency key.
 - Asset rights envelopes validate exact-product-use-only assets, standalone brand/logo restrictions, marketplace badge blocks, and approval refs.
 - API projections validate old Feature 118 rows, new Feature 117 rows, detail projection, list summary projection, and redaction rules.
 - Artifact lineage validates parent refs, selected variant hash, QA refs, approval refs, credit refs, and storage/redaction state.
@@ -2998,6 +4085,7 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - Storage quota plans validate estimated intermediate/final bytes, quota state, required re-host refs, cleanup refs, and transcode profile limits.
 - Retry/DLQ policies validate retryability by failure class, stale lease timeout, retry budget, alert threshold, and replay permission.
 - Privacy envelopes validate PII finding classes, redaction actions, allowed agent context refs, blocked generation refs, and final media privacy risk.
+- Evidence instruction firewalls validate source refs, privacy envelope ref, detected instruction patterns, quarantined/blocked refs, allowed agent-context refs, confidence, and pre-gateway-spend enforcement.
 - Audio rights/mix envelopes validate commercial-use rights, attribution, voice consent, license policy, restrictions, loudness targets, and blocked audio sources.
 - Distribution profiles validate target platform, placement, aspect ratio, dimensions, safe areas, caption policy, duration range, warning overlay policy, and export variants.
 - Creative feedback memory policies validate tenant isolation, allowed/forbidden memory kinds, retention, external-training prohibition, and failed-output exclusion.
@@ -3005,6 +4093,14 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - CTA/landing integrity envelopes validate URL reachability, redirect safety, product/variant match, volatile offer approval, tracking policy, and CTA text evidence.
 - Automation quality calibration policies validate fixture set refs, QA confidence thresholds, drift signals, spot-check policy, and promotion gate.
 - Post-publish governance envelopes validate allowed reuse, expiry/review metadata, invalidation triggers, action-on-invalidation, external post refs, and audit refs.
+- Campaign governance envelopes validate generation mode, product/campaign caps, spend cap, duplicate similarity refs, anomaly signals, approval requirements, and rate-limit keys.
+- Brand voice and seller policy envelopes validate tone/register, allowed/required/blocked phrases, competitor policy, claim/CTA style policy, pronunciation hints, evidence refs, and approval refs.
+- Human review queue policies validate required reasons, approver roles, scope, SLA, timeout action, decision refs, and exact artifact/policy snapshot scoping.
+- Publishable asset package envelopes validate final video refs, thumbnail refs, subtitle/transcript refs, platform metadata, evidence refs, metadata manifest refs, checksum refs, and package QA status.
+- Run input change impact envelopes validate previous/current snapshot refs, detected change kinds, impacted stages, artifact actions, invalidated approval/credit/QA refs, and partial-reuse status.
+- Shot frame vision QA envelopes validate frame role, product refs, variant refs, character refs, gateway usage refs, per-check verdicts, findings, and targeted repair status.
+- Targeted media unit repair plans validate failed QA refs, exact shot/media unit, preserve/invalidate refs, downstream recheck stages, attempts, credit estimate refs, and idempotency keys.
+- Generated media acceptance envelopes validate artifact state, QA refs, repair refs, allowed/blocked surfaces, superseded refs, retention policy, and user-visibility flags.
 
 ### 22.2 Credit Tests
 
@@ -3014,6 +4110,7 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - Repair charges only incremental affected work.
 - Failed provider job releases/refunds according to existing rules.
 - Auto spend stops when budget policy is exceeded.
+- Batch/campaign spend anomaly pauses additional paid work before new provider reservations and preserves credit audit state.
 
 ### 22.3 Marketplace Tests
 
@@ -3023,6 +4120,7 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - Access revocation after run start blocks new paid work while preserving completed artifacts and audit.
 - Stale product evidence blocks volatile claims or asks for recapture before media spend.
 - Remote marketplace product images are re-hosted/proxied or blocked before paid generation depends on them.
+- Campaign batch generation enforces product/tenant active-run caps, daily variant caps, duplicate creative thresholds, and batch approval rules.
 - Active Auto Review runs advance through durable stages and resume after process restart or background interval tick.
 - Storyboard-only mode completes at `storyboard_review` without scheduling video/render stages.
 - Full-video mode completes through `library_finalize` and stores render/library IDs.
@@ -3041,6 +4139,7 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - Runtime does not invent SKU/variant-specific color, size, package count, price, stock, or bundle details outside the selected variant snapshot.
 - Prior rejected concept pattern is not reused.
 - Duplicate hook/camera/story arc is flagged.
+- Duplicate campaign variants above similarity threshold are blocked or sent to replan before spend.
 - Weak or generic hooks are scored lower than product-specific hooks.
 - Deceptive curiosity hooks are blocked even when creative quality is high.
 - Proof-first and before-buy-check concepts pass when every claim has evidence.
@@ -3100,6 +4199,9 @@ The runbook must define ownership, dashboards/log queries, escalation thresholds
 - Customer/reviewer usernames, profile photos, order/cart/account data, phone, email, address, chat snippets, or private seller/account data are redacted or blocked before planning and final output.
 - Named review/testimonial/social-proof visuals require evidence, rights, and approval; otherwise they are blocked or rewritten generically.
 - Target-platform distribution profile enforces safe areas for warning text, captions, CTA, and platform UI before finalization.
+- Brand/seller voice cannot force prohibited phrases, unsupported claims, competitor mentions, or internal compliance notes into public ad copy.
+- Human review queue is required for regulated, high-volume, high-budget, low-confidence, rights/privacy exception, or competitor/comparison claim scenarios.
+- Publish metadata, hashtags, thumbnail text, alt text, and descriptions are checked as ad content and cannot include unsupported claims, private evidence, fake proof, or internal planning notes.
 
 ### 22.8.1 Media Safety And Rights Tests
 
@@ -3133,6 +4235,8 @@ Canonical E2E scenarios:
 17. Shared product with read-only group access -> private output only or blocked according to tenant policy, no product evidence mutation.
 18. Stale product with old price/sold-count snapshot -> generic product video allowed only if volatile claims are removed or freshly approved.
 19. Provider safety refusal -> no repeated paid retry, sanitized blocker shown, audit preserves safe reason.
+20. Marketplace one-click run with no custom user prompt -> persisted default creative brief -> concept selection cites objective/audience/quality mode.
+21. User changes target audience or CTA after concept selection -> only dependent concept/story/script/metadata refs invalidate, accepted unrelated media remains preserved after recheck.
 
 ### 22.10 Operational Hardening Tests
 
@@ -3162,6 +4266,18 @@ Canonical E2E scenarios:
 - Product evidence deletion, rights revocation, offer expiry, policy change, privacy complaint, or takedown request -> block reuse or require re-check of existing Library output.
 - Retention policy applies to intermediate frames, clips, audio, QA crops, OCR crops, and final render metadata.
 - Background advancement re-checks group membership, product access, tenant policy, and credit authority before each new paid stage.
+- Same product campaign flood, duplicate variation pattern, abnormal repair spend, provider refusal spike, or policy-risk spike -> pause new spend with timeline-visible blocker.
+- Human review decision expiry or timeout follows the configured policy and never silently approves future changed evidence.
+- Missing or non-compliant thumbnail, subtitle/transcript, platform metadata, checksum, or metadata manifest blocks Library finalization or publishable-package promotion.
+- Mid-run product/evidence/policy/profile/user edits trigger impact analysis, invalidate only affected downstream refs, and preserve safe artifacts with recheck evidence.
+- Low-confidence, low-resolution, wrong-variant, remote-unhosted, or rights-blocked product references create a product reference pack blocker before visual provider credits are reserved.
+- Draft, deprecated, expired, or fixture-failing advertising policy rule pack -> concept planning, provider generation, render, package promotion, or reuse blocks until an approved pack is selected.
+- Stage handler reaches terminal success without required evidence refs -> transition is denied, timeline shows evidence blocker, and no downstream stage starts.
+- Failed start/stop/storyboard frame vision QA creates targeted repair for that exact frame and cannot advance video generation or finalization until the repaired unit passes.
+- Native-audio or voice-driven character drift creates targeted shot/clip repair or safer strategy switch without regenerating unrelated product frames.
+- Unverified, failed, superseded, or policy-blocked media artifacts are quarantined from Storyboard Review, Video Editor, Library, publishable packages, future references, and positive creative memory.
+- Unknown SDK tool/handoff/hosted-capability request -> attempt blocks before LLM/provider spend, timeline shows manifest blocker, and no Python-side persistence or trace leak occurs.
+- Ambiguous creative brief with auto-selection enabled -> safe defaults, human review, or blocker is chosen before provider spend; user hints that imply claims require evidence/approval refs.
 
 ---
 
@@ -3219,6 +4335,21 @@ Feature 117 is accepted only when:
 48. CTA text, source URL, affiliate URL, landing page, redirect chain, selected variant, current offer evidence, and tracking policy are validated before finalization.
 49. QA calibration, fixture replay, drift signals, and human spot-check sampling gate low-confidence or changed provider/model/policy cohorts before broad promotion.
 50. Final Library outputs carry post-publish governance so stale claims, deleted evidence, revoked rights, expired offers, policy changes, privacy complaints, or takedown requests block reuse or require re-check.
+51. Campaign/batch generation enforces active-run caps, daily variation caps, duplicate similarity thresholds, spend caps, anomaly blockers, and scoped batch approvals before additional paid work.
+52. Brand/seller voice policy improves tone, register, CTA wording, and pronunciation without overriding product truth, Thai/international ad policy, privacy, rights, disclosure, or evidence constraints.
+53. Human review queues have explicit reasons, approver roles, artifact/policy snapshot scope, SLA, timeout behavior, and rejection/repair outcomes for high-risk or high-volume automation.
+54. Publishable asset packages include compliant thumbnail/cover, title/caption/description, hashtags, transcript/subtitle artifacts, metadata manifest, checksums, and evidence/QA refs when required by the distribution profile.
+55. Input/evidence/policy changes during a run create an impact envelope that invalidates stale approvals, QA verdicts, credit estimates, and downstream artifacts only where affected while preserving safe work.
+56. Start frames, stop frames, storyboard cells, video keyframes, thumbnails, and final render samples pass gateway-routed vision QA before downstream use.
+57. Failed visual/audio-continuity units create targeted repair for the exact shot/frame/clip/audio unit, preserving unrelated passed artifacts and charging only the affected work.
+58. Generated media artifacts have explicit acceptance/quarantine state, and only accepted or approved-warning artifacts can route to user-visible or reusable surfaces.
+59. Visual provider payloads, targeted repairs, thumbnails, and future reference selection use only approved `ProductReferenceAssetPack` refs; low-confidence, wrong-variant, rights-blocked, private, or unhosted product images cannot trigger paid visual generation.
+60. Advertising compliance decisions cite an approved `AdvertisingPolicyRulePack` version and triggered rule IDs; policy changes are replayable and cannot silently alter old approvals or final asset audit history.
+61. Every stage completion, warning completion, skip, repair-required transition, retriable failure, block, terminal failure, and cancellation is backed by `MarketplaceAutoReviewStageCompletionEvidence`; downstream stages cannot start from status-only success.
+62. Every Agents-backed stage attempt uses a Node-created `ProductionAgentsSdkCapabilityManifest`; Python cannot add tools, handoffs, hosted SDK capabilities, raw session capture, raw trace export, persistence authority, or credit authority outside the manifest.
+63. Every run persists `ProductionCreativeBriefSnapshot` before concept generation; auto-selected concepts, scripts, metadata, and repairs cite the brief and cannot treat user hints as product claims without evidence or scoped approval.
+64. Every run that uses marketplace DOM/OCR/reviews/seller text/prior AI output creates `MarketplaceEvidenceInstructionFirewall` before gateway LLM spend; quarantined or blocked evidence cannot steer instructions, tools, provider/model routing, credits, approvals, output destinations, or final public copy.
+65. Every run that uses a recurring presenter, actor, hand model, character, or voice creates `CharacterIdentityAssetPack`; visual/audio provider payloads, continuity QA, repair, thumbnail selection, render, and Library finalization cannot rely on vague identity prompts or unapproved face/voice refs.
 
 ---
 
@@ -3228,26 +4359,37 @@ Recommended implementation order:
 
 1. Version the current Marketplace Auto Review contracts and decide whether to extend existing tables or add successor tables.
 2. Add `media_production` or equivalent media automation surface support to the existing Python Agents runtime contract and gateway metadata.
-3. Replace `buildAutoReviewPlan` with an Agents-backed concept/storyboard/prompt planner behind the Node service boundary.
-4. Persist Agents outputs into the existing `concept_story` and `prompt_plan` stages with schema validation and idempotency.
-5. Add product truth, volatile-signal, visual identity, and claim/evidence guardrails before provider generation.
-6. Add `MarketplaceEvidencePrivacyEnvelope` so PII/private marketplace evidence is redacted or blocked before planning/media generation.
-7. Add `AdvertisingComplianceProfile`, creative hook scoring, and net-impression QA before provider generation.
-8. Add `AdvertisingVisualWarningPlan` and deterministic warning/disclosure overlay rendering with OCR/readability QA.
-9. Add `MarketplaceAutoReviewDistributionProfile` before shot payload generation.
-10. Add `ProductVisualIdentityLock`, `CharacterContinuityLock`, `NaturalSpeechContract`, and `AudioRightsAndMixEnvelope` to shot/audio payloads and QA outputs.
-11. Remove or bypass Marketplace Auto Review dependency on `ProductionSpace`, `flowNodes`, and node-canvas-shaped execution.
-12. Implement direct shot media payload generation, validation, scheduling, and reconciliation.
-13. Bind provider callbacks/polling results to authenticated provider event envelopes, idempotency keys, and DLQ/recovery handling.
-14. Implement credit estimate/reservation integration before every LLM and provider step.
-15. Enforce payload/trace budgets before API projection, provider submission, and durable stage output persistence.
-16. Enforce storage quota, re-host, transcode, codec, duration, resolution, and output byte limits before render/library finalization.
-17. Add `CreativeFeedbackMemoryPolicy` for tenant-safe concept novelty and feedback memory.
-18. Add `SyntheticMediaDisclosureEnvelope`, `CtaLandingIntegrityEnvelope`, `AutomationQualityCalibrationPolicy`, and `PostPublishGovernanceEnvelope`.
-19. Reuse current image/video/audio/render/library stages and add QA/repair loops around them.
-20. Implement Storyboard Review/Video Edit/final render handoff with trace/evidence/credit summaries.
-21. Update Marketplace Capture progress UI to show a backend-derived timeline with completed/current/remaining stages, QA/blocker state, credit/provider waits, repair attempts, and output links.
-22. Add E2E tests, browser evidence, migration/backfill dry-run, privacy/audio-rights/distribution-profile/disclosure/CTA/calibration/post-publish tests, DLQ/recovery tests, and launch SLO dashboard/alert evidence.
+3. Add `ProductionAgentsSdkCapabilityManifest` before implementing any stage-specific agent runner so tools, handoffs, sessions, traces, hosted SDK capabilities, output schemas, and retry/resume events are manifest-gated.
+4. Add `ProductionCreativeBriefSnapshot` before concept generation so objective, audience, user hints, avoid list, quality/speed mode, CTA intent, and auto-decision policy are explicit before Agents plan.
+5. Add `MarketplaceEvidencePrivacyEnvelope` and `MarketplaceEvidenceInstructionFirewall` before any Agents planning, gateway-routed vision QA, repair prompt, metadata generation, or provider prompt can consume marketplace evidence.
+6. Replace `buildAutoReviewPlan` with an Agents-backed concept/storyboard/prompt planner behind the Node service boundary.
+7. Persist Agents outputs into the existing `concept_story` and `prompt_plan` stages with schema validation and idempotency.
+8. Add product truth, volatile-signal, visual identity, and claim/evidence guardrails before provider generation.
+9. Add `AdvertisingComplianceProfile`, creative hook scoring, and net-impression QA before provider generation.
+10. Add `AdvertisingVisualWarningPlan` and deterministic warning/disclosure overlay rendering with OCR/readability QA.
+11. Add `MarketplaceAutoReviewDistributionProfile` before shot payload generation.
+12. Add `ProductVisualIdentityLock`, `CharacterContinuityLock`, `NaturalSpeechContract`, and `AudioRightsAndMixEnvelope` to shot/audio payloads and QA outputs.
+13. Remove or bypass Marketplace Auto Review dependency on `ProductionSpace`, `flowNodes`, and node-canvas-shaped execution.
+14. Implement direct shot media payload generation, validation, scheduling, and reconciliation.
+15. Bind provider callbacks/polling results to authenticated provider event envelopes, idempotency keys, and DLQ/recovery handling.
+16. Implement credit estimate/reservation integration before every LLM and provider step.
+17. Enforce payload/trace budgets before API projection, provider submission, and durable stage output persistence.
+18. Enforce storage quota, re-host, transcode, codec, duration, resolution, and output byte limits before render/library finalization.
+19. Add `CreativeFeedbackMemoryPolicy` for tenant-safe concept novelty and feedback memory.
+20. Add `SyntheticMediaDisclosureEnvelope`, `CtaLandingIntegrityEnvelope`, `AutomationQualityCalibrationPolicy`, and `PostPublishGovernanceEnvelope`.
+21. Add `CampaignGenerationGovernanceEnvelope`, `BrandVoiceAndSellerPolicyEnvelope`, and `HumanReviewQueuePolicy` before enabling batch/variation automation.
+22. Add `PublishableAssetPackageEnvelope` before treating final Library output as publish-ready.
+23. Add `RunInputChangeImpactEnvelope` before allowing background resume, repair, render, or finalization to continue after product/evidence/policy/profile edits.
+24. Add `ShotFrameVisionQaEnvelope` and `TargetedMediaUnitRepairPlan` before accepting generated frames, keyframes, thumbnails, or final render samples for downstream use.
+25. Add `GeneratedMediaAcceptanceEnvelope` so candidate, accepted, quarantined, superseded, and discarded media refs are routed safely.
+26. Add `ProductReferenceAssetPack` before paid visual provider work so every product image reference is selected, hosted, rights-safe, variant-bound, fingerprinted, and rejected/blocked when unreliable.
+27. Add `AdvertisingPolicyRulePack` before using Thai/global/platform ad compliance gates so rules, source anchors, warning templates, and fixture refs are versioned and replayable.
+28. Add `CharacterIdentityAssetPack` before recurring presenter/actor/hand-model/voice generation so face, body, hands, wardrobe, and voice continuity use approved refs, consent, and fallback rules.
+29. Add `MarketplaceAutoReviewStageCompletionEvidence` before broad stage rewiring so no handler, worker, recovery action, or migration helper can mark a stage complete, repair-required, retriable-failed, blocked, cancelled, or terminal-failed without required artifacts, QA, credits, policy, repair/retry, governance, and lineage refs.
+30. Reuse current image/video/audio/render/library stages and add QA/repair loops around them.
+31. Implement Storyboard Review/Video Edit/final render handoff with trace/evidence/credit summaries.
+32. Update Marketplace Capture progress UI to show a backend-derived timeline with completed/current/remaining stages, QA/blocker state, credit/provider waits, repair attempts, and output links.
+33. Add E2E tests, browser evidence, migration/backfill dry-run, privacy/audio-rights/distribution-profile/disclosure/CTA/calibration/post-publish/campaign-governance/brand-policy/human-review/publishable-package/input-change-impact/shot-frame-vision-qa/media-acceptance/product-reference-pack/character-identity-pack/policy-rule-pack/stage-completion-evidence/capability-manifest/creative-brief tests, DLQ/recovery tests, and launch SLO dashboard/alert evidence.
 
 The first shippable vertical slice should be:
 

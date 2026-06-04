@@ -1,0 +1,250 @@
+{
+  "style_presets": {
+    "soft_bridal_windowlight": {
+      "description": "Warm natural window light, cream interiors, lace or bridal fabrics, shallow depth, romantic and serene.",
+      "lighting": "large soft window light from one side, creamy highlights, gentle shadow falloff",
+      "grade": "warm ivory, soft gold, low contrast, delicate film grain"
+    },
+    "soft_korean_beauty_drama": {
+      "description": "Clean emotional beauty-drama look, soft face light, warm bokeh, intimate lensing.",
+      "lighting": "soft directional daylight, smooth skin highlights, quiet ambient fill",
+      "grade": "warm neutral skin tones, gentle green-beige background softness"
+    },
+    "cinematic_wedding_editorial": {
+      "description": "Elegant bridal editorial video with lace details, reflective highlights, and room geometry.",
+      "lighting": "side window glow with bright curtains and soft room bounce",
+      "grade": "creamy white, champagne highlights, soft contrast"
+    },
+    "warm_orange_studio_beauty": {
+      "description": "Seamless orange studio portrait, gold wardrobe, polished commercial beauty.",
+      "lighting": "large diffused frontal key slightly above camera, subtle falloff on backdrop",
+      "grade": "amber copper warmth, satin highlights, refined skin"
+    },
+    "hard_flash_fashion_editorial": {
+      "description": "Direct fashion flash, shiny skin, strong exposure, crisp shadows, magazine editorial.",
+      "lighting": "hard direct flash concentrated on subject with visible edge falloff",
+      "grade": "overexposed flash highlights, saturated color, visible film grain"
+    },
+    "vintage_fuji_velvia_flash": {
+      "description": "Oversaturated film-flash look, high color density, hard reflections and grain.",
+      "lighting": "hard on-camera flash with concentrated center brightness",
+      "grade": "Fuji Velvia-inspired saturation, heavy grain, glossy skin"
+    },
+    "neo_noir_reflection": {
+      "description": "Dark reflective interiors, colored practicals, moody controlled highlights.",
+      "lighting": "low-key motivated side light with reflective accents",
+      "grade": "cool shadows, warm highlights, high contrast"
+    },
+    "rainy_window_melancholy": {
+      "description": "Soft rain-streaked window, reflective mood, intimate stillness.",
+      "lighting": "diffused gray daylight through wet glass",
+      "grade": "cool beige, soft contrast, subdued saturation"
+    },
+    "macro_fashion_texture_study": {
+      "description": "Extreme close-up study of lace, satin, jewelry, skin, hair, or fabric detail.",
+      "lighting": "grazing side light revealing texture",
+      "grade": "tactile microcontrast, shallow focus, elegant highlights"
+    },
+    "wide_environmental_editorial": {
+      "description": "Full environment reveal, room geometry, balanced composition, cinematic stillness.",
+      "lighting": "motivated natural light with soft spatial falloff",
+      "grade": "filmic neutral warmth, controlled contrast"
+    }
+  },
+  "movement_presets": {
+    "slow_push_in": "Camera gently pushes closer toward the subject, increasing intimacy without changing identity or wardrobe.",
+    "slow_pull_back": "Camera gently pulls back to reveal wardrobe and environment while preserving the same pose language.",
+    "arc_orbit_15_degrees": "Camera orbits subtly around the subject by about 15 degrees, creating parallax while maintaining continuity.",
+    "arc_orbit_45_degrees": "Camera moves from a frontal or three-quarter angle toward a stronger three-quarter/profile view.",
+    "crane_down_to_close": "Camera begins higher and descends toward an intimate portrait angle.",
+    "crane_up_to_wide": "Camera rises and widens to reveal body posture and environment.",
+    "low_angle_rise": "Camera begins low and rises slightly, elongating the silhouette.",
+    "profile_to_three_quarter": "Subject or camera changes from side profile into a three-quarter view.",
+    "rack_focus_foreground_to_face": "Focus begins on foreground texture or fabric and resolves on the subject's eyes.",
+    "macro_detail_to_portrait": "Begins on a detail such as lace, satin, lips, eye, or hand and reveals the portrait.",
+    "portrait_to_macro_detail": "Begins as a portrait and settles on a material or beauty detail.",
+    "handheld_breathing_intimate": "Very subtle handheld micro-movement, intimate and natural, no aggressive shake.",
+    "parallax_window_reveal": "Camera moves laterally so window curtains, mirror, or foreground edges reveal the subject."
+  },
+  "start_stop_pairs": {
+    "wide_to_close": {
+      "start": "wide or full-body composition showing environment and wardrobe",
+      "stop": "intimate close-up on face or upper torso",
+      "distinct_axes": [
+        "camera_distance",
+        "composition",
+        "focus_target"
+      ]
+    },
+    "close_to_wide": {
+      "start": "close portrait or detail frame",
+      "stop": "wider shot revealing body posture and room geometry",
+      "distinct_axes": [
+        "camera_distance",
+        "environment_reveal",
+        "composition"
+      ]
+    },
+    "front_to_profile": {
+      "start": "front-facing portrait",
+      "stop": "clean profile or near-profile angle",
+      "distinct_axes": [
+        "camera_angle",
+        "body_orientation",
+        "gaze_direction"
+      ]
+    },
+    "profile_to_front": {
+      "start": "side profile with gaze away",
+      "stop": "front or three-quarter portrait with gaze toward camera",
+      "distinct_axes": [
+        "camera_angle",
+        "gaze_direction",
+        "body_orientation"
+      ]
+    },
+    "high_to_low": {
+      "start": "high-angle frame looking down",
+      "stop": "low-angle frame looking up",
+      "distinct_axes": [
+        "camera_height",
+        "camera_angle",
+        "body_language"
+      ]
+    },
+    "detail_to_face": {
+      "start": "macro texture detail such as lace, satin, eye, lips, hand, or hair",
+      "stop": "portrait revealing face and emotion",
+      "distinct_axes": [
+        "focus_target",
+        "camera_distance",
+        "composition"
+      ]
+    },
+    "over_shoulder_to_front": {
+      "start": "over-the-shoulder or foreground-obscured view",
+      "stop": "clean direct front portrait",
+      "distinct_axes": [
+        "foreground_occlusion",
+        "camera_angle",
+        "composition"
+      ]
+    }
+  },
+  "storyboard_presets": {
+    "six_shot_beauty_portrait": [
+      {
+        "shot_type": "medium_close_up",
+        "duration_seconds": 4,
+        "camera_movement": "slow_push_in",
+        "subject_action": "direct gaze with subtle breathing"
+      },
+      {
+        "shot_type": "macro_detail",
+        "duration_seconds": 3,
+        "camera_movement": "rack_focus_foreground_to_face",
+        "subject_action": "stillness"
+      },
+      {
+        "shot_type": "profile",
+        "duration_seconds": 4,
+        "camera_movement": "arc_orbit_15_degrees",
+        "subject_action": "soft side gaze"
+      },
+      {
+        "shot_type": "high_angle",
+        "duration_seconds": 4,
+        "camera_movement": "crane_down_to_close",
+        "subject_action": "look down then lift eyes"
+      },
+      {
+        "shot_type": "low_angle",
+        "duration_seconds": 4,
+        "camera_movement": "low_angle_rise",
+        "subject_action": "confident still pose"
+      },
+      {
+        "shot_type": "close_up",
+        "duration_seconds": 5,
+        "camera_movement": "handheld_breathing_intimate",
+        "subject_action": "micro-expression into camera"
+      }
+    ],
+    "six_shot_fashion_editorial": [
+      {
+        "shot_type": "wide_full_body",
+        "duration_seconds": 4,
+        "camera_movement": "slow_pull_back",
+        "subject_action": "standing sculptural pose"
+      },
+      {
+        "shot_type": "low_angle",
+        "duration_seconds": 4,
+        "camera_movement": "low_angle_rise",
+        "subject_action": "subtle weight shift"
+      },
+      {
+        "shot_type": "profile",
+        "duration_seconds": 3,
+        "camera_movement": "dolly_left_to_right",
+        "subject_action": "clean profile gaze"
+      },
+      {
+        "shot_type": "macro_detail",
+        "duration_seconds": 3,
+        "camera_movement": "portrait_to_macro_detail",
+        "subject_action": "fabric sway only"
+      },
+      {
+        "shot_type": "medium_portrait",
+        "duration_seconds": 4,
+        "camera_movement": "arc_orbit_45_degrees",
+        "subject_action": "turn body to three-quarter"
+      },
+      {
+        "shot_type": "close_up",
+        "duration_seconds": 4,
+        "camera_movement": "slow_push_in",
+        "subject_action": "direct editorial gaze"
+      }
+    ],
+    "cinematic_wedding_room": [
+      {
+        "shot_type": "establishing_wide",
+        "duration_seconds": 4,
+        "camera_movement": "crane_up_to_wide",
+        "subject_action": "standing near window"
+      },
+      {
+        "shot_type": "medium_portrait",
+        "duration_seconds": 4,
+        "camera_movement": "parallax_window_reveal",
+        "subject_action": "look toward window"
+      },
+      {
+        "shot_type": "macro_detail",
+        "duration_seconds": 3,
+        "camera_movement": "rack_focus_foreground_to_face",
+        "subject_action": "lace texture stillness"
+      },
+      {
+        "shot_type": "profile",
+        "duration_seconds": 4,
+        "camera_movement": "profile_to_three_quarter",
+        "subject_action": "turn softly toward light"
+      },
+      {
+        "shot_type": "close_up",
+        "duration_seconds": 4,
+        "camera_movement": "slow_push_in",
+        "subject_action": "eyes shift to camera"
+      },
+      {
+        "shot_type": "wide_full_body",
+        "duration_seconds": 5,
+        "camera_movement": "slow_pull_back",
+        "subject_action": "settle into still pose"
+      }
+    ]
+  }
+}

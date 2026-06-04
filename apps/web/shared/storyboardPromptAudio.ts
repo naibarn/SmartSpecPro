@@ -138,6 +138,7 @@ export interface BuildVeo31StoryboardVideoPromptInput {
   speechMode?: StoryboardPromptSpeechMode;
   speechLanguage?: string | null;
   voiceoverScript?: string | null;
+  voiceBrief?: string | null;
   includeSound?: boolean;
   soundBrief?: string | null;
 }
@@ -202,6 +203,7 @@ function buildDialoguePacingRule(
 
 function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoiceover: boolean): string {
   const soundBrief = compactInlineText(input.soundBrief ?? "");
+  const voiceBrief = compactInlineText(input.voiceBrief ?? "");
   const lines = input.includeSound && soundBrief
     ? ["Native audio."]
     : hasVoiceover
@@ -211,6 +213,7 @@ function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoice
   if (input.includeSound && soundBrief) {
     lines.push(`Sound design: ${soundBrief}`);
     lines.push("Keep speech clear.");
+    lines.push("No background music, jingles, copyrighted melodies, or song-like beds.");
   } else if (hasVoiceover) {
     lines.push("Do not add background music, sound effects, foley, room tone, or ambient/environment audio.");
   } else {
@@ -218,6 +221,11 @@ function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoice
   }
 
   if (hasVoiceover) {
+    lines.push(
+      voiceBrief
+        ? `Voice: ${voiceBrief}`
+        : "Voice: warm, trustworthy Thai female presenter; calm, friendly ecommerce review tone."
+    );
     if (isThaiSpeechMode(input.speechMode, input.speechLanguage)) {
       lines.push("Dialogue must be spoken in natural Thai, central Thai accent.");
     } else if (isEnglishSpeechMode(input.speechMode, input.speechLanguage)) {
@@ -302,17 +310,39 @@ function appendLineToSection(promptText: string, sectionName: string, line: stri
 
 export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideoPromptInput): string {
   const visualPrompt = compactInlineText(input.visualPrompt);
-  const voiceoverScript = cleanSpokenText(input.voiceoverScript ?? extractStoryboardNativeSpeechText(visualPrompt));
-  const hasVoiceover = Boolean(input.includeVoiceover && voiceoverScript && String(input.speechMode ?? "none") !== "none");
+  const wantsVoiceover = Boolean(
+    input.includeVoiceover && String(input.speechMode ?? "none") !== "none"
+  );
+  const fallbackVoiceover = isThaiSpeechMode(input.speechMode, input.speechLanguage)
+    ? "เล่าให้เห็นปัญหาและประโยชน์ของสินค้านี้อย่างชัดเจน"
+    : "Explain the product problem and benefit clearly.";
+  const voiceoverScript =
+    cleanSpokenText(input.voiceoverScript ?? extractStoryboardNativeSpeechText(visualPrompt)) ||
+    (wantsVoiceover ? fallbackVoiceover : "");
+  const hasVoiceover = Boolean(wantsVoiceover && voiceoverScript);
 
   if (storyboardPromptHasVeo31Sections(visualPrompt)) {
     let prompt = visualPrompt;
     const soundBrief = compactInlineText(input.soundBrief ?? "");
-    if (!input.includeSound) {
+    const existingAudioConflicts =
+      /\nAudio:\s*\n?\s*No audio\./i.test(`\n${prompt}`) ||
+      /\nDialogue:\s*\n?\s*No spoken dialogue\./i.test(`\n${prompt}`);
+    if (!input.includeSound || existingAudioConflicts) {
       prompt = replacePromptSection(prompt, "Audio", buildAudioSection(input, hasVoiceover));
+    }
+    if (hasVoiceover && existingAudioConflicts) {
+      prompt = replacePromptSection(
+        prompt,
+        "Dialogue",
+        buildDialogueSection(voiceoverScript, input.speechMode, input.speechLanguage),
+      );
     }
     if (input.includeSound && soundBrief && !prompt.toLowerCase().includes(soundBrief.toLowerCase().slice(0, 48))) {
       prompt = appendLineToSection(prompt, "Audio", `Sound design: ${soundBrief} Keep speech clear.`);
+    }
+    const voiceBrief = compactInlineText(input.voiceBrief ?? "");
+    if (hasVoiceover && voiceBrief && !prompt.toLowerCase().includes(voiceBrief.toLowerCase().slice(0, 48))) {
+      prompt = appendLineToSection(prompt, "Audio", `Voice: ${voiceBrief}`);
     }
     if (hasVoiceover && !/Dialogue must be spoken/i.test(prompt)) {
       prompt = appendLineToSection(prompt, "Audio", buildDialogueAudioRules(input.speechMode, input.speechLanguage, input.durationSeconds));

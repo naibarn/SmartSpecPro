@@ -1,0 +1,66 @@
+{
+  "mode": "start_stop_frame_to_video",
+  "output_type": "start_stop_pair_prompt",
+  "cinematic_intent": "Create a cinematic transition from a wide bridal room frame to an intimate close portrait, preserving the same subject and styling.",
+  "reference_images": [
+    {
+      "image_id_or_path": "UPLOAD_START_FRAME",
+      "role": "start_frame",
+      "priority": 5,
+      "notes": "Wide environmental start frame."
+    },
+    {
+      "image_id_or_path": "UPLOAD_STOP_FRAME",
+      "role": "stop_frame",
+      "priority": 5,
+      "notes": "Close portrait stop frame."
+    }
+  ],
+  "start_frame": {
+    "enabled": true,
+    "image_id_or_path": "UPLOAD_START_FRAME",
+    "description": "16:9 wide bridal room shot near a bright curtain, full upper body visible, subject looking toward window",
+    "lock_strength": "absolute"
+  },
+  "stop_frame": {
+    "enabled": true,
+    "image_id_or_path": "UPLOAD_STOP_FRAME",
+    "description": "16:9 intimate close-up, subject facing camera, lace neckline visible, soft emotional gaze",
+    "lock_strength": "absolute"
+  },
+  "aspect_ratio": "16:9",
+  "duration": {
+    "single_shot_seconds": 6,
+    "total_seconds": 6,
+    "shot_duration_seconds": []
+  },
+  "preset": "cinematic_wedding_editorial",
+  "camera_plan": {
+    "movement_preset": "slow_push_in",
+    "camera_angle": "three_quarter",
+    "lens_language": "50mm_natural_portrait",
+    "depth_of_field": "natural_by_lens",
+    "camera_height": "eye_level",
+    "camera_distance": "wide",
+    "custom_camera_notes": "Move from environmental wide to close portrait with natural parallax."
+  },
+  "subject_action": {
+    "action_preset": "turn_head_to_camera",
+    "emotion": "romantic",
+    "gaze_direction": "from_side_to_camera",
+    "custom_action_notes": ""
+  },
+  "start_stop_difference_policy": {
+    "enabled": true,
+    "minimum_distinct_axes": 3,
+    "allowed_difference_axes": [
+      "camera_distance",
+      "gaze_direction",
+      "environment_reveal",
+      "composition"
+    ],
+    "forbidden_near_duplicate": true,
+    "difference_preset": "wide_to_close",
+    "custom_difference_notes": ""
+  }
+}

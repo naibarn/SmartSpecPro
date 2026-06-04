@@ -395,7 +395,18 @@ function stringifyScenePrompt(value: unknown, index?: number): string | null {
 
 function selectPromptTextFromStructuredOutput(value: unknown, field: string): string | null {
   const directText = nonEmptyString(value);
-  if (directText) return directText;
+  if (directText) {
+    if (/^[\[{]/.test(directText)) {
+      try {
+        const parsed = JSON.parse(directText);
+        const extracted = selectPromptTextFromStructuredOutput(parsed, field);
+        if (extracted) return extracted;
+      } catch {
+        // Keep plain text that only resembles JSON.
+      }
+    }
+    return directText;
+  }
 
   if (Array.isArray(value)) {
     const parts = value
@@ -409,7 +420,16 @@ function selectPromptTextFromStructuredOutput(value: unknown, field: string): st
   }
 
   const record = value as JsonObject;
-  for (const key of ["prompt", "promptText", "final_prompt", "finalPrompt", "generated_prompt", "text", "content", "result"]) {
+  if (record.prompt_package && typeof record.prompt_package === "object" && !Array.isArray(record.prompt_package)) {
+    const promptPackage = record.prompt_package as JsonObject;
+    const selected = selectPromptTextFromStructuredOutput(
+      promptPackage.master_prompt ?? promptPackage.final_prompt ?? promptPackage.prompt ?? promptPackage.per_image_prompts,
+      field,
+    );
+    if (selected) return selected;
+  }
+
+  for (const key of ["prompt", "promptText", "prompt_text", "final_prompt", "finalPrompt", "generated_prompt", "image_prompt", "video_prompt", "scene_prompt", "text", "content", "result"]) {
     const extracted = selectPromptTextFromStructuredOutput(record[key], field);
     if (extracted) return extracted;
   }
@@ -423,6 +443,12 @@ function selectPromptTextFromStructuredOutput(value: unknown, field: string): st
     const selected = selectPromptText(record.prompts as JsonObject, field);
     if (selected) return selected;
   }
+
+  const cinematicVideoPrompt = selectPromptTextFromStructuredOutput(
+    record.final_prompt ?? record.short_prompt ?? record.prompt_sequence,
+    field,
+  );
+  if (cinematicVideoPrompt) return cinematicVideoPrompt;
 
   for (const key of ["prompts", "scene_descriptions", "scenes", "frames", "panels", "storyboard"]) {
     const extracted = selectPromptTextFromStructuredOutput(record[key], field);

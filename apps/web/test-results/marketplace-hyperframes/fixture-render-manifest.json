@@ -1,0 +1,51 @@
+{
+  "gate": "fixture-render",
+  "status": "passed",
+  "renderer": "playwright_chromium_ffmpeg_smoke",
+  "generatedAt": "2026-06-04T14:07:51.610Z",
+  "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture.html",
+  "frameCount": 5,
+  "frames": [
+    {
+      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00000.png",
+      "sizeBytes": 278754,
+      "ok": true
+    },
+    {
+      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00015.png",
+      "sizeBytes": 279065,
+      "ok": true
+    },
+    {
+      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00030.png",
+      "sizeBytes": 278551,
+      "ok": true
+    },
+    {
+      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00045.png",
+      "sizeBytes": 280232,
+      "ok": true
+    },
+    {
+      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00060.png",
+      "sizeBytes": 279561,
+      "ok": true
+    }
+  ],
+  "output": {
+    "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-fixture.mp4",
+    "sizeBytes": 87774,
+    "ok": true
+  },
+  "expectedArtifacts": [
+    "input envelope HTML",
+    "composition HTML hash proxy via generated fixture",
+    "snapshot refs",
+    "manifest",
+    "cleanup proof"
+  ],
+  "notes": [
+    "This gate proves local browser+FFmpeg rendering is operational for SmartSpecPro fixtures.",
+    "Production HyperFrames producer rollout still requires pinned @hyperframes packages, Chrome image, fonts, and dependency audit approval."
+  ]
+}

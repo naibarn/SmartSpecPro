@@ -150,12 +150,12 @@ function summarizePrompt(prompt: string): string {
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
 }
 
-function getFirstLastFrameUrls(task: StoryboardReviewTask): [string, string] | null {
+function getFirstLastFrameUrls(task: StoryboardReviewTask): string[] | null {
   const referenceUrls = (task.referenceUrls ?? [])
     .map((url) => String(url || "").trim())
     .filter((url) => url.length > 0);
-  if (referenceUrls.length < 2) return null;
-  return [referenceUrls[0]!, referenceUrls[1]!];
+  if (referenceUrls.length < 1) return null;
+  return referenceUrls.slice(0, 2);
 }
 
 function getReferenceFrameRole(task: StoryboardReviewTask, frameIndex: 0 | 1): "start" | "stop" | "reference" {
@@ -1012,7 +1012,14 @@ export function StoryboardBatchReviewPanel({
                       <div className="overflow-hidden rounded-lg border bg-muted/40">
                         <div className="flex h-28 items-center justify-center text-muted-foreground sm:h-20 lg:h-24">
                           {firstLastFrameUrls ? (
-                            <div className="grid h-full w-full grid-cols-2">
+                            <div
+                              className={cn(
+                                "grid h-full w-full",
+                                firstLastFrameUrls.length > 1
+                                  ? "grid-cols-2"
+                                  : "grid-cols-1"
+                              )}
+                            >
                               {firstLastFrameUrls.map((url, frameIndex) => {
                                 const role = getReferenceFrameRole(task, frameIndex as 0 | 1);
                                 const label = referenceFrameRoleLabel(role, locale);

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildMediaStudioDynamicReferenceImageMirror,
   buildMediaStudioAutoPromptReferenceImageSync,
   buildMediaStudioAutoPromptIdea,
   extractMediaStudioDynamicImageUrls,
+  hasMediaStudioDynamicImageFields,
 } from "./mediaStudioAutoPromptIdea";
 
 describe("buildMediaStudioAutoPromptIdea", () => {
@@ -85,6 +87,28 @@ describe("extractMediaStudioDynamicImageUrls", () => {
   });
 });
 
+describe("hasMediaStudioDynamicImageFields", () => {
+  it("detects image fields even after all images are removed", () => {
+    expect(hasMediaStudioDynamicImageFields({
+      reference_images: [],
+      topic: "product grid",
+    })).toBe(true);
+  });
+
+  it("ignores ordinary text fields that happen to contain an image URL", () => {
+    expect(hasMediaStudioDynamicImageFields({
+      notes: "/uploads/not-a-reference-field.png",
+    })).toBe(false);
+  });
+
+  it("does not treat image option fields as controlled reference images", () => {
+    expect(hasMediaStudioDynamicImageFields({
+      imageResolution: "1k",
+      prompt: "make a product photo",
+    })).toBe(false);
+  });
+});
+
 describe("buildMediaStudioAutoPromptReferenceImageSync", () => {
   it("adds dynamic skill image fields to the reference tray in prompt order", () => {
     const sync = buildMediaStudioAutoPromptReferenceImageSync({
@@ -141,5 +165,36 @@ describe("buildMediaStudioAutoPromptReferenceImageSync", () => {
       "/uploads/product.png",
     ]);
     expect(sync.droppedCount).toBe(1);
+  });
+});
+
+describe("buildMediaStudioDynamicReferenceImageMirror", () => {
+  it("mirrors dynamic skill images and removes stale main references", () => {
+    const sync = buildMediaStudioDynamicReferenceImageMirror({
+      referenceImages: [
+        { url: "/uploads/old.png", name: "old" },
+        { url: "/uploads/product.png", name: "product" },
+      ],
+      dynamicImageUrls: ["/uploads/product.png"],
+      maxImages: 5,
+    });
+
+    expect(sync.items).toEqual([
+      { url: "/uploads/product.png", name: "product" },
+    ]);
+    expect(sync.changed).toBe(true);
+  });
+
+  it("clears main references when the controlled skill image field is emptied", () => {
+    const sync = buildMediaStudioDynamicReferenceImageMirror({
+      referenceImages: [
+        { url: "/uploads/old.png", name: "old" },
+      ],
+      dynamicImageUrls: [],
+      maxImages: 5,
+    });
+
+    expect(sync.items).toEqual([]);
+    expect(sync.changed).toBe(true);
   });
 });

@@ -1,0 +1,29 @@
+{
+  "ui:order": [
+    "source_prompt",
+    "target_max_chars",
+    "preferred_target_chars",
+    "preserve_storyboard_contract",
+    "optimization_strength"
+  ],
+  "source_prompt": {
+    "ui:widget": "textarea",
+    "ui:help": "วาง prompt จาก product-reference-storyboard เพื่อให้ skill นี้ลดข้อความซ้ำและทำให้ไม่เกิน 4500 ตัวอักษรโดยยังคงเฟรมสำคัญครบ"
+  },
+  "target_max_chars": {
+    "ui:widget": "updown",
+    "ui:help": "ค่าปกติ 4500 เป็นเพดานแข็งของ prompt ที่ส่งต่อให้ image provider"
+  },
+  "preferred_target_chars": {
+    "ui:widget": "updown",
+    "ui:help": "ค่าปกติ 4300 เพื่อเผื่อความคลาดเคลื่อนของระบบ downstream"
+  },
+  "preserve_storyboard_contract": {
+    "ui:widget": "checkbox",
+    "ui:help": "เปิดไว้เพื่อคง Frame 1-9, visual-only frame prose, product lock, text policy และ block สำคัญ"
+  },
+  "optimization_strength": {
+    "ui:widget": "select",
+    "ui:help": "เลือก Auto เพื่อให้ลดแบบพอดีก่อน และค่อยลดแรงขึ้นเมื่อ prompt ยังยาวเกิน"
+  }
+}

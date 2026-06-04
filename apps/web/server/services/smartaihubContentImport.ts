@@ -8,7 +8,7 @@ import type {
 } from "../../shared/smartaihubContentManifest";
 import { buildSmartAiHubRelatedLinks } from "../../shared/smartaihubDiscovery";
 
-const DEFAULT_OG_IMAGE = "/images/dashboard-preview.png";
+const DEFAULT_OG_IMAGE = "/images/dashboard-preview.jpg";
 
 type ImportCounters = {
   pagesCreated: number;

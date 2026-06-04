@@ -31,6 +31,12 @@ export interface BuildMediaStudioAutoPromptReferenceImageSyncResult<T extends Me
   changed: boolean;
 }
 
+export interface BuildMediaStudioDynamicReferenceImageMirrorInput<T extends MediaStudioReferenceImageLike> {
+  referenceImages: T[];
+  dynamicImageUrls: string[];
+  maxImages?: number | null;
+}
+
 const IMAGE_FIELD_KEYWORDS = [
   "image",
   "images",
@@ -40,6 +46,15 @@ const IMAGE_FIELD_KEYWORDS = [
   "referencecharacterimages",
   "referenceenvironmentimages",
 ] as const;
+const CONTROLLED_IMAGE_FIELD_KEYS = new Set([
+  "image",
+  "images",
+  "referenceimage",
+  "referenceimages",
+  "referenceproductimages",
+  "referencecharacterimages",
+  "referenceenvironmentimages",
+]);
 
 const AUTO_PROMPT_TEXT_FIELD_PRIORITIES = [
   "topic",
@@ -142,6 +157,21 @@ export function extractMediaStudioDynamicImageUrls(
   });
 }
 
+export function hasMediaStudioDynamicImageFields(
+  dynamicFormValues?: Record<string, unknown> | null,
+): boolean {
+  if (!dynamicFormValues) {
+    return false;
+  }
+
+  return Object.keys(dynamicFormValues).some((key) => {
+    const normalizedKey = normalizeFieldKey(key);
+    return CONTROLLED_IMAGE_FIELD_KEYS.has(normalizedKey)
+      || normalizedKey.endsWith("images")
+      || (normalizedKey.includes("reference") && normalizedKey.includes("image"));
+  });
+}
+
 export function buildMediaStudioAutoPromptReferenceImageSync<T extends MediaStudioReferenceImageLike>(
   input: BuildMediaStudioAutoPromptReferenceImageSyncInput<T>,
 ): BuildMediaStudioAutoPromptReferenceImageSyncResult<T> {
@@ -185,6 +215,55 @@ export function buildMediaStudioAutoPromptReferenceImageSync<T extends MediaStud
   });
   const addedCount = items.filter((image) => !existingByUrl.has(image.url.trim())).length;
   const droppedCount = Math.max(0, orderedUrls.length - limitedUrls.length);
+  const changed = droppedCount > 0
+    || items.length !== input.referenceImages.length
+    || items.some((image, index) => image.url !== input.referenceImages[index]?.url);
+
+  return {
+    items,
+    addedCount,
+    droppedCount,
+    changed,
+  };
+}
+
+export function buildMediaStudioDynamicReferenceImageMirror<T extends MediaStudioReferenceImageLike>(
+  input: BuildMediaStudioDynamicReferenceImageMirrorInput<T>,
+): BuildMediaStudioAutoPromptReferenceImageSyncResult<T> {
+  const maxImages = typeof input.maxImages === "number" && Number.isFinite(input.maxImages)
+    ? Math.max(0, input.maxImages)
+    : Number.POSITIVE_INFINITY;
+  const existingByUrl = new Map<string, T>();
+
+  input.referenceImages.forEach((image) => {
+    const url = image.url.trim();
+    if (url && !existingByUrl.has(url)) {
+      existingByUrl.set(url, image);
+    }
+  });
+
+  const seenUrls = new Set<string>();
+  const dynamicUrls = input.dynamicImageUrls.filter((value) => {
+    const url = String(value || "").trim();
+    if (!url || seenUrls.has(url)) {
+      return false;
+    }
+    seenUrls.add(url);
+    return true;
+  });
+  const limitedUrls = dynamicUrls.slice(0, maxImages);
+  const items = limitedUrls.map((url, index) => {
+    const existing = existingByUrl.get(url);
+    if (existing) {
+      return existing;
+    }
+    return {
+      url,
+      name: `auto-prompt-reference-${index + 1}`,
+    } as T;
+  });
+  const droppedCount = Math.max(0, dynamicUrls.length - limitedUrls.length);
+  const addedCount = items.filter((image) => !existingByUrl.has(image.url.trim())).length;
   const changed = droppedCount > 0
     || items.length !== input.referenceImages.length
     || items.some((image, index) => image.url !== input.referenceImages[index]?.url);

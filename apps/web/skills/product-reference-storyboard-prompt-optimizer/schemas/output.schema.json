@@ -1,0 +1,8 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductReferenceStoryboardPromptOptimizerOutput",
+  "type": "string",
+  "minLength": 1,
+  "maxLength": 4500,
+  "description": "Plain optimized image prompt text only. No JSON wrapper."
+}

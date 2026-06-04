@@ -1,0 +1,81 @@
+{
+  "project_name": "video_start_stop_keyframes",
+  "mode": "video_start_stop_frames",
+  "generator_target": "GPT Image 2",
+  "reference_images": [
+    {
+      "id": "attached_image_1",
+      "role": "primary_identity",
+      "description": "Ground truth for subject, wardrobe, set, lighting, and color grade.",
+      "fidelity_weight": 1
+    }
+  ],
+  "aspect_ratio": "16:9",
+  "output_count": 2,
+  "style_preset": "cinematic_editorial",
+  "video_frame_pair": {
+    "enabled": true,
+    "start_frame": {
+      "shot_id": "start_frame",
+      "label": "Start Frame",
+      "shot_type": "start_frame",
+      "camera_position": "Eye-level medium-wide front-facing composition, subject centered in the same set with relaxed posture.",
+      "framing": "16:9 cinematic medium-wide frame, waist-up to upper-thigh crop.",
+      "subject_action": "Subject holds a calm frontal resting pose and looks toward camera.",
+      "focus_target": "face",
+      "lens_feel": "50mm_natural",
+      "depth_of_field": "moderate"
+    },
+    "stop_frame": {
+      "shot_id": "stop_frame",
+      "label": "Stop Frame",
+      "shot_type": "stop_frame",
+      "camera_position": "High-angle intimate three-quarter close portrait from above and slightly camera-right, clearly closer than the start frame.",
+      "framing": "16:9 close portrait, head and shoulders with neckline detail emphasized.",
+      "subject_action": "Subject rests in a subtle three-quarter pose with head slightly lowered and gaze gently off-camera.",
+      "focus_target": "face",
+      "lens_feel": "85mm_portrait",
+      "depth_of_field": "shallow"
+    },
+    "continuity_instruction": "Both frames must be the same exact subject and scene at two visibly different resting keyframes, with identical wardrobe, lighting, environment, and color grade.",
+    "frame_difference_policy": {
+      "must_be_visually_distinct": true,
+      "minimum_difference_axes": 2,
+      "preferred_pair_type": "angle_and_pose_change",
+      "allowed_difference_axes": [
+        "camera_angle",
+        "framing_distance",
+        "subject_pose"
+      ],
+      "locked_similarity_axes": [
+        "identity",
+        "wardrobe",
+        "hair",
+        "makeup",
+        "materials",
+        "colors",
+        "environment",
+        "lighting_direction",
+        "color_grade"
+      ],
+      "anti_duplicate_instruction": "Start Frame and Stop Frame must not be near-duplicates: do not use the same camera angle, same crop, and same pose. Change at least two visible axes such as camera height plus framing, or body orientation plus gaze, while preserving all continuity locks.",
+      "recommended_pair_recipes": [
+        "front medium shot -> high-angle intimate close portrait",
+        "wide full-body shot -> low-angle oblique medium close shot",
+        "profile close portrait -> three-quarter portrait",
+        "macro wardrobe detail -> composed beauty portrait"
+      ]
+    }
+  },
+  "negative_constraints": [
+    "no motion blur",
+    "no wardrobe change",
+    "no background change",
+    "no extra objects"
+  ],
+  "prompt_detail_level": "technical",
+  "include_keyframe_breakdown": true,
+  "include_negative_prompt": true,
+  "seed_strategy": "paired_seed_for_video_keyframes",
+  "language": "en"
+}

@@ -1,0 +1,271 @@
+{
+  "version": "1.0",
+  "skillId": "auto_cinematic_image",
+  "title": "Auto Cinematic Image Generator",
+  "titleTh": "Auto Cinematic Image",
+  "description": "Generate reference-locked cinematic image prompts for portraits, products, environments, contact sheets, angle grids, macro details, and video keyframes.",
+  "descriptionTh": "สร้าง prompt ภาพแบบ cinematic โดยล็อก reference สำหรับบุคคล สินค้า ฉาก ภาพหลายมุม contact sheet, angle grid, macro detail และ keyframe วิดีโอ",
+  "sections": [
+    {
+      "id": "core",
+      "title": "Required Setup",
+      "titleTh": "ตั้งค่าหลัก",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "mode",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบที่ต้องการ",
+          "helpText": "Choose the main workflow. Multi-view modes create several angles in one image. Environment multi-view uses different camera stations, not zoom/crop repeats.",
+          "helpTextTh": "เลือก workflow หลัก ถ้าต้องการหลายมุมในภาพเดียวให้ใช้ contact sheet หรือ angle grid โหมดสถานที่จะใช้ตำแหน่งกล้องคนละจุด ไม่ใช่ซูม/crop ซ้ำ",
+          "required": true,
+          "default": "single_cinematic_portrait",
+          "options": [
+            { "value": "single_cinematic_portrait", "label": "Single Cinematic Image", "labelTh": "ภาพเดี่ยว" },
+            { "value": "cinematic_variation_pack", "label": "Separate Prompt Variations", "labelTh": "หลาย prompt แยกภาพ" },
+            { "value": "contact_sheet_2x3", "label": "2x3 Multi-View Sheet", "labelTh": "ภาพเดียว 6 มุม" },
+            { "value": "angle_grid_3x3", "label": "3x3 Angle Grid", "labelTh": "ภาพเดียว 9 มุม" },
+            { "value": "macro_detail_pack", "label": "Macro Detail Pack", "labelTh": "ชุดภาพ detail/macro" },
+            { "value": "video_start_stop_frames", "label": "Video Start/Stop Frames", "labelTh": "คู่ภาพ start/stop สำหรับวิดีโอ" },
+            { "value": "storyboard_sequence", "label": "Storyboard Sequence", "labelTh": "ลำดับ storyboard" },
+            { "value": "custom_shot_list", "label": "Custom Shot List", "labelTh": "กำหนด shot เอง" }
+          ]
+        },
+        {
+          "id": "subject_type",
+          "type": "select",
+          "label": "Reference Type",
+          "labelTh": "ประเภท reference",
+          "helpText": "Use Product or Environment when the reference is not a person. The skill will lock product shape/materials or scene layout instead of face identity.",
+          "helpTextTh": "เลือกสินค้า/ฉากเมื่อ reference ไม่ใช่บุคคล ระบบจะล็อกรูปทรงวัสดุสินค้า หรือ layout ฉากแทนการล็อกใบหน้า",
+          "default": "person",
+          "options": [
+            { "value": "person", "label": "Person / Character", "labelTh": "บุคคล / ตัวละคร" },
+            { "value": "product", "label": "Product", "labelTh": "สินค้า" },
+            { "value": "environment", "label": "Environment / Room / Set", "labelTh": "ฉาก / ห้อง / สถานที่" },
+            { "value": "mixed", "label": "Mixed", "labelTh": "หลายประเภท" }
+          ]
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง 1-5 รูป",
+          "helpText": "Attach the strongest reference first. Use additional images for product sides, materials, lighting, pose, or environment.",
+          "helpTextTh": "แนบภาพหลักก่อน แล้วใช้ภาพเพิ่มสำหรับมุมสินค้า วัสดุ แสง โพส หรือฉาก",
+          "required": true,
+          "minItems": 1,
+          "maxItems": 5,
+          "maxImages": 5
+        },
+        {
+          "id": "aspect_ratio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Recommended: 9:16 for vertical social, 16:9 for storyboard/video, 1:1 for compact grids, 2:3 or 4:5 for editorial/product stills.",
+          "helpTextTh": "แนะนำ 9:16 สำหรับแนวตั้ง, 16:9 สำหรับ storyboard/video, 1:1 สำหรับ grid, 2:3 หรือ 4:5 สำหรับภาพ editorial/product",
+          "required": true,
+          "default": "9:16",
+          "options": [
+            { "value": "9:16", "label": "9:16 Vertical", "labelTh": "9:16 แนวตั้ง" },
+            { "value": "16:9", "label": "16:9 Widescreen", "labelTh": "16:9 จอกว้าง" },
+            { "value": "1:1", "label": "1:1 Square", "labelTh": "1:1 จัตุรัส" },
+            { "value": "2:3", "label": "2:3 Portrait", "labelTh": "2:3 แนวตั้ง" },
+            { "value": "3:2", "label": "3:2 Photo", "labelTh": "3:2 ภาพถ่าย" },
+            { "value": "4:5", "label": "4:5 Social Portrait", "labelTh": "4:5 โซเชียล" }
+          ]
+        },
+        {
+          "id": "style_preset",
+          "type": "select",
+          "label": "Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Keep Reference Locked when fidelity matters most.",
+          "helpTextTh": "ถ้าต้องการให้เหมือน reference มากที่สุด ให้ใช้ Reference Locked",
+          "default": "reference_locked",
+          "options": [
+            { "value": "reference_locked", "label": "Reference Locked", "labelTh": "ล็อกตาม reference" },
+            { "value": "cinematic_editorial", "label": "Cinematic Editorial", "labelTh": "Cinematic Editorial" },
+            { "value": "clean_commercial_portrait", "label": "Clean Commercial", "labelTh": "ภาพโฆษณาสะอาด" },
+            { "value": "high_fashion_beauty", "label": "High Fashion Beauty", "labelTh": "แฟชั่น/บิวตี้" },
+            { "value": "natural_cinema", "label": "Natural Cinema", "labelTh": "ธรรมชาติแบบภาพยนตร์" },
+            { "value": "hard_flash_fuji_velvia", "label": "Hard Flash Fuji Velvia", "labelTh": "Hard Flash Fuji Velvia" },
+            { "value": "soft_beauty_studio", "label": "Soft Beauty Studio", "labelTh": "สตูดิโอนุ่ม" },
+            { "value": "warm_orange_studio", "label": "Warm Orange Studio", "labelTh": "สตูดิโอโทนอุ่น" },
+            { "value": "film_grain_editorial", "label": "Film Grain Editorial", "labelTh": "ฟิล์ม editorial" },
+            { "value": "custom", "label": "Custom", "labelTh": "กำหนดเอง" }
+          ]
+        },
+        {
+          "id": "custom_style_notes",
+          "type": "textarea",
+          "label": "Optional Direction",
+          "labelTh": "คำสั่งเพิ่มเติม",
+          "placeholder": "Example: show all product sides in one clean commercial grid, same studio lighting...",
+          "placeholderTh": "เช่น แสดงสินค้าหลายมุมในภาพเดียว แสงสตูดิโอเหมือนกันทุกเฟรม...",
+          "rows": 3
+        },
+        {
+          "id": "allow_text_in_image",
+          "type": "boolean",
+          "label": "Allow Text In Image",
+          "labelTh": "อนุญาตให้มีข้อความในภาพ",
+          "helpText": "Off by default. When off, prompts will avoid captions, panel text, labels, watermarks, logos, and random glyphs unless they already exist in the reference.",
+          "helpTextTh": "ปิดเป็นค่าเริ่มต้น เมื่อปิดจะกัน caption, label, watermark, logo และตัวอักษรสุ่ม เว้นแต่มีอยู่ใน reference"
+        }
+      ]
+    },
+    {
+      "id": "multi_view",
+      "title": "Multi-View Options",
+      "titleTh": "ตัวเลือกหลายมุม",
+      "description": "Only needed for contact sheets, angle grids, storyboard, product view sets, or environment view sets.",
+      "descriptionTh": "ใช้เมื่อทำ contact sheet, angle grid, storyboard, ภาพสินค้าหลายมุม หรือฉากหลายมุม",
+      "icon": "layers",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "output_count",
+          "type": "number",
+          "label": "Separate Prompt Count",
+          "labelTh": "จำนวน prompt แยก",
+          "helpText": "Used for variation packs and custom shot lists. Contact sheets and angle grids use their layout count.",
+          "helpTextTh": "ใช้กับ variation pack และ custom shot list ส่วน contact sheet/grid จะใช้จำนวนตาม layout",
+          "default": 1,
+          "min": 1,
+          "max": 12
+        },
+        {
+          "id": "shot_list",
+          "type": "array",
+          "label": "Custom Shot List",
+          "labelTh": "รายการ shot กำหนดเอง",
+          "helpText": "Optional. Add specific views such as front, side, back, top, interior detail, material macro, entry-door room view, reverse angle, window-side view, or corner view.",
+          "helpTextTh": "ไม่บังคับ ใส่มุมเฉพาะ เช่น ด้านหน้า ด้านข้าง ด้านหลัง มุมบน detail วัสดุ มุมจากประตู มุมย้อนกลับ มุมจากหน้าต่าง หรือมุมห้อง",
+          "arrayItemType": "object",
+          "itemLabel": "Shot",
+          "maxItems": 12,
+          "itemFields": [
+            { "id": "shot_id", "type": "text", "label": "Shot ID", "default": "Shot" },
+            { "id": "shot_type", "type": "text", "label": "Shot Type", "placeholder": "front_view / side_view / macro_detail / wide_room" },
+            { "id": "camera_position", "type": "textarea", "label": "Camera Position" },
+            { "id": "focus_target", "type": "text", "label": "Focus Target", "placeholder": "face / product logo / material / room layout" },
+            { "id": "notes", "type": "textarea", "label": "Notes" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Controls",
+      "titleTh": "ตั้งค่าขั้นสูง",
+      "description": "Defaults are tuned for normal use. Open this only when you need stricter continuity, seeds, negative constraints, or output format changes.",
+      "descriptionTh": "ค่าเริ่มต้นเหมาะกับการใช้งานทั่วไป เปิดเฉพาะเมื่อต้องการคุม continuity, seed, negative constraints หรือรูปแบบ output เพิ่ม",
+      "icon": "settings",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "negative_constraints",
+          "type": "array",
+          "label": "Extra Negative Constraints",
+          "labelTh": "ข้อห้ามเพิ่มเติม",
+          "arrayItemType": "string",
+          "itemLabel": "Constraint",
+          "maxItems": 12,
+          "itemFields": [
+            { "id": "value", "type": "text", "label": "Avoid", "placeholder": "extra people, random text, changed product material" }
+          ]
+        },
+        {
+          "id": "prompt_detail_level",
+          "type": "select",
+          "label": "Prompt Detail",
+          "labelTh": "ระดับรายละเอียด prompt",
+          "default": "technical",
+          "options": [
+            { "value": "concise", "label": "Concise", "labelTh": "สั้น" },
+            { "value": "standard", "label": "Standard", "labelTh": "มาตรฐาน" },
+            { "value": "technical", "label": "Technical", "labelTh": "ละเอียดเชิงเทคนิค" },
+            { "value": "director_of_photography", "label": "Director of Photography", "labelTh": "ละเอียดแบบ DOP" }
+          ]
+        },
+        {
+          "id": "include_keyframe_breakdown",
+          "type": "boolean",
+          "label": "Include Keyframe Breakdown",
+          "labelTh": "สร้าง keyframe breakdown",
+          "default": true
+        },
+        {
+          "id": "include_negative_prompt",
+          "type": "boolean",
+          "label": "Include Negative Prompt",
+          "labelTh": "สร้าง negative prompt",
+          "default": true
+        },
+        {
+          "id": "seed_strategy",
+          "type": "select",
+          "label": "Seed Strategy",
+          "labelTh": "Seed strategy",
+          "default": "same_seed_for_continuity",
+          "options": [
+            { "value": "none", "label": "None", "labelTh": "ไม่ระบุ" },
+            { "value": "same_seed_for_continuity", "label": "Same Seed For Continuity", "labelTh": "seed เดียวเพื่อ continuity" },
+            { "value": "different_seed_per_variation", "label": "Different Seed Per Variation", "labelTh": "คนละ seed ต่อ variation" },
+            { "value": "paired_seed_for_video_keyframes", "label": "Paired Seed For Keyframes", "labelTh": "seed คู่สำหรับ keyframe" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Prompt Language",
+          "labelTh": "ภาษาของ prompt",
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "mixed", "label": "Mixed", "labelTh": "ผสม" }
+          ]
+        },
+        {
+          "id": "project_name",
+          "type": "text",
+          "label": "Project Name",
+          "labelTh": "ชื่อโปรเจกต์",
+          "default": "Auto_Cinematic_Image_Generator"
+        },
+        {
+          "id": "generator_target",
+          "type": "text",
+          "label": "Target Generator",
+          "labelTh": "โมเดลปลายทาง",
+          "default": "GPT Image 2"
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "project_name": "project_name",
+    "mode": "mode",
+    "subject_type": "subject_type",
+    "reference_images": "reference_images",
+    "aspect_ratio": "aspect_ratio",
+    "output_count": "output_count",
+    "style_preset": "style_preset",
+    "custom_style_notes": "custom_style_notes",
+    "allow_text_in_image": "allow_text_in_image",
+    "shot_list": "shot_list",
+    "negative_constraints": "negative_constraints",
+    "prompt_detail_level": "prompt_detail_level",
+    "include_keyframe_breakdown": "include_keyframe_breakdown",
+    "include_negative_prompt": "include_negative_prompt",
+    "seed_strategy": "seed_strategy",
+    "language": "language",
+    "generator_target": "generator_target"
+  }
+}

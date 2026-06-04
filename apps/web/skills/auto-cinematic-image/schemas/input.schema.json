@@ -1,0 +1,933 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/auto-cinematic-image-generator/input.schema.json",
+  "title": "Auto Cinematic Image Generator Input",
+  "description": "Input schema for generating reference-locked cinematic prompts for GPT Image 2 style workflows.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "project_name",
+    "mode",
+    "reference_images",
+    "aspect_ratio"
+  ],
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "minLength": 1,
+      "default": "Auto_Cinematic_Image_Generator"
+    },
+    "mode": {
+      "type": "string",
+      "description": "Generation workflow mode.",
+      "enum": [
+        "single_cinematic_portrait",
+        "cinematic_variation_pack",
+        "contact_sheet_2x3",
+        "angle_grid_3x3",
+        "macro_detail_pack",
+        "video_start_stop_frames",
+        "storyboard_sequence",
+        "custom_shot_list"
+      ],
+      "default": "single_cinematic_portrait"
+    },
+    "subject_type": {
+      "type": "string",
+      "description": "Primary reference type. Use product or environment when the locked reference is not a person.",
+      "enum": [
+        "person",
+        "product",
+        "environment",
+        "mixed"
+      ],
+      "default": "person"
+    },
+    "generator_target": {
+      "type": "string",
+      "description": "Target image generation system or model name.",
+      "default": "GPT Image 2"
+    },
+    "reference_images": {
+      "type": "array",
+      "description": "One to five reference images. The first image should normally be the primary identity reference.",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Uploaded image URL, file handle, image ID, or local asset key."
+          },
+          {
+            "$ref": "#/$defs/reference_image"
+          }
+        ]
+      }
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "description": "Final aspect ratio for individual images or the entire contact sheet.",
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1",
+        "2:3",
+        "3:2",
+        "4:5"
+      ],
+      "default": "9:16"
+    },
+    "output_count": {
+      "type": "integer",
+      "description": "Number of separate images or prompts requested. Contact sheets use the frame count implied by layout unless overridden by custom shot list.",
+      "minimum": 1,
+      "maximum": 12,
+      "default": 1
+    },
+    "language": {
+      "type": "string",
+      "description": "Language for generated prompt text and keyframe breakdown.",
+      "enum": [
+        "en",
+        "th",
+        "mixed"
+      ],
+      "default": "en"
+    },
+    "style_preset": {
+      "type": "string",
+      "description": "Overall visual treatment. Use reference_locked when fidelity is more important than a new look.",
+      "enum": [
+        "reference_locked",
+        "soft_beauty_studio",
+        "cinematic_editorial",
+        "warm_orange_studio",
+        "hard_flash_fuji_velvia",
+        "natural_cinema",
+        "high_fashion_beauty",
+        "film_grain_editorial",
+        "clean_commercial_portrait",
+        "custom"
+      ],
+      "default": "reference_locked"
+    },
+    "custom_style_notes": {
+      "type": "string",
+      "description": "Optional style notes. These must not override reference fidelity unless explicitly intended.",
+      "default": ""
+    },
+    "subject_preservation": {
+      "$ref": "#/$defs/subject_preservation"
+    },
+    "continuity_locks": {
+      "$ref": "#/$defs/continuity_locks"
+    },
+    "camera_defaults": {
+      "$ref": "#/$defs/camera_defaults"
+    },
+    "layout": {
+      "$ref": "#/$defs/layout"
+    },
+    "shot_list": {
+      "type": "array",
+      "description": "Optional explicit shot definitions. Required for custom_shot_list. If omitted, the selected mode supplies defaults.",
+      "minItems": 0,
+      "maxItems": 12,
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/shot"
+      }
+    },
+    "video_frame_pair": {
+      "$ref": "#/$defs/video_frame_pair"
+    },
+    "negative_constraints": {
+      "type": "array",
+      "description": "Extra things that must not appear or change.",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt_detail_level": {
+      "type": "string",
+      "enum": [
+        "concise",
+        "standard",
+        "technical",
+        "director_of_photography"
+      ],
+      "default": "technical"
+    },
+    "include_keyframe_breakdown": {
+      "type": "boolean",
+      "description": "Whether to include a keyframe breakdown in addition to prompts.",
+      "default": true
+    },
+    "include_negative_prompt": {
+      "type": "boolean",
+      "description": "Whether to output a consolidated negative prompt/constraints block.",
+      "default": true
+    },
+    "allow_text_in_image": {
+      "type": "boolean",
+      "description": "When false, prompts must avoid captions, panel labels, watermarks, logos, UI text, and random glyphs unless the text already exists in the reference or is explicitly requested.",
+      "default": false
+    },
+    "seed_strategy": {
+      "type": "string",
+      "description": "Optional seed handling advice for downstream generation. For video start/stop, use paired_seed_for_video_keyframes or different_seed_per_variation when near-duplicates occur.",
+      "enum": [
+        "none",
+        "same_seed_for_continuity",
+        "different_seed_per_variation",
+        "paired_seed_for_video_keyframes"
+      ],
+      "default": "same_seed_for_continuity"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "custom_shot_list"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "shot_list"
+        ],
+        "properties": {
+          "shot_list": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "enum": [
+              "contact_sheet_2x3",
+              "angle_grid_3x3"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "include_keyframe_breakdown": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "video_start_stop_frames"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_count": {
+            "const": 2
+          },
+          "video_frame_pair": {
+            "required": [
+              "enabled",
+              "start_frame",
+              "stop_frame",
+              "frame_difference_policy"
+            ],
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "reference_image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Reference image ID, file handle, URI, or local asset key."
+        },
+        "uri": {
+          "type": "string",
+          "description": "Optional URI or path for systems that support file references.",
+          "default": ""
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "primary_identity",
+            "product_identity",
+            "product_front",
+            "product_side",
+            "product_back",
+            "product_detail",
+            "wardrobe_material",
+            "lighting_colorgrade",
+            "pose_composition",
+            "environment_set",
+            "environment_wide",
+            "environment_detail",
+            "environment_lighting",
+            "secondary_reference"
+          ],
+          "default": "primary_identity"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional human-readable note about what to preserve from this image.",
+          "default": ""
+        },
+        "fidelity_weight": {
+          "type": "number",
+          "description": "0 to 1 priority weight for this reference.",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
+        },
+        "preserve_from_this_reference": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "product_shape",
+              "product_material",
+              "product_color",
+              "product_labeling",
+              "room_layout",
+              "architecture",
+              "furniture_inventory",
+              "face",
+              "body_proportions",
+              "hair",
+              "makeup",
+              "wardrobe",
+              "fabric_texture",
+              "accessories",
+              "pose",
+              "lighting",
+              "color_grade",
+              "environment",
+              "composition",
+              "lens_character"
+            ]
+          }
+        }
+      }
+    },
+    "subject_preservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "boolean",
+          "default": true
+        },
+        "product_shape": {
+          "type": "boolean",
+          "default": true
+        },
+        "product_materials": {
+          "type": "boolean",
+          "default": true
+        },
+        "product_colors": {
+          "type": "boolean",
+          "default": true
+        },
+        "product_markings": {
+          "type": "boolean",
+          "default": true
+        },
+        "environment_layout": {
+          "type": "boolean",
+          "default": true
+        },
+        "architecture": {
+          "type": "boolean",
+          "default": true
+        },
+        "furniture_inventory": {
+          "type": "boolean",
+          "default": true
+        },
+        "face": {
+          "type": "boolean",
+          "default": true
+        },
+        "body_proportions": {
+          "type": "boolean",
+          "default": true
+        },
+        "hair": {
+          "type": "boolean",
+          "default": true
+        },
+        "makeup": {
+          "type": "boolean",
+          "default": true
+        },
+        "wardrobe": {
+          "type": "boolean",
+          "default": true
+        },
+        "fabric_materials": {
+          "type": "boolean",
+          "default": true
+        },
+        "colors": {
+          "type": "boolean",
+          "default": true
+        },
+        "accessories": {
+          "type": "boolean",
+          "default": true
+        },
+        "environment": {
+          "type": "boolean",
+          "default": true
+        },
+        "lighting": {
+          "type": "boolean",
+          "default": true
+        },
+        "color_grade": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "default": {
+        "identity": true,
+        "product_shape": true,
+        "product_materials": true,
+        "product_colors": true,
+        "product_markings": true,
+        "environment_layout": true,
+        "architecture": true,
+        "furniture_inventory": true,
+        "face": true,
+        "body_proportions": true,
+        "hair": true,
+        "makeup": true,
+        "wardrobe": true,
+        "fabric_materials": true,
+        "colors": true,
+        "accessories": true,
+        "environment": true,
+        "lighting": true,
+        "color_grade": true
+      }
+    },
+    "continuity_locks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strict_reference_grounding": {
+          "type": "boolean",
+          "default": true
+        },
+        "no_new_objects": {
+          "type": "boolean",
+          "default": true
+        },
+        "no_wardrobe_redesign": {
+          "type": "boolean",
+          "default": true
+        },
+        "no_color_reinterpretation": {
+          "type": "boolean",
+          "default": true
+        },
+        "no_unrequested_text": {
+          "type": "boolean",
+          "description": "Avoid captions, labels, logos, watermarks, UI text, and random glyphs unless allowed by allow_text_in_image or already present in the reference.",
+          "default": true
+        },
+        "same_scene_across_frames": {
+          "type": "boolean",
+          "default": true
+        },
+        "same_lighting_across_frames": {
+          "type": "boolean",
+          "default": true
+        },
+        "same_character_across_frames": {
+          "type": "boolean",
+          "default": true
+        },
+        "allow_logical_inference_for_hidden_details": {
+          "type": "boolean",
+          "description": "Use only when the reference crop does not show full body or outfit. Inference must be conservative and consistent.",
+          "default": true
+        }
+      },
+      "default": {
+        "strict_reference_grounding": true,
+        "no_new_objects": true,
+        "no_wardrobe_redesign": true,
+        "no_color_reinterpretation": true,
+        "no_unrequested_text": true,
+        "same_scene_across_frames": true,
+        "same_lighting_across_frames": true,
+        "same_character_across_frames": true,
+        "allow_logical_inference_for_hidden_details": true
+      }
+    },
+    "camera_defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lens_feel": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "35mm_cinematic",
+            "50mm_natural",
+            "85mm_portrait",
+            "100mm_macro",
+            "long_lens_compression",
+            "wide_low_angle",
+            "custom"
+          ],
+          "default": "reference_locked"
+        },
+        "depth_of_field": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "shallow",
+            "moderate",
+            "deep",
+            "varies_by_shot"
+          ],
+          "default": "varies_by_shot"
+        },
+        "camera_height": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "eye_level",
+            "slightly_above",
+            "slightly_below",
+            "high_angle",
+            "low_angle",
+            "ground_level",
+            "overhead",
+            "custom"
+          ],
+          "default": "reference_locked"
+        },
+        "composition_style": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "centered",
+            "offset_editorial",
+            "negative_space",
+            "contact_sheet",
+            "storyboard",
+            "custom"
+          ],
+          "default": "reference_locked"
+        }
+      },
+      "default": {
+        "lens_feel": "reference_locked",
+        "depth_of_field": "varies_by_shot",
+        "camera_height": "reference_locked",
+        "composition_style": "reference_locked"
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "none",
+            "single",
+            "separate_images",
+            "contact_sheet",
+            "grid"
+          ],
+          "default": "single"
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "panel_labels": {
+          "type": "boolean",
+          "default": false
+        },
+        "panel_captions": {
+          "type": "boolean",
+          "default": false
+        },
+        "border_style": {
+          "type": "string",
+          "enum": [
+            "none",
+            "thin_white",
+            "thin_black",
+            "film_contact_sheet",
+            "custom"
+          ],
+          "default": "thin_white"
+        },
+        "label_style": {
+          "type": "string",
+          "enum": [
+            "none",
+            "small_white_top_left",
+            "white_top_left_with_caption_bar",
+            "minimal_editorial",
+            "custom"
+          ],
+          "default": "none"
+        }
+      },
+      "default": {
+        "type": "single",
+        "rows": 1,
+        "columns": 1,
+        "panel_labels": false,
+        "panel_captions": false,
+        "border_style": "thin_white",
+        "label_style": "none"
+      }
+    },
+    "shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shot_id",
+        "shot_type"
+      ],
+      "properties": {
+        "shot_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "shot_type": {
+          "type": "string",
+          "enum": [
+            "macro_close_up",
+            "beauty_close_up",
+            "intimate_close_portrait",
+            "medium_shot",
+            "medium_wide",
+            "wide_shot",
+            "full_body",
+            "high_angle",
+            "low_angle",
+            "profile",
+            "three_quarter",
+            "back_view",
+            "over_shoulder",
+            "oblique_full_body",
+            "long_lens_compression",
+            "extreme_detail",
+            "start_frame",
+            "stop_frame",
+            "custom"
+          ]
+        },
+        "camera_position": {
+          "type": "string",
+          "default": "reference-consistent alternate camera placement"
+        },
+        "framing": {
+          "type": "string",
+          "default": ""
+        },
+        "subject_action": {
+          "type": "string",
+          "description": "Final resting pose/action only; do not describe motion.",
+          "default": "subject holds a calm, composed resting pose"
+        },
+        "focus_target": {
+          "type": "string",
+          "enum": [
+            "face",
+            "eyes",
+            "lips",
+            "hair",
+            "neckline",
+            "fabric",
+            "hands",
+            "shoes",
+            "full_body",
+            "environment",
+            "custom"
+          ],
+          "default": "face"
+        },
+        "lens_feel": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "35mm_cinematic",
+            "50mm_natural",
+            "85mm_portrait",
+            "100mm_macro",
+            "long_lens_compression",
+            "wide_low_angle",
+            "custom"
+          ],
+          "default": "reference_locked"
+        },
+        "depth_of_field": {
+          "type": "string",
+          "enum": [
+            "reference_locked",
+            "very_shallow",
+            "shallow",
+            "moderate",
+            "deep"
+          ],
+          "default": "reference_locked"
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "video_frame_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "start_frame": {
+          "$ref": "#/$defs/shot"
+        },
+        "stop_frame": {
+          "$ref": "#/$defs/shot"
+        },
+        "continuity_instruction": {
+          "type": "string",
+          "default": "Start and stop frames must look like the same scene, same subject, same wardrobe, same lighting, and same color grade at two clearly different resting keyframes."
+        },
+        "frame_difference_policy": {
+          "$ref": "#/$defs/frame_difference_policy"
+        }
+      },
+      "default": {
+        "enabled": false,
+        "continuity_instruction": "Start and stop frames must look like the same scene, same subject, same wardrobe, same lighting, and same color grade at two clearly different resting keyframes.",
+        "frame_difference_policy": {
+          "must_be_visually_distinct": true,
+          "minimum_difference_axes": 2,
+          "preferred_pair_type": "angle_and_pose_change",
+          "allowed_difference_axes": [
+            "camera_angle",
+            "framing_distance",
+            "subject_pose"
+          ],
+          "locked_similarity_axes": [
+            "identity",
+            "wardrobe",
+            "hair",
+            "makeup",
+            "materials",
+            "colors",
+            "environment",
+            "lighting_direction",
+            "color_grade"
+          ],
+          "anti_duplicate_instruction": "Start Frame and Stop Frame must not be near-duplicates: do not use the same camera angle, same crop, and same pose. Change at least two visible axes such as camera height plus framing, or body orientation plus gaze, while preserving all continuity locks.",
+          "recommended_pair_recipes": [
+            "front medium shot -> high-angle intimate close portrait",
+            "wide full-body shot -> low-angle oblique medium close shot",
+            "profile close portrait -> three-quarter portrait",
+            "macro wardrobe detail -> composed beauty portrait"
+          ]
+        }
+      }
+    },
+    "frame_difference_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "must_be_visually_distinct": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, start and stop frames are invalid if they look like the same still image."
+        },
+        "minimum_difference_axes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 2,
+          "description": "Minimum number of visible axes that must differ between start and stop frames while continuity stays locked."
+        },
+        "preferred_pair_type": {
+          "type": "string",
+          "enum": [
+            "camera_angle_change",
+            "pose_change",
+            "angle_and_pose_change",
+            "detail_to_portrait",
+            "wide_to_close",
+            "high_to_low",
+            "profile_to_front",
+            "custom"
+          ],
+          "default": "angle_and_pose_change"
+        },
+        "allowed_difference_axes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "default": [
+            "camera_angle",
+            "framing_distance",
+            "subject_pose"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "camera_angle",
+              "camera_height",
+              "camera_side",
+              "framing_distance",
+              "lens_feel",
+              "composition",
+              "subject_pose",
+              "body_orientation",
+              "gaze_direction",
+              "hand_position",
+              "head_angle",
+              "focus_target",
+              "depth_of_field"
+            ]
+          }
+        },
+        "locked_similarity_axes": {
+          "type": "array",
+          "uniqueItems": true,
+          "default": [
+            "identity",
+            "wardrobe",
+            "hair",
+            "makeup",
+            "materials",
+            "colors",
+            "environment",
+            "lighting_direction",
+            "color_grade"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "wardrobe",
+              "hair",
+              "makeup",
+              "materials",
+              "colors",
+              "accessories",
+              "environment",
+              "lighting_direction",
+              "shadow_quality",
+              "color_grade",
+              "body_proportions"
+            ]
+          }
+        },
+        "anti_duplicate_instruction": {
+          "type": "string",
+          "default": "Start Frame and Stop Frame must not be near-duplicates: do not use the same camera angle, same crop, and same pose. Change at least two visible axes such as camera height plus framing, or body orientation plus gaze, while preserving all continuity locks."
+        },
+        "recommended_pair_recipes": {
+          "type": "array",
+          "default": [
+            "front medium shot -> high-angle intimate close portrait",
+            "wide full-body shot -> low-angle oblique medium close shot",
+            "profile close portrait -> three-quarter portrait",
+            "macro wardrobe detail -> composed beauty portrait"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "default": {
+        "must_be_visually_distinct": true,
+        "minimum_difference_axes": 2,
+        "preferred_pair_type": "angle_and_pose_change",
+        "allowed_difference_axes": [
+          "camera_angle",
+          "framing_distance",
+          "subject_pose"
+        ],
+        "locked_similarity_axes": [
+          "identity",
+          "wardrobe",
+          "hair",
+          "makeup",
+          "materials",
+          "colors",
+          "environment",
+          "lighting_direction",
+          "color_grade"
+        ],
+        "anti_duplicate_instruction": "Start Frame and Stop Frame must not be near-duplicates: do not use the same camera angle, same crop, and same pose. Change at least two visible axes such as camera height plus framing, or body orientation plus gaze, while preserving all continuity locks.",
+        "recommended_pair_recipes": [
+          "front medium shot -> high-angle intimate close portrait",
+          "wide full-body shot -> low-angle oblique medium close shot",
+          "profile close portrait -> three-quarter portrait",
+          "macro wardrobe detail -> composed beauty portrait"
+        ]
+      }
+    }
+  }
+}

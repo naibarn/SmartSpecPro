@@ -11849,6 +11849,7 @@ export const marketplaceProducts = pgTable("marketplace_products", {
   currency: varchar("currency", { length: 16 }).default("THB"),
   discountText: varchar("discountText", { length: 64 }),
   commissionRatePercent: numeric("commissionRatePercent", { precision: 5, scale: 2 }),
+  productCategory: varchar("productCategory", { length: 64 }),
   ratingScore: numeric("ratingScore", { precision: 4, scale: 2 }),
   reviewCountText: varchar("reviewCountText", { length: 128 }),
   soldCountText: varchar("soldCountText", { length: 128 }),
@@ -12023,6 +12024,120 @@ export const marketplaceAutoReviewStages = pgTable("marketplace_auto_review_stag
   index("marketplace_auto_review_stages_run_idx").on(t.runId, t.stageOrder),
 ]);
 
+export const marketplaceAutoReviewRunLeases = pgTable("marketplace_auto_review_run_leases", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stageKey: varchar("stageKey", { length: 64 }).notNull(),
+  ownerToken: varchar("ownerToken", { length: 256 }).notNull(),
+  schedulerSource: varchar("schedulerSource", { length: 128 }),
+  status: varchar("status", { length: 32 }).default("claimed").notNull(),
+  claimedAt: timestamp("claimedAt", { withTimezone: true }).notNull(),
+  heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  releasedAt: timestamp("releasedAt", { withTimezone: true }),
+  metadataJson: jsonb("metadataJson").$type<Record<string, any>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("marketplace_auto_review_run_leases_run_idx").on(t.runId, t.expiresAt),
+  index("marketplace_auto_review_run_leases_owner_idx").on(t.ownerToken),
+  index("marketplace_auto_review_run_leases_status_idx").on(t.status, t.expiresAt),
+]);
+
+export const marketplaceAutoReviewStageAttempts = pgTable("marketplace_auto_review_stage_attempts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  stageKey: varchar("stageKey", { length: 64 }).notNull(),
+  attemptKey: varchar("attemptKey", { length: 192 }).notNull(),
+  attemptNumber: integer("attemptNumber").default(1).notNull(),
+  status: varchar("status", { length: 40 }).default("running").notNull(),
+  reasonCode: varchar("reasonCode", { length: 160 }),
+  providerTaskRefsJson: jsonb("providerTaskRefsJson").$type<Record<string, any>[]>().default([]).notNull(),
+  creditRefsJson: jsonb("creditRefsJson").$type<string[]>().default([]).notNull(),
+  repairDecisionJson: jsonb("repairDecisionJson").$type<Record<string, any>>().default({}).notNull(),
+  artifactRefsJson: jsonb("artifactRefsJson").$type<string[]>().default([]).notNull(),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, any>>().default({}).notNull(),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_stage_attempts_key_unique").on(t.runId, t.attemptKey),
+  index("marketplace_auto_review_stage_attempts_stage_idx").on(t.runId, t.stageKey, t.updatedAt),
+  index("marketplace_auto_review_stage_attempts_status_idx").on(t.status, t.updatedAt),
+]);
+
+export const marketplaceAutoReviewProviderEvents = pgTable("marketplace_auto_review_provider_events", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  stageKey: varchar("stageKey", { length: 64 }).notNull(),
+  providerName: varchar("providerName", { length: 128 }),
+  providerTaskId: varchar("providerTaskId", { length: 256 }).notNull(),
+  mediaTaskId: varchar("mediaTaskId", { length: 128 }),
+  eventType: varchar("eventType", { length: 80 }).notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+  signatureStatus: varchar("signatureStatus", { length: 40 }).default("internal_snapshot").notNull(),
+  replayKey: varchar("replayKey", { length: 256 }).notNull(),
+  resultUrl: text("resultUrl"),
+  creditRef: varchar("creditRef", { length: 256 }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, any>>().default({}).notNull(),
+  receivedAt: timestamp("receivedAt", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_provider_events_replay_unique").on(t.replayKey),
+  index("marketplace_auto_review_provider_events_run_idx").on(t.runId, t.stageKey, t.receivedAt),
+  index("marketplace_auto_review_provider_events_task_idx").on(t.providerTaskId),
+  index("marketplace_auto_review_provider_events_status_idx").on(t.status, t.receivedAt),
+]);
+
+export const marketplaceAutoReviewOutboxJobs = pgTable("marketplace_auto_review_outbox_jobs", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  jobType: varchar("jobType", { length: 80 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+  status: varchar("status", { length: 40 }).default("queued").notNull(),
+  priority: integer("priority").default(100).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  maxAttempts: integer("maxAttempts").default(3).notNull(),
+  lockedBy: varchar("lockedBy", { length: 160 }),
+  lockedUntil: timestamp("lockedUntil", { withTimezone: true }),
+  scheduledAt: timestamp("scheduledAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, any>>().default({}).notNull(),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_outbox_jobs_idempotency_unique").on(t.idempotencyKey),
+  index("marketplace_auto_review_outbox_jobs_ready_idx").on(t.status, t.scheduledAt, t.priority),
+  index("marketplace_auto_review_outbox_jobs_run_idx").on(t.runId, t.createdAt),
+  index("marketplace_auto_review_outbox_jobs_lock_idx").on(t.lockedUntil),
+]);
+
+export const marketplaceAutoReviewArtifacts = pgTable("marketplace_auto_review_artifacts", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  stageKey: varchar("stageKey", { length: 64 }).notNull(),
+  artifactKind: varchar("artifactKind", { length: 100 }).notNull(),
+  storageKey: text("storageKey").notNull(),
+  storageUrl: text("storageUrl"),
+  contentHash: varchar("contentHash", { length: 128 }).notNull(),
+  mimeType: varchar("mimeType", { length: 160 }).notNull(),
+  sizeBytes: integer("sizeBytes"),
+  status: varchar("status", { length: 40 }).default("ready").notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, any>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_auto_review_artifacts_hash_unique").on(t.runId, t.artifactKind, t.contentHash),
+  index("marketplace_auto_review_artifacts_run_idx").on(t.runId, t.stageKey, t.artifactKind),
+  index("marketplace_auto_review_artifacts_status_idx").on(t.status, t.createdAt),
+]);
+
 export const marketplaceUserShareSettings = pgTable("marketplace_user_share_settings", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -12056,5 +12171,15 @@ export type MarketplaceAutoReviewRun = typeof marketplaceAutoReviewRuns.$inferSe
 export type InsertMarketplaceAutoReviewRun = typeof marketplaceAutoReviewRuns.$inferInsert;
 export type MarketplaceAutoReviewStage = typeof marketplaceAutoReviewStages.$inferSelect;
 export type InsertMarketplaceAutoReviewStage = typeof marketplaceAutoReviewStages.$inferInsert;
+export type MarketplaceAutoReviewRunLease = typeof marketplaceAutoReviewRunLeases.$inferSelect;
+export type InsertMarketplaceAutoReviewRunLease = typeof marketplaceAutoReviewRunLeases.$inferInsert;
+export type MarketplaceAutoReviewStageAttempt = typeof marketplaceAutoReviewStageAttempts.$inferSelect;
+export type InsertMarketplaceAutoReviewStageAttempt = typeof marketplaceAutoReviewStageAttempts.$inferInsert;
+export type MarketplaceAutoReviewProviderEvent = typeof marketplaceAutoReviewProviderEvents.$inferSelect;
+export type InsertMarketplaceAutoReviewProviderEvent = typeof marketplaceAutoReviewProviderEvents.$inferInsert;
+export type MarketplaceAutoReviewOutboxJob = typeof marketplaceAutoReviewOutboxJobs.$inferSelect;
+export type InsertMarketplaceAutoReviewOutboxJob = typeof marketplaceAutoReviewOutboxJobs.$inferInsert;
+export type MarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifacts.$inferSelect;
+export type InsertMarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifacts.$inferInsert;
 export type MarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferSelect;
 export type InsertMarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferInsert;

@@ -1,0 +1,45 @@
+{
+  "name": "auto_cinematic_video_prompt_skill",
+  "version": "1.0.0",
+  "display_name": "Auto Cinematic Video Prompt Skill",
+  "description": "Generates Seedance 2-ready cinematic video prompts for text-to-video, image-to-video, reference-to-video, start-frame, start-stop-frame, and multi-shot storyboard workflows.",
+  "primary_use_cases": [
+    "cinematic portrait video prompt generation",
+    "image-to-video prompt generation from 1 to 5 reference images",
+    "start frame and stop frame video planning",
+    "multi-shot storyboard prompt generation",
+    "camera movement and pose transition design",
+    "vertical 9:16 and horizontal 16:9 cinematic video prompts"
+  ],
+  "required_directories": [
+    "schemas",
+    "templates",
+    "presets",
+    "examples"
+  ],
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "output": "schemas/output.schema.json"
+  },
+  "engine_target": {
+    "name": "Seedance 2",
+    "task_type": "prompt_generation_only",
+    "supported_generation_modes": [
+      "text_to_video",
+      "image_to_video",
+      "ref_to_video",
+      "start_frame_to_video",
+      "start_stop_frame_to_video",
+      "storyboard_text_to_video",
+      "storyboard_image_to_video",
+      "storyboard_ref_to_video"
+    ]
+  },
+  "continuity_principles": [
+    "Preserve identity, wardrobe, hair, makeup, environment, material fidelity, lighting direction, color grade, and cinematic tone.",
+    "Camera movement and pose change must be physically plausible.",
+    "Start and stop frames must not be near-duplicates unless explicitly requested for micro-motion only.",
+    "Storyboard shots must feel like the same scene captured by a professional cinematographer, not separate redesigns."
+  ]
+}

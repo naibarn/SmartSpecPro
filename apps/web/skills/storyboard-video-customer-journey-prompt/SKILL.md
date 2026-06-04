@@ -111,7 +111,7 @@ Dialogue:
 ## Voiceover Requirements
 
 If `includeVoiceover` is true:
-- create a natural spoken script per slot using the same customer-facing spoken-copy quality bar as `elevenlabs-beauty-dialogue`
+- create a natural spoken script per slot using the same customer-facing spoken-copy quality bar as `elevenlabs-product-voiceover-dialogue`
 - use `speechMode` / `speechLanguage` when provided. `th` means Thai, `en` means English, and `other` means the caller-provided language.
 - use the selected Production Director concept/customer journey as the main source of the speech angle, so different selected concepts produce meaningfully different spoken content
 - make the script continuous across slots as one ordered story, not separate standalone taglines

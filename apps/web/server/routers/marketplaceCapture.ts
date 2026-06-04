@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
@@ -42,43 +43,227 @@ import {
   syncMarketplaceInsight,
 } from "../services/marketplaceInsightService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-import { analyzeMarketplaceCaptureSchema, marketplaceCaptureInsightSyncSchema, marketplaceClaimResolutionSchema, marketplaceConfirmProductSchema, marketplaceServerInsightGenerationSchema } from "@shared/marketplaceCapture";
+import {
+  analyzeMarketplaceCaptureSchema,
+  marketplaceCaptureInsightSyncSchema,
+  marketplaceClaimResolutionSchema,
+  marketplaceConfirmProductSchema,
+  marketplaceServerInsightGenerationSchema,
+} from "@shared/marketplaceCapture";
+import {
+  CancelHyperframesRenderJobInputSchema,
+  CancelHyperframesRenderJobOutputSchema,
+  CreateHyperframesPreviewInputSchema,
+  CreateHyperframesPreviewOutputSchema,
+  GetAutoStoryboardReviewPlanInputSchema,
+  GetAutoStoryboardReviewPlanOutputSchema,
+  GetHyperframesRenderJobInputSchema,
+  GetHyperframesRenderJobOutputSchema,
+  ListHyperframesTemplatesInputSchema,
+  ListHyperframesTemplatesOutputSchema,
+  SaveHyperframesRenderToLibraryInputSchema,
+  SaveHyperframesRenderToLibraryOutputSchema,
+  StartAutoStoryboardReviewInputSchema,
+  StartAutoStoryboardReviewOutputSchema,
+} from "@shared/hyperframes/runtimeApiSchemas";
+import {
+  HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+  HyperframesRenderStatusProjectionSchema,
+} from "@shared/hyperframes/contracts";
+import {
+  cancelHyperframesRenderJobForApi,
+  createHyperframesPreviewForApi,
+  getAutoStoryboardReviewPlanForApi,
+  getHyperframesRenderJobForApi,
+  listHyperframesTemplatesForApi,
+  saveHyperframesRenderToLibraryForApi,
+  startAutoStoryboardReviewForApi,
+} from "../services/hyperframesRuntimeApiService";
+import {
+  defaultHyperframesOperatorAuditSink,
+  cancelHyperframesRenderAsOperator,
+  disableHyperframesTemplateWithAuditAsOperator,
+  enableHyperframesTemplateWithAuditAsOperator,
+  inspectHyperframesRenderAsOperator,
+  replayHyperframesDeadLetterByIdAsOperator,
+} from "../services/hyperframesOperatorService";
+import { readHyperframesFeatureFlags } from "../services/hyperframesFeatureAccessService";
 
 function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
-  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ?? undefined;
+  const tenantId =
+    resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ??
+    undefined;
   return { userId, tenantId };
 }
 
+function operatorAuthFromCtx(ctx: any) {
+  return {
+    ...authFromCtx(ctx),
+    role: typeof ctx.user?.role === "string" ? ctx.user.role : undefined,
+    operatorEnabled:
+      process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "true" ||
+      process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "1",
+  };
+}
+
+const hyperframesDelegatedOperatorRoles = new Set([
+  "owner",
+  "operator",
+  "support",
+]);
+
+function isHyperframesOperatorEnvEnabled() {
+  return (
+    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "true" ||
+    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "1"
+  );
+}
+
+const hyperframesOperatorProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    const role = typeof ctx.user?.role === "string" ? ctx.user.role : "";
+    const adminLike = role === "admin" || role === "system_agent";
+    const delegated =
+      isHyperframesOperatorEnvEnabled() &&
+      hyperframesDelegatedOperatorRoles.has(role);
+
+    if (!adminLike && !delegated) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "HyperFrames operator permission required",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        user: ctx.user,
+      },
+    });
+  }
+);
+
+const HyperframesOperatorAuditEventSchema = z
+  .object({
+    action: z.string().min(1).max(160),
+    userId: z.number().int(),
+    tenantId: z.string().min(1).max(160),
+    renderJobId: z.string().min(1).max(160).nullable().optional(),
+    productId: z.string().min(1).max(160).nullable().optional(),
+    runId: z.string().min(1).max(160).nullable().optional(),
+    templateId: z.string().min(1).max(160).nullable().optional(),
+    reason: z.string().max(1200).nullable().optional(),
+    redacted: z.literal(true),
+  })
+  .strict();
+
+const HyperframesOperatorAuditPersistenceSchema = z
+  .object({
+    persisted: z.boolean(),
+    auditLoggerPersisted: z.boolean(),
+    dbPersisted: z.boolean(),
+    errorMessage: z.string().max(1200).optional(),
+    audit: HyperframesOperatorAuditEventSchema,
+  })
+  .strict();
+
+const HyperframesOperatorInspectOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    render: HyperframesRenderStatusProjectionSchema,
+    diagnostics: z.array(z.string().max(1200)).default([]),
+    redacted: z.literal(true),
+    operatorReplayToken: z.string().min(8).max(160).nullable().optional(),
+    auditPersistence: HyperframesOperatorAuditPersistenceSchema,
+  })
+  .strict();
+
+const HyperframesOperatorCancelOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    render: HyperframesRenderStatusProjectionSchema,
+    auditPersistence: HyperframesOperatorAuditPersistenceSchema,
+  })
+  .strict();
+
+const HyperframesDeadLetterReplayOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    replayable: z.literal(true),
+    nextStatus: z.literal("queued"),
+    replayGuard: z
+      .object({
+        compositionInputHashCurrent: z.literal(true),
+        replayTokenVerified: z.literal(true),
+        templateEnabled: z.literal(true),
+        templateApproved: z.literal(true),
+        featureAccessReady: z.literal(true).nullable(),
+        reasonCaptured: z.literal(true),
+      })
+      .strict(),
+    transition: z.object({ updated: z.boolean() }).strict(),
+    audit: HyperframesOperatorAuditEventSchema,
+    auditPersistence: HyperframesOperatorAuditPersistenceSchema,
+  })
+  .strict();
+
+const HyperframesTemplateOperatorOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    templateId: z.string().min(1).max(160),
+    disabled: z.boolean().optional(),
+    enabled: z.boolean().optional(),
+    audit: HyperframesOperatorAuditEventSchema,
+    auditPersistence: HyperframesOperatorAuditPersistenceSchema,
+  })
+  .strict();
+
 function autoReviewRuntimeFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
-  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ?? undefined;
-  const fallbackToken = Number.isFinite(userId) && userId > 0
-    ? signBearerToken({
-      sub: String(userId),
-      type: "access",
-      userId,
-      tenantId,
-      scopes: ["media:generate"],
-      jti: `marketplace_auto_review_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
-    }, "6h")
-    : undefined;
+  const tenantId =
+    resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ??
+    undefined;
+  const fallbackToken =
+    Number.isFinite(userId) && userId > 0
+      ? signBearerToken(
+          {
+            sub: String(userId),
+            type: "access",
+            userId,
+            tenantId,
+            scopes: ["media:generate"],
+            jti: `marketplace_auto_review_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+          },
+          "6h"
+        )
+      : undefined;
   return {
     userToken: ctx.userToken || fallbackToken,
     publicUrl: ctx.publicUrl,
+    externalOperationalRecoveryEvidence:
+      ctx.externalOperationalRecoveryEvidence ??
+      ctx.autoReviewOperationalRecoveryEvidence ??
+      null,
   };
 }
 
 export const marketplaceCaptureRouter = router({
-  adminOverview: adminProcedure
-    .query(async () => getMarketplaceCaptureAdminOverview()),
+  adminOverview: adminProcedure.query(async () =>
+    getMarketplaceCaptureAdminOverview()
+  ),
 
   issueExtensionToken: protectedProcedure
-    .input(z.object({
-      origin: z.string().max(300).optional(),
-      extensionId: z.string().max(160).optional(),
-      deviceId: z.string().max(80).optional(),
-    }).optional().default({}))
+    .input(
+      z
+        .object({
+          origin: z.string().max(300).optional(),
+          extensionId: z.string().max(160).optional(),
+          deviceId: z.string().max(80).optional(),
+        })
+        .optional()
+        .default({})
+    )
     .mutation(async ({ input, ctx }) => {
       return issueMarketplaceExtensionToken({
         ...authFromCtx(ctx),
@@ -89,172 +274,588 @@ export const marketplaceCaptureRouter = router({
     }),
 
   listCaptures: protectedProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(100).optional().default(30) }).optional().default({}))
-    .query(async ({ input, ctx }) => listMarketplaceCapturesForUser(authFromCtx(ctx), input.limit)),
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(100).optional().default(30),
+        })
+        .optional()
+        .default({})
+    )
+    .query(async ({ input, ctx }) =>
+      listMarketplaceCapturesForUser(authFromCtx(ctx), input.limit)
+    ),
 
   getCapture: protectedProcedure
     .input(z.object({ captureId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => getMarketplaceCaptureForUser(input.captureId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      getMarketplaceCaptureForUser(input.captureId, authFromCtx(ctx))
+    ),
 
   listInsightsByCapture: protectedProcedure
     .input(z.object({ captureId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => listMarketplaceInsightsByCapture(input.captureId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      listMarketplaceInsightsByCapture(input.captureId, authFromCtx(ctx))
+    ),
 
   listInsightsByProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => listMarketplaceInsightsByProduct(input.productId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      listMarketplaceInsightsByProduct(input.productId, authFromCtx(ctx))
+    ),
 
   getInsight: protectedProcedure
     .input(z.object({ insightId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => getMarketplaceInsightForUser(input.insightId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      getMarketplaceInsightForUser(input.insightId, authFromCtx(ctx))
+    ),
 
   syncInsight: protectedProcedure
     .input(marketplaceCaptureInsightSyncSchema)
-    .mutation(async ({ input, ctx }) => syncMarketplaceInsight(input, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      syncMarketplaceInsight(input, authFromCtx(ctx))
+    ),
 
   generateServerInsight: protectedProcedure
     .input(marketplaceServerInsightGenerationSchema)
-    .mutation(async ({ input, ctx }) => generateMarketplaceServerInsight(input, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      generateMarketplaceServerInsight(input, authFromCtx(ctx))
+    ),
 
   resolveInsightClaim: protectedProcedure
     .input(marketplaceClaimResolutionSchema)
-    .mutation(async ({ input, ctx }) => applyMarketplaceClaimResolution(input, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      applyMarketplaceClaimResolution(input, authFromCtx(ctx))
+    ),
 
   getStorytellingHandoff: protectedProcedure
     .input(z.object({ captureId: z.string().min(1).max(64) }))
     .query(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
-      const insights = await listMarketplaceInsightsByCapture(input.captureId, auth);
-      const syncedHandoff = insights.find((insight) => insight.insightType === "storytelling_handoff");
-      return syncedHandoff?.payloadJson ?? buildBasicStorytellingHandoffFromCapture(input.captureId, auth);
+      const insights = await listMarketplaceInsightsByCapture(
+        input.captureId,
+        auth
+      );
+      const syncedHandoff = insights.find(
+        insight => insight.insightType === "storytelling_handoff"
+      );
+      return (
+        syncedHandoff?.payloadJson ??
+        buildBasicStorytellingHandoffFromCapture(input.captureId, auth)
+      );
     }),
 
   analyzeCapture: protectedProcedure
-    .input(z.object({
-      captureId: z.string().min(1).max(64),
-      analyze: analyzeMarketplaceCaptureSchema.optional().default({}),
-    }))
-    .mutation(async ({ input, ctx }) => analyzeMarketplaceCapture(input.captureId, input.analyze, authFromCtx(ctx))),
+    .input(
+      z.object({
+        captureId: z.string().min(1).max(64),
+        analyze: analyzeMarketplaceCaptureSchema.optional().default({}),
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      analyzeMarketplaceCapture(
+        input.captureId,
+        input.analyze,
+        authFromCtx(ctx)
+      )
+    ),
 
   confirmCapture: protectedProcedure
-    .input(z.object({
-      captureId: z.string().min(1).max(64),
-      data: marketplaceConfirmProductSchema,
-    }))
-    .mutation(async ({ input, ctx }) => confirmMarketplaceCapture(input.captureId, input.data, authFromCtx(ctx))),
+    .input(
+      z.object({
+        captureId: z.string().min(1).max(64),
+        data: marketplaceConfirmProductSchema,
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      confirmMarketplaceCapture(input.captureId, input.data, authFromCtx(ctx))
+    ),
 
   saveDraftEdits: protectedProcedure
-    .input(z.object({
-      captureId: z.string().min(1).max(64),
-      data: marketplaceConfirmProductSchema,
-    }))
-    .mutation(async ({ input, ctx }) => saveMarketplaceCaptureDraftEdits(input.captureId, input.data, authFromCtx(ctx))),
+    .input(
+      z.object({
+        captureId: z.string().min(1).max(64),
+        data: marketplaceConfirmProductSchema,
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      saveMarketplaceCaptureDraftEdits(
+        input.captureId,
+        input.data,
+        authFromCtx(ctx)
+      )
+    ),
 
   discardCapture: protectedProcedure
     .input(z.object({ captureId: z.string().min(1).max(64) }))
-    .mutation(async ({ input, ctx }) => discardMarketplaceCapture(input.captureId, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      discardMarketplaceCapture(input.captureId, authFromCtx(ctx))
+    ),
 
   listProducts: protectedProcedure
-    .input(z.object({
-      limit: z.number().int().min(1).max(100).optional().default(30),
-      ownerOnly: z.boolean().optional().default(false),
-      platform: z.enum(["all", "shopee", "tiktok_shop"]).optional().default("all"),
-      query: z.string().trim().max(160).optional(),
-    }).optional().default({}))
-    .query(async ({ input, ctx }) => listMarketplaceProductsWithAccess(authFromCtx(ctx), input)),
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(100).optional().default(30),
+          ownerOnly: z.boolean().optional().default(false),
+          platform: z
+            .enum(["all", "shopee", "tiktok_shop"])
+            .optional()
+            .default("all"),
+          query: z.string().trim().max(160).optional(),
+        })
+        .optional()
+        .default({})
+    )
+    .query(async ({ input, ctx }) =>
+      listMarketplaceProductsWithAccess(authFromCtx(ctx), input)
+    ),
 
   listProductImages: protectedProcedure
-    .input(z.object({
-      limit: z.number().int().min(1).max(30).optional().default(30),
-      cursor: z.string().optional().nullable(),
-      ownerOnly: z.boolean().optional().default(false),
-      platform: z.enum(["all", "shopee", "tiktok_shop"]).optional().default("all"),
-      query: z.string().trim().max(160).optional(),
-      productId: z.string().min(1).max(64).optional().nullable(),
-    }).optional().default({}))
-    .query(async ({ input, ctx }) => listMarketplaceProductImagesForMediaStudio(authFromCtx(ctx), input)),
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(30).optional().default(30),
+          cursor: z.string().optional().nullable(),
+          ownerOnly: z.boolean().optional().default(false),
+          platform: z
+            .enum(["all", "shopee", "tiktok_shop"])
+            .optional()
+            .default("all"),
+          query: z.string().trim().max(160).optional(),
+          productId: z.string().min(1).max(64).optional().nullable(),
+        })
+        .optional()
+        .default({})
+    )
+    .query(async ({ input, ctx }) =>
+      listMarketplaceProductImagesForMediaStudio(authFromCtx(ctx), input)
+    ),
 
-  getShareSettings: protectedProcedure
-    .query(async ({ ctx }) => getMarketplaceShareSettings(authFromCtx(ctx))),
+  getShareSettings: protectedProcedure.query(async ({ ctx }) =>
+    getMarketplaceShareSettings(authFromCtx(ctx))
+  ),
 
   saveShareSetting: protectedProcedure
-    .input(z.object({
-      platform: z.enum(["shopee", "tiktok_shop"]),
-      enabled: z.boolean().default(true),
-      groupIds: z.array(z.number().int().positive()).max(20).default([]),
-      permission: z.enum(["read", "read_update"]).default("read_update"),
-    }))
-    .mutation(async ({ input, ctx }) => saveMarketplaceShareSetting(input, authFromCtx(ctx))),
+    .input(
+      z.object({
+        platform: z.enum(["shopee", "tiktok_shop"]),
+        enabled: z.boolean().default(true),
+        groupIds: z.array(z.number().int().positive()).max(20).default([]),
+        permission: z.enum(["read", "read_update"]).default("read_update"),
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      saveMarketplaceShareSetting(input, authFromCtx(ctx))
+    ),
 
   listCandidateBatches: protectedProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(100).optional().default(30) }).optional().default({}))
-    .query(async ({ input, ctx }) => listMarketplaceCandidateBatchesForUser(authFromCtx(ctx), input.limit)),
+    .input(
+      z
+        .object({
+          limit: z.number().int().min(1).max(100).optional().default(30),
+        })
+        .optional()
+        .default({})
+    )
+    .query(async ({ input, ctx }) =>
+      listMarketplaceCandidateBatchesForUser(authFromCtx(ctx), input.limit)
+    ),
 
   getCandidateBatch: protectedProcedure
     .input(z.object({ batchId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => getMarketplaceCandidateBatchForUser(input.batchId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      getMarketplaceCandidateBatchForUser(input.batchId, authFromCtx(ctx))
+    ),
 
   getProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))
-    .query(async ({ input, ctx }) => getMarketplaceProductWithAccess(input.productId, authFromCtx(ctx))),
+    .query(async ({ input, ctx }) =>
+      getMarketplaceProductWithAccess(input.productId, authFromCtx(ctx))
+    ),
 
   addProductImageFromUrl: protectedProcedure
-    .input(z.object({
-      productId: z.string().min(1).max(64),
-      url: z.string().min(1).max(4096),
-      type: z.enum(["main", "description", "review", "related_excluded"]).optional().default("main"),
-      title: z.string().max(255).optional().nullable(),
-      source: z.string().max(128).optional().nullable(),
-      originalSourceUrl: z.string().max(4096).optional().nullable(),
-      metadata: z.record(z.unknown()).optional(),
-    }))
-    .mutation(async ({ input, ctx }) => addMarketplaceProductImageFromUrl(input, authFromCtx(ctx))),
+    .input(
+      z.object({
+        productId: z.string().min(1).max(64),
+        url: z.string().min(1).max(4096),
+        type: z
+          .enum(["main", "description", "review", "related_excluded"])
+          .optional()
+          .default("main"),
+        title: z.string().max(255).optional().nullable(),
+        source: z.string().max(128).optional().nullable(),
+        originalSourceUrl: z.string().max(4096).optional().nullable(),
+        metadata: z.record(z.unknown()).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      addMarketplaceProductImageFromUrl(input, authFromCtx(ctx))
+    ),
 
   removeProductImage: protectedProcedure
-    .input(z.object({
-      productId: z.string().min(1).max(64),
-      imageId: z.string().min(1).max(64),
-    }))
-    .mutation(async ({ input, ctx }) => removeMarketplaceProductImage(input, authFromCtx(ctx))),
+    .input(
+      z.object({
+        productId: z.string().min(1).max(64),
+        imageId: z.string().min(1).max(64),
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      removeMarketplaceProductImage(input, authFromCtx(ctx))
+    ),
 
   startAutoReview: protectedProcedure
-    .input(z.object({
-      productId: z.string().min(1).max(64),
-      outputMode: z.enum(["storyboard_images", "full_video"]).default("storyboard_images"),
-      frameStrategy: z.enum(["auto", "storyboard_3x3_split", "video_shot_start_stop"]).optional().default("auto"),
-      audioStrategy: z.enum(["auto", "native_video_audio", "separate_tts_voiceover", "silent"]).optional().default("auto"),
-    }))
+    .input(
+      z.object({
+        productId: z.string().min(1).max(64),
+        creationIntent: z
+          .enum(["storyboard", "video", "auto_review_video"])
+          .optional()
+          .nullable(),
+        outputMode: z
+          .enum(["storyboard_images", "full_video"])
+          .default("storyboard_images"),
+        frameStrategy: z
+          .enum(["storyboard_3x3_split", "video_shot_start_stop"])
+          .optional()
+          .default("storyboard_3x3_split"),
+        audioStrategy: z
+          .enum([
+            "auto",
+            "native_video_audio",
+            "separate_tts_voiceover",
+            "silent",
+          ])
+          .optional()
+          .default("auto"),
+        shotCount: z.number().int().min(7).max(9).optional().default(9),
+        overlayTextMode: z
+          .enum(["no_text", "allow_text"])
+          .optional()
+          .default("no_text"),
+        imageModel: z
+          .enum(["google-nano-banana-pro", "google-banana-2"])
+          .optional()
+          .default("google-nano-banana-pro"),
+        qualityMode: z
+          .enum(["fast_draft", "balanced", "premium_strict_qa"])
+          .optional()
+          .nullable(),
+        referenceAnchors: z
+          .object({
+            schemaVersion: z.number().int().positive().optional(),
+            creationIntent: z
+              .enum(["storyboard", "video", "auto_review_video"])
+              .optional()
+              .nullable(),
+            requiredRoles: z
+              .array(z.enum(["product", "character", "environment"]))
+              .optional(),
+            lockPolicy: z.record(z.unknown()).optional(),
+            productImageUrl: z.string().min(1).max(4096),
+            productImageId: z.string().max(160).optional().nullable(),
+            productImageRef: z.string().max(512).optional().nullable(),
+            productImageSource: z.string().max(128).optional().nullable(),
+            productImageSourceUrl: z.string().max(4096).optional().nullable(),
+            productImageStorageKey: z.string().max(1024).optional().nullable(),
+            productImageHash: z.string().max(256).optional().nullable(),
+            productImageIndex: z.number().int().optional().nullable(),
+            characterImageUrl: z
+              .string()
+              .min(1)
+              .max(4096)
+              .optional()
+              .nullable(),
+            characterImageRef: z.string().max(512).optional().nullable(),
+            characterImageSource: z.string().max(128).optional().nullable(),
+            characterImageUploadKey: z.string().max(1024).optional().nullable(),
+            characterImageHash: z.string().max(256).optional().nullable(),
+            characterImageFileName: z.string().max(512).optional().nullable(),
+            characterImageFileType: z.string().max(160).optional().nullable(),
+            characterImageFileSizeBytes: z
+              .number()
+              .int()
+              .nonnegative()
+              .optional()
+              .nullable(),
+            environmentImageUrl: z
+              .string()
+              .min(1)
+              .max(4096)
+              .optional()
+              .nullable(),
+            environmentImageRef: z.string().max(512).optional().nullable(),
+            environmentImageSource: z.string().max(128).optional().nullable(),
+            environmentImageUploadKey: z
+              .string()
+              .max(1024)
+              .optional()
+              .nullable(),
+            environmentImageHash: z.string().max(256).optional().nullable(),
+            environmentImageFileName: z.string().max(512).optional().nullable(),
+            environmentImageFileType: z.string().max(160).optional().nullable(),
+            environmentImageFileSizeBytes: z
+              .number()
+              .int()
+              .nonnegative()
+              .optional()
+              .nullable(),
+            auditMetadata: z.record(z.unknown()).optional(),
+            fileEvidence: z.record(z.unknown()).optional(),
+            sourceRefs: z.array(z.string().max(512)).max(50).optional(),
+          })
+          .strip()
+          .optional()
+          .nullable(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
-      return startMarketplaceAutoReviewRun(input, auth, autoReviewRuntimeFromCtx(ctx));
+      return startMarketplaceAutoReviewRun(
+        input,
+        auth,
+        autoReviewRuntimeFromCtx(ctx)
+      );
     }),
+
+  getAutoStoryboardReviewPlan: protectedProcedure
+    .input(GetAutoStoryboardReviewPlanInputSchema)
+    .output(GetAutoStoryboardReviewPlanOutputSchema)
+    .query(async ({ input, ctx }) =>
+      getAutoStoryboardReviewPlanForApi({
+        productId: input.productId,
+        includeTemplates: input.includeTemplates,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  startAutoStoryboardReview: protectedProcedure
+    .input(StartAutoStoryboardReviewInputSchema)
+    .output(StartAutoStoryboardReviewOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      startAutoStoryboardReviewForApi({
+        productId: input.productId,
+        expectedPlanHash: input.expectedPlanHash,
+        overrides: input.overrides,
+        auth: authFromCtx(ctx),
+        runtime: autoReviewRuntimeFromCtx(ctx),
+      })
+    ),
+
+  createHyperframesPreview: protectedProcedure
+    .input(CreateHyperframesPreviewInputSchema)
+    .output(CreateHyperframesPreviewOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      createHyperframesPreviewForApi({
+        productId: input.productId,
+        runId: input.runId,
+        expectedCompositionInputHash: input.expectedCompositionInputHash,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  getHyperframesRenderJob: protectedProcedure
+    .input(GetHyperframesRenderJobInputSchema)
+    .output(GetHyperframesRenderJobOutputSchema)
+    .query(async ({ input, ctx }) =>
+      getHyperframesRenderJobForApi({
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  listHyperframesTemplates: protectedProcedure
+    .input(ListHyperframesTemplatesInputSchema)
+    .output(ListHyperframesTemplatesOutputSchema)
+    .query(async ({ input, ctx }) =>
+      listHyperframesTemplatesForApi({
+        includeDisabled: input.includeDisabled,
+        compositionMode: input.compositionMode,
+        renderIntent: input.renderIntent,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  cancelHyperframesRenderJob: protectedProcedure
+    .input(CancelHyperframesRenderJobInputSchema)
+    .output(CancelHyperframesRenderJobOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      cancelHyperframesRenderJobForApi({
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  saveHyperframesRenderToLibrary: protectedProcedure
+    .input(SaveHyperframesRenderToLibraryInputSchema)
+    .output(SaveHyperframesRenderToLibraryOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      saveHyperframesRenderToLibraryForApi({
+        productId: input.productId,
+        runId: input.runId,
+        renderJobId: input.renderJobId,
+        idempotencyKey: input.idempotencyKey,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  inspectHyperframesRenderDiagnostics: hyperframesOperatorProcedure
+    .input(
+      z.object({
+        renderJobId: z.string().min(1).max(128),
+        productId: z.string().min(1).max(64).optional(),
+        runId: z.string().min(1).max(64).optional(),
+      })
+    )
+    .output(HyperframesOperatorInspectOutputSchema as z.ZodTypeAny)
+    .query(async ({ input, ctx }) =>
+      inspectHyperframesRenderAsOperator({
+        auth: operatorAuthFromCtx(ctx),
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        auditSink: defaultHyperframesOperatorAuditSink,
+      })
+    ),
+
+  cancelHyperframesRenderJobAsOperator: hyperframesOperatorProcedure
+    .input(
+      z.object({
+        renderJobId: z.string().min(1).max(128),
+        productId: z.string().min(1).max(64).optional(),
+        runId: z.string().min(1).max(64).optional(),
+        reason: z.string().trim().min(6).max(500).optional(),
+      })
+    )
+    .output(HyperframesOperatorCancelOutputSchema as z.ZodTypeAny)
+    .mutation(async ({ input, ctx }) =>
+      cancelHyperframesRenderAsOperator({
+        auth: operatorAuthFromCtx(ctx),
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        reason: input.reason,
+        auditSink: defaultHyperframesOperatorAuditSink,
+      })
+    ),
+
+  replayHyperframesDeadLetter: hyperframesOperatorProcedure
+    .input(
+      z.object({
+        renderJobId: z.string().min(1).max(128),
+        productId: z.string().min(1).max(64).optional(),
+        runId: z.string().min(1).max(64).optional(),
+        currentCompositionInputHash: z.string().min(6).max(128),
+        replayToken: z.string().min(8).max(160),
+        reason: z.string().trim().min(6).max(500),
+      })
+    )
+    .output(HyperframesDeadLetterReplayOutputSchema as z.ZodTypeAny)
+    .mutation(async ({ input, ctx }) => {
+      const auth = operatorAuthFromCtx(ctx);
+      const flags = readHyperframesFeatureFlags(auth);
+      return replayHyperframesDeadLetterByIdAsOperator({
+        auth,
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        currentCompositionInputHash: input.currentCompositionInputHash,
+        replayToken: input.replayToken,
+        reason: input.reason,
+        access: {
+          featureEnabled: flags.enabled,
+          tenantAllowed: flags.tenantAllowed,
+          workerEnabled: flags.workerEnabled,
+          operatorEnabled: flags.operatorEnabled,
+          canReplayAsOperator: true,
+          complianceBlocked: false,
+        },
+        auditSink: defaultHyperframesOperatorAuditSink,
+      });
+    }),
+
+  disableHyperframesTemplate: hyperframesOperatorProcedure
+    .input(
+      z.object({
+        templateId: z.string().min(1).max(160),
+        reason: z.string().min(1).max(500),
+      })
+    )
+    .output(HyperframesTemplateOperatorOutputSchema as z.ZodTypeAny)
+    .mutation(async ({ input, ctx }) =>
+      disableHyperframesTemplateWithAuditAsOperator({
+        auth: operatorAuthFromCtx(ctx),
+        templateId: input.templateId,
+        reason: input.reason,
+        auditSink: defaultHyperframesOperatorAuditSink,
+      })
+    ),
+
+  enableHyperframesTemplate: hyperframesOperatorProcedure
+    .input(z.object({ templateId: z.string().min(1).max(160) }))
+    .output(HyperframesTemplateOperatorOutputSchema as z.ZodTypeAny)
+    .mutation(async ({ input, ctx }) =>
+      enableHyperframesTemplateWithAuditAsOperator({
+        auth: operatorAuthFromCtx(ctx),
+        templateId: input.templateId,
+        auditSink: defaultHyperframesOperatorAuditSink,
+      })
+    ),
 
   getAutoReviewRun: protectedProcedure
     .input(z.object({ runId: z.string().min(1).max(64) }))
+    .output(z.any())
     .query(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
       const result = await getMarketplaceAutoReviewRun(input.runId, auth);
-      if (["queued", "running", "waiting_provider"].includes(String(result.status))) {
-        queueMarketplaceAutoReviewAdvance(input.runId, auth, {
-          ...autoReviewRuntimeFromCtx(ctx),
-        }, 1_000);
+      if (
+        ["queued", "running", "waiting_provider"].includes(
+          String(result.status)
+        )
+      ) {
+        queueMarketplaceAutoReviewAdvance(
+          input.runId,
+          auth,
+          {
+            ...autoReviewRuntimeFromCtx(ctx),
+          },
+          1_000
+        );
       }
       return result;
     }),
 
   listAutoReviewRuns: protectedProcedure
-    .input(z.object({
-      productId: z.string().min(1).max(64).optional(),
-      limit: z.number().int().min(1).max(50).optional().default(10),
-    }).optional().default({}))
+    .input(
+      z
+        .object({
+          productId: z.string().min(1).max(64).optional(),
+          limit: z.number().int().min(1).max(50).optional().default(10),
+          summary: z.boolean().optional().default(false),
+        })
+        .optional()
+        .default({})
+    )
+    .output(z.array(z.any()))
     .query(async ({ input, ctx }) => {
       const auth = authFromCtx(ctx);
       const runs = await listMarketplaceAutoReviewRuns(input, auth);
       for (const run of runs) {
-        if (["queued", "running", "waiting_provider"].includes(String(run.status))) {
-          queueMarketplaceAutoReviewAdvance(String(run.id), auth, {
-            ...autoReviewRuntimeFromCtx(ctx),
-          }, 1_000);
+        if (
+          ["queued", "running", "waiting_provider"].includes(String(run.status))
+        ) {
+          queueMarketplaceAutoReviewAdvance(
+            String(run.id),
+            auth,
+            {
+              ...autoReviewRuntimeFromCtx(ctx),
+            },
+            1_000
+          );
         }
       }
       return runs;
@@ -262,13 +863,27 @@ export const marketplaceCaptureRouter = router({
 
   advanceAutoReviewRun: protectedProcedure
     .input(z.object({ runId: z.string().min(1).max(64) }))
-    .mutation(async ({ input, ctx }) => advanceMarketplaceAutoReviewRun(input.runId, authFromCtx(ctx), autoReviewRuntimeFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      advanceMarketplaceAutoReviewRun(
+        input.runId,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
 
   cancelAutoReviewRun: protectedProcedure
     .input(z.object({ runId: z.string().min(1).max(64) }))
-    .mutation(async ({ input, ctx }) => cancelMarketplaceAutoReviewRun(input.runId, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      cancelMarketplaceAutoReviewRun(
+        input.runId,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
 
   deleteProduct: protectedProcedure
     .input(z.object({ productId: z.string().min(1).max(64) }))
-    .mutation(async ({ input, ctx }) => deleteMarketplaceProduct(input.productId, authFromCtx(ctx))),
+    .mutation(async ({ input, ctx }) =>
+      deleteMarketplaceProduct(input.productId, authFromCtx(ctx))
+    ),
 });

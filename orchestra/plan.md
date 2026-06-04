@@ -1,64 +1,58 @@
 # Orchestra Plan
 
 ## Task
-
-Create a deep-plan package for Feature 117: replace the current Marketplace Auto Review / Production Director automation with a gateway-routed OpenAI Agents SDK runtime that can auto-create product review storyboards and videos from Marketplace Capture and Media Studio, without using node canvas.
+Fix all Feature 119 HyperFrames Marketplace Auto Review completeness findings, then run three review/fix convergence rounds.
 
 ## Classification
-
 - scope: large
 - risk: high
-- affected_domains: Marketplace Auto Review, Media Studio, Python Agents adapter, LLM gateway, credits/billing, media generation, QA, Storyboard Review, Video Editor, render/library finalize
-- chosen_route: orchestra + deep-plan, file-based planning artifacts
-- implementation_mode: planning only
-- code_changes: none
+- affected_domains: backend runtime APIs, render worker, Library finalize, Product Detail UI, Storyboard Review UI, MediaStudio handoff, tests, docs/gates
+- estimated_file_count: 18
+- chosen_route: direct-inline-waves (Codex standard light mode)
+- task_summary: Close the implementation gaps found in the Feature 119 audit while preserving Standard Order and keeping HyperFrames runtime dependency deferred.
+- bug_route: false
+- parallel_default: true
+- planned_agents: []
+- dispatch_preference: direct-standard-light
 
-## Key Decisions
+## Activation Decision
+- selected_skills: orchestra
+- skipped_skills: deep-implement, because the current task is a focused remediation pass against an existing implemented plan rather than a fresh section-by-section deep implementation.
 
-- Treat Feature 118 as the implemented baseline.
-- Upgrade the existing durable run/stage pipeline instead of adding a shadow or parallel pipeline.
-- Exclude node canvas, `ProductionSpace`, and `flowNodes` from Feature 117 implementation work.
-- Route every LLM call through the existing SmartSpecPro LLM gateway.
-- Keep credit reservation, deduction, refund, and audit platform-owned.
-- Make automation creative, but bind all claims and product visuals to evidence.
-- Add Thailand advertising compliance and visual warning/disclosure text requirements to the plan.
-- Preserve selected variant/SKU truth, version/redact API projections, attach canonical artifact lineage, and provide operator recovery procedures for stuck long-running jobs.
-- Add shared-product permission/billing snapshots, evidence freshness/asset readiness, asset-use rights, and provider moderation refusal handling.
-- Add provider event authenticity/replay safety, payload/trace budgets, storage quota/transcode finalization gates, retry/DLQ policy, migration/backfill dry-run, and launch SLO alerts.
-- Add marketplace privacy, audio rights/mix, distribution-profile validation, and tenant-safe creative feedback memory.
-- Add synthetic disclosure/provenance, CTA/landing integrity, QA calibration/spot-check, and post-publish governance.
-
-## Discovery Sources
-
-- SocratiCode status: green, index active for `/home/dev/projects/SmartSpecPro`.
-- Feature 117 spec: `specs/feature/117-production-director-agents-sdk-auto-storyboard-video/spec.md`.
-- Feature 118 implemented snapshot: `specs/feature/118-marketplace-auto-review-create-storyboard-video-review-auto/spec.md`.
-- Current service/code surfaces:
-  - `apps/web/server/services/marketplaceAutoReviewService.ts`
-  - `apps/web/server/jobs/marketplaceAutoReviewJob.ts`
+## Impact Preflight
+- SocratiCode status: green for `/home/dev/projects/SmartSpecPro`.
+- Candidate files from SocratiCode/search:
+  - `apps/web/server/services/hyperframesRuntimeApiService.ts`
+  - `apps/web/server/services/hyperframesRenderService.ts`
+  - `apps/web/server/workers/hyperframesRenderWorker.ts`
+  - `apps/web/server/services/hyperframesLibraryFinalizeService.ts`
   - `apps/web/server/routers/marketplaceCapture.ts`
   - `apps/web/client/src/pages/MarketplaceCaptureProductDetail.tsx`
-  - `apps/web/drizzle/schema.ts`
-  - `python-backend/app/services/openai_agents_adapter.py`
-  - `python-backend/app/services/openai_agents_contracts.py`
-  - `python-backend/app/services/openai_agents_gateway_model.py`
+  - `apps/web/client/src/pages/StoryboardReviewPage.tsx`
+  - `apps/web/client/src/pages/MediaStudio.tsx`
+  - `apps/web/client/src/components/marketplaceCapture/*`
+  - focused service/router/component/e2e tests under the same feature area.
+- Risk-sensitive surfaces:
+  - new/modified tRPC procedure behavior and tenant/user render access checks;
+  - Library finalize behavior and output artifact trust boundary;
+  - worker state mutation for queued render jobs;
+  - user-facing Auto-vs-Standard workflow.
+- Constraints:
+  - Do not install/import `@hyperframes/*` packages while dependency audit remains partial.
+  - Do not replace Standard Order; keep existing `startAutoReview` path usable.
+  - Do not claim real render/snapshot/browser runtime proof when gates are deferred.
+  - Preserve unrelated dirty worktree changes.
 
-## Planned Artifacts
-
-- `claude-research.md`
-- `claude-interview.md`
-- `claude-spec.md`
-- `claude-plan.md`
-- `reviews/self-review-round-1.md`
-- `claude-plan-tdd.md`
-- `sections/index.md`
-- section files under `sections/`
-
-## Quality Gates
-
-- Deep-plan context decision check.
-- Plan self-review.
-- Section manifest validation with `check-sections.py`.
-- UI contract validation with `check-ui-contracts.py`.
-- Markdown/diff whitespace check for generated planning files.
-- Targeted codebase-aware review rounds for timeline, operational hardening, approval snapshots, variant/API/lineage/recovery coverage, provider event trust, payload/storage budgets, retry/DLQ, launch readiness, privacy, audio rights, distribution profile, feedback memory, disclosure, CTA integrity, QA calibration, and post-publish governance.
+## Waves
+1. Backend safety and eligibility
+   - Worker must not mark jobs completed without runtime execution and QA evidence.
+   - Runtime API must only queue preview when access/run/storyboard state is eligible.
+   - Save-to-Library must require feature flag, completed render, QA-ready output refs, valid idempotency, and real artifact metadata.
+   - Add focused service/router tests for these behaviors.
+2. UI workflow and handoff
+   - Make Product Detail Auto CTA truly primary before Standard controls while Standard remains visible and usable.
+   - Improve Storyboard Review and MediaStudio handoff state without forcing manual customization.
+   - Add component/page/e2e fixture assertions where feasible.
+3. Gates and convergence
+   - Run focused tests, typecheck, HyperFrames release-gate scripts, and e2e skeleton.
+   - Run three review rounds; fix any additional in-scope material findings immediately.

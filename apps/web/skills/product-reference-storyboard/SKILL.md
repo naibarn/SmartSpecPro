@@ -61,6 +61,10 @@ Use `production_concept_details` as Product Detail / Product Facts. It controls 
 
 Current-run reference images beat every default. `reference_product_images` are immutable physical evidence. `reference_character_images` are identity anchors. `reference_environment_images` define atmosphere, light, floor/wall/layout, and room context only; they are not product evidence and must not introduce a competing sellable product.
 
+## Compact Prompt Budget
+
+Aim to keep the final plain-text prompt under 4300 characters so downstream image models stay comfortably below a 4500-character prompt limit. This is a soft budget, not an input field or schema parameter. Shorten by using one shared `CAMERA/LIGHT/DEPTH` block and one shared `PRODUCT VERIFY` block instead of repeating them in every frame. Completeness is mandatory and has higher priority than brevity: always return `Frame 1` through `Frame 9` with non-empty visual-only frame prose before ending. Never satisfy the budget by summarizing, returning only one shot, returning only the final shot, copying a source storyboard bullet, or omitting required global locks. If the budget is tight, shorten global locks to one compact line each and shorten each frame to one compact visual sentence; never stop mid-frame or return a bare label.
+
 ## Product Category Rule Selection
 
 Input `product_category` selects the category-specific fidelity file under `references/product-categories/`. The execution layer may append the selected file to the system prompt. When `product_category` is `auto`, infer the category from Product Detail, product title, marketplace category text, and current product images; if uncertain, use the generic product lock and avoid category-specific assumptions.
@@ -93,9 +97,9 @@ Category index:
 
 When `storyboard_guide` or `voiceover_script` contains numbered or timed shots, first build an internal shot-by-shot storyboard map before writing the final prompt. Parse shot markers even when whitespace is collapsed, including `1.`, `2.`, `0-6.7s`, `ภาพ:`, `มุมกล้อง:`, `บทพูด:`, and `VOICEOVER SCRIPT BY SHOT:`.
 
-For `canvas_9_16_grid_3x3_frame_9_16_exact` or any 9-frame storyboard request, write exactly `Frame 1` through `Frame 9` in the same order as the Storyboard Guide and Voiceover Script. Each frame description must include the source shot timing/title when available, visual beat/action, spoken meaning from the matched voiceover line, camera/lens/lighting/color direction, product role/fidelity note, character-face requirement when a person appears, and environment continuity.
+For `canvas_9_16_grid_3x3_frame_9_16_exact` or any 9-frame storyboard request, write exactly `Frame 1` through `Frame 9` in the same order as the Storyboard Guide and Voiceover Script. Each frame description must include the source shot timing/title when available, visual beat/action, spoken meaning from the matched voiceover line, product role/use cue, character-face requirement when a person appears, and environment continuity. Keep frame lines compact because shared camera/lighting/depth and product verification details live in their own global blocks. Draft all 9 frame lines before expanding any lock text.
 
-Use a structured frame format so image/video generators cannot skip important constraints. Every frame must include these labels inside the frame description: `VISUAL:`, `CAMERA/LIGHT/DEPTH:`, and `STORY MATCH:`. Every product-visible frame must additionally include `PRODUCT VERIFY:`. Every frame with a visible human face/body identity must additionally include `HUMAN REALISM:`. Do not bury these requirements only in global locks.
+Use compact visual-only frame prose so image generators do not render prompt labels as captions. Every frame must begin with `Frame N:` and then describe only what should be seen in that panel, including the matched story meaning as visual action or emotion. Do not write `VISUAL:`, `STORY MATCH:`, `HUMAN REALISM:`, quoted voiceover lines, timecodes, subtitles, captions, or any other label inside the frame text. Use one shared `CAMERA/LIGHT/DEPTH:` block before the frames for the whole storyboard, and one shared `PRODUCT VERIFY:` block before or after the frames for canonical product facts. Do not repeat `CAMERA/LIGHT/DEPTH:` or `PRODUCT VERIFY:` in every frame unless a single frame truly needs an exception. Human realism requirements must be described in natural visual prose, not as a visible label.
 
 If Storyboard Guide and Voiceover Script differ, Storyboard Guide controls visual action, camera, timing, and frame order; Voiceover Script controls emotional/narrative meaning; Product Detail and current reference images control product truth, claims, scale, character identity, and environment fidelity.
 
@@ -107,13 +111,13 @@ Every generated prompt must include a `CINEMATIC REALISM LOCK` block before the 
 
 For every storyboard frame, derive camera angle, lens feel, subject distance, depth, movement cue, lighting mood, and environment staging from `storyboard_guide` + `voiceover_script`. If the guide asks for close-up, handheld, POV, top-down, wide, scale-check, proof detail, comparison, or hero shot, use that exact camera intent instead of a generic room/product photo.
 
-Each frame's `CAMERA/LIGHT/DEPTH:` clause must be concrete, not generic. It must specify subject distance or lens feel, camera height/angle/movement, motivated light source direction, exposure/contrast, foreground-midground-background separation, shadow behavior, color temperature/grade, and material-real highlights. Vary shot distance intentionally across the grid while keeping one consistent film color science.
+Include one global `CAMERA/LIGHT/DEPTH:` block before `SHOT-BY-SHOT STORYBOARD PROMPT`. Keep it to one compact line that specifies subject distance or lens feel, camera height/angle/movement, motivated light source direction, exposure/contrast, depth separation, shadow behavior, color temperature/grade, and material-real highlights for the whole grid. Vary shot distance intentionally in the frame visuals while keeping one consistent film color science; do not repeat this full block inside each frame.
 
 Reject flat catalog lighting, real-estate listing composition, generic bright-bedroom snapshots, one-distance camera repetition, overexposed white rooms, muddy low-contrast output, random glamour lighting, toy-like people, waxy/plastic/CG-looking skin, and product shots that ignore the beat's camera direction. The panels should feel like frames from one commercial film reel with purposeful shot variety and consistent color science.
 
 ## Character Face And Video Continuity Lock
 
-Every generated prompt with a referenced person must include a `CHARACTER FACE AND IDENTITY LOCK`: keep the same face likeness, facial proportions, skin tone, age range, hairline, hairstyle, distinctive marks, expression language, body scale, and wardrobe continuity across shots. Wardrobe should come from the current character reference images or explicit user/product brief only. Do not invent a new sweater, blazer, dress, accessories, hairstyle, makeup style, or color palette to fit the room mood; if home styling is needed, preserve the same referenced wardrobe pieces or only describe neutral continuity without changing visible clothing. When a face is part of the shot, it must be clearly visible, naturally lit, sharp enough to recognize, and human-realistic with skin pores and natural asymmetry.
+Every generated prompt with a referenced person must include a `CHARACTER FACE AND 95 PERCENT IDENTITY LOCK`: keep the same face likeness, facial proportions, skin tone, age range, hairline, hairstyle, distinctive marks, expression language, body scale, and wardrobe continuity across shots without implying a 100 percent face clone. Wardrobe should come from the current character reference images or explicit user/product brief only. Do not invent a new sweater, blazer, dress, accessories, hairstyle, makeup style, or color palette to fit the room mood; if home styling is needed, preserve the same referenced wardrobe pieces or only describe neutral continuity without changing visible clothing. When a face is part of the shot, it must be clearly visible, naturally lit, sharp enough to recognize, and human-realistic with skin pores and natural asymmetry.
 
 For storyboard prompts that may become video shots, treat visible human identity as a continuity-critical asset. Any frame that shows a recognizable head, face, hair, shoulders, or body identity should use a clear front-facing or three-quarter face by default, with the referenced product visible when the beat involves product use.
 
@@ -123,19 +127,19 @@ Avoid back-of-head, over-shoulder with visible hair/head but no face, rear-only,
 
 Any frame that shows the back of a head, hair, shoulders, or a recognizable body identity without a clear face is invalid by default for video-bound storyboards. Do not use back-facing, rear-only, over-shoulder-with-hair, side/rear profile, or face-hidden compositions merely for mood or convenience.
 
-The only exception is when the Storyboard Guide explicitly requires a rear-only shot and the generated frame includes `VIDEO MOTION LOCK: rear-only shot, the person must not turn around, must not reveal a face, must not look back to camera, and must remain non-identifying through the entire video shot.` In that exception, also write `HUMAN REALISM: rear-only non-identifying body; no face reveal; no visible face identity to preserve.`
+The only exception is when the Storyboard Guide explicitly requires a rear-only shot and the generated frame includes a natural-language rear-only motion lock: rear-only shot, the person must not turn around, must not reveal a face, must not look back to camera, and must remain non-identifying through the entire video shot. In that exception, describe a rear-only non-identifying body with no face reveal and no visible face identity to preserve, without using `HUMAN REALISM:` as a label.
 
 If a video shot may include any turn, look-back, reveal, reaction, speaking, smiling, or face-visible continuation, the still frame must begin with a clear front-facing or three-quarter referenced face. If the beat is POV/top-down/hand action, crop to hands and product only with no visible head, hair, face, shoulders, or body identity. A visible back-of-head frame that could later turn to camera is a fatal identity-continuity failure.
 
-The `HUMAN REALISM:` clause for face-visible frames must state front-facing or three-quarter face visibility, same referenced facial structure and hairline, natural skin texture with pores, subtle asymmetry, believable hands/anatomy, no waxy or plastic skin, no beauty-filter smoothing, no mannequin expression, no distorted eyes/teeth/fingers, and natural light on the face. For hands-only frames, say hands-only, no visible head/face/hair identity, natural hand anatomy.
+For face-visible frames, the natural frame prose must state front-facing or three-quarter face visibility, same referenced facial structure and hairline, natural skin texture with pores, subtle asymmetry, believable hands/anatomy, no waxy or plastic skin, no beauty-filter smoothing, no mannequin expression, no distorted eyes/teeth/fingers, and natural light on the face. For hands-only frames, say hands-only, no visible head/face/hair identity, natural hand anatomy.
 
 ## Product Reference Lock
 
-Every generated prompt must include a `PRODUCT REFERENCE LOCK`: `reference_product_images` are immutable physical evidence, not inspiration. Never add, remove, stretch, reshape, recolor, re-texture, relabel, simplify, upscale, downscale, beautify, or redesign product parts, proportions, materials, surfaces, markings, labels, ports, seams, caps, lids, straps, handles, packaging, or physical structure.
+Every generated prompt must include a `PRODUCT REFERENCE LOCK`: use the first attached product reference image (`@Image1` when image tags are available) as the strict product visual lock and source of truth. In the final prompt, explicitly state that the generated sellable product must match `@Image1` / the first attached product reference image exactly for appearance, proportions, construction, material, color, countable parts, and scale. Treat `reference_product_images` as immutable physical evidence, not loose inspiration. Never add, remove, stretch, reshape, recolor, re-texture, relabel, simplify, upscale, downscale, beautify, or redesign product parts, proportions, materials, surfaces, markings, labels, ports, seams, caps, lids, straps, handles, packaging, or physical structure.
 
-Before writing frame prompts, extract a canonical product fidelity matrix from current `reference_product_images` plus Product Detail/Product Facts. Lock the exact product category/subtype, countable parts, silhouette and bounding-box ratio, material class, texture, colorway, finish, support/base/leg/post structure, visible markings/labels, scale class, and common wrong substitutions.
+Before writing frame prompts, extract a canonical product fidelity matrix from current `reference_product_images` plus Product Detail/Product Facts. Lock the exact product category/subtype, countable parts, silhouette and bounding-box ratio, material class, texture, colorway, finish, support/base/leg/post structure, visible markings/labels, scale class, and common wrong substitutions. Product Detail may name and count parts, but the product reference image controls the real appearance, proportions, construction, and countable visible parts.
 
-Repeat the relevant product facts inside every product-visible frame, not only in a global product block. For example, if the reference product is a 3-tier open bedside shelf with four vertical posts, every visible product frame must preserve three shelf levels, open sides, four posts, light wood material/finish, compact table-height scale, and no drawers/doors/closed cabinet conversion. Adapt the example to the actual current product category and references.
+Include one concise `PRODUCT VERIFY:` block with the canonical product facts needed to prevent substitution. Start this block by saying the product visual lock comes from `@Image1` / the first attached product reference image and the product must match that reference exactly. Then list the product name/category and countable facts, for example: 3 levels, 4 vertical posts, light wood finish, compact bedside scale, no drawers, no doors. Adapt the facts to the actual current product category and references. Do not repeat this full verification list inside every frame.
 
 Every product-visible frame must show the same canonical product instance or same explicitly requested product-family variant established in `PRODUCT REFERENCE LOCK`. Lifestyle, result, confirmation, overview, scale-check, and CTA frames are not allowed to swap in a similar background object from the environment, a different packaging shape, a different device, a different furniture piece, or a more convenient prop product. A frame where the person is correct but the product changes is still a fatal failure.
 
@@ -149,7 +153,7 @@ Frame 8 / reconfirming-value / value-confirmation frames are product-critical: t
 
 Result and overview frames may be wider, but the product must remain in the foreground or clear midground, not a tiny background prop. If an environment reference contains a similar nightstand, cabinet, shelf, table, drawer unit, or lamp table, explicitly remove/crop/de-emphasize it so it cannot replace or compete with the locked product.
 
-Every post-introduction product frame must include a short frame-level PRODUCT VERIFY phrase inside that frame description, using the actual current product facts. For a Greenforst 3-tier open bedside shelf, write the verification directly in the frame: same Greenforst open 3-tier shelf, top surface + middle shelf + bottom shelf visible, open sides/posts visible, light wood finish, compact bedside scale, no drawers, no doors, no alternate nightstand. Adapt this phrase to the actual product category and Product Detail. Do not rely only on the global PRODUCT REFERENCE LOCK.
+Use the global `PRODUCT VERIFY:` block to state the exact product facts once. Post-introduction product frames may use short product-use wording, but they must not repeat the full verification list. For a Greenforst 3-tier open bedside shelf, the global block should include: Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts; light wood finish; compact bedside scale; no drawers; no doors; no alternate nightstand.
 
 ## Sellable Product Exclusivity And Environment Rule
 
@@ -159,7 +163,7 @@ If the product itself is a bedside table, shelf, cabinet, organizer, cart, rack,
 
 ## Text Rendering Policy
 
-Always include `TEXT RENDERING POLICY`. Default non-infographic mode is no added visible text: no subtitles, captions, frame numbers, UI, labels, signage, wall-art words, readable book spines, mug words, random logos, or screen text. The returned prompt must explicitly require blank/unreadable book covers and spines, blank mugs/cups, unreadable phone or computer screens, no wall-art words, and no readable prop labels unless they are exact supplied product markings. Physical product markings that are supplied or visible on the product reference may be preserved, but do not invent them.
+Always include `TEXT RENDERING POLICY`. Default non-infographic mode is no added visible text: no subtitles, captions, frame numbers, UI, labels, signage, wall-art words, readable book spines, mug words, random logos, or screen text. Prompt section names and frame numbers are instructions only and must not appear in the generated image. The final prompt must explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any other instruction text from being rendered in the image. The returned prompt must explicitly require blank/unreadable book covers and spines, blank mugs/cups, unreadable phone or computer screens, no wall-art words, and no readable prop labels unless they are exact supplied product markings. Physical product markings that are supplied or visible on the product reference may be preserved, but do not invent them.
 
 Infographic cinematic styles have higher priority than the no-text default. If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, do NOT include a no-added-visible-text negative prompt. Instead require large readable text, not too many words, only the key points: one large headline plus 2-4 short key points, using `image_text_language` or `image_text_custom_language`.
 
@@ -179,22 +183,30 @@ CINEMATIC REALISM LOCK:
 ...
 
 PRODUCT REFERENCE LOCK:
-...
+Use @Image1 / the first attached product reference image as the strict product visual lock; the generated sellable product must match that actual reference exactly for appearance, proportions, construction, material, color, countable parts, and scale. Other reference images may guide character or environment only, never product shape.
 
-CHARACTER FACE AND IDENTITY LOCK:
+CHARACTER FACE AND 95 PERCENT IDENTITY LOCK:
 ...
 
 TEXT RENDERING POLICY:
 ...
 
+CAMERA/LIGHT/DEPTH:
+One shared concrete camera, light, depth, color, lens, and material-realism direction for the full grid.
+
+PRODUCT VERIFY:
+Product visual lock from @Image1 / first attached product reference image; then one concise canonical product fact list, e.g. product name/category, exact levels/posts/parts/material/color/scale, and no wrong substitutions.
+
 SHOT-BY-SHOT STORYBOARD PROMPT:
-9:16 final canvas, 3x3 grid, exactly 9 equal vertical frames, borderless edge-to-edge grid, zero white divider lines, zero black lines, zero gutters, zero margins, zero frame outlines, zero separator lines.
-Frame 1: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ...
-Frame 2: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... HUMAN REALISM or hands-only note if relevant.
-Frame 3: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ...
-Frame 4: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ...
-Frame 5: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ... HUMAN REALISM or hands-only note if relevant.
-Frame 6: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ...
-Frame 7: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ... HUMAN REALISM if person appears.
-Frame 8: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ... HUMAN REALISM if person appears.
-Frame 9: VISUAL: ... CAMERA/LIGHT/DEPTH: ... STORY MATCH: ... PRODUCT VERIFY: ...
+9:16 final canvas, 3x3 grid, exactly 9 equal vertical frames storyboard panel, borderless edge-to-edge grid, zero white divider lines, zero black lines, zero gutters, zero margins, zero frame outlines, zero separator lines.
+Frame 1: Visual-only description of the first panel and the matched story meaning as visible action, with no rendered text.
+Frame 2: Visual-only description of the second panel and the matched story meaning as visible action, with no rendered text.
+Frame 3: Visual-only description of the third panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.
+Frame 4: Visual-only description of the fourth panel and the matched story meaning as visible action, with no rendered text.
+Frame 5: Visual-only description of the fifth panel and the matched story meaning as visible action, with hands-only or natural human-realism wording if relevant.
+Frame 6: Visual-only description of the sixth panel and the matched story meaning as visible action, with no rendered text.
+Frame 7: Visual-only description of the seventh panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.
+Frame 8: Visual-only description of the eighth panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.
+Frame 9: Visual-only description of the ninth panel and the matched story meaning as visible action, with no rendered text.
+
+Invalid output examples: a single line such as `*: 33.3-40s. Visual: ...`, one source storyboard bullet, only `Frame 9`, only a final scene summary, any answer with fewer than nine `Frame N:` lines, or frame text containing `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover, timecodes, subtitles, or captions.

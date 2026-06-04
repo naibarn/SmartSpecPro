@@ -1,0 +1,28 @@
+{
+  "project_name": "six_separate_cinematic_variations",
+  "mode": "cinematic_variation_pack",
+  "generator_target": "GPT Image 2",
+  "reference_images": [
+    { "id": "attached_image_1", "role": "primary_identity", "description": "Primary subject identity and scene reference.", "fidelity_weight": 1 },
+    { "id": "attached_image_2", "role": "lighting_colorgrade", "description": "Optional extra lighting or color-grade reference.", "fidelity_weight": 0.7 }
+  ],
+  "aspect_ratio": "2:3",
+  "output_count": 6,
+  "style_preset": "cinematic_editorial",
+  "continuity_locks": {
+    "strict_reference_grounding": true,
+    "no_new_objects": true,
+    "no_wardrobe_redesign": true,
+    "no_color_reinterpretation": true,
+    "same_scene_across_frames": true,
+    "same_lighting_across_frames": true,
+    "same_character_across_frames": true,
+    "allow_logical_inference_for_hidden_details": true
+  },
+  "negative_constraints": ["no redesign", "no new props", "no new hairstyle", "no material reinterpretation"],
+  "prompt_detail_level": "director_of_photography",
+  "include_keyframe_breakdown": true,
+  "include_negative_prompt": true,
+  "seed_strategy": "same_seed_for_continuity",
+  "language": "en"
+}

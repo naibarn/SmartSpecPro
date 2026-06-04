@@ -33,6 +33,17 @@ Update Marketplace Capture product detail so users can start auto storyboard/vid
 - Test timeline shows provider callback/auth, payload-budget, storage-quota, transcode, and DLQ/recovery blockers with sanitized next actions.
 - Test timeline shows privacy, audio-rights, distribution-profile, and creative-memory blockers with sanitized next actions.
 - Test timeline shows synthetic-disclosure, CTA/landing, QA spot-check, and post-publish recheck blockers with sanitized next actions.
+- Test timeline shows advertising policy rule-pack expired/deprecated/fixture-failed blockers with sanitized next actions.
+- Test timeline shows campaign/batch governance, duplicate-variation, spend-anomaly, brand-policy, and human-review-queue blockers with sanitized next actions.
+- Test timeline shows publishable-package blockers for missing/non-compliant thumbnail, subtitle/transcript, metadata manifest, checksum, or platform metadata with sanitized next actions.
+- Test timeline shows input-change impact, preserved artifacts, invalidated artifacts, and next action after product/evidence/policy/profile edits.
+- Test timeline shows exact shot/frame/clip targeted repair state when vision QA fails.
+- Test timeline/list/detail projections never show quarantined failed media as normal output links.
+- Test timeline shows product-reference blockers such as low-resolution, wrong variant, missing hosted reference, rights-blocked reference, or needs better product image without exposing private raw URLs.
+- Test timeline shows stage-completion-evidence blockers when a stage cannot complete because required artifact, QA, credit, policy, lineage, or acceptance refs are missing.
+- Test timeline shows SDK capability-manifest blockers when an attempt is stopped because a tool, handoff, hosted capability, trace/session setting, or manifest hash is unsafe.
+- Test timeline/detail projection shows sanitized creative brief summary, default/safe-default state, ambiguity blocker, and changed-brief recheck state without exposing private seller notes or raw prompts.
+- Test accepted-with-warnings media shows warning scope and approval summary before user can open/download/reuse it.
 - Test Storyboard Review, Video Editor, and Library links appear when IDs exist.
 - Test `listAutoReviewRuns` summary projection renders without needing full raw trace.
 - Test `getAutoReviewRun` detail projection renders full timeline, approvals, blockers, lineage/output refs, and sanitized links.
@@ -55,6 +66,15 @@ Show:
 - repair attempt count;
 - credit estimate/authorization status;
 - blocker reason and next action;
+- campaign/batch status when applicable;
+- brand/seller voice policy status when applicable;
+- human review queue status when applicable;
+- publishable package status when applicable;
+- input change impact status when applicable;
+- shot/frame/clip vision QA and targeted repair status when applicable;
+- media acceptance/quarantine state when applicable;
+- product reference asset pack readiness and required user action when applicable;
+- production creative brief summary, ambiguity state, and changed-brief recheck state when applicable;
 - generated output links;
 - cancel/manual refresh controls.
 
@@ -78,6 +98,18 @@ Timeline display requirements:
 - show operational blockers such as callback verification failure, DLQ/recovery required, payload over budget, storage quota blocked, transcode failed, or quota cleanup required without exposing raw provider payloads;
 - show content governance blockers such as privacy redaction required, audio rights approval required, distribution profile mismatch, or creative memory disabled without exposing private evidence;
 - show publish governance blockers such as missing synthetic disclosure, CTA link mismatch, human spot-check required, or Library asset reuse blocked without exposing private link/debug data;
+- show policy governance blockers such as advertising policy pack expired, deprecated, blocked, pending review, or fixture replay failed without exposing legal/internal notes;
+- show campaign governance blockers such as duplicate variation, batch approval required, spend cap exceeded, same-product flood, abnormal repair spend, or provider refusal spike without exposing internal anomaly heuristics;
+- show brand/seller policy blockers such as prohibited phrase, competitor policy, unsupported brand claim, or public-copy leak risk without showing private seller notes;
+- show human review queue state with reason, role, SLA/timeout summary, and one next action without exposing internal reviewer comments unless the user is authorized;
+- show publishable package blockers such as missing thumbnail, metadata copy blocked, subtitle timing failed, transcript source invalid, manifest missing, or checksum mismatch without exposing raw prompts/private evidence;
+- show input-change impact such as product image changed, selected variant changed, offer changed, rights changed, profile changed, or script edited; show what was preserved, what must be rechecked, and what is blocked without exposing private evidence;
+- show targeted repair such as shot 3 start frame product mismatch, shot 5 stop frame face drift, shot 6 clip speaking identity drift, or thumbnail product mismatch, with preserved/unaffected units summarized;
+- show quarantined/superseded media only as sanitized internal status, not as normal user output links;
+- show product reference readiness such as image too small, wrong variant, product not visible, rights blocked, remote image not ready, or select/upload better product reference before visual generation;
+- show evidence-gate blockers such as missing QA verdict, missing accepted media, missing credit reconciliation, missing lineage, missing rule-pack ref, or missing package refs without exposing private debug data;
+- show SDK capability-manifest blockers such as unknown tool, unapproved handoff, hosted capability request, raw trace/session capture request, manifest mismatch, or over-call-limit tool use without exposing SDK internals to normal users;
+- show creative brief state such as default brief applied, audience/CTA changed, user hint needs evidence, or brief needs review without exposing raw prompts, private seller notes, or internal policy reasoning;
 - show the next action only once in the timeline header, then repeat it on the blocked stage for context;
 - do not expose raw internal stage keys as primary labels;
 - after refresh/resume, render timeline exactly from backend data.
@@ -109,6 +141,12 @@ Timeline display requirements:
 | AutoReviewCreditNotice | product detail or child component | credit estimate/authorization/blocker | credit status detail |
 | AutoReviewOutputs | product detail or child component | output links | storyboardReviewId, videoEditorProjectId, resultLibraryItemId |
 | AutoReviewVariantSummary | product detail or child component | selected variant/SKU/options, warning when variant is missing | `ProductVariantSnapshot` summary |
+| AutoReviewGovernanceSummary | product detail or child component | campaign/batch, brand policy, and review queue summary | governance projection detail |
+| AutoReviewPublishPackageSummary | product detail or child component | thumbnail, subtitle/transcript, platform metadata, manifest, and package QA summary | publishable package projection |
+| AutoReviewInputChangeSummary | product detail or child component | changed input, impacted stages, preserved artifacts, invalidated artifacts, and next action | input change impact projection |
+| AutoReviewTargetedRepairSummary | product detail or child component | failed shot/frame/clip, QA reason, repair attempt, preserved refs, and downstream recheck | targeted repair projection |
+| AutoReviewMediaAcceptanceSummary | product detail or child component | candidate, accepted, warning-accepted, quarantined, superseded, or discarded media state | media acceptance projection |
+| AutoReviewProductReferenceSummary | product detail or child component | reference image readiness, accepted/rejected refs summary, and select/upload better image action | product reference asset pack projection |
 
 ### State Matrix
 
@@ -126,12 +164,28 @@ Timeline display requirements:
 | storage_quota_blocked | timeline marks quota or cleanup-required blocker before render/finalize | UI test |
 | dlq_recovery_required | timeline marks operator recovery state with user-safe status | UI test |
 | privacy_redaction_required | timeline marks privacy blocker without exposing private evidence | UI test |
+| evidence_instruction_blocked | timeline marks adversarial/unsafe marketplace evidence blocker without exposing raw injected text | UI test |
 | audio_rights_required | timeline marks music/SFX/voice rights blocker before final render | UI test |
 | distribution_profile_mismatch | timeline marks platform/export profile mismatch with repair guidance | UI test |
 | synthetic_disclosure_required | timeline marks required AI/synthetic disclosure blocker | UI test |
 | cta_landing_blocked | timeline marks CTA/link/offer integrity blocker | UI test |
+| policy_rule_pack_blocked | timeline marks expired/deprecated/pending/fixture-failed ad policy rule pack | UI test |
 | qa_spot_check_required | timeline marks human spot-check before promotion | UI test |
 | reuse_recheck_required | timeline marks post-publish/reuse recheck blocker | UI test |
+| campaign_batch_queued | timeline marks batch/variation queued by governance or rate limit | UI test |
+| duplicate_variation_blocked | timeline marks duplicate/similar concept blocker with replan guidance | UI test |
+| spend_anomaly_blocked | timeline marks abnormal spend/repair/refusal blocker | UI test |
+| brand_policy_blocked | timeline marks brand/seller voice policy conflict | UI test |
+| human_review_queued | timeline marks review queue reason, role, and SLA | UI test |
+| publish_package_blocked | timeline marks thumbnail/subtitle/metadata/manifest package blocker | UI test |
+| input_change_recheck_required | timeline marks changed input and downstream recheck/repair/replan state | UI test |
+| frame_vision_qa_repairing | timeline marks failed shot frame/keyframe and targeted repair progress | UI test |
+| media_quarantined | timeline marks failed/policy-blocked/superseded media as internal-only | UI test |
+| product_reference_blocked | timeline marks missing/low-confidence product reference and safe next action | UI test |
+| character_identity_blocked | timeline marks missing/unsafe person or voice reference and safe fallback | UI test |
+| completion_evidence_blocked | timeline marks missing required completion evidence and safe next action | UI test |
+| capability_manifest_blocked | timeline marks unsafe SDK capability request with sanitized next action | UI test |
+| creative_brief_needs_review | timeline marks ambiguous/changed creative brief with safe next action | UI test |
 | failed_terminal | sanitized error and retry/restart guidance if allowed | UI test |
 | completed_with_warnings | output links plus warning summary | UI test |
 | completed | output links and credit/QA summary | UI test |
@@ -161,6 +215,16 @@ Timeline display requirements:
 - Tone: concise Thai, operational, calm.
 - Primary language(s): Thai for user copy; English IDs only in debug/dev context.
 - Required labels: stage, QA, credit estimate, blocker, output, retry/repair.
+- Required governance labels: campaign, batch, brand policy, review queue, spend cap.
+- Required package labels: thumbnail, subtitles, transcript, metadata, manifest.
+- Required policy labels: policy profile, rule pack, expired, pending review, needs recheck.
+- Required evidence labels: missing evidence, recheck, waiting for QA, waiting for credit, waiting for lineage.
+- Required capability labels: automation capability blocked, unsafe tool request, unsafe handoff, retry with updated manifest.
+- Required creative brief labels: objective, audience, CTA, style, safe default, needs review.
+- Required input-change labels: changed input, preserved, recheck, repair, replan, regenerate.
+- Required targeted-repair labels: shot, frame, clip, failed check, repair attempt, preserved.
+- Required acceptance labels: candidate, accepted, warning, quarantined, superseded.
+- Required product-reference labels: product image, selected image, upload/select better image, wrong variant, image too small, product not visible.
 - Validation/error copy: sanitized, no raw provider token/URL/stack.
 - Empty/loading/success copy: short and actionable.
 - Localization/fallback notes: if a status detail is unknown, show safe generic Thai text and log technical detail separately.
@@ -175,3 +239,12 @@ Timeline display requirements:
 - User can understand what the automation has completed, what it is doing now, and what remains without opening node canvas.
 - Blockers and credit authorization are visible and actionable.
 - Completed outputs are discoverable from the product page.
+- Campaign/batch, brand policy, spend anomaly, and human review queue states are visible enough for users/operators to understand why automation is waiting or blocked.
+- Publishable package states are visible enough for users/operators to know whether the output is only rendered or also ready to use on the selected platform.
+- Input-change states are visible enough for users/operators to know why prior work was preserved, rechecked, invalidated, repaired, or blocked.
+- Targeted repair states are visible enough to see exactly which shot/frame/clip is being regenerated and which outputs remain accepted.
+- Media acceptance states prevent users from mistaking quarantined or superseded artifacts for usable outputs.
+- Product reference blockers make it clear when automation needs a better product image before visual generation can spend credits.
+- Completion evidence blockers make it clear why a stage is not considered done even when provider/agent work has returned.
+- Capability manifest blockers are visible as safe automation blockers without exposing raw SDK tool names, trace payloads, prompts, or credentials.
+- Creative brief states make it clear when automation used safe defaults, needs a clearer goal, or must recheck work after audience/CTA/style changes.

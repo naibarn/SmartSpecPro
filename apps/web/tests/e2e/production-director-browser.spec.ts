@@ -5,7 +5,11 @@ import { AxeBuilder } from "@axe-core/playwright";
 
 const BASE_URL = "http://127.0.0.1:3000";
 const FIXTURE_PATH = "/__e2e/production-director-browser.html";
-const ARTIFACT_ROOT = path.resolve(process.cwd(), "test-results", "production-director");
+const ARTIFACT_ROOT = path.resolve(
+  process.cwd(),
+  "test-results",
+  "production-director"
+);
 const SUMMARY_PATH = path.join(ARTIFACT_ROOT, "browser-evidence-summary.json");
 
 const VIEWPORTS = [
@@ -468,6 +472,43 @@ type LayoutChecks = {
   overlapping: string[];
 };
 
+type LayoutSelector = {
+  label: string;
+  selector: string;
+};
+
+const PRODUCTION_CANVAS_LAYOUT_SELECTORS: LayoutSelector[] = [
+  { label: "flow-canvas", selector: "[data-testid='production-flow-canvas']" },
+  {
+    label: "context-asset-board",
+    selector: "[data-testid='context-asset-board']",
+  },
+  {
+    label: "product-evidence-tray",
+    selector: "[data-testid='product-evidence-tray']",
+  },
+  { label: "node-config-panel", selector: "[data-testid='node-config-panel']" },
+];
+
+const MEDIA_STUDIO_LIVE_LAYOUT_SELECTORS: LayoutSelector[] = [
+  {
+    label: "production-workspace",
+    selector: "[data-testid='production-workspace']",
+  },
+  {
+    label: "planning-skill-panel",
+    selector: "[data-testid='production-planning-skill-panel']",
+  },
+  {
+    label: "right-panel",
+    selector: "[data-testid='media-studio-right-panel']",
+  },
+  {
+    label: "right-panel-destination",
+    selector: "[data-testid='production-right-panel-destination']",
+  },
+];
+
 type ReadabilityReport = {
   bodyBg: string;
   bodyText: string;
@@ -576,17 +617,15 @@ function runSummaryTemplate() {
   };
 }
 
-async function collectLayoutChecks(page: Page): Promise<LayoutChecks> {
-  return page.evaluate(() => {
-    const selectors = [
-      { label: "flow-canvas", selector: "[data-testid='production-flow-canvas']" },
-      { label: "context-asset-board", selector: "[data-testid='context-asset-board']" },
-      { label: "product-evidence-tray", selector: "[data-testid='product-evidence-tray']" },
-      { label: "node-config-panel", selector: "[data-testid='node-config-panel']" },
-    ];
+async function collectLayoutChecks(
+  page: Page,
+  selectors: LayoutSelector[] = PRODUCTION_CANVAS_LAYOUT_SELECTORS
+): Promise<LayoutChecks> {
+  return page.evaluate(selectors => {
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     const entries: LayoutEntry[] = [];
-    const visible: Array<{ label: string; rect: DOMRect }> = [];
+    const visible: Array<{ label: string; rect: DOMRect; element: Element }> =
+      [];
 
     for (const entry of selectors) {
       const element = document.querySelector(entry.selector);
@@ -613,7 +652,11 @@ async function collectLayoutChecks(page: Page): Promise<LayoutChecks> {
         left: rect.left < -4,
         right: rect.right > viewport.width + 4,
       };
-      const hidden = style.visibility === "hidden" || style.display === "none" || rect.width === 0 || rect.height === 0;
+      const hidden =
+        style.visibility === "hidden" ||
+        style.display === "none" ||
+        rect.width === 0 ||
+        rect.height === 0;
       const elementEntry: LayoutEntry = {
         label: entry.label,
         selector: entry.selector,
@@ -625,7 +668,7 @@ async function collectLayoutChecks(page: Page): Promise<LayoutChecks> {
       };
       entries.push(elementEntry);
       if (!hidden) {
-        visible.push({ label: entry.label, rect });
+        visible.push({ label: entry.label, rect, element });
       }
     }
 
@@ -634,9 +677,17 @@ async function collectLayoutChecks(page: Page): Promise<LayoutChecks> {
       for (let j = i + 1; j < visible.length; j += 1) {
         const first = visible[i];
         const second = visible[j];
+        if (
+          first.element.contains(second.element) ||
+          second.element.contains(first.element)
+        ) {
+          continue;
+        }
         const intersects =
-          Math.max(first.rect.left, second.rect.left) < Math.min(first.rect.right, second.rect.right) &&
-          Math.max(first.rect.top, second.rect.top) < Math.min(first.rect.bottom, second.rect.bottom);
+          Math.max(first.rect.left, second.rect.left) <
+            Math.min(first.rect.right, second.rect.right) &&
+          Math.max(first.rect.top, second.rect.top) <
+            Math.min(first.rect.bottom, second.rect.bottom);
         if (intersects) {
           overlapping.push(`${first.label} overlaps ${second.label}`);
         }
@@ -644,16 +695,26 @@ async function collectLayoutChecks(page: Page): Promise<LayoutChecks> {
     }
 
     return { viewport, entries, overlapping };
-  });
+  }, selectors);
 }
 
-async function collectReadability(page: Page): Promise<ReadabilityReport | null> {
+async function collectReadability(
+  page: Page
+): Promise<ReadabilityReport | null> {
   return page.evaluate(() => {
-    const workspace = document.querySelector("[data-testid='production-workspace']");
+    const workspace = document.querySelector(
+      "[data-testid='production-workspace']"
+    );
     if (!workspace) return null;
-    const panel = workspace.querySelector("[data-testid='production-flow-canvas']");
-    const titleRow = workspace.querySelector("input[aria-label='Production project title']");
-    const goalRow = workspace.querySelector("textarea[aria-label='Production goal']");
+    const panel = workspace.querySelector(
+      "[data-testid='production-flow-canvas']"
+    );
+    const titleRow = workspace.querySelector(
+      "input[aria-label='Production project title']"
+    );
+    const goalRow = workspace.querySelector(
+      "textarea[aria-label='Production goal']"
+    );
     if (!panel || !titleRow || !goalRow) return null;
 
     return {
@@ -668,7 +729,12 @@ async function collectReadability(page: Page): Promise<ReadabilityReport | null>
 
 async function collectCanvasPageScroll(page: Page): Promise<PageScrollReport> {
   const viewport = page.getByTestId("production-flow-canvas-viewport");
-  const canvas = (await viewport.count()) > 0 ? viewport : page.getByTestId("production-flow-canvas");
+  const canvas =
+    (await viewport.count()) > 0
+      ? viewport
+      : (await page.getByTestId("production-flow-canvas").count()) > 0
+        ? page.getByTestId("production-flow-canvas")
+        : page.getByTestId("production-planning-skill-panel");
   await page.evaluate(() => window.scrollTo(0, 0));
   await canvas.scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollBy(0, -Math.min(240, window.scrollY)));
@@ -677,7 +743,10 @@ async function collectCanvasPageScroll(page: Page): Promise<PageScrollReport> {
     return { before: 0, after: 0, moved: false };
   }
 
-  await page.mouse.move(box.x + Math.min(box.width / 2, 120), box.y + Math.min(box.height / 2, 120));
+  await page.mouse.move(
+    box.x + Math.min(box.width / 2, 120),
+    box.y + Math.min(box.height / 2, 120)
+  );
   const before = await page.evaluate(() => window.scrollY);
   await page.mouse.wheel(0, 360);
   await page.waitForTimeout(80);
@@ -698,10 +767,16 @@ async function buildEvidence({
   theme: "light" | "dark";
   reducedMotion: boolean;
 }): Promise<EvidenceRun> {
-  const productionScreenshot = path.join(ARTIFACT_ROOT, `${runId}-production.png`);
+  const productionScreenshot = path.join(
+    ARTIFACT_ROOT,
+    `${runId}-production.png`
+  );
   const hoverScreenshot = path.join(ARTIFACT_ROOT, `${runId}-hover.png`);
   const selectedScreenshot = path.join(ARTIFACT_ROOT, `${runId}-selected.png`);
-  const videoShotScreenshot = path.join(ARTIFACT_ROOT, `${runId}-video-shot.png`);
+  const videoShotScreenshot = path.join(
+    ARTIFACT_ROOT,
+    `${runId}-video-shot.png`
+  );
   const axeReportPath = path.join(ARTIFACT_ROOT, `${runId}-axe.json`);
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
@@ -714,7 +789,10 @@ async function buildEvidence({
   const onPageError = (error: Error) => {
     pageErrors.push(error?.stack ?? error.message ?? String(error));
   };
-  const onResponse = (response: { status: () => number; url: () => string }) => {
+  const onResponse = (response: {
+    status: () => number;
+    url: () => string;
+  }) => {
     if (response.status() >= 400) {
       consoleErrors.push(`HTTP ${response.status()} ${response.url()}`);
     }
@@ -725,19 +803,28 @@ async function buildEvidence({
   page.on("response", onResponse);
 
   try {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
     await page.emulateMedia({
       colorScheme: theme,
       reducedMotion: reducedMotion ? "reduce" : "no-preference",
     });
-    await page.goto(`${BASE_URL}${FIXTURE_PATH}?theme=${theme}`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE_URL}${FIXTURE_PATH}?theme=${theme}`, {
+      waitUntil: "domcontentloaded",
+    });
 
     const workspace = page.getByTestId("production-workspace");
     const titleInput = page.getByLabel("Production project title");
     const goalInput = page.getByLabel("Production goal");
     const saveButton = page.getByRole("button", { name: /save draft/i });
-    const openVideoShotButton = page.getByRole("button", { name: /open video shot/i });
-    const videoShotBackButton = page.getByRole("button", { name: /back to production/i });
+    const openVideoShotButton = page.getByRole("button", {
+      name: /open video shot/i,
+    });
+    const videoShotBackButton = page.getByRole("button", {
+      name: /back to production/i,
+    });
 
     await expect(workspace).toBeVisible();
     await expect(titleInput).toBeVisible();
@@ -753,10 +840,16 @@ async function buildEvidence({
 
     await page.keyboard.press("Tab");
     await expect(saveButton).toBeFocused();
-    const focusAfterSecondTab = await page.evaluate(() => document.activeElement?.textContent?.trim() ?? null);
+    const focusAfterSecondTab = await page.evaluate(
+      () => document.activeElement?.textContent?.trim() ?? null
+    );
 
-    const imageOpenButton = page.getByRole("button", { name: /open node image config node/i });
-    const videoOpenButton = page.getByRole("button", { name: /open node video config node/i });
+    const imageOpenButton = page.getByRole("button", {
+      name: /open node image config node/i,
+    });
+    const videoOpenButton = page.getByRole("button", {
+      name: /open node video config node/i,
+    });
     const imageListCard = imageOpenButton.locator("..");
     const videoListCard = videoOpenButton.locator("..");
 
@@ -765,14 +858,20 @@ async function buildEvidence({
 
     const imageListClass = (await imageListCard.getAttribute("class")) ?? "";
     const videoListClass = (await videoListCard.getAttribute("class")) ?? "";
-    const selectedState = imageListClass.includes("is-selected") && videoListClass.includes("is-selected");
+    const selectedState =
+      imageListClass.includes("is-selected") &&
+      videoListClass.includes("is-selected");
     await page.screenshot({ path: selectedScreenshot, fullPage: true });
 
     const imageButton = page.locator("#image-tool");
-    const hoverBefore = await imageButton.evaluate((button) => getComputedStyle(button).backgroundColor);
+    const hoverBefore = await imageButton.evaluate(
+      button => getComputedStyle(button).backgroundColor
+    );
     await imageButton.hover();
     await page.waitForTimeout(120);
-    const hoverAfter = await imageButton.evaluate((button) => getComputedStyle(button).backgroundColor);
+    const hoverAfter = await imageButton.evaluate(
+      button => getComputedStyle(button).backgroundColor
+    );
     const hoverState = hoverBefore !== hoverAfter;
     await page.screenshot({ path: hoverScreenshot, fullPage: true });
 
@@ -790,40 +889,59 @@ async function buildEvidence({
     const layoutChecks = await collectLayoutChecks(page);
     const readability = await collectReadability(page);
     const pageScroll = await collectCanvasPageScroll(page);
-    const reducedMatch = await page.evaluate(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const reducedMatch = await page.evaluate(
+      () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
     const advancedStates = await page.evaluate(() =>
       Array.from(document.querySelectorAll("[data-state-proof]"))
-        .map((item) => item.getAttribute("data-state-proof"))
+        .map(item => item.getAttribute("data-state-proof"))
         .filter((item): item is string => Boolean(item))
     );
     const iconControls = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("[data-testid='icon-control-sweep'] button"))
-        .map((button) => ({
-          label: button.getAttribute("aria-label"),
-          text: button.textContent?.trim() ?? null,
-        }))
+      Array.from(
+        document.querySelectorAll("[data-testid='icon-control-sweep'] button")
+      ).map(button => ({
+        label: button.getAttribute("aria-label"),
+        text: button.textContent?.trim() ?? null,
+      }))
     );
     const axeResults = await new AxeBuilder({ page })
       .include("[data-testid='production-workspace']")
       .analyze();
-    fs.writeFileSync(axeReportPath, JSON.stringify(axeResults, null, 2), "utf8");
+    fs.writeFileSync(
+      axeReportPath,
+      JSON.stringify(axeResults, null, 2),
+      "utf8"
+    );
 
     const evidence =
-      (await page.evaluate(() => window.__e2eEvidence as { actions?: { action: string }[] } | undefined)) ?? {};
+      (await page.evaluate(
+        () =>
+          window.__e2eEvidence as { actions?: { action: string }[] } | undefined
+      )) ?? {};
     const actionCount = (evidence.actions ?? []).length;
 
-    const focusValid = focusAfterFirstTab === "Production goal" &&
+    const focusValid =
+      focusAfterFirstTab === "Production goal" &&
       Boolean((focusAfterSecondTab || "").toLowerCase().includes("save draft"));
 
-    const overflowValid = layoutChecks.entries.every((entry) => {
-      const mobileTabbedPanelHidden = viewport.width < 1536
-        && (entry.label === "product-evidence-tray" || entry.label === "node-config-panel")
-        && entry.hidden;
-      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden)) return false;
-      return !entry.textOverflow && !entry.overflow.left && !entry.overflow.right;
+    const overflowValid = layoutChecks.entries.every(entry => {
+      const mobileTabbedPanelHidden =
+        viewport.width < 1536 &&
+        (entry.label === "product-evidence-tray" ||
+          entry.label === "node-config-panel") &&
+        entry.hidden;
+      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden))
+        return false;
+      return (
+        !entry.textOverflow && !entry.overflow.left && !entry.overflow.right
+      );
     });
 
-    const readabilityValid = readability ? readability.bodyBg !== readability.bodyText && readability.workspaceBg !== readability.workspaceText : false;
+    const readabilityValid = readability
+      ? readability.bodyBg !== readability.bodyText &&
+        readability.workspaceBg !== readability.workspaceText
+      : false;
 
     const checks = {
       console: consoleErrors.length === 0 && pageErrors.length === 0,
@@ -835,9 +953,17 @@ async function buildEvidence({
       readability: readabilityValid,
       reducedMotion: reducedMotion ? reducedMatch : true,
       axeNoViolations: axeResults.violations.length === 0,
-      advancedStates: ["loading", "planner_failed", "partial", "schema_invalid", "conflict", "permission_denied"]
-        .every((state) => advancedStates.includes(state)),
-      iconAccessibleNames: iconControls.length >= 4 && iconControls.every((button) => Boolean(button.label)),
+      advancedStates: [
+        "loading",
+        "planner_failed",
+        "partial",
+        "schema_invalid",
+        "conflict",
+        "permission_denied",
+      ].every(state => advancedStates.includes(state)),
+      iconAccessibleNames:
+        iconControls.length >= 4 &&
+        iconControls.every(button => Boolean(button.label)),
       canvasAllowsPageScroll: pageScroll.moved,
     };
 
@@ -866,10 +992,10 @@ async function buildEvidence({
         violationCount: axeResults.violations.length,
         passes: axeResults.passes.length,
         incomplete: axeResults.incomplete.length,
-        violations: axeResults.violations.map((violation) => ({
+        violations: axeResults.violations.map(violation => ({
           id: violation.id,
           impact: violation.impact ?? null,
-          target: violation.nodes.flatMap((node) => node.target.map(String)),
+          target: violation.nodes.flatMap(node => node.target.map(String)),
         })),
       },
       console: {
@@ -890,21 +1016,21 @@ async function buildEvidence({
 function appendSummary(run: EvidenceRun) {
   const existing = fs.existsSync(SUMMARY_PATH)
     ? (JSON.parse(fs.readFileSync(SUMMARY_PATH, "utf8") as string) as {
-      generatedAt: string;
-      feature: number;
-      status: "pending" | "pass" | "partial" | "fail";
-      runs: EvidenceRun[];
-      liveRouteRuns?: LiveRouteEvidenceRun[];
-    })
+        generatedAt: string;
+        feature: number;
+        status: "pending" | "pass" | "partial" | "fail";
+        runs: EvidenceRun[];
+        liveRouteRuns?: LiveRouteEvidenceRun[];
+      })
     : runSummaryTemplate();
 
   existing.runs.push(run);
   existing.liveRouteRuns ??= [];
   existing.generatedAt = new Date().toISOString();
   const allRuns = [...existing.runs, ...existing.liveRouteRuns];
-  if (allRuns.length > 0 && allRuns.every((item) => item.status === "pass")) {
+  if (allRuns.length > 0 && allRuns.every(item => item.status === "pass")) {
     existing.status = "pass";
-  } else if (allRuns.some((item) => item.status === "fail")) {
+  } else if (allRuns.some(item => item.status === "fail")) {
     existing.status = "partial";
   }
 
@@ -914,12 +1040,12 @@ function appendSummary(run: EvidenceRun) {
 function appendLiveRouteSummary(run: LiveRouteEvidenceRun) {
   const existing = fs.existsSync(SUMMARY_PATH)
     ? (JSON.parse(fs.readFileSync(SUMMARY_PATH, "utf8") as string) as {
-      generatedAt: string;
-      feature: number;
-      status: "pending" | "pass" | "partial" | "fail";
-      runs: EvidenceRun[];
-      liveRouteRuns?: LiveRouteEvidenceRun[];
-    })
+        generatedAt: string;
+        feature: number;
+        status: "pending" | "pass" | "partial" | "fail";
+        runs: EvidenceRun[];
+        liveRouteRuns?: LiveRouteEvidenceRun[];
+      })
     : runSummaryTemplate();
 
   existing.runs ??= [];
@@ -927,9 +1053,9 @@ function appendLiveRouteSummary(run: LiveRouteEvidenceRun) {
   existing.liveRouteRuns.push(run);
   existing.generatedAt = new Date().toISOString();
   const allRuns = [...existing.runs, ...existing.liveRouteRuns];
-  if (allRuns.length > 0 && allRuns.every((item) => item.status === "pass")) {
+  if (allRuns.length > 0 && allRuns.every(item => item.status === "pass")) {
     existing.status = "pass";
-  } else if (allRuns.some((item) => item.status === "fail")) {
+  } else if (allRuns.some(item => item.status === "fail")) {
     existing.status = "partial";
   }
 
@@ -940,7 +1066,8 @@ function trpcData(data: unknown) {
   return { result: { data: { json: data } } };
 }
 
-const RIGHT_PANEL_IMAGE_URL = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23e0f2fe'/%3E%3Ccircle cx='160' cy='140' r='72' fill='%230ea5e9'/%3E%3Crect x='72' y='220' width='176' height='36' rx='18' fill='%230f172a'/%3E%3C/svg%3E";
+const RIGHT_PANEL_IMAGE_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23e0f2fe'/%3E%3Ccircle cx='160' cy='140' r='72' fill='%230ea5e9'/%3E%3Crect x='72' y='220' width='176' height='36' rx='18' fill='%230f172a'/%3E%3C/svg%3E";
 
 function getTrpcProcedure(url: string): string {
   const parsed = new URL(url);
@@ -956,77 +1083,93 @@ function getMockTrpcData(procedure: string): unknown {
       role: "admin",
       currentTenantId: "tenant-feature-116",
       credits: 250,
-      avatar: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E",
+      avatar:
+        "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E",
     };
   }
-  if (procedure === "users.getPreferences") return { translationLanguage: "en", displayLocale: "en" };
+  if (procedure === "users.getPreferences")
+    return { translationLanguage: "en", displayLocale: "en" };
   if (procedure === "users.updatePreferences") return { ok: true };
   if (procedure === "credits.balance") return { balance: 250, credits: 250 };
-  if (procedure === "media.listTasks") return {
-    tasks: [{
-      id: "history-image-1",
-      status: "completed",
-      mediaType: "image",
-      prompt: "History evidence image",
-      model: "browser-evidence",
-      resultUrl: RIGHT_PANEL_IMAGE_URL,
-      resultData: { thumbnail_url: RIGHT_PANEL_IMAGE_URL },
-      createdAt: "2026-05-23T00:00:00.000Z",
-      completedAt: "2026-05-23T00:00:01.000Z",
-      updatedAt: "2026-05-23T00:00:01.000Z",
-    }],
-    total: 1,
-  };
+  if (procedure === "media.listTasks")
+    return {
+      tasks: [
+        {
+          id: "history-image-1",
+          status: "completed",
+          mediaType: "image",
+          prompt: "History evidence image",
+          model: "browser-evidence",
+          resultUrl: RIGHT_PANEL_IMAGE_URL,
+          resultData: { thumbnail_url: RIGHT_PANEL_IMAGE_URL },
+          createdAt: "2026-05-23T00:00:00.000Z",
+          completedAt: "2026-05-23T00:00:01.000Z",
+          updatedAt: "2026-05-23T00:00:01.000Z",
+        },
+      ],
+      total: 1,
+    };
   if (procedure === "gallery.list") return [];
-  if (procedure === "library.listDocuments") return { documents: [], items: [], total: 0 };
-  if (procedure === "library.search") return {
-    items: [],
-    results: [{
-      item_id: 11601,
-      title: "Library evidence image",
-      item_type: "image",
-      status: "ready",
-      source: "browser-evidence",
-      source_url: RIGHT_PANEL_IMAGE_URL,
-      thumbnail_url: RIGHT_PANEL_IMAGE_URL,
-      model_name: "browser-evidence",
-      created_at: "2026-05-23T00:00:00.000Z",
-      updated_at: "2026-05-23T00:00:01.000Z",
-    }],
-    total: 1,
-    has_more: false,
-  };
+  if (procedure === "library.listDocuments")
+    return { documents: [], items: [], total: 0 };
+  if (procedure === "library.search")
+    return {
+      items: [],
+      results: [
+        {
+          item_id: 11601,
+          title: "Library evidence image",
+          item_type: "image",
+          status: "ready",
+          source: "browser-evidence",
+          source_url: RIGHT_PANEL_IMAGE_URL,
+          thumbnail_url: RIGHT_PANEL_IMAGE_URL,
+          model_name: "browser-evidence",
+          created_at: "2026-05-23T00:00:00.000Z",
+          updated_at: "2026-05-23T00:00:01.000Z",
+        },
+      ],
+      total: 1,
+      has_more: false,
+    };
   if (procedure === "marketplaceCapture.listProducts") return [];
-  if (procedure === "marketplaceCapture.listProductImages") return {
-    images: [{
-      id: "marketplace-image-1",
-      productId: "marketplace-product-1",
-      productName: "Marketplace evidence product",
-      platform: "shopee",
-      brand: "Evidence",
-      shopName: "Evidence shop",
-      externalProductId: "item-116",
-      externalShopId: "shop-116",
-      sourceUrl: "https://example.test/product",
-      imageType: "main",
-      url: RIGHT_PANEL_IMAGE_URL,
-      width: 320,
-      height: 320,
-      createdAt: "2026-05-23T00:00:00.000Z",
-      accessType: "owner",
-      metadataJson: {},
-    }],
-    total: 1,
-    nextCursor: null,
-  };
+  if (procedure === "marketplaceCapture.listProductImages")
+    return {
+      images: [
+        {
+          id: "marketplace-image-1",
+          productId: "marketplace-product-1",
+          productName: "Marketplace evidence product",
+          platform: "shopee",
+          brand: "Evidence",
+          shopName: "Evidence shop",
+          externalProductId: "item-116",
+          externalShopId: "shop-116",
+          sourceUrl: "https://example.test/product",
+          imageType: "main",
+          url: RIGHT_PANEL_IMAGE_URL,
+          width: 320,
+          height: 320,
+          createdAt: "2026-05-23T00:00:00.000Z",
+          accessType: "owner",
+          metadataJson: {},
+        },
+      ],
+      total: 1,
+      nextCursor: null,
+    };
   if (procedure === "marketplaceCapture.getInsight") return null;
   if (procedure === "videoEditorProjects.listStoryboardReviews") return [];
-  if (procedure === "skills.getInputSchema" || procedure === "skills.getSkillConfig") return null;
   if (
-    procedure.endsWith(".list")
-    || procedure.startsWith("mediaModels.")
-    || procedure.startsWith("mediaProviderAssets.")
-    || procedure.startsWith("skills.")
+    procedure === "skills.getInputSchema" ||
+    procedure === "skills.getSkillConfig"
+  )
+    return null;
+  if (
+    procedure.endsWith(".list") ||
+    procedure.startsWith("mediaModels.") ||
+    procedure.startsWith("mediaProviderAssets.") ||
+    procedure.startsWith("skills.")
   ) {
     return [];
   }
@@ -1034,7 +1177,7 @@ function getMockTrpcData(procedure: string): unknown {
 }
 
 async function mockAuthenticatedMediaStudioRoute(page: Page) {
-  await page.route("**/*", (route) => {
+  await page.route("**/*", route => {
     const requestUrl = route.request().url();
     const pathname = new URL(requestUrl).pathname;
     if (!pathname.startsWith("/trpc")) {
@@ -1050,7 +1193,10 @@ async function mockAuthenticatedMediaStudioRoute(page: Page) {
   });
 }
 
-async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[number]): Promise<LiveRouteEvidenceRun> {
+async function buildLiveRouteEvidence(
+  page: Page,
+  viewport: (typeof VIEWPORTS)[number]
+): Promise<LiveRouteEvidenceRun> {
   const runId = `${viewport.name}-media-studio-live-auth`;
   const screenshotPath = path.join(ARTIFACT_ROOT, `${runId}.png`);
   const axeReportPath = path.join(ARTIFACT_ROOT, `${runId}-axe.json`);
@@ -1058,7 +1204,10 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
   const pageErrors: string[] = [];
   const onConsole = (message: { type: () => string; text: () => string }) => {
     const text = message.text();
-    if (message.type() === "error" && !text.startsWith("Failed to load resource:")) {
+    if (
+      message.type() === "error" &&
+      !text.startsWith("Failed to load resource:")
+    ) {
       consoleErrors.push(text);
     }
   };
@@ -1075,63 +1224,121 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
       window.localStorage.setItem("smartspec_last_locale", "th");
     });
     await mockAuthenticatedMediaStudioRoute(page);
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
-    await page.goto(`${BASE_URL}/media-studio`, { waitUntil: "domcontentloaded" });
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.emulateMedia({
+      colorScheme: "light",
+      reducedMotion: "no-preference",
+    });
+    await page.goto(`${BASE_URL}/media-studio`, {
+      waitUntil: "domcontentloaded",
+    });
 
     const workspace = page.getByTestId("production-workspace");
     try {
       await expect(workspace).toBeVisible({ timeout: 30_000 });
     } catch (error) {
-      const bodyText = await page.locator("body").innerText().catch(() => "");
-      throw new Error([
-        error instanceof Error ? error.message : String(error),
-        `pageErrors=${JSON.stringify(pageErrors)}`,
-        `consoleErrors=${JSON.stringify(consoleErrors)}`,
-        `body=${bodyText.slice(0, 1000)}`,
-      ].join("\n"));
+      const bodyText = await page
+        .locator("body")
+        .innerText()
+        .catch(() => "");
+      throw new Error(
+        [
+          error instanceof Error ? error.message : String(error),
+          `pageErrors=${JSON.stringify(pageErrors)}`,
+          `consoleErrors=${JSON.stringify(consoleErrors)}`,
+          `body=${bodyText.slice(0, 1000)}`,
+        ].join("\n")
+      );
     }
-    await expect(page.getByRole("dialog", { name: /choose your language/i })).toHaveCount(0);
-	    if (await page.getByTestId("production-empty-state").isVisible().catch(() => false)) {
-	      await page.getByLabel("Production project title").fill("Browser evidence production");
-	      await page.getByLabel("Production goal").fill("Create a short product video using approved evidence only.");
-	      await expect(page.getByTestId("production-flow-canvas")).toBeVisible();
-	    }
+    await expect(
+      page.getByRole("dialog", { name: /choose your language/i })
+    ).toHaveCount(0);
+    const emptyState = page.getByTestId("production-empty-state");
+    if (await emptyState.isVisible().catch(() => false)) {
+      await emptyState
+        .getByRole("button", { name: /new project|สร้างโปรเจกต์ใหม่/i })
+        .click();
+      await expect(emptyState).toHaveCount(0);
+      await expect(page.getByLabel("Production project title")).toBeEnabled();
+      await page
+        .getByLabel("Production project title")
+        .fill("Browser evidence production");
+      await page
+        .getByLabel("Production goal")
+        .fill("Create a short product video using approved evidence only.");
+      await expect(
+        page.getByTestId("production-planning-skill-panel")
+      ).toBeVisible();
+    }
     const rightPanel = page.getByTestId("media-studio-right-panel");
     await expect(rightPanel).toHaveAttribute("data-collapsed", "false");
-    await expect(page.getByTestId("production-node-detail-panel")).toBeVisible();
-    await expect(rightPanel.getByTestId("production-right-panel-destination")).toBeVisible();
+    await expect(
+      rightPanel.getByTestId("production-right-panel-destination")
+    ).toBeVisible();
     await rightPanel.getByTestId("media-studio-right-panel-toggle").click();
     await expect(rightPanel).toHaveAttribute("data-collapsed", "true");
-    await expect(rightPanel.getByTestId("media-studio-right-panel-collapsed")).toBeVisible();
+    await expect(
+      rightPanel.getByTestId("media-studio-right-panel-collapsed")
+    ).toBeVisible();
     await rightPanel.getByTestId("media-studio-right-panel-toggle").click();
     await expect(rightPanel).toHaveAttribute("data-collapsed", "false");
-    await expect(rightPanel.getByAltText(/history evidence image/i)).toBeVisible();
+    await rightPanel.getByRole("button", { name: /^all$|^ทั้งหมด$/i }).click();
+    await expect(
+      rightPanel.getByAltText(/history evidence image/i)
+    ).toBeVisible();
     await rightPanel.getByRole("tab", { name: /search library/i }).click();
-    await expect(rightPanel.getByAltText(/library evidence image/i)).toBeVisible();
+    await expect(
+      rightPanel.getByAltText(/library evidence image/i)
+    ).toBeVisible();
     await rightPanel.getByRole("tab", { name: /marketplace/i }).click();
-    await expect(rightPanel.getByAltText(/marketplace evidence product/i)).toBeVisible();
+    await expect(
+      rightPanel.getByAltText(/marketplace evidence product/i)
+    ).toBeVisible();
     await rightPanel.getByRole("tab", { name: /history gallery/i }).click();
-	    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await page.screenshot({ path: screenshotPath, fullPage: true });
 
     const productionTabSelected = await page.evaluate(() =>
-      Array.from(document.querySelectorAll("[role='tab']"))
-        .some((tab) => /production/i.test(tab.textContent ?? "") && tab.getAttribute("data-state") === "active")
+      Array.from(document.querySelectorAll("[role='tab']")).some(
+        tab =>
+          /production/i.test(tab.textContent ?? "") &&
+          tab.getAttribute("data-state") === "active"
+      )
     );
-    const selectedNodeDetailVisible = await page.getByTestId("production-node-detail-panel").isVisible().catch(() => false);
-    const rightPanelDestinationVisible = await rightPanel.getByTestId("production-right-panel-destination").isVisible().catch(() => false);
-    const layoutChecks = await collectLayoutChecks(page);
+    const selectedNodeDetailVisible = await page
+      .getByTestId("production-node-detail-panel")
+      .isVisible()
+      .catch(() => false);
+    const rightPanelDestinationVisible = await rightPanel
+      .getByTestId("production-right-panel-destination")
+      .isVisible()
+      .catch(() => false);
+    const layoutChecks = await collectLayoutChecks(
+      page,
+      MEDIA_STUDIO_LIVE_LAYOUT_SELECTORS
+    );
     const pageScroll = await collectCanvasPageScroll(page);
     const axeResults = await new AxeBuilder({ page })
       .include("[data-testid='production-workspace']")
       .analyze();
-    fs.writeFileSync(axeReportPath, JSON.stringify(axeResults, null, 2), "utf8");
-    const overflowValid = layoutChecks.entries.every((entry) => {
-      const mobileTabbedPanelHidden = viewport.width < 1536
-        && (entry.label === "product-evidence-tray" || entry.label === "node-config-panel")
-        && entry.hidden;
-      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden)) return false;
-      return !entry.textOverflow && !entry.overflow.left && !entry.overflow.right;
+    fs.writeFileSync(
+      axeReportPath,
+      JSON.stringify(axeResults, null, 2),
+      "utf8"
+    );
+    const overflowValid = layoutChecks.entries.every(entry => {
+      const mobileTabbedPanelHidden =
+        viewport.width < 1536 &&
+        (entry.label === "product-evidence-tray" ||
+          entry.label === "node-config-panel") &&
+        entry.hidden;
+      if (entry.missing || (entry.hidden && !mobileTabbedPanelHidden))
+        return false;
+      return (
+        !entry.textOverflow && !entry.overflow.left && !entry.overflow.right
+      );
     });
     const checks = {
       console: consoleErrors.length === 0,
@@ -1174,10 +1381,10 @@ async function buildLiveRouteEvidence(page: Page, viewport: (typeof VIEWPORTS)[n
         violationCount: axeResults.violations.length,
         passes: axeResults.passes.length,
         incomplete: axeResults.incomplete.length,
-        violations: axeResults.violations.map((violation) => ({
+        violations: axeResults.violations.map(violation => ({
           id: violation.id,
           impact: violation.impact ?? null,
-          target: violation.nodes.flatMap((node) => node.target.map(String)),
+          target: violation.nodes.flatMap(node => node.target.map(String)),
         })),
       },
       console: {
@@ -1198,7 +1405,7 @@ test.describe("Production Director browser evidence", () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await page.route("**/__e2e/production-director-browser.html*", (route) => {
+    await page.route("**/__e2e/production-director-browser.html*", route => {
       route.fulfill({
         status: 200,
         contentType: "text/html; charset=utf-8",
@@ -1208,7 +1415,9 @@ test.describe("Production Director browser evidence", () => {
   });
 
   for (const viewport of VIEWPORTS) {
-    test(`Production Director browser evidence at ${viewport.name} (light)`, async ({ page }) => {
+    test(`Production Director browser evidence at ${viewport.name} (light)`, async ({
+      page,
+    }) => {
       const run = await buildEvidence({
         page,
         runId: `${viewport.name}-light`,
@@ -1217,10 +1426,25 @@ test.describe("Production Director browser evidence", () => {
         reducedMotion: false,
       });
       appendSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
+      expect(
+        run.status,
+        JSON.stringify(
+          {
+            checks: run.checks,
+            layout: run.layout,
+            pageScroll: run.pageScroll,
+            axe: run.axe,
+            console: run.console,
+          },
+          null,
+          2
+        )
+      ).toBe("pass");
     });
 
-    test(`Production Director browser evidence at ${viewport.name} (dark)`, async ({ page }) => {
+    test(`Production Director browser evidence at ${viewport.name} (dark)`, async ({
+      page,
+    }) => {
       const run = await buildEvidence({
         page,
         runId: `${viewport.name}-dark`,
@@ -1229,12 +1453,27 @@ test.describe("Production Director browser evidence", () => {
         reducedMotion: false,
       });
       appendSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
+      expect(
+        run.status,
+        JSON.stringify(
+          {
+            checks: run.checks,
+            layout: run.layout,
+            pageScroll: run.pageScroll,
+            axe: run.axe,
+            console: run.console,
+          },
+          null,
+          2
+        )
+      ).toBe("pass");
     });
   }
 
   for (const viewport of VIEWPORTS) {
-    test(`Production Director reduced-motion browser evidence at ${viewport.name}`, async ({ page }) => {
+    test(`Production Director reduced-motion browser evidence at ${viewport.name}`, async ({
+      page,
+    }) => {
       const run = await buildEvidence({
         page,
         runId: `${viewport.name}-light-reduced-motion`,
@@ -1248,10 +1487,25 @@ test.describe("Production Director browser evidence", () => {
   }
 
   for (const viewport of VIEWPORTS) {
-    test(`Media Studio authenticated live route production evidence at ${viewport.name}`, async ({ page }) => {
+    test(`Media Studio authenticated live route production evidence at ${viewport.name}`, async ({
+      page,
+    }) => {
       const run = await buildLiveRouteEvidence(page, viewport);
       appendLiveRouteSummary(run);
-      expect(run.status, JSON.stringify({ checks: run.checks, layout: run.layout, pageScroll: run.pageScroll, axe: run.axe, console: run.console }, null, 2)).toBe("pass");
+      expect(
+        run.status,
+        JSON.stringify(
+          {
+            checks: run.checks,
+            layout: run.layout,
+            pageScroll: run.pageScroll,
+            axe: run.axe,
+            console: run.console,
+          },
+          null,
+          2
+        )
+      ).toBe("pass");
       expect(run.authenticated).toBe(true);
     });
   }

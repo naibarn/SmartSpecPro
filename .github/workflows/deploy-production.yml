@@ -94,7 +94,7 @@ jobs:
         run: |
           cd apps/web
           npm install
-          npm run db:push
+          npm run db:migrate
 
       - name: Deploy node-api to Cloud Run (10% canary)
         run: |

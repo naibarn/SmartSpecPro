@@ -144,6 +144,45 @@ describe("storyboard prompt audio helpers", () => {
     expect(prompt.match(/Dialogue pacing:/g)).toHaveLength(1);
   });
 
+  it("replaces stale no-audio sections when native voiceover is requested", () => {
+    const prompt = buildVeo31StoryboardVideoPrompt({
+      visualPrompt: [
+        "Create an 8-second cinematic video.",
+        "",
+        "Scene:",
+        "A warm bedroom.",
+        "",
+        "Action:",
+        "A presenter shows the product.",
+        "",
+        "Camera:",
+        "Medium shot.",
+        "",
+        "Lighting / Style:",
+        "Warm realistic lighting.",
+        "",
+        "Audio:",
+        "No audio. Do not add background music, sound effects, foley, room tone, or ambient/environment audio.",
+        "",
+        "Dialogue:",
+        "No spoken dialogue.",
+      ].join("\n"),
+      durationSeconds: 8,
+      includeVoiceover: true,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      voiceoverScript: "",
+      includeSound: true,
+      soundBrief: "Subtle product handling foley only, no music.",
+    });
+
+    expect(prompt).toContain("Native audio.");
+    expect(prompt).toContain("Voice:");
+    expect(prompt).toContain("Presenter พูดเป็นภาษาไทยว่า");
+    expect(prompt).not.toContain("No audio.");
+    expect(prompt).not.toContain("No spoken dialogue.");
+  });
+
   it("removes ambient sound from existing Veo prompts when sound is disabled but Thai dialogue is enabled", () => {
     const prompt = buildVeo31StoryboardVideoPrompt({
       visualPrompt: [

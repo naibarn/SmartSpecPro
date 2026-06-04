@@ -19,6 +19,15 @@ function isProductImageAsset(asset: any) {
   return ["main_image", "description_image", "review_image"].includes(String(asset?.kind ?? ""));
 }
 
+function mutationErrorMessage(error: unknown) {
+  if (!error) return null;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message ?? "Unknown error");
+  }
+  return String(error);
+}
+
 export default function MarketplaceCapturePreview() {
   const [location] = useLocation();
   const captureId = getCaptureId(location);
@@ -34,7 +43,12 @@ export default function MarketplaceCapturePreview() {
   const discardMutation = trpc.marketplaceCapture.discardCapture.useMutation({
     onSuccess: () => utils.marketplaceCapture.getCapture.invalidate({ captureId }),
   });
-  const confirmMutation = trpc.marketplaceCapture.confirmCapture.useMutation();
+  const confirmMutation = trpc.marketplaceCapture.confirmCapture.useMutation({
+    onSuccess: () => {
+      utils.marketplaceCapture.getCapture.invalidate({ captureId });
+      utils.marketplaceCapture.listInsightsByCapture.invalidate({ captureId });
+    },
+  });
   const capture = captureQuery.data?.capture as any;
   const assets = (captureQuery.data?.assets as any[] | undefined) ?? [];
   const extraction = useMemo(() => (capture?.normalizedResultJson ?? capture?.llmResultJson ?? {}) as any, [capture]);
@@ -44,7 +58,13 @@ export default function MarketplaceCapturePreview() {
 
   useEffect(() => {
     if (!capture) return;
-    const next = productFormFromExtraction(extraction);
+    const next = productFormFromExtraction({
+      ...extraction,
+      platformRawJson: {
+        ...((capture.rawPayloadJson ?? {}) as Record<string, unknown>),
+        ...((extraction.platformRawJson ?? {}) as Record<string, unknown>),
+      },
+    });
     setForm(next);
     const mainAssetImageIds = assets
       .filter((asset) => asset.kind === "main_image" && String(asset.contentType ?? "").startsWith("image/"))
@@ -124,15 +144,52 @@ export default function MarketplaceCapturePreview() {
                 data: productConfirmPayload(form, images, extraction),
               })}
             >
-              Confirm & Save Product
+              {confirmMutation.isPending ? "Saving..." : "Confirm & Save Product"}
             </button>
           </div>
         </header>
+
+        {confirmMutation.isPending ? (
+          <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            Saving product. Please wait...
+          </p>
+        ) : null}
+
+        {confirmMutation.error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div className="font-medium">Confirm failed</div>
+            <div className="mt-1 break-words">{mutationErrorMessage(confirmMutation.error)}</div>
+            <div className="mt-2 text-xs text-red-700">
+              Check that the latest marketplace capture migration has been applied, then try again.
+            </div>
+          </div>
+        ) : null}
 
         {confirmMutation.data ? (
           <a className="block rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" href={confirmMutation.data.productUrl}>
             Saved: {confirmMutation.data.productId}
           </a>
+        ) : null}
+
+        {saveDraftMutation.error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div className="font-medium">Save draft failed</div>
+            <div className="mt-1 break-words">{mutationErrorMessage(saveDraftMutation.error)}</div>
+          </div>
+        ) : null}
+
+        {analyzeMutation.error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div className="font-medium">Re-run LLM failed</div>
+            <div className="mt-1 break-words">{mutationErrorMessage(analyzeMutation.error)}</div>
+          </div>
+        ) : null}
+
+        {discardMutation.error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <div className="font-medium">Discard failed</div>
+            <div className="mt-1 break-words">{mutationErrorMessage(discardMutation.error)}</div>
+          </div>
         ) : null}
 
         {saveDraftMutation.data ? (

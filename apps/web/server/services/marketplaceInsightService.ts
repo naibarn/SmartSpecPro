@@ -15,6 +15,7 @@ import {
 } from "@shared/marketplaceCapture";
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { marketplaceCaptureError } from "./marketplaceCaptureConfig";
+import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 
 type MarketplaceInsightAuth = { userId: number; tenantId?: string };
 
@@ -185,11 +186,15 @@ function parseLlmJson(content: string): Record<string, unknown> {
 function normalizeProductBriefFromServer(value: unknown, source: SanitizedLocalAIInput): ProductBrief {
   const evidenceIds = new Set(source.evidence.map((item) => item.id));
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const productCategory = productBriefSchema.shape.productCategory.safeParse(raw.productCategory).success
+    ? raw.productCategory
+    : source.product.productCategory;
   const normalized = productBriefSchema.parse({
     schemaVersion: "1.0",
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
     productName: cleanText(raw.productName || source.product.title || source.pageTitle, 300) || "Untitled product",
     category: cleanText(raw.category || source.product.category, 200) || undefined,
+    productCategory,
     shortSummary: cleanText(raw.shortSummary, 800) || cleanText(source.product.description || source.product.title, 500),
     keySellingPoints: normalizePriceSensitiveList(arrayOfStrings(raw.keySellingPoints, 12), source),
     targetAudiences: arrayOfStrings(raw.targetAudiences, 12),
@@ -238,6 +243,7 @@ function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePr
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
     "Rules: use only provided data, do not invent claims, return JSON only, include evidenceIds that exist in the evidence list.",
     "Price rule: if you mention price, use only source.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
+    "Choose productCategory from the product-reference-storyboard enum only. Use source.product.category and source.product.categoryPath as marketplace subcategory evidence. Keep category as the captured marketplace subcategory text.",
     `Sanitized input:\n${JSON.stringify(source, null, 2).slice(0, 25_000)}`,
   ].join("\n\n");
 }
@@ -432,19 +438,27 @@ export async function listMarketplaceInsightsByCapture(captureId: string, auth: 
 
 export async function listMarketplaceInsightsByProduct(productId: string, auth: MarketplaceInsightAuth) {
   const db = getDb();
-  const [product] = await db.select({
-    id: marketplaceProducts.id,
-    platform: marketplaceProducts.platform,
-    sourceUrl: marketplaceProducts.sourceUrl,
-  }).from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), tenantScope(marketplaceProducts, auth)))
-    .limit(1);
-  if (!product) throw marketplaceCaptureError("marketplace_product_not_found", "Marketplace product not found", 404);
+  let productBundle: Awaited<ReturnType<typeof getMarketplaceProductWithAccess>>;
+  try {
+    productBundle = await getMarketplaceProductWithAccess(productId, auth);
+  } catch {
+    throw marketplaceCaptureError("marketplace_product_not_found", "Marketplace product not found", 404);
+  }
+  const product = productBundle.product;
+  const ownerScope = and(
+    eq(marketplaceCaptureInsights.userId, product.userId),
+    product.tenantId
+      ? eq(marketplaceCaptureInsights.tenantId, product.tenantId)
+      : isNull(marketplaceCaptureInsights.tenantId),
+  );
   const rows = await db.select().from(marketplaceCaptureInsights)
     .where(and(
-      tenantScope(marketplaceCaptureInsights, auth),
+      ownerScope,
       or(
         eq(marketplaceCaptureInsights.productId, productId),
+        product.captureId
+          ? eq(marketplaceCaptureInsights.captureId, product.captureId)
+          : undefined,
         and(
           eq(marketplaceCaptureInsights.platform, product.platform),
           eq(marketplaceCaptureInsights.sourceUrl, product.sourceUrl),

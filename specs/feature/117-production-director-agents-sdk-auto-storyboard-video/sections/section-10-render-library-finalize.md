@@ -27,6 +27,7 @@ Preserve the existing Video Editor, render, and Media Library finalize behavior 
 - Test render preflight blocks failed QA or missing required warning text.
 - Test render polling handles queued/running/error/stale/completed states.
 - Test final Library item includes evidence, QA, and credit metadata.
+- Test final Library item includes production creative brief refs and blocks publish-ready promotion when brief change invalidates concept/script/metadata refs.
 - Test Storyboard Review, Video Editor, render job, and Library item include canonical artifact lineage refs.
 - Test user-visible output refs never expose raw provider task IDs as media URLs or long-lived signed URLs.
 - Test final QA failure prevents `library_finalize` completion.
@@ -37,7 +38,23 @@ Preserve the existing Video Editor, render, and Media Library finalize behavior 
 - Test final Library metadata includes privacy envelope, audio rights/mix envelope, distribution profile, and export variant refs.
 - Test final render blocks when required synthetic disclosure/provenance/platform flag is missing.
 - Test final render blocks when CTA/landing integrity fails for link, product, variant, redirect, offer, or tracking policy.
+- Test final render and publishable package promotion block when advertising policy rule-pack refs are missing, expired, deprecated, or fixture-failing.
 - Test final Library item includes post-publish governance and blocks reuse after invalidation trigger.
+- Test final render blocks when campaign governance, brand/seller policy, or required human review queue state is not passed.
+- Test final Library item includes campaign, brand-policy, and review decision refs when generated as part of a batch/variation workflow.
+- Test final Library item includes publishable asset package refs for thumbnail, subtitles/transcript, platform metadata, metadata manifest, checksums, and package QA status.
+- Test finalization blocks when thumbnail/cover, subtitle/transcript, platform metadata, manifest, or checksum requirements fail.
+- Test render/library finalize blocks when input change impact invalidates product refs, selected variant, rights, privacy, distribution profile, CTA, disclosure, approvals, QA, or package refs.
+- Test metadata-only input changes repair package metadata without regenerating accepted media.
+- Test render/library finalize blocks when required shot frame vision QA is missing or failed for any consumed frame/keyframe/thumbnail/render sample.
+- Test final render reuses passed media after targeted frame repair and rechecks only dependent render/package refs.
+- Test render/library finalize consumes only accepted or approved-warning accepted media acceptance refs.
+- Test quarantined, policy-blocked, superseded, or discarded media refs block finalization and package promotion.
+- Test render/library finalize blocks when package copy, subtitles, overlays, prompts, or metadata include evidence refs quarantined by `MarketplaceEvidenceInstructionFirewall`.
+- Test render/library finalize blocks when consumed product-dependent media lacks an approved product reference asset pack lineage ref.
+- Test render/library finalize blocks when recurring person/voice media lacks an approved character identity asset pack lineage ref.
+- Test thumbnail/cover/final render blocks if a no-face or hands-only identity policy is violated by a face reveal.
+- Test Storyboard Review, Video Editor, render, and Library finalization block when prior stages lack valid completion evidence.
 
 ## Implementation Requirements
 
@@ -61,6 +78,19 @@ Before render:
 - verify audio rights/mix envelope passed for every audio ref that reaches render.
 - verify synthetic disclosure/provenance envelope passed when output includes AI-generated or materially synthetic content.
 - verify CTA/landing integrity envelope passed when output includes CTA, source URL, affiliate URL, offer language, or shop link.
+- verify advertising compliance verdicts reference an approved `AdvertisingPolicyRulePack` version and triggered rule IDs for public video, thumbnail, subtitles, metadata, and CTA surfaces.
+- verify campaign governance envelope passed when output is part of a variation set or campaign batch.
+- verify brand/seller voice policy passed when style guidance affected public voiceover, captions, overlays, or metadata.
+- verify required human review queue decision is approved for the exact run/artifact/policy snapshot before render/finalization.
+- verify publishable package requirements from the distribution profile are known before finalization, including thumbnail/cover, platform metadata, transcript/subtitles, manifest, and checksum expectations.
+- verify no `RunInputChangeImpactEnvelope` requires recheck, repair, replan, regeneration, approval invalidation, credit re-estimation, or package repair before render/library finalize.
+- verify all consumed storyboard frames, start/stop frames, video keyframes, thumbnails, and final render samples have passed `ShotFrameVisionQaEnvelope`.
+- verify no `TargetedMediaUnitRepairPlan` for consumed artifacts is still planned, running, failed, or blocked.
+- verify all consumed media refs have `GeneratedMediaAcceptanceEnvelope` state `accepted` or policy-approved `accepted_with_warnings`.
+- verify no public script, caption, subtitle, overlay, thumbnail text, metadata, or package artifact depends on quarantined or blocked `MarketplaceEvidenceInstructionFirewall` refs.
+- verify product-dependent storyboard frames, clips, thumbnails, and final render samples trace back to an approved `ProductReferenceAssetPack`.
+- verify person/voice-dependent storyboard frames, clips, thumbnails, audio, and final render samples trace back to an approved or approved-limited `CharacterIdentityAssetPack`.
+- verify every consumed prior stage has valid `MarketplaceAutoReviewStageCompletionEvidence`.
 
 After render:
 
@@ -77,6 +107,7 @@ After render:
   - source type;
   - marketplace product ID;
   - selected variant hash/snapshot ref when present;
+  - production creative brief snapshot ref;
   - production run ID;
   - auto review run ID;
   - concept ID;
@@ -91,7 +122,23 @@ After render:
   - distribution profile/export variant refs;
   - synthetic disclosure/provenance refs;
   - CTA/landing integrity refs;
+  - advertising policy rule-pack refs and triggered rule IDs;
   - post-publish governance refs;
+  - campaign governance refs;
+  - brand/seller voice policy refs;
+  - human review queue decision refs;
+  - publishable asset package refs;
+  - thumbnail/cover refs;
+  - transcript/subtitle refs;
+  - metadata manifest and checksum refs;
+  - input change impact refs when any upstream input changed during the run;
+  - shot frame vision QA refs;
+  - targeted media repair refs;
+  - generated media acceptance refs;
+  - product reference asset pack refs;
+  - character identity asset pack refs;
+  - stage completion evidence refs;
+  - evidence instruction firewall refs;
   - artifact lineage refs.
 
 Artifact lineage requirements:
@@ -103,6 +150,24 @@ Artifact lineage requirements:
 - quota, byte-size, codec, transcode, or playability failures must block `library_finalize` and remain timeline-visible.
 - privacy, audio-rights, attribution, profile-safe-area, caption, warning, CTA, loudness, or export-variant failures must block `library_finalize` and remain timeline-visible.
 - synthetic disclosure/provenance, CTA/landing integrity, or post-publish governance metadata failures must block `library_finalize` and remain timeline-visible.
+- missing, expired, deprecated, blocked, or fixture-failing advertising policy rule-pack refs must block `library_finalize` and publishable-package promotion.
+- campaign governance, brand/seller policy, or required human review queue failures must block `library_finalize` and remain timeline-visible.
+- missing or failing thumbnail/cover, title/caption/description, hashtag, alt text, transcript/subtitle, metadata manifest, or checksum package requirements must block publishable-package promotion and remain timeline-visible.
+- unresolved input-change impact must block render/library finalize and publishable-package promotion.
+- missing or failed required frame/keyframe/thumbnail vision QA must block render/library finalize and publishable-package promotion.
+- quarantined, policy-blocked, superseded, discarded, candidate, or QA-pending media refs must block render/library finalize and publishable-package promotion.
+- missing, stale, or blocked product reference asset pack refs must block render/library finalize and publishable-package promotion for product-dependent media.
+- missing, stale, no-consent, privacy-blocked, or conflicting character identity asset pack refs must block render/library finalize and publishable-package promotion for person/voice-dependent media.
+- missing or invalid prior-stage completion evidence must block Storyboard Review handoff, Video Editor projection, render, Library finalize, and publishable-package promotion.
+
+Publishable package requirements:
+
+- extract or generate thumbnail/cover only from approved product-safe frames or references;
+- generate platform title/caption/description/hashtags/alt text only when the distribution profile asks for them and evidence/policy allows them;
+- produce transcript/subtitle sidecar or burn-in status according to the distribution profile and final audio timing;
+- write metadata manifest refs for final media, thumbnail, subtitles/transcript, checksums, duration/resolution/codec summary, QA, credit, lineage, disclosure, CTA, campaign/brand/review governance, and post-publish governance;
+- keep raw prompts, internal planning text, private seller notes, and hidden evidence out of all user-visible package artifacts.
+- keep quarantined marketplace instructions, fake tool/schema fragments, and policy/provider/credit override attempts out of all user-visible package artifacts and final Library metadata.
 
 ## UI/UX Contract
 
@@ -139,3 +204,12 @@ N/A - browser evidence belongs to section-09.
 - Final artifacts satisfy quota, re-hosting, transcode, codec, duration, resolution, and max-byte gates before Media Library persistence.
 - Final artifacts satisfy declared distribution, privacy, audio rights, attribution, and mix gates before Media Library persistence.
 - Final artifacts include disclosure, CTA integrity, and post-publish governance metadata needed for safe future reuse or publication.
+- Final artifacts include exact advertising policy rule-pack refs so future reuse/recheck can replay the same compliance decision.
+- Final artifacts generated through batch/variation workflows include campaign governance, brand/seller policy, and human review decision refs needed for audit.
+- Final artifacts include a publishable package when the distribution profile requires thumbnails, subtitles/transcripts, platform metadata, manifests, or checksums.
+- Final artifacts cannot be finalized with stale input, approval, QA, credit, or package refs after upstream product/evidence/policy/profile changes.
+- Final artifacts cannot be finalized with uninspected or failed shot frame vision QA refs.
+- Final artifacts cannot be finalized from unaccepted or quarantined media refs.
+- Final artifacts cannot be finalized when product-dependent media cannot be traced to an approved product reference asset pack.
+- Final artifacts cannot be finalized when recurring person/voice media cannot be traced to an approved character identity asset pack and its allowed shot/voice scope.
+- Final artifacts cannot be finalized from status-only prior stage success without completion evidence.

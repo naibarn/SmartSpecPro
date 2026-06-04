@@ -1,0 +1,27 @@
+{
+  "mode": "text_to_video",
+  "output_type": "single_video_prompt",
+  "cinematic_intent": "Create an intimate vertical cinematic beauty portrait of a young woman in warm window light, with a slow push-in and soft emotional gaze.",
+  "aspect_ratio": "9:16",
+  "preset": "soft_korean_beauty_drama",
+  "duration": {
+    "single_shot_seconds": 5,
+    "total_seconds": 5,
+    "shot_duration_seconds": []
+  },
+  "camera_plan": {
+    "movement_preset": "slow_push_in",
+    "camera_angle": "eye_level_front",
+    "lens_language": "85mm_compressed_beauty",
+    "depth_of_field": "shallow",
+    "camera_height": "eye_level",
+    "camera_distance": "medium_close_up",
+    "custom_camera_notes": ""
+  },
+  "subject_action": {
+    "action_preset": "eyes_shift_to_camera",
+    "emotion": "serene",
+    "gaze_direction": "from_side_to_camera",
+    "custom_action_notes": ""
+  }
+}

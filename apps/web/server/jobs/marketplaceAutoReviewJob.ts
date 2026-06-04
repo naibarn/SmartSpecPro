@@ -1,9 +1,12 @@
 import crypto from "crypto";
-import { asc, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { signBearerToken } from "../_core/tokens";
 import { getDb } from "../db";
-import { marketplaceAutoReviewRuns } from "../../drizzle/schema";
+import {
+  marketplaceAutoReviewOutboxJobs,
+  marketplaceAutoReviewRuns,
+} from "../../drizzle/schema";
 import {
   advanceMarketplaceAutoReviewRun,
   type MarketplaceAutoReviewStatus,
@@ -12,7 +15,17 @@ import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_RUN_LIMIT = 12;
-const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = ["queued", "running", "waiting_provider"];
+const DEFAULT_OUTBOX_LIMIT = 12;
+const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
+  "queued",
+  "running",
+  "waiting_provider",
+];
+const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
+export const MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES = [
+  "advance_run",
+  "provider_reconciliation_recovery",
+] as const;
 const SCHEDULER_MODES = ["auto", "interval", "external"] as const;
 
 let intervalId: NodeJS.Timeout | null = null;
@@ -20,17 +33,19 @@ let inFlight = false;
 
 function getIntervalMs(): number {
   const parsed = Number(process.env.MARKETPLACE_AUTO_REVIEW_INTERVAL_MS);
-  return Number.isFinite(parsed) && parsed >= 15_000 ? parsed : DEFAULT_INTERVAL_MS;
+  return Number.isFinite(parsed) && parsed >= 15_000
+    ? parsed
+    : DEFAULT_INTERVAL_MS;
 }
 
 function isJobEnabled(): boolean {
   return process.env.MARKETPLACE_AUTO_REVIEW_JOB_ENABLED !== "false";
 }
 
-function getSchedulerMode(): typeof SCHEDULER_MODES[number] {
+function getSchedulerMode(): (typeof SCHEDULER_MODES)[number] {
   const raw = process.env.MARKETPLACE_AUTO_REVIEW_SCHEDULER_MODE;
   if (raw && (SCHEDULER_MODES as readonly string[]).includes(raw)) {
-    return raw as typeof SCHEDULER_MODES[number];
+    return raw as (typeof SCHEDULER_MODES)[number];
   }
   return "auto";
 }
@@ -42,40 +57,91 @@ function shouldUseInProcessInterval(): boolean {
   return process.env.USE_CLOUD_TASKS !== "true";
 }
 
+export function isMarketplaceAutoReviewAdvanceOutboxJobType(
+  jobType: string
+): boolean {
+  return (MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES as readonly string[]).includes(
+    jobType
+  );
+}
+
 function createMarketplaceAutoReviewToken(input: {
   userId: number;
   tenantId: string;
   runId: string;
 }): string {
-  return signBearerToken({
-    sub: String(input.userId),
-    userId: input.userId,
-    tenantId: input.tenantId,
-    type: "access",
-    tokenUse: "marketplace_auto_review_background",
-    scopes: ["media:generate"],
-    jti: `marketplace_auto_review_${input.runId}_${Date.now()}_${crypto.randomBytes(8).toString("hex")}`,
-  }, "30m");
+  return signBearerToken(
+    {
+      sub: String(input.userId),
+      userId: input.userId,
+      tenantId: input.tenantId,
+      type: "access",
+      tokenUse: "marketplace_auto_review_background",
+      scopes: ["media:generate"],
+      jti: `marketplace_auto_review_${input.runId}_${Date.now()}_${crypto.randomBytes(8).toString("hex")}`,
+    },
+    "30m"
+  );
 }
 
-export async function runMarketplaceAutoReviewJob(options: {
-  db?: any;
-  limit?: number;
-} = {}): Promise<{
+export async function runMarketplaceAutoReviewJob(
+  options: {
+    db?: any;
+    limit?: number;
+    outboxLimit?: number;
+  } = {}
+): Promise<{
   scannedRuns: number;
   advancedRuns: number;
+  processedOutboxJobs: number;
   skippedRuns: number;
   errors: Array<{ runId: string; message: string }>;
 }> {
   if (inFlight) {
-    return { scannedRuns: 0, advancedRuns: 0, skippedRuns: 0, errors: [] };
+    return {
+      scannedRuns: 0,
+      advancedRuns: 0,
+      processedOutboxJobs: 0,
+      skippedRuns: 0,
+      errors: [],
+    };
   }
 
   inFlight = true;
   try {
-    const db = options.db ?? await getDb();
-    if (!db) return { scannedRuns: 0, advancedRuns: 0, skippedRuns: 0, errors: [] };
+    const db = options.db ?? (await getDb());
+    if (!db)
+      return {
+        scannedRuns: 0,
+        advancedRuns: 0,
+        processedOutboxJobs: 0,
+        skippedRuns: 0,
+        errors: [],
+      };
 
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const outboxJobs = await db
+      .select()
+      .from(marketplaceAutoReviewOutboxJobs)
+      .where(
+        and(
+          inArray(marketplaceAutoReviewOutboxJobs.status, [
+            ...READY_OUTBOX_STATUSES,
+          ]),
+          inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+            ...MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES,
+          ]),
+          sql`${marketplaceAutoReviewOutboxJobs.scheduledAt} <= ${nowIso}`
+        )
+      )
+      .orderBy(
+        asc(marketplaceAutoReviewOutboxJobs.priority),
+        asc(marketplaceAutoReviewOutboxJobs.scheduledAt)
+      )
+      .limit(
+        Math.min(Math.max(options.outboxLimit ?? DEFAULT_OUTBOX_LIMIT, 1), 50)
+      );
     const runs = await db
       .select()
       .from(marketplaceAutoReviewRuns)
@@ -85,14 +151,116 @@ export async function runMarketplaceAutoReviewJob(options: {
 
     const runtimeConfig = await getAppRuntimeConfig();
     let advancedRuns = 0;
+    let processedOutboxJobs = 0;
     let skippedRuns = 0;
     const errors: Array<{ runId: string; message: string }> = [];
+
+    for (const job of outboxJobs) {
+      const [run] = await db
+        .select()
+        .from(marketplaceAutoReviewRuns)
+        .where(eq(marketplaceAutoReviewRuns.id, job.runId))
+        .limit(1);
+      if (!run) {
+        await db
+          .update(marketplaceAutoReviewOutboxJobs)
+          .set({
+            status: "discarded",
+            lastError: "run_not_found",
+            completedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+        skippedRuns += 1;
+        continue;
+      }
+      const tenantId = String(run.tenantId ?? job.tenantId ?? "").trim();
+      if (!tenantId) {
+        await db
+          .update(marketplaceAutoReviewOutboxJobs)
+          .set({
+            status: "failed",
+            lastError: "missing_tenant_id",
+            updatedAt: now,
+          })
+          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+        skippedRuns += 1;
+        errors.push({
+          runId: run.id,
+          message:
+            "Missing tenantId; cannot process Marketplace Auto Review outbox job.",
+        });
+        continue;
+      }
+      try {
+        await db
+          .update(marketplaceAutoReviewOutboxJobs)
+          .set({
+            status: "running",
+            lockedBy: `marketplace-auto-review-job:${process.pid}`,
+            lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+            attempts: Number(job.attempts ?? 0) + 1,
+            updatedAt: now,
+          })
+          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+        const token = createMarketplaceAutoReviewToken({
+          userId: run.userId,
+          tenantId,
+          runId: run.id,
+        });
+        await advanceMarketplaceAutoReviewRun(
+          run.id,
+          {
+            userId: run.userId,
+            tenantId,
+          },
+          {
+            userToken: token,
+            publicUrl: runtimeConfig.publicUrl,
+            automationWorkerId: `marketplace-auto-review-outbox:${process.pid}`,
+            schedulerSource: `outbox:${job.jobType}`,
+          }
+        );
+        await db
+          .update(marketplaceAutoReviewOutboxJobs)
+          .set({
+            status: "completed",
+            completedAt: new Date(),
+            lockedBy: null,
+            lockedUntil: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+        processedOutboxJobs += 1;
+      } catch (error) {
+        const attempts = Number(job.attempts ?? 0) + 1;
+        const exhausted = attempts >= Number(job.maxAttempts ?? 3);
+        const message = error instanceof Error ? error.message : String(error);
+        await db
+          .update(marketplaceAutoReviewOutboxJobs)
+          .set({
+            status: exhausted ? "failed" : "retry",
+            lastError: message,
+            lockedBy: null,
+            lockedUntil: null,
+            scheduledAt: exhausted
+              ? now
+              : new Date(Date.now() + Math.min(30 * 60_000, attempts * 60_000)),
+            updatedAt: new Date(),
+          })
+          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+        errors.push({ runId: run.id, message });
+      }
+    }
 
     for (const run of runs) {
       const tenantId = String(run.tenantId ?? "").trim();
       if (!tenantId) {
         skippedRuns += 1;
-        errors.push({ runId: run.id, message: "Missing tenantId; cannot advance durable media workflow." });
+        errors.push({
+          runId: run.id,
+          message: "Missing tenantId; cannot advance durable media workflow.",
+        });
         continue;
       }
       try {
@@ -101,13 +269,19 @@ export async function runMarketplaceAutoReviewJob(options: {
           tenantId,
           runId: run.id,
         });
-        await advanceMarketplaceAutoReviewRun(run.id, {
-          userId: run.userId,
-          tenantId,
-        }, {
-          userToken: token,
-          publicUrl: runtimeConfig.publicUrl,
-        });
+        await advanceMarketplaceAutoReviewRun(
+          run.id,
+          {
+            userId: run.userId,
+            tenantId,
+          },
+          {
+            userToken: token,
+            publicUrl: runtimeConfig.publicUrl,
+            automationWorkerId: `marketplace-auto-review-job:${process.pid}`,
+            schedulerSource: getSchedulerMode(),
+          }
+        );
         advancedRuns += 1;
       } catch (error) {
         errors.push({
@@ -120,6 +294,7 @@ export async function runMarketplaceAutoReviewJob(options: {
     return {
       scannedRuns: runs.length,
       advancedRuns,
+      processedOutboxJobs,
       skippedRuns,
       errors,
     };
@@ -134,18 +309,23 @@ async function tick(): Promise<void> {
     const result = await runMarketplaceAutoReviewJob();
     if (result.scannedRuns > 0 || result.errors.length > 0) {
       console.log(
-        `[marketplace-auto-review] scanned=${result.scannedRuns} advanced=${result.advancedRuns} skipped=${result.skippedRuns} errors=${result.errors.length}`,
+        `[marketplace-auto-review] scanned=${result.scannedRuns} advanced=${result.advancedRuns} outbox=${result.processedOutboxJobs} skipped=${result.skippedRuns} errors=${result.errors.length}`
       );
     }
   } catch (error) {
-    console.error("[marketplace-auto-review] Job failed:", error instanceof Error ? error.message : error);
+    console.error(
+      "[marketplace-auto-review] Job failed:",
+      error instanceof Error ? error.message : error
+    );
   }
 }
 
 export async function initializeMarketplaceAutoReviewJob(): Promise<void> {
   if (intervalId) return;
   if (!shouldUseInProcessInterval()) {
-    console.log("[marketplace-auto-review] In-process interval disabled; use an external scheduler to advance active auto-review runs.");
+    console.log(
+      "[marketplace-auto-review] In-process interval disabled; use an external scheduler to advance active auto-review runs."
+    );
     return;
   }
   await tick();

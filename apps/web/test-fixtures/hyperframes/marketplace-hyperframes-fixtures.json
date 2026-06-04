@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "feature": "marketplace_hyperframes_auto_review",
+  "fixtures": [
+    {
+      "id": "ready_product_vertical_preview",
+      "group": "ready",
+      "product": {
+        "productId": "product_ready_1",
+        "category": "household_product",
+        "title": "Long Thai product title safe-area fixture",
+        "selectedImageUrls": ["https://cdn.example.test/product-ready.png"]
+      },
+      "expected": {
+        "autoCanStart": true,
+        "templateId": "marketplace_storyboard_motion_9x9_v1",
+        "platformPresetId": "generic_vertical_9_16",
+        "standardOrderAvailable": true,
+        "advancedOverridesRequired": false,
+        "autoFirstCtaVisible": true
+      }
+    },
+    {
+      "id": "missing_product_anchor",
+      "group": "blocked",
+      "product": {
+        "productId": "product_missing_anchor",
+        "category": "electronics",
+        "selectedImageUrls": []
+      },
+      "expected": {
+        "autoCanStart": false,
+        "blocker": "missing_product_anchor",
+        "standardOrderAvailable": true,
+        "standardOrderStartableWhileAutoBlocked": true
+      }
+    },
+    {
+      "id": "worker_disabled_standard_fallback",
+      "group": "disabled",
+      "flags": {
+        "MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED": "false"
+      },
+      "expected": {
+        "blocker": "worker_disabled",
+        "standardOrderAvailable": true,
+        "standardOrderStartableWhileAutoBlocked": true
+      }
+    },
+    {
+      "id": "compliance_claim_review_required",
+      "group": "regulated_claims",
+      "product": {
+        "productId": "product_claims_1",
+        "category": "cosmetics skincare whitening",
+        "selectedImageUrls": ["https://cdn.example.test/skincare.png"]
+      },
+      "expected": {
+        "blocker": "compliance_review_required",
+        "disclosureRequired": true
+      }
+    },
+    {
+      "id": "completed_render_library_ready",
+      "group": "completed",
+      "render": {
+        "status": "completed",
+        "qaStatus": "passed",
+        "renderJobId": "hf_render_1",
+        "runId": "mar_1",
+        "renderIntent": "final",
+        "outputHash": "hf_output_hash",
+        "outputKind": "final_video",
+        "outputUrl": "https://cdn.example.test/hyperframes-output.mp4"
+      },
+      "expected": {
+        "saveToLibraryEnabled": true,
+        "source": "marketplace_auto_review_hyperframes_render",
+        "storyboardReviewAutoPreviewFirst": true,
+        "manualFallbackVisible": true,
+        "mediaStudioResumeSession": true
+      }
+    },
+    {
+      "id": "duplicate_finalize",
+      "group": "duplicate",
+      "expected": {
+        "idempotencyKey": "hyperframes-library:tenant_1:mar_1:final:hf_input:hf_output_hash",
+        "created": false,
+        "chargeRepeated": false
+      }
+    },
+    {
+      "id": "standard_order_full_video",
+      "group": "standard_order",
+      "expected": {
+        "procedure": "marketplaceCapture.startAutoReview",
+        "outputMode": "full_video",
+        "hyperframesRequired": false
+      }
+    },
+    {
+      "id": "insufficient_quota",
+      "group": "credit_blocked",
+      "expected": {
+        "autoCanStart": false,
+        "blocker": "insufficient_quota",
+        "standardOrderAvailable": true,
+        "userActionRequired": true
+      }
+    },
+    {
+      "id": "template_disabled",
+      "group": "template_disabled",
+      "expected": {
+        "autoCanStart": false,
+        "blocker": "template_disabled",
+        "standardOrderAvailable": true,
+        "safeRepairAvailable": false
+      }
+    },
+    {
+      "id": "completed_render_qa_failed",
+      "group": "qa_failed",
+      "render": {
+        "status": "failed_permanent",
+        "qaStatus": "failed",
+        "renderJobId": "hf_render_failed_1",
+        "runId": "mar_failed_1",
+        "renderIntent": "final",
+        "outputKind": "final_video"
+      },
+      "expected": {
+        "saveToLibraryEnabled": false,
+        "manualFallbackVisible": true,
+        "safeRepairAvailable": false
+      }
+    },
+    {
+      "id": "product_categories_expanded",
+      "group": "product_categories",
+      "cases": [
+        "household_product",
+        "electrical_appliance",
+        "cosmetics",
+        "food_beverage",
+        "fashion_clothing",
+        "electronics",
+        "mother_baby",
+        "automotive",
+        "pet_supplies"
+      ],
+      "expected": {
+        "categoryMappingRequired": true,
+        "unsupportedClaimsBlocked": true
+      }
+    },
+    {
+      "id": "thai_text_stress",
+      "group": "thai_text_stress",
+      "product": {
+        "title": "ชื่อสินค้าไทยยาวมากพร้อม English mixed และสัญลักษณ์ % / + ที่ต้องไม่ล้น safe area"
+      },
+      "expected": {
+        "noHorizontalOverflow": true,
+        "captionSafeAreaRequired": true
+      }
+    },
+    {
+      "id": "media_aspect_quality",
+      "group": "media_aspect",
+      "cases": [
+        "square_image",
+        "tall_image",
+        "transparent_png",
+        "multi_view_sheet",
+        "missing_thumbnail",
+        "low_resolution_frame",
+        "odd_aspect_video"
+      ],
+      "expected": {
+        "fallbackStatesVisible": true,
+        "productIdentityPreserved": true
+      }
+    },
+    {
+      "id": "subtitle_audio_states",
+      "group": "subtitle_audio",
+      "cases": [
+        "silent_output",
+        "native_video_audio",
+        "tts_alignment",
+        "asr_transcript",
+        "subtitle_heavy_final",
+        "drift_beyond_tolerance"
+      ],
+      "expected": {
+        "subtitleQaRequired": true,
+        "audioDriftBlocksFinalize": true
+      }
+    },
+    {
+      "id": "platform_profiles",
+      "group": "platform_profiles",
+      "cases": [
+        "generic_vertical_9_16",
+        "tiktok_reels_shorts_9_16",
+        "square_1_1",
+        "landscape_16_9",
+        "mobile_preview",
+        "desktop_preview"
+      ],
+      "expected": {
+        "safeAreaChecked": true,
+        "ctaPlacementChecked": true
+      }
+    },
+    {
+      "id": "permission_matrix",
+      "group": "permissions",
+      "cases": [
+        "product_owner",
+        "runner",
+        "group_shared_viewer",
+        "group_shared_editor",
+        "cross_tenant_attempted_lookup"
+      ],
+      "expected": {
+        "crossTenantDenied": true,
+        "outputLinksAccessControlled": true,
+        "creditPayerResolved": true
+      }
+    }
+  ]
+}

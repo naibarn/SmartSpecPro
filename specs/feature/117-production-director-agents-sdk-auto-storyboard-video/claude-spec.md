@@ -26,8 +26,19 @@ selected product
 - Credit estimation, reservation, deduction, release/refund, and audit remain platform-owned.
 - Agents may invent creative concepts, not product facts.
 - Product references are immutable identity anchors.
-- Generated human identity and face continuity must be checked.
+- Generated human identity, face continuity, and voice continuity must be anchored to approved character identity asset packs before provider spend.
 - Thai advertising and visual warning/disclosure rules must be checked.
+- Campaign/batch automation must be capped, duplicate-safe, spend-safe, brand-safe, and reviewable.
+- Final outputs should include a checked publishable package when platform metadata, thumbnail, subtitles, transcript, manifest, or checksums are required.
+- Mid-run input changes must invalidate stale approvals, QA, credit estimates, and downstream artifacts only where affected.
+- Start/stop/storyboard frames and video keyframes must pass gateway-routed vision QA and targeted repair before downstream use.
+- Product reference asset packs must be approved before paid visual generation or repair uses product images.
+- Thai/global/platform advertising policy decisions must cite approved rule-pack versions and triggered rule IDs.
+- Stage completion must be evidence-gated; provider success, agent text, or handler completion is not enough to mark a stage complete.
+- SDK tools, handoffs, hosted capabilities, sessions, traces, output schemas, and retry/resume behavior must be locked to a Node-created capability manifest per stage attempt.
+- Every run must persist a production creative brief snapshot before concept generation so objective, audience, CTA, style, quality mode, and user hints are auditable and safely invalidated when changed.
+- Marketplace DOM/OCR/reviews/seller text/prior AI output must pass a persisted evidence instruction firewall before Agents or LLM prompts can consume it; page content cannot steer instructions, tools, providers, credits, approvals, policy, routing, or public copy.
+- Recurring presenters, hand models, synthetic characters, and voices must use `CharacterIdentityAssetPack` refs with consent, allowed shot/voice scope, and fallback rules.
 
 ## Primary Deliverables
 
@@ -50,6 +61,17 @@ selected product
 17. Shared-product access, credit payer, and background recheck snapshots for owner/group Marketplace products.
 18. Evidence freshness and asset readiness checks for stale products, purged raw evidence, and remote marketplace images.
 19. Asset-use rights and media-safety/provider-refusal contracts for brand/logo/badge/review-image restrictions and non-retryable safety refusals.
+20. Campaign/batch governance, brand/seller voice policy, spend anomaly detection, and human review queue contracts for high-volume automation.
+21. Publishable asset package contract for thumbnail/cover, title/caption/description, hashtags, subtitle/transcript artifacts, platform metadata, manifest, and checksum refs.
+22. Run input change impact contract for product/evidence/policy/profile/user edits during long-running automation.
+23. Shot frame vision QA and targeted media unit repair contracts for exact-unit visual/audio-continuity repair.
+24. Generated media acceptance/quarantine contract for candidate, accepted, warning-accepted, quarantined, superseded, and discarded refs.
+25. Product reference asset pack contract for primary/supporting/rejected product refs, crop/mask/fingerprint refs, selected variant binding, and better-image blockers.
+26. Advertising policy rule-pack contract for source anchors, rule IDs, warning templates, fixture refs, effective dates, approval state, and replayable compliance decisions.
+27. Stage completion evidence contract for required refs, missing refs, warning/blocking reason codes, evaluator, and transition idempotency.
+28. SDK capability manifest contract for allowed agents, tools, handoffs, output schemas, session policy, trace policy, stream policy, hosted capability denials, and manifest hash.
+29. Production creative brief snapshot contract for objective, target audience, viewer promise, creative latitude, quality mode, auto-decision policy, style, CTA intent, user hint trust, ambiguity, and snapshot hash.
+30. Marketplace evidence instruction firewall contract for untrusted DOM/OCR/review/seller/prior-AI content, quarantined instruction-like refs, safe fact refs, blocked refs, and pre-gateway-spend enforcement.
 
 ## Data Contracts To Add Or Version
 
@@ -57,12 +79,18 @@ At minimum:
 
 - `MarketplaceAutoReviewRunMetadataV2`
 - `MarketplaceAutoReviewStageOutputV2`
+- `MarketplaceAutoReviewStageCompletionEvidence`
+- `ProductionAgentsSdkCapabilityManifest`
+- `ProductionCreativeBriefSnapshot`
+- `MarketplaceEvidenceInstructionFirewall`
 - `MediaProductionAgentRequest`
 - `MediaProductionAgentResponse`
 - `ProductEvidenceLock`
 - `ProductVariantSnapshot`
 - `MarketplaceAutomationAccessSnapshot`
 - `ProductEvidenceFreshnessSnapshot`
+- `ProductReferenceAssetPack`
+- `CharacterIdentityAssetPack`
 - `AssetRightsEnvelope`
 - `ClaimEvidenceMap`
 - `VolatileSignalPolicy`
@@ -74,6 +102,7 @@ At minimum:
 - `NaturalSpeechContract`
 - `AdvertisingComplianceProfile`
 - `AdvertisingVisualWarningPlan`
+- `AdvertisingPolicyRulePack`
 - `QAVerdict`
 - `RepairDecision`
 - `CreditReservationPlan`
@@ -81,6 +110,14 @@ At minimum:
 - `MarketplaceAutoReviewArtifactLineage`
 - `MarketplaceAutoReviewApprovalDecision`
 - `MarketplaceAutoReviewPolicySnapshot`
+- `CampaignGenerationGovernanceEnvelope`
+- `BrandVoiceAndSellerPolicyEnvelope`
+- `HumanReviewQueuePolicy`
+- `PublishableAssetPackageEnvelope`
+- `RunInputChangeImpactEnvelope`
+- `ShotFrameVisionQaEnvelope`
+- `TargetedMediaUnitRepairPlan`
+- `GeneratedMediaAcceptanceEnvelope`
 
 ## Status And Failure Semantics
 
@@ -107,6 +144,7 @@ The API/UI must expose a timeline projection derived from durable run/stage stat
 
 - Load product, images, permissions, tenant policy, previous completed artifacts, and supporting insights.
 - Build evidence lock and volatile-signal policy.
+- Build product reference asset pack for visual generation and block/request better image when product refs are unreliable.
 - Preserve selected variant/SKU snapshot when marketplace option evidence exists, including option labels, selected image refs, price snapshot refs, stock text, volatility policy, and variant hash.
 - Block or stay generic when a product has visible variants but no selected snapshot.
 - Classify product category and advertising risk.
@@ -131,6 +169,7 @@ The API/UI must expose a timeline projection derived from durable run/stage stat
 `image_generation`
 
 - Schedule direct storyboard/image tasks from validated shot payloads.
+- Use only approved product reference asset pack refs for product-dependent visual payloads.
 - Preserve existing frame strategy names.
 - Run product visual QA and storyboard continuity QA.
 
@@ -195,6 +234,7 @@ The system must classify ad risk and apply conservative defaults:
 - Storage quota, re-hosting, codec/container, duration, resolution, byte-size, transcode, cleanup, and playability gates must pass before render/library finalize.
 - Retry/DLQ policies, stage leases/heartbeats, migration/backfill dry-runs, and launch SLO alerts must be in place before broad rollout.
 - Marketplace evidence privacy must redact or block account/order/cart/payment/chat/customer/reviewer/private-seller data before planning and final media.
+- Marketplace evidence instruction firewall must quarantine hidden prompt injection, fake tool/schema text, fake provider/credit instructions, policy-bypass requests, and output-routing attempts before planning, QA, repair, provider prompts, or metadata generation.
 - Audio/music/SFX/TTS/native/uploaded audio must have commercial-use rights, attribution, voice consent, and mix targets before final render.
 - Every final output must match a declared distribution profile for platform, aspect ratio, duration, safe areas, captions, warning text, CTA, loudness, and export variants.
 - Creative feedback memory must be tenant-safe, redacted, and must not treat failed/blocked/non-compliant outputs as positive examples.
@@ -202,6 +242,13 @@ The system must classify ad risk and apply conservative defaults:
 - CTA and landing links must be validated for reachability, redirect safety, product/variant match, current offer evidence, and tracking policy before finalization.
 - QA calibration must gate model/provider/policy drift, low-confidence verdicts, and high-risk cohorts through fixture replay or human spot-check.
 - Final Library outputs must carry post-publish governance for allowed reuse, expiry, invalidation triggers, and takedown/re-check actions.
+- Campaign/variation generation must enforce caps, duplicate similarity thresholds, spend caps, anomaly blockers, and scoped batch approvals before additional paid work.
+- Brand/seller voice must shape tone/register/CTA/pronunciation only within product truth, policy, rights, privacy, disclosure, and evidence constraints.
+- Human review queues must capture reason, role, artifact scope, policy snapshot, SLA, timeout, and repair/rejection outcomes for high-risk or high-volume automation.
+- Publishable packages must validate thumbnails, platform titles/captions/descriptions/hashtags, transcripts/subtitles, alt text, manifests, and checksums as governed output artifacts, not optional polish.
+- Input change impact must compare previous/current snapshots, invalidate stale approvals/QA/credit refs, preserve safe artifacts, and redo only affected stages.
+- Shot frame vision QA must inspect storyboard cells, start/stop frames, video keyframes, thumbnails, and final render samples through gateway-routed vision QA.
+- Targeted repair must regenerate only failed shot/frame/clip/audio units and preserve unrelated accepted artifacts.
 
 ## UI/UX Requirements
 
@@ -229,7 +276,7 @@ The UI must not expose node canvas as part of this flow.
 - Direct provider LLM credentials/base URLs are rejected.
 - Credit-affecting actions are idempotent and audited.
 - No Feature 117 execution creates or depends on node canvas/`ProductionSpace`/`flowNodes`.
-- Unsupported claims, product visual drift, face continuity drift, audio gaps, missing warning text, and Thai ad-policy blockers prevent finalization or trigger targeted repair.
+- Unsupported claims, product visual drift, face/voice continuity drift, audio gaps, missing warning text, and Thai ad-policy blockers prevent finalization or trigger targeted repair.
 - Variant/SKU context is preserved or the run blocks/stays generic before media spend.
 - Detail/list APIs expose versioned redacted projections without breaking old rows.
 - Final outputs can be traced through canonical lineage to evidence, prompts/payloads, QA, approvals, credits, and storage refs.
@@ -241,4 +288,11 @@ The UI must not expose node canvas as part of this flow.
 - Provider callback auth/replay failures, oversized payloads, storage quota/transcode failures, and repeated transient failures become durable timeline-visible blockers or DLQ/recovery states.
 - Old Feature 118 rows remain readable and migration/backfill tooling proves new projections can be rebuilt without destructive history rewriting.
 - Marketplace PII/privacy, audio rights, distribution profile, and creative-memory blockers are durable QA/approval states, not hidden prompt instructions.
+- Evidence instruction firewall blockers are durable preflight/QA states, so injected marketplace text cannot reappear after resume, migration/backfill, or timeline rebuild.
+- Character identity asset pack blockers are durable preflight/QA states before recurring presenter/voice planning, provider dispatch, repair, thumbnailing, render, or Library finalization.
 - Synthetic disclosure, CTA integrity, calibration, and post-publish governance blockers are durable QA/approval states before download, reuse, or future publication.
+- Campaign governance, brand/seller policy, spend anomaly, and human review queue blockers are durable QA/approval states before repeated generation, render, download, or publication.
+- Publishable package blockers are durable QA states before an output is marked ready for the selected platform.
+- Input-change impact blockers are durable QA/approval/credit states before continuing after product, evidence, policy, profile, or script edits.
+- Frame vision QA and targeted repair blockers are durable stage states before Storyboard Review, video generation, render, or Library finalization.
+- Character identity pack scope, consent, and fallback rules prevent unsafe face reveal, person swap, lip-sync drift, native-audio identity drift, or unapproved real-person imitation.

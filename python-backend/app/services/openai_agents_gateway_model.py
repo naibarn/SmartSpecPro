@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.services.openai_agents_contracts import RuntimeModelConfig, RuntimeSurface
 
 GatewayTransport = Literal["responses", "chat_completions"]
-_PRODUCTION_RUNTIME_SURFACES = frozenset({"chat", "team", "responses", "skill"})
+_PRODUCTION_RUNTIME_SURFACES = frozenset({"chat", "team", "responses", "skill", "media_production"})
 _DIRECT_PROVIDER_HOSTS = frozenset(
     {
         "api.openai.com",
@@ -21,6 +21,27 @@ _DIRECT_PROVIDER_HOSTS = frozenset(
         "generativelanguage.googleapis.com",
         "localhost:11434",
     }
+)
+_SMARTSPEC_GATEWAY_HOSTS = frozenset(
+    {
+        "gateway.internal",
+        "host.docker.internal",
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "node.internal",
+        "smartspec-gateway",
+        "smartspec-gateway.internal",
+        "smartspec-web",
+        "smartspec-web.internal",
+    }
+)
+_SMARTSPEC_GATEWAY_DOMAIN_SUFFIXES = (
+    ".smartspecpro.com",
+    ".smartspec.pro",
+    ".smartspec.ai",
+    ".smartspec.local",
+    ".smartspec.internal",
 )
 
 
@@ -33,6 +54,7 @@ class GatewayModelConfigurationError(ValueError):
 @dataclass(frozen=True)
 class GatewayTransportConfig:
     surface: RuntimeSurface
+    tenant_id: str | None
     provider_id: str
     model_id: str
     gateway_route_id: str | None
@@ -42,15 +64,16 @@ class GatewayTransportConfig:
     transport: GatewayTransport = "responses"
 
 
-def _gateway_base_url_candidate(override: str | None = None) -> str:
-    candidate = (
-        override
-        or getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None)
-        or os.getenv("SMARTSPEC_WEB_GATEWAY_URL")
-        or os.getenv("NODEJS_INTERNAL_URL")
-        or "http://localhost:3000"
-    )
-    return str(candidate).strip()
+def _gateway_base_url_candidate(override: str | None = None) -> str | None:
+    for candidate in (
+        override,
+        getattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", None),
+        os.getenv("SMARTSPEC_WEB_GATEWAY_URL"),
+        os.getenv("NODEJS_INTERNAL_URL"),
+    ):
+        if candidate and str(candidate).strip():
+            return str(candidate).strip()
+    return None
 
 
 def _normalize_gateway_base_url(url: str) -> str:
@@ -67,8 +90,20 @@ def _normalize_gateway_base_url(url: str) -> str:
 
 
 def _looks_like_direct_provider_url(url: str) -> bool:
-    hostname = (urlparse(url).hostname or "").lower()
-    return hostname in _DIRECT_PROVIDER_HOSTS
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    netloc = (parsed.netloc or "").lower()
+    return hostname in _DIRECT_PROVIDER_HOSTS or netloc in _DIRECT_PROVIDER_HOSTS
+
+
+def _is_smartspec_gateway_origin(url: str) -> bool:
+    parsed = urlparse(url)
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        return False
+    if hostname in _SMARTSPEC_GATEWAY_HOSTS:
+        return True
+    return hostname == "smartspecpro.com" or hostname.endswith(_SMARTSPEC_GATEWAY_DOMAIN_SUFFIXES)
 
 
 def build_gateway_transport_config(
@@ -76,6 +111,7 @@ def build_gateway_transport_config(
     surface: RuntimeSurface,
     model_config: RuntimeModelConfig,
     attribution_token: str,
+    tenant_id: str | None = None,
     gateway_base_url: str | None = None,
     provider_base_url: str | None = None,
     provider_api_key: str | None = None,
@@ -87,7 +123,21 @@ def build_gateway_transport_config(
             "Gateway attribution token is required.",
         )
 
-    base_url = _normalize_gateway_base_url(_gateway_base_url_candidate(gateway_base_url))
+    base_candidate = _gateway_base_url_candidate(gateway_base_url)
+    if base_candidate is None:
+        if surface in _PRODUCTION_RUNTIME_SURFACES:
+            raise GatewayModelConfigurationError(
+                "missing_gateway_base_url",
+                "Gateway base URL is required for production runtime surfaces.",
+            )
+        base_candidate = "http://localhost:3000"
+    if surface in _PRODUCTION_RUNTIME_SURFACES:
+        if _looks_like_direct_provider_url(base_candidate) or not _is_smartspec_gateway_origin(base_candidate):
+            raise GatewayModelConfigurationError(
+                "gateway_base_url_rejected",
+                "Gateway base URL must point to a recognized SmartSpecPro gateway origin.",
+            )
+    base_url = _normalize_gateway_base_url(base_candidate)
 
     if surface in _PRODUCTION_RUNTIME_SURFACES and provider_api_key:
         raise GatewayModelConfigurationError(
@@ -105,6 +155,7 @@ def build_gateway_transport_config(
 
     return GatewayTransportConfig(
         surface=surface,
+        tenant_id=tenant_id,
         provider_id=model_config.providerId,
         model_id=model_config.modelId,
         gateway_route_id=model_config.gatewayRouteId,
@@ -118,7 +169,14 @@ def build_gateway_transport_config(
 def create_gateway_async_openai_client(
     transport_config: GatewayTransportConfig,
 ) -> AsyncOpenAI:
+    default_headers = {
+        "x-internal-token": transport_config.api_key,
+        "x-gateway-attribution-token": transport_config.api_key,
+    }
+    if transport_config.tenant_id:
+        default_headers["x-tenant-id"] = transport_config.tenant_id
     return AsyncOpenAI(
         api_key=transport_config.api_key,
         base_url=transport_config.base_url,
+        default_headers=default_headers,
     )

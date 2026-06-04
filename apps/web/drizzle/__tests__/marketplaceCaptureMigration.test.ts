@@ -7,6 +7,9 @@ const sharingMigrationPath = path.resolve(__dirname, "../0177_marketplace_captur
 const sharingTenantContextMigrationPath = path.resolve(__dirname, "../0178_marketplace_share_settings_tenant_context.sql");
 const extensionDeviceBindingMigrationPath = path.resolve(__dirname, "../0179_marketplace_extension_device_binding.sql");
 const activeCaptureUniqueMigrationPath = path.resolve(__dirname, "../0180_marketplace_capture_active_unique.sql");
+const mainCategoryMigrationPath = path.resolve(__dirname, "../0197_marketplace_product_main_category.sql");
+const mainCategoryInferenceMigrationPath = path.resolve(__dirname, "../0198_marketplace_product_main_category_inference.sql");
+const mainCategoryPathPriorityMigrationPath = path.resolve(__dirname, "../0199_marketplace_product_main_category_path_priority.sql");
 const schemaPath = path.resolve(__dirname, "../schema.ts");
 
 describe("marketplace capture migration contract", () => {
@@ -15,6 +18,9 @@ describe("marketplace capture migration contract", () => {
   const sharingTenantContextMigration = fs.readFileSync(sharingTenantContextMigrationPath, "utf8");
   const extensionDeviceBindingMigration = fs.readFileSync(extensionDeviceBindingMigrationPath, "utf8");
   const activeCaptureUniqueMigration = fs.readFileSync(activeCaptureUniqueMigrationPath, "utf8");
+  const mainCategoryMigration = fs.readFileSync(mainCategoryMigrationPath, "utf8");
+  const mainCategoryInferenceMigration = fs.readFileSync(mainCategoryInferenceMigrationPath, "utf8");
+  const mainCategoryPathPriorityMigration = fs.readFileSync(mainCategoryPathPriorityMigrationPath, "utf8");
   const schema = fs.readFileSync(schemaPath, "utf8");
 
   it("creates enum types before marketplace tables", () => {
@@ -109,5 +115,24 @@ describe("marketplace capture migration contract", () => {
     expect(activeCaptureUniqueMigration).toContain('DROP INDEX IF EXISTS "idx_marketplace_capture_sessions_user_product_pair_unique"');
     expect(activeCaptureUniqueMigration).toContain('"status" NOT IN (\'confirmed\', \'discarded\')');
     expect(schema).toContain('"status" NOT IN (\'confirmed\', \'discarded\')');
+  });
+
+  it("adds and backfills marketplace product main storyboard category", () => {
+    expect(mainCategoryMigration).toContain('ADD COLUMN IF NOT EXISTS "productCategory" varchar(64)');
+    expect(mainCategoryMigration).toContain('capture."rawPayloadJson"->>\'productCategory\'');
+    expect(mainCategoryMigration).toContain('capture."normalizedResultJson"->>\'productCategory\'');
+    expect(mainCategoryMigration).toContain("'computer_laptop'");
+    expect(mainCategoryMigration).toContain("'cosmetics'");
+    expect(schema).toContain('productCategory: varchar("productCategory", { length: 64 })');
+  });
+
+  it("infers marketplace product main category from existing category evidence", () => {
+    expect(mainCategoryInferenceMigration).toContain("category_evidence");
+    expect(mainCategoryInferenceMigration).toContain("'computer_laptop'");
+    expect(mainCategoryInferenceMigration).toContain("'mother_baby'");
+    expect(mainCategoryInferenceMigration).toContain("'sports_equipment'");
+    expect(mainCategoryPathPriorityMigration).toContain("path_priority_inferred");
+    expect(mainCategoryPathPriorityMigration).toContain("'household_product'");
+    expect(mainCategoryPathPriorityMigration).toContain("'furniture'");
   });
 });

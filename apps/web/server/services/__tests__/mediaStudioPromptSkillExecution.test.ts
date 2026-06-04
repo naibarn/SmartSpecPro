@@ -275,6 +275,41 @@ describe("mediaStudioPromptSkillExecution", () => {
     );
   });
 
+  it("extracts master prompt text from prompt_package output", () => {
+    const extracted = extractStructuredPromptBundleTextOutput(JSON.stringify({
+      success: true,
+      output: {
+        prompt_package: {
+          master_prompt: "Use @Image1 as the visual reference. Create one clean text-only prompt.",
+          negative_prompt: "Avoid labels.",
+        },
+      },
+      warnings: [],
+    }), "detailed");
+
+    expect(extracted.promptText).toBe(
+      "Use @Image1 as the visual reference. Create one clean text-only prompt.",
+    );
+  });
+
+  it("extracts master prompt text from nested JSON string output", () => {
+    const extracted = extractStructuredPromptBundleTextOutput(JSON.stringify({
+      success: true,
+      output: JSON.stringify([
+        {
+          mode: "angle_grid_3x3",
+          prompt_package: {
+            master_prompt: "Use @Image1 as the visual reference. Create a plain text angle grid prompt.",
+          },
+        },
+      ]),
+    }), "detailed");
+
+    expect(extracted.promptText).toBe(
+      "Use @Image1 as the visual reference. Create a plain text angle grid prompt.",
+    );
+  });
+
   it("extracts readable storyboard text from scene_descriptions JSON", () => {
     const extracted = extractStructuredPromptBundleTextOutput(JSON.stringify({
       scene_descriptions: [

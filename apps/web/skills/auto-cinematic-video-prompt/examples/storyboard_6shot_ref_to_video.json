@@ -1,0 +1,90 @@
+{
+  "mode": "storyboard_ref_to_video",
+  "output_type": "storyboard_prompt_pack",
+  "cinematic_intent": "Build a 24-second cinematic fashion beauty film from reference images, preserving the same subject, lace wardrobe, warm window light, and elegant room.",
+  "reference_images": [
+    {
+      "image_id_or_path": "UPLOAD_PRIMARY_CHARACTER",
+      "role": "primary_character",
+      "priority": 5,
+      "notes": "Identity, face, hair, makeup."
+    },
+    {
+      "image_id_or_path": "UPLOAD_WARDROBE",
+      "role": "wardrobe_reference",
+      "priority": 5,
+      "notes": "Lace dress and neckline detail."
+    },
+    {
+      "image_id_or_path": "UPLOAD_ENVIRONMENT",
+      "role": "environment_reference",
+      "priority": 4,
+      "notes": "Window-lit room and mirror."
+    }
+  ],
+  "aspect_ratio": "16:9",
+  "duration": {
+    "single_shot_seconds": 4,
+    "total_seconds": 24,
+    "shot_duration_seconds": [
+      4,
+      4,
+      3,
+      4,
+      4,
+      5
+    ]
+  },
+  "preset": "cinematic_wedding_editorial",
+  "storyboard_preset": "six_shot_wedding_room",
+  "storyboard": [
+    {
+      "shot_id": "S01",
+      "duration_seconds": 4,
+      "shot_type": "establishing_wide",
+      "camera_movement": "crane_up_to_wide",
+      "subject_action": "standing near window, looking toward light",
+      "visual_priority": "environment"
+    },
+    {
+      "shot_id": "S02",
+      "duration_seconds": 4,
+      "shot_type": "medium_portrait",
+      "camera_movement": "parallax_window_reveal",
+      "subject_action": "turns slightly from window toward camera",
+      "visual_priority": "emotion"
+    },
+    {
+      "shot_id": "S03",
+      "duration_seconds": 3,
+      "shot_type": "macro_detail",
+      "camera_movement": "rack_focus_foreground_to_face",
+      "subject_action": "lace detail stillness",
+      "visual_priority": "texture"
+    },
+    {
+      "shot_id": "S04",
+      "duration_seconds": 4,
+      "shot_type": "profile",
+      "camera_movement": "profile_to_three_quarter",
+      "subject_action": "soft profile gaze",
+      "visual_priority": "identity"
+    },
+    {
+      "shot_id": "S05",
+      "duration_seconds": 4,
+      "shot_type": "close_up",
+      "camera_movement": "slow_push_in",
+      "subject_action": "eyes shift to camera",
+      "visual_priority": "emotion"
+    },
+    {
+      "shot_id": "S06",
+      "duration_seconds": 5,
+      "shot_type": "wide_full_body",
+      "camera_movement": "slow_pull_back",
+      "subject_action": "settles into still pose",
+      "visual_priority": "wardrobe"
+    }
+  ]
+}

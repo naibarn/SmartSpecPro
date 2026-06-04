@@ -1,0 +1,434 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/auto-cinematic-image-generator/output.schema.json",
+  "title": "Auto Cinematic Image Generator Output",
+  "description": "Output schema for prompts, contact-sheet instructions, image metadata, and keyframe breakdowns.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "project_name",
+    "mode",
+    "status",
+    "prompt_package"
+  ],
+  "properties": {
+    "project_name": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "single_cinematic_portrait",
+        "cinematic_variation_pack",
+        "contact_sheet_2x3",
+        "angle_grid_3x3",
+        "macro_detail_pack",
+        "video_start_stop_frames",
+        "storyboard_sequence",
+        "custom_shot_list"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "partial",
+        "error"
+      ],
+      "default": "ready"
+    },
+    "messages": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt_package": {
+      "$ref": "#/$defs/prompt_package"
+    },
+    "keyframe_breakdown": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/keyframe"
+      }
+    },
+    "contact_sheet": {
+      "$ref": "#/$defs/contact_sheet"
+    },
+    "video_frames": {
+      "$ref": "#/$defs/video_frames"
+    },
+    "continuity_checklist": {
+      "$ref": "#/$defs/continuity_checklist"
+    },
+    "generation_outputs": {
+      "type": "array",
+      "description": "Optional generated image artifacts if image generation was executed downstream.",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/generated_image"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "default": {}
+    }
+  },
+  "$defs": {
+    "prompt_package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "master_prompt"
+      ],
+      "properties": {
+        "master_prompt": {
+          "type": "string",
+          "description": "Primary prompt for single-image/contact-sheet modes, or global system prompt for batch modes."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "default": ""
+        },
+        "per_image_prompts": {
+          "type": "array",
+          "description": "Separate prompts for batch generation, storyboard sequences, or video start/stop pairs.",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/per_image_prompt"
+          }
+        },
+        "recommended_aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "2:3",
+            "3:2",
+            "4:5"
+          ],
+          "default": "9:16"
+        },
+        "reference_usage_summary": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "per_image_prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "2:3",
+            "3:2",
+            "4:5"
+          ],
+          "default": "9:16"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "negative_prompt": {
+          "type": "string",
+          "default": ""
+        },
+        "shot_type": {
+          "type": "string",
+          "default": ""
+        },
+        "seed_advice": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "keyframe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "camera_position",
+        "subject_state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "default": ""
+        },
+        "camera_position": {
+          "type": "string"
+        },
+        "framing": {
+          "type": "string",
+          "default": ""
+        },
+        "subject_state": {
+          "type": "string",
+          "description": "Final resting pose/action only; no motion description."
+        },
+        "focus_target": {
+          "type": "string",
+          "default": ""
+        },
+        "depth_of_field": {
+          "type": "string",
+          "default": ""
+        },
+        "continuity_notes": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "contact_sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12,
+          "default": 1
+        },
+        "overall_aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "2:3",
+            "3:2",
+            "4:5"
+          ],
+          "default": "1:1"
+        },
+        "panel_aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "2:3",
+            "3:2",
+            "4:5",
+            "auto"
+          ],
+          "default": "auto"
+        },
+        "labels": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "caption_style": {
+          "type": "string",
+          "default": "minimal white labels"
+        }
+      },
+      "default": {
+        "enabled": false,
+        "rows": 1,
+        "columns": 1,
+        "frame_count": 1,
+        "overall_aspect_ratio": "1:1",
+        "panel_aspect_ratio": "auto",
+        "labels": [],
+        "caption_style": "minimal white labels"
+      }
+    },
+    "video_frames": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "start_frame_prompt_id": {
+          "type": "string",
+          "default": ""
+        },
+        "stop_frame_prompt_id": {
+          "type": "string",
+          "default": ""
+        },
+        "continuity_instruction": {
+          "type": "string",
+          "default": ""
+        },
+        "distinctness_axes": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "difference_policy_applied": {
+          "type": "string",
+          "default": ""
+        },
+        "anti_duplicate_passed": {
+          "type": "boolean",
+          "default": true
+        },
+        "start_stop_delta_summary": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "enabled": false,
+        "start_frame_prompt_id": "",
+        "stop_frame_prompt_id": "",
+        "continuity_instruction": "",
+        "distinctness_axes": [],
+        "difference_policy_applied": "",
+        "anti_duplicate_passed": true,
+        "start_stop_delta_summary": ""
+      }
+    },
+    "continuity_checklist": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "wardrobe_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "materials_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "hair_makeup_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "lighting_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "environment_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "color_grade_locked": {
+          "type": "boolean",
+          "default": true
+        },
+        "no_new_elements": {
+          "type": "boolean",
+          "default": true
+        },
+        "warnings": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "default": {
+        "identity_locked": true,
+        "wardrobe_locked": true,
+        "materials_locked": true,
+        "hair_makeup_locked": true,
+        "lighting_locked": true,
+        "environment_locked": true,
+        "color_grade_locked": true,
+        "no_new_elements": true,
+        "warnings": []
+      }
+    },
+    "generated_image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "type": "string",
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "2:3",
+            "3:2",
+            "4:5",
+            "unknown"
+          ],
+          "default": "unknown"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "prompt_id": {
+          "type": "string",
+          "default": ""
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "id",
+        "uri"
+      ]
+    }
+  }
+}

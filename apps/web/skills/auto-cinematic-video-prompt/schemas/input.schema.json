@@ -1,0 +1,885 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/auto-cinematic-video-prompt-skill/input.schema.json",
+  "title": "Auto Cinematic Video Prompt Skill Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "aspect_ratio",
+    "output_type",
+    "cinematic_intent"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "title": "Generation Mode",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "ref_to_video",
+        "start_frame_to_video",
+        "start_stop_frame_to_video",
+        "storyboard_text_to_video",
+        "storyboard_image_to_video",
+        "storyboard_ref_to_video"
+      ],
+      "description": "Select how the video prompt will be built."
+    },
+    "output_type": {
+      "type": "string",
+      "title": "Output Type",
+      "enum": [
+        "single_video_prompt",
+        "multi_prompt_batch",
+        "start_stop_pair_prompt",
+        "storyboard_prompt_pack",
+        "shot_by_shot_prompt_pack",
+        "full_production_prompt_package"
+      ],
+      "description": "Controls whether the skill outputs one prompt, multiple independent prompts, start/stop prompts, or a complete storyboard package."
+    },
+    "cinematic_intent": {
+      "type": "string",
+      "title": "Cinematic Intent",
+      "minLength": 4,
+      "description": "A concise description of the desired cinematic scene, mood, or movement goal."
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "minItems": 0,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "image_id_or_path",
+          "role"
+        ],
+        "properties": {
+          "image_id_or_path": {
+            "type": "string",
+            "description": "Image file path, uploaded image ID, or URL handled by the host system."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "primary_character",
+              "wardrobe_reference",
+              "style_reference",
+              "lighting_reference",
+              "environment_reference",
+              "start_frame",
+              "stop_frame",
+              "composition_reference",
+              "material_texture_reference"
+            ]
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "default": 5,
+            "description": "5 means highest priority."
+          },
+          "notes": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "default": []
+    },
+    "start_frame": {
+      "type": "object",
+      "title": "Start Frame",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "image_id_or_path": {
+          "type": "string",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "lock_strength": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        }
+      },
+      "default": {
+        "enabled": false,
+        "image_id_or_path": "",
+        "description": "",
+        "lock_strength": "strict"
+      }
+    },
+    "stop_frame": {
+      "type": "object",
+      "title": "Stop Frame",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "image_id_or_path": {
+          "type": "string",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "default": ""
+        },
+        "lock_strength": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        }
+      },
+      "default": {
+        "enabled": false,
+        "image_id_or_path": "",
+        "description": "",
+        "lock_strength": "strict"
+      }
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Video Aspect Ratio",
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "default": "9:16"
+    },
+    "resolution_target": {
+      "type": "string",
+      "title": "Resolution Target",
+      "enum": [
+        "720p",
+        "1080p",
+        "1440p",
+        "4K",
+        "model_default"
+      ],
+      "default": "1080p"
+    },
+    "frame_rate": {
+      "type": "integer",
+      "title": "Frame Rate",
+      "enum": [
+        24,
+        25,
+        30,
+        48,
+        60
+      ],
+      "default": 24
+    },
+    "duration": {
+      "type": "object",
+      "title": "Duration",
+      "additionalProperties": false,
+      "properties": {
+        "single_shot_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 30,
+          "default": 5
+        },
+        "total_seconds": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 180,
+          "default": 24
+        },
+        "shot_duration_seconds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30
+          },
+          "default": []
+        }
+      },
+      "default": {
+        "single_shot_seconds": 5,
+        "total_seconds": 24,
+        "shot_duration_seconds": []
+      }
+    },
+    "preset": {
+      "type": "string",
+      "title": "Master Cinematic Preset",
+      "enum": [
+        "soft_bridal_windowlight",
+        "warm_orange_studio_beauty",
+        "hard_flash_fashion_editorial",
+        "luxury_perfume_macro",
+        "neo_noir_reflection",
+        "golden_hour_film_romance",
+        "rainy_window_melancholy",
+        "runway_backstage_documentary",
+        "dreamy_silk_slow_motion",
+        "high_key_beauty_commercial",
+        "low_key_chiaroscuro_portrait",
+        "urban_night_cinematic",
+        "minimal_white_studio_motion",
+        "vintage_fuji_velvia_flash",
+        "soft_korean_beauty_drama",
+        "cinematic_wedding_editorial",
+        "macro_fashion_texture_study",
+        "heroic_low_angle_fashion",
+        "intimate_handheld_closeup",
+        "wide_environmental_editorial"
+      ],
+      "default": "soft_korean_beauty_drama"
+    },
+    "camera_plan": {
+      "type": "object",
+      "title": "Camera Plan",
+      "additionalProperties": false,
+      "properties": {
+        "movement_preset": {
+          "type": "string",
+          "enum": [
+            "locked_off_micro_motion",
+            "slow_push_in",
+            "slow_pull_back",
+            "dolly_left_to_right",
+            "dolly_right_to_left",
+            "arc_orbit_15_degrees",
+            "arc_orbit_45_degrees",
+            "crane_down_to_close",
+            "crane_up_to_wide",
+            "low_angle_rise",
+            "high_angle_descend",
+            "over_shoulder_reveal",
+            "profile_to_three_quarter",
+            "three_quarter_to_front",
+            "rack_focus_foreground_to_face",
+            "macro_detail_to_portrait",
+            "portrait_to_macro_detail",
+            "handheld_breathing_intimate",
+            "steadicam_follow",
+            "parallax_window_reveal",
+            "mirror_reflection_reveal",
+            "whip_pan_not_recommended",
+            "custom"
+          ],
+          "default": "slow_push_in"
+        },
+        "camera_angle": {
+          "type": "string",
+          "enum": [
+            "eye_level_front",
+            "slightly_high_front",
+            "slightly_low_front",
+            "high_angle",
+            "low_angle",
+            "profile",
+            "three_quarter",
+            "back_view",
+            "over_shoulder",
+            "macro_oblique",
+            "wide_environmental",
+            "custom"
+          ],
+          "default": "eye_level_front"
+        },
+        "lens_language": {
+          "type": "string",
+          "enum": [
+            "24mm_wide_environment",
+            "35mm_cinematic_medium",
+            "50mm_natural_portrait",
+            "85mm_compressed_beauty",
+            "100mm_macro_detail",
+            "135mm_long_lens_compression",
+            "anamorphic_soft_flare",
+            "model_default"
+          ],
+          "default": "85mm_compressed_beauty"
+        },
+        "depth_of_field": {
+          "type": "string",
+          "enum": [
+            "deep",
+            "moderate",
+            "shallow",
+            "ultra_shallow",
+            "natural_by_lens"
+          ],
+          "default": "shallow"
+        },
+        "camera_height": {
+          "type": "string",
+          "enum": [
+            "floor_level",
+            "waist_level",
+            "chest_level",
+            "eye_level",
+            "above_eye_level",
+            "overhead",
+            "custom"
+          ],
+          "default": "eye_level"
+        },
+        "camera_distance": {
+          "type": "string",
+          "enum": [
+            "macro",
+            "close_up",
+            "medium_close_up",
+            "medium",
+            "wide",
+            "full_body",
+            "environmental_wide",
+            "custom"
+          ],
+          "default": "medium_close_up"
+        },
+        "custom_camera_notes": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "movement_preset": "slow_push_in",
+        "camera_angle": "eye_level_front",
+        "lens_language": "85mm_compressed_beauty",
+        "depth_of_field": "shallow",
+        "camera_height": "eye_level",
+        "camera_distance": "medium_close_up",
+        "custom_camera_notes": ""
+      }
+    },
+    "subject_action": {
+      "type": "object",
+      "title": "Subject Action",
+      "additionalProperties": false,
+      "properties": {
+        "action_preset": {
+          "type": "string",
+          "enum": [
+            "still_breathing_micro_expression",
+            "eyes_shift_to_camera",
+            "look_down_then_lift_gaze",
+            "turn_head_to_camera",
+            "turn_body_to_three_quarter",
+            "profile_turn_to_front",
+            "hand_near_face_soft_pose",
+            "touch_hair_gently",
+            "adjust_neckline_subtly",
+            "walk_one_step_forward",
+            "slow_step_and_stop",
+            "fabric_sway_only",
+            "look_out_window",
+            "look_back_over_shoulder",
+            "sit_to_still_pose",
+            "stand_to_soft_profile",
+            "custom"
+          ],
+          "default": "still_breathing_micro_expression"
+        },
+        "emotion": {
+          "type": "string",
+          "enum": [
+            "serene",
+            "intimate",
+            "melancholic",
+            "confident",
+            "romantic",
+            "mysterious",
+            "elegant",
+            "vulnerable",
+            "dreamlike",
+            "neutral_beauty",
+            "custom"
+          ],
+          "default": "serene"
+        },
+        "gaze_direction": {
+          "type": "string",
+          "enum": [
+            "direct_to_camera",
+            "slightly_off_camera",
+            "downward",
+            "toward_window",
+            "over_shoulder",
+            "eyes_closed",
+            "from_down_to_camera",
+            "from_side_to_camera",
+            "custom"
+          ],
+          "default": "direct_to_camera"
+        },
+        "custom_action_notes": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "action_preset": "still_breathing_micro_expression",
+        "emotion": "serene",
+        "gaze_direction": "direct_to_camera",
+        "custom_action_notes": ""
+      }
+    },
+    "continuity_locks": {
+      "type": "object",
+      "title": "Continuity Locks",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "absolute"
+        },
+        "wardrobe": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "absolute"
+        },
+        "hair_makeup": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "absolute"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        },
+        "lighting": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        },
+        "color_grade": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        },
+        "object_continuity": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "medium",
+            "strict",
+            "absolute"
+          ],
+          "default": "strict"
+        }
+      },
+      "default": {
+        "identity": "absolute",
+        "wardrobe": "absolute",
+        "hair_makeup": "absolute",
+        "environment": "strict",
+        "lighting": "strict",
+        "color_grade": "strict",
+        "object_continuity": "strict"
+      }
+    },
+    "start_stop_difference_policy": {
+      "type": "object",
+      "title": "Start/Stop Difference Policy",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "minimum_distinct_axes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2
+        },
+        "allowed_difference_axes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "camera_angle",
+              "camera_distance",
+              "camera_height",
+              "subject_pose",
+              "gaze_direction",
+              "body_orientation",
+              "foreground_occlusion",
+              "focus_target",
+              "composition",
+              "environment_reveal"
+            ]
+          },
+          "default": [
+            "camera_angle",
+            "camera_distance",
+            "subject_pose"
+          ]
+        },
+        "forbidden_near_duplicate": {
+          "type": "boolean",
+          "default": true
+        },
+        "difference_preset": {
+          "type": "string",
+          "enum": [
+            "wide_to_close",
+            "close_to_wide",
+            "front_to_profile",
+            "profile_to_front",
+            "high_to_low",
+            "low_to_high",
+            "detail_to_face",
+            "face_to_detail",
+            "still_to_turn",
+            "look_down_to_camera",
+            "over_shoulder_to_front",
+            "custom"
+          ],
+          "default": "wide_to_close"
+        },
+        "custom_difference_notes": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "default": {
+        "enabled": true,
+        "minimum_distinct_axes": 2,
+        "allowed_difference_axes": [
+          "camera_angle",
+          "camera_distance",
+          "subject_pose"
+        ],
+        "forbidden_near_duplicate": true,
+        "difference_preset": "wide_to_close",
+        "custom_difference_notes": ""
+      }
+    },
+    "storyboard": {
+      "type": "array",
+      "title": "Storyboard Shots",
+      "minItems": 0,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shot_id",
+          "duration_seconds",
+          "shot_type"
+        ],
+        "properties": {
+          "shot_id": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30
+          },
+          "shot_type": {
+            "type": "string",
+            "enum": [
+              "establishing_wide",
+              "wide_full_body",
+              "medium_portrait",
+              "medium_close_up",
+              "close_up",
+              "extreme_close_up",
+              "macro_detail",
+              "over_shoulder",
+              "profile",
+              "three_quarter",
+              "high_angle",
+              "low_angle",
+              "back_view",
+              "transition_detail",
+              "custom"
+            ]
+          },
+          "camera_movement": {
+            "type": "string",
+            "default": "slow_push_in"
+          },
+          "subject_action": {
+            "type": "string",
+            "default": "subtle natural motion"
+          },
+          "start_frame_description": {
+            "type": "string",
+            "default": ""
+          },
+          "end_frame_description": {
+            "type": "string",
+            "default": ""
+          },
+          "visual_priority": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "wardrobe",
+              "environment",
+              "emotion",
+              "motion",
+              "texture",
+              "story"
+            ],
+            "default": "emotion"
+          },
+          "notes": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "default": []
+    },
+    "storyboard_preset": {
+      "type": "string",
+      "title": "Storyboard Preset",
+      "enum": [
+        "none",
+        "six_shot_beauty_portrait",
+        "six_shot_fashion_editorial",
+        "six_shot_wedding_room",
+        "nine_shot_cinematic_angle_grid_video",
+        "three_act_15_second_portrait",
+        "opening_mid_close_detail_ending",
+        "macro_to_reveal",
+        "environment_to_emotion",
+        "start_stop_variation_pack",
+        "model_test_contact_sheet_for_video"
+      ],
+      "default": "none"
+    },
+    "motion_quality": {
+      "type": "object",
+      "title": "Motion Quality",
+      "additionalProperties": false,
+      "properties": {
+        "speed": {
+          "type": "string",
+          "enum": [
+            "nearly_static",
+            "slow",
+            "medium",
+            "fast"
+          ],
+          "default": "slow"
+        },
+        "stabilization": {
+          "type": "string",
+          "enum": [
+            "locked_tripod",
+            "smooth_gimbal",
+            "steadicam",
+            "handheld_soft",
+            "handheld_raw"
+          ],
+          "default": "smooth_gimbal"
+        },
+        "motion_blur": {
+          "type": "string",
+          "enum": [
+            "none",
+            "subtle",
+            "natural",
+            "pronounced"
+          ],
+          "default": "natural"
+        },
+        "realism_level": {
+          "type": "string",
+          "enum": [
+            "stylized",
+            "photoreal",
+            "hyperreal",
+            "documentary_real"
+          ],
+          "default": "photoreal"
+        }
+      },
+      "default": {
+        "speed": "slow",
+        "stabilization": "smooth_gimbal",
+        "motion_blur": "natural",
+        "realism_level": "photoreal"
+      }
+    },
+    "lighting_and_grade": {
+      "type": "object",
+      "title": "Lighting and Grade",
+      "additionalProperties": false,
+      "properties": {
+        "lighting_description": {
+          "type": "string",
+          "default": "soft cinematic window light, warm highlights, gentle shadows"
+        },
+        "grade_description": {
+          "type": "string",
+          "default": "warm cinematic color grade, creamy highlights, soft contrast"
+        },
+        "grain": {
+          "type": "string",
+          "enum": [
+            "none",
+            "subtle",
+            "medium",
+            "heavy"
+          ],
+          "default": "subtle"
+        },
+        "flash_style": {
+          "type": "string",
+          "enum": [
+            "none",
+            "soft_flash",
+            "hard_flash",
+            "direct_flash_fashion",
+            "model_default"
+          ],
+          "default": "none"
+        },
+        "maintain_from_reference": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "default": {
+        "lighting_description": "soft cinematic window light, warm highlights, gentle shadows",
+        "grade_description": "warm cinematic color grade, creamy highlights, soft contrast",
+        "grain": "subtle",
+        "flash_style": "none",
+        "maintain_from_reference": true
+      }
+    },
+    "negative_prompt": {
+      "type": "string",
+      "title": "Negative Prompt",
+      "default": "no identity drift, no wardrobe change, no extra people, no duplicated limbs, no distorted hands, no warped face, no flicker, no changing background, no changing hair, no changing makeup, no jewelry added unless in reference, no text overlays, no logos, no abrupt cuts inside a shot, no artificial plastic skin"
+    },
+    "language": {
+      "type": "string",
+      "title": "Output Language",
+      "enum": [
+        "english",
+        "thai",
+        "bilingual"
+      ],
+      "default": "english"
+    },
+    "prompt_style": {
+      "type": "string",
+      "title": "Prompt Style",
+      "enum": [
+        "seedance_compact",
+        "seedance_detailed",
+        "production_breakdown",
+        "json_structured",
+        "director_dp_notes",
+        "all_formats"
+      ],
+      "default": "seedance_detailed"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "text_to_video"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reference_images": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "start_stop_frame_to_video"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "start_frame": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "stop_frame": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

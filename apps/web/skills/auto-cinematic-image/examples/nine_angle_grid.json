@@ -1,0 +1,27 @@
+{
+  "project_name": "nine_angle_cinematic_grid",
+  "mode": "angle_grid_3x3",
+  "generator_target": "GPT Image 2",
+  "reference_images": [
+    { "id": "attached_image_1", "role": "primary_identity", "description": "Absolute ground truth for character and visual style.", "fidelity_weight": 1 }
+  ],
+  "aspect_ratio": "16:9",
+  "output_count": 1,
+  "style_preset": "reference_locked",
+  "layout": {
+    "type": "grid",
+    "rows": 3,
+    "columns": 3,
+    "panel_labels": false,
+    "panel_captions": false,
+    "border_style": "thin_white",
+    "label_style": "none"
+  },
+  "allow_text_in_image": false,
+  "negative_constraints": ["no extra person in over-shoulder frame", "no props", "no wardrobe changes", "no new background elements"],
+  "prompt_detail_level": "technical",
+  "include_keyframe_breakdown": true,
+  "include_negative_prompt": true,
+  "seed_strategy": "same_seed_for_continuity",
+  "language": "en"
+}

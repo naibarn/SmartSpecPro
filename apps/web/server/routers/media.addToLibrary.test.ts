@@ -21,7 +21,11 @@ vi.mock("../services/mediaGenerationService", () => ({
     getModel: vi.fn().mockReturnValue(null),
   },
   MEDIA_MODELS: {},
-  DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo-3-1", audio: "elevenlabs-tts" },
+  DEFAULT_MODELS: {
+    image: "google-nano-banana-pro",
+    video: "veo-3-1",
+    audio: "elevenlabs-tts",
+  },
 }));
 
 vi.mock("../services/creditService", () => ({
@@ -46,7 +50,11 @@ vi.mock("../db", () => ({
 }));
 
 vi.mock("../../drizzle/schema", () => ({
-  mediaModels: { modelId: "modelId", creditCost: "creditCost", configJson: "configJson" },
+  mediaModels: {
+    modelId: "modelId",
+    creditCost: "creditCost",
+    configJson: "configJson",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -105,14 +113,17 @@ describe("mediaRouter.addTaskToLibrary", () => {
 
     expect(result.itemId).toBe(501);
     expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
-      expect.objectContaining({ mediaTaskId: "task-123", userToken: "token-abc" }),
-      expect.objectContaining({ userId: 9, tenantId: 44 }),
+      expect.objectContaining({
+        mediaTaskId: "task-123",
+        userToken: "token-abc",
+      }),
+      expect.objectContaining({ userId: 9, tenantId: "44" })
     );
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "library_mutation",
         endpoint: "media.addTaskToLibrary",
-      }),
+      })
     );
   });
 
@@ -127,11 +138,11 @@ describe("mediaRouter.addTaskToLibrary", () => {
           tenantId: null,
         },
         input: { taskId: "task-123" },
-      }),
+      })
     ).rejects.toThrow("Tenant context is required");
   });
 
-  it("falls back to numeric user tenant when ctx tenant is string in mixed schema", async () => {
+  it("prefers request tenant when ctx tenant is a tenant key", async () => {
     mockAddMediaTaskToLibrary.mockResolvedValue({
       itemId: 502,
       created: true,
@@ -151,11 +162,11 @@ describe("mediaRouter.addTaskToLibrary", () => {
 
     expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ tenantId: 44 }),
+      expect.objectContaining({ tenantId: "tenant-ZCSKEM9s" })
     );
   });
 
-  it("prefers numeric ctx tenant when user tenant is non-numeric string", async () => {
+  it("normalizes numeric request tenant to varchar tenant id", async () => {
     mockAddMediaTaskToLibrary.mockResolvedValue({
       itemId: 504,
       created: true,
@@ -166,7 +177,11 @@ describe("mediaRouter.addTaskToLibrary", () => {
     const fn = mediaRouter.addTaskToLibrary as Function;
     await fn({
       ctx: {
-        user: { id: 9, role: "user", currentTenantId: "tenant-ZCSKEM9s" as any },
+        user: {
+          id: 9,
+          role: "user",
+          currentTenantId: "tenant-ZCSKEM9s" as any,
+        },
         userToken: "token-abc",
         tenantId: 44 as any,
       },
@@ -175,7 +190,7 @@ describe("mediaRouter.addTaskToLibrary", () => {
 
     expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ tenantId: 44 }),
+      expect.objectContaining({ tenantId: "44" })
     );
   });
 
@@ -199,7 +214,7 @@ describe("mediaRouter.addTaskToLibrary", () => {
 
     expect(mockAddMediaTaskToLibrary).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ tenantId: "tenant-ZCSKEM9s" }),
+      expect.objectContaining({ tenantId: "tenant-ZCSKEM9s" })
     );
   });
 
@@ -226,7 +241,7 @@ describe("mediaRouter.addTaskToLibrary", () => {
       expect.objectContaining({
         userId: 9,
         tenantId: "tenant-request",
-      }),
+      })
     );
   });
 
@@ -242,12 +257,14 @@ describe("mediaRouter.addTaskToLibrary", () => {
           tenantId: null,
         },
         input: { taskId: "task-123" },
-      }),
+      })
     ).rejects.toThrow("Library feature is disabled");
   });
 
   it("maps URL validation failures to BAD_REQUEST", async () => {
-    const validationError = new Error("Invalid sourceUrl: URL scheme javascript: is not allowed");
+    const validationError = new Error(
+      "Invalid sourceUrl: URL scheme javascript: is not allowed"
+    );
     validationError.name = "LibraryUrlValidationError";
     mockAddMediaTaskToLibrary.mockRejectedValue(validationError);
 
@@ -260,7 +277,9 @@ describe("mediaRouter.addTaskToLibrary", () => {
           tenantId: null,
         },
         input: { taskId: "task-123" },
-      }),
-    ).rejects.toThrow("Invalid sourceUrl: URL scheme javascript: is not allowed");
+      })
+    ).rejects.toThrow(
+      "Invalid sourceUrl: URL scheme javascript: is not allowed"
+    );
   });
 });

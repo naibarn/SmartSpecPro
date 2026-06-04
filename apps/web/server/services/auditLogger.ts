@@ -24,6 +24,7 @@ export type AuditEventType =
   | "media_response"
   | "library_mutation"
   | "rollout_gate"
+  | "hyperframes_operator_action"
   | "skill_detect"
   | "skill_execute"
   | "gdrive_api_call"

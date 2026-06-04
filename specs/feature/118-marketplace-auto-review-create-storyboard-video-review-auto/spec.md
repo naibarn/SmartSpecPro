@@ -315,25 +315,10 @@ For `video_shot_start_stop`:
 - frame URLs are saved as `startFrameUrls` and `stopFrameUrls`.
 - `storyboardFrameUrls` uses the start frames as the storyboard-visible frame set.
 
-Generated frames are added to Library as image items by `addFrameImagesToLibrary`.
-
-Library metadata includes:
-
-- source type: `marketplace_auto_review_frame`
-- marketplace product ID
-- production run ID
-- auto review run ID
-- concept ID
-- frame strategy
-- output mode
-- shot ID/order
-- frame role
-- product name
-- source URL
-- storyboard guide
-- voiceover
-
-For start/stop strategy, the current code can persist both start and stop frame items, not only the first 9 storyboard frames.
+Generated frames remain in Media History/provider task storage and are linked
+into Storyboard Review through frame URLs. They are not auto-published to
+Library; users explicitly add images to Library only when they want to preserve
+them beyond normal media-history retention.
 
 ---
 

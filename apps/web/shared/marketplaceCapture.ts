@@ -88,6 +88,30 @@ export const customerJourneyStages = [
   "retention_brand_recall",
 ] as const;
 
+export const productReferenceCategorySchema = z.enum([
+  "auto",
+  "household_product",
+  "computer_laptop",
+  "electrical_appliance",
+  "food_beverage",
+  "electronics",
+  "fashion_clothing",
+  "shoes",
+  "watch_eyewear",
+  "mobile_tablet",
+  "jewelry",
+  "mother_baby",
+  "pet_supplies",
+  "sports_equipment",
+  "camera_photography",
+  "gaming_accessories",
+  "automotive",
+  "stationery",
+  "books",
+  "furniture",
+  "cosmetics",
+]);
+
 export const evidenceItemSchema = z.object({
   id: z.string().min(1).max(120),
   type: z.enum(["title", "description", "price", "rating", "review", "comment", "hashtag", "caption", "metric", "image_alt", "seller_info", "specification", "image"]),
@@ -115,6 +139,8 @@ export const sanitizedLocalAIInputSchema = z.object({
     soldCount: z.string().max(128).optional(),
     description: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAIDescriptionChars).optional(),
     category: z.string().max(300).optional(),
+    productCategory: productReferenceCategorySchema.optional(),
+    categoryPath: z.array(z.string().max(120)).max(8).optional(),
     variants: z.string().max(1000).optional(),
     stock: z.string().max(300).optional(),
     selectedImageUrls: z.array(z.string().max(4096)).max(30).default([]),
@@ -200,6 +226,7 @@ export const productBriefSchema = z.object({
   source: sourceRefSchema,
   productName: z.string().min(1).max(300),
   category: z.string().max(200).optional(),
+  productCategory: productReferenceCategorySchema.optional(),
   shortSummary: z.string().max(800),
   keySellingPoints: boundedStringArray(),
   targetAudiences: boundedStringArray(),
@@ -352,6 +379,7 @@ export const marketplaceStorytellingHandoffSchema = z.object({
   sourceCaptureIds: z.array(z.string().max(64)).max(10).default([]),
   insightIds: z.array(z.string().max(64)).max(20).default([]),
   productName: z.string().max(300),
+  productCategory: productBriefSchema.shape.productCategory,
   sourceUrl: z.string().url(),
   affiliateUrl: z.string().url().nullable().optional(),
   platform: z.enum(marketplacePlatforms),
@@ -545,6 +573,7 @@ export const marketplaceConfirmProductSchema = z.object({
       discountText: z.string().max(64).nullable().optional(),
     }).optional().default({}),
     affiliateUrl: z.string().url().nullable().optional(),
+    productCategory: productReferenceCategorySchema.nullable().optional(),
     commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
     rating: z.object({
       score: z.number().min(0).max(5).nullable().optional(),

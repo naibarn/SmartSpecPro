@@ -1,4 +1,10 @@
 import type { ImageCandidate, MarketplacePlatform, ProductCapturePayload } from "./types";
+import {
+  PRODUCT_REFERENCE_CATEGORY_OPTIONS,
+  inferProductReferenceCategory,
+  normalizeProductReferenceCategory,
+  type ProductReferenceCategory,
+} from "./productReferenceCategories";
 
 export type PromptAPIAvailability = "available" | "downloadable" | "downloading" | "unavailable" | "unknown";
 export type LocalAIProviderId = "chrome_prompt_api" | "ollama" | "lm_studio" | "localai" | "llama_cpp" | "custom_http" | "native_messaging" | "server_ai" | "noop" | "manual";
@@ -87,6 +93,7 @@ export interface SanitizedLocalAIInput {
     soldCount?: string;
     description?: string;
     category?: string;
+    productCategory?: ProductReferenceCategory;
     variants?: string;
     stock?: string;
     selectedImageUrls: string[];
@@ -125,6 +132,7 @@ export interface ProductBrief {
   source: { platform: MarketplacePlatform; captureId?: string; url: string; affiliateUrl?: string | null };
   productName: string;
   category?: string;
+  productCategory?: ProductReferenceCategory;
   shortSummary: string;
   keySellingPoints: string[];
   targetAudiences: string[];
@@ -228,6 +236,7 @@ export interface MarketplaceStorytellingHandoff {
   sourceCaptureIds: string[];
   insightIds: string[];
   productName: string;
+  productCategory?: ProductReferenceCategory;
   sourceUrl: string;
   affiliateUrl?: string | null;
   platform: MarketplacePlatform;
@@ -436,6 +445,15 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
       soldCount: cleanText(product.soldCountText, 128) || undefined,
       description: cleanText(product.descriptionText, TEXT_LIMITS.description) || undefined,
       category: cleanText(product.categoryText, 300) || undefined,
+      productCategory: normalizeProductReferenceCategory(
+        product.productCategory
+        || inferProductReferenceCategory({
+          title: product.productName || product.pageTitle,
+          categoryText: product.categoryText,
+          categoryPath: product.categoryPath,
+          description: product.descriptionText,
+        }),
+      ),
       categoryPath: Array.isArray((product as any).categoryPath) ? (product as any).categoryPath.map((part: unknown) => cleanText(part, 120)).filter(Boolean).slice(0, 8) : undefined,
       variants: cleanText(product.variantsText, 1000) || undefined,
       stock: cleanText(product.stockText, 300) || undefined,
@@ -538,6 +556,8 @@ export function buildProductBriefPrompt(payload: SanitizedLocalAIInput, language
     `Required output language: ${languagePreference === "auto" ? "match source language; prefer concise Thai when source is Thai" : languagePreference}.`,
     "Rules: use only the provided data; do not invent claims; return JSON only; include evidenceIds whenever possible.",
     "Price rule: if you mention price, use only Captured data.product.price exactly. Do not infer price from description text, SKU codes, promotion text, or unrelated numbers.",
+    `Choose productCategory from this exact enum only: ${PRODUCT_REFERENCE_CATEGORY_OPTIONS.map((option) => option.value).join(", ")}.`,
+    "Use product.category and product.categoryPath as marketplace subcategory evidence when choosing productCategory. Keep category as the captured marketplace subcategory text.",
     "Return a ProductBrief JSON object with schemaVersion 1.0.",
     `Captured data:\n${JSON.stringify(payload, null, 2).slice(0, TEXT_LIMITS.promptPayload)}`,
   ].join("\n\n");
@@ -598,6 +618,7 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
     sourceCaptureIds: source.captureId ? [source.captureId] : [],
     insightIds: [],
     productName: productBrief.productName,
+    productCategory: productBrief.productCategory ?? source.product.productCategory ?? "auto",
     sourceUrl: source.sourceUrl,
     affiliateUrl: source.affiliateUrl ?? null,
     platform: source.platform,
@@ -1223,6 +1244,7 @@ export function normalizeProductBrief(value: any, source: SanitizedLocalAIInput)
     source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
     productName: cleanText(value?.productName || source.product.title, 300) || "Untitled product",
     category: cleanText(value?.category || source.product.category, 200) || undefined,
+    productCategory: normalizeProductReferenceCategory(value?.productCategory || source.product.productCategory),
     shortSummary: cleanText(value?.shortSummary, 800) || cleanText(source.product.description || source.product.title, 300),
     keySellingPoints: normalizePriceSensitiveList(toStringList(value?.keySellingPoints, 12), source),
     targetAudiences: toStringList(value?.targetAudiences, 12),
@@ -1250,6 +1272,7 @@ export function validateProductBrief(value: any, source: SanitizedLocalAIInput):
       "source",
       "productName",
       "category",
+      "productCategory",
       "shortSummary",
       "keySellingPoints",
       "targetAudiences",

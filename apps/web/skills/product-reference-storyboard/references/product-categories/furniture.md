@@ -5,7 +5,7 @@ Legacy skill: `furniture-reference-storyboard`
 
 ## Product Fidelity Lock
 
-Lock exact furniture subtype, dimensions/scale class, tier/shelf/drawer/door/cushion/leg/post count, joinery, hardware, material, finish, colorway, and room footprint.
+Lock exact furniture subtype, dimensions/scale class, tier/shelf/drawer/door/cushion/leg/post count, joinery, hardware, material, finish, colorway, and room footprint from the product reference image. The product reference image is the source of truth for the actual shelf/table/cabinet appearance, not the environment image.
 
 ## Common Wrong Substitutions To Reject
 
@@ -19,7 +19,7 @@ Use realistic room-scale scenes with enough wide/three-quarter views to verify s
 
 ## Frame-Level Requirements
 
-- Repeat the category-specific lock inside every product-visible frame together with the exact Product Detail facts.
+- Put the category-specific lock facts in the shared PRODUCT VERIFY block, starting with "product visual lock from @Image1 / first attached product reference image"; use only a short product-use cue inside product-visible frames.
 - Wide, overview, result, confirmation, and CTA frames must show enough of the full silhouette to verify product class, countable parts, material, scale, and colorway.
 - Detail close-ups may crop tighter, but they must still show adjacent geometry or context that proves the product did not change.
 - Environment references may influence setting and light only; they must not provide a replacement product from this category.

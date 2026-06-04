@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import type { CategoryProductCandidate, ImageCandidate, PageDetection, ProductCapturePayload } from "../shared/types";
 import {
+  PRODUCT_REFERENCE_CATEGORY_OPTIONS,
+  inferProductReferenceCategory,
+  normalizeProductReferenceCategory,
+  type ProductReferenceCategory,
+} from "../shared/productReferenceCategories";
+import {
   buildInsightSyncRequest,
   buildProductBriefPrompt,
   buildStorytellingHandoff,
@@ -59,6 +65,7 @@ interface EditableProduct {
   ratingScoreText: string;
   reviewCountText: string;
   categoryText: string;
+  productCategory: ProductReferenceCategory;
   stockText: string;
   variantsText: string;
   sellerLocationText: string;
@@ -788,6 +795,12 @@ function toEditableProduct(product: ProductCapturePayload): EditableProduct {
     ratingScoreText: product.ratingScoreText || "",
     reviewCountText: appendNormalizedCount(product.reviewCountText),
     categoryText: product.categoryText || "",
+    productCategory: normalizeProductReferenceCategory(product.productCategory || inferProductReferenceCategory({
+      title: product.productName || product.pageTitle,
+      categoryText: product.categoryText,
+      categoryPath: product.categoryPath,
+      description: product.descriptionText,
+    })),
     stockText: product.stockText || "",
     variantsText: product.variantsText || "",
     sellerLocationText: product.sellerLocationText || "",
@@ -964,6 +977,7 @@ function buildReviewedProductPayload(input: {
     ratingScoreText: editable.ratingScoreText,
     reviewCountText: editable.reviewCountText,
     categoryText: editable.categoryText,
+    productCategory: editable.productCategory,
     stockText: editable.stockText,
     variantsText: editable.variantsText,
     sellerLocationText: editable.sellerLocationText,
@@ -973,6 +987,7 @@ function buildReviewedProductPayload(input: {
       ...(editable.brand ? [] : ["missing_brand"]),
       ...(editable.priceCurrentText ? [] : ["missing_price"]),
       ...(editable.categoryText ? [] : ["missing_category"]),
+      ...(editable.productCategory === "auto" ? ["main_category_needs_review"] : []),
       ...(editable.descriptionText ? [] : ["missing_description"]),
       ...(editable.commissionRateText && parsePercentInput(editable.commissionRateText) == null ? ["invalid_commission_rate"] : []),
       ...(editable.affiliateUrl && !normalizedAffiliateUrl(editable.affiliateUrl) ? ["invalid_affiliate_url"] : []),
@@ -989,6 +1004,7 @@ function buildReviewedProductPayload(input: {
       ratingScoreText: { text: editable.ratingScoreText, source: "user_review", confidence: editable.ratingScoreText ? 0.9 : 0.2, normalized: parseRating(editable.ratingScoreText) },
       reviewCountText: { text: editable.reviewCountText, source: "user_review", confidence: editable.reviewCountText ? 0.9 : 0.2, normalized: parseSold(editable.reviewCountText) },
       categoryText: { text: editable.categoryText, source: "user_review", confidence: editable.categoryText ? 0.9 : 0.2 },
+      productCategory: { text: editable.productCategory, source: "user_review", confidence: editable.productCategory === "auto" ? 0.45 : 0.9 },
       stockText: { text: editable.stockText, source: "user_review", confidence: editable.stockText ? 0.85 : 0.2 },
       sellerLocationText: { text: editable.sellerLocationText, source: "user_review", confidence: editable.sellerLocationText ? 0.85 : 0.2 },
       variantsText: { text: editable.variantsText, source: "user_review", confidence: editable.variantsText ? 0.85 : 0.2 },
@@ -1017,6 +1033,7 @@ function buildDataQualityWarnings(input: {
     editable.affiliateUrl.trim() && !normalizedAffiliateUrl(editable.affiliateUrl) ? "Affiliate link ต้องเป็น URL แบบ http(s)" : "",
     editable.commissionRateText.trim() && !editable.priceCurrentText.trim() ? "มี commission rate แต่ยังไม่มีราคา จึงคำนวณ commission amount ไม่ได้" : "",
     !editable.categoryText.trim() ? "ยังไม่มีหมวดหมู่" : "",
+    editable.productCategory === "auto" ? "หมวดหมู่หลักยังเป็น Auto ควรเลือกให้ตรงกับ skill ก่อนส่งต่อไปทำ storyboard" : "",
     !editable.descriptionText.trim() ? "ยังไม่มีคำอธิบายสินค้า" : "",
     editable.soldCountText.trim() && !editable.ratingScoreText.trim() ? "มียอดขายแต่ยังไม่มี rating ควรตรวจสอบก่อนใช้ทำคอนเทนต์" : "",
     selectedImageCount === 0 ? "ยังไม่ได้เลือกรูปสินค้า" : "",
@@ -1091,6 +1108,7 @@ function buildAskContext(input: {
   return [
     editable.productName || product?.productName ? `สินค้า: ${editable.productName || product?.productName}` : "",
     editable.categoryText ? `หมวดหมู่: ${editable.categoryText}` : "",
+    editable.productCategory !== "auto" ? `หมวดหมู่หลักของ skill: ${editable.productCategory}` : "",
     editable.priceCurrentText ? `ราคา: ${editable.priceCurrentText}` : "",
     editable.ratingScoreText ? `Rating: ${editable.ratingScoreText}` : "",
     editable.soldCountText ? `ยอดขาย: ${editable.soldCountText}` : "",
@@ -1819,7 +1837,7 @@ export default function App() {
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [lastObservedAt, setLastObservedAt] = useState("");
   const [lastObserveReason, setLastObserveReason] = useState("");
-  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", productCategory: "auto", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   const [evidence, setEvidence] = useState<EvidenceSelection>({
     domHeader: true,
     domDescription: true,
@@ -2107,6 +2125,7 @@ export default function App() {
         shopName: current.shopName || nextProduct.shopName,
         isMall: current.isMall || nextProduct.isMall,
         categoryText: current.categoryText || nextProduct.categoryText,
+        productCategory: current.productCategory && current.productCategory !== "auto" ? current.productCategory : nextProduct.productCategory,
         categoryPath: current.categoryPath?.length ? current.categoryPath : nextProduct.categoryPath,
         brandText: current.brandText || nextProduct.brandText,
         stockText: current.stockText || nextProduct.stockText,
@@ -2136,6 +2155,7 @@ export default function App() {
         ratingScoreText: current.ratingScoreText || incoming.ratingScoreText,
         reviewCountText: current.reviewCountText || incoming.reviewCountText,
         categoryText: current.categoryText || incoming.categoryText,
+        productCategory: current.productCategory !== "auto" ? current.productCategory : incoming.productCategory,
         stockText: current.stockText || incoming.stockText,
         variantsText: current.variantsText || incoming.variantsText,
         sellerLocationText: current.sellerLocationText || incoming.sellerLocationText,
@@ -2169,7 +2189,7 @@ export default function App() {
     setHeroImageUrl("");
     setImageFilter("all");
     setReviewDraftStatus("");
-    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", affiliateUrl: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", productCategory: "auto", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   }
 
   function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean; updateCandidates?: boolean } = {}) {
@@ -3088,6 +3108,12 @@ export default function App() {
       brief = createDeterministicProductBrief(source);
       resolvedProvider = "noop";
     }
+    brief = {
+      ...brief,
+      productCategory: source.product.productCategory && source.product.productCategory !== "auto"
+        ? source.product.productCategory
+        : brief.productCategory,
+    };
     const nextVideoBrief = buildVideoBriefFromProduct(brief, source);
     const nextHandoff = buildStorytellingHandoff(brief, nextVideoBrief, source);
     setProductBrief(brief);
@@ -3608,7 +3634,7 @@ export default function App() {
   }
 
   const updateFilter = (key: keyof CandidateFilters, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
-  const updateEditable = (key: keyof EditableProduct, value: string) => setEditable((current) => ({ ...current, [key]: value }));
+  const updateEditable = <Key extends keyof EditableProduct>(key: Key, value: EditableProduct[Key]) => setEditable((current) => ({ ...current, [key]: value }));
   const updateEvidence = (key: keyof EvidenceSelection, value: boolean) => setEvidence((current) => ({ ...current, [key]: value }));
   const canDownloadLocalAIModel = localAISettings.preferLocalAI && localAICapability.availability === "downloadable";
   const storytellingInsightAttachable = canAttachStorytellingInsight(storytellingHandoff?.readiness);
@@ -5037,9 +5063,18 @@ export default function App() {
           <label className="muted">Review count</label>
           <input className="input" value={editable.reviewCountText} onChange={(e) => updateEditable("reviewCountText", e.target.value)} />
           <div className="field-evidence">{fieldEvidenceText(product, "reviewCountText")}</div>
-          <label className="muted">Category</label>
+          <label className="muted">Captured category</label>
           <input className="input" value={editable.categoryText} onChange={(e) => updateEditable("categoryText", e.target.value)} />
           <div className="field-evidence">{fieldEvidenceText(product, "categoryText")}</div>
+          <label className="muted">Main category for storyboard skill</label>
+          <select className="input" value={editable.productCategory} onChange={(e) => updateEditable("productCategory", normalizeProductReferenceCategory(e.target.value))}>
+            {PRODUCT_REFERENCE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <div className="field-evidence">
+            AI suggestion from captured category/path. User must verify before storyboard sync.
+          </div>
           <label className="muted">Stock</label>
           <input className="input" value={editable.stockText} onChange={(e) => updateEditable("stockText", e.target.value)} />
           <div className="field-evidence">{fieldEvidenceText(product, "stockText")}</div>

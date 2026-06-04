@@ -1,0 +1,80 @@
+# Feature 119 Implementation Summary
+
+Date: 2026-06-04
+
+## Completed Sections
+
+Implemented all planned sections as an additive MVP slice:
+
+1. Shared HyperFrames contracts, runtime API schemas, status copy, templates,
+   auto plan, feature access, idempotency helpers, and contract tests.
+2. Backend feature access, auto plan, template registry, composition builder,
+   sanitizer, asset staging, QA, render state, worker policy, runtime API,
+   Library finalize, operator, retention, dependency audit, and doctor services.
+3. Additive `marketplaceCapture` tRPC procedures:
+   `getAutoStoryboardReviewPlan`, `startAutoStoryboardReview`,
+   `createHyperframesPreview`, `getHyperframesRenderJob`,
+   `listHyperframesTemplates`, `cancelHyperframesRenderJob`, and
+   `saveHyperframesRenderToLibrary`.
+4. Product Detail dual-mode UI with Auto-first panel, backend plan summary,
+   advanced override disclosure, render panel, and preserved Standard Order
+   controls.
+5. Storyboard Review HyperFrames preview/result panel entry point via render
+   query context, with safe repair/fallback UI.
+6. MediaStudio render-to-Library session source extension for
+   `marketplace_auto_review_hyperframes_render`.
+7. Fixture matrix, Playwright browser evidence gate, dependency/doctor,
+   fixture-render, snapshot scripts, docs, and rollback runbook.
+8. Follow-up hardening for Library/Media History/Video Editor surface
+   projection, operator audit/metrics/dead-letter replay guard, destructive
+   retention purge adapter, expanded accessibility/responsive evidence, and a
+   production rollout gate for pinned `@hyperframes/*` package execution.
+9. Production hardening for operator procedures: delegated operator guard,
+   explicit tRPC output schemas, replay token/hash/template/access checks,
+   persisted sanitized audit events, and mounted admin diagnostics UI.
+
+## Dependency Decision
+
+HyperFrames runtime package installation remains deferred. The MVP executes a
+local Playwright Chromium + FFmpeg smoke renderer for worker, fixture,
+snapshot, and handoff gates without importing `@hyperframes/*` into the web app
+bundle. Production `@hyperframes/*` execution remains separately gated by
+dependency, license/provenance, browser-image, font, and worker-isolation
+approval.
+
+## Verification
+
+Passed:
+
+```bash
+npm --prefix apps/web run test -- client/src/components/marketplaceCapture server/routers/__tests__/marketplaceCapture.hyperframesRuntimeApi.test.ts shared/hyperframes server/services/__tests__/hyperframes
+npm --prefix apps/web run check
+npm --prefix apps/web run hyperframes:dependency-audit
+npm --prefix apps/web run hyperframes:doctor
+npm --prefix apps/web run hyperframes:fixture-render
+npm --prefix apps/web run hyperframes:snapshot-test
+npm --prefix apps/web run hyperframes:production-rollout-gate
+npm --prefix apps/web run e2e:marketplace-hyperframes
+```
+
+Notes:
+
+- The Playwright gate covers fixture-matrix assertions plus responsive browser
+  evidence for Auto, preserved Standard Order, Storyboard Review, and
+  MediaStudio Library handoff states. The evidence now includes 360x800,
+  390x844, 768x1024, 1024x768, and 1440x900 viewports, light/dark color
+  schemes, reduced motion, keyboard focus, axe checks, Library/Media History,
+  and Video Editor handoff affordances.
+- The dependency audit gate reports `partial` by design because package install
+  is deferred for production `@hyperframes/*` rollout.
+- The doctor reports `mvp_smoke_ready` in this environment through Playwright
+  Chromium, FFmpeg, FFprobe, temp workspace, and storage policy checks.
+- The production rollout gate remains `blocked` until pinned versions, license,
+  provenance, native postinstall review, worker image, fonts, Chrome, seeded
+  route E2E, and golden snapshots pass.
+
+## Git Workflow Note
+
+No section commits were created because the repository worktree already contained
+many unrelated dirty/untracked Feature 117/119 files. Changes were kept additive
+and verified without reverting unrelated work.

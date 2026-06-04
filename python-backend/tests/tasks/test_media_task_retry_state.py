@@ -49,6 +49,14 @@ def test_provider_credit_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_prompt_length_errors_are_non_retryable():
+    error = RuntimeError(
+        "500: Image generation failed: Kie.ai task submission failed: prompt exceeds maximum length"
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
 

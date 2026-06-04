@@ -1,0 +1,33 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-runtime-schemas",
+    "section-02-auto-plan-and-feature-access",
+    "section-03-template-and-composition-builder",
+    "section-04-asset-staging-security-qa",
+    "section-05-render-worker-and-runtime-state",
+    "section-06-runtime-api-router-integration",
+    "section-07-product-detail-dual-mode-ui",
+    "section-08-storyboard-review-mediastudio-handoff-ui",
+    "section-09-library-history-video-editor-finalize",
+    "section-10-observability-retention-operator",
+    "section-11-fixtures-e2e-release-gates",
+    "section-12-dependency-rollout-docs"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-06-04T07:47:53.326242+00:00"
+}

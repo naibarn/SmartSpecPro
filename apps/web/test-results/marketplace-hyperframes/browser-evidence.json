@@ -1,0 +1,154 @@
+{
+  "generatedAt": "2026-06-04T14:07:10.712Z",
+  "keyboardPathOk": true,
+  "surfaces": [
+    "Product Detail",
+    "Storyboard Review",
+    "MediaStudio",
+    "Library",
+    "Media History",
+    "Video Editor"
+  ],
+  "evidence": [
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "theme": "light",
+      "reducedMotion": true,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-light-360x800.png",
+      "overflow": {
+        "scrollWidth": 360,
+        "clientWidth": 360
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "theme": "dark",
+      "reducedMotion": true,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-dark-360x800.png",
+      "overflow": {
+        "scrollWidth": 360,
+        "clientWidth": 360
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "light",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-light-390x844.png",
+      "overflow": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "theme": "dark",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-dark-390x844.png",
+      "overflow": {
+        "scrollWidth": 390,
+        "clientWidth": 390
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "light",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-light-768x1024.png",
+      "overflow": {
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "theme": "dark",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-dark-768x1024.png",
+      "overflow": {
+        "scrollWidth": 768,
+        "clientWidth": 768
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "theme": "light",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-light-1024x768.png",
+      "overflow": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "theme": "dark",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-dark-1024x768.png",
+      "overflow": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "light",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-light-1440x900.png",
+      "overflow": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "axeViolations": 0
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "theme": "dark",
+      "reducedMotion": false,
+      "screenshotPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-dark-1440x900.png",
+      "overflow": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440
+      },
+      "axeViolations": 0
+    }
+  ]
+}

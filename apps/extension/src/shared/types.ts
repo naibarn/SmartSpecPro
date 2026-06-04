@@ -101,6 +101,7 @@ export interface ProductCapturePayload {
   isMall: boolean | null;
   categoryText?: string | null;
   categoryPath?: string[];
+  productCategory?: string | null;
   brandText?: string | null;
   stockText?: string | null;
   variantsText?: string | null;

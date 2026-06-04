@@ -137,6 +137,74 @@ describe("promptEnhancementService", () => {
     });
   });
 
+  it("extracts final_prompt from cinematic video structured JSON", () => {
+    const parsed = parsePromptResponse(JSON.stringify({
+      mode: "contact_sheet_2x3",
+      aspect_ratio: "9:16",
+      delivery_mode: "multi_shot_single_video_not_applicable",
+      final_prompt: "Create a plain text cinematic image prompt from the selected reference.",
+      prompt_sequence: [
+        { prompt: "This should only be used if final_prompt is missing." },
+      ],
+    }));
+
+    expect(parsed).toEqual({
+      promptEn: "Create a plain text cinematic image prompt from the selected reference.",
+      promptTh: "",
+    });
+  });
+
+  it("extracts prompt_sequence when no final_prompt exists", () => {
+    const parsed = parsePromptResponse(JSON.stringify({
+      mode: "contact_sheet_2x3",
+      prompt_sequence: [
+        { prompt: "Prompt one." },
+        { prompt: "Prompt two." },
+      ],
+    }));
+
+    expect(parsed).toEqual({
+      promptEn: "Prompt one. Prompt two.",
+      promptTh: "",
+    });
+  });
+
+  it("extracts prompt text from a structured JSON array response", () => {
+    const parsed = parsePromptResponse(JSON.stringify([
+      {
+        mode: "angle_grid_3x3",
+        aspect_ratio: "9:16",
+        prompt_package: {
+          master_prompt: "Use @Image1 as the reference and create one clean 3x3 angle grid prompt.",
+        },
+      },
+    ]));
+
+    expect(parsed).toEqual({
+      promptEn: "Use @Image1 as the reference and create one clean 3x3 angle grid prompt.",
+      promptTh: "",
+    });
+  });
+
+  it("extracts prompt text from nested JSON string output", () => {
+    const parsed = parsePromptResponse(JSON.stringify({
+      success: true,
+      output: JSON.stringify([
+        {
+          mode: "angle_grid_3x3",
+          prompt_sequence: [
+            { prompt: "Prompt from nested JSON string." },
+          ],
+        },
+      ]),
+    }));
+
+    expect(parsed).toEqual({
+      promptEn: "Prompt from nested JSON string.",
+      promptTh: "",
+    });
+  });
+
   it("extracts prompt text from prompt_variants bundle JSON", () => {
     const parsed = parsePromptResponse(JSON.stringify({
       prompt_variants: [

@@ -1,3 +1,6 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useId, useState } from "react";
+
 type MarketplaceInsightRow = {
   id: string;
   captureId?: string | null;
@@ -426,6 +429,8 @@ export function MarketplaceInsightsSection({
   emptyText?: string;
   allowStorytellingAction?: boolean;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const contentId = useId();
   const rows = Array.from(new Map(insights
     .filter((insight) => insight && insight.insightType !== "video_brief")
     .map((insight) => [insight.id, insight])).values());
@@ -441,68 +446,82 @@ export function MarketplaceInsightsSection({
           <h2 className="text-lg font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-slate-500">Structured outputs synced from the Chrome Extension for product brief, review signals, story options, and storytelling readiness.</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">{sortedRows.length} latest records</span>
           {hiddenHistoryCount > 0 ? <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-500">{hiddenHistoryCount} history hidden</span> : null}
           {readiness ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">{readiness}</span> : null}
+          <button
+            type="button"
+            aria-controls={contentId}
+            aria-expanded={isExpanded}
+            className="inline-flex items-center gap-1 rounded-full border bg-white px-3 py-1 text-slate-700 shadow-sm hover:bg-slate-50"
+            onClick={() => setIsExpanded((value) => !value)}
+          >
+            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {isExpanded ? "ย่อ" : "ขยาย"}
+          </button>
         </div>
       </div>
 
-      {isLoading ? <p className="mt-4 text-sm text-slate-500">Loading AI insights...</p> : null}
-      {!isLoading && sortedRows.length === 0 ? <p className="mt-4 rounded-md border bg-slate-50 p-3 text-sm text-slate-500">{emptyText}</p> : null}
+      {isExpanded ? (
+        <div id={contentId}>
+          {isLoading ? <p className="mt-4 text-sm text-slate-500">Loading AI insights...</p> : null}
+          {!isLoading && sortedRows.length === 0 ? <p className="mt-4 rounded-md border bg-slate-50 p-3 text-sm text-slate-500">{emptyText}</p> : null}
 
-      <div className="mt-4 space-y-4">
-        {sortedRows.map((insight) => {
-          const payload = insight.payloadJson ?? {};
-          const syncMetadata = payload.__syncMetadata as Record<string, any> | undefined;
-          const evidenceIds = asArray(payload.evidenceIds ?? syncMetadata?.inputEvidenceIds);
-          return (
-            <article className="rounded-md border bg-white p-4" key={insight.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold">{formatInsightType(insight.insightType)}</h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{compactText(insight.provider)}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{compactText(insight.status)}</span>
+          <div className="mt-4 space-y-4">
+            {sortedRows.map((insight) => {
+              const payload = insight.payloadJson ?? {};
+              const syncMetadata = payload.__syncMetadata as Record<string, any> | undefined;
+              const evidenceIds = asArray(payload.evidenceIds ?? syncMetadata?.inputEvidenceIds);
+              return (
+                <article className="rounded-md border bg-white p-4" key={insight.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">{formatInsightType(insight.insightType)}</h3>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{compactText(insight.provider)}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">{compactText(insight.status)}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        Created {formatDate(insight.insightCreatedAt ?? insight.createdAt)}
+                        {" | "}Confidence {formatConfidence(payload.confidence)}
+                        {" | "}Evidence {evidenceIds.length}
+                        {insight.extensionVersion ? ` | Extension ${insight.extensionVersion}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <a className="rounded-md border bg-white px-3 py-2 text-sm hover:bg-slate-50" href={`/marketplace-capture/insights/${encodeURIComponent(insight.id)}`}>
+                        Open insight
+                      </a>
+                      {allowStorytellingAction && insight.insightType === "storytelling_handoff" && (payload.readiness === "ready_for_storytelling" || payload.readiness === "ready_with_warnings") ? (
+                        <a className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white" href={`/media-studio?marketplaceStorytelling=1&marketplaceInsightId=${encodeURIComponent(insight.id)}`}>
+                          Use in Media Studio
+                        </a>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    Created {formatDate(insight.insightCreatedAt ?? insight.createdAt)}
-                    {" | "}Confidence {formatConfidence(payload.confidence)}
-                    {" | "}Evidence {evidenceIds.length}
-                    {insight.extensionVersion ? ` | Extension ${insight.extensionVersion}` : ""}
+                  <div className="mt-4">
+                    <InsightPayloadView insight={insight} />
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <a className="rounded-md border bg-white px-3 py-2 text-sm hover:bg-slate-50" href={`/marketplace-capture/insights/${encodeURIComponent(insight.id)}`}>
-                    Open insight
-                  </a>
-                  {allowStorytellingAction && insight.insightType === "storytelling_handoff" && (payload.readiness === "ready_for_storytelling" || payload.readiness === "ready_with_warnings") ? (
-                    <a className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white" href={`/media-studio?marketplaceStorytelling=1&marketplaceInsightId=${encodeURIComponent(insight.id)}`}>
-                      Use in Media Studio
-                    </a>
+                  {syncMetadata?.dataQualityWarnings?.length || syncMetadata?.selectedImageQuality?.length ? (
+                    <details className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">
+                      <summary className="cursor-pointer font-medium text-slate-700">Capture sync metadata</summary>
+                      <div className="mt-3 grid gap-4 md:grid-cols-2">
+                        <InlineList title="Data quality warnings" items={asArray(syncMetadata.dataQualityWarnings)} />
+                        <InlineList title="Selected image quality" items={asArray<Record<string, any>>(syncMetadata.selectedImageQuality).map((image) => `${compactText(image.role)} ${compactText(image.width)}x${compactText(image.height)} ${compactText(image.qualityLabel, "")}`)} />
+                      </div>
+                    </details>
                   ) : null}
-                </div>
-              </div>
-              <div className="mt-4">
-                <InsightPayloadView insight={insight} />
-              </div>
-              {syncMetadata?.dataQualityWarnings?.length || syncMetadata?.selectedImageQuality?.length ? (
-                <details className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">
-                  <summary className="cursor-pointer font-medium text-slate-700">Capture sync metadata</summary>
-                  <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <InlineList title="Data quality warnings" items={asArray(syncMetadata.dataQualityWarnings)} />
-                    <InlineList title="Selected image quality" items={asArray<Record<string, any>>(syncMetadata.selectedImageQuality).map((image) => `${compactText(image.role)} ${compactText(image.width)}x${compactText(image.height)} ${compactText(image.qualityLabel, "")}`)} />
-                  </div>
-                </details>
-              ) : null}
-              <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-slate-500">Raw structured payload</summary>
-                <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(payload, null, 2)}</pre>
-              </details>
-            </article>
-          );
-        })}
-      </div>
+                  <details className="mt-3 text-sm">
+                    <summary className="cursor-pointer text-slate-500">Raw structured payload</summary>
+                    <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">{JSON.stringify(payload, null, 2)}</pre>
+                  </details>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

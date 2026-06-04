@@ -37,6 +37,18 @@ This file records the requirements already clarified in the conversation.
 29. CTA and affiliate/source links must not be broken, unsafe, wrong-product, wrong-variant, or based on expired offers.
 30. QA quality must be calibrated so low-confidence or drifted automation is spot-checked before broad use.
 31. Finished Library assets need reuse/takedown/recheck governance when rights, evidence, offers, or policy change.
+32. Repeated or batch generation from the same product must avoid duplicate/spam-like concepts and uncontrolled credit spend.
+33. Brand/seller voice should improve tone and consistency, but must never override product truth, ad policy, rights, privacy, disclosure, evidence, or the evidence instruction firewall.
+34. High-risk or high-volume automation needs a clear human review queue with roles, SLA, approval scope, timeout behavior, and repair/rejection outcomes.
+35. Final outputs should include platform-ready thumbnail/cover, caption/description, hashtags, transcript/subtitles, manifest, and checksums when the selected destination requires them.
+36. If product evidence, selected variant, images, price/offer, rights, policy, destination profile, CTA, warning text, or user-edited script changes while a run is active, the system should preserve safe work and redo only affected work.
+37. If a start frame, stop frame, storyboard cell, thumbnail, or clip keyframe fails product/character/quality vision QA, the system should immediately repair only that exact shot/frame/clip through gateway-routed vision QA and targeted regeneration.
+38. Product image references should be vetted into an approved reference pack before paid visual generation or repair, so low-quality/wrong-variant/unhosted/rights-blocked images do not cause product mutation or wasted credits.
+39. Advertising policy, especially Thailand/platform policy, should be encoded as versioned approved rule packs instead of living only in prompts, so compliance outcomes can be audited and replayed.
+40. Stage completion should require durable evidence, not only a status update, provider callback success, or agent text response.
+41. SDK tool, handoff, hosted capability, session, trace, and output-schema permissions should be locked by Node per stage attempt so Python cannot widen automation authority during a run.
+42. One-click automation still needs a durable creative brief snapshot so the system does not infer audience, CTA, style, quality/speed tradeoff, or claim intent silently from the product alone.
+43. Recurring presenters, hand models, synthetic characters, and voices need approved identity asset packs with consent, allowed shot/voice scope, and fallback rules before provider spend.
 
 ## Inferred Product Priorities
 
@@ -51,8 +63,18 @@ Priority order:
 7. low user burden,
 8. speed.
 9. production hardening for callbacks, storage, retry/DLQ, and rollout visibility.
-10. privacy, rights, and distribution-fit for publishable ads.
+10. privacy, evidence-instruction safety, rights, and distribution-fit for publishable ads.
 11. post-render governance for disclosure, CTA, QA calibration, and safe reuse.
+12. safe high-volume generation with campaign governance, brand policy, spend anomaly detection, and review queues.
+13. platform-ready packaging so the finished video is usable without manual metadata/thumbnail/subtitle cleanup.
+14. input-change handling that avoids both stale approvals and unnecessary regeneration.
+15. exact-unit repair for failed frames/clips so visual QA does not force full-run regeneration.
+16. product reference pack readiness before visual generation, thumbnailing, and repair.
+17. advertising policy rule-pack versioning for Thai/global/platform compliance.
+18. stage completion evidence that prevents false-success advancement.
+19. SDK capability manifests that prevent unapproved tool/handoff/session/trace/hosted-capability expansion.
+20. production creative brief snapshots that make user intent, safe defaults, and changed-brief invalidation explicit.
+21. character identity asset packs that prevent unsafe face reveal, person swap, lip-sync drift, native-audio identity drift, or unapproved real-person imitation.
 
 Speed matters, but should not bypass QA. The preferred model is fast automation with targeted repair loops, not blind generation.
 

@@ -1,0 +1,124 @@
+import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { HyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
+import {
+  getMarketplaceHyperframesUiCopy,
+  type MarketplaceHyperframesUiLocale,
+} from "./hyperframesUiCopy";
+
+interface AutoStoryboardReviewPlanSummaryProps {
+  plan?: HyperframesAutoStoryboardReviewPlan | null;
+  loading?: boolean;
+  starting?: boolean;
+  onStart: () => void;
+  onUseStandard: () => void;
+  onResetToAuto?: () => void;
+  locale?: MarketplaceHyperframesUiLocale | string;
+}
+
+export function AutoStoryboardReviewPlanSummary({
+  plan,
+  loading,
+  starting,
+  onStart,
+  onUseStandard,
+  onResetToAuto,
+  locale,
+}: AutoStoryboardReviewPlanSummaryProps) {
+  const copy = getMarketplaceHyperframesUiCopy(locale);
+  const blockers = plan?.blockers ?? [];
+  const ready = Boolean(plan?.canStart && blockers.length === 0);
+  const primaryDisabled = loading || starting || !ready;
+  const primaryLabel = plan?.primaryAction.label ?? copy.createAutoReview;
+
+  return (
+    <section
+      className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100"
+      aria-label="Auto Storyboard Review plan"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-sky-900 dark:text-sky-100">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {copy.autoReviewTitle}
+          </div>
+          <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
+            {loading
+              ? copy.autoReviewLoading
+              : plan?.display.summary ??
+                copy.autoReviewFallbackSummary}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {plan?.resetToAutoAvailable && onResetToAuto ? (
+            <Button type="button" variant="outline" size="sm" onClick={onResetToAuto}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {copy.useAutoPlan}
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={onUseStandard}>
+            {copy.standardOrder}
+          </Button>
+          <Button
+            type="button"
+            onClick={onStart}
+            disabled={primaryDisabled}
+            className="bg-sky-600 text-white hover:bg-sky-700"
+          >
+            {starting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : ready ? (
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+            ) : (
+              <AlertTriangle className="mr-2 h-4 w-4" />
+            )}
+            {primaryLabel}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+        <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {copy.template}
+          </p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+            {plan?.defaults.templateId ?? copy.autoSelected}
+          </p>
+        </div>
+        <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {copy.platform}
+          </p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+            {plan?.defaults.platformPreset.label ?? copy.autoSelected}
+          </p>
+        </div>
+        <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            {copy.estimate}
+          </p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+            {plan?.creditEstimate
+              ? copy.creditsEstimated(plan.creditEstimate.estimatedCredits)
+              : copy.previewPolicy}
+          </p>
+        </div>
+      </div>
+
+      {blockers.length > 0 ? (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-100">
+          <p className="font-semibold">{copy.autoBlockedStandardAvailable}</p>
+          <ul className="mt-2 space-y-1">
+            {blockers.map(blocker => (
+              <li key={`${blocker.code}-${blocker.copyId}`}>
+                {blocker.safeMessage}
+                {blocker.nextAction ? ` ${blocker.nextAction}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  );
+}

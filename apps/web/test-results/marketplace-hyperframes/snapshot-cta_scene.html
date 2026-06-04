@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; width: 720px; height: 1280px; overflow: hidden; font-family: Inter, system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+      [data-composition-id="marketplace_storyboard_motion_9x9_v1"] { position: relative; width: 720px; height: 1280px; padding: 48px; display: grid; grid-template-rows: auto 1fr auto; gap: 28px; background: linear-gradient(160deg, #e0f2fe 0%, #ffffff 48%, #fef3c7 100%); }
+      .badge { display: inline-flex; width: max-content; border-radius: 999px; background: #0369a1; color: #fff; padding: 8px 14px; font-size: 24px; font-weight: 700; }
+      h1 { margin: 0; font-size: 48px; line-height: 1.12; overflow-wrap: anywhere; }
+      .card { display: grid; place-items: center; border: 3px solid #0ea5e9; border-radius: 24px; background: rgba(255,255,255,.78); box-shadow: 0 24px 80px rgba(15,23,42,.16); }
+      .product { width: 420px; height: 420px; border-radius: 32px; background: linear-gradient(135deg, #0ea5e9, #f59e0b); display: grid; place-items: center; color: white; font-size: 96px; font-weight: 900; transform: translateY(calc(var(--frame, 0) * -1px)); }
+      .caption { border-radius: 18px; background: rgba(15,23,42,.92); color: #fff; padding: 22px 26px; font-size: 30px; line-height: 1.28; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body style="--frame:0">
+    <main data-composition-id="marketplace_storyboard_motion_9x9_v1">
+      <div class="badge">HyperFrames Auto Review</div>
+      <section class="card">
+        <div class="product">SSP</div>
+      </section>
+      <section>
+        <h1>HyperFrames cta_scene</h1>
+        <p class="caption">cta scene · CTA และ disclosure อยู่ใน safe area</p>
+      </section>
+    </main>
+    <script>
+      window.__renderReady = Promise.resolve(true);
+      window.__setFrame = (frame) => {
+        document.body.style.setProperty("--frame", String(frame));
+        document.querySelector(".caption").textContent = "cta scene · frame " + frame + " · CTA และ disclosure อยู่ใน safe area";
+      };
+    </script>
+  </body>
+</html>

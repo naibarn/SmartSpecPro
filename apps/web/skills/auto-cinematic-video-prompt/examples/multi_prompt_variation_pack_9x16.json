@@ -1,0 +1,28 @@
+{
+  "mode": "image_to_video",
+  "output_type": "multi_prompt_batch",
+  "cinematic_intent": "Generate six separate cinematic video prompts from one portrait reference, each with a different camera placement or pose while preserving identity and wardrobe.",
+  "reference_images": [
+    {
+      "image_id_or_path": "UPLOAD_REFERENCE",
+      "role": "primary_character",
+      "priority": 5,
+      "notes": "Use as identity, wardrobe, lighting, and style ground truth."
+    }
+  ],
+  "aspect_ratio": "9:16",
+  "duration": {
+    "single_shot_seconds": 5,
+    "total_seconds": 30,
+    "shot_duration_seconds": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+    ]
+  },
+  "preset": "soft_bridal_windowlight",
+  "prompt_style": "all_formats"
+}

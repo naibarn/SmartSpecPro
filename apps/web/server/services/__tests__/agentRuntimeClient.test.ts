@@ -145,6 +145,97 @@ describe("AgentRuntimeClient", () => {
     });
   });
 
+  it("preserves media-production cancel authority identity for the Python adapter", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify(
+          makeValidResponse({
+            status: "cancelled",
+            selectedAgentName: "System",
+            selectedSkillSlug: null,
+            traceMetadata: {
+              cancelReason: "user_requested",
+              manifestHash: "manifest_hash_1",
+              stageKey: "concept_story",
+              attemptId: "attempt_1",
+            },
+            terminalReason: "runtime_error",
+            attemptId: "attempt_1",
+          }),
+        ),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const client = new AgentRuntimeClient({
+      fetchImpl,
+      runtimeConfigLoader: async () =>
+        ({
+          pythonBackendUrl: "http://python-backend.test",
+        } as any),
+      internalTokenLoader: async () => "internal-token-1",
+    });
+
+    await client.cancel({
+      runtimeContractVersion: CURRENT_RUNTIME_CONTRACT_VERSION,
+      traceSchemaVersion: CURRENT_TRACE_SCHEMA_VERSION,
+      checkpointSchemaVersion: CURRENT_CHECKPOINT_SCHEMA_VERSION,
+      surface: "media_production",
+      tenantId: "tenant-1",
+      runId: "mar-1",
+      requestId: "cancel-req-1",
+      idempotencyKey: "cancel-idem-1",
+      cancelReason: "user_requested",
+      actorMetadata: {},
+      traceCorrelationIds: {
+        traceId: "trace-1",
+        parentTraceId: null,
+      },
+      manifestHash: "manifest_hash_1",
+      stageKey: "concept_story",
+      attemptId: "attempt_1",
+    });
+
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      surface: "media_production",
+      manifestHash: "manifest_hash_1",
+      stageKey: "concept_story",
+      attemptId: "attempt_1",
+    });
+  });
+
+  it("requires media-production cancel authority identity before transport", async () => {
+    const fetchImpl = vi.fn();
+    const client = new AgentRuntimeClient({
+      fetchImpl,
+      runtimeConfigLoader: async () =>
+        ({
+          pythonBackendUrl: "http://python-backend.test",
+        } as any),
+      internalTokenLoader: async () => "internal-token-1",
+    });
+
+    await expect(
+      client.cancel({
+        runtimeContractVersion: CURRENT_RUNTIME_CONTRACT_VERSION,
+        traceSchemaVersion: CURRENT_TRACE_SCHEMA_VERSION,
+        checkpointSchemaVersion: CURRENT_CHECKPOINT_SCHEMA_VERSION,
+        surface: "media_production",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "cancel-req-1",
+        idempotencyKey: "cancel-idem-1",
+        cancelReason: "user_requested",
+        actorMetadata: {},
+        traceCorrelationIds: {
+          traceId: "trace-1",
+          parentTraceId: null,
+        },
+      } as any),
+    ).rejects.toThrow(/media_production_cancel_manifest_hash_required/);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("reads adapter health with supported contract version windows", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(

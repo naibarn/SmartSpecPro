@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/elevenlabs-product-voiceover-dialogue-skill/schemas/output.schema.json",
+  "title": "Plain Text Voiceover Or Dialogue Output",
+  "description": "The output must be normal customer-facing plain text voiceover or dialogue, not JSON and not a compliance/moderation report. Do not include meta-compliance phrases or banned-claim explanations.",
+  "type": "string",
+  "minLength": 1,
+  "maxLength": 2500
+}

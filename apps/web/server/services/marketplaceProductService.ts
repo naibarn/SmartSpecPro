@@ -12,7 +12,7 @@ import {
   marketplaceUserShareSettings,
   userGroups,
 } from "../../drizzle/schema";
-import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, type LocalInsightType, type MarketplacePlatform } from "@shared/marketplaceCapture";
+import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, productReferenceCategorySchema, type LocalInsightType, type MarketplacePlatform } from "@shared/marketplaceCapture";
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { searchImages } from "./vectorize-search";
 
@@ -40,6 +40,43 @@ function normalizeOptionalHttpUrl(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function normalizeProductCategory(value: unknown): string | null {
+  const parsed = productReferenceCategorySchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function firstStringArray(...values: unknown[]): string[] | undefined {
+  for (const value of values) {
+    if (!Array.isArray(value)) continue;
+    const items = value
+      .map(item => (typeof item === "string" ? item.trim() : ""))
+      .filter(Boolean)
+      .slice(0, 8);
+    if (items.length > 0) return items;
+  }
+  return undefined;
+}
+
+function resolveProductCategory(input: {
+  productCategory?: unknown;
+  productRaw?: Record<string, unknown>;
+  captureRaw?: Record<string, unknown>;
+  captureNormalized?: Record<string, unknown>;
+}): string | null {
+  return normalizeProductCategory(input.productCategory)
+    ?? normalizeProductCategory(input.productRaw?.productCategory)
+    ?? normalizeProductCategory(input.captureRaw?.productCategory)
+    ?? normalizeProductCategory(input.captureNormalized?.productCategory)
+    ?? null;
 }
 
 function normalizeAttachableMediaUrl(value: unknown): string | null {
@@ -446,6 +483,25 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
   const product = parsed.product;
   const captureRawPayload = (capture.rawPayloadJson ?? {}) as Record<string, unknown>;
   const captureNormalized = (capture.normalizedResultJson ?? {}) as Record<string, unknown>;
+  const productRawJson = product.platformRawJson as Record<string, unknown>;
+  const productCategory = resolveProductCategory({
+    productCategory: product.productCategory,
+    productRaw: productRawJson,
+    captureRaw: captureRawPayload,
+    captureNormalized,
+  });
+  const capturedCategoryText = firstString(
+    product.description.specs.categoryText,
+    productRawJson.categoryText,
+    captureRawPayload.categoryText,
+    captureNormalized.categoryText,
+  );
+  const capturedCategoryPath = firstStringArray(
+    product.description.specs.categoryPath,
+    productRawJson.categoryPath,
+    captureRawPayload.categoryPath,
+    captureNormalized.categoryPath,
+  );
   const affiliateUrl = normalizeOptionalHttpUrl(
     product.affiliateUrl
       ?? capture.affiliateUrl
@@ -469,6 +525,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
           currency: product.price.currency ?? existing.currency ?? "THB",
           discountText: product.price.discountText ?? existing.discountText,
           commissionRatePercent: percent(product.commissionRatePercent) ?? existing.commissionRatePercent,
+          productCategory: productCategory ?? existing.productCategory,
           affiliateUrl: affiliateUrl ?? existing.affiliateUrl,
           sourceUrl: capture.sourceUrl,
           captureId,
@@ -476,6 +533,12 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
           reviewCountText: reviewCountText ?? existing.reviewCountText,
           soldCountText: soldCountText ?? existing.soldCountText,
           soldCountNormalized: soldCountNormalized ?? existing.soldCountNormalized,
+          descriptionJson: {
+            ...((existing.descriptionJson as Record<string, unknown>) ?? {}),
+            ...(capturedCategoryText ? { categoryText: capturedCategoryText } : {}),
+            ...(capturedCategoryPath ? { categoryPath: capturedCategoryPath } : {}),
+            ...(productCategory ? { productCategory } : {}),
+          },
           platformRawJson: {
             ...(existing.platformRawJson as Record<string, unknown> ?? {}),
             latestCaptureId: captureId,
@@ -483,6 +546,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
             latestCapturedByUserId: auth.userId,
             duplicateAccessType: duplicate.accessType,
             latestAffiliateUrl: affiliateUrl ?? existing.affiliateUrl ?? null,
+            latestProductCategory: productCategory ?? existing.productCategory ?? null,
             latestProductDraft: product.platformRawJson,
           },
           updatedAt: new Date(),
@@ -529,6 +593,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     currency: product.price.currency ?? "THB",
     discountText: product.price.discountText ?? null,
     commissionRatePercent: percent(product.commissionRatePercent),
+    productCategory,
     affiliateUrl,
     ratingScore: money(product.rating.score),
     reviewCountText,
@@ -538,11 +603,17 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     descriptionJson: {
       ingredients: product.description.ingredients,
       claims: product.description.claims,
+      categoryText: capturedCategoryText,
+      categoryPath: capturedCategoryPath,
+      productCategory,
     },
     specsJson: product.description.specs,
     platformRawJson: {
-      ...(product.platformRawJson as Record<string, unknown> ?? {}),
+      ...(productRawJson ?? {}),
       affiliateUrl,
+      productCategory,
+      categoryText: capturedCategoryText,
+      categoryPath: capturedCategoryPath,
     },
     coverImageAssetId,
     status: "active",
@@ -700,6 +771,7 @@ export async function listMarketplaceProductsWithAccess(
       ilike(marketplaceProducts.affiliateUrl, `%${query}%`),
       ilike(marketplaceProducts.brand, `%${query}%`),
       ilike(marketplaceProducts.shopName, `%${query}%`),
+      ilike(marketplaceProducts.productCategory, `%${query}%`),
       ilike(marketplaceProducts.externalProductId, `%${query}%`),
       ilike(marketplaceProducts.externalShopId, `%${query}%`),
     )
@@ -775,6 +847,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       ilike(marketplaceProducts.affiliateUrl, `%${query}%`),
       ilike(marketplaceProducts.brand, `%${query}%`),
       ilike(marketplaceProducts.shopName, `%${query}%`),
+      ilike(marketplaceProducts.productCategory, `%${query}%`),
     )
     : undefined;
   const platformWhere = platform ? eq(marketplaceProducts.platform, platform) : undefined;
@@ -955,6 +1028,7 @@ export async function listMarketplaceProductImagesForMediaStudio(
       platform: row.product.platform,
       brand: row.product.brand,
       categoryText: (row.product.descriptionJson as any)?.categoryText ?? (row.product.specsJson as any)?.categoryText ?? null,
+      productCategory: row.product.productCategory ?? (row.product.descriptionJson as any)?.productCategory ?? (row.product.specsJson as any)?.productCategory ?? null,
       priceCurrent: row.product.priceCurrent,
       priceOriginal: row.product.priceOriginal,
       currency: row.product.currency,

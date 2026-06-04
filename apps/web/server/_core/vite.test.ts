@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import express from "express";
+import path from "path";
+import request from "supertest";
 
 import { isApiRequestPath } from "./apiPathGuard";
+import { cacheControlForStaticFile, serveStatic } from "./vite";
+
+vi.mock("../../vite.config", () => ({ default: {} }));
 
 describe("vite api fallback guard", () => {
   it("classifies tRPC and API paths as API requests", () => {
@@ -12,5 +18,32 @@ describe("vite api fallback guard", () => {
   it("does not classify app routes or static assets as API requests", () => {
     expect(isApiRequestPath("/chat?c=71")).toBe(false);
     expect(isApiRequestPath("/assets/index.js")).toBe(false);
+  });
+});
+
+describe("vite production static serving", () => {
+  it("uses CDN-friendly cache headers for HTML and hashed assets", () => {
+    expect(cacheControlForStaticFile(path.join("dist", "public", "index.html"))).toBe(
+      "public, max-age=60, s-maxage=300, stale-while-revalidate=86400"
+    );
+    expect(cacheControlForStaticFile(path.join("dist", "public", "assets", "index-abc123.js"))).toBe(
+      "public, max-age=31536000, immutable"
+    );
+    expect(cacheControlForStaticFile(path.join("dist", "public", "images", "dashboard-preview.jpg"))).toBeNull();
+  });
+
+  it("serves a lightweight health response before the SPA fallback", async () => {
+    const app = express();
+    serveStatic(app);
+
+    const response = await request(app).get("/health");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["content-type"]).toMatch(/json/);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).toMatchObject({
+      status: "ok",
+      service: "smartaihub-web",
+    });
   });
 });

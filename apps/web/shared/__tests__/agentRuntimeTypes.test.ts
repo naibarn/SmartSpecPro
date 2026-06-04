@@ -35,6 +35,93 @@ const baseModel = {
   resolvedGatewayModelId: "openai/gpt-4.1-mini",
 };
 
+const mediaGatewayMetadata = {
+  tenantId: "tenant-1",
+  userId: "user-1",
+  surface: "media_production" as const,
+  originSurface: "marketplace_capture" as const,
+  productionProjectId: "production-project-1",
+  productionRunId: "production-run-1",
+  agentRunId: "mar-1",
+  agentName: "Production Director",
+  agentRole: "production_director",
+  stageKey: "concept_story",
+  stepId: "step-id-1",
+  attemptId: "attempt-1",
+  modelPolicyId: "model-policy-1",
+  selectedModelId: "openai/gpt-4.1-mini",
+  creditCategory: "llm_planning" as const,
+  idempotencyKey: "idem-media-production-1",
+  creditReservationRef: "credit-reservation:llm-planning-1",
+  creditLedgerRef: "credit-ledger:llm-planning-1",
+  creditPayerRef: "credit-payer:user-1",
+  preflightSnapshotRef: "preflight:product-preflight-1",
+  creditAuditRef: "credit-audit:llm-planning-1",
+};
+
+const productionAgentsManifest = {
+  schemaVersion: "1.0" as const,
+  tenantId: "tenant-1",
+  userId: "user-1",
+  runId: "mar-1",
+  stageKey: "concept_story",
+  attemptId: "attempt-1",
+  manifestHash: "manifest-hash-1",
+  allowedAgents: ["production_director"],
+  allowedHandoffs: [],
+  allowedTools: [
+    {
+      name: "return_structured_intent",
+      category: "read_state" as const,
+      mutating: false,
+      nodeExecuted: true,
+      requiresApprovalRef: false,
+      creditCategory: "llm_planning" as const,
+      idempotencyKey: "idem-media-production-1",
+      timeoutMs: 30000,
+      maxCallsPerAttempt: 3,
+      outputTrust: "untrusted" as const,
+    },
+  ],
+  hostedSdkCapabilities: {
+    webSearch: false,
+    fileSearch: false,
+    computerUse: false,
+    codeInterpreter: false,
+    imageGeneration: false,
+    audioGeneration: false,
+    videoGeneration: false,
+    remoteMcp: false,
+    shell: false,
+  },
+  outputSchemas: [
+    {
+      artifactKind: "CreativeConceptSet",
+      schemaVersion: "1.0",
+      required: true,
+    },
+  ],
+  sessionPolicy: {
+    persistRawSdkSession: false,
+    checkpointRefsOnly: true,
+    resumeCursorRef: "resume-cursor-ref-1",
+    maxSessionEventBytes: 2048,
+  },
+  tracePolicy: {
+    captureSensitiveInputOutput: false,
+    externalSdkTraceExport: "disabled" as const,
+    redactionProfileId: "media-production-safe",
+    maxTraceEventBytes: 2048,
+    platformTraceEventRefs: ["trace-event-ref-1"],
+  },
+  streamPolicy: {
+    normalizeEvents: true,
+    stableEventIds: true,
+    duplicateEventBehavior: "idempotent_noop" as const,
+  },
+  approvedByNodeAt: "2026-04-20T00:00:00.000Z",
+};
+
 describe("Agent runtime shared DTO schemas", () => {
   it("accepts a valid Chat request fixture with active persona snapshot", () => {
     const parsed = AgentRuntimeRequestSchema.safeParse({
@@ -161,6 +248,651 @@ describe("Agent runtime shared DTO schemas", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("accepts a gateway-routed media production runtime request fixture", () => {
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "media_production",
+      originSurface: "marketplace_capture",
+      entryPoint: "marketplace_auto_review_stage",
+      tenantId: "tenant-1",
+      runId: "mar-1",
+      requestId: "req-media-production-1",
+      idempotencyKey: "idem-media-production-1",
+      objective:
+        "Create an evidence-bound storyboard concept for a marketplace product.",
+      stepContext: {
+        stepId: "step-id-1",
+        stepKey: "concept_story",
+        attemptId: "attempt-1",
+      },
+      planContext: {
+        input: {
+          stageKey: "concept_story",
+          capabilityManifestHash: "manifest-hash-1",
+          evidenceInstructionFirewallRef: "firewall-1",
+        },
+      },
+      contextEvidenceItems: [],
+      candidateSkillManifests: [
+        {
+          slug: "marketplace-production-director",
+          manifestSchemaVersion: 1,
+          name: "Marketplace Production Director",
+          purpose:
+            "Plan marketplace review media using locked product evidence.",
+          supportedSurfaces: ["media_production"],
+          supportedOriginSurfaces: ["marketplace_capture"],
+          supportedEntryPoints: ["marketplace_auto_review_stage"],
+          taskTypes: ["creative_planning"],
+          outputSchema: { schemaRef: "CreativeConceptSet" },
+        },
+      ],
+      allowedTools: ["return_structured_intent"],
+      allowedSkills: ["marketplace-production-director"],
+      allowedAgents: ["production_director"],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: {
+        ...baseEnvelope,
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        sideEffectPolicy: "read_only",
+      },
+      gatewayInvocationMetadata: mediaGatewayMetadata,
+      productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects media production authority gaps in manifest hash, stage, attempt, and tool limits", () => {
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-missing-step-context",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        planContext: {
+          input: {
+            capabilityManifestHash: "manifest-hash-1",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-hash-mismatch",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        stepContext: {
+          stepId: "step-id-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+        },
+        planContext: {
+          input: {
+            capabilityManifestHash: "different-manifest-hash",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-tool-limit-missing",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        stepContext: {
+          stepId: "step-id-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+        },
+        planContext: {
+          input: {
+            capabilityManifestHash: "manifest-hash-1",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: {
+          ...productionAgentsManifest,
+          allowedTools: [
+            {
+              name: "return_structured_intent",
+              category: "read_state",
+              mutating: false,
+              nodeExecuted: true,
+              requiresApprovalRef: false,
+              creditCategory: "llm_planning",
+              idempotencyKey: "idem-media-production-1",
+              timeoutMs: 30000,
+              outputTrust: "untrusted",
+            },
+          ],
+        },
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-extra-agent",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        stepContext: {
+          stepId: "step-id-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+        },
+        planContext: {
+          capabilityManifestHash: "manifest-hash-1",
+          input: {
+            stageKey: "concept_story",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: {
+          ...productionAgentsManifest,
+          allowedAgents: ["production_director", "unapproved_agent"],
+        },
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-extra-tool",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        stepContext: {
+          stepId: "step-id-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+        },
+        planContext: {
+          input: {
+            capabilityManifestHash: "manifest-hash-1",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [
+          {
+            slug: "marketplace-production-director",
+            manifestSchemaVersion: 1,
+            name: "Marketplace Production Director",
+            purpose: "Plan marketplace review media.",
+            supportedSurfaces: ["media_production"],
+            supportedOriginSurfaces: ["marketplace_capture"],
+            supportedEntryPoints: ["marketplace_auto_review_stage"],
+            taskTypes: ["creative_planning"],
+            outputSchema: { schemaRef: "CreativeConceptSet" },
+          },
+        ],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: {
+          ...productionAgentsManifest,
+          allowedTools: [
+            ...productionAgentsManifest.allowedTools,
+            {
+              ...productionAgentsManifest.allowedTools[0],
+              name: "schedule_unapproved_media",
+            },
+          ],
+        },
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeRequestSchema.safeParse({
+        ...baseVersions,
+        surface: "media_production",
+        originSurface: "marketplace_capture",
+        entryPoint: "marketplace_auto_review_stage",
+        tenantId: "tenant-1",
+        runId: "mar-1",
+        requestId: "req-media-extra-output-schema",
+        idempotencyKey: "idem-media-production-1",
+        objective: "Create an evidence-bound storyboard concept.",
+        stepContext: {
+          stepId: "step-id-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+        },
+        planContext: {
+          input: {
+            capabilityManifestHash: "manifest-hash-1",
+          },
+        },
+        contextEvidenceItems: [],
+        candidateSkillManifests: [
+          {
+            slug: "marketplace-production-director",
+            manifestSchemaVersion: 1,
+            name: "Marketplace Production Director",
+            purpose: "Plan marketplace review media.",
+            supportedSurfaces: ["media_production"],
+            supportedOriginSurfaces: ["marketplace_capture"],
+            supportedEntryPoints: ["marketplace_auto_review_stage"],
+            taskTypes: ["creative_planning"],
+            outputSchema: { schemaRef: "CreativeConceptSet" },
+          },
+        ],
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        completionPolicy: {},
+        reviewPolicy: {},
+        retryPolicy: {},
+        traceCorrelationIds: {},
+        modelConfig: baseModel,
+        executionEnvelope: {
+          ...baseEnvelope,
+          allowedTools: ["return_structured_intent"],
+          allowedSkills: ["marketplace-production-director"],
+          allowedAgents: ["production_director"],
+          sideEffectPolicy: "read_only",
+        },
+        gatewayInvocationMetadata: mediaGatewayMetadata,
+        productionAgentsSdkCapabilityManifest: {
+          ...productionAgentsManifest,
+          outputSchemas: [
+            ...productionAgentsManifest.outputSchemas,
+            {
+              artifactKind: "UnapprovedProviderJob",
+              schemaVersion: "1.0",
+              required: false,
+            },
+          ],
+        },
+      }).success
+    ).toBe(false);
+  });
+
+  it("requires stream and checkpoint authority identity for media production events", () => {
+    expect(
+      AgentRuntimeEventSchema.safeParse({
+        ...baseVersions,
+        eventId: "evt-media-1",
+        eventName: "response.output_text.delta",
+        surface: "media_production",
+        requestId: "req-media-production-1",
+        idempotencyKey: "idem-media-production-1",
+        sequence: 1,
+        sourceComponent: "openai_agents_adapter",
+        traceId: "trace-media-1",
+        stepId: "step-id-1",
+        stepKey: "concept_story",
+        attemptId: "attempt-1",
+        manifestHash: "manifest-hash-1",
+        sdkVersion: "0.14.2",
+        adapterVersion: "0.1.0",
+        redactedPayload: {
+          delta: "draft",
+        },
+      }).success
+    ).toBe(true);
+
+    expect(
+      AgentRuntimeEventSchema.safeParse({
+        ...baseVersions,
+        eventId: "evt-media-missing-authority",
+        eventName: "response.output_text.delta",
+        surface: "media_production",
+        requestId: "req-media-production-1",
+        idempotencyKey: "idem-media-production-1",
+        sequence: 1,
+        sourceComponent: "openai_agents_adapter",
+        traceId: "trace-media-1",
+        stepId: "step-id-1",
+        stepKey: "concept_story",
+        attemptId: "attempt-1",
+        sdkVersion: "0.14.2",
+        adapterVersion: "0.1.0",
+        redactedPayload: {},
+      }).success
+    ).toBe(false);
+
+    expect(
+      AgentRuntimeResponseSchema.safeParse({
+        ...baseVersions,
+        status: "paused",
+        providerId: "openrouter",
+        modelId: "openai/gpt-4.1-mini",
+        gatewayRouteId: "gateway-auto",
+        resolvedGatewayModelId: "openai/gpt-4.1-mini",
+        finalOutput: null,
+        artifacts: [],
+        toolCallsMade: ["return_structured_intent"],
+        handoffsExecuted: [],
+        evidenceRefs: ["artifact://concept/1"],
+        events: [],
+        traceId: "trace-media-1",
+        traceMetadata: {},
+        adapterVersion: "0.1.0",
+        sdkVersion: "0.14.2",
+        checkpoint: {
+          ...baseVersions,
+          checkpointId: "checkpoint-media-1",
+          surface: "media_production",
+          requestId: "req-media-production-1",
+          tenantId: "tenant-1",
+          resumeCursor: "cursor-media-1",
+          stepKey: "concept_story",
+          attemptId: "attempt-1",
+          manifestHash: "manifest-hash-1",
+          status: "pending",
+          originalAttemptId: "attempt-1",
+          linkedAttemptId: "attempt-1",
+          checkpointPayload: {
+            checkpointRef: "checkpoint-ref-1",
+          },
+        },
+        terminalReason: "approval_required",
+        nextAction: "Await checkpoint resume",
+        stepId: "step-id-1",
+        attemptId: "attempt-1",
+        checkpointMetadata: {
+          checkpointRef: "checkpoint-media-1",
+        },
+        eventSequenceMetadata: {},
+        stepLinks: [],
+      }).success
+    ).toBe(true);
+
+    expect(
+      AgentRuntimeResponseSchema.safeParse({
+        ...baseVersions,
+        status: "paused",
+        providerId: "openrouter",
+        modelId: "openai/gpt-4.1-mini",
+        finalOutput: null,
+        artifacts: [],
+        toolCallsMade: [],
+        handoffsExecuted: [],
+        evidenceRefs: [],
+        events: [],
+        traceId: "trace-media-1",
+        traceMetadata: {},
+        adapterVersion: "0.1.0",
+        sdkVersion: "0.14.2",
+        checkpoint: {
+          ...baseVersions,
+          checkpointId: "checkpoint-media-missing-authority",
+          surface: "media_production",
+          requestId: "req-media-production-1",
+          tenantId: "tenant-1",
+          status: "pending",
+          checkpointPayload: {},
+        },
+        terminalReason: "approval_required",
+        nextAction: "Await checkpoint resume",
+        stepId: "step-id-1",
+        attemptId: "attempt-1",
+        eventSequenceMetadata: {},
+        stepLinks: [],
+      }).success
+    ).toBe(false);
+  });
+
+  it.each([
+    "marketplace_capture",
+    "media_studio_production",
+    "media_studio_video_shot",
+    "storyboard_review",
+    "video_edit",
+  ])("accepts Feature 117 origin surface %s", originSurface => {
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "chat",
+      originSurface,
+      entryPoint: "chat_turn",
+      tenantId: "tenant-1",
+      requestId: `req-${originSurface}`,
+      idempotencyKey: `idem-${originSurface}`,
+      objective: "Answer the prompt.",
+      contextEvidenceItems: [],
+      candidateSkillManifests: [],
+      allowedTools: [],
+      allowedSkills: [],
+      allowedAgents: [],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: baseEnvelope,
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects media production requests without gateway billing metadata", () => {
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "media_production",
+      originSurface: "marketplace_capture",
+      entryPoint: "marketplace_auto_review_stage",
+      tenantId: "tenant-1",
+      runId: "mar-1",
+      requestId: "req-media-missing-metadata",
+      idempotencyKey: "idem-media-production-1",
+      objective: "Create an evidence-bound storyboard concept.",
+      contextEvidenceItems: [],
+      candidateSkillManifests: [],
+      allowedTools: [],
+      allowedSkills: [],
+      allowedAgents: [],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: baseEnvelope,
+      productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects media production requests when gateway metadata does not match model policy", () => {
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "media_production",
+      originSurface: "marketplace_capture",
+      entryPoint: "marketplace_auto_review_stage",
+      tenantId: "tenant-1",
+      runId: "mar-1",
+      requestId: "req-media-model-mismatch",
+      idempotencyKey: "idem-media-production-1",
+      objective: "Create an evidence-bound storyboard concept.",
+      contextEvidenceItems: [],
+      candidateSkillManifests: [],
+      allowedTools: [],
+      allowedSkills: [],
+      allowedAgents: [],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: baseEnvelope,
+      gatewayInvocationMetadata: {
+        ...mediaGatewayMetadata,
+        selectedModelId: "wrong-model",
+      },
+      productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects media production requests when gateway credit audit refs are missing", () => {
+    const metadataWithoutAuditRef: Record<string, unknown> = {
+      ...mediaGatewayMetadata,
+    };
+    delete metadataWithoutAuditRef.creditAuditRef;
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "media_production",
+      originSurface: "marketplace_capture",
+      entryPoint: "marketplace_auto_review_stage",
+      tenantId: "tenant-1",
+      runId: "mar-1",
+      requestId: "req-media-credit-audit-missing",
+      idempotencyKey: "idem-media-production-1",
+      objective: "Create an evidence-bound storyboard concept.",
+      stepContext: {
+        stepId: "step-id-1",
+        stepKey: "concept_story",
+        attemptId: "attempt-1",
+      },
+      planContext: {
+        input: {
+          capabilityManifestHash: "manifest-hash-1",
+        },
+      },
+      contextEvidenceItems: [],
+      candidateSkillManifests: [],
+      allowedTools: ["return_structured_intent"],
+      allowedSkills: ["marketplace-production-director"],
+      allowedAgents: ["production_director"],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: {
+        ...baseEnvelope,
+        allowedTools: ["return_structured_intent"],
+        allowedSkills: ["marketplace-production-director"],
+        allowedAgents: ["production_director"],
+        sideEffectPolicy: "read_only",
+      },
+      gatewayInvocationMetadata: metadataWithoutAuditRef,
+      productionAgentsSdkCapabilityManifest: productionAgentsManifest,
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
   it("rejects an invalid review verdict status", () => {
     const parsed = ReviewVerdictSchema.safeParse({
       status: "almost_pass",
@@ -171,7 +903,10 @@ describe("Agent runtime shared DTO schemas", () => {
   });
 
   it("includes plan_incomplete_cap_reached in terminal reasons", () => {
-    expect(RuntimeTerminalReasonSchema.safeParse("plan_incomplete_cap_reached").success).toBe(true);
+    expect(
+      RuntimeTerminalReasonSchema.safeParse("plan_incomplete_cap_reached")
+        .success
+    ).toBe(true);
   });
 
   it("accepts the current contract version fixture", () => {

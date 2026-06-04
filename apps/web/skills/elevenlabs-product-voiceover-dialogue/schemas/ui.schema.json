@@ -1,0 +1,295 @@
+{
+  "version": "22.0",
+  "skillId": "elevenlabs-product-voiceover-dialogue",
+  "title": "ElevenLabs Product Voiceover & Dialogue",
+  "titleTh": "สคริปต์เสียงสินค้าและ Voiceover",
+  "description": "Create safe, expressive, ad-ready product voiceover or dialogue for ElevenLabs TTS from product details, storyboards, and optional product images.",
+  "descriptionTh": "สร้างบทพูดหรือ voiceover โฆษณาสินค้าสำหรับ ElevenLabs TTS จากรายละเอียดสินค้า โครงเรื่อง และรูปสินค้า",
+  "sections": [
+    {
+      "id": "product",
+      "title": "Product Detail",
+      "titleTh": "รายละเอียดสินค้า",
+      "description": "Product detail is required. Paste the full listing, ingredients, claims, warnings, bundle details, and selling points here.",
+      "descriptionTh": "ต้องกรอกรายละเอียดสินค้า ใส่ข้อมูลประกาศขาย ส่วนผสม คำเคลม คำเตือน รายละเอียดเซ็ต และจุดขายให้ครบ",
+      "collapsible": false,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "product_details",
+          "type": "textarea",
+          "label": "Product detail",
+          "labelTh": "Product detail",
+          "placeholder": "Paste full product details, listing text, ingredients, benefits, warnings, promotion notes, or bundle/SKU details...",
+          "placeholderTh": "วางรายละเอียดสินค้าทั้งหมด เช่น รายละเอียดประกาศขาย ส่วนผสม คุณสมบัติ คำเตือน โปรโมชัน หรือข้อมูลเซ็ต/SKU...",
+          "helpText": "Required. This is the main source for the dialogue. The field is intentionally large for long product listings.",
+          "helpTextTh": "จำเป็นต้องกรอก ช่องนี้เป็นข้อมูลหลักของบทพูด และออกแบบให้รองรับรายละเอียดสินค้ายาว ๆ",
+          "required": true,
+          "rows": 14
+        },
+        {
+          "id": "product_images",
+          "type": "imageUpload",
+          "label": "Product images",
+          "labelTh": "รูปสินค้า",
+          "helpText": "Optional. Drag images here or click Add. Use product photos, packaging, labels, ingredients, usage, texture, or swatches. Max 5 images.",
+          "helpTextTh": "ไม่บังคับ ลากรูปมาวางหรือกด Add ได้ ใช้รูปสินค้า แพ็กเกจ ฉลาก ส่วนผสม วิธีใช้ เนื้อสัมผัส หรือ swatch ได้ สูงสุด 5 รูป",
+          "required": false,
+          "multiple": true,
+          "accept": "image/*",
+          "maxImages": 5,
+          "maxItems": 5,
+          "default": []
+        }
+      ]
+    },
+    {
+      "id": "script_options",
+      "title": "Script Options",
+      "titleTh": "ตัวเลือกบทพูด",
+      "description": "Most options can stay on Auto. Change only when you want a specific style.",
+      "descriptionTh": "ส่วนใหญ่ปล่อย Auto ได้ เปลี่ยนเฉพาะเมื่อต้องการแนวเฉพาะ",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "output_language",
+          "type": "select",
+          "label": "Output language",
+          "labelTh": "ภาษาบทพูด",
+          "helpText": "Auto uses the current app/browser language first. In a Thai UI, Auto will prefer Thai unless the product details or user request clearly specify another language.",
+          "helpTextTh": "อัตโนมัติจะดูภาษาของหน้าเว็บ/เบราว์เซอร์ก่อน ถ้า UI เป็นภาษาไทย ระบบจะเอนเอียงให้บทพูดเป็นภาษาไทย เว้นแต่รายละเอียดสินค้าหรือคำสั่งผู้ใช้ระบุภาษาอื่นชัดเจน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "Thai", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "English", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "Japanese", "label": "Japanese", "labelTh": "ญี่ปุ่น" },
+            { "value": "Korean", "label": "Korean", "labelTh": "เกาหลี" },
+            { "value": "Chinese", "label": "Chinese", "labelTh": "จีน" },
+            { "value": "Vietnamese", "label": "Vietnamese", "labelTh": "เวียดนาม" },
+            { "value": "Indonesian", "label": "Indonesian", "labelTh": "อินโดนีเซีย" },
+            { "value": "Malay", "label": "Malay", "labelTh": "มาเลย์" },
+            { "value": "Spanish", "label": "Spanish", "labelTh": "สเปน" },
+            { "value": "French", "label": "French", "labelTh": "ฝรั่งเศส" },
+            { "value": "German", "label": "German", "labelTh": "เยอรมัน" },
+            { "value": "Arabic", "label": "Arabic", "labelTh": "อาหรับ" },
+            { "value": "Hindi", "label": "Hindi", "labelTh": "ฮินดี" },
+            { "value": "Portuguese", "label": "Portuguese", "labelTh": "โปรตุเกส" },
+            { "value": "Italian", "label": "Italian", "labelTh": "อิตาลี" }
+          ]
+        },
+        {
+          "id": "speech_style",
+          "type": "select",
+          "label": "Speech style",
+          "labelTh": "สไตล์การพูด",
+          "helpText": "Choose the voice personality. For scroll-stopping sales energy, use Energetic host. For trust-heavy products, use Friendly expert or Professional. For everyday skincare, Friend to friend often sounds more natural.",
+          "helpTextTh": "เลือกบุคลิกเสียงพูด ถ้าต้องการพลังขายให้คนหยุดฟัง ใช้ “พิธีกรพลังสูง” ถ้าสินค้าต้องการความน่าเชื่อถือ ใช้ “ผู้เชี่ยวชาญเป็นกันเอง” หรือ “มืออาชีพ” ถ้าเป็นสกินแคร์ใช้ทุกวัน “คุยเหมือนเพื่อนแนะนำ” มักฟังเป็นธรรมชาติกว่า",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "friendly_expert", "label": "Friendly expert", "labelTh": "ผู้เชี่ยวชาญเป็นกันเอง" },
+            { "value": "friend_to_friend", "label": "Friend to friend", "labelTh": "คุยเหมือนเพื่อนแนะนำ" },
+            { "value": "professional", "label": "Professional", "labelTh": "มืออาชีพ" },
+            { "value": "humorous", "label": "Humorous", "labelTh": "ตลก/สนุก" },
+            { "value": "sarcastic_light", "label": "Light sarcastic", "labelTh": "แซวนิด ๆ" },
+            { "value": "complaining_but_helpful", "label": "Complaining but helpful", "labelTh": "บ่นแต่ช่วยขาย" },
+            { "value": "roast_but_praise", "label": "Roast but praise", "labelTh": "แซวแรงแต่ชมสินค้า" },
+            { "value": "luxury_polished", "label": "Luxury polished", "labelTh": "หรู ดูแพง" },
+            { "value": "soft_caring", "label": "Soft caring", "labelTh": "อ่อนโยน ใส่ใจ" },
+            { "value": "energetic_host", "label": "Energetic host", "labelTh": "พิธีกรพลังสูง" }
+          ]
+        },
+        {
+          "id": "persuasion_style",
+          "type": "select",
+          "label": "Persuasion style",
+          "labelTh": "แนวโน้มน้าว",
+          "helpText": "Choose the selling logic. Direct response is strongest for action/stop-scroll ads. Problem / solution is best when the product solves a clear pain point. Benefit led is safer and more general. Premium trust is calmer and more credible.",
+          "helpTextTh": "เลือกตรรกะการขาย ถ้าต้องการกระตุ้นให้หยุดฟังและตัดสินใจ ใช้ “ขายตรง กระตุ้นตัดสินใจ” ถ้าสินค้าแก้ปัญหาชัด ใช้ “ปัญหา/ทางแก้” ถ้าต้องการปลอดภัยและกว้าง ใช้ “นำด้วยประโยชน์” ถ้าต้องการน่าเชื่อถือแบบนิ่งขึ้น ใช้ “พรีเมียม น่าเชื่อถือ”",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "benefit_led", "label": "Benefit led", "labelTh": "นำด้วยประโยชน์" },
+            { "value": "problem_solution", "label": "Problem / solution", "labelTh": "ปัญหา/ทางแก้" },
+            { "value": "storytelling", "label": "Storytelling", "labelTh": "เล่าเรื่อง" },
+            { "value": "review_like", "label": "Review-like", "labelTh": "สไตล์รีวิว" },
+            { "value": "educational", "label": "Educational", "labelTh": "ให้ความรู้" },
+            { "value": "soft_sell", "label": "Soft sell", "labelTh": "ขายนุ่ม ๆ" },
+            { "value": "direct_response", "label": "Direct response", "labelTh": "ขายตรง กระตุ้นตัดสินใจ" },
+            { "value": "humor_hook", "label": "Humor hook", "labelTh": "เปิดด้วยมุก" },
+            { "value": "premium_trust", "label": "Premium trust", "labelTh": "พรีเมียม น่าเชื่อถือ" },
+            { "value": "routine_journey", "label": "Routine journey", "labelTh": "เล่ารูทีนการใช้" }
+          ]
+        },
+        {
+          "id": "target_duration_seconds",
+          "type": "select",
+          "label": "Target duration",
+          "labelTh": "ความยาวบทพูด",
+          "helpText": "Shorter scripts feel punchier. Use 15-55 seconds for concise ads, or 1-3 minutes for fuller storytelling, usage steps, ingredients, cautions, and a more complete sales arc.",
+          "helpTextTh": "ยิ่งสั้นยิ่งกระชับและมีแรงปะทะ ใช้ 15-55 วินาทีสำหรับโฆษณาสั้น หรือ 1-3 นาทีเมื่อต้องการเล่าเรื่อง วิธีใช้ ส่วนผสม คำเตือน และปิดการขายแบบครบขึ้น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "15", "label": "15 seconds", "labelTh": "15 วินาที" },
+            { "value": "30", "label": "30 seconds", "labelTh": "30 วินาที" },
+            { "value": "45", "label": "45 seconds", "labelTh": "45 วินาที" },
+            { "value": "55", "label": "55 seconds", "labelTh": "55 วินาที" },
+            { "value": "60", "label": "1 minute", "labelTh": "1 นาที" },
+            { "value": "75", "label": "1 minute 15 seconds", "labelTh": "1 นาที 15 วินาที" },
+            { "value": "90", "label": "1 minute 30 seconds", "labelTh": "1 นาที 30 วินาที" },
+            { "value": "105", "label": "1 minute 45 seconds", "labelTh": "1 นาที 45 วินาที" },
+            { "value": "110", "label": "1 minute 50 seconds", "labelTh": "1 นาที 50 วินาที" },
+            { "value": "120", "label": "2 minutes", "labelTh": "2 นาที" },
+            { "value": "135", "label": "2 minutes 15 seconds", "labelTh": "2 นาที 15 วินาที" },
+            { "value": "150", "label": "2 minutes 30 seconds", "labelTh": "2 นาที 30 วินาที" },
+            { "value": "165", "label": "2 minutes 45 seconds", "labelTh": "2 นาที 45 วินาที" },
+            { "value": "170", "label": "2 minutes 50 seconds", "labelTh": "2 นาที 50 วินาที" },
+            { "value": "180", "label": "3 minutes", "labelTh": "3 นาที" }
+          ]
+        },
+        {
+          "id": "speaker_count",
+          "type": "select",
+          "label": "Speakers",
+          "labelTh": "จำนวนผู้พูด",
+          "helpText": "Use 2 speakers for dialogue ads: Speaker 1 sells, Speaker 2 asks like a real listener. Use 1 speaker for short announcer-style clips.",
+          "helpTextTh": "ใช้ 2 คนพูดเมื่อต้องการบทสนทนาโฆษณา: Speaker 1 ขาย, Speaker 2 ถามแทนคนฟังจริง ใช้ 1 คนพูดสำหรับคลิปสั้นแบบประกาศหรือ voiceover เดี่ยว",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1", "label": "1 speaker", "labelTh": "1 คนพูด" },
+            { "value": "2", "label": "2 speakers", "labelTh": "2 คนสนทนา" }
+          ]
+        },
+        {
+          "id": "enable_audio_tags",
+          "type": "select",
+          "label": "Audio tags",
+          "labelTh": "แท็กอารมณ์เสียง",
+          "helpText": "Emotion tags guide delivery but too many tags can sound artificial. Auto is recommended; use tags only for the opening hook, major reaction, or closing push.",
+          "helpTextTh": "แท็กอารมณ์ช่วยกำกับน้ำเสียง แต่ใส่มากไปจะฟังประดิษฐ์ แนะนำใช้อัตโนมัติ โดยให้มีเฉพาะจุดเปิด hook, จังหวะรีแอคสำคัญ หรือปิดขาย",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "true", "label": "Use emotion tags", "labelTh": "ใส่แท็กอารมณ์" },
+            { "value": "false", "label": "No emotion tags", "labelTh": "ไม่ใส่แท็กอารมณ์" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image_policy",
+      "title": "Image Use",
+      "titleTh": "การใช้รูปสินค้า",
+      "description": "Optional controls for how uploaded images support the product text.",
+      "descriptionTh": "ตัวเลือกเสริมสำหรับกำหนดว่ารูปสินค้าจะช่วยข้อมูลสินค้าอย่างไร",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "image_analysis_mode",
+          "type": "select",
+          "label": "Image analysis mode",
+          "labelTh": "โหมดวิเคราะห์รูป",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "detect_conflicts_and_risks", "label": "Detect visible details, conflicts, and risky claims", "labelTh": "ตรวจรายละเอียดที่เห็น ความขัดแย้ง และคำเคลมเสี่ยง" },
+            { "value": "extract_visible_details", "label": "Extract visible details", "labelTh": "ดึงรายละเอียดที่มองเห็น" },
+            { "value": "support_text_only", "label": "Support product text only", "labelTh": "ใช้รูปช่วยยืนยันข้อความสินค้าเท่านั้น" },
+            { "value": "off", "label": "Off", "labelTh": "ปิด" }
+          ]
+        },
+        {
+          "id": "image_evidence_policy",
+          "type": "select",
+          "label": "Image evidence policy",
+          "labelTh": "นโยบายใช้ข้อมูลจากรูป",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "text_primary_image_support", "label": "Product text is primary; images support only", "labelTh": "ยึดข้อความสินค้าเป็นหลัก รูปใช้เสริมเท่านั้น" },
+            { "value": "visible_text_only", "label": "Use visible/readable image text only", "labelTh": "ใช้เฉพาะข้อความที่อ่านได้จากรูป" },
+            { "value": "conflict_safe_neutral", "label": "Neutral wording when text and image conflict", "labelTh": "ใช้คำกลางเมื่อข้อความกับรูปขัดแย้งกัน" }
+          ]
+        },
+        {
+          "id": "regulated_product_mode",
+          "type": "select",
+          "label": "Regulated product mode",
+          "labelTh": "โหมดสินค้ากลุ่มต้องระวัง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "cosmetic_only", "label": "Cosmetic only", "labelTh": "เครื่องสำอางทั่วไป" },
+            { "value": "medical_adjacent_cautious", "label": "Medical-adjacent cautious", "labelTh": "สินค้าใกล้การแพทย์ ใช้ถ้อยคำระวัง" },
+            { "value": "refuse_or_neutral_when_needed", "label": "Refuse or neutral when needed", "labelTh": "ปฏิเสธหรือใช้คำกลางเมื่อจำเป็น" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hidden_defaults",
+      "title": "Hidden Defaults",
+      "collapsed": true,
+      "fields": [
+        { "id": "format", "type": "hidden", "default": "plain_text_dialogue", "label": "Format" },
+        { "id": "strict_claim_guard", "type": "hidden", "default": true, "label": "Strict claim guard" },
+        { "id": "avoid_brand_endorsement", "type": "hidden", "default": true, "label": "Avoid brand endorsement" },
+        { "id": "evergreen_mode", "type": "hidden", "default": true, "label": "Evergreen mode" },
+        { "id": "medical_reference_policy", "type": "hidden", "default": "auto", "label": "Medical reference policy" },
+        { "id": "professional_warning_enabled", "type": "hidden", "default": true, "label": "Professional warning" },
+        { "id": "no_meta_compliance_dialogue", "type": "hidden", "default": true, "label": "No meta compliance dialogue" },
+        { "id": "multi_sku_handling", "type": "hidden", "default": "auto", "label": "Multi SKU handling" },
+        { "id": "fragrance_brand_guard", "type": "hidden", "default": true, "label": "Fragrance brand guard" },
+        { "id": "near_eye_product_caution", "type": "hidden", "default": true, "label": "Near-eye caution" },
+        { "id": "self_heating_near_eye_caution", "type": "hidden", "default": true, "label": "Self-heating near-eye caution" },
+        { "id": "intimate_care_external_use_caution", "type": "hidden", "default": true, "label": "Intimate care caution" },
+        { "id": "heat_appliance_safety_caution", "type": "hidden", "default": true, "label": "Heat appliance safety" },
+        { "id": "dermatology_endorsement_guard", "type": "hidden", "default": true, "label": "Dermatology endorsement guard" },
+        { "id": "simple_accessory_mode", "type": "hidden", "default": true, "label": "Simple accessory mode" },
+        { "id": "medical_device_cautious_mode", "type": "hidden", "default": true, "label": "Medical device cautious mode" },
+        { "id": "supplement_warning_enabled", "type": "hidden", "default": true, "label": "Supplement warning" },
+        { "id": "scalp_condition_guard", "type": "hidden", "default": true, "label": "Scalp condition guard" },
+        { "id": "textile_uv_guard", "type": "hidden", "default": true, "label": "Textile UV guard" },
+        { "id": "clinical_number_simplifier", "type": "hidden", "default": true, "label": "Clinical number simplifier" }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "product_details": "product_details",
+    "product_images": "product_images",
+    "output_language": "output_language",
+    "speech_style": "speech_style",
+    "persuasion_style": "persuasion_style",
+    "target_duration_seconds": "target_duration_seconds",
+    "speaker_count": "speaker_count",
+    "enable_audio_tags": "enable_audio_tags",
+    "image_analysis_mode": "image_analysis_mode",
+    "image_evidence_policy": "image_evidence_policy",
+    "regulated_product_mode": "regulated_product_mode",
+    "format": "format",
+    "strict_claim_guard": "strict_claim_guard",
+    "avoid_brand_endorsement": "avoid_brand_endorsement",
+    "evergreen_mode": "evergreen_mode",
+    "medical_reference_policy": "medical_reference_policy",
+    "professional_warning_enabled": "professional_warning_enabled",
+    "no_meta_compliance_dialogue": "no_meta_compliance_dialogue",
+    "multi_sku_handling": "multi_sku_handling",
+    "fragrance_brand_guard": "fragrance_brand_guard",
+    "near_eye_product_caution": "near_eye_product_caution",
+    "self_heating_near_eye_caution": "self_heating_near_eye_caution",
+    "intimate_care_external_use_caution": "intimate_care_external_use_caution",
+    "heat_appliance_safety_caution": "heat_appliance_safety_caution",
+    "dermatology_endorsement_guard": "dermatology_endorsement_guard",
+    "simple_accessory_mode": "simple_accessory_mode",
+    "medical_device_cautious_mode": "medical_device_cautious_mode",
+    "supplement_warning_enabled": "supplement_warning_enabled",
+    "scalp_condition_guard": "scalp_condition_guard",
+    "textile_uv_guard": "textile_uv_guard",
+    "clinical_number_simplifier": "clinical_number_simplifier"
+  }
+}

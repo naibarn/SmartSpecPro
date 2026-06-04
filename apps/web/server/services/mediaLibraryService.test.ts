@@ -39,6 +39,9 @@ vi.mock("./libraryService", () => ({
 }));
 
 vi.mock("../../drizzle/schema", () => ({
+  libraryItems: {
+    id: "id",
+  },
   mediaModels: {
     provider: "provider",
     modelId: "modelId",
@@ -49,7 +52,10 @@ vi.mock("drizzle-orm", () => ({
   eq: mockEq,
 }));
 
-import { addMediaTaskToLibrary, autoAddMediaTaskToLibrary } from "./mediaLibraryService";
+import {
+  addMediaTaskToLibrary,
+  autoAddMediaTaskToLibrary,
+} from "./mediaLibraryService";
 
 const ORIGINAL_AUTO_ADD = process.env.MEDIA_LIBRARY_AUTO_ADD_ENABLED;
 
@@ -61,6 +67,11 @@ beforeEach(() => {
       where: vi.fn().mockReturnValue({
         limit: vi.fn().mockResolvedValue([]),
       }),
+    }),
+  });
+  mockDb.update.mockReturnValue({
+    set: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([]),
     }),
   });
 });
@@ -110,7 +121,7 @@ describe("addMediaTaskToLibrary", () => {
         userId: 9,
         tenantId: 44,
         role: "user",
-      },
+      }
     );
 
     expect(result).toEqual({
@@ -131,10 +142,87 @@ describe("addMediaTaskToLibrary", () => {
         itemType: "video",
         source: "media_task",
         status: "indexing",
-        sourceLink: expect.objectContaining({ linkType: "media_task", linkId: "task-123" }),
+        sourceLink: expect.objectContaining({
+          linkType: "media_task",
+          linkId: "task-123",
+        }),
       }),
       expect.objectContaining({ userId: 9, tenantId: 44 }),
-      mockDb,
+      mockDb
+    );
+  });
+
+  it("carries marketplace product trace from media task parameters into library metadata", async () => {
+    mockGetTask.mockResolvedValue({
+      id: "task-marketplace-1",
+      taskId: "provider-marketplace-1",
+      userId: "9",
+      mediaType: "image",
+      status: "completed",
+      model: "veo-3-1",
+      prompt: "Marketplace product hero",
+      parameters: {
+        extra_params: {
+          __marketplace_product_id: "mp_123",
+          __marketplace_product_name: "Wireless Lamp",
+          __production_run_id: "prod_run_1",
+          __auto_review_run_id: "review_run_1",
+        },
+        marketplaceContext: {
+          externalProductId: "external_456",
+          externalShopId: "shop_789",
+          sourceUrl: "https://shopee.example/product",
+          captureId: "cap_1",
+        },
+      },
+      resultUrl: "https://cdn.example.com/hero.png",
+      createdAt: "2026-02-10T00:00:00.000Z",
+      updatedAt: "2026-02-10T00:00:00.000Z",
+    });
+
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: 503 },
+      idempotent: false,
+    });
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
+      jobId: 9003,
+      status: "pending",
+      created: true,
+      payloadVersion: "v2",
+      dedupeKey: "d3",
+    });
+
+    await addMediaTaskToLibrary(
+      { mediaTaskId: "task-marketplace-1", userToken: "token-abc" },
+      { userId: 9, tenantId: 44, role: "user" }
+    );
+
+    expect(mockCreateLibraryItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          productId: "mp_123",
+          marketplaceProductId: "mp_123",
+          marketplace_product_id: "mp_123",
+          productName: "Wireless Lamp",
+          externalProductId: "external_456",
+          externalShopId: "shop_789",
+          sourceUrl: "https://shopee.example/product",
+          captureId: "cap_1",
+          productionRunId: "prod_run_1",
+          autoReviewRunId: "review_run_1",
+          task_parameters: expect.objectContaining({
+            extra_params: expect.objectContaining({
+              __marketplace_product_id: "mp_123",
+            }),
+          }),
+          marketplace_product_trace: expect.objectContaining({
+            productId: "mp_123",
+            productName: "Wireless Lamp",
+          }),
+        }),
+      }),
+      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -152,7 +240,10 @@ describe("addMediaTaskToLibrary", () => {
       updatedAt: "2026-02-10T00:00:00.000Z",
     });
 
-    mockCreateLibraryItem.mockResolvedValue({ item: { id: 502 }, idempotent: true });
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: 502 },
+      idempotent: true,
+    });
     mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
       jobId: 9002,
       status: "pending",
@@ -163,11 +254,71 @@ describe("addMediaTaskToLibrary", () => {
 
     const result = await addMediaTaskToLibrary(
       { mediaTaskId: "task-123", userToken: "token-abc" },
-      { userId: 9, tenantId: 44, role: "user" },
+      { userId: 9, tenantId: 44, role: "user" }
     );
 
     expect(result.created).toBe(false);
     expect(result.itemId).toBe(502);
+  });
+
+  it("repairs product trace metadata when the media task was already added to library", async () => {
+    mockGetTask.mockResolvedValue({
+      id: "task-existing-marketplace",
+      taskId: "provider-existing-marketplace",
+      userId: "9",
+      mediaType: "image",
+      status: "completed",
+      model: "veo-3-1",
+      prompt: "Existing marketplace item",
+      parameters: {
+        extra_params: {
+          __marketplace_product_id: "mp_existing",
+          __marketplace_product_name: "Existing Product",
+        },
+      },
+      resultUrl: "https://cdn.example.com/existing.png",
+      createdAt: "2026-02-10T00:00:00.000Z",
+      updatedAt: "2026-02-10T00:00:00.000Z",
+    });
+
+    mockCreateLibraryItem.mockResolvedValue({
+      item: {
+        id: 504,
+        metadata: {
+          prompt: "Existing marketplace item",
+          source_type: "media_task",
+        },
+      },
+      idempotent: true,
+    });
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
+      jobId: 9004,
+      status: "pending",
+      created: false,
+      payloadVersion: "v2",
+      dedupeKey: "d4",
+    });
+
+    await addMediaTaskToLibrary(
+      { mediaTaskId: "task-existing-marketplace", userToken: "token-abc" },
+      { userId: 9, tenantId: 44, role: "user" }
+    );
+
+    expect(mockDb.update).toHaveBeenCalled();
+    const setMock = mockDb.update.mock.results[0]?.value.set;
+    expect(setMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          productId: "mp_existing",
+          marketplaceProductId: "mp_existing",
+          productName: "Existing Product",
+          source_type: "media_task",
+          marketplace_product_trace: expect.objectContaining({
+            productId: "mp_existing",
+          }),
+        }),
+      })
+    );
   });
 
   it("stores provider metadata from database when model exists in media_models", async () => {
@@ -190,7 +341,10 @@ describe("addMediaTaskToLibrary", () => {
       createdAt: "2026-02-10T00:00:00.000Z",
       updatedAt: "2026-02-10T00:00:00.000Z",
     });
-    mockCreateLibraryItem.mockResolvedValue({ item: { id: 777 }, idempotent: false });
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: 777 },
+      idempotent: false,
+    });
     mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
       jobId: 9007,
       status: "pending",
@@ -201,7 +355,7 @@ describe("addMediaTaskToLibrary", () => {
 
     await addMediaTaskToLibrary(
       { mediaTaskId: "task-789", userToken: "token-abc" },
-      { userId: 9, tenantId: 44, role: "user" },
+      { userId: 9, tenantId: 44, role: "user" }
     );
 
     expect(mockCreateLibraryItem).toHaveBeenCalledWith(
@@ -212,7 +366,7 @@ describe("addMediaTaskToLibrary", () => {
         }),
       }),
       expect.anything(),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -231,8 +385,8 @@ describe("addMediaTaskToLibrary", () => {
     await expect(
       addMediaTaskToLibrary(
         { mediaTaskId: "task-1", userToken: "token-abc" },
-        { userId: 9, tenantId: 44, role: "user" },
-      ),
+        { userId: 9, tenantId: 44, role: "user" }
+      )
     ).rejects.toThrow("Only completed media tasks can be added to library");
 
     mockGetTask.mockResolvedValueOnce({
@@ -249,8 +403,8 @@ describe("addMediaTaskToLibrary", () => {
     await expect(
       addMediaTaskToLibrary(
         { mediaTaskId: "task-2", userToken: "token-abc" },
-        { userId: 9, tenantId: 44, role: "user" },
-      ),
+        { userId: 9, tenantId: 44, role: "user" }
+      )
     ).rejects.toThrow("Media task not found");
   });
 
@@ -268,15 +422,17 @@ describe("addMediaTaskToLibrary", () => {
       updatedAt: "2026-02-10T00:00:00.000Z",
     });
 
-    const error = new Error("Invalid sourceUrl: URL scheme javascript: is not allowed");
+    const error = new Error(
+      "Invalid sourceUrl: URL scheme javascript: is not allowed"
+    );
     error.name = "LibraryUrlValidationError";
     mockCreateLibraryItem.mockRejectedValue(error);
 
     await expect(
       addMediaTaskToLibrary(
         { mediaTaskId: "task-3", userToken: "token-abc" },
-        { userId: 9, tenantId: 44, role: "user" },
-      ),
+        { userId: 9, tenantId: 44, role: "user" }
+      )
     ).rejects.toMatchObject({
       name: "LibraryUrlValidationError",
       message: "Invalid sourceUrl: URL scheme javascript: is not allowed",
@@ -290,7 +446,7 @@ describe("autoAddMediaTaskToLibrary", () => {
 
     const result = await autoAddMediaTaskToLibrary(
       { mediaTaskId: "task-3", userToken: "token-abc" },
-      { userId: 9, tenantId: 44, role: "user" },
+      { userId: 9, tenantId: 44, role: "user" }
     );
 
     expect(result).toEqual({

@@ -1,0 +1,38 @@
+{
+  "name": "auto_cinematic_image_generator",
+  "display_name": "Auto Cinematic Image Generator",
+  "version": "1.1.0",
+  "description": "Generate reference-locked cinematic image prompts for GPT Image 2 workflows: portraits, products, environments, batch variations, contact sheets, angle grids, macro detail frames, and anti-duplicate video start/stop frames.",
+  "authoring_language": "th-TH/en-US",
+  "entrypoint": "SKILL.md",
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "output": "schemas/output.schema.json"
+  },
+  "supported_reference_image_count": {
+    "min": 1,
+    "max": 5
+  },
+  "supported_aspect_ratios": [
+    "9:16",
+    "16:9",
+    "1:1",
+    "2:3",
+    "3:2",
+    "4:5"
+  ],
+  "supported_modes": [
+    "single_cinematic_portrait",
+    "cinematic_variation_pack",
+    "contact_sheet_2x3",
+    "angle_grid_3x3",
+    "macro_detail_pack",
+    "video_start_stop_frames",
+    "storyboard_sequence",
+    "custom_shot_list"
+  ],
+  "default_mode": "single_cinematic_portrait",
+  "default_style_preset": "reference_locked",
+  "default_aspect_ratio": "9:16"
+}

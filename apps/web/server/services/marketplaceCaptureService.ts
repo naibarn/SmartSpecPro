@@ -419,6 +419,7 @@ export async function saveMarketplaceCaptureDraftEdits(captureId: string, input:
     shop: { name: product.shopName ?? null, isMall: product.isMall ?? null },
     price: product.price,
     affiliateUrl,
+    productCategory: product.productCategory ?? (product.platformRawJson as Record<string, unknown> | undefined)?.productCategory ?? (capture.rawPayloadJson as Record<string, unknown> | undefined)?.productCategory ?? null,
     commissionRatePercent: product.commissionRatePercent ?? null,
     rating: product.rating,
     description: {
@@ -434,7 +435,10 @@ export async function saveMarketplaceCaptureDraftEdits(captureId: string, input:
       excludedRelated: product.images.relatedExcluded,
       coverAssetId: product.images.coverAssetId ?? null,
     },
-    platformRawJson: product.platformRawJson,
+    platformRawJson: {
+      ...product.platformRawJson,
+      productCategory: product.productCategory ?? (product.platformRawJson as Record<string, unknown> | undefined)?.productCategory ?? null,
+    },
     draftSavedAt: new Date().toISOString(),
     userEdited: true,
   };

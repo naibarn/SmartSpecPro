@@ -49,7 +49,21 @@ const SKILLS_DIR = path.resolve(process.cwd(), "skills");
 
 const SKILL_SLUG_ALIASES: Record<string, string> = {
   "grok-imagine-creator": "grok-imagine-prompt-planner",
+  "elevenlabs-beauty-dialogue": "elevenlabs-product-voiceover-dialogue",
 };
+
+function getSkillRenameMetadata(canonicalSlug: string): Partial<{
+  name: string;
+  description: string;
+}> {
+  if (canonicalSlug === "elevenlabs-product-voiceover-dialogue") {
+    return {
+      name: "ElevenLabs Product Voiceover & Dialogue",
+      description: "Create safe, expressive product voiceover or dialogue scripts for ElevenLabs TTS from product details, storyboards, and optional product images.",
+    };
+  }
+  return {};
+}
 
 export function resolveSkillSlugAlias(slug: string): string {
   return SKILL_SLUG_ALIASES[slug] ?? slug;
@@ -383,6 +397,7 @@ export async function autoSyncSkillsFromFolder(options?: { force?: boolean }): P
         await db.update(skillsTable).set({
           slug: folder.slug,
           folderPath: `skills/${folder.slug}`,
+          ...getSkillRenameMetadata(folder.slug),
         }).where(eq(skillsTable.slug, legacyExistingSlug));
 
         const migratedSkill = existingSlugs.get(legacyExistingSlug);

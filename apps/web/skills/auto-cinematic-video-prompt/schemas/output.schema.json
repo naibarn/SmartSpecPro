@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/auto-cinematic-video-prompt-skill/output.schema.json",
+  "title": "Auto Cinematic Video Prompt Skill Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "mode",
+    "aspect_ratio",
+    "master_prompt",
+    "negative_prompt",
+    "continuity_checklist"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "aspect_ratio": {
+      "type": "string"
+    },
+    "duration_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "single_shot_seconds": {
+          "type": "number"
+        },
+        "total_seconds": {
+          "type": "number"
+        },
+        "shot_count": {
+          "type": "integer"
+        },
+        "frame_rate": {
+          "type": "integer"
+        },
+        "resolution_target": {
+          "type": "string"
+        }
+      }
+    },
+    "reference_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject_identity": {
+          "type": "string"
+        },
+        "wardrobe": {
+          "type": "string"
+        },
+        "hair_makeup": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "lighting": {
+          "type": "string"
+        },
+        "color_grade": {
+          "type": "string"
+        },
+        "materials_and_textures": {
+          "type": "string"
+        }
+      }
+    },
+    "master_prompt": {
+      "type": "string",
+      "description": "The primary Seedance 2-ready video prompt."
+    },
+    "negative_prompt": {
+      "type": "string"
+    },
+    "single_video_prompt": {
+      "type": "string",
+      "default": ""
+    },
+    "start_frame_prompt": {
+      "type": "string",
+      "default": ""
+    },
+    "stop_frame_prompt": {
+      "type": "string",
+      "default": ""
+    },
+    "start_stop_transition_prompt": {
+      "type": "string",
+      "default": ""
+    },
+    "multi_prompt_batch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "prompt_id",
+          "title",
+          "prompt"
+        ],
+        "properties": {
+          "prompt_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "aspect_ratio": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "negative_prompt": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    },
+    "storyboard": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shot_id",
+          "duration_seconds",
+          "shot_prompt"
+        ],
+        "properties": {
+          "shot_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "camera_position": {
+            "type": "string"
+          },
+          "camera_movement": {
+            "type": "string"
+          },
+          "subject_action": {
+            "type": "string"
+          },
+          "start_state": {
+            "type": "string"
+          },
+          "end_state": {
+            "type": "string"
+          },
+          "shot_prompt": {
+            "type": "string"
+          },
+          "negative_prompt": {
+            "type": "string"
+          },
+          "continuity_notes": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    },
+    "timing_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "shot_id": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "string"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          }
+        }
+      },
+      "default": []
+    },
+    "start_stop_delta_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anti_duplicate_passed": {
+          "type": "boolean"
+        },
+        "distinctness_axes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "start_description": {
+          "type": "string"
+        },
+        "stop_description": {
+          "type": "string"
+        }
+      }
+    },
+    "continuity_checklist": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Final QC list that should remain true in the generated video."
+    },
+    "seedance_usage_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  }
+}

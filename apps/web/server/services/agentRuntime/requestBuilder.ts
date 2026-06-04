@@ -3,6 +3,7 @@ import {
   CURRENT_RUNTIME_CONTRACT_VERSION,
   CURRENT_TRACE_SCHEMA_VERSION,
   AgentRuntimeRequestSchema,
+  type AgentsGatewayInvocationMetadata,
   type AgentCapabilityManifest,
   type AgentContextEvidenceItem,
   type AgentRuntimePersonaSnapshot,
@@ -10,6 +11,7 @@ import {
   type AgentRuntimeStepAssignment,
   type AgentRuntimeSurface,
   type AgentRuntimeTeamMemberSnapshot,
+  type ProductionAgentsSdkCapabilityManifest,
   type RuntimeModelConfig,
   type AgentExecutionEnvelope,
 } from "../../../shared/agentRuntime/types";
@@ -36,10 +38,10 @@ export interface ResolvedContextPack {
 
 export interface AgentRuntimeRequestBuilderDependencies {
   buildContextPack?: (
-    input: BuildContextPackRequest,
+    input: BuildContextPackRequest
   ) => Promise<ContextPack | ResolvedContextPack>;
   loadSkillCapabilityManifests?: (
-    input: LoadSkillCapabilityManifestsInput,
+    input: LoadSkillCapabilityManifestsInput
   ) => Promise<LoadSkillCapabilityManifestsResult>;
 }
 
@@ -75,6 +77,8 @@ export interface BuildAgentRuntimeRequestInput {
   traceCorrelationIds?: AgentRuntimeRequest["traceCorrelationIds"];
   sdkVersionConstraint?: string | null;
   candidateSkillManifests?: AgentCapabilityManifest[];
+  gatewayInvocationMetadata?: AgentsGatewayInvocationMetadata | null;
+  productionAgentsSdkCapabilityManifest?: ProductionAgentsSdkCapabilityManifest | null;
   skillManifestSelection?: Omit<
     LoadSkillCapabilityManifestsInput,
     "surface" | "originSurface" | "entryPoint"
@@ -87,7 +91,7 @@ const UNSAFE_PLAN_CONTEXT_KEY_PATTERN =
 
 function normalizeContextBuildResult(
   result: ContextPack | ResolvedContextPack,
-  fallbackRef: string,
+  fallbackRef: string
 ): ResolvedContextPack {
   if ("contextPack" in result) {
     return {
@@ -102,7 +106,7 @@ function normalizeContextBuildResult(
 }
 
 function sanitizePlanContext(
-  input: Record<string, unknown> | null | undefined,
+  input: Record<string, unknown> | null | undefined
 ): Record<string, unknown> {
   if (!input) return {};
   const sanitized: Record<string, unknown> = {};
@@ -114,7 +118,7 @@ function sanitizePlanContext(
       sanitized[key] = value.map(item =>
         typeof item === "object" && item !== null
           ? sanitizePlanContext(item as Record<string, unknown>)
-          : item,
+          : item
       );
       continue;
     }
@@ -127,7 +131,9 @@ function sanitizePlanContext(
   return sanitized;
 }
 
-function mapContextTrustLevel(slot: ContextPackSlot): AgentContextEvidenceItem["trustLevel"] {
+function mapContextTrustLevel(
+  slot: ContextPackSlot
+): AgentContextEvidenceItem["trustLevel"] {
   if (slot.trust === "trusted") return "trusted_platform";
   if (slot.kind === "tool_result") return "tool_generated_untrusted";
   if (slot.kind === "retrieved_evidence") return "retrieved_untrusted";
@@ -141,13 +147,13 @@ function mapSanitizationLevel(slot: ContextPackSlot): string {
 }
 
 export function contextPackSurfaceForRuntime(
-  surface: AgentRuntimeSurface,
+  surface: AgentRuntimeSurface
 ): ContextSurface {
   return surface === "team" ? "team_room" : "chat";
 }
 
 export function buildContextEvidenceItems(
-  contextPack: ContextPack,
+  contextPack: ContextPack
 ): AgentContextEvidenceItem[] {
   return contextPack.slots.map(slot => ({
     artifactId: `context-slot:${slot.id}`,
@@ -156,9 +162,7 @@ export function buildContextEvidenceItems(
     trustLevel: mapContextTrustLevel(slot),
     sanitizationLevel: mapSanitizationLevel(slot),
     contentRef:
-      slot.provenance?.sourceRef ??
-      slot.refs[0] ??
-      `context://slot/${slot.id}`,
+      slot.provenance?.sourceRef ?? slot.refs[0] ?? `context://slot/${slot.id}`,
     tokenEstimate: slot.tokenEstimate,
     contextPackSlot: slot.id,
     sourceRef: slot.provenance?.sourceRef ?? slot.refs[0] ?? null,
@@ -183,7 +187,9 @@ function summarizeContextMessages(messages: ContextMessage[]): number {
   }, 0);
 }
 
-export function buildDelegatedMemoryLifecycleMetadata(contextPack: ContextPack) {
+export function buildDelegatedMemoryLifecycleMetadata(
+  contextPack: ContextPack
+) {
   return {
     authority: "context_engine",
     directAdapterReadsAllowed: false,
@@ -200,7 +206,7 @@ export function extractCandidateEvidenceRefsFromRuntimeResponse(
   response: Pick<AgentRuntimeRequest, never> & {
     evidenceRefs?: string[] | null;
     artifacts?: Array<{ contentRef?: string | null }> | null;
-  },
+  }
 ): string[] {
   const refs = new Set<string>();
   for (const ref of response.evidenceRefs ?? []) {
@@ -214,7 +220,7 @@ export function extractCandidateEvidenceRefsFromRuntimeResponse(
 
 export async function buildAgentRuntimeRequest(
   input: BuildAgentRuntimeRequestInput,
-  deps: AgentRuntimeRequestBuilderDependencies = {},
+  deps: AgentRuntimeRequestBuilderDependencies = {}
 ): Promise<AgentRuntimeRequest> {
   const buildContextPack = deps.buildContextPack ?? defaultBuildContextPack;
   const loadSkillCapabilityManifests =
@@ -223,10 +229,10 @@ export async function buildAgentRuntimeRequest(
     input.contextPackRef ?? `context-pack:${input.surface}:${input.requestId}`;
   const resolvedContextPack = normalizeContextBuildResult(
     await buildContextPack(input.contextPackRequest),
-    contextPackRef,
+    contextPackRef
   );
   const contextEvidenceItems = buildContextEvidenceItems(
-    resolvedContextPack.contextPack,
+    resolvedContextPack.contextPack
   );
 
   const manifestResult =
@@ -273,12 +279,12 @@ export async function buildAgentRuntimeRequest(
         estimatedTokens: resolvedContextPack.contextPack.estimatedTokens,
         slotCount: resolvedContextPack.contextPack.slots.length,
         messageCount: summarizeContextMessages(
-          resolvedContextPack.contextPack.messages,
+          resolvedContextPack.contextPack.messages
         ),
         tokenHeadroom: resolvedContextPack.contextPack.compaction.tokenHeadroom,
       },
       memoryLifecycle: buildDelegatedMemoryLifecycleMetadata(
-        resolvedContextPack.contextPack,
+        resolvedContextPack.contextPack
       ),
     },
     stepContext: input.stepContext ?? null,
@@ -301,6 +307,9 @@ export async function buildAgentRuntimeRequest(
     sdkVersionConstraint: input.sdkVersionConstraint ?? null,
     modelConfig: input.modelConfig,
     executionEnvelope: input.executionEnvelope,
+    gatewayInvocationMetadata: input.gatewayInvocationMetadata ?? null,
+    productionAgentsSdkCapabilityManifest:
+      input.productionAgentsSdkCapabilityManifest ?? null,
   });
 
   return runtimeRequest;

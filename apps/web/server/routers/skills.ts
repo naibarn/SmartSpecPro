@@ -112,15 +112,19 @@ import {
   executeSharedSkillTextRuntime,
 } from "../services/agentRuntime/skillRuntimeOrchestrator";
 import {
+  optimizeProductReferenceStoryboardPrompt,
+  runProductReferenceStoryboardPromptSkill,
+} from "../services/productReferenceStoryboardSkillRunner";
+import {
   extractStructuredPromptBundleTextOutput,
   prepareMediaStudioPythonPromptSkillExecution,
 } from "../services/mediaStudioPromptSkillExecution";
 import {
-  buildElevenLabsBeautyDialogueRepairPrompt,
-  evaluateElevenLabsBeautyDialogueQuality,
-  normalizeElevenLabsBeautyDialogueOutput,
-  resolveElevenLabsBeautyDialogueRepairMaxTokens,
-} from "../services/elevenLabsBeautyDialogueQuality";
+  buildElevenLabsProductVoiceoverDialogueRepairPrompt,
+  evaluateElevenLabsProductVoiceoverDialogueQuality,
+  normalizeElevenLabsProductVoiceoverDialogueOutput,
+  resolveElevenLabsProductVoiceoverDialogueRepairMaxTokens,
+} from "../services/elevenLabsProductVoiceoverDialogueQuality";
 import {
   buildAudioFirstStoryboardRepairPrompt,
   buildAudioFirstStoryboardSharedSectionsFallback,
@@ -876,7 +880,7 @@ function buildStoryboardPlannerPrompt(input: {
     "Cinematic realism hard lock: use realistic lens language, dimensional lighting, natural shadows, believable camera movement, coherent color grade, and non-plastic human skin. Reject flat catalog, real-estate listing, waxy CG, or generic bright-room looks.",
     "Human identity hard lock: when a person appears, preserve the same face, hair, skin texture, age, wardrobe, and body continuity. If the endpoint frames show only a back/side/cropped person, keep the motion non-revealing unless the same clear face is already visible; do not rotate to reveal an invented face.",
     "Write the production direction in English, but keep any requested spoken line in the target spoken language inside quotes.",
-    "Voiceover quality bar: use the same customer-facing spoken-copy style as the elevenlabs-beauty-dialogue skill: short stop-scroll hook, conversational ad-read phrasing, one idea per sentence, grounded benefit, no stiff presenter wording.",
+    "Voiceover quality bar: use the same customer-facing spoken-copy style as the elevenlabs-product-voiceover-dialogue skill: short stop-scroll hook, conversational ad-read phrasing, one idea per sentence, grounded benefit, no stiff presenter wording.",
     "For native video prompts, slot.voiceover_script must be pure spoken text only. Do not include Speaker 1/Speaker 2 prefixes, ElevenLabs bracket tags, planning labels, timecodes, markdown, or visual direction.",
     "For Thai voiceover, write natural central-Thai shopping-video speech. Avoid phrases like ปัญหาหน้างาน, ทางออกที่ใช้งานได้จริง, รายละเอียดสินค้า, จุดขายหลักคือ, and any PRODUCT FACTS LOCK wording.",
     "In Audio:, separate ambient sound, sound design, dialogue language, lip-sync, subtitle, and no-extra-dialogue instructions from the visual description.",
@@ -2331,6 +2335,7 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
 }
 
 const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
+const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 4500;
 const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS = new Set([
   "household_product",
   "computer_laptop",
@@ -4043,9 +4048,50 @@ export const skillsRouter = router({
       const promptPackageMode = preparedPromptPackageInputs.promptPackageMode;
 
       const requestedMaxPromptLength = Number(mergedUserInputs.maxPromptLength);
-      const promptLengthPlan = Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
-        ? buildPromptLengthPlan(requestedMaxPromptLength, resolvePromptLanguageHintFromInputs(mergedUserInputs))
+      const effectiveMaxPromptLength =
+        Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
+          ? requestedMaxPromptLength
+          : input.skillId === PRODUCT_REFERENCE_STORYBOARD_SKILL_ID
+            ? PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS
+            : 0;
+      const promptLengthPlan = effectiveMaxPromptLength > 0
+        ? buildPromptLengthPlan(effectiveMaxPromptLength, resolvePromptLanguageHintFromInputs(mergedUserInputs))
         : null;
+
+      if (input.skillId === PRODUCT_REFERENCE_STORYBOARD_SKILL_ID) {
+        if (!mergedUserInputs.product_detail) {
+          mergedUserInputs.product_detail =
+            mergedUserInputs.production_concept_details ||
+            mergedUserInputs.product_title ||
+            mergedUserInputs.storyboard_guide ||
+            mergedUserInputs.prompt ||
+            mergedUserInputs.userIdea ||
+            "Product details are provided by the attached product reference image.";
+        }
+        if (!mergedUserInputs.production_concept_details) {
+          mergedUserInputs.production_concept_details = mergedUserInputs.product_detail;
+        }
+        const productReferenceResult = await runProductReferenceStoryboardPromptSkill({
+          tenantId: ctx.tenantId ?? "default",
+          userId,
+          userInputs: mergedUserInputs,
+          referenceImages: input.referenceImages || [],
+          model: input.model ?? null,
+          maxOutputChars: promptLengthPlan?.maxPromptLength ?? PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS,
+          originSurface: input.originSurface ?? "media_studio",
+        });
+
+        return {
+          success: true,
+          content: productReferenceResult.rawOutput.trim(),
+          skillId: input.skillId,
+          skillName: skill.name,
+          creditsUsed: productReferenceResult.creditsUsed,
+          usage: productReferenceResult.usage,
+          wasTruncated: false,
+          runtime: productReferenceResult.runtime,
+        };
+      }
 
       if (skill.executionMode === "python") {
         const preparedPromptSkillExecution = prepareMediaStudioPythonPromptSkillExecution({
@@ -4321,6 +4367,8 @@ export const skillsRouter = router({
           },
         });
         const result = execution.value;
+        let finalUsage = result.usage;
+        let finalCreditsUsed = result.creditsUsed;
 
         // Post-process CMS output if response_mode is cms_json
         const responseMode = mergedUserInputs.response_mode as string | undefined;
@@ -4479,11 +4527,11 @@ export const skillsRouter = router({
           }
         }
 
-        const initialBeautyDialogueQuality = evaluateElevenLabsBeautyDialogueQuality(processedContent, input.skillId, mergedUserInputs);
-        let beautyDialogueRepairAttempts = 0;
-        let beautyDialogueQuality = initialBeautyDialogueQuality;
-        while (!beautyDialogueQuality.passed && beautyDialogueRepairAttempts < 2) {
-          beautyDialogueRepairAttempts += 1;
+        const initialProductVoiceoverDialogueQuality = evaluateElevenLabsProductVoiceoverDialogueQuality(processedContent, input.skillId, mergedUserInputs);
+        let productVoiceoverDialogueRepairAttempts = 0;
+        let productVoiceoverDialogueQuality = initialProductVoiceoverDialogueQuality;
+        while (!productVoiceoverDialogueQuality.passed && productVoiceoverDialogueRepairAttempts < 2) {
+          productVoiceoverDialogueRepairAttempts += 1;
           try {
             const repairResult = await callLLMWithVision(
               [
@@ -4491,40 +4539,75 @@ export const skillsRouter = router({
                 "You repair only the provided dialogue according to the user's product inputs and the listed quality issues.",
                 "Return only the corrected dialogue. No markdown fences, no explanations.",
               ].join("\n"),
-              buildElevenLabsBeautyDialogueRepairPrompt({
+              buildElevenLabsProductVoiceoverDialogueRepairPrompt({
                 previousContent: processedContent,
-                issues: beautyDialogueQuality.issues,
+                issues: productVoiceoverDialogueQuality.issues,
                 userInputs: mergedUserInputs,
               }),
               userId,
               input.referenceImages || [],
               visionModel,
-              resolveElevenLabsBeautyDialogueRepairMaxTokens(mergedUserInputs),
+              resolveElevenLabsProductVoiceoverDialogueRepairMaxTokens(mergedUserInputs),
               {
                 ...webSearchOptions,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
             const repairedContent = repairResult.content.trim();
-            const repairedQuality = evaluateElevenLabsBeautyDialogueQuality(repairedContent, input.skillId, mergedUserInputs);
+            const repairedQuality = evaluateElevenLabsProductVoiceoverDialogueQuality(repairedContent, input.skillId, mergedUserInputs);
             processedContent = repairedContent;
-            beautyDialogueQuality = repairedQuality;
+            productVoiceoverDialogueQuality = repairedQuality;
           } catch (repairError) {
-            console.warn("[Skills] ElevenLabs beauty dialogue quality repair failed; keeping current output:", repairError);
+            console.warn("[Skills] ElevenLabs product voiceover dialogue quality repair failed; keeping current output:", repairError);
             break;
           }
         }
-        processedContent = normalizeElevenLabsBeautyDialogueOutput(processedContent, input.skillId, mergedUserInputs);
+        processedContent = normalizeElevenLabsProductVoiceoverDialogueOutput(processedContent, input.skillId, mergedUserInputs);
 
         if (promptLengthPlan && responseMode !== "cms_json") {
           const originalLength = processedContent.length;
-          const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);
-          processedContent = truncated.text;
-          wasTruncated = truncated.wasTruncated;
-          if (truncated.wasTruncated) {
+          if (
+            input.skillId === PRODUCT_REFERENCE_STORYBOARD_SKILL_ID &&
+            originalLength > promptLengthPlan.maxPromptLength
+          ) {
             console.warn(
-              `[Skills] Custom skill output exceeded limit: ${originalLength}/${promptLengthPlan.maxPromptLength} chars`,
+              `[Skills] product-reference-storyboard output exceeded limit; optimizing before use: ${originalLength}/${promptLengthPlan.maxPromptLength} chars`,
             );
+            const optimizerResult = await optimizeProductReferenceStoryboardPrompt({
+              tenantId: ctx.tenantId ?? "default",
+              userId,
+              sourcePrompt: processedContent,
+              originSurface: input.originSurface ?? "media_studio",
+              model: input.model ?? null,
+              maxOutputChars: promptLengthPlan.maxPromptLength,
+            });
+            processedContent = optimizerResult.value.rawContent.trim();
+            finalUsage = {
+              promptTokens:
+                Number(result.usage?.promptTokens ?? 0) +
+                Number(optimizerResult.value.usage?.promptTokens ?? 0),
+              completionTokens:
+                Number(result.usage?.completionTokens ?? 0) +
+                Number(optimizerResult.value.usage?.completionTokens ?? 0),
+            };
+            finalCreditsUsed =
+              Number(result.creditsUsed ?? 0) +
+              Number(optimizerResult.value.creditsUsed ?? 0);
+            if (processedContent.length > promptLengthPlan.maxPromptLength) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: `product-reference-storyboard prompt optimizer returned ${processedContent.length}/${promptLengthPlan.maxPromptLength} chars`,
+              });
+            }
+          } else {
+            const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);
+            processedContent = truncated.text;
+            wasTruncated = truncated.wasTruncated;
+            if (truncated.wasTruncated) {
+              console.warn(
+                `[Skills] Custom skill output exceeded limit: ${originalLength}/${promptLengthPlan.maxPromptLength} chars`,
+              );
+            }
           }
         }
 
@@ -4533,8 +4616,8 @@ export const skillsRouter = router({
           content: processedContent,
           skillId: input.skillId,
           skillName: skill.name,
-          creditsUsed: result.creditsUsed,
-          usage: result.usage,
+          creditsUsed: finalCreditsUsed,
+          usage: finalUsage,
           wasTruncated,
           ...(qualityReport ? { qualityReport } : {}),
           ...(promptReview ? { promptReview } : {}),

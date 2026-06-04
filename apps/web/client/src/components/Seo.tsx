@@ -152,7 +152,7 @@ export function Seo({
       ...(metadata.keywords || apiSeo.defaultKeywords || tenantSeo.defaultKeywords || []),
       ...keywords,
     ]);
-    const finalImage = metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || "/images/dashboard-preview.png";
+    const finalImage = metadata.ogMetadata?.image || apiSeo.ogImage || tenantSeo.ogImage || image || "/images/dashboard-preview.jpg";
     const finalCanonical = canonicalUrl || metadata.canonicalUrl || buildAbsoluteUrl(resolvedPath);
     const inferredJsonLd = [
       metadata.structuredData,

@@ -64,20 +64,20 @@
   },
   "suites": [
     {
-      "title": "production-director-browser.spec.ts",
-      "file": "production-director-browser.spec.ts",
+      "title": "marketplace-hyperframes-ui.spec.ts",
+      "file": "marketplace-hyperframes-ui.spec.ts",
       "column": 0,
       "line": 0,
       "specs": [],
       "suites": [
         {
-          "title": "Production Director browser evidence",
-          "file": "production-director-browser.spec.ts",
-          "line": 1194,
+          "title": "Marketplace HyperFrames Auto Review UI gate",
+          "file": "marketplace-hyperframes-ui.spec.ts",
+          "line": 362,
           "column": 6,
           "specs": [
             {
-              "title": "Production Director browser evidence at 360x800 (light)",
+              "title": "fixture matrix includes Auto, blocked, completed, duplicate, and Standard cases",
               "ok": true,
               "tags": [],
               "tests": [
@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1561,
+                      "duration": 13,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:02.519Z",
+                      "startTime": "2026-06-04T14:07:05.727Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -105,13 +105,13 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-08775a35ef1550e9191d",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
+              "id": "5a050f4a632e5693260d-3c129df8802b10807f79",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 363,
+              "column": 3
             },
             {
-              "title": "Production Director browser evidence at 360x800 (dark)",
+              "title": "Product Detail Auto ready/blocked/disabled and Standard preservation",
               "ok": true,
               "tags": [],
               "tests": [
@@ -126,12 +126,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1264,
+                      "duration": 9,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:04.181Z",
+                      "startTime": "2026-06-04T14:07:05.769Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -139,13 +139,13 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-ce91830333d6bcf6fed3",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
+              "id": "5a050f4a632e5693260d-b6c41ce1a4570ffff55f",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 385,
+              "column": 3
             },
             {
-              "title": "Production Director browser evidence at 390x844 (light)",
+              "title": "Storyboard Review preview/result-first panel and manual fallback",
               "ok": true,
               "tags": [],
               "tests": [
@@ -160,12 +160,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1222,
+                      "duration": 3,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:05.456Z",
+                      "startTime": "2026-06-04T14:07:05.795Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -173,13 +173,13 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-2bd17e2eaeb03eb1a7ed",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
+              "id": "5a050f4a632e5693260d-674e9513c850cfde5255",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 413,
+              "column": 3
             },
             {
-              "title": "Production Director browser evidence at 390x844 (dark)",
+              "title": "MediaStudio resumes HyperFrames render-to-Library session",
               "ok": true,
               "tags": [],
               "tests": [
@@ -194,12 +194,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1200,
+                      "duration": 7,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:06.687Z",
+                      "startTime": "2026-06-04T14:07:05.832Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -207,13 +207,13 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-1a53a4538e722a2fdbd0",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
+              "id": "5a050f4a632e5693260d-3a6073c5cf7977a7a02d",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 430,
+              "column": 3
             },
             {
-              "title": "Production Director browser evidence at 768x1024 (light)",
+              "title": "browser fixture UI covers responsive Auto, Standard, Storyboard, and MediaStudio states",
               "ok": true,
               "tags": [],
               "tests": [
@@ -228,12 +228,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1229,
+                      "duration": 4805,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:07.893Z",
+                      "startTime": "2026-06-04T14:07:05.858Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -241,13 +241,13 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-b792c64dba5bcc6cf534",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
+              "id": "5a050f4a632e5693260d-cf73364e632cec38f224",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 450,
+              "column": 3
             },
             {
-              "title": "Production Director browser evidence at 768x1024 (dark)",
+              "title": "authenticated live app routes expose Product Detail, Storyboard Review, and MediaStudio HyperFrames flow",
               "ok": true,
               "tags": [],
               "tests": [
@@ -262,12 +262,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1294,
+                      "duration": 6402,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-25T01:53:09.129Z",
+                      "startTime": "2026-06-04T14:07:10.725Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -275,622 +275,10 @@
                   "status": "expected"
                 }
               ],
-              "id": "85caa46239249c7c1589-9b945444f8e83299e5a9",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1024x768 (light)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1317,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:10.434Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-dd6a323300cdb2a72009",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1024x768 (dark)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1276,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:11.761Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-8d896970a82d78350403",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1280x800 (light)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1290,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:13.044Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-f4a13dcdc2295e05c996",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1280x800 (dark)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1297,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:14.343Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-baef4a9ddee9c1e1d9fe",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1440x900 (light)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1332,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:15.654Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-be887443523093361a2b",
-              "file": "production-director-browser.spec.ts",
-              "line": 1211,
-              "column": 5
-            },
-            {
-              "title": "Production Director browser evidence at 1440x900 (dark)",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1338,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:17.003Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-ef749b3f7f34b27c7401",
-              "file": "production-director-browser.spec.ts",
-              "line": 1223,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 360x800",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1334,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:18.356Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-247693c1a4c9956ee8d5",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 390x844",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1303,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:19.704Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-72fee4f154a3524b123a",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 768x1024",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1279,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:21.016Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-0ff91f5139f86326cb25",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 1024x768",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1275,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:22.304Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-e169adc97bb54b554c00",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 1280x800",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1254,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:23.588Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-f2a39b560b14bd9189c1",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Production Director reduced-motion browser evidence at 1440x900",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1304,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:24.851Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-1711cda9524729f19b26",
-              "file": "production-director-browser.spec.ts",
-              "line": 1237,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 360x800",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3232,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:26.163Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-b242dd3ec05df055c494",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 390x844",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3219,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:29.403Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-a5694ba072e0d6655ecc",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 768x1024",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3188,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:32.630Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-80a3c3e8f16c9f008ca7",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 1024x768",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3299,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:35.827Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-d1f48d54f5f500cdfc5d",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 1280x800",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3236,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:39.134Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-e15e1e384f6870f3a4b5",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
-            },
-            {
-              "title": "Media Studio authenticated live route production evidence at 1440x900",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3293,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-05-25T01:53:42.384Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "85caa46239249c7c1589-0a5fdac8ed5eec846522",
-              "file": "production-director-browser.spec.ts",
-              "line": 1251,
-              "column": 5
+              "id": "5a050f4a632e5693260d-c22cc173462da1003201",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 649,
+              "column": 3
             }
           ]
         }
@@ -899,9 +287,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-05-25T01:53:01.737Z",
-    "duration": 44018.083,
-    "expected": 24,
+    "startTime": "2026-06-04T14:06:57.868Z",
+    "duration": 19383.199,
+    "expected": 6,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

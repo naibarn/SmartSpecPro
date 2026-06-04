@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/elevenlabs-beauty-dialogue-skill/schemas/output.schema.json",
-  "title": "Plain Text Dialogue Output",
-  "description": "The output must be normal customer-facing plain text dialogue, not JSON and not a compliance/moderation report. Do not include meta-compliance phrases or banned-claim explanations.",
-  "type": "string",
-  "minLength": 1,
-  "maxLength": 2500
-}

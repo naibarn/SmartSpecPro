@@ -17,7 +17,7 @@ Use realistic preparation, serving, pantry, fridge, cup, bowl, snack, or on-tabl
 
 ## Frame-Level Requirements
 
-- Repeat the category-specific lock inside every product-visible frame together with the exact Product Detail facts.
+- Put the category-specific lock facts in the shared PRODUCT VERIFY block; use only a short product-use cue inside product-visible frames.
 - Wide, overview, result, confirmation, and CTA frames must show enough of the full silhouette to verify product class, countable parts, material, scale, and colorway.
 - Detail close-ups may crop tighter, but they must still show adjacent geometry or context that proves the product did not change.
 - Environment references may influence setting and light only; they must not provide a replacement product from this category.

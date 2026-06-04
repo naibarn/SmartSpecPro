@@ -1,0 +1,28 @@
+{
+  "project_name": "fashion_six_frame_contact_sheet",
+  "mode": "contact_sheet_2x3",
+  "generator_target": "GPT Image 2",
+  "reference_images": [
+    { "id": "attached_image_1", "role": "primary_identity", "description": "Ground truth for face, hair, outfit, lighting, and background.", "fidelity_weight": 1 }
+  ],
+  "aspect_ratio": "1:1",
+  "output_count": 1,
+  "style_preset": "hard_flash_fuji_velvia",
+  "custom_style_notes": "Hard flash, oversaturated Fuji Velvia-inspired film look, visible grain, shiny skin highlights, light concentrated on the subject and falling off toward the edges.",
+  "layout": {
+    "type": "contact_sheet",
+    "rows": 2,
+    "columns": 3,
+    "panel_labels": false,
+    "panel_captions": false,
+    "border_style": "thin_white",
+    "label_style": "none"
+  },
+  "allow_text_in_image": false,
+  "negative_constraints": ["do not add glasses", "do not add jewelry", "do not add accessories", "do not alter clothing color", "do not change background"],
+  "prompt_detail_level": "director_of_photography",
+  "include_keyframe_breakdown": true,
+  "include_negative_prompt": true,
+  "seed_strategy": "same_seed_for_continuity",
+  "language": "en"
+}

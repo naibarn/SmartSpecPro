@@ -1,3 +1,8 @@
+import {
+  detectProductionReferenceStoryboardProductCategoryFromText,
+  type ProductionReferenceStoryboardProductCategory,
+} from "@/lib/productionReferenceStoryboard";
+
 export interface ProductFormValue {
   productName: string;
   brand: string;
@@ -20,12 +25,72 @@ export interface ProductFormValue {
   shelfLife: string;
   warningsText: string;
   categoryText: string;
+  categoryPathText: string;
+  productCategory: ProductReferenceCategory;
   stockText: string;
   variantsText: string;
   sellerLocationText: string;
 }
 
+const PRODUCT_REFERENCE_CATEGORY_OPTIONS = [
+  { value: "auto", label: "Auto / ให้ระบบเดาหมวดสินค้า" },
+  { value: "household_product", label: "เครื่องใช้ในบ้าน" },
+  { value: "computer_laptop", label: "คอมพิวเตอร์และแล็ปท็อป" },
+  { value: "electrical_appliance", label: "เครื่องใช้ไฟฟ้า" },
+  { value: "food_beverage", label: "อาหารและเครื่องดื่ม" },
+  { value: "electronics", label: "อุปกรณ์อิเล็กทรอนิกส์" },
+  { value: "fashion_clothing", label: "เสื้อผ้าแฟชั่น" },
+  { value: "shoes", label: "รองเท้า" },
+  { value: "watch_eyewear", label: "นาฬิกาและแว่นตา" },
+  { value: "mobile_tablet", label: "มือถือและแท็บเล็ต" },
+  { value: "jewelry", label: "เครื่องประดับ" },
+  { value: "mother_baby", label: "สินค้าแม่และเด็ก" },
+  { value: "pet_supplies", label: "ของใช้และอาหารสัตว์" },
+  { value: "sports_equipment", label: "อุปกรณ์กีฬา" },
+  { value: "camera_photography", label: "กล้องและอุปกรณ์ถ่ายภาพ" },
+  { value: "gaming_accessories", label: "เกมส์และอุปกรณ์เสริม" },
+  { value: "automotive", label: "ยานยนต์" },
+  { value: "stationery", label: "เครื่องเขียน" },
+  { value: "books", label: "หนังสือ" },
+  { value: "furniture", label: "เฟอร์นิเจอร์" },
+  { value: "cosmetics", label: "เครื่องสำอางและสกินแคร์" },
+] as const;
+type ProductReferenceCategory = (typeof PRODUCT_REFERENCE_CATEGORY_OPTIONS)[number]["value"];
+
+function normalizeProductCategory(value: unknown): ProductReferenceCategory {
+  const matched = PRODUCT_REFERENCE_CATEGORY_OPTIONS.find(
+    (option) => option.value === value
+  );
+  return matched ? matched.value : "auto";
+}
+
 export function productFormFromExtraction(llm: any): ProductFormValue {
+  const specs = llm?.description?.specs ?? llm?.specs ?? {};
+  const platformRawJson = llm?.platformRawJson ?? {};
+  const categoryText = String(specs?.categoryText ?? platformRawJson?.categoryText ?? llm?.categoryText ?? llm?.category ?? llm?.product?.category ?? "");
+  const categoryPathText = firstCategoryPathParts(
+    specs?.categoryPath,
+    specs?.categoryPathText,
+    specs?.marketplaceCategoryPath,
+    platformRawJson?.categoryPath,
+    platformRawJson?.categoryPathText,
+    platformRawJson?.marketplaceCategoryPath,
+    platformRawJson?.breadcrumbs,
+    llm?.categoryPath,
+    llm?.categoryPathText,
+    llm?.product?.categoryPath,
+  ).join(" > ");
+  const explicitProductCategory = normalizeProductCategory(
+    llm?.productCategory ?? platformRawJson?.productCategory ?? specs?.productCategory,
+  );
+  const detectedProductCategory = explicitProductCategory === "auto"
+    ? detectProductionReferenceStoryboardProductCategoryFromText([
+      categoryText,
+      categoryPathText,
+      llm?.productName,
+      llm?.description?.rawText,
+    ].filter(Boolean).join(" ")) as ProductionReferenceStoryboardProductCategory
+    : explicitProductCategory;
   return {
     productName: String(llm?.productName ?? ""),
     brand: String(llm?.brand ?? ""),
@@ -47,10 +112,12 @@ export function productFormFromExtraction(llm: any): ProductFormValue {
     volume: String(llm?.description?.volume ?? llm?.description?.specs?.volume ?? ""),
     shelfLife: String(llm?.description?.shelfLife ?? llm?.description?.specs?.shelfLife ?? ""),
     warningsText: Array.isArray(llm?.description?.warnings) ? llm.description.warnings.join("\n") : "",
-    categoryText: String(llm?.specs?.categoryText ?? llm?.platformRawJson?.categoryText ?? ""),
-    stockText: String(llm?.specs?.stockText ?? llm?.platformRawJson?.stockText ?? ""),
-    variantsText: String(llm?.specs?.variantsText ?? llm?.platformRawJson?.variantsText ?? ""),
-    sellerLocationText: String(llm?.specs?.sellerLocationText ?? llm?.platformRawJson?.sellerLocationText ?? ""),
+    categoryText,
+    categoryPathText,
+    productCategory: normalizeProductCategory(detectedProductCategory),
+    stockText: String(specs?.stockText ?? platformRawJson?.stockText ?? ""),
+    variantsText: String(specs?.variantsText ?? platformRawJson?.variantsText ?? ""),
+    sellerLocationText: String(specs?.sellerLocationText ?? platformRawJson?.sellerLocationText ?? ""),
   };
 }
 
@@ -61,6 +128,26 @@ function numberOrNull(value: string): number | null {
 
 function lines(value: string): string[] {
   return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+function categoryPathParts(value: string): string[] {
+  return value.split(/[>›]/).map((part) => part.trim()).filter(Boolean).slice(0, 8);
+}
+
+function categoryPathPartsFromUnknown(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(categoryPathPartsFromUnknown).slice(0, 8);
+  }
+  if (typeof value !== "string") return [];
+  return value.split(/[>›/|,\n]/).map((part) => part.trim()).filter(Boolean).slice(0, 8);
+}
+
+function firstCategoryPathParts(...values: unknown[]): string[] {
+  for (const value of values) {
+    const parts = categoryPathPartsFromUnknown(value);
+    if (parts.length > 0) return parts;
+  }
+  return [];
 }
 
 export function productConfirmPayload(form: ProductFormValue, imageSelection: {
@@ -84,6 +171,7 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
       },
       commissionRatePercent: numberOrNull(form.commissionRatePercent),
       affiliateUrl: form.affiliateUrl || null,
+      productCategory: normalizeProductCategory(form.productCategory),
       rating: {
         score: numberOrNull(form.ratingScore),
         reviewCountText: form.reviewCountText || null,
@@ -99,13 +187,21 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
           shelfLife: form.shelfLife || null,
           warnings: lines(form.warningsText),
           categoryText: form.categoryText || null,
+          categoryPath: categoryPathParts(form.categoryPathText),
+          productCategory: normalizeProductCategory(form.productCategory),
           stockText: form.stockText || null,
           variantsText: form.variantsText || null,
           sellerLocationText: form.sellerLocationText || null,
         },
       },
       images: imageSelection,
-      platformRawJson: { ...platformRawJson, affiliateUrl: form.affiliateUrl || null },
+      platformRawJson: {
+        ...platformRawJson,
+        affiliateUrl: form.affiliateUrl || null,
+        categoryText: form.categoryText || null,
+        categoryPath: categoryPathParts(form.categoryPathText),
+        productCategory: normalizeProductCategory(form.productCategory),
+      },
     },
   };
 }
@@ -167,6 +263,15 @@ export function ProductExtractedForm({
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <label className={labelClass}>Product name<input className={inputClass} value={value.productName} onChange={(e) => update("productName", e.target.value)} />{fieldMeta("productName")}</label>
         <label className={labelClass}>Brand<input className={inputClass} value={value.brand} onChange={(e) => update("brand", e.target.value)} /></label>
+        <label className={labelClass}>Main storyboard category
+          <select className={inputClass} value={normalizeProductCategory(value.productCategory)} onChange={(e) => update("productCategory", normalizeProductCategory(e.target.value))}>
+            {PRODUCT_REFERENCE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className={labelClass}>Marketplace category<input className={inputClass} value={value.categoryText} onChange={(e) => update("categoryText", e.target.value)} />{fieldMeta("categoryText")}</label>
+        <label className={`${labelClass} md:col-span-2`}>Marketplace category path<input className={inputClass} value={value.categoryPathText} onChange={(e) => update("categoryPathText", e.target.value)} placeholder="Shopee category breadcrumb" /></label>
         <label className={labelClass}>Shop<input className={inputClass} value={value.shopName} onChange={(e) => update("shopName", e.target.value)} /></label>
         <label className={labelClass}>Mall / official
           <select className={inputClass} value={value.isMall === null ? "unknown" : value.isMall ? "true" : "false"} onChange={(e) => update("isMall", e.target.value === "unknown" ? null : e.target.value === "true")}>
@@ -208,7 +313,6 @@ export function ProductExtractedForm({
       </div>
       <label className={`${labelClass} mt-4`}>Warnings<textarea className={`${inputClass} min-h-20`} value={value.warningsText} onChange={(e) => update("warningsText", e.target.value)} /></label>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className={labelClass}>Marketplace category<input className={inputClass} value={value.categoryText} onChange={(e) => update("categoryText", e.target.value)} /></label>
         <label className={labelClass}>Stock<input className={inputClass} value={value.stockText} onChange={(e) => update("stockText", e.target.value)} /></label>
         <label className={labelClass}>Seller location<input className={inputClass} value={value.sellerLocationText} onChange={(e) => update("sellerLocationText", e.target.value)} /></label>
         <label className={labelClass}>Variants<textarea className={`${inputClass} min-h-20`} value={value.variantsText} onChange={(e) => update("variantsText", e.target.value)} /></label>
