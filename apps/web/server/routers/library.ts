@@ -163,6 +163,9 @@ const recentDaysSchema = z.union([
 
 const searchFilterSchema = z.object({
   itemType: z.string().min(1).max(32).optional(),
+  source: z.string().min(1).max(128).optional(),
+  productId: z.string().min(1).max(128).optional(),
+  runId: z.string().min(1).max(128).optional(),
   model: z.string().min(1).max(128).optional(),
   ownerUserId: z.number().int().positive().optional(),
   tags: z.array(z.string().min(1).max(64)).max(20).optional(),
@@ -176,6 +179,9 @@ const documentScopeSchema = z.enum(["all", "my_library", "private_vault", "share
 const documentSortSchema = z.enum(["updated_desc", "created_desc"]);
 const documentFilterSchema = z.object({
   itemType: z.string().min(1).max(32).optional(),
+  source: z.string().min(1).max(128).optional(),
+  productId: z.string().min(1).max(128).optional(),
+  runId: z.string().min(1).max(128).optional(),
   ownerUserId: z.number().int().positive().optional(),
   status: itemStatusSchema.optional(),
   fromDate: z.coerce.date().optional(),

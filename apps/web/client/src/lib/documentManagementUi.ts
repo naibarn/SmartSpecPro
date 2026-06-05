@@ -52,6 +52,9 @@ export interface DocumentQueryState {
   knowledgeMode: KnowledgeVaultMode;
   query: string;
   itemType?: string;
+  source?: string;
+  productId?: string;
+  runId?: string;
   status?: string;
   docId?: number;
   folderId?: number | null;
@@ -206,6 +209,24 @@ export function supportsKnowledgeVaultScope(
   );
 }
 
+export function normalizeDocumentSourceFilter(
+  source: string | null,
+): string | undefined {
+  const normalized = source?.trim().slice(0, 128) ?? "";
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+export function clearDocumentLibraryContextFilter(
+  state: DocumentQueryState,
+): DocumentQueryState {
+  return {
+    ...state,
+    source: undefined,
+    productId: undefined,
+    runId: undefined,
+  };
+}
+
 export function parseDocumentQueryState(search: string): DocumentQueryState {
   const params = new URLSearchParams(search);
   const scope = params.get("scope");
@@ -216,6 +237,9 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
   const folderIdRaw = params.get("folder");
   const query = params.get("q") || "";
   const itemType = params.get("type") || undefined;
+  const source = normalizeDocumentSourceFilter(params.get("source"));
+  const productId = normalizeDocumentSourceFilter(params.get("productId"));
+  const runId = normalizeDocumentSourceFilter(params.get("runId"));
   const status = params.get("status") || undefined;
   const docIdParsed = docIdRaw ? Number.parseInt(docIdRaw, 10) : NaN;
   const docId = Number.isFinite(docIdParsed) && docIdParsed > 0 ? docIdParsed : undefined;
@@ -245,6 +269,9 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
         : "browse",
     query,
     itemType,
+    source,
+    productId,
+    runId,
     status,
     docId,
     folderId,
@@ -270,6 +297,15 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   }
   if (state.itemType) {
     params.set("type", state.itemType);
+  }
+  if (state.source) {
+    params.set("source", state.source);
+  }
+  if (state.productId) {
+    params.set("productId", state.productId);
+  }
+  if (state.runId) {
+    params.set("runId", state.runId);
   }
   if (state.status) {
     params.set("status", state.status);

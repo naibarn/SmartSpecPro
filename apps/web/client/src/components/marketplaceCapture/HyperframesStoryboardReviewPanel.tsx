@@ -1,5 +1,6 @@
 import { RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getUserSafeHyperframesRepairAction } from "@/lib/marketplaceHyperframesUiState";
 import type { HyperframesRenderStatusProjection } from "@shared/hyperframes/contracts";
 import { HyperframesRenderPanel } from "./HyperframesRenderPanel";
 import { HyperframesSnapshotComparison } from "./HyperframesSnapshotComparison";
@@ -39,7 +40,7 @@ export function HyperframesStoryboardReviewPanel({
   locale,
 }: HyperframesStoryboardReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
-  const repairAction = render?.repairActions?.[0];
+  const repairAction = getUserSafeHyperframesRepairAction(render);
   const derivedSnapshots =
     snapshots && snapshots.length > 0
       ? snapshots
@@ -87,7 +88,7 @@ export function HyperframesStoryboardReviewPanel({
       <HyperframesRenderPanel
         render={render}
         loading={loading}
-        onRetry={onRetry}
+        onRetry={repairAction ? undefined : onRetry}
         onSaveToLibrary={onSaveToLibrary}
         saving={saving}
         locale={locale}

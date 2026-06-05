@@ -61,6 +61,8 @@ import {
   GetHyperframesRenderJobOutputSchema,
   ListHyperframesTemplatesInputSchema,
   ListHyperframesTemplatesOutputSchema,
+  RepairHyperframesRenderJobInputSchema,
+  RepairHyperframesRenderJobOutputSchema,
   SaveHyperframesRenderToLibraryInputSchema,
   SaveHyperframesRenderToLibraryOutputSchema,
   StartAutoStoryboardReviewInputSchema,
@@ -76,6 +78,7 @@ import {
   getAutoStoryboardReviewPlanForApi,
   getHyperframesRenderJobForApi,
   listHyperframesTemplatesForApi,
+  repairHyperframesRenderJobForApi,
   saveHyperframesRenderToLibraryForApi,
   startAutoStoryboardReviewForApi,
 } from "../services/hyperframesRuntimeApiService";
@@ -87,7 +90,7 @@ import {
   inspectHyperframesRenderAsOperator,
   replayHyperframesDeadLetterByIdAsOperator,
 } from "../services/hyperframesOperatorService";
-import { readHyperframesFeatureFlags } from "../services/hyperframesFeatureAccessService";
+import { readHyperframesFeatureFlagsForTenant } from "../services/hyperframesFeatureAccessService";
 
 function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
@@ -97,13 +100,13 @@ function authFromCtx(ctx: any) {
   return { userId, tenantId };
 }
 
-function operatorAuthFromCtx(ctx: any) {
+async function operatorAuthFromCtx(ctx: any) {
+  const auth = authFromCtx(ctx);
+  const flags = await readHyperframesFeatureFlagsForTenant(auth);
   return {
-    ...authFromCtx(ctx),
+    ...auth,
     role: typeof ctx.user?.role === "string" ? ctx.user.role : undefined,
-    operatorEnabled:
-      process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "true" ||
-      process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "1",
+    operatorEnabled: flags.operatorEnabled,
   };
 }
 
@@ -113,19 +116,13 @@ const hyperframesDelegatedOperatorRoles = new Set([
   "support",
 ]);
 
-function isHyperframesOperatorEnvEnabled() {
-  return (
-    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "true" ||
-    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED === "1"
-  );
-}
-
 const hyperframesOperatorProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
     const role = typeof ctx.user?.role === "string" ? ctx.user.role : "";
     const adminLike = role === "admin" || role === "system_agent";
+    const flags = await readHyperframesFeatureFlagsForTenant(authFromCtx(ctx));
     const delegated =
-      isHyperframesOperatorEnvEnabled() &&
+      flags.operatorEnabled &&
       hyperframesDelegatedOperatorRoles.has(role);
 
     if (!adminLike && !delegated) {
@@ -625,6 +622,7 @@ export const marketplaceCaptureRouter = router({
       getAutoStoryboardReviewPlanForApi({
         productId: input.productId,
         includeTemplates: input.includeTemplates,
+        overrides: input.overrides,
         auth: authFromCtx(ctx),
       })
     ),
@@ -636,6 +634,7 @@ export const marketplaceCaptureRouter = router({
       startAutoStoryboardReviewForApi({
         productId: input.productId,
         expectedPlanHash: input.expectedPlanHash,
+        idempotencyKey: input.idempotencyKey,
         overrides: input.overrides,
         auth: authFromCtx(ctx),
         runtime: autoReviewRuntimeFromCtx(ctx),
@@ -662,6 +661,21 @@ export const marketplaceCaptureRouter = router({
         renderJobId: input.renderJobId,
         productId: input.productId,
         runId: input.runId,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  repairHyperframesRenderJob: protectedProcedure
+    .input(RepairHyperframesRenderJobInputSchema)
+    .output(RepairHyperframesRenderJobOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      repairHyperframesRenderJobForApi({
+        renderJobId: input.renderJobId,
+        productId: input.productId,
+        runId: input.runId,
+        actionId: input.actionId,
+        actionType: input.actionType,
+        expectedCompositionInputHash: input.expectedCompositionInputHash,
         auth: authFromCtx(ctx),
       })
     ),
@@ -714,7 +728,7 @@ export const marketplaceCaptureRouter = router({
     .output(HyperframesOperatorInspectOutputSchema as z.ZodTypeAny)
     .query(async ({ input, ctx }) =>
       inspectHyperframesRenderAsOperator({
-        auth: operatorAuthFromCtx(ctx),
+        auth: await operatorAuthFromCtx(ctx),
         renderJobId: input.renderJobId,
         productId: input.productId,
         runId: input.runId,
@@ -734,7 +748,7 @@ export const marketplaceCaptureRouter = router({
     .output(HyperframesOperatorCancelOutputSchema as z.ZodTypeAny)
     .mutation(async ({ input, ctx }) =>
       cancelHyperframesRenderAsOperator({
-        auth: operatorAuthFromCtx(ctx),
+        auth: await operatorAuthFromCtx(ctx),
         renderJobId: input.renderJobId,
         productId: input.productId,
         runId: input.runId,
@@ -756,8 +770,8 @@ export const marketplaceCaptureRouter = router({
     )
     .output(HyperframesDeadLetterReplayOutputSchema as z.ZodTypeAny)
     .mutation(async ({ input, ctx }) => {
-      const auth = operatorAuthFromCtx(ctx);
-      const flags = readHyperframesFeatureFlags(auth);
+      const auth = await operatorAuthFromCtx(ctx);
+      const flags = await readHyperframesFeatureFlagsForTenant(auth);
       return replayHyperframesDeadLetterByIdAsOperator({
         auth,
         renderJobId: input.renderJobId,
@@ -788,7 +802,7 @@ export const marketplaceCaptureRouter = router({
     .output(HyperframesTemplateOperatorOutputSchema as z.ZodTypeAny)
     .mutation(async ({ input, ctx }) =>
       disableHyperframesTemplateWithAuditAsOperator({
-        auth: operatorAuthFromCtx(ctx),
+        auth: await operatorAuthFromCtx(ctx),
         templateId: input.templateId,
         reason: input.reason,
         auditSink: defaultHyperframesOperatorAuditSink,
@@ -800,7 +814,7 @@ export const marketplaceCaptureRouter = router({
     .output(HyperframesTemplateOperatorOutputSchema as z.ZodTypeAny)
     .mutation(async ({ input, ctx }) =>
       enableHyperframesTemplateWithAuditAsOperator({
-        auth: operatorAuthFromCtx(ctx),
+        auth: await operatorAuthFromCtx(ctx),
         templateId: input.templateId,
         auditSink: defaultHyperframesOperatorAuditSink,
       })

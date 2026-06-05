@@ -5,6 +5,8 @@ import {
   buildTaskLibraryStateFromAddResult,
   getAddToLibrarySuccessMessage,
   getLibraryItemProcessingMeta,
+  getLibraryProductContextId,
+  getLibraryRunContextId,
   getLibraryStatusMeta,
   isMediaTaskEligibleForLibraryAdd,
   selectLibrarySearchItem,
@@ -111,6 +113,29 @@ describe("libraryUi helpers", () => {
     expect(callback).toHaveBeenCalledWith(results[1]);
 
     expect(selectLibrarySearchItem(results, 999, callback)).toBe(false);
+  });
+
+  it("extracts Library context ids from all Marketplace Auto Review metadata aliases", () => {
+    expect(
+      getLibraryProductContextId({
+        marketplace_product_id: "product_1",
+      }),
+    ).toBe("product_1");
+    expect(
+      getLibraryProductContextId({
+        marketplaceProductId: 42,
+      }),
+    ).toBe("42");
+    expect(
+      getLibraryRunContextId({
+        production_run_id: "mar_1",
+      }),
+    ).toBe("mar_1");
+    expect(
+      getLibraryRunContextId({
+        autoReviewRunId: "auto_review_1",
+      }),
+    ).toBe("auto_review_1");
   });
 
   it("maps status metadata for indexing and failed states", () => {

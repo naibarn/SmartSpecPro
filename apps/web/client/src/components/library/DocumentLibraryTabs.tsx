@@ -68,27 +68,36 @@ export default function DocumentLibraryTabs({
   onChange,
 }: DocumentLibraryTabsProps) {
   const { t } = useScopedTranslation("common");
+  const activeLabel =
+    TABS.find(tab => tab.value === value)?.labelKey ?? TABS[0].labelKey;
 
   return (
     <div className="rounded-xl border border-slate-200/80 bg-slate-50/75 p-1.5 shadow-sm">
-      <div className="flex items-center gap-1.5 overflow-x-auto">
+      <div
+        className="flex snap-x items-center gap-1.5 overflow-x-auto overscroll-x-contain pr-2 [scrollbar-width:thin]"
+        role="toolbar"
+        aria-label={`${t("documentManagement.scope.libraryScopes")}: ${t(activeLabel)}`}
+      >
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = value === tab.value;
+          const label = t(tab.labelKey);
           return (
             <button
               key={tab.value}
               type="button"
+              aria-label={label}
+              aria-pressed={isActive}
               onClick={() => onChange(tab.value)}
               className={cn(
-                "inline-flex h-8 shrink-0 items-center justify-center rounded-full border px-2.5 text-[11px] font-medium transition-colors",
+                "inline-flex h-8 shrink-0 snap-start items-center justify-center rounded-full border px-2.5 text-[11px] font-medium transition-colors",
                 "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100",
                 tab.baseClass,
                 isActive && tab.activeClass
               )}
             >
-              <Icon className="mr-1 h-3.5 w-3.5 shrink-0" />
-              <span className="whitespace-nowrap">{t(tab.labelKey)}</span>
+              <Icon className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="whitespace-nowrap">{label}</span>
             </button>
           );
         })}

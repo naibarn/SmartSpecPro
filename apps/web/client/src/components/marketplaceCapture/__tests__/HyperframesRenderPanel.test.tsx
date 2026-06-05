@@ -23,6 +23,7 @@ describe("HyperframesRenderPanel", () => {
     safeDiagnostics: [],
     repairActions: [],
     polling: createDefaultHyperframesPollingGuidance("completed"),
+    qaStatus: "passed",
     outputRefs: [],
     artifactRefs: [],
     redaction: {
@@ -49,6 +50,7 @@ describe("HyperframesRenderPanel", () => {
       statusCopyId: "hyperframes.status.failed_transient",
       safeMessage: "Temporary failure",
       safeDiagnostics: ["storage timeout"],
+      permissions: { canCancel: false, canRepair: true },
       repairActions: [
         {
           actionId: "repair_retry_worker_step",
@@ -78,6 +80,73 @@ describe("HyperframesRenderPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /retry worker step/i }));
     expect(onRetry).toHaveBeenCalled();
     expect(screen.queryByText(new RegExp("marketplace-auto-review/"))).toBeNull();
+  });
+
+  it("hides user repair when the render projection is read-only", () => {
+    const onRetry = vi.fn();
+    render(
+      <HyperframesRenderPanel
+        render={{
+          ...baseRenderProjection,
+          status: "failed_transient",
+          progressPercent: 60,
+          safeMessage: "Temporary failure",
+          permissions: { canCancel: false, canRepair: false },
+          repairActions: [
+            {
+              actionId: "repair_retry_worker_step",
+              actionType: "retry_worker_step",
+              label: "Retry worker step",
+              safeDescription: "Retry safely",
+              requiresOperator: false,
+              auditRequired: true,
+              disabledReason: null,
+            },
+          ],
+          polling: createDefaultHyperframesPollingGuidance("failed_transient"),
+        }}
+        onRetry={onRetry}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /retry worker step/i })).toBeNull();
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
+  it("treats blocked statuses as terminal and hides cancel plus operator-only repair", () => {
+    const onCancel = vi.fn();
+    const onRetry = vi.fn();
+
+    render(
+      <HyperframesRenderPanel
+        render={{
+          ...baseRenderProjection,
+          status: "template_disabled",
+          progressPercent: 0,
+          safeMessage: "Template is disabled",
+          repairActions: [
+            {
+              actionId: "repair_operator_rerun",
+              actionType: "rerun_layout_inspect",
+              label: "Rerun layout inspect",
+              safeDescription: "Operator support can inspect this render",
+              requiresOperator: true,
+              auditRequired: true,
+              disabledReason: null,
+            },
+          ],
+          polling: createDefaultHyperframesPollingGuidance("template_disabled"),
+        }}
+        onCancel={onCancel}
+        onRetry={onRetry}
+      />
+    );
+
+    expect(screen.getByText("Template is disabled")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /cancel/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /rerun layout inspect/i })
+    ).toBeNull();
   });
 
   it("does not offer Library save for completed preview-only output", () => {
@@ -112,6 +181,30 @@ describe("HyperframesRenderPanel", () => {
         render={{
           ...baseRenderProjection,
           renderIntent: "final",
+          compositionInputHash: "hf_input",
+          outputRefs: [
+            {
+              outputId: "final_1",
+              kind: "final_video",
+              contentHash: "hf_output",
+              accessibleLabel: "Final video",
+            },
+          ],
+          artifactRefs: [],
+        }}
+        onSaveToLibrary={onSave}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save to library/i }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer Library save when QA failed or is missing", () => {
+    const onSave = vi.fn();
+    const finalRender: HyperframesRenderStatusProjection = {
+      ...baseRenderProjection,
+      renderIntent: "final",
       compositionInputHash: "hf_input",
       outputRefs: [
         {
@@ -133,13 +226,25 @@ describe("HyperframesRenderPanel", () => {
           redacted: true,
         },
       ],
-    }}
-    onSaveToLibrary={onSave}
-  />
+    };
+
+    const { rerender } = render(
+      <HyperframesRenderPanel
+        render={{ ...finalRender, qaStatus: "failed" }}
+        onSaveToLibrary={onSave}
+      />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /save to library/i }));
-    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /save to library/i })).toBeNull();
+
+    rerender(
+      <HyperframesRenderPanel
+        render={{ ...finalRender, qaStatus: undefined }}
+        onSaveToLibrary={onSave}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /save to library/i })).toBeNull();
   });
 
   it("does not expose output or artifact details through production DOM attributes", () => {
@@ -181,6 +286,61 @@ describe("HyperframesRenderPanel", () => {
     expect(status?.hasAttribute("data-render-output-kinds")).toBe(false);
     expect(status?.hasAttribute("data-render-artifact-kinds")).toBe(false);
     expect(status?.hasAttribute("data-render-intent")).toBe(false);
+  });
+
+  it("opens the final video output when snapshot refs appear first", () => {
+    render(
+      <HyperframesRenderPanel
+        render={{
+          ...baseRenderProjection,
+          renderIntent: "final",
+          compositionInputHash: "hf_input",
+          outputRefs: [
+            {
+              outputId: "snapshot_1",
+              kind: "snapshot",
+              url: "https://cdn.example.test/snapshot.png",
+              contentHash: "hf_snapshot",
+              accessibleLabel: "Snapshot",
+            },
+            {
+              outputId: "final_1",
+              kind: "final_video",
+              url: "https://cdn.example.test/final.mp4",
+              contentHash: "hf_output",
+              accessibleLabel: "Final video",
+            },
+          ],
+          artifactRefs: [
+            {
+              artifactId: "snapshot_1",
+              kind: "hyperframes_snapshot",
+              storageRef:
+                "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/snapshot.png",
+              contentHash: "hf_snapshot",
+              mimeType: "image/png",
+              retentionClass: "review",
+              redacted: true,
+            },
+            {
+              artifactId: "final_1",
+              kind: "hyperframes_render_mp4",
+              storageRef:
+                "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/output.mp4",
+              contentHash: "hf_output",
+              mimeType: "video/mp4",
+              retentionClass: "library",
+              redacted: true,
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: /open output/i })).toHaveAttribute(
+      "href",
+      "https://cdn.example.test/final.mp4"
+    );
   });
 
   it("does not offer Library save when the matching output artifact is not library-retained", () => {

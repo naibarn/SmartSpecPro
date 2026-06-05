@@ -107,8 +107,12 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
     <div className="space-y-3">
       <div className="sticky top-0 z-10 space-y-3 bg-white/95 pb-3 backdrop-blur">
         <div className="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
-          Hermes Runtime has its own group near the top of the list.
-          Use the search box to jump directly to <span className="font-semibold">Hermes Runtime</span>,
+          Hermes Runtime and Marketplace HyperFrames have dedicated groups in this list.
+          Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
+          <span className="font-semibold"> HyperFrames Worker Queue</span>,
+          <span className="font-semibold"> HyperFrames Library Save</span>,
+          <span className="font-semibold"> HyperFrames Operator Controls</span>,
+          <span className="font-semibold"> Hermes Runtime</span>,
           <span className="font-semibold"> Hermes Profile Experience</span>,
           <span className="font-semibold"> Hermes Channel Workflow</span>,
           <span className="font-semibold"> Hermes Memory Sync</span>,

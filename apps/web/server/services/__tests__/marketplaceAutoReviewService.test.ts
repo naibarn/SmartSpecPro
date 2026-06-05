@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   assertMarketplaceAutoReviewGovernanceReadyForTest,
@@ -24,6 +24,7 @@ import {
   buildMarketplaceAutoReviewRenderFinalizationMetadataForTest,
   buildMarketplaceAutoReviewShotFrameRepairUnitsForTest,
   buildMarketplaceAutoReviewStoryConceptWizardForTest,
+  buildMarketplaceAutoReviewStoryboardReviewLinkForTest,
   buildMarketplaceAutoReviewStoryboardReviewOutputForTest,
   buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest,
   buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest,
@@ -60,6 +61,8 @@ import {
   reusableStoryboardGridPromptAuditForTest,
   selectMarketplaceAutoReviewBestImageAttemptForTest,
   mergeMarketplaceAutoReviewQaCacheEntriesForTest,
+  maybeQueueHyperframesPreviewAfterStoryboardReadyForTest,
+  serializeMarketplaceAutoReviewRunForTest,
   summarizeMarketplaceAutoReviewCancellationForTest,
   splitMarketplaceAutoReviewVoiceoverSkillOutputForTest,
   storyboardGridFrameStorageKeyForTest,
@@ -70,6 +73,11 @@ import {
   CreativeConceptSetSchema,
   MarketplaceAutoReviewStageCompletionEvidenceSchema,
 } from "../../../shared/marketplaceAutoReview/contracts";
+import { getDb } from "../../db";
+
+vi.mock("../../db", () => ({
+  getDb: vi.fn(async () => null),
+}));
 
 const basePlan = {
   conceptId: "concept-1",
@@ -116,6 +124,256 @@ const baseShot = {
   movement: "slow push-in",
   productRole: "context first",
 };
+
+function createAutoPreviewUpdateDb() {
+  const updates: Array<Record<string, unknown>> = [];
+  const db = {
+    update: () => ({
+      set: (value: Record<string, unknown>) => {
+        updates.push(value);
+        return {
+          where: () => ({
+            returning: async () => [{ id: "mar_preview_1", ...value }],
+          }),
+        };
+      },
+    }),
+  };
+  return { db, updates };
+}
+
+describe("Marketplace Auto Review Storyboard Review links", () => {
+  it("carries HyperFrames render context into Storyboard Review links", () => {
+    expect(
+      buildMarketplaceAutoReviewStoryboardReviewLinkForTest({
+        storyboardReviewId: 42,
+        productId: "product_1",
+        runId: "mar_1",
+        renderJobId: "hf_render_1",
+      })
+    ).toBe(
+      "/storyboard-review/42?hyperframesRenderJobId=hf_render_1&productId=product_1&runId=mar_1"
+    );
+  });
+
+  it("keeps the normal Storyboard Review link when no HyperFrames render exists", () => {
+    expect(
+      buildMarketplaceAutoReviewStoryboardReviewLinkForTest({
+        storyboardReviewId: "42",
+        productId: "product_1",
+        runId: "mar_1",
+      })
+    ).toBe("/storyboard-review/42");
+  });
+
+  it("keeps sanitized HyperFrames preview markers in summary metadata", () => {
+    const serialized = serializeMarketplaceAutoReviewRunForTest(
+      {
+        id: "mar_summary_1",
+        tenantId: "tenant_1",
+        userId: 119,
+        productId: "product_1",
+        productionRunId: "prod_summary_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+        status: "running",
+        currentStage: "storyboard_review",
+        stageIndex: 3,
+        stageCount: 3,
+        storyboardReviewId: "42",
+        videoEditorProjectId: null,
+        renderJobId: null,
+        resultLibraryItemId: null,
+        resultJson: {
+          storyboardReviewId: "42",
+          frameUrls: [
+            "https://cdn.example.test/frame.png",
+            "https://cdn.example.test/private/frame.png?X-Amz-Signature=abc",
+          ],
+          startFrameUrls: [
+            "https://cdn.example.test/start.png",
+            "https://signed.example.test/private/start.png?Expires=999999",
+          ],
+          stopFrameUrls: [
+            "https://cdn.example.test/stop.png",
+            "javascript:alert(1)",
+          ],
+          hyperframesRenderJobId: "hf_result_summary_1",
+          hyperframesAutoPreview: {
+            renderJobId: "hf_result_preview_1",
+            status: "completed",
+            rawHtml: "<html>private-result</html>",
+            signedUrl: "https://signed.example.test/private-result",
+          },
+          render: {
+            renderJobId: "hf_result_render_1",
+            status: "completed",
+            compositionInputHash: "hf_input_hash",
+            rawHtml: "<html>private-render</html>",
+            signedUrl: "https://signed.example.test/private-render",
+            storageKey: "private/storage/key",
+            workerLogs: ["private log"],
+            outputRefs: [{ url: "https://signed.example.test/private-output" }],
+          },
+          publishableAssetPackage: {
+            privateStorageKey: "private/package/key",
+          },
+        },
+        metadataJson: {
+          hyperframesAutoPreview: {
+            renderJobId: "hf_summary_1",
+            status: "queued",
+            queuedAt: "2026-06-05T00:00:00.000Z",
+            rawHtml: "<html>private</html>",
+            signedUrl: "https://signed.example.test/private",
+          },
+          storyboardFrameUrls: ["https://cdn.example.test/frame.png"],
+        },
+        errorMessage: null,
+        idempotencyKey: "marketplace-auto-review:legacy",
+        createdAt: new Date("2026-06-05T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-05T00:00:00.000Z"),
+        completedAt: null,
+      } as any,
+      [],
+      { includeHeavyMetadata: false }
+    ) as any;
+
+    expect(serialized.metadataJson.hyperframesAutoPreview).toEqual({
+      renderJobId: "hf_summary_1",
+      status: "queued",
+      queuedAt: "2026-06-05T00:00:00.000Z",
+    });
+    expect(
+      JSON.stringify(serialized.metadataJson.hyperframesAutoPreview)
+    ).not.toContain("private");
+    expect(serialized.resultJson).toEqual({
+      storyboardReviewId: "42",
+      frameUrls: ["https://cdn.example.test/frame.png"],
+      startFrameUrls: ["https://cdn.example.test/start.png"],
+      stopFrameUrls: ["https://cdn.example.test/stop.png"],
+      hyperframesRenderJobId: "hf_result_summary_1",
+      hyperframesAutoPreview: {
+        renderJobId: "hf_result_preview_1",
+        status: "completed",
+      },
+      render: {
+        renderJobId: "hf_result_render_1",
+        status: "completed",
+        compositionInputHash: "hf_input_hash",
+      },
+    });
+    expect(JSON.stringify(serialized.resultJson)).not.toContain("private");
+    expect(JSON.stringify(serialized.resultJson)).not.toContain("signed");
+    expect(JSON.stringify(serialized.resultJson)).not.toContain("workerLogs");
+    expect(JSON.stringify(serialized)).not.toContain("private-result");
+    expect(JSON.stringify(serialized)).not.toContain("private-render");
+    expect(JSON.stringify(serialized)).not.toContain("private/storage/key");
+    expect(serialized.links.storyboardReview).toContain(
+      "hyperframesRenderJobId=hf_summary_1"
+    );
+  });
+});
+
+describe("Marketplace Auto Review HyperFrames preview queue", () => {
+  async function withPreviewAccess(callback: () => Promise<void>) {
+    const mockedGetDb = vi.mocked(getDb);
+    mockedGetDb.mockResolvedValueOnce({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [
+              {
+                featureFlags: {
+                  marketplaceHyperframesEnabled: true,
+                  marketplaceHyperframesWorkerEnabled: true,
+                  marketplaceHyperframesLibrarySaveEnabled: false,
+                  marketplaceHyperframesOperatorEnabled: false,
+                },
+              },
+            ],
+          }),
+        }),
+      }),
+    } as any);
+    mockedGetDb.mockResolvedValue(null);
+    try {
+      await callback();
+    } finally {
+      mockedGetDb.mockResolvedValue(null);
+    }
+  }
+
+  it("queues a HyperFrames preview and stores render metadata after Storyboard Review is ready", async () => {
+    await withPreviewAccess(async () => {
+      const { db, updates } = createAutoPreviewUpdateDb();
+      const metadata = { audioStrategy: "auto" };
+
+      const result =
+        await maybeQueueHyperframesPreviewAfterStoryboardReadyForTest({
+          db: db as any,
+          tenantId: "tenant_1",
+          auth: { userId: 119, tenantId: "tenant_1" },
+          run: {
+            id: "mar_preview_1",
+            productId: "product_1",
+          } as any,
+          plan: basePlan as any,
+          metadata: metadata as any,
+          storyboardReviewId: "storyboard_1",
+          frameUrls: ["https://cdn.example.test/frame-1.png"],
+          startFrameUrls: [],
+          stopFrameUrls: [],
+        });
+
+      expect(result.renderJobId).toMatch(/^hf_/);
+      expect(result.metadata.hyperframesAutoPreview).toMatchObject({
+        renderJobId: result.renderJobId,
+        status: "queued",
+      });
+      expect(updates).toHaveLength(1);
+      expect(updates[0]).toMatchObject({
+        renderJobId: result.renderJobId,
+      });
+      expect(
+        (updates[0]?.metadataJson as any)?.hyperframesAutoPreview
+      ).toMatchObject({
+        renderJobId: result.renderJobId,
+        status: "queued",
+      });
+    });
+  });
+
+  it("continues without queueing when Storyboard Review has no frame evidence", async () => {
+    await withPreviewAccess(async () => {
+      const { db, updates } = createAutoPreviewUpdateDb();
+      const metadata = { audioStrategy: "auto" };
+
+      const result =
+        await maybeQueueHyperframesPreviewAfterStoryboardReadyForTest({
+          db: db as any,
+          tenantId: "tenant_1",
+          auth: { userId: 119, tenantId: "tenant_1" },
+          run: {
+            id: "mar_preview_1",
+            productId: "product_1",
+          } as any,
+          plan: basePlan as any,
+          metadata: metadata as any,
+          storyboardReviewId: "storyboard_1",
+          frameUrls: [],
+          startFrameUrls: [],
+          stopFrameUrls: [],
+        });
+
+      expect(result).toEqual({
+        renderJobId: null,
+        metadata,
+      });
+      expect(updates).toEqual([]);
+    });
+  });
+});
 
 describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", () => {
   const reviewPlan = {

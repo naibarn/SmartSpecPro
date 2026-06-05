@@ -10,6 +10,7 @@ interface AutoStoryboardReviewPlanSummaryProps {
   plan?: HyperframesAutoStoryboardReviewPlan | null;
   loading?: boolean;
   starting?: boolean;
+  updating?: boolean;
   onStart: () => void;
   onUseStandard: () => void;
   onResetToAuto?: () => void;
@@ -20,6 +21,7 @@ export function AutoStoryboardReviewPlanSummary({
   plan,
   loading,
   starting,
+  updating,
   onStart,
   onUseStandard,
   onResetToAuto,
@@ -28,13 +30,42 @@ export function AutoStoryboardReviewPlanSummary({
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const blockers = plan?.blockers ?? [];
   const ready = Boolean(plan?.canStart && blockers.length === 0);
-  const primaryDisabled = loading || starting || !ready;
-  const primaryLabel = plan?.primaryAction.label ?? copy.createAutoReview;
+  const primaryActionId = plan?.primaryAction.actionId;
+  const primaryUsesStart = primaryActionId === "start_auto_storyboard_review";
+  const primaryUsesResume = primaryActionId === "resume_auto_storyboard_review";
+  const primaryUsesStandard = primaryActionId === "use_standard_order";
+  const primaryReady = ready || primaryUsesResume || primaryUsesStandard;
+  const primaryDisabled =
+    Boolean(loading || starting || updating || plan?.primaryAction.disabled) ||
+    (primaryUsesStart
+      ? !ready
+      : primaryUsesResume
+        ? !plan?.activeRunId
+      : primaryUsesStandard
+        ? !plan?.standardOrderAvailable
+        : true);
+  const primaryLabel =
+    primaryActionId === "start_auto_storyboard_review"
+      ? copy.createAutoReview
+      : primaryActionId === "resume_auto_storyboard_review"
+        ? copy.resumeAutoReview
+        : primaryActionId === "use_standard_order"
+          ? copy.useStandardOrder
+          : primaryActionId === "review_blockers"
+            ? copy.reviewBlockers
+            : plan?.primaryAction.label ?? copy.createAutoReview;
+  const summary =
+    loading
+      ? copy.autoReviewLoading
+      : copy.locale === "th"
+        ? copy.autoReviewFallbackSummary
+        : plan?.display.summary ?? copy.autoReviewFallbackSummary;
+  const handlePrimaryAction = primaryUsesStandard ? onUseStandard : onStart;
 
   return (
     <section
       className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100"
-      aria-label="Auto Storyboard Review plan"
+      aria-label={copy.autoReviewPlanLabel}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -43,51 +74,55 @@ export function AutoStoryboardReviewPlanSummary({
             {copy.autoReviewTitle}
           </div>
           <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
-            {loading
-              ? copy.autoReviewLoading
-              : plan?.display.summary ??
-                copy.autoReviewFallbackSummary}
+            {summary}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {updating ? (
+            <p className="sr-only" role="status" aria-live="polite">
+              {copy.autoPlanUpdating}
+            </p>
+          ) : null}
           {plan?.resetToAutoAvailable && onResetToAuto ? (
             <Button type="button" variant="outline" size="sm" onClick={onResetToAuto}>
               <RotateCcw className="mr-2 h-4 w-4" />
               {copy.useAutoPlan}
             </Button>
           ) : null}
-          <Button type="button" variant="outline" size="sm" onClick={onUseStandard}>
-            {copy.standardOrder}
-          </Button>
+          {primaryUsesStandard ? null : (
+            <Button type="button" variant="outline" size="sm" onClick={onUseStandard}>
+              {copy.standardOrder}
+            </Button>
+          )}
           <Button
             type="button"
-            onClick={onStart}
+            onClick={handlePrimaryAction}
             disabled={primaryDisabled}
             className="bg-sky-600 text-white hover:bg-sky-700"
           >
-            {starting ? (
+            {starting || updating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : ready ? (
+            ) : primaryReady ? (
               <CheckCircle2 className="mr-2 h-4 w-4" />
             ) : (
               <AlertTriangle className="mr-2 h-4 w-4" />
             )}
-            {primaryLabel}
+            {updating ? copy.autoPlanUpdating : primaryLabel}
           </Button>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.template}
           </p>
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
-            {plan?.defaults.templateId ?? copy.autoSelected}
+            {copy.autoSelected}
           </p>
         </div>
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.platform}
           </p>
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
@@ -95,7 +130,7 @@ export function AutoStoryboardReviewPlanSummary({
           </p>
         </div>
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.estimate}
           </p>
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">

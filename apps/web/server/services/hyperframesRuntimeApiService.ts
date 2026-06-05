@@ -4,17 +4,22 @@ import {
   buildHyperframesLibraryIdempotencyKey,
   createDefaultHyperframesPollingGuidance,
   type HyperframesArtifactRef,
+  type HyperframesChargeSummary,
   type HyperframesRenderStatusProjection,
   type HyperframesRenderIntent,
   type MarketplaceAutoReviewCompositionMode,
 } from "@shared/hyperframes/contracts";
+import {
+  RepairHyperframesRenderJobOutputSchema,
+  type RepairHyperframesRenderJobOutput,
+} from "@shared/hyperframes/runtimeApiSchemas";
 import { listHyperframesTemplateRegistry } from "./hyperframesTemplateRegistry";
 import {
   getHyperframesAutoStoryboardReviewPlan,
 } from "./hyperframesAutoPlanService";
 import {
   buildHyperframesCreditEstimate,
-  resolveHyperframesFeatureAccess,
+  resolveHyperframesFeatureAccessForTenant,
   type HyperframesAuthContext,
 } from "./hyperframesFeatureAccessService";
 import {
@@ -29,6 +34,8 @@ import {
   cancelHyperframesRenderJob,
   getHyperframesRenderProjection,
   queueHyperframesRenderJob,
+  redactHyperframesRenderProjectionForUser,
+  retryHyperframesRenderJob,
 } from "./hyperframesRenderService";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
 
@@ -54,6 +61,26 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.map(item => cleanText(item)).filter(Boolean)
     : [];
+}
+
+function renderJobIdFromRunState(runState: unknown): string {
+  const run = isRecord(runState) ? runState : {};
+  const metadata = isRecord(run.metadataJson) ? run.metadataJson : {};
+  const result = isRecord(run.resultJson) ? run.resultJson : {};
+  const metadataPreview = isRecord(metadata.hyperframesAutoPreview)
+    ? metadata.hyperframesAutoPreview
+    : {};
+  const resultPreview = isRecord(result.hyperframesAutoPreview)
+    ? result.hyperframesAutoPreview
+    : {};
+  const resultRender = isRecord(result.render) ? result.render : {};
+  return (
+    cleanText(run.renderJobId) ||
+    cleanText(metadataPreview.renderJobId) ||
+    cleanText(resultPreview.renderJobId) ||
+    cleanText(result.hyperframesRenderJobId) ||
+    cleanText(resultRender.renderJobId)
+  );
 }
 
 export function isHyperframesRunEligibleForPreview(runState: unknown): {
@@ -111,20 +138,34 @@ function unavailableRenderProjection(input: {
   });
 }
 
-function findLibraryOutputArtifact(
-  render: HyperframesRenderStatusProjection
-): HyperframesArtifactRef | null {
-  const output = render.outputRefs.find(ref => ref.contentHash);
-  if (!output?.contentHash) return null;
+function isLibraryVideoArtifact(ref: HyperframesArtifactRef): boolean {
   return (
-    render.artifactRefs.find(
-      ref =>
-        (ref.kind === "hyperframes_render_mp4" ||
-          ref.kind === "hyperframes_render_webm") &&
-        ref.contentHash === output.contentHash &&
-        ref.retentionClass === "library"
-    ) ?? null
+    (ref.kind === "hyperframes_render_mp4" ||
+      ref.kind === "hyperframes_render_webm") &&
+    ref.retentionClass === "library"
   );
+}
+
+function findLibraryOutputPair(render: HyperframesRenderStatusProjection): {
+  output: HyperframesRenderStatusProjection["outputRefs"][number];
+  artifact: HyperframesArtifactRef;
+} | null {
+  const libraryOutputCandidates = render.outputRefs.filter(
+    ref =>
+      (ref.kind === "final_video" || ref.kind === "library_item") &&
+      Boolean(ref.contentHash)
+  );
+
+  for (const output of libraryOutputCandidates) {
+    const artifact = render.artifactRefs.find(
+      ref => ref.contentHash === output.contentHash && isLibraryVideoArtifact(ref)
+    );
+    if (artifact) {
+      return { output, artifact };
+    }
+  }
+
+  return null;
 }
 
 export function buildHyperframesFinalizeInputFromCompletedRender(input: {
@@ -148,11 +189,8 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
       message: "Preview-only HyperFrames outputs cannot be saved as durable Library videos.",
     });
   }
-  const outputArtifactRef = findLibraryOutputArtifact(render);
-  const output = render.outputRefs.find(
-    ref => ref.contentHash === outputArtifactRef?.contentHash
-  );
-  if (!outputArtifactRef || !output?.contentHash) {
+  const libraryOutput = findLibraryOutputPair(render);
+  if (!libraryOutput?.output.contentHash) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "HyperFrames render output artifact is missing or not QA-ready.",
@@ -187,7 +225,7 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
     runId: input.runId,
     renderIntent: render.renderIntent,
     compositionInputHash,
-    outputHash: outputArtifactRef.contentHash,
+    outputHash: libraryOutput.artifact.contentHash,
   });
   if (input.idempotencyKey !== expectedKey) {
     throw new TRPCError({
@@ -216,15 +254,29 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
       launchMode: "auto_storyboard_review" as const,
       traceId: `trace_${input.renderJobId}`,
       correlationId: `corr_${input.renderJobId}`,
-      outputArtifactRef,
-      outputUrl: output.url ?? null,
-      thumbnailUrl: output.thumbnailUrl ?? null,
+      outputArtifactRef: libraryOutput.artifact,
+      outputUrl: libraryOutput.output.url ?? null,
+      thumbnailUrl: libraryOutput.output.thumbnailUrl ?? null,
       qaStatus: render.qaStatus,
     },
-    outputArtifactRef,
-    outputUrl: output.url ?? null,
-    thumbnailUrl: output.thumbnailUrl ?? null,
+    outputArtifactRef: libraryOutput.artifact,
+    outputUrl: libraryOutput.output.url ?? null,
+    thumbnailUrl: libraryOutput.output.thumbnailUrl ?? null,
     qaStatus: render.qaStatus,
+  };
+}
+
+export function buildHyperframesLibrarySaveChargeSummary(input: {
+  created: boolean;
+  idempotencyKey: string;
+}): HyperframesChargeSummary {
+  return {
+    chargeRequired: false,
+    quotaDecision: "no_charge",
+    noChargeReason: input.created
+      ? "not_billable"
+      : "duplicate_library_finalize",
+    idempotencyKey: input.idempotencyKey,
   };
 }
 
@@ -232,10 +284,12 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   productId: string;
   auth: HyperframesAuthContext;
   includeTemplates?: boolean;
+  overrides?: Record<string, unknown>;
 }) {
   const plan = await getHyperframesAutoStoryboardReviewPlan({
     productId: input.productId,
     auth: input.auth,
+    overrides: input.overrides,
   });
   return {
     contractVersion:
@@ -251,10 +305,64 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   };
 }
 
+function toMarketplaceAutoReviewQualityMode(
+  qualityMode: "fast" | "balanced" | "high"
+): "fast_draft" | "balanced" | "premium_strict_qa" {
+  if (qualityMode === "fast") return "fast_draft";
+  if (qualityMode === "high") return "premium_strict_qa";
+  return "balanced";
+}
+
+async function buildStartAutoStoryboardReviewResumeResponse(input: {
+  productId: string;
+  auth: HyperframesAuthContext;
+  plan: Awaited<ReturnType<typeof getHyperframesAutoStoryboardReviewPlan>>;
+}) {
+  const activeRunId = cleanText(input.plan.activeRunId);
+  if (!activeRunId) return null;
+  const activeRun = await getMarketplaceAutoReviewRun(activeRunId, input.auth);
+  const activeRunRecord = (activeRun ?? {}) as Record<string, unknown>;
+  const activeRunProductId = cleanText(activeRunRecord.productId);
+  if (activeRunProductId && activeRunProductId !== input.productId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Auto review run was not found for this product.",
+    });
+  }
+  const renderJobId = renderJobIdFromRunState(activeRunRecord);
+  const render = renderJobId
+    ? redactHyperframesRenderProjectionForUser(
+        await getHyperframesRenderProjection({
+          auth: input.auth,
+          productId: input.productId,
+          runId: activeRunId,
+          renderJobId,
+        })
+      )
+    : null;
+  return {
+    contractVersion:
+      HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+    launchMode: "auto_storyboard_review" as const,
+    plan: input.plan,
+    run: activeRunRecord,
+    render,
+    chargeSummary: {
+      chargeRequired: false,
+      quotaDecision: input.plan.quotaDecision,
+      noChargeReason: "not_applicable" as const,
+    },
+    polling:
+      render?.polling ?? createDefaultHyperframesPollingGuidance("not_available"),
+    invalidates: INVALIDATES,
+  };
+}
+
 export async function startAutoStoryboardReviewForApi(input: {
   productId: string;
   auth: HyperframesAuthContext;
   expectedPlanHash?: string;
+  idempotencyKey?: string;
   overrides?: Record<string, unknown>;
   runtime?: Record<string, unknown>;
 }) {
@@ -264,10 +372,30 @@ export async function startAutoStoryboardReviewForApi(input: {
     overrides: input.overrides,
   });
   if (input.expectedPlanHash && input.expectedPlanHash !== plan.planHash) {
+    const resumeResponse =
+      plan.primaryAction.actionId === "resume_auto_storyboard_review"
+        ? await buildStartAutoStoryboardReviewResumeResponse({
+            productId: input.productId,
+            auth: input.auth,
+            plan,
+          })
+        : null;
+    if (resumeResponse) return resumeResponse;
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Auto Storyboard Review plan is stale. Refresh the plan and try again.",
     });
+  }
+  if (
+    plan.primaryAction.actionId === "resume_auto_storyboard_review" &&
+    plan.activeRunId
+  ) {
+    const resumeResponse = await buildStartAutoStoryboardReviewResumeResponse({
+      productId: input.productId,
+      auth: input.auth,
+      plan,
+    });
+    if (resumeResponse) return resumeResponse;
   }
   if (!plan.canStart) {
     return {
@@ -289,6 +417,7 @@ export async function startAutoStoryboardReviewForApi(input: {
   const run = await startMarketplaceAutoReviewRun(
     {
       productId: input.productId,
+      idempotencyKey: input.idempotencyKey,
       creationIntent: "auto_review_video",
       outputMode: plan.defaults.outputMode,
       frameStrategy: plan.defaults.frameStrategy,
@@ -296,7 +425,7 @@ export async function startAutoStoryboardReviewForApi(input: {
       shotCount: plan.defaults.shotCount,
       overlayTextMode: plan.defaults.overlayTextMode,
       imageModel: plan.defaults.imageModel,
-      qualityMode: "balanced",
+      qualityMode: toMarketplaceAutoReviewQualityMode(plan.defaults.qualityMode),
     },
     input.auth,
     input.runtime ?? {}
@@ -361,7 +490,7 @@ export async function createHyperframesPreviewForApi(input: {
   auth: HyperframesAuthContext;
   expectedCompositionInputHash?: string;
 }) {
-  const access = resolveHyperframesFeatureAccess({
+  const access = await resolveHyperframesFeatureAccessForTenant({
     auth: input.auth,
     productId: input.productId,
     runId: input.runId,
@@ -489,13 +618,98 @@ export async function getHyperframesRenderJobForApi(input: {
   runId?: string;
 }) {
   const render = await getHyperframesRenderProjection(input);
+  const publicRender = redactHyperframesRenderProjectionForUser(render);
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-    render,
-    polling: render.polling,
+    render: publicRender,
+    polling: publicRender.polling,
     notModified: false,
   };
+}
+
+export async function repairHyperframesRenderJobForApi(input: {
+  auth: HyperframesAuthContext;
+  renderJobId: string;
+  productId: string;
+  runId: string;
+  actionId: string;
+  actionType:
+    | "regenerate_from_current_plan"
+    | "recreate_snapshot"
+    | "retry_worker_step"
+    | "rerun_layout_inspect"
+    | "cancel_render"
+    | "open_standard_order";
+  expectedCompositionInputHash?: string;
+}): Promise<RepairHyperframesRenderJobOutput> {
+  const current = await getHyperframesRenderProjection(input);
+  if (!current.permissions.canRepair) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to repair this HyperFrames render.",
+    });
+  }
+  const action = current.repairActions.find(
+    item =>
+      item.actionId === input.actionId && item.actionType === input.actionType
+  );
+  if (!action) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "HyperFrames repair action is no longer available. Refresh status and try again.",
+    });
+  }
+  if (action.requiresOperator) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This HyperFrames repair action requires operator support.",
+    });
+  }
+  if (action.disabledReason) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: action.disabledReason,
+    });
+  }
+
+  if (action.actionType === "retry_worker_step") {
+    if (
+      input.expectedCompositionInputHash &&
+      current.compositionInputHash &&
+      input.expectedCompositionInputHash !== current.compositionInputHash
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "HyperFrames render input changed. Refresh status before retrying this worker step.",
+      });
+    }
+    const repaired = await retryHyperframesRenderJob(input);
+    const publicRender = redactHyperframesRenderProjectionForUser(repaired);
+    return RepairHyperframesRenderJobOutputSchema.parse({
+      contractVersion:
+        HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+      render: publicRender,
+      polling: publicRender.polling,
+      invalidates: INVALIDATES,
+    });
+  }
+
+  if (action.actionType === "regenerate_from_current_plan") {
+    return RepairHyperframesRenderJobOutputSchema.parse(
+      await createHyperframesPreviewForApi({
+        productId: input.productId,
+        runId: input.runId,
+        auth: input.auth,
+      })
+    );
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: "This HyperFrames repair action is not supported for self-service repair yet.",
+  });
 }
 
 export async function listHyperframesTemplatesForApi(input: {
@@ -504,7 +718,7 @@ export async function listHyperframesTemplatesForApi(input: {
   compositionMode?: MarketplaceAutoReviewCompositionMode;
   renderIntent?: HyperframesRenderIntent;
 }) {
-  const access = resolveHyperframesFeatureAccess({ auth: input.auth });
+  const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -524,12 +738,20 @@ export async function cancelHyperframesRenderJobForApi(input: {
   productId?: string;
   runId?: string;
 }) {
+  const current = await getHyperframesRenderProjection(input);
+  if (!current.permissions.canCancel) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not have permission to cancel this HyperFrames render.",
+    });
+  }
   const render = await cancelHyperframesRenderJob(input);
+  const publicRender = redactHyperframesRenderProjectionForUser(render);
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-    render,
-    polling: render.polling,
+    render: publicRender,
+    polling: publicRender.polling,
   };
 }
 
@@ -540,7 +762,7 @@ export async function saveHyperframesRenderToLibraryForApi(input: {
   renderJobId: string;
   idempotencyKey: string;
 }) {
-  const access = resolveHyperframesFeatureAccess({
+  const access = await resolveHyperframesFeatureAccessForTenant({
     auth: input.auth,
     productId: input.productId,
     runId: input.runId,
@@ -562,19 +784,18 @@ export async function saveHyperframesRenderToLibraryForApi(input: {
     render: renderJob,
   });
   const finalized = await finalizeHyperframesRenderToLibrary(finalizeInput);
+  const publicRender = redactHyperframesRenderProjectionForUser(finalized.render);
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
     created: finalized.created,
     libraryItem: finalized.libraryItem,
-    render: finalized.render,
-    chargeSummary: {
-      chargeRequired: false,
-      quotaDecision: "no_charge" as const,
-      noChargeReason: finalized.created ? ("already_charged" as const) : ("already_charged" as const),
+    render: publicRender,
+    chargeSummary: buildHyperframesLibrarySaveChargeSummary({
+      created: finalized.created,
       idempotencyKey: finalized.metadata.idempotencyKey,
-    },
-    polling: finalized.render.polling,
+    }),
+    polling: publicRender.polling,
     invalidates: INVALIDATES,
   };
 }

@@ -1,0 +1,20 @@
+{
+  "routeLog": [
+    {
+      "requestUrl": "http://127.0.0.1:3017/trpc/library.getItem?input=%7B%22json%22%3A%7B%22id%22%3A1%7D%7D",
+      "procedurePath": "library.getItem",
+      "procedures": [
+        "library.getItem"
+      ]
+    }
+  ],
+  "videoEditorDebug": {
+    "href": "http://127.0.0.1:3017/video-editor?libraryItemId=1",
+    "search": "?libraryItemId=1",
+    "timelineClipCount": 1,
+    "timelineLabels": [
+      "video clip: final.mp4, duration 0:10.00, starts at 0:00.00"
+    ],
+    "notificationText": ""
+  }
+}

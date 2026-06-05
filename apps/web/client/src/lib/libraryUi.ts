@@ -50,6 +50,49 @@ export interface LibraryUploadPipelineLike {
   warnings?: string[] | null;
 }
 
+const LIBRARY_PRODUCT_CONTEXT_KEYS = [
+  "productId",
+  "product_id",
+  "marketplaceProductId",
+  "marketplace_product_id",
+] as const;
+
+const LIBRARY_RUN_CONTEXT_KEYS = [
+  "runId",
+  "run_id",
+  "productionRunId",
+  "production_run_id",
+  "autoReviewRunId",
+  "auto_review_run_id",
+] as const;
+
+function getLibraryMetadataText(
+  metadata: Record<string, unknown> | null | undefined,
+  keys: readonly string[],
+): string | undefined {
+  if (!metadata || typeof metadata !== "object") {
+    return undefined;
+  }
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+export function getLibraryProductContextId(
+  metadata: Record<string, unknown> | null | undefined,
+): string | undefined {
+  return getLibraryMetadataText(metadata, LIBRARY_PRODUCT_CONTEXT_KEYS);
+}
+
+export function getLibraryRunContextId(
+  metadata: Record<string, unknown> | null | undefined,
+): string | undefined {
+  return getLibraryMetadataText(metadata, LIBRARY_RUN_CONTEXT_KEYS);
+}
+
 export function isMediaTaskEligibleForLibraryAdd(task: MediaTaskForLibraryUI): boolean {
   if (task.status !== "completed") {
     return false;

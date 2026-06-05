@@ -2,7 +2,7 @@
   "gate": "fixture-render",
   "status": "passed",
   "renderer": "playwright_chromium_ffmpeg_smoke",
-  "generatedAt": "2026-06-04T14:07:51.610Z",
+  "generatedAt": "2026-06-05T08:20:47.192Z",
   "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture.html",
   "frameCount": 5,
   "frames": [

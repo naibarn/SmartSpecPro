@@ -44,7 +44,7 @@ approval.
 
 ## Verification
 
-Passed:
+Passed smoke and implementation gates:
 
 ```bash
 npm --prefix apps/web run test -- client/src/components/marketplaceCapture server/routers/__tests__/marketplaceCapture.hyperframesRuntimeApi.test.ts shared/hyperframes server/services/__tests__/hyperframes
@@ -53,8 +53,14 @@ npm --prefix apps/web run hyperframes:dependency-audit
 npm --prefix apps/web run hyperframes:doctor
 npm --prefix apps/web run hyperframes:fixture-render
 npm --prefix apps/web run hyperframes:snapshot-test
-npm --prefix apps/web run hyperframes:production-rollout-gate
 npm --prefix apps/web run e2e:marketplace-hyperframes
+```
+
+Expected blocked production-readiness gate until external runtime proof is
+approved:
+
+```bash
+npm --prefix apps/web run hyperframes:production-rollout-gate
 ```
 
 Notes:
@@ -67,11 +73,39 @@ Notes:
   and Video Editor handoff affordances.
 - The dependency audit gate reports `partial` by design because package install
   is deferred for production `@hyperframes/*` rollout.
-- The doctor reports `mvp_smoke_ready` in this environment through Playwright
-  Chromium, FFmpeg, FFprobe, temp workspace, and storage policy checks.
+- The doctor reports `mvp_smoke_ready` only when the runtime satisfies the
+  SmartSpecPro Node engine range, Playwright/browser, FFmpeg/FFprobe, temp
+  workspace, storage policy, and render-font checks. It exits non-zero when any
+  required local smoke runtime proof is missing.
 - The production rollout gate remains `blocked` until pinned versions, license,
-  provenance, native postinstall review, worker image, fonts, Chrome, seeded
-  route E2E, and golden snapshots pass.
+  provenance, native postinstall review, worker image, fonts, Chrome, FFmpeg,
+  and golden snapshots pass. `mvpSmokeReady` is scoped to the smoke lane: the
+  web bundle excludes `@hyperframes/*` and fresh seeded route E2E evidence
+  passes, including Product Detail Auto-first first-viewport proof and preserved
+  Standard Order access. `productionRuntimePrerequisitesReady` separately
+  reports Chrome/FFmpeg readiness for producer execution. Fresh seeded route E2E
+  evidence clears the seeded-route gate only when the route suite runs before
+  the rollout gate and the generated evidence is inside the configured
+  freshness window (`MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`, default
+  24 hours). Manual seeded-route env flags cannot bypass missing or stale route
+  evidence in the CLI gate.
+- Browser evidence refreshes use a no-kill Playwright lane by default:
+  `PLAYWRIGHT_E2E_PORT=3017 npm --prefix apps/web run e2e:marketplace-hyperframes`.
+  Port 3000 does not need to be stopped or restarted. To validate a specific
+  already-running server, pass `PLAYWRIGHT_SKIP_WEB_SERVER=1` and
+  `PLAYWRIGHT_BASE_URL`.
+- Tenant rollout is controlled through the existing Admin Tenant Feature Flags
+  UI, not by editing environment files. Enable the tenant flags
+  `marketplaceHyperframesEnabled`, `marketplaceHyperframesWorkerEnabled`,
+  `marketplaceHyperframesLibrarySaveEnabled`, and
+  `marketplaceHyperframesOperatorEnabled` from `Admin -> Tenants -> Edit Tenant
+  -> Feature Flags -> Media Production & HyperFrames`. Environment values remain
+  global safety/runtime guards only.
+- Auto remains one-click by default, while Advanced Auto overrides now provide
+  optional user controls for platform format, quality, image model, audio
+  policy, text policy, shot count, and frame evidence strategy. The advanced
+  controls are collapsed by default, resettable with `Use auto plan`, and do not
+  expose template or render-engine selection.
 
 ## Git Workflow Note
 

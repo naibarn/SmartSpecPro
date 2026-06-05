@@ -1500,10 +1500,50 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           align-items: center;
           gap: 6px;
           margin-left: auto;
+          min-width: 0;
+          max-width: 100%;
+          flex: 0 1 auto;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: thin;
+          scrollbar-color: #0078d4 #1f1f1f;
+          box-shadow: inset -14px 0 12px -14px rgba(0, 120, 212, 0.8);
           background: #222;
           border: 1px solid #343434;
           border-radius: 7px;
           padding: 4px;
+        }
+
+        .preview-zoom-controls::-webkit-scrollbar {
+          height: 4px;
+        }
+
+        .preview-zoom-controls::-webkit-scrollbar-track {
+          background: #1f1f1f;
+          border-radius: 999px;
+        }
+
+        .preview-zoom-controls::-webkit-scrollbar-thumb {
+          background: #0078d4;
+          border-radius: 999px;
+        }
+
+        .preview-zoom-controls > * {
+          flex-shrink: 0;
+        }
+
+        @media (max-width: 639px) {
+          .controls-row {
+            gap: 6px;
+            min-width: 0;
+          }
+
+          .preview-zoom-controls {
+            flex: 1 1 100%;
+            width: 100%;
+            max-width: 100%;
+            margin-left: 0;
+          }
         }
 
         .resolution-toggle {
@@ -2237,7 +2277,17 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           </div>
 
           {/* Preview Zoom + Fullscreen */}
-          <div className="preview-zoom-controls">
+          <div
+            className="preview-zoom-controls"
+            role="toolbar"
+            aria-label="Preview controls"
+            style={{
+              minWidth: 0,
+              maxWidth: '100%',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+            }}
+          >
             {onOpenKeyframePanel && (
               <button
                 className="control-button text-button keyframe-button"
@@ -2288,7 +2338,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             >
               Frame Guide
             </button>
-            <div className="resolution-toggle" title="Preview display resolution">
+            <div
+              className="resolution-toggle"
+              title="Preview display resolution"
+              role="group"
+              aria-label="Preview display resolution"
+            >
               <button
                 type="button"
                 className={previewResolutionMode === 'preview' ? 'active' : ''}
@@ -2346,6 +2401,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               onChange={e => setPreviewZoom(Number(e.target.value))}
               title={renderFramePreviewOnly ? 'Disabled while Preview Lock is enabled' : 'Preview zoom level'}
               disabled={renderFramePreviewOnly}
+              aria-label="Preview zoom level"
             >
               {ZOOM_PRESETS.map(z => (
                 <option key={z} value={z}>{z}%</option>

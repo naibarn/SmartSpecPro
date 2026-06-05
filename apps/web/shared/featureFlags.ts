@@ -96,6 +96,10 @@ export interface TenantFeatureFlags {
   mediaProductionDualOutputEnabled: boolean; // F88 — Storyboard Review and Video Edit output projections
   mediaProductionAgencyReviewersEnabled: boolean; // F89 — Optional Agency reviewer packs
   mediaProductionLangGraphBatchEnabled: boolean; // F90 — Optional LangGraph checkpointed batch runtime
+  marketplaceHyperframesEnabled: boolean; // F91 — Marketplace Capture Auto Storyboard Review HyperFrames adapter
+  marketplaceHyperframesWorkerEnabled: boolean; // F92 — Tenant-scoped HyperFrames worker queueing
+  marketplaceHyperframesLibrarySaveEnabled: boolean; // F93 — Save completed HyperFrames renders to Library
+  marketplaceHyperframesOperatorEnabled: boolean; // F94 — Delegated HyperFrames operator controls
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -195,6 +199,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "mediaProductionDualOutputEnabled",
   "mediaProductionAgencyReviewersEnabled",
   "mediaProductionLangGraphBatchEnabled",
+  "marketplaceHyperframesEnabled",
+  "marketplaceHyperframesWorkerEnabled",
+  "marketplaceHyperframesLibrarySaveEnabled",
+  "marketplaceHyperframesOperatorEnabled",
 ]);
 
 /**
@@ -293,6 +301,10 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   mediaProductionDualOutputEnabled: false,
   mediaProductionAgencyReviewersEnabled: false,
   mediaProductionLangGraphBatchEnabled: false,
+  marketplaceHyperframesEnabled: false,
+  marketplaceHyperframesWorkerEnabled: false,
+  marketplaceHyperframesLibrarySaveEnabled: false,
+  marketplaceHyperframesOperatorEnabled: false,
 };
 
 export type HermesRolloutSurface =

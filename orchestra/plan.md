@@ -1,58 +1,89 @@
 # Orchestra Plan
 
 ## Task
-Fix all Feature 119 HyperFrames Marketplace Auto Review completeness findings, then run three review/fix convergence rounds.
+Close the final HyperFrames Marketplace Auto Review production-convergence
+findings and establish a finishable evidence lane that does not touch the
+shared port 3000 server.
 
 ## Classification
-- scope: large
+- scope: medium
 - risk: high
-- affected_domains: backend runtime APIs, render worker, Library finalize, Product Detail UI, Storyboard Review UI, MediaStudio handoff, tests, docs/gates
-- estimated_file_count: 18
-- chosen_route: direct-inline-waves (Codex standard light mode)
-- task_summary: Close the implementation gaps found in the Feature 119 audit while preserving Standard Order and keeping HyperFrames runtime dependency deferred.
-- bug_route: false
-- parallel_default: true
+- affected_domains: Marketplace Capture Product Detail UI, Playwright route evidence, rollout evidence gate, runbook/docs, implementation artifacts
+- chosen_route: direct-inline-waves
+- dispatch_preference: codex-standard-light
 - planned_agents: []
-- dispatch_preference: direct-standard-light
 
-## Activation Decision
-- selected_skills: orchestra
-- skipped_skills: deep-implement, because the current task is a focused remediation pass against an existing implemented plan rather than a fresh section-by-section deep implementation.
-
-## Impact Preflight
-- SocratiCode status: green for `/home/dev/projects/SmartSpecPro`.
-- Candidate files from SocratiCode/search:
-  - `apps/web/server/services/hyperframesRuntimeApiService.ts`
-  - `apps/web/server/services/hyperframesRenderService.ts`
-  - `apps/web/server/workers/hyperframesRenderWorker.ts`
-  - `apps/web/server/services/hyperframesLibraryFinalizeService.ts`
-  - `apps/web/server/routers/marketplaceCapture.ts`
+## SocratiCode Preflight
+- status: green index, watcher active
+- narrowed files:
   - `apps/web/client/src/pages/MarketplaceCaptureProductDetail.tsx`
-  - `apps/web/client/src/pages/StoryboardReviewPage.tsx`
-  - `apps/web/client/src/pages/MediaStudio.tsx`
-  - `apps/web/client/src/components/marketplaceCapture/*`
-  - focused service/router/component/e2e tests under the same feature area.
-- Risk-sensitive surfaces:
-  - new/modified tRPC procedure behavior and tenant/user render access checks;
-  - Library finalize behavior and output artifact trust boundary;
-  - worker state mutation for queued render jobs;
-  - user-facing Auto-vs-Standard workflow.
-- Constraints:
-  - Do not install/import `@hyperframes/*` packages while dependency audit remains partial.
-  - Do not replace Standard Order; keep existing `startAutoReview` path usable.
-  - Do not claim real render/snapshot/browser runtime proof when gates are deferred.
-  - Preserve unrelated dirty worktree changes.
+  - `apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts`
+  - `apps/web/playwright.config.ts`
+  - `apps/web/package.json`
+  - `apps/web/scripts/hyperframes-production-rollout-gate.mjs`
+  - `apps/web/scripts/__tests__/hyperframes-production-rollout-gate.test.ts`
+  - `docs/hyperframes-marketplace-auto-review.md`
+  - `docs/runbooks/hyperframes-marketplace-auto-review.md`
+  - `specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation/implementation-summary.md`
 
-## Waves
-1. Backend safety and eligibility
-   - Worker must not mark jobs completed without runtime execution and QA evidence.
-   - Runtime API must only queue preview when access/run/storyboard state is eligible.
-   - Save-to-Library must require feature flag, completed render, QA-ready output refs, valid idempotency, and real artifact metadata.
-   - Add focused service/router tests for these behaviors.
-2. UI workflow and handoff
-   - Make Product Detail Auto CTA truly primary before Standard controls while Standard remains visible and usable.
-   - Improve Storyboard Review and MediaStudio handoff state without forcing manual customization.
-   - Add component/page/e2e fixture assertions where feasible.
-3. Gates and convergence
-   - Run focused tests, typecheck, HyperFrames release-gate scripts, and e2e skeleton.
-   - Run three review rounds; fix any additional in-scope material findings immediately.
+## Findings To Close
+- Product Detail route evidence must prove the Auto Storyboard Review first
+  action, Auto CTA, and Standard Order entry all appear in the first mobile
+  viewport, and that Auto appears before Product Summary.
+- The browser evidence workflow must not stop, kill, or depend on the shared
+  port 3000 server.
+- Rollout gate readiness output must separate MVP smoke evidence from production
+  Chrome/FFmpeg runtime prerequisites so a blocked producer rollout is not
+  confused with a failed local smoke flow.
+- Docs, runbook, review notes, and implementation summary must match the current
+  no-kill evidence lane and Product Detail Auto-first proof requirements.
+- Fresh route evidence must be regenerated from the updated code on an alternate
+  Playwright port, then inspected and gated.
+
+## Implementation Waves
+1. Remove destructive port-3000 kill behavior from dev scripts and move
+   Playwright evidence to a configurable alternate port.
+2. Add Product Detail first-viewport/order evidence to the route E2E suite and
+   require that proof in the rollout gate.
+3. Add rollout-gate tests for missing/inverted Product Detail proof and for MVP
+   smoke readiness staying true while production runtime prerequisites are
+   blocked.
+4. Update docs/runbook/implementation notes so future evidence refreshes use the
+   no-kill lane.
+5. Rebuild/check, rerun focused tests, refresh route evidence on an alternate
+   port, inspect the Product Detail screenshot, and rerun rollout gates.
+6. Stage all changed source, docs, and refreshed evidence artifacts needed for a
+   reproducible handoff.
+
+## Verification Plan
+- `git diff --check`
+- `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check`
+- Focused Vitest coverage for rollout gate, Marketplace Auto Review service,
+  routers, runtime API, Product Detail/Marketplace capture components, UI state,
+  Library/Media History/Video Editor helpers.
+- `PLAYWRIGHT_E2E_PORT=3017 npm --prefix apps/web run e2e:marketplace-hyperframes`
+- Visual inspection of
+  `apps/web/test-results/marketplace-hyperframes/route-product-detail-390x844.png`.
+- `npm --prefix apps/web run hyperframes:production-rollout-gate`
+- stale-evidence rollout gate command with `MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS=1`
+- targeted review convergence after the last code/artifact change.
+
+## 2026-06-05 Tenant Config Enablement Addendum
+
+## Task
+Move normal Marketplace HyperFrames enablement out of environment editing and
+into the existing Admin Tenant Feature Flags UI while preserving environment
+values as global safety/runtime guards.
+
+## Implementation Waves
+1. Add tenant-level HyperFrames flags to the shared tenant feature flag contract,
+   defaults, allowlist, Redis sync, and Admin Tenant Feature Flags grouping.
+2. Route Product Detail auto-plan, runtime API, auto-preview queue, operator
+   procedures, and the render worker through tenant flag access checks.
+3. Preserve the Standard Order/manual Marketplace Capture path and fail closed
+   when tenant flags are disabled or tenant config cannot be read.
+4. Update docs/runbook/dependency audit notes so Admin Tenant Feature Flags is
+   the normal rollout path and env vars are described only as safety/runtime
+   guards.
+5. Run focused Vitest, TypeScript, dependency audit, doctor, and rollout-gate
+   verification without touching the shared port 3000 server.

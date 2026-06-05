@@ -84,6 +84,10 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "documentOcrExternalProcessing",
   "agentRegistryEnabled",
   "voiceAgents",
+  "marketplaceHyperframesEnabled",
+  "marketplaceHyperframesWorkerEnabled",
+  "marketplaceHyperframesLibrarySaveEnabled",
+  "marketplaceHyperframesOperatorEnabled",
 ]);
 
 /**

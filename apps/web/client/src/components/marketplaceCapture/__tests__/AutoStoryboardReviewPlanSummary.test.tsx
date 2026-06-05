@@ -39,11 +39,14 @@ describe("AutoStoryboardReviewPlanSummary", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /create auto storyboard review/i }));
     expect(onStart).toHaveBeenCalled();
-    expect(screen.getByText("marketplace_storyboard_motion_9x9_v1")).toBeTruthy();
+    expect(screen.getAllByText("Auto selected")).not.toHaveLength(0);
+    expect(screen.queryByText("marketplace_storyboard_motion_9x9_v1")).toBeNull();
   });
 
   it("shows Standard fallback when Auto is blocked", () => {
     const plan = readyPlan();
+    const onStart = vi.fn();
+    const onUseStandard = vi.fn();
     plan.blockers.push({
       code: "worker_disabled",
       severity: "blocking",
@@ -53,22 +56,87 @@ describe("AutoStoryboardReviewPlanSummary", () => {
       userActionRequired: false,
     });
     plan.canStart = false;
+    plan.primaryAction = {
+      actionId: "use_standard_order",
+      label: "Use Standard Order",
+      disabled: false,
+      copyId: "hyperframes.action.use_standard_order",
+    };
     render(
       <AutoStoryboardReviewPlanSummary
         plan={plan}
-        onStart={vi.fn()}
-        onUseStandard={vi.fn()}
+        onStart={onStart}
+        onUseStandard={onUseStandard}
       />
     );
 
     expect(screen.getByText(/standard order remains available/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /standard order/i })).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", { name: /use standard order/i })
+    ).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /use standard order/i }));
+    expect(onUseStandard).toHaveBeenCalledTimes(1);
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it("allows Resume Auto to open the active run without using Standard fallback", () => {
+    const plan = readyPlan();
+    const onStart = vi.fn();
+    const onUseStandard = vi.fn();
+    plan.activeRunId = "mar_active_1";
+    plan.canStart = false;
+    plan.primaryAction = {
+      actionId: "resume_auto_storyboard_review",
+      label: "Resume Auto Storyboard Review",
+      disabled: false,
+      copyId: "hyperframes.action.resume_auto_storyboard_review",
+    };
+
+    render(
+      <AutoStoryboardReviewPlanSummary
+        plan={plan}
+        onStart={onStart}
+        onUseStandard={onUseStandard}
+      />
+    );
+
+    const button = screen.getByRole("button", {
+      name: /resume auto storyboard review/i,
+    });
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(onUseStandard).not.toHaveBeenCalled();
+  });
+
+  it("disables the primary Auto action while the plan is updating", () => {
+    const onStart = vi.fn();
+    render(
+      <AutoStoryboardReviewPlanSummary
+        plan={readyPlan()}
+        updating
+        onStart={onStart}
+        onUseStandard={vi.fn()}
+      />
+    );
+
+    const button = screen.getByRole("button", {
+      name: /updating auto plan/i,
+    });
+    expect(screen.getByRole("status").textContent).toMatch(
+      /updating auto plan/i
+    );
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onStart).not.toHaveBeenCalled();
   });
 
   it("uses Thai operational copy when locale is Thai", () => {
     render(
       <AutoStoryboardReviewPlanSummary
-        plan={null}
+        plan={readyPlan()}
         locale="th"
         onStart={vi.fn()}
         onUseStandard={vi.fn()}
@@ -76,6 +144,8 @@ describe("AutoStoryboardReviewPlanSummary", () => {
     );
 
     expect(screen.getByText(/ระบบเลือก template/)).toBeTruthy();
-    expect(screen.getByText("นโยบาย preview")).toBeTruthy();
+    expect(screen.getByLabelText("แผน Auto Storyboard Review")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /สร้าง Auto Storyboard Review/i }))
+      .toBeTruthy();
   });
 });

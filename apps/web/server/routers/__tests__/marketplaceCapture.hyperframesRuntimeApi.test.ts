@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { marketplaceCaptureRouter } from "../marketplaceCapture";
 import type { TrpcContext } from "../../_core/context";
+import { RepairHyperframesRenderJobOutputSchema } from "@shared/hyperframes/runtimeApiSchemas";
+import { getDb } from "../../db";
 
 vi.mock("../../db", () => ({
   getDb: vi.fn(async () => null),
@@ -35,6 +37,7 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     expect(procedures).toContain("startAutoStoryboardReview");
     expect(procedures).toContain("createHyperframesPreview");
     expect(procedures).toContain("getHyperframesRenderJob");
+    expect(procedures).toContain("repairHyperframesRenderJob");
     expect(procedures).toContain("listHyperframesTemplates");
     expect(procedures).toContain("cancelHyperframesRenderJob");
     expect(procedures).toContain("saveHyperframesRenderToLibrary");
@@ -45,6 +48,16 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     expect(procedures).toContain("enableHyperframesTemplate");
   });
 
+  it("validates repair render job output through the runtime API schema", () => {
+    const procedure = (marketplaceCaptureRouter as unknown as {
+      _def: {
+        procedures: Record<string, { _def: { output?: unknown } }>;
+      };
+    })._def.procedures.repairHyperframesRenderJob;
+
+    expect(procedure._def.output).toBe(RepairHyperframesRenderJobOutputSchema);
+  });
+
   it("requires authentication through the real protectedProcedure middleware", async () => {
     const caller = marketplaceCaptureRouter.createCaller(createContext(null));
 
@@ -53,6 +66,15 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
         renderJobId: "hf_router_1",
         productId: "product_1",
         runId: "mar_1",
+      })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(
+      caller.repairHyperframesRenderJob({
+        renderJobId: "hf_router_1",
+        productId: "product_1",
+        runId: "mar_1",
+        actionId: "repair_retry_worker_step",
+        actionType: "retry_worker_step",
       })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
@@ -109,39 +131,51 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
   });
 
   it("allows delegated support diagnostics only when the operator flag is enabled", async () => {
-    const previous = process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED;
-    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED = "1";
-    try {
-      const caller = marketplaceCaptureRouter.createCaller(
-        createContext({
-          id: 119,
-          email: "support@smartspec.local",
-          role: "support",
-          currentTenantId: "tenant_router",
-        })
-      );
+    const flagDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [
+              {
+                featureFlags: {
+                  marketplaceHyperframesEnabled: true,
+                  marketplaceHyperframesWorkerEnabled: true,
+                  marketplaceHyperframesLibrarySaveEnabled: false,
+                  marketplaceHyperframesOperatorEnabled: true,
+                },
+              },
+            ],
+          }),
+        }),
+      }),
+    };
+    vi.mocked(getDb)
+      .mockResolvedValueOnce(flagDb as any)
+      .mockResolvedValueOnce(flagDb as any)
+      .mockResolvedValue(null);
+    const caller = marketplaceCaptureRouter.createCaller(
+      createContext({
+        id: 119,
+        email: "support@smartspec.local",
+        role: "support",
+        currentTenantId: "tenant_router",
+      })
+    );
 
-      const result = await caller.inspectHyperframesRenderDiagnostics({
-        renderJobId: "hf_router_1",
-        productId: "product_1",
-        runId: "mar_1",
-      });
+    const result = await caller.inspectHyperframesRenderDiagnostics({
+      renderJobId: "hf_router_1",
+      productId: "product_1",
+      runId: "mar_1",
+    });
 
-      expect(result).toMatchObject({
-        redacted: true,
-        auditPersistence: {
-          persisted: true,
-          auditLoggerPersisted: true,
-          dbPersisted: false,
-        },
-      });
-    } finally {
-      if (previous == null) {
-        delete process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED;
-      } else {
-        process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED = previous;
-      }
-    }
+    expect(result).toMatchObject({
+      redacted: true,
+      auditPersistence: {
+        persisted: true,
+        auditLoggerPersisted: true,
+        dbPersisted: false,
+      },
+    });
   });
 
   it("returns sanitized operator diagnostics for admins", async () => {

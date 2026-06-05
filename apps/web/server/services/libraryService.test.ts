@@ -1185,6 +1185,80 @@ describe("listLibraryDocuments scope filtering", () => {
     expect(result.results.map((item) => item.id)).toEqual([101]);
   });
 
+  it("filters document library items by source", async () => {
+    const now = new Date("2026-06-05T10:00:00.000Z");
+    const itemRows = [
+      {
+        id: 301,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "video",
+        source: "marketplace_auto_review_hyperframes_render",
+        title: "Auto Review Render",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {
+          marketplaceProductId: "product_1",
+          autoReviewRunId: "mar_1",
+        },
+        sourceUrl: "https://cdn.example.com/auto-review.mp4",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 302,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "video",
+        source: "document_management",
+        title: "Manual Upload",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {
+          productId: "product_2",
+          runId: "mar_2",
+        },
+        sourceUrl: "https://cdn.example.com/manual.mp4",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectOrderByChain(itemRows))
+      .mockReturnValueOnce(makeSelectWhereChain([]))
+      .mockReturnValueOnce(makeSelectWhereChain([]));
+
+    const result = await listLibraryDocuments(
+      {
+        scope: "my_library",
+        filters: {
+          itemType: "video",
+          source: "marketplace_auto_review_hyperframes_render",
+          productId: "product_1",
+          runId: "mar_1",
+        },
+        limit: 50,
+        offset: 0,
+      },
+      {
+        userId: 1,
+        tenantId: "t1",
+        role: "user",
+      },
+    );
+
+    expect(result.results.map((item) => item.id)).toEqual([301]);
+  });
+
   it("shared_with_me includes only explicit direct user shares", async () => {
     const now = new Date("2026-03-05T10:00:00.000Z");
     const itemRows = [

@@ -124,12 +124,88 @@ function stringSetMissing(
   );
 }
 
-function isSafeUserVisibleUrl(value: string): boolean {
+const unsafeUserVisibleUrlQueryKeys = new Set([
+  "access_token",
+  "credential",
+  "expires",
+  "expiresat",
+  "expiry",
+  "key-pair-id",
+  "policy",
+  "se",
+  "sig",
+  "signature",
+  "ske",
+  "skoid",
+  "sks",
+  "skt",
+  "sktid",
+  "skv",
+  "sp",
+  "sr",
+  "sv",
+  "token",
+]);
+
+function compactProjectionRecord(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => {
+      if (item === null || item === undefined || item === "") return false;
+      if (Array.isArray(item)) return item.length > 0;
+      if (typeof item === "object") return Object.keys(asRecord(item)).length > 0;
+      return true;
+    })
+  );
+}
+
+function safeProjectionText(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, 160) : "";
+}
+
+function safeProjectionNumber(value: unknown): number | null {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : null;
+}
+
+function hasUnsafeUserVisibleUrlMarker(url: URL): boolean {
+  if (url.username || url.password) return true;
+  const decodedPath = decodeURIComponent(url.pathname).toLowerCase();
+  if (
+    /(?:^|\/)(private|presigned|signed|raw-html|rawhtml|storage|worker-logs?)(?:\/|$)/i.test(
+      decodedPath
+    )
+  ) {
+    return true;
+  }
+  for (const [key, value] of url.searchParams.entries()) {
+    const normalizedKey = key.trim().toLowerCase();
+    const normalizedValue = value.trim().toLowerCase();
+    if (
+      normalizedKey.startsWith("x-amz-") ||
+      normalizedKey.startsWith("x-goog-") ||
+      unsafeUserVisibleUrlQueryKeys.has(normalizedKey) ||
+      /(signed|private|storagekey|workerlogs|rawhtml)/i.test(normalizedKey) ||
+      /(signed|private|storagekey|workerlogs|rawhtml)/i.test(normalizedValue)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function isSafeUserVisibleUrl(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed || /[\u0000-\u001F\u007F]/.test(trimmed)) return false;
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return true;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+    return !hasUnsafeUserVisibleUrlMarker(
+      new URL(trimmed, "https://smartspec.local")
+    );
+  }
   try {
     const url = new URL(trimmed);
+    if (hasUnsafeUserVisibleUrlMarker(url)) return false;
     if (url.protocol === "https:") return true;
     return (
       url.protocol === "http:" &&
@@ -2680,18 +2756,69 @@ function creditSummaryFrom(
 function automationSummaryFrom(
   metadata: Record<string, unknown>
 ): Record<string, unknown> {
+  const controlPlane = asRecord(metadata.automationControlPlane);
+  const lease = asRecord(controlPlane.lease);
+  const metrics = asRecord(metadata.automationMetrics);
+  const parallelismPolicy = asRecord(metadata.parallelismPolicy);
+  const operationalDrillPlan = asRecord(metadata.operationalDrillPlan);
   return {
-    controlPlane: asRecord(metadata.automationControlPlane),
-    providerReconciliation: asRecord(metadata.providerReconciliation),
-    targetedRepairPolicyLedger: asRecord(metadata.targetedRepairPolicyLedger),
-    qaArtifactManifest: asRecord(metadata.qaArtifactManifest),
-    mediaArtifactInspection: asRecord(metadata.mediaArtifactInspection),
-    durableRuntimePlan: asRecord(metadata.durableRuntimePlan),
-    qualityModePolicy: asRecord(metadata.qualityModePolicy),
-    creativePerformanceMemory: asRecord(metadata.creativePerformanceMemory),
-    metrics: asRecord(metadata.automationMetrics),
-    parallelismPolicy: asRecord(metadata.parallelismPolicy),
-    operationalDrillPlan: asRecord(metadata.operationalDrillPlan),
+    controlPlane: compactProjectionRecord({
+      status: safeProjectionText(controlPlane.status),
+      backpressurePolicy: safeProjectionText(controlPlane.backpressurePolicy),
+      lease: compactProjectionRecord({
+        leaseId: safeProjectionText(lease.leaseId),
+      }),
+    }),
+    providerReconciliation: compactProjectionRecord({
+      status: safeProjectionText(asRecord(metadata.providerReconciliation).status),
+    }),
+    targetedRepairPolicyLedger: compactProjectionRecord({
+      status: safeProjectionText(
+        asRecord(metadata.targetedRepairPolicyLedger).status
+      ),
+    }),
+    qaArtifactManifest: compactProjectionRecord({
+      status: safeProjectionText(asRecord(metadata.qaArtifactManifest).status),
+      manifestId: safeProjectionText(asRecord(metadata.qaArtifactManifest).manifestId),
+    }),
+    mediaArtifactInspection: compactProjectionRecord({
+      status: safeProjectionText(asRecord(metadata.mediaArtifactInspection).status),
+      inspectionId: safeProjectionText(
+        asRecord(metadata.mediaArtifactInspection).inspectionId
+      ),
+    }),
+    durableRuntimePlan: compactProjectionRecord({
+      status: safeProjectionText(asRecord(metadata.durableRuntimePlan).status),
+    }),
+    qualityModePolicy: compactProjectionRecord({
+      mode: safeProjectionText(asRecord(metadata.qualityModePolicy).mode),
+      status: safeProjectionText(asRecord(metadata.qualityModePolicy).status),
+    }),
+    creativePerformanceMemory: compactProjectionRecord({
+      status: safeProjectionText(asRecord(metadata.creativePerformanceMemory).status),
+    }),
+    metrics: compactProjectionRecord({
+      qaCacheEntryCount: safeProjectionNumber(metrics.qaCacheEntryCount),
+      repairCacheEntryCount: safeProjectionNumber(metrics.repairCacheEntryCount),
+    }),
+    parallelismPolicy: compactProjectionRecord({
+      status: safeProjectionText(parallelismPolicy.status),
+      maxParallelImageSubmissions: safeProjectionNumber(
+        parallelismPolicy.maxParallelImageSubmissions
+      ),
+      maxParallelVideoSubmissions: safeProjectionNumber(
+        parallelismPolicy.maxParallelVideoSubmissions
+      ),
+      maxParallelVisionQa: safeProjectionNumber(
+        parallelismPolicy.maxParallelVisionQa
+      ),
+    }),
+    operationalDrillPlan: compactProjectionRecord({
+      status: safeProjectionText(operationalDrillPlan.status),
+      scenarioCount: Array.isArray(operationalDrillPlan.scenarios)
+        ? operationalDrillPlan.scenarios.length
+        : null,
+    }),
   };
 }
 

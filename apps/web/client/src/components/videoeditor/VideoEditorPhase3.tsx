@@ -30,6 +30,10 @@ import { useLocation } from 'wouter';
 import { sanitizeProjectName } from '@smartspec/shared';
 import { trpc } from '../../lib/trpc';
 import {
+  buildVideoEditorLibraryAssetFromItem,
+  parseVideoEditorLibraryItemId,
+} from '../../lib/videoEditorLibraryHandoff';
+import {
   type VideoEditorProject,
   type MediaLibraryAsset,
   type Clip,
@@ -309,7 +313,7 @@ function isImportedDraftAssetModel(model: unknown): boolean {
 }
 
 export const VideoEditorPhase3: React.FC = () => {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   // Project state
   const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
@@ -340,6 +344,10 @@ export const VideoEditorPhase3: React.FC = () => {
   const [pendingDeleteClipId, setPendingDeleteClipId] = useState<string | null>(null);
   const initialProjectLoadIdRef = useRef<number | null>(null);
   const initialProjectShouldFocusNameRef = useRef(false);
+  const initialLibraryItemImportRef = useRef<{
+    itemId: number | null;
+    state: 'loading' | 'completed' | null;
+  }>({ itemId: null, state: null });
 
   // Sidebar view
   const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'draftAi' | 'silence' | 'text'>('library');
@@ -802,7 +810,7 @@ export const VideoEditorPhase3: React.FC = () => {
   // Timeline Interactions
   // ========================================
 
-  const handleAddToTimeline = (asset: MediaLibraryAsset, localPath: string) => {
+  const handleAddToTimeline = useCallback((asset: MediaLibraryAsset, localPath: string) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
 
@@ -825,7 +833,85 @@ export const VideoEditorPhase3: React.FC = () => {
       addToHistory(newProject);
       return newProject;
     });
-  };
+  }, [addToHistory]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const libraryItemId = parseVideoEditorLibraryItemId(
+      location.includes("?") ? location : window.location.search
+    );
+    if (!libraryItemId) {
+      return;
+    }
+
+    const currentImport = initialLibraryItemImportRef.current;
+    if (
+      currentImport.itemId === libraryItemId &&
+      (currentImport.state === 'loading' || currentImport.state === 'completed')
+    ) {
+      return;
+    }
+
+    initialLibraryItemImportRef.current = { itemId: libraryItemId, state: 'loading' };
+    let cancelled = false;
+
+    const resetImportIfCurrent = () => {
+      if (initialLibraryItemImportRef.current.itemId === libraryItemId) {
+        initialLibraryItemImportRef.current = { itemId: null, state: null };
+      }
+    };
+
+    const importInitialLibraryItem = async () => {
+      try {
+        const libraryItem = await trpcUtils.library.getItem.fetch({ id: libraryItemId });
+        if (cancelled) return;
+
+        const asset = buildVideoEditorLibraryAssetFromItem(libraryItem);
+        if (!asset) {
+          resetImportIfCurrent();
+          showToast('Library item is not a ready video that can be opened in the editor.', 'error', 6000);
+          return;
+        }
+
+        const safeName = sanitizeProjectName(asset.title) || `library-${libraryItemId}`;
+        const localPath = await videoEditorMediaLibrary.downloadUrlToWorkspace(
+          asset.url,
+          `${safeName}.${asset.format || 'mp4'}`
+        );
+        if (cancelled) return;
+
+        handleAddToTimeline(asset, localPath);
+        setSidebarView('library');
+        if (initialLibraryItemImportRef.current.itemId === libraryItemId) {
+          initialLibraryItemImportRef.current = { itemId: libraryItemId, state: 'completed' };
+        }
+        showToast('Library video opened in the editor timeline.', 'success', 5000);
+      } catch (error) {
+        if (!cancelled) {
+          resetImportIfCurrent();
+          showToast(
+            `Failed to open Library video: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            'error',
+            6000
+          );
+        }
+      }
+    };
+
+    void importInitialLibraryItem();
+    return () => {
+      cancelled = true;
+      if (
+        initialLibraryItemImportRef.current.itemId === libraryItemId &&
+        initialLibraryItemImportRef.current.state === 'loading'
+      ) {
+        resetImportIfCurrent();
+      }
+    };
+  }, [handleAddToTimeline, location]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cleanupPresentationDraftSession = useCallback(async (
     session: {
@@ -3526,7 +3612,10 @@ export const VideoEditorPhase3: React.FC = () => {
           .video-editor-phase3 {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 100vw;
             height: 100vh;
+            overflow: hidden;
             background: #1a1a1a;
             color: #e0e0e0;
           }
@@ -3538,6 +3627,26 @@ export const VideoEditorPhase3: React.FC = () => {
             display: flex;
             align-items: center;
             gap: 16px;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: #0078d4 #1f1f1f;
+            box-shadow: inset -14px 0 12px -14px rgba(0, 120, 212, 0.75);
+          }
+
+          .editor-header::-webkit-scrollbar {
+            height: 4px;
+          }
+
+          .editor-header::-webkit-scrollbar-track {
+            background: #1f1f1f;
+            border-radius: 999px;
+          }
+
+          .editor-header::-webkit-scrollbar-thumb {
+            background: #0078d4;
+            border-radius: 999px;
           }
 
           .project-title {
@@ -3814,8 +3923,18 @@ export const VideoEditorPhase3: React.FC = () => {
         `}</style>
 
         {/* Header */}
-        <div className="editor-header">
-          <button className="header-button" onClick={handleBackToDashboard} title="Back to Dashboard">
+        <div
+          className="editor-header"
+          role="toolbar"
+          aria-label="Video editor actions"
+          style={{
+            minWidth: 0,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'thin',
+          }}
+        >
+          <button className="header-button" onClick={handleBackToDashboard} title="Back to Dashboard" aria-label="Back to dashboard">
             &#8592; Dashboard
           </button>
           {editingProjectName ? (
@@ -3871,6 +3990,7 @@ export const VideoEditorPhase3: React.FC = () => {
             onClick={() => void handleOpenPresentationDraft()}
             disabled={isPreparingPresentationDraft || isImportingPresentationDraft || !!draftMediaBgStatus}
             title="Draft with AI"
+            aria-label="Draft with AI"
           >
             {isPreparingPresentationDraft || isImportingPresentationDraft
               ? '...'
@@ -3878,19 +3998,20 @@ export const VideoEditorPhase3: React.FC = () => {
                 ? '⏳ Generating...'
                 : '✨ Draft with AI'}
           </button>
-          <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud">
+          <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud" aria-label="Save project">
             {isSaving ? '...' : '\uD83D\uDCBE'} Save
           </button>
-          <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project">
+          <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project" aria-label="Open saved projects">
             &#128194; Projects
           </button>
-          <button className="header-button header-hide-mobile" onClick={handleLoad} title="Open from file">
+          <button className="header-button header-hide-mobile" onClick={handleLoad} title="Open from file" aria-label="Open project from file">
             &#128196; File
           </button>
           <button
             className="mobile-panel-btn"
             onClick={() => setMobileSidebarOpen(prev => !prev)}
             title="Toggle panel"
+            aria-label={mobileSidebarOpen ? 'Close media panel' : 'Open media panel'}
           >
             📚 {mobileSidebarOpen ? 'Close' : 'Panel'}
           </button>

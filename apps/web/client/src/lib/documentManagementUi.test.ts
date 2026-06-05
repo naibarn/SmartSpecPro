@@ -4,6 +4,7 @@ import {
   buildDocumentQueryString,
   buildDocumentShareUrl,
   buildPublicDocumentShareUrl,
+  clearDocumentLibraryContextFilter,
   getKnowledgeVaultModeQueryParam,
   getKnowledgeVaultNavigationModes,
   getMarkdownPreviewFallbackContent,
@@ -16,7 +17,7 @@ import {
 
 describe("documentManagementUi", () => {
   it("parses and rebuilds URL query state with defaults", () => {
-    const parsed = parseDocumentQueryState("?scope=shared_groups&sort=created_desc&q=guide&type=md&status=ready");
+    const parsed = parseDocumentQueryState("?scope=shared_groups&sort=created_desc&q=guide&type=md&source=marketplace_auto_review_hyperframes_render&productId=product_1&runId=mar_1&status=ready");
     expect(parsed).toEqual({
       scope: "shared_groups",
       sort: "created_desc",
@@ -24,6 +25,9 @@ describe("documentManagementUi", () => {
       knowledgeMode: "browse",
       query: "guide",
       itemType: "md",
+      source: "marketplace_auto_review_hyperframes_render",
+      productId: "product_1",
+      runId: "mar_1",
       status: "ready",
       docId: undefined,
       folderId: null,
@@ -31,7 +35,17 @@ describe("documentManagementUi", () => {
 
     expect(
       buildDocumentQueryString(parsed),
-    ).toBe("scope=shared_groups&sort=created_desc&q=guide&type=md&status=ready");
+    ).toBe("scope=shared_groups&sort=created_desc&q=guide&type=md&source=marketplace_auto_review_hyperframes_render&productId=product_1&runId=mar_1&status=ready");
+  });
+
+  it("clears the full Library context filter without changing standard filters", () => {
+    const parsed = parseDocumentQueryState(
+      "?scope=my_library&sort=created_desc&q=guide&type=video&source=marketplace_auto_review_hyperframes_render&productId=product_1&runId=mar_1&status=ready",
+    );
+
+    expect(buildDocumentQueryString(clearDocumentLibraryContextFilter(parsed))).toBe(
+      "scope=my_library&sort=created_desc&q=guide&type=video&status=ready",
+    );
   });
 
   it("accepts my_drive scope in URL query state", () => {

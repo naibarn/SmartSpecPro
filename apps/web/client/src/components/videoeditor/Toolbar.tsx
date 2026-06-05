@@ -97,7 +97,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" role="toolbar" aria-label="Timeline editing tools">
       <style>{`
         .toolbar {
           display: flex;
@@ -229,11 +229,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             overflow-y: hidden;
             padding: 4px 8px;
             gap: 6px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
+            scrollbar-width: thin;
+            scrollbar-color: #0078d4 #1f1f1f;
+            box-shadow: inset -14px 0 12px -14px rgba(0, 120, 212, 0.75);
           }
           .toolbar::-webkit-scrollbar {
-            display: none;
+            height: 4px;
+          }
+          .toolbar::-webkit-scrollbar-track {
+            background: #1f1f1f;
+            border-radius: 999px;
+          }
+          .toolbar::-webkit-scrollbar-thumb {
+            background: #0078d4;
+            border-radius: 999px;
           }
           .toolbar-group {
             flex-shrink: 0;
@@ -248,27 +257,28 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       `}</style>
 
       {/* Undo/Redo */}
-      <div className="toolbar-group">
-        <button className="tb" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">&#8630;</button>
-        <button className="tb" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">&#8631;</button>
+      <div className="toolbar-group" role="group" aria-label="Undo and redo">
+        <button className="tb" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)" aria-label="Undo">&#8630;</button>
+        <button className="tb" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)" aria-label="Redo">&#8631;</button>
       </div>
 
       {/* Zoom */}
-      <div className="toolbar-group">
-        <button className="tb" onClick={handleZoomOut} disabled={zoom <= ZOOM_LEVELS[0]} title="Zoom Out">&#8722;</button>
+      <div className="toolbar-group" role="group" aria-label="Timeline zoom">
+        <button className="tb" onClick={handleZoomOut} disabled={zoom <= ZOOM_LEVELS[0]} title="Zoom Out" aria-label="Zoom out">&#8722;</button>
         <div className="zoom-display">{Math.round(zoom)}px/s</div>
-        <button className="tb" onClick={handleZoomIn} disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]} title="Zoom In">&#43;</button>
-        <button className="tb" onClick={handleZoomFit} title="Reset Zoom">&#8861;</button>
+        <button className="tb" onClick={handleZoomIn} disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]} title="Zoom In" aria-label="Zoom in">&#43;</button>
+        <button className="tb" onClick={handleZoomFit} title="Reset Zoom" aria-label="Reset zoom">&#8861;</button>
       </div>
 
       {/* Tools */}
-      <div className="toolbar-group">
-        <button className="tb" title="Selection Tool (V)">&#10148;</button>
+      <div className="toolbar-group" role="group" aria-label="Editing tools">
+        <button className="tb" title="Selection Tool (V)" aria-label="Selection tool">&#10148;</button>
         {onToggleRazorTool && (
           <button
             className={`tb ${razorToolActive ? 'active' : ''}`}
             onClick={onToggleRazorTool}
             title={`Razor Tool: ${razorToolActive ? 'ON - Click clip to split at playhead' : 'OFF'} (C)`}
+            aria-label={razorToolActive ? "Disable razor tool" : "Enable razor tool"}
           >
             &#9986;
           </button>
@@ -278,22 +288,23 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             className={`tb ${rippleEditMode ? 'active' : ''}`}
             onClick={onToggleRippleEdit}
             title={`Ripple Edit: ${rippleEditMode ? 'ON - close gaps while move/resize/delete' : 'OFF'}`}
+            aria-label={rippleEditMode ? "Disable ripple edit" : "Enable ripple edit"}
           >
             &#127754;
           </button>
         )}
         {onAddText && (
-          <button className="tb tb-text" onClick={onAddText} title="Add Text Overlay">
+          <button className="tb tb-text" onClick={onAddText} title="Add Text Overlay" aria-label="Add text overlay">
             T+
           </button>
         )}
         {onOpenSilenceDetection && (
-          <button className="tb tb-text" onClick={onOpenSilenceDetection} title="Silence Detection - Cut Dead Air">
+          <button className="tb tb-text" onClick={onOpenSilenceDetection} title="Silence Detection - Cut Dead Air" aria-label="Open silence detection">
             🔇
           </button>
         )}
         {onOpenKeyframes && (
-          <button className="tb tb-text" onClick={onOpenKeyframes} title="Open Keyframes Panel">
+          <button className="tb tb-text" onClick={onOpenKeyframes} title="Open Keyframes Panel" aria-label="Open keyframes panel">
             ◆ KF
           </button>
         )}
@@ -301,21 +312,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Selection info + Group */}
       {selectedCount > 0 && (
-        <div className="toolbar-group">
+        <div className="toolbar-group" role="group" aria-label="Selected clip actions">
           <span className="sel-info">{selectedCount} sel</span>
           {onCopyClips && (
-            <button className="tb tb-text" onClick={onCopyClips} disabled={!canCopyClips} title="Copy selected clips (Ctrl+C)">
+            <button className="tb tb-text" onClick={onCopyClips} disabled={!canCopyClips} title="Copy selected clips (Ctrl+C)" aria-label="Copy selected clips">
               &#10697;
             </button>
           )}
           {selectedCount >= 2 && onGroupClips && (
-            <button className="tb tb-text" onClick={onGroupClips} title="Group clips">&#128279;</button>
+            <button className="tb tb-text" onClick={onGroupClips} title="Group clips" aria-label="Group clips">&#128279;</button>
           )}
           {selectedCount >= 1 && onUngroupClips && (
-            <button className="tb tb-text" onClick={onUngroupClips} title="Ungroup">&#9986;</button>
+            <button className="tb tb-text" onClick={onUngroupClips} title="Ungroup" aria-label="Ungroup clips">&#9986;</button>
           )}
           {selectedCount >= 1 && onExtractAudio && (
-            <button className="tb tb-text" onClick={onExtractAudio} title="Extract Audio to A1">
+            <button className="tb tb-text" onClick={onExtractAudio} title="Extract Audio to A1" aria-label="Extract audio to track A1">
               &#128266;
             </button>
           )}
@@ -323,23 +334,23 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       )}
 
       {onPasteClips && (
-        <div className="toolbar-group">
-          <button className="tb tb-text" onClick={onPasteClips} disabled={!canPasteClips} title="Paste copied clips at playhead (Ctrl+V)">
+        <div className="toolbar-group" role="group" aria-label="Clipboard actions">
+          <button className="tb tb-text" onClick={onPasteClips} disabled={!canPasteClips} title="Paste copied clips at playhead (Ctrl+V)" aria-label="Paste copied clips at playhead">
             &#128203;
           </button>
         </div>
       )}
 
       {/* Save + Export (right-aligned) */}
-      <div className="toolbar-group right">
-        <button className="tb tb-text" onClick={onSave} title="Save Project (Ctrl+S)">
+      <div className="toolbar-group right" role="group" aria-label="Project actions">
+        <button className="tb tb-text" onClick={onSave} title="Save Project (Ctrl+S)" aria-label="Save project">
           <span>&#128190;</span>
           <span>Save</span>
         </button>
         <span className={`save-state ${isDirty ? 'dirty' : ''}`}>
           {isDirty ? 'Unsaved' : 'Saved'}
         </span>
-        <button className="tb-export" onClick={onExport} title="Export Video">
+        <button className="tb-export" onClick={onExport} title="Export Video" aria-label="Export video">
           <span style={{ fontSize: '14px' }}>&#128228;</span>
           <span>Export</span>
         </button>

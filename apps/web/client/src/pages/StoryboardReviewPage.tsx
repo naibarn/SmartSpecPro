@@ -31,6 +31,7 @@ import {
   removeMediaStudioRenderLibrarySession,
   upsertMediaStudioRenderLibrarySession,
 } from "@/lib/mediaStudioRenderLibrarySessions";
+import { resolveHyperframesRenderRefetchInterval } from "@/lib/marketplaceHyperframesUiState";
 import {
   COMMON_CROP_RATIOS,
   COMMON_GRIDS,
@@ -1211,19 +1212,9 @@ export default function StoryboardReviewPage() {
     {
       enabled: Boolean(hyperframesRenderJobId),
       refetchInterval: query => {
-        const status = (query.state.data as any)?.render?.status;
-        return [
-          "completed",
-          "saved_to_library",
-          "failed",
-          "failed_permanent",
-          "dead_lettered",
-          "cancelled",
-          "template_disabled",
-          "stale_input_hash",
-        ].includes(String(status))
-          ? false
-          : 15_000;
+        return resolveHyperframesRenderRefetchInterval(
+          (query.state.data as any)?.render
+        );
       },
     },
   );
@@ -1244,6 +1235,18 @@ export default function StoryboardReviewPage() {
           runId: result.render?.runId,
         });
         toast.success("สร้าง HyperFrames preview แล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const repairHyperframesRenderJobMutation =
+    trpc.marketplaceCapture.repairHyperframesRenderJob.useMutation({
+      onSuccess: result => {
+        void trpcUtils.marketplaceCapture.getHyperframesRenderJob.invalidate({
+          renderJobId: result.render.renderJobId,
+          productId: result.render.productId,
+          runId: result.render.runId,
+        });
+        toast.success("HyperFrames repair queued");
       },
       onError: error => toast.error(error.message),
     });
@@ -1338,6 +1341,30 @@ export default function StoryboardReviewPage() {
       idempotencyKey,
     });
   }, [hyperframesRenderProjection, saveHyperframesRenderToLibraryMutation]);
+  const repairHyperframesRender = useCallback(() => {
+    const render = hyperframesRenderProjection;
+    const action = render?.permissions?.canRepair
+      ? render.repairActions?.find(
+          item => !item.requiresOperator && !item.disabledReason
+        )
+      : null;
+    if (!render?.renderJobId || !render.productId || !render.runId || !action) {
+      void hyperframesRenderQuery.refetch();
+      return;
+    }
+    repairHyperframesRenderJobMutation.mutate({
+      productId: render.productId,
+      runId: render.runId,
+      renderJobId: render.renderJobId,
+      actionId: action.actionId,
+      actionType: action.actionType,
+      expectedCompositionInputHash: render.compositionInputHash,
+    });
+  }, [
+    hyperframesRenderProjection,
+    hyperframesRenderQuery,
+    repairHyperframesRenderJobMutation,
+  ]);
 
   useEffect(() => {
     if (hyperframesRenderProjection?.status === "saved_to_library") {
@@ -3613,9 +3640,12 @@ export default function StoryboardReviewPage() {
                 ? createHyperframesPreview
                 : undefined
             }
-            onRetry={() => void hyperframesRenderQuery.refetch()}
+            onRetry={repairHyperframesRender}
             onSaveToLibrary={saveHyperframesRenderToLibrary}
-            loading={hyperframesRenderQuery.isLoading}
+            loading={
+              hyperframesRenderQuery.isLoading ||
+              repairHyperframesRenderJobMutation.isPending
+            }
             creatingPreview={createHyperframesPreviewMutation.isPending}
             saving={saveHyperframesRenderToLibraryMutation.isPending}
             manualFallbackVisible
@@ -3695,7 +3725,7 @@ export default function StoryboardReviewPage() {
               className="h-full"
             />
           ) : (
-            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-full min-h-[14rem] flex-col items-center justify-center p-5 text-center sm:min-h-[18rem] xl:min-h-[24rem]">
               <Layers className="mb-3 h-10 w-10 text-slate-400" />
               <h1 className="text-lg font-semibold text-slate-950">{t("mediaStudio.storyboardReviewNoSelectionTitle")}</h1>
               <p className="mt-2 max-w-md text-sm text-slate-600">

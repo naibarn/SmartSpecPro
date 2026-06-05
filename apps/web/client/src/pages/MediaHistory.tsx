@@ -78,6 +78,7 @@ import {
   MoreHorizontal,
   Share2,
   Library,
+  Scissors,
   ArrowUpRight,
   Search,
   X,
@@ -92,6 +93,8 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   buildTaskLibraryErrorState,
   buildTaskLibraryStateFromAddResult,
+  getLibraryProductContextId,
+  getLibraryRunContextId,
   getLibraryStatusMeta as getLibraryItemStatusMeta,
   isMediaTaskEligibleForLibraryAdd,
   type LibrarySearchResultItem,
@@ -119,6 +122,14 @@ type Translator = (
 ) => string;
 
 const MEDIA_HISTORY_PAGE_SIZE = 50;
+const MEDIA_HISTORY_SOURCE_FILTER_MAX_LENGTH = 128;
+
+interface MediaHistoryQueryState {
+  mediaType: MediaType | "all";
+  source?: string;
+  productId?: string;
+  runId?: string;
+}
 
 interface MediaTask {
   id: string;
@@ -135,6 +146,45 @@ interface MediaTask {
   errorMessage?: string;
   createdAt: string;
   completedAt?: string;
+}
+
+function normalizeMediaHistorySourceFilter(
+  source: string | null,
+): string | undefined {
+  const normalized = source?.trim().slice(0, MEDIA_HISTORY_SOURCE_FILTER_MAX_LENGTH) ?? "";
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function formatMediaHistorySourceFilterFallback(source: string): string {
+  return source
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getMediaHistorySourceFilterLabel(
+  source: string,
+  t: Translator,
+): string {
+  if (source === "marketplace_auto_review_hyperframes_render") {
+    return t("historyPage.filters.source.hyperframesMarketplaceAutoReview");
+  }
+  return formatMediaHistorySourceFilterFallback(source);
+}
+
+export function parseMediaHistoryQueryState(search: string): MediaHistoryQueryState {
+  const query = search.includes("?") ? search.slice(search.indexOf("?")) : search;
+  const params = new URLSearchParams(query);
+  const type = params.get("type");
+  const mediaType =
+    type === "image" || type === "video" || type === "audio" ? type : "all";
+
+  return {
+    mediaType,
+    source: normalizeMediaHistorySourceFilter(params.get("source")),
+    productId: normalizeMediaHistorySourceFilter(params.get("productId")),
+    runId: normalizeMediaHistorySourceFilter(params.get("runId")),
+  };
 }
 
 const statusConfig: Record<
@@ -269,6 +319,15 @@ function getTaskLibraryDisplayLabel(
   if (normalizedStatus === "ready") return t("historyPage.library.inLibrary");
   if (!normalizedStatus) return t("historyPage.library.notInLibrary");
   return t("historyPage.library.state", { status: status.label });
+}
+
+export function getVideoEditorLibraryItemIdForTask(
+  task: Pick<MediaTask, "mediaType"> | null | undefined,
+  state: Pick<TaskLibraryUIState, "itemId"> | null | undefined
+): number | null {
+  if (task?.mediaType !== "video") return null;
+  const itemId = Number(state?.itemId);
+  return Number.isInteger(itemId) && itemId > 0 ? itemId : null;
 }
 
 function extractTaskErrorInfo(
@@ -1143,9 +1202,27 @@ export default function MediaHistory() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { t, locale } = useScopedTranslation(["media", "common"]);
   const isAdmin = user?.role === "admin";
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mediaTypeFilter, setMediaTypeFilter] = useState<MediaType | "all">(
-    "all"
+    () =>
+      parseMediaHistoryQueryState(
+        typeof window === "undefined" ? location : window.location.search
+      ).mediaType
+  );
+  const [sourceFilter, setSourceFilter] = useState<string | undefined>(() =>
+    parseMediaHistoryQueryState(
+      typeof window === "undefined" ? location : window.location.search
+    ).source
+  );
+  const [productIdFilter, setProductIdFilter] = useState<string | undefined>(() =>
+    parseMediaHistoryQueryState(
+      typeof window === "undefined" ? location : window.location.search
+    ).productId
+  );
+  const [runIdFilter, setRunIdFilter] = useState<string | undefined>(() =>
+    parseMediaHistoryQueryState(
+      typeof window === "undefined" ? location : window.location.search
+    ).runId
   );
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -1214,7 +1291,7 @@ export default function MediaHistory() {
   const hasPreviousPage = currentPage > 0;
   const hasNextPage = (currentPage + 1) * MEDIA_HISTORY_PAGE_SIZE < totalTasks;
   const trimmedSearchQuery = searchQuery.trim().toLowerCase();
-  const visibleTasks = useMemo(() => {
+  const searchMatchedTasks = useMemo(() => {
     if (!trimmedSearchQuery) return tasks;
     return tasks.filter(task => {
       const externalTaskId = extractMediaHistoryExternalTaskId(task) || "";
@@ -1236,18 +1313,43 @@ export default function MediaHistory() {
       return searchable.includes(trimmedSearchQuery);
     });
   }, [tasks, trimmedSearchQuery, t]);
-  const hasActiveFilters =
-    mediaTypeFilter !== "all" || statusFilter !== "all" || searchQuery.trim().length > 0;
+  const sourceFilterLabel = sourceFilter
+    ? getMediaHistorySourceFilterLabel(sourceFilter, t)
+    : "";
+  const hasLibraryContextFilter = Boolean(
+    sourceFilter || productIdFilter || runIdFilter
+  );
+  const libraryContextFilterLabel = [
+    sourceFilter ? sourceFilterLabel : null,
+    productIdFilter
+      ? t("historyPage.filters.context.product", { productId: productIdFilter })
+      : null,
+    runIdFilter
+      ? t("historyPage.filters.context.run", { runId: runIdFilter })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-  const { data: recentLibraryData } = trpc.library.search.useQuery(
+  const {
+    data: recentLibraryData,
+    isLoading: sourceLibraryLoading,
+  } = trpc.library.search.useQuery(
     {
       limit: 50,
       filters: {
-        recentDays: 30,
+        recentDays: hasLibraryContextFilter ? undefined : 30,
+        source: sourceFilter || undefined,
+        productId: productIdFilter || undefined,
+        runId: runIdFilter || undefined,
+        itemType:
+          mediaTypeFilter !== "all"
+            ? mediaTypeFilter
+            : undefined,
       },
     },
     {
-      enabled: tasks.length > 0,
+      enabled: tasks.length > 0 || hasLibraryContextFilter,
       staleTime: 30_000,
     }
   );
@@ -1345,6 +1447,75 @@ export default function MediaHistory() {
     }
     return map;
   }, [recentLibraryResults]);
+
+  const sourceFilteredLibraryItems = useMemo(() => {
+    if (!hasLibraryContextFilter) return [];
+    return recentLibraryResults.filter(item => {
+      if (sourceFilter && item.source !== sourceFilter) return false;
+      const metadata = item.metadata ?? {};
+      const itemProductId = getLibraryProductContextId(metadata);
+      const itemRunId = getLibraryRunContextId(metadata);
+      if (productIdFilter && itemProductId !== productIdFilter) return false;
+      if (runIdFilter && itemRunId !== runIdFilter) return false;
+      if (mediaTypeFilter !== "all" && item.item_type !== mediaTypeFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    hasLibraryContextFilter,
+    mediaTypeFilter,
+    productIdFilter,
+    recentLibraryResults,
+    runIdFilter,
+    sourceFilter,
+  ]);
+
+  const sourceFilteredLibraryUrls = useMemo(() => {
+    const urls = new Set<string>();
+    for (const item of sourceFilteredLibraryItems) {
+      const sourceUrl = item.source_url?.trim();
+      if (sourceUrl) urls.add(sourceUrl);
+    }
+    return urls;
+  }, [sourceFilteredLibraryItems]);
+  const hasContextLibraryResults =
+    hasLibraryContextFilter && sourceFilteredLibraryItems.length > 0;
+
+  const visibleTasks = useMemo(() => {
+    if (!hasLibraryContextFilter) return searchMatchedTasks;
+    return searchMatchedTasks.filter(task => {
+      const sourceUrl = task.resultUrl?.trim();
+      return Boolean(sourceUrl && sourceFilteredLibraryUrls.has(sourceUrl));
+    });
+  }, [
+    hasLibraryContextFilter,
+    searchMatchedTasks,
+    sourceFilteredLibraryUrls,
+  ]);
+
+  const hasActiveFilters =
+    mediaTypeFilter !== "all" ||
+    statusFilter !== "all" ||
+    searchQuery.trim().length > 0 ||
+    hasLibraryContextFilter;
+  const sourceLibraryRoute = useMemo(() => {
+    const params = new URLSearchParams();
+    if (sourceFilter) {
+      params.set("source", sourceFilter);
+    }
+    if (productIdFilter) {
+      params.set("productId", productIdFilter);
+    }
+    if (runIdFilter) {
+      params.set("runId", runIdFilter);
+    }
+    if (mediaTypeFilter !== "all") {
+      params.set("type", mediaTypeFilter);
+    }
+    const query = params.toString();
+    return query ? `/document-management?${query}` : "/document-management";
+  }, [mediaTypeFilter, productIdFilter, runIdFilter, sourceFilter]);
 
   const getEffectiveTaskLibraryState = useCallback(
     (task: MediaTask): TaskLibraryUIState | undefined => {
@@ -1480,9 +1651,25 @@ export default function MediaHistory() {
   }, [authLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
+    const parsed = parseMediaHistoryQueryState(
+      location.includes("?")
+        ? location
+        : typeof window === "undefined"
+          ? location
+          : window.location.search
+    );
+    setMediaTypeFilter(parsed.mediaType);
+    setSourceFilter(parsed.source);
+    setProductIdFilter(parsed.productId);
+    setRunIdFilter(parsed.runId);
     setCurrentPage(0);
     setSelectedTaskIds(new Set());
-  }, [mediaTypeFilter, statusFilter]);
+  }, [location]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+    setSelectedTaskIds(new Set());
+  }, [mediaTypeFilter, productIdFilter, runIdFilter, sourceFilter, statusFilter]);
 
   useEffect(() => {
     setCurrentPage(0);
@@ -1497,11 +1684,15 @@ export default function MediaHistory() {
 
   const handleClearFilters = useCallback(() => {
     setMediaTypeFilter("all");
+    setSourceFilter(undefined);
+    setProductIdFilter(undefined);
+    setRunIdFilter(undefined);
     setStatusFilter("all");
     setSearchQuery("");
     setCurrentPage(0);
     setSelectedTaskIds(new Set());
-  }, []);
+    setLocation("/media-history");
+  }, [setLocation]);
 
   useEffect(() => {
     if (viewMode === "gallery") {
@@ -1556,6 +1747,10 @@ export default function MediaHistory() {
   const selectedTaskLibraryState = selectedTask
     ? getEffectiveTaskLibraryState(selectedTask)
     : undefined;
+  const selectedTaskVideoEditorLibraryItemId = getVideoEditorLibraryItemIdForTask(
+    selectedTask,
+    selectedTaskLibraryState
+  );
   const selectedTaskLibraryMeta = getLocalizedLibraryStatusMeta(
     selectedTaskLibraryState?.status,
     t
@@ -1709,6 +1904,24 @@ export default function MediaHistory() {
       title: task.prompt.slice(0, 80) || `${task.mediaType} - ${task.model}`,
     });
   };
+
+  const getTaskVideoEditorLibraryItemId = useCallback(
+    (task: MediaTask) =>
+      getVideoEditorLibraryItemIdForTask(task, getEffectiveTaskLibraryState(task)),
+    [getEffectiveTaskLibraryState]
+  );
+
+  const handleOpenVideoEditor = useCallback(
+    (task: MediaTask) => {
+      const libraryItemId = getTaskVideoEditorLibraryItemId(task);
+      if (!libraryItemId) {
+        toast.error(t("historyPage.actions.addToLibraryBeforeVideoEditor"));
+        return;
+      }
+      setLocation(`/video-editor?libraryItemId=${libraryItemId}`);
+    },
+    [getTaskVideoEditorLibraryItemId, setLocation, t]
+  );
 
   const handleOpenFullscreenMedia = (task: MediaTask) => {
     if (
@@ -2206,6 +2419,35 @@ export default function MediaHistory() {
               </Select>
             </div>
 
+            {hasLibraryContextFilter ? (
+              <Badge className="inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-medium text-emerald-700 hover:bg-emerald-50">
+                <span className="truncate">
+                  {t("historyPage.filters.context.label")}:{" "}
+                  {libraryContextFilterLabel ||
+                    t("historyPage.filters.context.libraryContext")}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-emerald-100"
+                  aria-label={t("historyPage.filters.context.clear")}
+                  onClick={() => {
+                    setSourceFilter(undefined);
+                    setProductIdFilter(undefined);
+                    setRunIdFilter(undefined);
+                    setCurrentPage(0);
+                    setSelectedTaskIds(new Set());
+                    setLocation(
+                      mediaTypeFilter === "all"
+                        ? "/media-history"
+                        : `/media-history?type=${mediaTypeFilter}`
+                    );
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </Badge>
+            ) : null}
+
             {hasActiveFilters ? (
               <Button
                 type="button"
@@ -2304,6 +2546,148 @@ export default function MediaHistory() {
           </div>
         </motion.div>
 
+        {hasLibraryContextFilter ? (
+          <motion.div
+            data-testid="media-history-source-library-results"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="mb-6 rounded-2xl border border-emerald-100 bg-white/80 p-4 shadow-lg shadow-emerald-500/5 backdrop-blur-xl"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <Library className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-semibold text-slate-900">
+                    {t("historyPage.library.contextResultsTitle", {
+                      context:
+                        libraryContextFilterLabel ||
+                        t("historyPage.filters.context.libraryContext"),
+                    })}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t("historyPage.library.sourceResultsCount", {
+                      count: sourceFilteredLibraryItems.length,
+                    })}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setLocation(sourceLibraryRoute)}
+              >
+                <Library className="h-4 w-4" />
+                {t("historyPage.library.openLibrary")}
+              </Button>
+            </div>
+
+            {sourceLibraryLoading ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="rounded-xl border border-slate-100 bg-white p-3"
+                  >
+                    <Skeleton className="h-24 w-full rounded-lg" />
+                    <Skeleton className="mt-3 h-4 w-2/3" />
+                    <Skeleton className="mt-2 h-8 w-32" />
+                  </div>
+                ))}
+              </div>
+            ) : sourceFilteredLibraryItems.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {sourceFilteredLibraryItems.map(item => {
+                  const itemId = Number(item.item_id);
+                  const canOpenVideoEditor =
+                    item.item_type === "video" &&
+                    Number.isInteger(itemId) &&
+                    itemId > 0;
+                  const libraryStatusMeta = getLocalizedLibraryStatusMeta(
+                    item.status,
+                    t
+                  );
+                  return (
+                    <div
+                      key={`${item.source}:${item.item_id}`}
+                      className="overflow-hidden rounded-xl border border-slate-100 bg-white"
+                    >
+                      <div className="relative aspect-video bg-slate-950">
+                        {item.thumbnail_url ? (
+                          <img
+                            src={item.thumbnail_url}
+                            alt={item.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-white">
+                            <Video className="h-8 w-8" />
+                          </div>
+                        )}
+                        <Badge className="absolute left-3 top-3 bg-white/90 text-slate-700 hover:bg-white/90">
+                          {libraryStatusMeta.label}
+                        </Badge>
+                      </div>
+                      <div className="space-y-3 p-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {item.title}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-slate-500">
+                            {item.item_type}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {canOpenVideoEditor ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() =>
+                                setLocation(`/video-editor?libraryItemId=${itemId}`)
+                              }
+                            >
+                              <Scissors className="h-4 w-4" />
+                              {t("historyPage.actions.openVideoEditor")}
+                            </Button>
+                          ) : null}
+                          {item.source_url ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              aria-label={t(
+                                "historyPage.actions.openUrlInNewTab"
+                              )}
+                              onClick={() =>
+                                window.open(
+                                  item.source_url || "",
+                                  "_blank",
+                                  "noopener,noreferrer"
+                                )
+                              }
+                            >
+                              <ArrowUpRight className="h-4 w-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                {t("historyPage.library.noContextResults")}
+              </div>
+            )}
+          </motion.div>
+        ) : null}
+
         {/* Tasks Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -2379,9 +2763,11 @@ export default function MediaHistory() {
                 {t("historyPage.empty.title")}
               </h3>
               <p className="max-w-md text-sm text-gray-500">
-                {hasActiveFilters
-                  ? t("historyPage.empty.filtered")
-                  : t("historyPage.empty.default")}
+                {hasContextLibraryResults
+                  ? t("historyPage.empty.contextLibraryReady")
+                  : hasActiveFilters
+                    ? t("historyPage.empty.filtered")
+                    : t("historyPage.empty.default")}
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {hasActiveFilters ? (
@@ -2390,10 +2776,17 @@ export default function MediaHistory() {
                     {t("historyPage.filters.clear")}
                   </Button>
                 ) : null}
-                <Button size="sm" onClick={() => setLocation("/media-studio")}>
-                  <ImagePlus className="mr-2 h-4 w-4" />
-                  {t("historyPage.empty.createMedia")}
-                </Button>
+                {hasContextLibraryResults ? (
+                  <Button size="sm" onClick={() => setLocation(sourceLibraryRoute)}>
+                    <Library className="mr-2 h-4 w-4" />
+                    {t("historyPage.library.openLibrary")}
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => setLocation("/media-studio")}>
+                    <ImagePlus className="mr-2 h-4 w-4" />
+                    {t("historyPage.empty.createMedia")}
+                  </Button>
+                )}
               </div>
             </div>
           ) : viewMode === "gallery" ? (
@@ -2420,6 +2813,9 @@ export default function MediaHistory() {
                     t
                   );
                   const canShare = Boolean(libraryState?.itemId);
+                  const canOpenVideoEditor = Boolean(
+                    getVideoEditorLibraryItemIdForTask(task, libraryState)
+                  );
                   const canOpenFullscreen =
                     (task.mediaType === "image" ||
                       task.mediaType === "video") &&
@@ -2640,6 +3036,15 @@ export default function MediaHistory() {
                                 <Share2 className="mr-2 h-4 w-4" />
                                 {t("historyPage.actions.share")}
                               </DropdownMenuItem>
+                              {task.mediaType === "video" ? (
+                                <DropdownMenuItem
+                                  onSelect={() => handleOpenVideoEditor(task)}
+                                  disabled={!canOpenVideoEditor}
+                                >
+                                  <Scissors className="mr-2 h-4 w-4" />
+                                  {t("historyPage.actions.openVideoEditor")}
+                                </DropdownMenuItem>
+                              ) : null}
                               <DropdownMenuItem
                                 onSelect={() => handleOpenFullscreenMedia(task)}
                                 disabled={!canOpenFullscreen}
@@ -2706,6 +3111,9 @@ export default function MediaHistory() {
                   const libraryStatusMeta = getLocalizedLibraryStatusMeta(
                     libraryState?.status,
                     t
+                  );
+                  const canOpenVideoEditor = Boolean(
+                    getVideoEditorLibraryItemIdForTask(task, libraryState)
                   );
                   return (
                     <div key={task.id} className="flex gap-3 p-4">
@@ -2871,6 +3279,23 @@ export default function MediaHistory() {
                                 <ImagePlus className="w-4 h-4" />
                               )}
                             </Button>
+                            {task.mediaType === "video" ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenVideoEditor(task)}
+                                disabled={!canOpenVideoEditor}
+                                className="h-8 w-8 p-0 text-sky-600 hover:bg-sky-50 hover:text-sky-700 disabled:text-gray-300"
+                                title={
+                                  canOpenVideoEditor
+                                    ? t("historyPage.actions.openVideoEditor")
+                                    : t("historyPage.actions.addToLibraryBeforeVideoEditor")
+                                }
+                                aria-label={t("historyPage.actions.openVideoEditor")}
+                              >
+                                <Scissors className="w-4 h-4" />
+                              </Button>
+                            ) : null}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -2973,6 +3398,9 @@ export default function MediaHistory() {
                       const libraryStatusMeta = getLocalizedLibraryStatusMeta(
                         libraryState?.status,
                         t
+                      );
+                      const canOpenVideoEditor = Boolean(
+                        getVideoEditorLibraryItemIdForTask(task, libraryState)
                       );
 
                       return (
@@ -3242,6 +3670,26 @@ export default function MediaHistory() {
                                         <ImagePlus className="w-4 h-4" />
                                       )}
                                     </Button>
+                                    {task.mediaType === "video" ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleOpenVideoEditor(task)}
+                                        disabled={!canOpenVideoEditor}
+                                        className="h-8 px-2 text-sky-600 hover:bg-sky-50 hover:text-sky-700 disabled:text-gray-300"
+                                        title={
+                                          canOpenVideoEditor
+                                            ? t("historyPage.actions.openVideoEditor")
+                                            : t("historyPage.actions.addToLibraryBeforeVideoEditor")
+                                        }
+                                        aria-label={t("historyPage.actions.openVideoEditor")}
+                                      >
+                                        <Scissors className="w-4 h-4" />
+                                        <span className="sr-only">
+                                          {t("historyPage.actions.openVideoEditor")}
+                                        </span>
+                                      </Button>
+                                    ) : null}
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -4262,6 +4710,22 @@ export default function MediaHistory() {
                       <Share2 className="w-4 h-4" />
                       {t("historyPage.actions.share")}
                     </Button>
+                    {selectedTask.mediaType === "video" ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleOpenVideoEditor(selectedTask)}
+                        disabled={!selectedTaskVideoEditorLibraryItemId}
+                        className="gap-2"
+                        title={
+                          selectedTaskVideoEditorLibraryItemId
+                            ? t("historyPage.actions.openVideoEditor")
+                            : t("historyPage.actions.addToLibraryBeforeVideoEditor")
+                        }
+                      >
+                        <Scissors className="w-4 h-4" />
+                        {t("historyPage.actions.openVideoEditor")}
+                      </Button>
+                    ) : null}
                     {(selectedTask.mediaType === "image" ||
                       selectedTask.mediaType === "video") && (
                       <Button

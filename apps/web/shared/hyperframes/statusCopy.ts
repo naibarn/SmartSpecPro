@@ -206,6 +206,15 @@ export const HYPERFRAMES_BLOCKER_COPY: Record<
     label: { en: "Claim review required", th: "ต้องตรวจ claim" },
     description: { en: "Potentially sensitive claims must be reviewed before Auto render.", th: "claim ที่เสี่ยงต้องตรวจ ก่อน render อัตโนมัติ" },
   },
+  active_standard_run: {
+    copyId: "hyperframes.blocker.active_standard_run",
+    label: { en: "Standard Order already running", th: "มีงาน Standard Order กำลังทำอยู่" },
+    description: {
+      en: "Finish or review the active Standard Order run before starting Auto Storyboard Review.",
+      th: "ตรวจหรือรอให้งาน Standard Order ที่กำลังทำอยู่เสร็จก่อนเริ่ม Auto Storyboard Review",
+    },
+    nextAction: { en: "Open the active Standard Order run", th: "เปิดงาน Standard Order ที่กำลังทำอยู่" },
+  },
   stale_plan: {
     copyId: "hyperframes.blocker.stale_plan",
     label: { en: "Plan expired", th: "แผนหมดอายุ" },

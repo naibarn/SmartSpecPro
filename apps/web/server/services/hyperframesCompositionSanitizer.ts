@@ -32,8 +32,15 @@ export function sanitizeHyperframesText(
 
 export function redactHyperframesDiagnostics(value: unknown): string {
   return sanitizeHyperframesText(value, 1200)
+    .replace(/\b(authorization|auth)\s*[:=]\s*(?:bearer|basic)\s+[^\s]+/gi, "$1=[redacted]")
+    .replace(/\b(?:bearer|basic)\s+[A-Za-z0-9._~+/-]+=*/gi, "[redacted-auth]")
+    .replace(/https?:\/\/[^\s/@:]+:[^\s/@]+@[^\s]+/gi, "[redacted-url]")
     .replace(/https?:\/\/[^\s?]+?\?[^\s]+/gi, "[redacted-url]")
-    .replace(/(sig|signature|token|key|secret|X-Amz-Signature)=\S+/gi, "$1=[redacted]")
+    .replace(
+      /\b(awsaccesskeyid|sig|signature|token|key|secret|password|passwd|pwd|session|jwt|policy|authorization|auth|bearer|credential|expires?|access[_-]?(?:key|token)|refresh[_-]?token|id[_-]?token|X-Amz-Signature|X-Amz-Credential)=\S+/gi,
+      "$1=[redacted]"
+    )
+    .replace(/\bmarketplace-auto-review\/[^\s]+/gi, "[redacted-storage-ref]")
     .replace(/\/(?:home|tmp|var|srv|app)\/[^\s]+/gi, "[redacted-path]")
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted-email]");
 }

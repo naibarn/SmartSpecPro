@@ -236,6 +236,9 @@ export class LibraryUrlValidationError extends Error {
 
 export interface LibrarySearchFilters {
   itemType?: string;
+  source?: string;
+  productId?: string;
+  runId?: string;
   model?: string;
   ownerUserId?: number;
   projectId?: string | null;
@@ -398,6 +401,9 @@ export type LibraryDocumentAccessSource = "owner" | "shared_direct" | "shared_gr
 
 export interface LibraryDocumentFilters {
   itemType?: string;
+  source?: string;
+  productId?: string;
+  runId?: string;
   ownerUserId?: number;
   projectId?: string | null;
   status?: LibraryItemStatus;
@@ -1599,10 +1605,44 @@ function getLibraryItemLastActivityAt(item: Pick<LibraryItemRow, "createdAt" | "
   return item.updatedAt > item.createdAt ? item.updatedAt : item.createdAt;
 }
 
+function getLibraryMetadataText(
+  metadata: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
+}
+
 function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters): boolean {
   if (!filters) return true;
 
   if (filters.itemType && item.itemType !== filters.itemType) return false;
+  if (filters.source && item.source !== filters.source) return false;
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  if (filters.productId) {
+    const productId = getLibraryMetadataText(metadata, [
+      "productId",
+      "product_id",
+      "marketplaceProductId",
+      "marketplace_product_id",
+    ]);
+    if (productId !== filters.productId) return false;
+  }
+  if (filters.runId) {
+    const runId = getLibraryMetadataText(metadata, [
+      "runId",
+      "run_id",
+      "productionRunId",
+      "production_run_id",
+      "autoReviewRunId",
+      "auto_review_run_id",
+    ]);
+    if (runId !== filters.runId) return false;
+  }
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
   if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
   if (filters.status && item.status !== filters.status) return false;
@@ -1611,7 +1651,6 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
   const recentCutoff = getRecentCutoffDate(filters.recentDays);
   if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff) return false;
 
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
   if (filters.model) {
     const model = typeof metadata.model === "string" ? metadata.model : null;
     const modelName = typeof metadata.model_name === "string" ? metadata.model_name : null;
@@ -4287,6 +4326,30 @@ function itemMatchesDocumentFilters(
   if (!filters) return true;
 
   if (filters.itemType && item.itemType !== filters.itemType) return false;
+  if (filters.source && item.source !== filters.source) return false;
+  if (filters.productId || filters.runId) {
+    const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+    if (filters.productId) {
+      const productId = getLibraryMetadataText(metadata, [
+        "productId",
+        "product_id",
+        "marketplaceProductId",
+        "marketplace_product_id",
+      ]);
+      if (productId !== filters.productId) return false;
+    }
+    if (filters.runId) {
+      const runId = getLibraryMetadataText(metadata, [
+        "runId",
+        "run_id",
+        "productionRunId",
+        "production_run_id",
+        "autoReviewRunId",
+        "auto_review_run_id",
+      ]);
+      if (runId !== filters.runId) return false;
+    }
+  }
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
   if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
   if (filters.status && item.status !== filters.status) return false;

@@ -15,10 +15,15 @@ export interface HyperframesProductionRolloutInput {
 
 export interface HyperframesProductionRolloutGate {
   gate: "pass" | "blocked";
+  runtimeMode: "smoke_only" | "producer_ready";
+  mvpSmokeReady: boolean;
   productionRuntimeReady: boolean;
+  producerRuntimeBlocked: boolean;
   installAllowed: boolean;
+  installCommandAllowed: boolean;
   packageNames: ["@hyperframes/producer", "@hyperframes/cli"];
   blockers: string[];
+  requiredEvidence: string[];
   nextMilestone: string;
 }
 
@@ -42,15 +47,40 @@ export function evaluateHyperframesProductionRolloutGate(
   if (!input.goldenSnapshotsPassed) blockers.push("golden_snapshots_missing");
 
   const pass = blockers.length === 0;
+  const mvpSmokeReady =
+    input.bundleExcludesHyperframesPackages && input.chromeReady && input.ffmpegReady;
+  const milestoneGroups = [
+    input.packageInstallDeferred ||
+    !input.pinnedVersionsKnown ||
+    !input.licenseReviewed ||
+    !input.nativePostinstallReviewed ||
+    !input.provenanceReviewed
+      ? "dependency"
+      : null,
+    !input.workerImageReviewed ||
+    !input.fontsReviewed ||
+    !input.chromeReady ||
+    !input.ffmpegReady
+      ? "worker-image"
+      : null,
+    !input.bundleExcludesHyperframesPackages ? "bundle-import" : null,
+    !input.seededRouteE2ePassed ? "seeded-route" : null,
+    !input.goldenSnapshotsPassed ? "golden-snapshot" : null,
+  ].filter(Boolean);
   return {
     gate: pass ? "pass" : "blocked",
+    runtimeMode: pass ? "producer_ready" : "smoke_only",
+    mvpSmokeReady,
     productionRuntimeReady: pass,
+    producerRuntimeBlocked: !pass,
     installAllowed: pass,
+    installCommandAllowed: pass,
     packageNames: ["@hyperframes/producer", "@hyperframes/cli"],
     blockers,
+    requiredEvidence: blockers,
     nextMilestone: pass
       ? "Install pinned @hyperframes packages in the dedicated worker image and run production render verification."
-      : "Keep MVP smoke renderer only; finish dependency, worker-image, seeded-route, and golden-snapshot gates before installing @hyperframes packages.",
+      : `Keep MVP smoke renderer only; finish ${milestoneGroups.join(", ")} gates before installing @hyperframes packages.`,
   };
 }
 
@@ -64,7 +94,7 @@ export function defaultHyperframesProductionRolloutGate() {
     workerImageReviewed: false,
     fontsReviewed: false,
     chromeReady: false,
-    ffmpegReady: true,
+    ffmpegReady: false,
     bundleExcludesHyperframesPackages: true,
     seededRouteE2ePassed: false,
     goldenSnapshotsPassed: false,

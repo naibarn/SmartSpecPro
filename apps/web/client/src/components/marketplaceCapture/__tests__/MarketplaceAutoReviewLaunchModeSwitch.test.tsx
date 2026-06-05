@@ -15,8 +15,12 @@ describe("MarketplaceAutoReviewLaunchModeSwitch", () => {
       />
     );
 
-    expect(screen.getByRole("tab", { name: /auto mode/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: /standard mode/i }));
+    expect(screen.getByRole("group", { name: /launch mode/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /auto mode/i })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    fireEvent.click(screen.getByRole("button", { name: /standard mode/i }));
     expect(onChange).toHaveBeenCalledWith("standard_order");
   });
 
@@ -32,12 +36,12 @@ describe("MarketplaceAutoReviewLaunchModeSwitch", () => {
       />
     );
 
-    const autoTab = screen.getByRole("tab", { name: /auto mode/i });
-    expect(autoTab.getAttribute("aria-disabled")).toBe("true");
+    const autoButton = screen.getByRole("button", { name: /auto mode/i });
+    expect(autoButton.getAttribute("aria-disabled")).toBe("true");
     expect(screen.getByText("Review blockers")).toBeTruthy();
 
-    fireEvent.click(autoTab);
+    fireEvent.click(autoButton);
     expect(onChange).toHaveBeenCalledWith("auto_storyboard_review");
-    expect(screen.getByRole("tab", { name: /standard mode/i })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /standard mode/i })).not.toBeDisabled();
   });
 });

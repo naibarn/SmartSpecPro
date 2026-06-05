@@ -3,12 +3,16 @@ import {
   HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
   HyperframesChargeSummarySchema,
   HyperframesPollingGuidanceSchema,
+  HyperframesRepairActionSchema,
   HyperframesRenderIntentSchema,
   HyperframesRenderStatusProjectionSchema,
   MarketplaceAutoReviewCompositionModeSchema,
   MarketplaceAutoReviewLaunchModeSchema,
 } from "./contracts";
-import { HyperframesAutoStoryboardReviewPlanSchema } from "./autoPlan";
+import {
+  HyperframesAutoPlanOverrideInputSchema,
+  HyperframesAutoStoryboardReviewPlanSchema,
+} from "./autoPlan";
 import { HyperframesFeatureAccessProjectionSchema } from "./featureAccess";
 import { HyperframesTemplateDescriptorSchema } from "./contracts";
 
@@ -18,6 +22,7 @@ const ProductIdInputSchema = z.object({
 
 export const GetAutoStoryboardReviewPlanInputSchema = ProductIdInputSchema.extend({
   includeTemplates: z.boolean().optional().default(false),
+  overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
 }).strict();
 
 export const GetAutoStoryboardReviewPlanOutputSchema = z
@@ -31,8 +36,8 @@ export const GetAutoStoryboardReviewPlanOutputSchema = z
 
 export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend({
   expectedPlanHash: z.string().min(6).max(128).optional(),
-  idempotencyKey: z.string().min(1).max(256).optional(),
-  overrides: z.record(z.unknown()).optional().default({}),
+  idempotencyKey: z.string().min(1).max(192).optional(),
+  overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
 }).strict();
 
 export const StartAutoStoryboardReviewOutputSchema = z
@@ -53,11 +58,11 @@ export const CreateHyperframesPreviewInputSchema = z
     productId: z.string().min(1).max(64),
     runId: z.string().min(1).max(64),
     expectedCompositionInputHash: z.string().min(6).max(128).optional(),
-    renderIntent: HyperframesRenderIntentSchema.optional().default("preview"),
-    compositionMode: MarketplaceAutoReviewCompositionModeSchema.optional().default(
-      "storyboard_motion_preview"
-    ),
-    idempotencyKey: z.string().min(1).max(256).optional(),
+    renderIntent: z.literal("preview").optional().default("preview"),
+    compositionMode: z
+      .literal("storyboard_motion_preview")
+      .optional()
+      .default("storyboard_motion_preview"),
   })
   .strict();
 
@@ -86,6 +91,27 @@ export const GetHyperframesRenderJobOutputSchema = z
     render: HyperframesRenderStatusProjectionSchema,
     polling: HyperframesPollingGuidanceSchema,
     notModified: z.boolean().default(false),
+  })
+  .strict();
+
+export const RepairHyperframesRenderJobInputSchema = z
+  .object({
+    renderJobId: z.string().min(1).max(128),
+    productId: z.string().min(1).max(64),
+    runId: z.string().min(1).max(64),
+    actionId: z.string().min(1).max(160),
+    actionType: HyperframesRepairActionSchema.shape.actionType,
+    expectedCompositionInputHash: z.string().min(6).max(128).optional(),
+  })
+  .strict();
+
+export const RepairHyperframesRenderJobOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    render: HyperframesRenderStatusProjectionSchema,
+    chargeSummary: HyperframesChargeSummarySchema.optional(),
+    polling: HyperframesPollingGuidanceSchema,
+    invalidates: z.array(z.string().min(1)).default([]),
   })
   .strict();
 
@@ -156,6 +182,12 @@ export type CreateHyperframesPreviewInput = z.infer<
 >;
 export type GetHyperframesRenderJobInput = z.infer<
   typeof GetHyperframesRenderJobInputSchema
+>;
+export type RepairHyperframesRenderJobInput = z.infer<
+  typeof RepairHyperframesRenderJobInputSchema
+>;
+export type RepairHyperframesRenderJobOutput = z.infer<
+  typeof RepairHyperframesRenderJobOutputSchema
 >;
 export type SaveHyperframesRenderToLibraryInput = z.infer<
   typeof SaveHyperframesRenderToLibraryInputSchema

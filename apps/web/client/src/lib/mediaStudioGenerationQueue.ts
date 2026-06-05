@@ -78,6 +78,49 @@ export function isActiveGenerationQueueStatus(status: GenerationQueueStatus): bo
   return !isTerminalGenerationQueueStatus(status);
 }
 
+function getGenerationQueueTaskTimestampMs(
+  task: GenerationQueueHistoryTaskLike,
+): number | null {
+  const timestamp = task.updatedAt ?? task.startedAt ?? task.createdAt;
+  if (timestamp === undefined || timestamp === null || timestamp === "") {
+    return null;
+  }
+
+  const taskTimeMs = timestamp instanceof Date
+    ? timestamp.getTime()
+    : typeof timestamp === "number"
+      ? timestamp
+      : Date.parse(String(timestamp ?? ""));
+
+  return Number.isFinite(taskTimeMs) ? taskTimeMs : null;
+}
+
+export function isStaleActiveGenerationQueueTask(
+  status: GenerationQueueStatus,
+  task: GenerationQueueHistoryTaskLike,
+  options?: {
+    nowMs?: number;
+    activeHistoryMaxAgeMs?: number;
+  },
+): boolean {
+  if (!isActiveGenerationQueueStatus(status)) {
+    return false;
+  }
+
+  const maxAgeMs = options?.activeHistoryMaxAgeMs ?? 2 * 60 * 60 * 1000;
+  if (maxAgeMs <= 0) {
+    return false;
+  }
+
+  const taskTimeMs = getGenerationQueueTaskTimestampMs(task);
+  if (taskTimeMs === null) {
+    return false;
+  }
+
+  const nowMs = options?.nowMs ?? Date.now();
+  return nowMs - taskTimeMs > maxAgeMs;
+}
+
 export function shouldIncludeHistoryTaskInGenerationQueue(
   status: GenerationQueueStatus,
   task: GenerationQueueHistoryTaskLike,
@@ -89,30 +132,14 @@ export function shouldIncludeHistoryTaskInGenerationQueue(
 ): boolean {
   const isTracked = getGenerationQueueIdentityCandidates(task).some((candidate) => trackedTaskIds.has(candidate));
   if (isTracked) {
-    return true;
+    return !isStaleActiveGenerationQueueTask(status, task, options);
   }
 
   if (!isActiveGenerationQueueStatus(status)) {
     return false;
   }
 
-  const maxAgeMs = options?.activeHistoryMaxAgeMs ?? 2 * 60 * 60 * 1000;
-  if (maxAgeMs <= 0) {
-    return true;
-  }
-
-  const nowMs = options?.nowMs ?? Date.now();
-  const timestamp = task.updatedAt ?? task.startedAt ?? task.createdAt;
-  if (timestamp === undefined || timestamp === null || timestamp === "") {
-    return true;
-  }
-  const taskTimeMs = timestamp instanceof Date
-    ? timestamp.getTime()
-    : typeof timestamp === "number"
-      ? timestamp
-      : Date.parse(String(timestamp ?? ""));
-
-  return !Number.isFinite(taskTimeMs) || nowMs - taskTimeMs <= maxAgeMs;
+  return !isStaleActiveGenerationQueueTask(status, task, options);
 }
 
 export function isStoryboardReviewOnlyQueuedTask(

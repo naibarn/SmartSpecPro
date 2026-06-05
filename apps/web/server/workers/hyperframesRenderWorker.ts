@@ -11,6 +11,7 @@ import {
   executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
 } from "../services/hyperframesRuntimeAdapter";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 const HYPERFRAMES_WORKER_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -36,9 +37,23 @@ export interface HyperframesWorkerRunResult {
   runtimeDeferred: boolean;
 }
 
-export function isHyperframesWorkerEnabled(): boolean {
+function falseyEnv(value: string | undefined): boolean {
+  return ["0", "false", "no", "off", "disabled"].includes(
+    (value ?? "").toLowerCase()
+  );
+}
+
+function truthyEnv(value: string | undefined): boolean {
   return ["1", "true", "yes", "on"].includes(
-    (process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED ?? "").toLowerCase()
+    (value ?? "").toLowerCase()
+  );
+}
+
+export function isHyperframesWorkerEnabled(): boolean {
+  return (
+    !truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_DISABLED) &&
+    !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ENABLED) &&
+    !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED)
   );
 }
 
@@ -50,6 +65,17 @@ export function isHyperframesRuntimeExecutionReady(): boolean {
 
 function sha256Hash(buffer: Buffer): string {
   return `hf_${createHash("sha256").update(buffer).digest("hex").slice(0, 48)}`;
+}
+
+async function isHyperframesWorkerEnabledForTenant(
+  tenantId?: string | null
+): Promise<boolean> {
+  if (!isHyperframesWorkerEnabled()) return false;
+  const flags = await getTenantFeatureFlags(tenantId ?? "default");
+  return (
+    flags.marketplaceHyperframesEnabled === true &&
+    flags.marketplaceHyperframesWorkerEnabled === true
+  );
 }
 
 export function buildCompletedHyperframesStagePayload(input: {
@@ -222,6 +248,7 @@ export async function runHyperframesRenderWorkerOnce(
   let processed = 0;
   for (const job of jobs) {
     if (!["queued", "retry"].includes(job.status)) continue;
+    if (!(await isHyperframesWorkerEnabledForTenant(job.tenantId))) continue;
     const payload = (job.payloadJson ?? {}) as Record<string, unknown>;
     try {
       const nextPayload = await executeHyperframesWorkerJob({

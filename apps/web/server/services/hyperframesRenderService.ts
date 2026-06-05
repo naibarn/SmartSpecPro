@@ -1,4 +1,5 @@
 import { and, eq, inArray } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import {
   HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
   HyperframesArtifactRefSchema,
@@ -17,6 +18,8 @@ import { getHyperframesStatusCopy } from "@shared/hyperframes/statusCopy";
 import { getDb } from "../db";
 import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
 import type { HyperframesAuthContext } from "./hyperframesFeatureAccessService";
+import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
+import { redactHyperframesDiagnostics } from "./hyperframesCompositionSanitizer";
 
 export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -62,12 +65,45 @@ const HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES = [
   "running",
 ] as const;
 
+const HYPERFRAMES_USER_RETRYABLE_RENDER_STATUSES = new Set([
+  "failed_transient",
+]);
+
+const HYPERFRAMES_USER_RETRYABLE_OUTBOX_STATUSES = ["failed"] as const;
+
+const HYPERFRAMES_CANCELLABLE_RENDER_STATUSES = new Set<HyperframesRenderStatus>([
+  "queued",
+  "staging_assets",
+  "linting",
+  "snapshotting",
+  "inspecting",
+  "rendering",
+  "qa_checking",
+]);
+
 export function mapOutboxStatusToRenderStatus(
   status: string,
-  lastError?: string | null
+  lastError?: string | null,
+  jobType?: string | null
 ): HyperframesRenderStatus {
   if (status === "queued" || status === "pending" || status === "retry") return "queued";
-  if (status === "locked" || status === "running") return "rendering";
+  if (status === "locked" || status === "running") {
+    switch (jobType) {
+      case "hyperframes_asset_stage":
+        return "staging_assets";
+      case "hyperframes_lint":
+        return "linting";
+      case "hyperframes_snapshot":
+        return "snapshotting";
+      case "hyperframes_inspect":
+        return "inspecting";
+      case "hyperframes_finalize":
+        return "qa_checking";
+      case "hyperframes_render":
+      default:
+        return "rendering";
+    }
+  }
   if (status === "completed") return "completed";
   if (status === "cancel_requested") return "cancel_requested";
   if (status === "cancelled") return "cancelled";
@@ -156,6 +192,57 @@ function progressForStatus(status: HyperframesRenderStatus): number {
   return progress[status] ?? 0;
 }
 
+const HYPERFRAMES_PRIVATE_OUTPUT_PATH_RE =
+  /^\/(?:home|tmp|var|srv|app|workspace|mnt)\//i;
+const HYPERFRAMES_PRIVATE_STORAGE_REF_RE = /\bmarketplace-auto-review\//i;
+const HYPERFRAMES_SENSITIVE_OUTPUT_URL_PARAM_RE =
+  /^(?:x-amz-|awsaccesskeyid$|sig$|signature$|token$|key$|secret$|password$|passwd$|pwd$|session$|jwt$|policy$|authorization$|auth$|bearer$|expires?$|credential$|access[_-]?(?:key|token)$|refresh[_-]?token$|id[_-]?token$)/i;
+const HYPERFRAMES_PUBLIC_RELATIVE_OUTPUT_PATH_RE =
+  /^\/(?:media|uploads|static\/media)\//i;
+
+function hasSensitiveHyperframesOutputUrlParams(url: URL): boolean {
+  for (const key of url.searchParams.keys()) {
+    if (HYPERFRAMES_SENSITIVE_OUTPUT_URL_PARAM_RE.test(key)) return true;
+  }
+  return false;
+}
+
+function redactHyperframesOutputUrlForUser(
+  value: string | null | undefined
+): string | null {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) return null;
+  if (
+    HYPERFRAMES_PRIVATE_OUTPUT_PATH_RE.test(raw) ||
+    HYPERFRAMES_PRIVATE_STORAGE_REF_RE.test(raw)
+  ) {
+    return null;
+  }
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    try {
+      const url = new URL(raw, "https://smartspec.local");
+      if (hasSensitiveHyperframesOutputUrlParams(url)) return null;
+      if (!HYPERFRAMES_PUBLIC_RELATIVE_OUTPUT_PATH_RE.test(url.pathname)) {
+        return null;
+      }
+      return url.pathname;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    if (url.username || url.password) return null;
+    if (hasSensitiveHyperframesOutputUrlParams(url)) return null;
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function buildHyperframesRenderJobPayload(input: {
   composition: HyperframesCompositionInput;
   traceId?: string;
@@ -202,9 +289,16 @@ export function buildHyperframesRenderProjection(input: {
   outputRefs?: HyperframesOutputRef[];
   artifactRefs?: HyperframesArtifactRef[];
   libraryItemId?: string | number | null;
+  permissions?: Partial<{
+    canCancel: boolean;
+    canRepair: boolean;
+  }>;
+  canMutate?: boolean;
   updatedAt?: string;
 }): HyperframesRenderStatusProjection {
   const copy = getHyperframesStatusCopy(input.status, "th");
+  const repairActions = repairActionsForStatus(input.status);
+  const canMutate = Boolean(input.canMutate);
   return HyperframesRenderStatusProjectionSchema.parse({
     contractVersion: HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
     renderJobId: input.renderJobId,
@@ -216,9 +310,20 @@ export function buildHyperframesRenderProjection(input: {
     progressPercent: progressForStatus(input.status),
     statusCopyId: copy.copyId,
     safeMessage: copy.description,
-    safeDiagnostics: input.safeDiagnostics ?? [],
+    safeDiagnostics: (input.safeDiagnostics ?? []).map(redactHyperframesDiagnostics),
     nextAction: copy.nextAction,
-    repairActions: repairActionsForStatus(input.status),
+    repairActions,
+    permissions: {
+      canCancel:
+        input.permissions?.canCancel ??
+        (canMutate && HYPERFRAMES_CANCELLABLE_RENDER_STATUSES.has(input.status)),
+      canRepair:
+        input.permissions?.canRepair ??
+        (canMutate &&
+          repairActions.some(
+            action => !action.requiresOperator && !action.disabledReason
+          )),
+    },
     polling: createDefaultHyperframesPollingGuidance(input.status, {
       etag: stableHash({ status: input.status, updatedAt: input.updatedAt }),
     }),
@@ -250,6 +355,28 @@ export function buildHyperframesRenderProjection(input: {
       : []),
     artifactRefs: input.artifactRefs ?? [],
     updatedAt: input.updatedAt ?? nowIso(),
+  });
+}
+
+export function redactHyperframesRenderProjectionForUser(
+  render: HyperframesRenderStatusProjection
+): HyperframesRenderStatusProjection {
+  return HyperframesRenderStatusProjectionSchema.parse({
+    ...render,
+    outputRefs: render.outputRefs.map(ref => ({
+      ...ref,
+      url: redactHyperframesOutputUrlForUser(ref.url),
+      storageRef: null,
+      thumbnailUrl: redactHyperframesOutputUrlForUser(ref.thumbnailUrl),
+    })),
+    safeDiagnostics: render.safeDiagnostics.map(redactHyperframesDiagnostics),
+    artifactRefs: [],
+    redaction: {
+      rawHtmlHidden: true,
+      signedUrlsHidden: true,
+      workerLogsHidden: true,
+      storageKeysHidden: true,
+    },
   });
 }
 
@@ -291,6 +418,19 @@ function outputRefsFromPayload(input: {
       },
     ],
   };
+}
+
+function hasMarketplaceProductMutationAccess(
+  access: Awaited<ReturnType<typeof getMarketplaceProductWithAccess>>
+): boolean {
+  const product = access.product as {
+    accessType?: string | null;
+    groupShare?: { permission?: string | null } | null;
+  };
+  return (
+    product.accessType === "owner" ||
+    product.groupShare?.permission === "read_update"
+  );
 }
 
 export async function queueHyperframesRenderJob(input: {
@@ -342,6 +482,7 @@ export async function queueHyperframesRenderJob(input: {
     renderJobId,
     status: "queued",
     payload,
+    canMutate: true,
   });
 }
 
@@ -364,6 +505,11 @@ export async function getHyperframesRenderProjection(input: {
               eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
               eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
             )
+          : input.productId && input.auth.tenantId
+            ? and(
+                eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+                eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
+              )
           : and(
               eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
               eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId)
@@ -375,6 +521,24 @@ export async function getHyperframesRenderProjection(input: {
       const requestedProductId = input.productId?.trim();
       const payloadProductId =
         typeof payload.productId === "string" ? payload.productId.trim() : "";
+      let canMutate = Boolean(input.operatorTenantAccess || job.userId === input.auth.userId);
+      if (!input.operatorTenantAccess && requestedProductId) {
+        try {
+          const productAccess = await getMarketplaceProductWithAccess(
+            requestedProductId,
+            input.auth
+          );
+          canMutate = canMutate || hasMarketplaceProductMutationAccess(productAccess);
+        } catch {
+          return buildHyperframesRenderProjection({
+            tenantId,
+            productId: requestedProductId,
+            runId: input.runId ?? job.runId,
+            renderJobId: input.renderJobId,
+            status: "not_available",
+          });
+        }
+      }
       if (input.runId && input.runId !== job.runId) {
         return buildHyperframesRenderProjection({
           tenantId,
@@ -411,11 +575,16 @@ export async function getHyperframesRenderProjection(input: {
         productId: requestedProductId || payloadProductId || "unknown_product",
         runId: job.runId,
         renderJobId: job.id,
-        status: mapOutboxStatusToRenderStatus(job.status, job.lastError),
+        status: mapOutboxStatusToRenderStatus(
+          job.status,
+          job.lastError,
+          job.jobType
+        ),
         payload,
         safeDiagnostics: job.lastError ? [job.lastError.slice(0, 240)] : [],
         outputRefs: outputRefs.outputRefs,
         artifactRefs: outputRefs.artifactRefs,
+        canMutate,
         updatedAt: job.updatedAt?.toISOString?.() ?? nowIso(),
       });
     }
@@ -429,7 +598,7 @@ export async function getHyperframesRenderProjection(input: {
   });
 }
 
-export async function cancelHyperframesRenderJob(input: {
+export async function retryHyperframesRenderJob(input: {
   auth: HyperframesAuthContext;
   renderJobId: string;
   productId?: string;
@@ -438,32 +607,165 @@ export async function cancelHyperframesRenderJob(input: {
 }): Promise<HyperframesRenderStatusProjection> {
   const tenantId = input.auth.tenantId ?? "default";
   const db = await getDb();
+  if (!db) return getHyperframesRenderProjection(input);
+
+  const [job] = await db
+    .select()
+    .from(marketplaceAutoReviewOutboxJobs)
+    .where(
+      input.operatorTenantAccess
+        ? and(
+            eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+            eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
+          )
+        : input.productId && input.auth.tenantId
+          ? and(
+              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+              eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
+            )
+          : and(
+              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+              eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId)
+            )
+    )
+    .limit(1);
+
+  if (!job) return getHyperframesRenderProjection(input);
+
+  const payload = (job.payloadJson ?? {}) as Partial<HyperframesRenderJobPayload>;
+  const requestedProductId = input.productId?.trim();
+  const payloadProductId =
+    typeof payload.productId === "string" ? payload.productId.trim() : "";
+  let canMutate = Boolean(input.operatorTenantAccess || job.userId === input.auth.userId);
+  if (requestedProductId) {
+    if (payloadProductId && requestedProductId !== payloadProductId) {
+      return buildHyperframesRenderProjection({
+        tenantId,
+        productId: requestedProductId,
+        runId: input.runId ?? job.runId,
+        renderJobId: input.renderJobId,
+        status: "not_available",
+      });
+    }
+    try {
+      const productAccess = await getMarketplaceProductWithAccess(
+        requestedProductId,
+        input.auth
+      );
+      canMutate = canMutate || hasMarketplaceProductMutationAccess(productAccess);
+    } catch {
+      return buildHyperframesRenderProjection({
+        tenantId,
+        productId: requestedProductId,
+        runId: input.runId ?? job.runId,
+        renderJobId: input.renderJobId,
+        status: "not_available",
+      });
+    }
+  }
+  if (!canMutate) return getHyperframesRenderProjection(input);
+
+  if (input.runId && input.runId !== job.runId) {
+    return buildHyperframesRenderProjection({
+      tenantId,
+      productId: requestedProductId ?? payloadProductId ?? "unknown_product",
+      runId: input.runId,
+      renderJobId: input.renderJobId,
+      status: "not_available",
+    });
+  }
+
+  const renderStatus = mapOutboxStatusToRenderStatus(
+    job.status,
+    job.lastError,
+    job.jobType
+  );
+  if (!HYPERFRAMES_USER_RETRYABLE_RENDER_STATUSES.has(renderStatus)) {
+    return getHyperframesRenderProjection(input);
+  }
+
+  const mutationScope =
+    input.operatorTenantAccess || (input.productId && input.auth.tenantId)
+      ? eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
+      : eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId);
+  const updatedRows = await db
+    .update(marketplaceAutoReviewOutboxJobs)
+    .set({
+      status: "retry",
+      lockedBy: null,
+      lockedUntil: null,
+      completedAt: null,
+      lastError: null,
+      scheduledAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+        eq(marketplaceAutoReviewOutboxJobs.runId, job.runId),
+        mutationScope,
+        inArray(
+          marketplaceAutoReviewOutboxJobs.status,
+          HYPERFRAMES_USER_RETRYABLE_OUTBOX_STATUSES
+        ),
+        job.updatedAt
+          ? eq(marketplaceAutoReviewOutboxJobs.updatedAt, job.updatedAt)
+          : undefined
+      )
+    )
+    .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+  if (updatedRows.length === 0) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "HyperFrames render changed before retry could be queued. Refresh status and try again.",
+    });
+  }
+
+  return getHyperframesRenderProjection(input);
+}
+
+export async function cancelHyperframesRenderJob(input: {
+  auth: HyperframesAuthContext;
+  renderJobId: string;
+  productId?: string;
+  runId?: string;
+  operatorTenantAccess?: boolean;
+}): Promise<HyperframesRenderStatusProjection> {
+  const current = await getHyperframesRenderProjection(input);
+  if (!current.permissions.canCancel) return current;
+  const tenantId = input.auth.tenantId ?? "default";
+  const db = await getDb();
   if (db) {
-    await db
+    const mutationScope =
+      input.operatorTenantAccess || (input.productId && input.auth.tenantId)
+        ? eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
+        : eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId);
+    const updatedRows = await db
       .update(marketplaceAutoReviewOutboxJobs)
       .set({
         status: "cancel_requested",
         updatedAt: new Date(),
       })
       .where(
-        input.operatorTenantAccess
-          ? and(
-              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
-              eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId),
-              inArray(
-                marketplaceAutoReviewOutboxJobs.status,
-                HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES
-              )
-            )
-          : and(
-              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
-              eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId),
-              inArray(
-                marketplaceAutoReviewOutboxJobs.status,
-                HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES
-              )
-            )
-      );
+        and(
+          eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+          eq(marketplaceAutoReviewOutboxJobs.runId, current.runId),
+          mutationScope,
+          inArray(
+            marketplaceAutoReviewOutboxJobs.status,
+            HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES
+          )
+        )
+      )
+      .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+    if (updatedRows.length === 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "HyperFrames render changed before cancellation could be queued. Refresh status and try again.",
+      });
+    }
   }
   return getHyperframesRenderProjection(input);
 }

@@ -89,6 +89,7 @@ import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { cn } from "@/lib/utils";
 import {
   buildDocumentQueryString,
+  clearDocumentLibraryContextFilter,
   DEFAULT_DOCUMENT_QUERY_STATE,
   DOCUMENT_MANAGEMENT_ROUTE,
   getKnowledgeVaultNavigationModes,
@@ -153,6 +154,13 @@ const QUICK_MEDIA_FILTERS = [
   { value: "image", labelKey: "documentManagement.fileType.image" },
   { value: "video", labelKey: "documentManagement.fileType.video" },
 ] as const;
+
+function formatDocumentSourceFilterFallback(source: string): string {
+  return source
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 const KNOWLEDGE_VAULT_UI_SURFACES = [
   "quickSwitcher",
   "inspector",
@@ -455,6 +463,50 @@ export default function DocumentManagement() {
     }
   );
   const isEditorMode = true;
+  const sourceFilterLabel = queryState.source
+    ? queryState.source === "marketplace_auto_review_hyperframes_render"
+      ? t("documentManagement.sourceFilter.hyperframesMarketplaceAutoReview")
+      : formatDocumentSourceFilterFallback(queryState.source)
+    : "";
+  const hasLibraryContextFilter = Boolean(
+    queryState.source || queryState.productId || queryState.runId
+  );
+  const libraryContextFilterLabel = [
+    queryState.source ? sourceFilterLabel : null,
+    queryState.productId
+      ? t("documentManagement.contextFilter.product", {
+          productId: queryState.productId,
+        })
+      : null,
+    queryState.runId
+      ? t("documentManagement.contextFilter.run", {
+          runId: queryState.runId,
+        })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const renderSourceFilterChip = () =>
+    hasLibraryContextFilter ? (
+      <Badge className="inline-flex h-7 max-w-full shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-50">
+        <span className="truncate">
+          {t("documentManagement.contextFilter.label")}:{" "}
+          {libraryContextFilterLabel ||
+            t("documentManagement.contextFilter.libraryContext")}
+        </span>
+        <button
+          type="button"
+          className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-100"
+          aria-label={t("documentManagement.contextFilter.clear")}
+          onClick={() =>
+            setQueryState(prev => clearDocumentLibraryContextFilter(prev))
+          }
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </Badge>
+    ) : null;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -655,6 +707,9 @@ export default function DocumentManagement() {
       offset: 0,
       filters: {
         itemType: queryState.itemType || undefined,
+        source: queryState.source || undefined,
+        productId: queryState.productId || undefined,
+        runId: queryState.runId || undefined,
         status: queryState.status as any,
       },
       folderId: listFolderId,
@@ -663,6 +718,9 @@ export default function DocumentManagement() {
       listScope,
       queryState.sort,
       queryState.itemType,
+      queryState.source,
+      queryState.productId,
+      queryState.runId,
       queryState.status,
       queryState.folderId,
     ]
@@ -687,6 +745,9 @@ export default function DocumentManagement() {
       offset: 0,
       filters: {
         itemType: queryState.itemType || undefined,
+        source: queryState.source || undefined,
+        productId: queryState.productId || undefined,
+        runId: queryState.runId || undefined,
         status: queryState.status as any,
       },
       folderId: searchFolderId,
@@ -3475,6 +3536,7 @@ export default function DocumentManagement() {
                         </Select>
                       </div>
                       <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                        {renderSourceFilterChip()}
                         {QUICK_MEDIA_FILTERS.map(filter => {
                           const isActive =
                             (queryState.itemType ?? "all") === filter.value;
@@ -3482,6 +3544,7 @@ export default function DocumentManagement() {
                             <button
                               key={filter.value}
                               type="button"
+                              aria-label={t(filter.labelKey)}
                               className={cn(
                                 "inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-medium transition-colors",
                                 "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100",
@@ -4056,6 +4119,7 @@ export default function DocumentManagement() {
                         </Select>
                       </div>
                       <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                        {renderSourceFilterChip()}
                         {QUICK_MEDIA_FILTERS.map(filter => {
                           const isActive =
                             (queryState.itemType ?? "all") === filter.value;
@@ -4063,6 +4127,7 @@ export default function DocumentManagement() {
                             <button
                               key={filter.value}
                               type="button"
+                              aria-label={t(filter.labelKey)}
                               className={cn(
                                 "inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-[11px] font-medium transition-colors",
                                 "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100",

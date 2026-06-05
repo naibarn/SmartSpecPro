@@ -8,7 +8,12 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getHyperframesRenderLibraryReadyOutput } from "@/lib/mediaStudioRenderLibrarySessions";
+import {
+  getHyperframesRenderDisplayOutput,
+  getHyperframesRenderLibraryReadyOutput,
+  isHyperframesRenderQaPassed,
+} from "@/lib/mediaStudioRenderLibrarySessions";
+import { resolveHyperframesRenderUiState } from "@/lib/marketplaceHyperframesUiState";
 import type { HyperframesRenderStatusProjection } from "@shared/hyperframes/contracts";
 import {
   getMarketplaceHyperframesUiCopy,
@@ -38,21 +43,14 @@ export function HyperframesRenderPanel({
 }: HyperframesRenderPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   if (!render && !loading) return null;
-  const status = render?.status ?? "queued";
-  const completed = status === "completed" || status === "ready_for_review";
-  const saved = status === "saved_to_library";
-  const failed =
-    status === "failed" ||
-    status === "failed_permanent" ||
-    status === "failed_transient" ||
-    status === "dead_lettered" ||
-    status === "stale_input_hash";
-  const active = !completed && !saved && !failed && status !== "cancelled";
-  const output = render?.outputRefs?.[0];
+  const uiState = resolveHyperframesRenderUiState({ render, loading });
+  const output = getHyperframesRenderDisplayOutput(render);
   const durableOutput = getHyperframesRenderLibraryReadyOutput(render);
+  const qaPassed = isHyperframesRenderQaPassed(render);
   const canSaveToLibrary =
     Boolean(onSaveToLibrary) &&
-    completed &&
+    uiState.completed &&
+    qaPassed &&
     render?.renderIntent !== "preview" &&
     render?.renderIntent !== "snapshot" &&
     Boolean(durableOutput?.contentHash);
@@ -67,9 +65,9 @@ export function HyperframesRenderPanel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {loading || active ? (
+            {uiState.state === "loading" || uiState.active ? (
               <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-            ) : failed ? (
+            ) : uiState.failed || uiState.blocked ? (
               <AlertTriangle className="h-4 w-4 text-amber-600" />
             ) : (
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -81,16 +79,16 @@ export function HyperframesRenderPanel({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {active && onCancel ? (
+          {uiState.canCancel && onCancel ? (
             <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={cancelling}>
               {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
               {copy.cancel}
             </Button>
           ) : null}
-          {render?.repairActions?.[0] && onRetry ? (
+          {uiState.userRepairAction && onRetry ? (
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              {render.repairActions[0].label}
+              {uiState.userRepairAction.label}
             </Button>
           ) : null}
           {canSaveToLibrary ? (

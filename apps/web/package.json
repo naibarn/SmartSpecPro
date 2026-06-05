@@ -7,9 +7,9 @@
     "node": ">=20.20.0 <21 || >=22.22.0"
   },
   "scripts": {
-    "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
-    "dev:tsx": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development tsx watch server/_core/index.ts",
-    "dev:no-watch": "lsof -ti:3000 | xargs kill -9 2>/dev/null; NODE_ENV=development node --import tsx server/_core/index.ts",
+    "dev": "NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
+    "dev:tsx": "NODE_ENV=development tsx watch server/_core/index.ts",
+    "dev:no-watch": "NODE_ENV=development node --import tsx server/_core/index.ts",
     "build": "vite build && npm run build:widget",
     "build:widget": "vite build --config vite.config.widget.ts",
     "start": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=8192' tsx server/_core/index.ts",

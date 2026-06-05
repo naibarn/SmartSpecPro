@@ -55,8 +55,8 @@ export function MarketplaceAutoReviewLaunchModeSwitch({
   return (
     <div
       className="grid w-full grid-cols-2 rounded-lg border bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-900"
-      role="tablist"
-      aria-label="Marketplace Auto Review launch mode"
+      role="group"
+      aria-label={copy.launchModeGroup}
     >
       {modes.map(mode => {
         const Icon = mode.icon;
@@ -65,9 +65,12 @@ export function MarketplaceAutoReviewLaunchModeSwitch({
           <button
             key={mode.value}
             type="button"
-            role="tab"
-            aria-selected={active}
-            aria-label={`${mode.label} mode`}
+            aria-label={
+              mode.value === "auto_storyboard_review"
+                ? copy.autoModeLabel
+                : copy.standardModeLabel
+            }
+            aria-pressed={active}
             aria-disabled={mode.unavailable}
             title={
               mode.unavailable

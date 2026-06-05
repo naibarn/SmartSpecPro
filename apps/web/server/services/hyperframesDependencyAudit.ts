@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
 
+const HYPERFRAMES_NODE_ENGINE_REQUIREMENT = ">=20.20.0 <21 || >=22.22.0";
+
 export interface HyperframesDependencyAuditResult {
   featureFlagsDefaultOff: boolean;
   packageInstallDeferred: boolean;
@@ -28,12 +30,71 @@ function hasCommand(command: string): boolean {
   }
 }
 
-export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResult {
-  const enabledByDefault = ["1", "true", "yes", "on"].includes(
-    (process.env.MARKETPLACE_HYPERFRAMES_ENABLED ?? "").toLowerCase()
-  );
+function readCommand(command: string): string {
+  try {
+    return execFileSync("bash", ["-lc", command], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return "";
+  }
+}
+
+function parseNodeVersion(version: string): {
+  major: number;
+  minor: number;
+  patch: number;
+} | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if (!match) return null;
   return {
-    featureFlagsDefaultOff: !enabledByDefault,
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+export function isSupportedHyperframesNodeVersion(
+  version = process.version
+): boolean {
+  const parsed = parseNodeVersion(version);
+  if (!parsed) return false;
+  if (parsed.major === 20) {
+    return parsed.minor > 20 || (parsed.minor === 20 && parsed.patch >= 0);
+  }
+  if (parsed.major === 22) {
+    return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
+  }
+  return false;
+}
+
+function getHyperframesFontStatus() {
+  const fontconfigAvailable = hasCommand("fc-match") && hasCommand("fc-list");
+  const thaiFontFamilies = fontconfigAvailable
+    ? Array.from(
+        new Set(
+          readCommand("fc-list :lang=th family")
+            .split("\n")
+            .map(line => line.replace(/\\-/g, "-").split(",")[0]?.trim())
+            .filter(Boolean)
+        )
+      ).slice(0, 10)
+    : [];
+  return {
+    ok: fontconfigAvailable && thaiFontFamilies.length > 0,
+    fontconfigAvailable,
+    thaiFontFamilies,
+    message:
+      fontconfigAvailable && thaiFontFamilies.length > 0
+        ? "Thai-capable render fonts are visible to fontconfig."
+        : "Install and verify Thai-capable render fonts in the worker image before rollout.",
+  };
+}
+
+export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResult {
+  return {
+    featureFlagsDefaultOff: true,
     packageInstallDeferred: true,
     packageNames: ["@hyperframes/producer", "@hyperframes/cli"],
     pinnedVersionsKnown: false,
@@ -48,6 +109,7 @@ export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResul
     gate: "partial",
     notes: [
       "HyperFrames package installation is deferred until exact versions and license/provenance checks are complete.",
+      "Marketplace HyperFrames tenant feature flags default off and must be enabled through Admin Tenant Feature Flags.",
       "The MVP smoke renderer may execute without @hyperframes/* packages to verify worker, storage, MediaStudio handoff, and fixture gates.",
       "Production @hyperframes/* execution remains disabled until dependency, browser-image, font, and worker isolation checks pass.",
     ],
@@ -55,10 +117,16 @@ export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResul
 }
 
 export function runHyperframesDoctorCheck() {
+  const nodeOk = isSupportedHyperframesNodeVersion(process.version);
+  const fonts = getHyperframesFontStatus();
   return {
     node: {
-      ok: /^v(20|22)\./.test(process.version),
+      ok: nodeOk,
       version: process.version,
+      requirement: HYPERFRAMES_NODE_ENGINE_REQUIREMENT,
+      message: nodeOk
+        ? "Node runtime satisfies the SmartSpecPro engine requirement."
+        : `Node runtime must satisfy ${HYPERFRAMES_NODE_ENGINE_REQUIREMENT}.`,
     },
     hyperframesRuntime: {
       ok: false,
@@ -79,10 +147,7 @@ export function runHyperframesDoctorCheck() {
       message:
         "Local smoke rendering is allowed for MVP gates; production @hyperframes/* execution remains separately gated.",
     },
-    fonts: {
-      ok: true,
-      message: "Font availability must be verified in worker image before rollout.",
-    },
+    fonts,
     tempWorkspace: {
       ok: true,
       pathPolicy: "tenant/run scoped temp workspace only",

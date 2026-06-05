@@ -3,24 +3,87 @@
 ## Normal Rollout
 
 1. Keep all flags off.
-2. Run dependency audit and doctor.
+2. Run dependency audit and doctor. `hyperframes:doctor` must report
+   `mvp_smoke_ready`; if it exits non-zero, fix Node engine, browser,
+   FFmpeg/FFprobe, temp workspace, storage, or render font readiness before
+   enabling worker execution.
+   Use the repo-pinned Node runtime first (`nvm use`, `fnm use`, `mise install`,
+   `asdf install`, or `PATH=/home/dev/.nvm/versions/node/v20.20.0/bin:$PATH`)
+   so doctor output reflects the intended `>=20.20.0 <21 || >=22.22.0`
+   runtime instead of an older shell default.
 3. Run `hyperframes:production-rollout-gate`; it must remain blocked until all
    production package/runtime checks are explicitly approved.
-4. Enable `MARKETPLACE_HYPERFRAMES_ENABLED` for internal environment only.
-5. Add internal tenant to `MARKETPLACE_HYPERFRAMES_TENANT_ALLOWLIST`.
-6. Keep worker disabled until Chrome, FFmpeg, fonts, storage, and temp workspace
-   checks pass in the worker image.
-7. Enable `MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED` with
-   `MARKETPLACE_HYPERFRAMES_RUNTIME_READY` only in internal smoke environments
-   after `hyperframes:doctor` reports `mvp_smoke_ready`.
-8. Enable Auto Storyboard Review preview for internal tenant.
-9. Enable `MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE` after QA and duplicate
+   - `runtimeMode: "smoke_only"` allows only the MVP smoke renderer.
+   - `installCommandAllowed: false` means do not install `@hyperframes/*`.
+   - `requiredEvidence` is the current checklist of missing production proof.
+   - Seeded route E2E evidence must be current. The default freshness window is
+     24 hours and can be tightened with
+     `MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`.
+   - Do not use manual env flags to bypass seeded route evidence; the CLI gate
+     requires the current `route-evidence.json` and referenced screenshots.
+   - When refreshing route UI evidence locally, use a dedicated Playwright port
+     instead of touching a shared dev server:
+     `PLAYWRIGHT_E2E_PORT=3017 npm --prefix apps/web run e2e:marketplace-hyperframes`.
+     The Playwright web server starts `dev:no-watch` on that port and captures
+     current source evidence without stopping port 3000.
+   - To validate against an already-running server, pass the exact target:
+     `PLAYWRIGHT_SKIP_WEB_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:<port> npm --prefix apps/web run e2e:marketplace-hyperframes`.
+     Do not stop or kill port 3000 when another session owns it.
+4. In Admin, open `Tenants -> Edit Tenant -> Feature Flags -> Media Production
+   & HyperFrames`, then enable `marketplaceHyperframesEnabled` for the internal
+   tenant.
+5. Keep `marketplaceHyperframesWorkerEnabled` off until Node engine, Chrome,
+   FFmpeg/FFprobe, fonts,
+   storage, and temp workspace checks pass in the worker image.
+   `MARKETPLACE_HYPERFRAMES_FFMPEG_READY=true` must be set explicitly after
+   that evidence is captured; the rollout gate treats a missing value as
+   `ffmpeg_not_ready`.
+6. Enable `marketplaceHyperframesWorkerEnabled` only in internal smoke
+   environments after `hyperframes:doctor` reports `mvp_smoke_ready`.
+   `MARKETPLACE_HYPERFRAMES_RUNTIME_READY` remains a global runtime-readiness
+   guard for producer execution and should not be used as the tenant rollout
+   switch.
+7. Confirm Auto Storyboard Review appears on the internal tenant Product Detail
+   page. The default Auto path must start from one primary CTA without opening
+   Advanced Auto. The collapsed Advanced Auto area may expose only optional
+   add-ons: platform format, quality, image model, audio policy, text policy,
+   shot count, and frame evidence strategy.
+8. Enable `marketplaceHyperframesLibrarySaveEnabled` after QA and duplicate
    finalize gates pass.
+9. Enable `marketplaceHyperframesOperatorEnabled` only for tenants whose
+   owner/operator/support roles may use delegated diagnostics.
+10. Enable production producer execution only after
+    `hyperframes:production-rollout-gate` passes with
+    `installCommandAllowed: true`. Set `HYPERFRAMES_RUNTIME_MODE=producer` and
+    `HYPERFRAMES_PRODUCTION_RUNTIME_READY=1` together with the worker runtime
+    flags; never set them while the rollout gate is blocked.
+
+## Production Evidence Checklist
+
+Close each rollout blocker with dated evidence before setting its matching
+environment flag:
+
+| Blocker | Evidence required | Env flag |
+| --- | --- | --- |
+| `package_install_deferred` | pinned `@hyperframes/producer` and `@hyperframes/cli` versions installed only in the dedicated worker image | `MARKETPLACE_HYPERFRAMES_PACKAGES_READY=true` |
+| `pinned_versions_missing` | package versions and lockfile diff reviewed | `MARKETPLACE_HYPERFRAMES_PINNED_VERSIONS_REVIEWED=true` |
+| `license_not_reviewed` | direct and transitive license review approved | `MARKETPLACE_HYPERFRAMES_LICENSE_REVIEWED=true` |
+| `native_postinstall_not_reviewed` | native binaries and postinstall scripts reviewed | `MARKETPLACE_HYPERFRAMES_POSTINSTALL_REVIEWED=true` |
+| `provenance_not_reviewed` | package provenance, registry source, and integrity checks recorded | `MARKETPLACE_HYPERFRAMES_PROVENANCE_REVIEWED=true` |
+| `worker_image_not_reviewed` | worker container proof for CPU/memory/duration caps, sandboxing, temp dirs, and no web-thread rendering | `MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_REVIEWED=true` |
+| `fonts_not_reviewed` | Thai-capable production fonts verified in the worker image | `MARKETPLACE_HYPERFRAMES_FONTS_REVIEWED=true` |
+| `chrome_not_ready` | production Chrome/headless browser version and sandbox mode verified | `MARKETPLACE_HYPERFRAMES_CHROME_READY=true` |
+| `ffmpeg_not_ready` | production FFmpeg/FFprobe versions verified with fixture render output | `MARKETPLACE_HYPERFRAMES_FFMPEG_READY=true` |
+| `golden_snapshots_missing` | approved golden-frame baseline set for seeded fixtures, including long Thai text and 9:16 safe area | `MARKETPLACE_HYPERFRAMES_GOLDEN_SNAPSHOTS_PASSED=true` |
+
+Do not set these flags from local smoke evidence alone. Local doctor can prove
+`mvp_smoke_ready`; production rollout requires worker-image and supply-chain
+evidence captured in the target deployment environment.
 
 ## Rollback
 
-1. Disable `MARKETPLACE_HYPERFRAMES_ENABLED`.
-2. Disable `MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED`.
+1. Disable `marketplaceHyperframesEnabled` in Admin Tenant Feature Flags.
+2. Disable `marketplaceHyperframesWorkerEnabled`.
 3. Stop new preview/final jobs.
 4. Cancel queued/running jobs where safe.
 5. Preserve completed Library items.
@@ -45,7 +108,7 @@ Operator actions must be permission-gated and audited:
 - dry-run retention purge.
 
 Admin/system-agent roles can use the operator procedures directly. Delegated
-owner/operator/support roles require `MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED`.
+owner/operator/support roles require `marketplaceHyperframesOperatorEnabled`.
 All operator actions write sanitized `hyperframes_operator_action` audit events
 through the audit logger and `api_audit_events` when DB persistence is
 available.

@@ -28,13 +28,23 @@ export type HyperframesRenderLibrarySaveInput = {
   idempotencyKey: string;
 };
 
+export function isHyperframesRenderQaPassed(
+  render: HyperframesRenderStatusProjection | null | undefined
+): boolean {
+  return (
+    render?.qaStatus === "passed" ||
+    render?.qaStatus === "passed_with_warnings"
+  );
+}
+
 function hasLibraryReadyRenderArtifact(
   render: HyperframesRenderStatusProjection | null | undefined,
   contentHash: string | undefined
 ): boolean {
-  if (!contentHash) return false;
+  if (!contentHash || !isHyperframesRenderQaPassed(render)) return false;
+  if (!render?.artifactRefs?.length) return true;
   return Boolean(
-    render?.artifactRefs?.some(
+    render.artifactRefs.some(
       ref =>
         ref.contentHash === contentHash &&
         ref.retentionClass === "library" &&
@@ -53,6 +63,22 @@ export function getHyperframesRenderLibraryReadyOutput(
         (ref.kind === "final_video" || ref.kind === "library_item") &&
         hasLibraryReadyRenderArtifact(render, ref.contentHash)
     ) ?? null
+  );
+}
+
+export function getHyperframesRenderDisplayOutput(
+  render: HyperframesRenderStatusProjection | null | undefined
+): HyperframesOutputRef | null {
+  const outputRefs = render?.outputRefs ?? [];
+  return (
+    getHyperframesRenderLibraryReadyOutput(render) ??
+    outputRefs.find(ref => ref.kind === "final_video" && Boolean(ref.url)) ??
+    outputRefs.find(ref => ref.kind === "library_item" && Boolean(ref.url)) ??
+    outputRefs.find(ref => ref.kind === "preview_video" && Boolean(ref.url)) ??
+    outputRefs.find(ref => ref.kind === "snapshot" && Boolean(ref.url)) ??
+    outputRefs.find(ref => Boolean(ref.url)) ??
+    outputRefs[0] ??
+    null
   );
 }
 

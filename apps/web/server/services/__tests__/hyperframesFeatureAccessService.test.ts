@@ -1,11 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   buildHyperframesCreditEstimate,
+  readHyperframesFeatureFlagsFromTenantConfig,
   resolveHyperframesFeatureAccess,
 } from "../hyperframesFeatureAccessService";
 
 describe("hyperframesFeatureAccessService", () => {
+  const previousEnv = {
+    enabled: process.env.MARKETPLACE_HYPERFRAMES_ENABLED,
+    disabled: process.env.MARKETPLACE_HYPERFRAMES_DISABLED,
+    worker: process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED,
+    library: process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE,
+    operator: process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED,
+  };
+
+  afterEach(() => {
+    for (const [key, value] of [
+      ["MARKETPLACE_HYPERFRAMES_ENABLED", previousEnv.enabled],
+      ["MARKETPLACE_HYPERFRAMES_DISABLED", previousEnv.disabled],
+      ["MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED", previousEnv.worker],
+      ["MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE", previousEnv.library],
+      ["MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED", previousEnv.operator],
+    ] as const) {
+      if (value == null) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  });
+
   it("keeps flags safely disabled by default and Standard Order available", () => {
     const access = resolveHyperframesFeatureAccess({
       auth: { userId: 1, tenantId: "tenant_1" },
@@ -41,5 +66,89 @@ describe("hyperframesFeatureAccessService", () => {
     );
     expect(estimate.quotaDecision).toBe("free_preview_allowed");
     expect(estimate.estimatedCredits).toBeGreaterThan(0);
+  });
+
+  it("reads Marketplace HyperFrames access from tenant feature flags without env enablement", () => {
+    delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
+    delete process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
+    delete process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE;
+    delete process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED;
+
+    const flags = readHyperframesFeatureFlagsFromTenantConfig(
+      { userId: 1, tenantId: "tenant_1" },
+      {
+        marketplaceHyperframesEnabled: true,
+        marketplaceHyperframesWorkerEnabled: true,
+        marketplaceHyperframesLibrarySaveEnabled: true,
+        marketplaceHyperframesOperatorEnabled: true,
+      }
+    );
+
+    expect(flags).toMatchObject({
+      enabled: true,
+      tenantAllowed: true,
+      workerEnabled: true,
+      librarySaveEnabled: true,
+      operatorEnabled: true,
+    });
+  });
+
+  it("lets explicit env false values act as global HyperFrames kill switches", () => {
+    process.env.MARKETPLACE_HYPERFRAMES_ENABLED = "false";
+    process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "false";
+    process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE = "false";
+    process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED = "false";
+
+    const flags = readHyperframesFeatureFlagsFromTenantConfig(
+      { userId: 1, tenantId: "tenant_1" },
+      {
+        marketplaceHyperframesEnabled: true,
+        marketplaceHyperframesWorkerEnabled: true,
+        marketplaceHyperframesLibrarySaveEnabled: true,
+        marketplaceHyperframesOperatorEnabled: true,
+      }
+    );
+
+    expect(flags).toMatchObject({
+      enabled: false,
+      tenantAllowed: false,
+      workerEnabled: false,
+      librarySaveEnabled: false,
+      operatorEnabled: false,
+    });
+
+    delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
+    delete process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
+    delete process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE;
+    delete process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED;
+  });
+
+  it("does not let internal overrides bypass global kill switches", () => {
+    process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "true";
+
+    const flags = readHyperframesFeatureFlagsFromTenantConfig(
+      { userId: 1, tenantId: "tenant_1" },
+      {
+        marketplaceHyperframesEnabled: true,
+        marketplaceHyperframesWorkerEnabled: true,
+        marketplaceHyperframesLibrarySaveEnabled: true,
+        marketplaceHyperframesOperatorEnabled: true,
+      },
+      {
+        enabled: true,
+        tenantAllowed: true,
+        workerEnabled: true,
+        librarySaveEnabled: true,
+        operatorEnabled: true,
+      }
+    );
+
+    expect(flags).toMatchObject({
+      enabled: false,
+      tenantAllowed: false,
+      workerEnabled: false,
+      librarySaveEnabled: false,
+      operatorEnabled: false,
+    });
   });
 });

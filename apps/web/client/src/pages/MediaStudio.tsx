@@ -198,6 +198,7 @@ import {
   getGenerationQueueIdentityCandidates,
   isActiveGenerationQueueStatus,
   isGenerationQueueTaskDismissed,
+  isStaleActiveGenerationQueueTask,
   isStoryboardReviewOnlyQueuedTask,
   isTerminalGenerationQueueStatus,
   mergeGenerationQueueTasks,
@@ -19655,6 +19656,17 @@ export default function MediaStudio() {
             : task.status === "completed"
               ? "completed"
               : "failed";
+      if (
+        isStaleActiveGenerationQueueTask(normalizedStatus, {
+          id: task.id,
+          backendTaskId: task.backendTaskId,
+          providerTaskId: task.providerTaskId,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+        })
+      ) {
+        continue;
+      }
 
       const queueTask: MediaStudioQueueGenerationTask = {
         id: task.id,
@@ -35246,45 +35258,60 @@ export default function MediaStudio() {
               value={studioWorkspaceTab}
               onValueChange={handleWorkspaceTabChange}
             >
-              <TabsList className="grid h-auto w-full grid-cols-5 bg-muted/50 p-1">
+              <TabsList
+                data-testid="media-studio-workspace-tabs"
+                className="grid h-auto w-full grid-cols-5 items-stretch bg-muted/50 p-1"
+              >
                 <TabsTrigger
                   value="production"
-                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-sky-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                  aria-label="Production"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Bot className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Production</span>
+                  <span className="hidden max-w-full text-center leading-tight sm:inline">
+                    Production
+                  </span>
+                  <span className="block max-w-full text-center leading-tight sm:hidden">
+                    Prod
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="video_shot"
-                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-emerald-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                  aria-label="Video Shot"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-emerald-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Film className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Video Shot</span>
+                  <span className="hidden max-w-full text-center leading-tight sm:inline">
+                    Video Shot
+                  </span>
+                  <span className="block max-w-full text-center leading-tight sm:hidden">
+                    Shot
+                  </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="image"
-                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Image className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
+                  <span className="block max-w-full text-center leading-tight">
                     {t("mediaStudio.tabs.image")}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="video"
-                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Video className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
+                  <span className="block max-w-full text-center leading-tight">
                     {t("mediaStudio.tabs.video")}
                   </span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="audio"
-                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-orange-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-orange-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Music className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
+                  <span className="block max-w-full text-center leading-tight">
                     {t("mediaStudio.tabs.audio")}
                   </span>
                 </TabsTrigger>
@@ -40584,32 +40611,47 @@ export default function MediaStudio() {
                   }
                   className="relative z-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
                 >
-                  <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+                  <TabsList
+                    data-testid="media-studio-sidebar-tabs"
+                    className="grid h-auto w-full grid-cols-3 items-stretch bg-muted/50 p-1"
+                  >
                     <TabsTrigger
                       value="history"
-                      className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                      aria-label={t("mediaStudio.historyGallery")}
+                      className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1.5 py-2 text-xs leading-tight sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm"
                     >
                       <History className="h-4 w-4" />
-                      <span className="truncate">
+                      <span className="hidden max-w-full text-center leading-tight xl:inline">
                         {t("mediaStudio.historyGallery")}
+                      </span>
+                      <span className="block max-w-full text-center leading-tight xl:hidden">
+                        {t("mediaStudio.historyGalleryShort")}
                       </span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="library"
-                      className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                      aria-label={t("mediaStudio.searchLibrary")}
+                      className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1.5 py-2 text-xs leading-tight sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm"
                     >
                       <Search className="h-4 w-4" />
-                      <span className="truncate">
+                      <span className="hidden max-w-full text-center leading-tight xl:inline">
                         {t("mediaStudio.searchLibrary")}
+                      </span>
+                      <span className="block max-w-full text-center leading-tight xl:hidden">
+                        {t("mediaStudio.searchLibraryShort")}
                       </span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="marketplace"
-                      className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                      aria-label={t("mediaStudio.marketplaceImages")}
+                      className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1.5 py-2 text-xs leading-tight sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm"
                     >
                       <ShoppingBag className="h-4 w-4" />
-                      <span className="truncate">
+                      <span className="hidden max-w-full text-center leading-tight xl:inline">
                         {t("mediaStudio.marketplaceImages")}
+                      </span>
+                      <span className="block max-w-full text-center leading-tight xl:hidden">
+                        {t("mediaStudio.marketplaceImagesShort")}
                       </span>
                     </TabsTrigger>
                   </TabsList>
@@ -40660,31 +40702,31 @@ export default function MediaStudio() {
                           setHistoryGalleryTab(value as HistoryGalleryTab)
                         }
                       >
-                        <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+                        <TabsList className="grid h-auto w-full grid-cols-3 items-stretch bg-muted/50 p-1">
                           <TabsTrigger
                             value="image"
-                            className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                            className="!h-auto !whitespace-normal min-h-10 min-w-0 gap-1 px-2 py-2 text-xs leading-tight sm:gap-2 sm:text-sm"
                           >
                             <Image className="h-4 w-4" />
-                            <span className="truncate">
+                            <span className="block max-w-full whitespace-normal break-words text-center leading-tight">
                               {t("mediaStudio.tabs.image")}
                             </span>
                           </TabsTrigger>
                           <TabsTrigger
                             value="video"
-                            className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                            className="!h-auto !whitespace-normal min-h-10 min-w-0 gap-1 px-2 py-2 text-xs leading-tight sm:gap-2 sm:text-sm"
                           >
                             <Video className="h-4 w-4" />
-                            <span className="truncate">
+                            <span className="block max-w-full whitespace-normal break-words text-center leading-tight">
                               {t("mediaStudio.tabs.video")}
                             </span>
                           </TabsTrigger>
                           <TabsTrigger
                             value="audio"
-                            className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm"
+                            className="!h-auto !whitespace-normal min-h-10 min-w-0 gap-1 px-2 py-2 text-xs leading-tight sm:gap-2 sm:text-sm"
                           >
                             <Music className="h-4 w-4" />
-                            <span className="truncate">
+                            <span className="block max-w-full whitespace-normal break-words text-center leading-tight">
                               {t("mediaStudio.tabs.audio")}
                             </span>
                           </TabsTrigger>

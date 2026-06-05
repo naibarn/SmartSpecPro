@@ -28,12 +28,24 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
     ? {
         locale: resolved,
         autoReviewTitle: "Auto Storyboard Review",
+        autoReviewPlanLabel: "แผน Auto Storyboard Review",
         autoReviewLoading: "กำลังโหลดแผนอัตโนมัติจากระบบ...",
         autoReviewFallbackSummary:
           "ระบบเลือก template, platform, render engine, storyboard settings และ preview policy ให้อัตโนมัติ",
         createAutoReview: "สร้าง Auto Storyboard Review",
+        resumeAutoReview: "เปิดงาน Auto Storyboard Review ที่กำลังทำอยู่",
+        reviewBlockers: "ตรวจสอบสิ่งที่ต้องแก้ก่อนเริ่ม Auto",
+        autoPlanUpdating: "กำลังอัปเดตแผน Auto",
         useAutoPlan: "ใช้แผนอัตโนมัติ",
+        useStandardOrder: "ใช้ Standard Order",
+        retryAutoPlan: "โหลดแผน Auto ใหม่",
+        autoPlanLoadFailed: "โหลด Auto Storyboard Review plan ไม่สำเร็จ",
+        autoPlanLoadFailedDescription:
+          "ลองโหลด plan ใหม่ หรือใช้ Standard Order ได้ทันที โดย flow เดิมยังทำงานตามปกติ",
         standardOrder: "Standard Order",
+        launchModeGroup: "โหมดเริ่ม Marketplace Auto Review",
+        autoModeLabel: "โหมด Auto",
+        standardModeLabel: "โหมด Standard",
         template: "Template",
         platform: "Platform",
         estimate: "Estimate",
@@ -42,10 +54,13 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         creditsEstimated: (credits: number) => `ประมาณ ${credits} credits`,
         autoBlockedStandardAvailable:
           "Auto ถูกบล็อก แต่ยังใช้ Standard Order ได้ตามปกติ",
-        advancedOverrides: "Advanced overrides",
+        advancedOverrides: "ตัวเลือก Auto ขั้นสูง",
         autoNoSetup:
           "Auto เริ่มได้โดยไม่ต้องเลือก template, engine, platform, frame strategy, shot count, audio หรือ text policy",
-        overrideDiff: (fields: string[]) => `Override diff: ${fields.join(", ")}`,
+        overrideDiff: (fields: string[]) =>
+          `ค่าที่ปรับจากแผนอัตโนมัติ: ${fields.join(", ")}`,
+        overridePending:
+          "กำลังอัปเดตแผนอัตโนมัติตามตัวเลือกที่ปรับ ระบบยังไม่ต้องการให้เลือก template หรือ engine เอง",
         noOverridesActive: "ไม่มี override ที่เปิดอยู่",
         hyperframesRender: "HyperFrames render",
         loadingRenderStatus: "กำลังโหลดสถานะ render...",
@@ -64,12 +79,24 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
     : {
         locale: resolved,
         autoReviewTitle: "Auto Storyboard Review",
+        autoReviewPlanLabel: "Auto Storyboard Review plan",
         autoReviewLoading: "Loading backend-selected plan...",
         autoReviewFallbackSummary:
           "Backend selects template, platform, render engine, storyboard settings, and preview policy.",
         createAutoReview: "Create Auto Storyboard Review",
+        resumeAutoReview: "Resume Auto Storyboard Review",
+        reviewBlockers: "Review blockers",
+        autoPlanUpdating: "Updating Auto plan",
         useAutoPlan: "Use auto plan",
+        useStandardOrder: "Use Standard Order",
+        retryAutoPlan: "Retry Auto plan",
+        autoPlanLoadFailed: "Auto Storyboard Review plan failed to load",
+        autoPlanLoadFailedDescription:
+          "Retry the Auto plan or use Standard Order immediately. The existing flow remains available.",
         standardOrder: "Standard Order",
+        launchModeGroup: "Marketplace Auto Review launch mode",
+        autoModeLabel: "Auto mode",
+        standardModeLabel: "Standard mode",
         template: "Template",
         platform: "Platform",
         estimate: "Estimate",
@@ -82,6 +109,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         autoNoSetup:
           "Auto starts without selecting template, engine, platform, frame strategy, shot count, audio, or text policy.",
         overrideDiff: (fields: string[]) => `Override diff: ${fields.join(", ")}`,
+        overridePending:
+          "Updating the auto plan with your optional choices. Template and engine remain backend-managed.",
         noOverridesActive: "No overrides active.",
         hyperframesRender: "HyperFrames render",
         loadingRenderStatus: "Loading render status...",

@@ -60,6 +60,31 @@ describe("tenantFeatureFlagGroups", () => {
     }));
   });
 
+  it("groups Marketplace HyperFrames controls with media production flags", () => {
+    const mediaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Media Production & HyperFrames"
+    );
+
+    expect(mediaGroup?.flags.map((flag) => flag.key)).toEqual(
+      expect.arrayContaining([
+        "marketplaceHyperframesEnabled",
+        "marketplaceHyperframesWorkerEnabled",
+        "marketplaceHyperframesLibrarySaveEnabled",
+        "marketplaceHyperframesOperatorEnabled",
+      ])
+    );
+    expect(
+      mediaGroup?.flags.find(
+        (flag) => flag.key === "marketplaceHyperframesEnabled"
+      )
+    ).toEqual(
+      expect.objectContaining({
+        label: "Marketplace HyperFrames",
+        description: expect.stringContaining("Auto Storyboard Review"),
+      })
+    );
+  });
+
   it("covers every declared tenant feature flag", () => {
     const groupedKeys = new Set(
       buildTenantFeatureFlagGroups().flatMap((group) => group.flags.map((flag) => flag.key)),

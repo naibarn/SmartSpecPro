@@ -4,6 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
 const skipWebServer =
   process.env.PLAYWRIGHT_SKIP_WEB_SERVER === "1" ||
   process.env.PLAYWRIGHT_USE_EXISTING_SERVER === "1";
+const e2ePort =
+  process.env.PLAYWRIGHT_E2E_PORT || process.env.PLAYWRIGHT_PORT || "3017";
+const baseURL =
+  process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${e2ePort}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -25,7 +29,7 @@ export default defineConfig({
     ],
   ],
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL,
     trace: "off",
     video: "off",
     screenshot: "off",
@@ -33,8 +37,8 @@ export default defineConfig({
   webServer: skipWebServer
     ? undefined
     : {
-        command: "npm run dev:no-watch",
-        url: "http://127.0.0.1:3000",
+        command: `PORT=${e2ePort} npm run dev:no-watch`,
+        url: baseURL,
         timeout: 120_000,
         reuseExistingServer: true,
       },

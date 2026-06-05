@@ -15,9 +15,15 @@ import { trpc } from "@/lib/trpc";
 import {
   buildHyperframesRenderLibrarySession,
   getHyperframesRenderLibraryReadyOutput,
+  isHyperframesRenderQaPassed,
   removeMediaStudioRenderLibrarySession,
   upsertMediaStudioRenderLibrarySession,
 } from "@/lib/mediaStudioRenderLibrarySessions";
+import {
+  resolveHyperframesRenderRefetchInterval,
+  resolveMarketplaceAutoReviewLaunchMode,
+  shouldShowAutoStoryboardReviewSurface,
+} from "@/lib/marketplaceHyperframesUiState";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -37,6 +43,7 @@ import {
   PackagePlus,
   RefreshCw,
   Search,
+  Settings2,
   Sparkles,
   Trash2,
   Upload,
@@ -44,11 +51,17 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
 import { AutoStoryboardAdvancedOverrides } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
 import { HyperframesRenderPanel } from "@/components/marketplaceCapture/HyperframesRenderPanel";
+import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
+import type {
+  HyperframesAutoPlanOverrideInput,
+  HyperframesAutoStoryboardReviewPlan,
+} from "@shared/hyperframes/autoPlan";
 import {
   buildHyperframesLibraryIdempotencyKey,
   type MarketplaceAutoReviewLaunchMode,
@@ -215,14 +228,60 @@ function formatCount(
   return value == null || value === "" ? "-" : String(value);
 }
 
-function normalizeStoryboardReviewLink(value?: string | null): string | null {
+function compactLinkText(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function appendStoryboardReviewHyperframesContext(
+  value: string,
+  context?: {
+    productId?: unknown;
+    runId?: unknown;
+    renderJobId?: unknown;
+  }
+): string {
+  const renderJobId = compactLinkText(context?.renderJobId);
+  if (!renderJobId) return value;
+  try {
+    const parsed = new URL(value, "https://smartaihub.app");
+    if (
+      parsed.pathname !== "/storyboard-review" &&
+      !parsed.pathname.startsWith("/storyboard-review/")
+    ) {
+      return value;
+    }
+    parsed.searchParams.set("hyperframesRenderJobId", renderJobId);
+    const productId = compactLinkText(context?.productId);
+    const runId = compactLinkText(context?.runId);
+    if (productId) parsed.searchParams.set("productId", productId);
+    if (runId) parsed.searchParams.set("runId", runId);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return value;
+  }
+}
+
+function normalizeStoryboardReviewLink(
+  value?: string | null,
+  context?: {
+    productId?: unknown;
+    runId?: unknown;
+    renderJobId?: unknown;
+  }
+): string | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  const queryMatch = trimmed.match(/^\/storyboard-review\?reviewId=([0-9]+)(?:[&#].*)?$/i);
+  const queryMatch = trimmed.match(
+    /^\/storyboard-review\?reviewId=([0-9]+)$/i
+  );
   if (queryMatch?.[1]) {
-    return `/storyboard-review/${queryMatch[1]}`;
+    return appendStoryboardReviewHyperframesContext(
+      `/storyboard-review/${queryMatch[1]}`,
+      context
+    );
   }
 
   try {
@@ -231,13 +290,16 @@ function normalizeStoryboardReviewLink(value?: string | null): string | null {
       parsed.pathname === "/storyboard-review"
       && /^[0-9]+$/.test(parsed.searchParams.get("reviewId") ?? "")
     ) {
-      return `/storyboard-review/${parsed.searchParams.get("reviewId")}`;
+      const reviewId = parsed.searchParams.get("reviewId");
+      parsed.searchParams.delete("reviewId");
+      const normalized = `/storyboard-review/${reviewId}${parsed.search}${parsed.hash}`;
+      return appendStoryboardReviewHyperframesContext(normalized, context);
     }
   } catch {
     return trimmed;
   }
 
-  return trimmed;
+  return appendStoryboardReviewHyperframesContext(trimmed, context);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -248,6 +310,50 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function compactText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function compactDisplayValue(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  return compactText(value);
+}
+
+function formatDiagnosticDateTime(value: unknown): string {
+  const text = compactDisplayValue(value);
+  if (!text) return "-";
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? text : date.toLocaleString();
+}
+
+function autoStoryboardPlanOverrideValue(
+  plan: HyperframesAutoStoryboardReviewPlan | null | undefined,
+  key: keyof HyperframesAutoPlanOverrideInput
+): unknown {
+  const defaults = plan?.defaults;
+  if (!defaults) return undefined;
+  if (key === "platformPresetId") return defaults.platformPreset.presetId;
+  return defaults[key as keyof typeof defaults];
+}
+
+function autoStoryboardPlanMatchesOverrides(
+  plan: HyperframesAutoStoryboardReviewPlan | null | undefined,
+  overrides: HyperframesAutoPlanOverrideInput
+): boolean {
+  const entries = Object.entries(overrides) as [
+    keyof HyperframesAutoPlanOverrideInput,
+    unknown,
+  ][];
+  if (!plan) return false;
+  if (entries.length === 0) {
+    return (
+      !plan.resetToAutoAvailable &&
+      (plan.overrideDiff.fields ?? []).length === 0
+    );
+  }
+  return entries.every(([key, value]) => {
+    const planValue = autoStoryboardPlanOverrideValue(plan, key);
+    return String(planValue ?? "") === String(value ?? "");
+  });
 }
 
 function categoryPathParts(value: unknown): string[] {
@@ -1771,6 +1877,8 @@ function AutoReviewRefChip({
 }
 
 export default function MarketplaceCaptureProductDetail() {
+  const { t } = useScopedTranslation(["common"]);
+  const hyperframesCopy = getMarketplaceHyperframesUiCopy();
   const [location] = useLocation();
   const productId = getProductId(location);
   const [panelTab, setPanelTab] = useState<ProductPanelTab>("product");
@@ -1801,6 +1909,8 @@ export default function MarketplaceCaptureProductDetail() {
     useState<MarketplaceAutoReviewLaunchMode>("auto_storyboard_review");
   const [showAutoStoryboardAdvanced, setShowAutoStoryboardAdvanced] =
     useState(false);
+  const [autoStoryboardOverrides, setAutoStoryboardOverrides] =
+    useState<HyperframesAutoPlanOverrideInput>({});
   const [hyperframesRenderJobId, setHyperframesRenderJobId] = useState<
     string | null
   >(null);
@@ -1860,13 +1970,46 @@ export default function MarketplaceCaptureProductDetail() {
     );
   const autoStoryboardPlanQuery =
     trpc.marketplaceCapture.getAutoStoryboardReviewPlan.useQuery(
-      { productId },
+      { productId, overrides: autoStoryboardOverrides },
       {
         enabled: Boolean(productId),
         refetchOnWindowFocus: false,
         staleTime: 30_000,
       }
     );
+  const autoStoryboardPlan = autoStoryboardPlanQuery.data?.plan ?? null;
+  const autoStoryboardPlanLoading =
+    autoStoryboardPlanQuery.isLoading && !autoStoryboardPlan;
+  const autoStoryboardPlanHadError = Boolean(
+    autoStoryboardPlanQuery.error || autoStoryboardPlanQuery.failureCount > 0
+  );
+  const autoStoryboardPlanErrored =
+    autoStoryboardPlanHadError && !autoStoryboardPlan;
+  const autoStoryboardPlanRetrying =
+    autoStoryboardPlanErrored && autoStoryboardPlanQuery.isFetching;
+  const showAutoStoryboardReviewSurface =
+    shouldShowAutoStoryboardReviewSurface(autoStoryboardPlan, {
+      loading: autoStoryboardPlanLoading,
+      error: autoStoryboardPlanErrored,
+    });
+  const effectiveAutoReviewLaunchMode = resolveMarketplaceAutoReviewLaunchMode({
+    current: autoReviewLaunchMode,
+    plan: autoStoryboardPlan,
+    loading: autoStoryboardPlanLoading,
+    error: autoStoryboardPlanErrored,
+  });
+  const autoStoryboardOverridesActive =
+    Object.keys(autoStoryboardOverrides).length > 0;
+  const autoStoryboardPlanMatchesCurrentOverrides =
+    autoStoryboardPlanMatchesOverrides(
+      autoStoryboardPlan,
+      autoStoryboardOverrides
+    );
+  const autoStoryboardPlanRefreshingForOverrides = Boolean(
+    autoStoryboardPlan &&
+      (!autoStoryboardPlanMatchesCurrentOverrides ||
+        (autoStoryboardOverridesActive && autoStoryboardPlanQuery.isFetching))
+  );
   const hyperframesRenderJobQuery =
     trpc.marketplaceCapture.getHyperframesRenderJob.useQuery(
       {
@@ -1877,19 +2020,9 @@ export default function MarketplaceCaptureProductDetail() {
       {
         enabled: Boolean(productId && hyperframesRenderJobId),
         refetchInterval: query => {
-          const status = (query.state.data as any)?.render?.status;
-          return [
-            "completed",
-            "saved_to_library",
-            "failed",
-            "failed_permanent",
-            "dead_lettered",
-            "cancelled",
-            "template_disabled",
-            "stale_input_hash",
-          ].includes(String(status))
-            ? false
-            : 15_000;
+          return resolveHyperframesRenderRefetchInterval(
+            (query.state.data as any)?.render
+          );
         },
         staleTime: 5_000,
       }
@@ -1898,7 +2031,7 @@ export default function MarketplaceCaptureProductDetail() {
     Boolean(productId) &&
     (showAutoReviewRuns ||
       Boolean(pendingAutoReviewAction) ||
-      autoReviewLaunchMode === "auto_storyboard_review" ||
+      effectiveAutoReviewLaunchMode === "auto_storyboard_review" ||
       Boolean(hyperframesRenderJobId));
   const autoReviewRuns = trpc.marketplaceCapture.listAutoReviewRuns.useQuery(
     { productId, limit: showAutoReviewHistory ? 8 : 3, summary: true },
@@ -2071,6 +2204,26 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  const repairHyperframesRenderMutation =
+    trpc.marketplaceCapture.repairHyperframesRenderJob.useMutation({
+      onSuccess: async result => {
+        setHyperframesRenderJobId(result.render.renderJobId);
+        setHyperframesRenderRunId(result.render.runId ?? null);
+        await Promise.all([
+          utils.marketplaceCapture.getHyperframesRenderJob.invalidate({
+            renderJobId: result.render.renderJobId,
+            productId: result.render.productId,
+            runId: result.render.runId,
+          }),
+          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
+            productId,
+            limit: 8,
+          }),
+        ]);
+        toast.success("HyperFrames repair queued");
+      },
+      onError: error => toast.error(error.message),
+    });
   const saveHyperframesRenderMutation =
     trpc.marketplaceCapture.saveHyperframesRenderToLibrary.useMutation({
       onSuccess: async result => {
@@ -2237,7 +2390,6 @@ export default function MarketplaceCaptureProductDetail() {
     0,
     autoReviewRunItems.length - defaultAutoReviewRunItems.length
   );
-  const autoStoryboardPlan = autoStoryboardPlanQuery.data?.plan ?? null;
   const hyperframesRenderProjection =
     hyperframesRenderJobQuery.data?.render ??
     startAutoStoryboardReviewMutation.data?.render ??
@@ -2300,12 +2452,47 @@ export default function MarketplaceCaptureProductDetail() {
 
   const startAutoStoryboardReview = useCallback(() => {
     if (!productId || !autoStoryboardPlan) return;
+    if (autoStoryboardPlanRefreshingForOverrides) {
+      toast.info(hyperframesCopy.autoPlanUpdating);
+      return;
+    }
+    if (
+      autoStoryboardPlan.primaryAction.actionId ===
+        "resume_auto_storyboard_review" &&
+      autoStoryboardPlan.activeRunId
+    ) {
+      setAutoReviewLaunchMode("auto_storyboard_review");
+      setShowAutoReviewRuns(true);
+      setShowAutoReviewHistory(false);
+      setCollapsedAutoReviewRunIds(previous => {
+        const next = new Set(previous);
+        next.delete(autoStoryboardPlan.activeRunId ?? "");
+        return next;
+      });
+      setSuppressedAutoReviewRunIds(previous => {
+        const next = new Set(previous);
+        next.delete(autoStoryboardPlan.activeRunId ?? "");
+        return next;
+      });
+      void autoReviewRuns.refetch();
+      return;
+    }
     setAutoReviewLaunchMode("auto_storyboard_review");
     startAutoStoryboardReviewMutation.mutate({
       productId,
       expectedPlanHash: autoStoryboardPlan.planHash,
+      idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}`,
+      overrides: autoStoryboardOverrides,
     });
-  }, [autoStoryboardPlan, productId, startAutoStoryboardReviewMutation]);
+  }, [
+    autoReviewRuns,
+    autoStoryboardPlan,
+    autoStoryboardPlanRefreshingForOverrides,
+    autoStoryboardOverrides,
+    hyperframesCopy.autoPlanUpdating,
+    productId,
+    startAutoStoryboardReviewMutation,
+  ]);
 
   const cancelHyperframesRender = useCallback(() => {
     const renderJobId = hyperframesRenderProjection?.renderJobId;
@@ -2317,11 +2504,40 @@ export default function MarketplaceCaptureProductDetail() {
     });
   }, [cancelHyperframesRenderMutation, hyperframesRenderProjection, productId]);
 
+  const repairHyperframesRender = useCallback(() => {
+    const render = hyperframesRenderProjection;
+    const action = render?.permissions?.canRepair
+      ? render.repairActions?.find(
+          item => !item.requiresOperator && !item.disabledReason
+        )
+      : null;
+    if (!render?.renderJobId || !render.productId || !render.runId || !action) {
+      startAutoStoryboardReview();
+      return;
+    }
+    repairHyperframesRenderMutation.mutate({
+      productId: render.productId,
+      runId: render.runId,
+      renderJobId: render.renderJobId,
+      actionId: action.actionId,
+      actionType: action.actionType,
+      expectedCompositionInputHash: render.compositionInputHash,
+    });
+  }, [
+    hyperframesRenderProjection,
+    repairHyperframesRenderMutation,
+    startAutoStoryboardReview,
+  ]);
+
   const saveHyperframesRenderToLibrary = useCallback(() => {
     const render = hyperframesRenderProjection;
     if (!render?.renderJobId || !render.runId) return;
     if (render.renderIntent === "preview" || render.renderIntent === "snapshot") {
       toast.error("Preview-only HyperFrames output ยังบันทึกเข้า Library ไม่ได้");
+      return;
+    }
+    if (!isHyperframesRenderQaPassed(render)) {
+      toast.error("HyperFrames output ต้องผ่าน QA ก่อนบันทึกเข้า Library");
       return;
     }
     const output = getHyperframesRenderLibraryReadyOutput(render);
@@ -2708,6 +2924,61 @@ export default function MarketplaceCaptureProductDetail() {
   const selectedProductImageDimensions = selectedProductImage
     ? imageDimensions[selectedProductImage.id]
     : undefined;
+  const productDiagnosticsRows = [
+    {
+      label: t("marketplaceCapture.productDiagnostics.productId"),
+      value: compactDisplayValue(item.id) || productId || "-",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.platform"),
+      value: compactDisplayValue(item.platform) || "-",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.productName"),
+      value:
+        firstCompactText(item.productName, item.title, item.name) || "-",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.category"),
+      value:
+        mainProductCategory ||
+        capturedCategoryText ||
+        categoryPath.join(" > ") ||
+        "-",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.access"),
+      value: compactDisplayValue(item.accessType) || "owner",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.images"),
+      value: String(productImageOptions.length),
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.snapshots"),
+      value: String(health?.snapshotCount ?? history.length),
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.health"),
+      value: compactDisplayValue(health?.status) || "ok",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.autoReviewRuns"),
+      value: String(autoReviewRunItems.length),
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.latestRender"),
+      value: compactDisplayValue(hyperframesRenderProjection?.status) || "-",
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.lastChecked"),
+      value: formatDiagnosticDateTime(health?.lastCheckedAt),
+    },
+    {
+      label: t("marketplaceCapture.productDiagnostics.updated"),
+      value: formatDiagnosticDateTime(item.updatedAt),
+    },
+  ];
   const characterAnchorUrl = compactText(characterAnchor?.url);
   const environmentAnchorUrl = compactText(environmentAnchor?.url);
   const canStartAutoReview = Boolean(
@@ -3219,6 +3490,102 @@ export default function MarketplaceCaptureProductDetail() {
         autoReviewAudioStrategy === "auto",
     },
   ];
+  const autoStoryboardReviewSurface = showAutoStoryboardReviewSurface ? (
+    <div className="mt-4 space-y-3">
+      <MarketplaceAutoReviewLaunchModeSwitch
+        value={effectiveAutoReviewLaunchMode}
+        onChange={setAutoReviewLaunchMode}
+        autoEnabled={Boolean(
+          autoStoryboardPlanLoading ||
+            autoStoryboardPlan?.access.capabilities.canAccessAuto
+        )}
+        standardAvailable={Boolean(
+          autoStoryboardPlan?.standardOrderAvailable ?? true
+        )}
+      />
+      {autoStoryboardPlanErrored ? (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 font-semibold">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {hyperframesCopy.autoPlanLoadFailed}
+              </div>
+              <p className="mt-1 leading-6 text-amber-800 dark:text-amber-200">
+                {hyperframesCopy.autoPlanLoadFailedDescription}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={autoStoryboardPlanRetrying}
+                onClick={() => void autoStoryboardPlanQuery.refetch()}
+              >
+                <RefreshCw
+                  className={`mr-2 h-4 w-4 ${
+                    autoStoryboardPlanRetrying ? "animate-spin" : ""
+                  }`}
+                />
+                {hyperframesCopy.retryAutoPlan}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setAutoReviewLaunchMode("standard_order")}
+              >
+                {hyperframesCopy.useStandardOrder}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <AutoStoryboardReviewPlanSummary
+            plan={autoStoryboardPlan}
+            loading={autoStoryboardPlanQuery.isLoading}
+            starting={startAutoStoryboardReviewMutation.isPending}
+            updating={autoStoryboardPlanRefreshingForOverrides}
+            onStart={startAutoStoryboardReview}
+            onUseStandard={() => setAutoReviewLaunchMode("standard_order")}
+            onResetToAuto={() => {
+              setAutoStoryboardOverrides({});
+              setShowAutoStoryboardAdvanced(false);
+            }}
+          />
+          <AutoStoryboardAdvancedOverrides
+            plan={autoStoryboardPlan}
+            open={showAutoStoryboardAdvanced}
+            onOpenChange={setShowAutoStoryboardAdvanced}
+            value={autoStoryboardOverrides}
+            onChange={setAutoStoryboardOverrides}
+            onResetToAuto={() => {
+              setAutoStoryboardOverrides({});
+              setShowAutoStoryboardAdvanced(false);
+            }}
+          />
+        </>
+      )}
+      <HyperframesRenderPanel
+        render={hyperframesRenderProjection}
+        loading={
+          startAutoStoryboardReviewMutation.isPending ||
+          hyperframesRenderJobQuery.isLoading ||
+          repairHyperframesRenderMutation.isPending
+        }
+        cancelling={cancelHyperframesRenderMutation.isPending}
+        saving={saveHyperframesRenderMutation.isPending}
+        onCancel={cancelHyperframesRender}
+        onRetry={repairHyperframesRender}
+        onSaveToLibrary={saveHyperframesRenderToLibrary}
+      />
+    </div>
+  ) : null;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-6">
@@ -3242,7 +3609,34 @@ export default function MarketplaceCaptureProductDetail() {
             </Button>
           </div>
 
-          <section className="rounded-lg border bg-white p-6 shadow-sm">
+          {autoStoryboardReviewSurface ? (
+            <section
+              className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm md:p-5"
+              aria-label="Auto Storyboard Review first action"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Marketplace Auto Review
+                  </div>
+                  <h2 className="mt-3 text-xl font-semibold">
+                    สร้างวิดีโอรีวิวจากสินค้านี้อัตโนมัติ
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                    Auto Storyboard Review จะเลือก plan ที่เหมาะสมจากข้อมูลสินค้า
+                    และรูปที่มีอยู่ โดยยังสลับกลับไปใช้ Standard Order ได้ทันที
+                  </p>
+                </div>
+              </div>
+              {autoStoryboardReviewSurface}
+            </section>
+          ) : null}
+
+          <section
+            className="rounded-lg border bg-white p-6 shadow-sm"
+            aria-label="Product summary"
+          >
             <p className="text-sm font-medium text-slate-500">
               {compactText(item.platform)}
             </p>
@@ -3395,18 +3789,17 @@ export default function MarketplaceCaptureProductDetail() {
           <section className="rounded-lg border bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Marketplace Auto Review
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Standard Order
                 </div>
                 <h2 className="mt-3 text-xl font-semibold">
-                  สร้างวิดีโอรีวิวจากสินค้านี้อัตโนมัติ
+                  Custom controls สำหรับ flow เดิม
                 </h2>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  ระบบจะสร้าง Production Director Project ตามขั้นตอนปกติ
-                  แล้วใช้ข้อมูลสินค้า รูปสินค้า แนวคิด บทพูด และ prompt lock
-                  ส่งต่อไปยัง Storyboard Review
-                  หรือสร้างวิดีโอจนจบตามเส้นทางที่เลือก
+                  ปรับ output, frame strategy, โมเดล, anchor และรายละเอียดอื่น
+                  สำหรับการสั่งงานแบบมาตรฐาน โดยไม่กระทบ Auto Storyboard
+                  Review ด้านบน
                 </p>
               </div>
               <input
@@ -3425,51 +3818,6 @@ export default function MarketplaceCaptureProductDetail() {
               />
             </div>
 
-            <div className="mt-5 space-y-3">
-              <MarketplaceAutoReviewLaunchModeSwitch
-                value={autoReviewLaunchMode}
-                onChange={setAutoReviewLaunchMode}
-                autoEnabled={Boolean(
-                  autoStoryboardPlan?.access.capabilities.canAccessAuto
-                )}
-                standardAvailable={Boolean(
-                  autoStoryboardPlan?.standardOrderAvailable ?? true
-                )}
-              />
-              <AutoStoryboardReviewPlanSummary
-                plan={autoStoryboardPlan}
-                loading={autoStoryboardPlanQuery.isLoading}
-                starting={startAutoStoryboardReviewMutation.isPending}
-                onStart={startAutoStoryboardReview}
-                onUseStandard={() => setAutoReviewLaunchMode("standard_order")}
-                onResetToAuto={() => {
-                  setShowAutoStoryboardAdvanced(false);
-                  void autoStoryboardPlanQuery.refetch();
-                }}
-              />
-              <AutoStoryboardAdvancedOverrides
-                plan={autoStoryboardPlan}
-                open={showAutoStoryboardAdvanced}
-                onOpenChange={setShowAutoStoryboardAdvanced}
-                onResetToAuto={() => {
-                  setShowAutoStoryboardAdvanced(false);
-                  void autoStoryboardPlanQuery.refetch();
-                }}
-              />
-              <HyperframesRenderPanel
-                render={hyperframesRenderProjection}
-                loading={
-                  startAutoStoryboardReviewMutation.isPending ||
-                  hyperframesRenderJobQuery.isLoading
-                }
-                cancelling={cancelHyperframesRenderMutation.isPending}
-                saving={saveHyperframesRenderMutation.isPending}
-                onCancel={cancelHyperframesRender}
-                onRetry={startAutoStoryboardReview}
-                onSaveToLibrary={saveHyperframesRenderToLibrary}
-              />
-            </div>
-
             <div className="mt-5 rounded-lg border bg-white p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -3484,7 +3832,7 @@ export default function MarketplaceCaptureProductDetail() {
                 <Button
                   type="button"
                   variant={
-                    autoReviewLaunchMode === "standard_order"
+                    effectiveAutoReviewLaunchMode === "standard_order"
                       ? "default"
                       : "outline"
                   }
@@ -4336,6 +4684,8 @@ export default function MarketplaceCaptureProductDetail() {
                   const automationSummary = getAutoReviewAutomationSummary(run);
                   const runId =
                     compactText(run.id) || compactText(run.productionRunId);
+                  const runHyperframesRenderRef =
+                    hyperframesRenderRefFromAutoReviewRun(run);
                   const isHistoricalAutoReviewRun =
                     Boolean(
                       showAutoReviewHistory &&
@@ -4352,7 +4702,14 @@ export default function MarketplaceCaptureProductDetail() {
                           const isTimelineCollapsed =
                             Boolean(timelinePanelId) &&
                             collapsedAutoReviewPanelIds.has(timelinePanelId);
-                          const storyboardReviewLink = normalizeStoryboardReviewLink(run.links?.storyboardReview);
+                          const storyboardReviewLink = normalizeStoryboardReviewLink(
+                            run.links?.storyboardReview,
+                            {
+                              productId: run.productId ?? productId,
+                              runId: runHyperframesRenderRef?.runId || runId,
+                              renderJobId: runHyperframesRenderRef?.renderJobId,
+                            }
+                          );
                           return (
                             <article
                               key={run.id}
@@ -5373,10 +5730,24 @@ export default function MarketplaceCaptureProductDetail() {
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
               {compactText(item.descriptionText) || "-"}
             </p>
-            <h2 className="mt-6 text-lg font-semibold">Raw data</h2>
-            <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-100">
-              {JSON.stringify(item, null, 2)}
-            </pre>
+            <details className="mt-6 rounded-md border bg-slate-50 p-3">
+              <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
+                {t("marketplaceCapture.productDiagnostics.summary")}
+              </summary>
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                {productDiagnosticsRows.map(row => (
+                  <div
+                    key={row.label}
+                    className="rounded-md border border-slate-200 bg-white p-2"
+                  >
+                    <dt className="font-medium text-slate-500">{row.label}</dt>
+                    <dd className="mt-1 break-words text-slate-800">
+                      {row.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
           </section>
         </div>
 

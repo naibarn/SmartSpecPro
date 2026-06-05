@@ -83,6 +83,7 @@ export const hyperframesBlockerCodes = [
   "insufficient_credit",
   "quota_blocked",
   "compliance_review_required",
+  "active_standard_run",
   "stale_plan",
   "stale_input_hash",
   "asset_rejected",
@@ -370,8 +371,10 @@ export const HyperframesChargeSummarySchema = z
     noChargeReason: z
       .enum([
         "duplicate_free_preview",
+        "duplicate_library_finalize",
         "preview_only",
         "already_charged",
+        "not_billable",
         "policy_exempt",
         "feature_disabled",
         "not_applicable",
@@ -535,6 +538,16 @@ export const HyperframesRenderStatusProjectionSchema = z
     safeDiagnostics: z.array(SafeTextSchema).default([]),
     nextAction: SafeTextSchema.optional(),
     repairActions: z.array(HyperframesRepairActionSchema).default([]),
+    permissions: z
+      .object({
+        canCancel: z.boolean().default(false),
+        canRepair: z.boolean().default(false),
+      })
+      .strict()
+      .default({
+        canCancel: false,
+        canRepair: false,
+      }),
     polling: HyperframesPollingGuidanceSchema,
     chargeSummary: HyperframesChargeSummarySchema.optional(),
     templateId: SafeIdSchema.optional(),

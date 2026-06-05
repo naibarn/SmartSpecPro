@@ -78,6 +78,17 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Gemini Omni",
+    icon: "✨",
+    flags: [
+      { key: "geminiOmniSuiteEnabled", label: "Gemini Omni Suite", description: "Enable Gemini Omni suite surfaces and tenant rollout controls" },
+      { key: "geminiOmniAssetCreationEnabled", label: "Asset Creation", description: "Allow Gemini Omni asset creation flows" },
+      { key: "geminiOmniPromptQaEnabled", label: "Prompt QA", description: "Run Gemini Omni prompt QA before generation" },
+      { key: "geminiOmniVideoQaEnabled", label: "Video QA", description: "Run Gemini Omni video QA after generation" },
+      { key: "geminiOmniAutoLearningEnabled", label: "Auto Learning", description: "Allow Gemini Omni QA learning recommendations" },
+    ],
+  },
+  {
     title: "MCP Server Registry",
     icon: "🔌",
     flags: [
@@ -156,6 +167,23 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "notificationEscalationEnabled", label: "Escalation", description: "Escalate unacknowledged" },
       { key: "notificationEmailDelivery", label: "Email Delivery", description: "Notifications via email" },
       { key: "notificationWebhookDelivery", label: "Webhook Delivery", description: "Notifications via webhook" },
+    ],
+  },
+  {
+    title: "Media Production & HyperFrames",
+    icon: "🎬",
+    flags: [
+      { key: "mediaProductionDirectorEnabled", label: "Production Director", description: "Media Studio Production/Director command center" },
+      { key: "mediaProductionGoalCanvasEnabled", label: "Production Goal Canvas", description: "Visual production goal planning canvas" },
+      { key: "mediaProductionStoryboardPlannerEnabled", label: "Storyboard Planner", description: "Production Storyboard Planner skill gate" },
+      { key: "mediaProductionPlanVerifierEnabled", label: "Plan Verifier", description: "Production Plan Verifier skill gate" },
+      { key: "mediaProductionDualOutputEnabled", label: "Dual Output Projection", description: "Storyboard Review and Video Edit output projections" },
+      { key: "mediaProductionAgencyReviewersEnabled", label: "Agency Reviewers", description: "Optional Agency reviewer packs for production plans" },
+      { key: "mediaProductionLangGraphBatchEnabled", label: "LangGraph Batch Runtime", description: "Optional checkpointed batch runtime for media production" },
+      { key: "marketplaceHyperframesEnabled", label: "Marketplace HyperFrames", description: "Show Auto Storyboard Review HyperFrames controls on Marketplace Product Detail" },
+      { key: "marketplaceHyperframesWorkerEnabled", label: "HyperFrames Worker Queue", description: "Allow this tenant to queue HyperFrames preview/render worker jobs" },
+      { key: "marketplaceHyperframesLibrarySaveEnabled", label: "HyperFrames Library Save", description: "Allow completed HyperFrames renders to be saved to Library" },
+      { key: "marketplaceHyperframesOperatorEnabled", label: "HyperFrames Operator Controls", description: "Allow delegated tenant operators to inspect, replay, and manage HyperFrames renders" },
     ],
   },
 ];

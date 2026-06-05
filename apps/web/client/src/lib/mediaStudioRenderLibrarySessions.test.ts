@@ -7,6 +7,7 @@ import {
 import {
   buildHyperframesRenderLibrarySession,
   buildHyperframesRenderLibrarySaveInputFromSession,
+  getHyperframesRenderDisplayOutput,
   getHyperframesRenderLibraryReadyOutput,
 } from "./mediaStudioRenderLibrarySessions";
 
@@ -27,6 +28,7 @@ const baseRender: HyperframesRenderStatusProjection = {
   polling: createDefaultHyperframesPollingGuidance("completed"),
   renderIntent: "final",
   compositionInputHash: "hf_input",
+  qaStatus: "passed",
   outputRefs: [
     {
       outputId: "output_1",
@@ -115,13 +117,25 @@ describe("mediaStudioRenderLibrarySessions", () => {
     ).toBeNull();
   });
 
-  it("requires a matching library-retained render artifact before offering save", () => {
+  it("allows redacted public refs but rejects temporary artifacts and failed QA", () => {
     expect(
       getHyperframesRenderLibraryReadyOutput({
         ...baseRender,
         artifactRefs: [],
       })
-    ).toBeNull();
+    ).toMatchObject({
+      outputId: "output_1",
+      contentHash: "hf_output",
+    });
+    expect(
+      buildHyperframesRenderLibrarySession({
+        ...baseRender,
+        artifactRefs: [],
+      })
+    ).toMatchObject({
+      source: "marketplace_auto_review_hyperframes_render",
+      jobId: "hf_render_1",
+    });
     expect(
       buildHyperframesRenderLibrarySession({
         ...baseRender,
@@ -137,6 +151,18 @@ describe("mediaStudioRenderLibrarySessions", () => {
             redacted: true,
           },
         ],
+      })
+    ).toBeNull();
+    expect(
+      getHyperframesRenderLibraryReadyOutput({
+        ...baseRender,
+        qaStatus: "failed",
+      })
+    ).toBeNull();
+    expect(
+      buildHyperframesRenderLibrarySession({
+        ...baseRender,
+        qaStatus: undefined,
       })
     ).toBeNull();
   });
@@ -186,6 +212,57 @@ describe("mediaStudioRenderLibrarySessions", () => {
 
     expect(output?.outputId).toBe("output_library");
     expect(output?.contentHash).toBe("hf_library");
+  });
+
+  it("prefers the final video for display when snapshot refs appear first", () => {
+    const render: HyperframesRenderStatusProjection = {
+      ...baseRender,
+      outputRefs: [
+        {
+          outputId: "snapshot_1",
+          kind: "snapshot",
+          url: "https://cdn.example.test/snapshot.png",
+          contentHash: "hf_snapshot",
+          accessibleLabel: "Snapshot",
+        },
+        {
+          outputId: "output_library",
+          kind: "final_video",
+          url: "https://cdn.example.test/final.mp4",
+          contentHash: "hf_library",
+          accessibleLabel: "Library final video",
+        },
+      ],
+      artifactRefs: [
+        {
+          artifactId: "snapshot_1",
+          kind: "hyperframes_snapshot",
+          storageRef:
+            "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/snapshot.png",
+          contentHash: "hf_snapshot",
+          mimeType: "image/png",
+          retentionClass: "review",
+          redacted: true,
+        },
+        {
+          artifactId: "output_library",
+          kind: "hyperframes_render_mp4",
+          storageRef:
+            "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/final.mp4",
+          contentHash: "hf_library",
+          mimeType: "video/mp4",
+          retentionClass: "library",
+          redacted: true,
+        },
+      ],
+    };
+
+    expect(getHyperframesRenderLibraryReadyOutput(render)?.outputId).toBe(
+      "output_library"
+    );
+    expect(getHyperframesRenderDisplayOutput(render)?.outputId).toBe(
+      "output_library"
+    );
   });
 
   it("rejects incomplete HyperFrames render-to-library sessions", () => {

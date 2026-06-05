@@ -48,6 +48,20 @@
       }
     },
     {
+      "id": "feature_flag_off_standard_default",
+      "group": "feature_disabled",
+      "flags": {
+        "MARKETPLACE_HYPERFRAMES_ENABLED": "false"
+      },
+      "expected": {
+        "autoSurfaceHidden": true,
+        "standardDefaultWhenFeatureOff": true,
+        "standardOrderAvailable": true,
+        "procedure": "marketplaceCapture.startAutoReview",
+        "hyperframesRequired": false
+      }
+    },
+    {
       "id": "compliance_claim_review_required",
       "group": "regulated_claims",
       "product": {

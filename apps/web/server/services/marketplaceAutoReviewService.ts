@@ -15,6 +15,7 @@ import {
 } from "./mediaGenerationService";
 import {
   buildMarketplaceAutoReviewApiProjection,
+  isSafeUserVisibleUrl,
   MARKETPLACE_AUTO_REVIEW_CONTRACT_VERSION,
   MarketplaceAutoReviewStageCompletionEvidenceSchema,
   type MarketplaceAutoReviewStageCompletionEvidence,
@@ -94,7 +95,7 @@ import {
 } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { buildHyperframesCompositionInput } from "./hyperframesCompositionService";
-import { resolveHyperframesFeatureAccess } from "./hyperframesFeatureAccessService";
+import { resolveHyperframesFeatureAccessForTenant } from "./hyperframesFeatureAccessService";
 import { queueHyperframesRenderJob } from "./hyperframesRenderService";
 
 export type MarketplaceAutoReviewOutputMode =
@@ -754,6 +755,10 @@ function stringArrayFromUnknown(value: unknown): string[] {
   return value
     .map(item => cleanText(item))
     .filter(Boolean);
+}
+
+function safeUserVisibleUrlArrayFromUnknown(value: unknown): string[] {
+  return stringArrayFromUnknown(value).filter(isSafeUserVisibleUrl);
 }
 
 function normalizeConcreteProductReferenceStoryboardCategory(
@@ -11586,7 +11591,7 @@ async function maybeQueueHyperframesPreviewAfterStoryboardReady(params: {
     ...params.startFrameUrls,
     ...params.stopFrameUrls,
   ].filter(Boolean);
-  const access = resolveHyperframesFeatureAccess({
+  const access = await resolveHyperframesFeatureAccessForTenant({
     auth: params.auth,
     productId: params.run.productId,
     runId: params.run.id,
@@ -11665,6 +11670,12 @@ async function maybeQueueHyperframesPreviewAfterStoryboardReady(params: {
     });
     return { renderJobId: null, metadata };
   }
+}
+
+export async function maybeQueueHyperframesPreviewAfterStoryboardReadyForTest(
+  params: Parameters<typeof maybeQueueHyperframesPreviewAfterStoryboardReady>[0]
+) {
+  return maybeQueueHyperframesPreviewAfterStoryboardReady(params);
 }
 
 async function upsertMarketplaceAutoReviewOutboxJob(params: {
@@ -12320,12 +12331,133 @@ async function persistMarketplaceAutoReviewProviderReconciliation(params: {
   };
 }
 
+function hyperframesRenderJobIdForStoryboardReviewLink(
+  run: Pick<MarketplaceAutoReviewRun, "renderJobId" | "metadataJson" | "resultJson">
+): string {
+  const metadata = asRecord(run.metadataJson);
+  const result = asRecord(run.resultJson);
+  const metadataPreview = asRecord(metadata.hyperframesAutoPreview);
+  const resultPreview = asRecord(result.hyperframesAutoPreview);
+  const resultRender = asRecord(result.render);
+  return (
+    cleanText(run.renderJobId) ||
+    cleanText(metadataPreview.renderJobId) ||
+    cleanText(resultPreview.renderJobId) ||
+    cleanText(result.hyperframesRenderJobId) ||
+    cleanText(resultRender.renderJobId)
+  );
+}
+
+function cleanTextOrNumber(value: unknown): string | number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const text = cleanText(value);
+  return text || null;
+}
+
+function summarizeHyperframesPreviewMarkerForUi(
+  value: unknown
+): Record<string, unknown> | null {
+  const marker = asRecord(value);
+  const summary = compactRecord({
+    renderJobId: cleanText(marker.renderJobId),
+    status: cleanText(marker.status),
+    queuedAt: cleanText(marker.queuedAt),
+  });
+  return Object.keys(summary).length > 0 ? summary : null;
+}
+
+function summarizeHyperframesRenderMarkerForUi(
+  value: unknown
+): Record<string, unknown> | null {
+  const render = asRecord(value);
+  const summary = compactRecord({
+    renderJobId: cleanText(render.renderJobId),
+    status: cleanText(render.status),
+    updatedAt: cleanText(render.updatedAt),
+    templateId: cleanText(render.templateId),
+    templateVersion: cleanText(render.templateVersion),
+    platformPresetId: cleanText(render.platformPresetId),
+    renderIntent: cleanText(render.renderIntent),
+    compositionMode: cleanText(render.compositionMode),
+    compositionInputHash: cleanText(render.compositionInputHash),
+    qaStatus: cleanText(render.qaStatus),
+  });
+  return Object.keys(summary).length > 0 ? summary : null;
+}
+
+function summarizeMarketplaceAutoReviewResultForUi(
+  resultJson: unknown
+): Record<string, unknown> {
+  const result = asRecord(resultJson);
+  const autoPreviewSummary = summarizeHyperframesPreviewMarkerForUi(
+    result.hyperframesAutoPreview
+  );
+  const renderSummary = summarizeHyperframesRenderMarkerForUi(result.render);
+  return compactRecord({
+    storyboardReviewId: cleanTextOrNumber(result.storyboardReviewId),
+    frameUrls: safeUserVisibleUrlArrayFromUnknown(result.frameUrls),
+    startFrameUrls: safeUserVisibleUrlArrayFromUnknown(result.startFrameUrls),
+    stopFrameUrls: safeUserVisibleUrlArrayFromUnknown(result.stopFrameUrls),
+    hyperframesRenderJobId:
+      cleanText(result.hyperframesRenderJobId) ||
+      cleanText(autoPreviewSummary?.renderJobId) ||
+      cleanText(renderSummary?.renderJobId),
+    hyperframesAutoPreview: autoPreviewSummary,
+    render: renderSummary,
+    libraryItemId: cleanTextOrNumber(result.libraryItemId),
+    jobId: cleanText(result.jobId),
+    cached: typeof result.cached === "boolean" ? result.cached : null,
+    mediaHistorySource: cleanText(result.mediaHistorySource),
+    audioStrategy: cleanText(result.audioStrategy),
+    resolvedAudioStrategy: cleanText(result.resolvedAudioStrategy),
+  });
+}
+
+function buildMarketplaceAutoReviewStoryboardReviewLink(input: {
+  storyboardReviewId?: string | number | null;
+  productId?: string | number | null;
+  runId?: string | number | null;
+  renderJobId?: string | number | null;
+}): string | null {
+  const text = (value: unknown) =>
+    typeof value === "number" && Number.isFinite(value)
+      ? String(value)
+      : cleanText(value);
+  const storyboardReviewId = text(input.storyboardReviewId);
+  if (!storyboardReviewId) return null;
+  const path = `/storyboard-review/${encodeURIComponent(storyboardReviewId)}`;
+  const renderJobId = text(input.renderJobId);
+  if (!renderJobId) return path;
+  const params = new URLSearchParams();
+  params.set("hyperframesRenderJobId", renderJobId);
+  const productId = text(input.productId);
+  const runId = text(input.runId);
+  if (productId) params.set("productId", productId);
+  if (runId) params.set("runId", runId);
+  return `${path}?${params.toString()}`;
+}
+
+export function buildMarketplaceAutoReviewStoryboardReviewLinkForTest(input: {
+  storyboardReviewId?: string | number | null;
+  productId?: string | number | null;
+  runId?: string | number | null;
+  renderJobId?: string | number | null;
+}): string | null {
+  return buildMarketplaceAutoReviewStoryboardReviewLink(input);
+}
+
 function serializeRun(
   run: MarketplaceAutoReviewRun,
   stages: MarketplaceAutoReviewStage[] = [],
   options: { includeHeavyMetadata?: boolean } = {}
 ) {
   const includeHeavyMetadata = options.includeHeavyMetadata ?? true;
+  const storyboardReviewUrl = buildMarketplaceAutoReviewStoryboardReviewLink({
+    storyboardReviewId: run.storyboardReviewId,
+    productId: run.productId,
+    runId: run.id,
+    renderJobId: hyperframesRenderJobIdForStoryboardReviewLink(run),
+  });
   const outputLinks = [
     run.productionRunId
       ? {
@@ -12337,11 +12469,11 @@ function serializeRun(
           artifactRef: run.productionRunId,
         }
       : null,
-    run.storyboardReviewId
+    storyboardReviewUrl
       ? {
           kind: "storyboard_review" as const,
           label: "Storyboard",
-          url: `/storyboard-review/${encodeURIComponent(run.storyboardReviewId)}`,
+          url: storyboardReviewUrl,
           safeForUser: true,
           stageKey: "storyboard_review" as const,
           artifactRef: run.storyboardReviewId,
@@ -12380,9 +12512,7 @@ function serializeRun(
       productionProject: run.productionRunId
         ? `/media-studio?productionRunId=${encodeURIComponent(run.productionRunId)}&tab=production`
         : null,
-      storyboardReview: run.storyboardReviewId
-        ? `/storyboard-review/${encodeURIComponent(run.storyboardReviewId)}`
-        : null,
+      storyboardReview: storyboardReviewUrl,
       videoEditor: run.videoEditorProjectId
         ? `/video-editor?projectId=${encodeURIComponent(run.videoEditorProjectId)}`
         : null,
@@ -12399,8 +12529,11 @@ function serializeRun(
 
   if (!includeHeavyMetadata) {
     const metadata = asRecord(run.metadataJson);
+    const hyperframesAutoPreviewSummary =
+      summarizeHyperframesPreviewMarkerForUi(metadata.hyperframesAutoPreview);
     return {
       ...serializedRun,
+      resultJson: summarizeMarketplaceAutoReviewResultForUi(run.resultJson),
       metadataJson: {
         resolvedAudioStrategy: metadata.resolvedAudioStrategy ?? null,
         referenceAnchors: metadata.referenceAnchors ?? null,
@@ -12409,6 +12542,7 @@ function serializeRun(
         storyboardFrameUrls: metadata.storyboardFrameUrls ?? [],
         startFrameUrls: metadata.startFrameUrls ?? [],
         stopFrameUrls: metadata.stopFrameUrls ?? [],
+        hyperframesAutoPreview: hyperframesAutoPreviewSummary,
         generatedMediaAcceptanceEnvelope:
           metadata.generatedMediaAcceptanceEnvelope ?? null,
       },
@@ -12420,6 +12554,14 @@ function serializeRun(
   }
 
   return serializedRun;
+}
+
+export function serializeMarketplaceAutoReviewRunForTest(
+  run: MarketplaceAutoReviewRun,
+  stages: MarketplaceAutoReviewStage[] = [],
+  options: { includeHeavyMetadata?: boolean } = {}
+) {
+  return serializeRun(run, stages, options);
 }
 
 function summarizeImageAttemptReviewsForUi(
@@ -12599,6 +12741,7 @@ async function ensureRunStages(
 export async function startMarketplaceAutoReviewRun(
   input: {
     productId: string;
+    idempotencyKey?: string | null;
     creationIntent?: "storyboard" | "video" | "auto_review_video" | null;
     outputMode: MarketplaceAutoReviewOutputMode;
     frameStrategy?: MarketplaceAutoReviewFrameStrategyInput;
@@ -12640,6 +12783,7 @@ export async function startMarketplaceAutoReviewRun(
     input.qualityMode ?? "balanced";
   const stages = stageKeysForMode(outputMode);
   const tenantId = autoTenantId(auth);
+  const requestedIdempotencyKey = cleanText(input.idempotencyKey);
 
   const active = await db
     .select()
@@ -12671,19 +12815,21 @@ export async function startMarketplaceAutoReviewRun(
   const referenceAnchorHash = buildProductionStableHash(
     input.referenceAnchors ?? {}
   ).slice(0, 12);
-  const idempotencyKey = buildMarketplaceAutoReviewRunIdempotencyKey({
-    tenantId,
-    productId: input.productId,
-    outputMode,
-    frameStrategy,
-    audioStrategy,
-    resolvedAudioStrategy,
-    requestedShotCount,
-    overlayTextMode,
-    imageModel,
-    referenceAnchorHash,
-    runId,
-  });
+  const idempotencyKey =
+    requestedIdempotencyKey ||
+    buildMarketplaceAutoReviewRunIdempotencyKey({
+      tenantId,
+      productId: input.productId,
+      outputMode,
+      frameStrategy,
+      audioStrategy,
+      resolvedAudioStrategy,
+      requestedShotCount,
+      overlayTextMode,
+      imageModel,
+      referenceAnchorHash,
+      runId,
+    });
   const productionRunId = `mp-auto-${input.productId}-${Date.now().toString(36)}-${nanoid(6)}`;
   const now = nowDate();
   const baseFallbackPlan = buildAutoReviewProductTruthScaffold(
@@ -12868,6 +13014,45 @@ export async function startMarketplaceAutoReviewRun(
         5_000
       );
       return getMarketplaceAutoReviewRun(conflictingActive.id, auth);
+    }
+    if (requestedIdempotencyKey) {
+      const [conflictingByIdempotency] = await db
+        .select()
+        .from(marketplaceAutoReviewRuns)
+        .where(
+          and(
+            eq(marketplaceAutoReviewRuns.userId, auth.userId),
+            tenantAccessClause(auth),
+            eq(marketplaceAutoReviewRuns.idempotencyKey, requestedIdempotencyKey)
+          )
+        )
+        .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
+        .limit(1);
+      if (conflictingByIdempotency?.id) {
+        if (conflictingByIdempotency.productId !== input.productId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Idempotency key is already associated with a different marketplace product",
+          });
+        }
+        if (
+          ACTIVE_RUN_STATUSES.includes(
+            cleanText(conflictingByIdempotency.status) as
+              | "queued"
+              | "running"
+              | "waiting_provider"
+          )
+        ) {
+          queueMarketplaceAutoReviewAdvance(
+            conflictingByIdempotency.id,
+            auth,
+            runtime,
+            5_000
+          );
+        }
+        return getMarketplaceAutoReviewRun(conflictingByIdempotency.id, auth);
+      }
     }
     throw new TRPCError({
       code: "CONFLICT",

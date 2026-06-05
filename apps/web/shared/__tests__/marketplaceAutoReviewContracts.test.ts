@@ -224,10 +224,15 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
         metadataJson: {
           automationControlPlane: {
             status: "claimed",
-            lease: { leaseId: "lease_1" },
+            lease: {
+              leaseId: "lease_1",
+              ownerToken: "owner-token-private",
+            },
+            signedUrl: "https://signed.example.test/private/control",
           },
           providerReconciliation: {
             status: "watching_provider_tasks",
+            rawProviderPayload: { private: "provider-private" },
           },
           targetedRepairPolicyLedger: {
             status: "retry_targeted",
@@ -235,10 +240,12 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
           qaArtifactManifest: {
             status: "passed",
             manifestId: "qa-artifacts-1",
+            storageKey: "private/qa/manifest.json",
           },
           mediaArtifactInspection: {
             status: "passed",
             inspectionId: "media-inspection-1",
+            workerLogs: ["private worker log"],
           },
           durableRuntimePlan: {
             status: "table_backed_control_plane_ready",
@@ -285,6 +292,11 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
     expect((projection.automation.qualityModePolicy as any).mode).toBe(
       "balanced"
     );
+    expect(JSON.stringify(projection.automation)).not.toContain("owner-token");
+    expect(JSON.stringify(projection.automation)).not.toContain("signed.example");
+    expect(JSON.stringify(projection.automation)).not.toContain("provider-private");
+    expect(JSON.stringify(projection.automation)).not.toContain("private/qa");
+    expect(JSON.stringify(projection.automation)).not.toContain("worker log");
   });
 
   it("rejects unsafe Auto Review output links and omits unsafe provider result URLs", () => {
@@ -293,6 +305,15 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
         kind: "render",
         label: "Unsafe render",
         url: "javascript:alert(1)",
+        safeForUser: true,
+        stageKey: "render",
+      })
+    ).toThrow(/safe user-visible scheme/i);
+    expect(() =>
+      MarketplaceAutoReviewOutputLinkSchema.parse({
+        kind: "render",
+        label: "Signed render",
+        url: "https://cdn.example.test/private/render.mp4?X-Amz-Signature=abc&Expires=999999",
         safeForUser: true,
         stageKey: "render",
       })
@@ -313,7 +334,8 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
           stageOrder: 10,
           status: "completed",
           outputJson: {
-            resultUrl: "javascript:alert(1)",
+            resultUrl:
+              "https://cdn.example.test/private/render.mp4?X-Amz-Signature=abc&Expires=999999",
           },
         },
       ]

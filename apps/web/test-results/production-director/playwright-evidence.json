@@ -56,8 +56,8 @@
     "version": "1.60.0",
     "workers": 1,
     "webServer": {
-      "command": "npm run dev:no-watch",
-      "url": "http://127.0.0.1:3000",
+      "command": "PORT=3017 npm run dev:no-watch",
+      "url": "http://127.0.0.1:3017",
       "timeout": 120000,
       "reuseExistingServer": true
     }
@@ -73,7 +73,7 @@
         {
           "title": "Marketplace HyperFrames Auto Review UI gate",
           "file": "marketplace-hyperframes-ui.spec.ts",
-          "line": 362,
+          "line": 857,
           "column": 6,
           "specs": [
             {
@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 13,
+                      "duration": 12,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:05.727Z",
+                      "startTime": "2026-06-05T16:19:18.278Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -107,7 +107,7 @@
               ],
               "id": "5a050f4a632e5693260d-3c129df8802b10807f79",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 363,
+              "line": 858,
               "column": 3
             },
             {
@@ -126,12 +126,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 9,
+                      "duration": 5,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:05.769Z",
+                      "startTime": "2026-06-05T16:19:18.317Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -141,7 +141,7 @@
               ],
               "id": "5a050f4a632e5693260d-b6c41ce1a4570ffff55f",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 385,
+              "line": 881,
               "column": 3
             },
             {
@@ -160,12 +160,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3,
+                      "duration": 6,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:05.795Z",
+                      "startTime": "2026-06-05T16:19:18.333Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -175,7 +175,7 @@
               ],
               "id": "5a050f4a632e5693260d-674e9513c850cfde5255",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 413,
+              "line": 916,
               "column": 3
             },
             {
@@ -194,12 +194,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 7,
+                      "duration": 2,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:05.832Z",
+                      "startTime": "2026-06-05T16:19:18.345Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -209,7 +209,7 @@
               ],
               "id": "5a050f4a632e5693260d-3a6073c5cf7977a7a02d",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 430,
+              "line": 933,
               "column": 3
             },
             {
@@ -228,12 +228,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4805,
+                      "duration": 4304,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:05.858Z",
+                      "startTime": "2026-06-05T16:19:18.355Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -243,7 +243,211 @@
               ],
               "id": "5a050f4a632e5693260d-cf73364e632cec38f224",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 450,
+              "line": 953,
+              "column": 3
+            },
+            {
+              "title": "authenticated Product Detail hides Auto surface when HyperFrames access is disabled",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1555,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:22.721Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-c7cda166ab031d52f4f3",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1152,
+              "column": 3
+            },
+            {
+              "title": "authenticated Product Detail shows retryable Auto plan errors while preserving Standard Order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8254,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:24.284Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-bd7f450c3408c58adfff",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1182,
+              "column": 3
+            },
+            {
+              "title": "authenticated Product Detail resumes the active Auto run without starting a duplicate",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1591,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:32.546Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-b7744272ad5151f825f5",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1209,
+              "column": 3
+            },
+            {
+              "title": "authenticated Product Detail treats an active Standard run as a Standard blocker, not Auto resume",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1462,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:34.143Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-e4577abced5e8a085415",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1256,
+              "column": 3
+            },
+            {
+              "title": "authenticated Product Detail supports Advanced Auto overrides, reset, and start payload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5235,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:35.612Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-fbb91314520b9a6f9e35",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1332,
+              "column": 3
+            },
+            {
+              "title": "authenticated Storyboard Review repair action calls the self-service repair API",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1525,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-06-05T16:19:40.855Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "5a050f4a632e5693260d-e6f57ab8dea7403de6d9",
+              "file": "marketplace-hyperframes-ui.spec.ts",
+              "line": 1425,
               "column": 3
             },
             {
@@ -262,12 +466,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 6402,
+                      "duration": 11615,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-04T14:07:10.725Z",
+                      "startTime": "2026-06-05T16:19:42.386Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -277,7 +481,7 @@
               ],
               "id": "5a050f4a632e5693260d-c22cc173462da1003201",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 649,
+              "line": 1460,
               "column": 3
             }
           ]
@@ -287,9 +491,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-06-04T14:06:57.868Z",
-    "duration": 19383.199,
-    "expected": 6,
+    "startTime": "2026-06-05T16:19:12.175Z",
+    "duration": 41943.38,
+    "expected": 12,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

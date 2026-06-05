@@ -15,6 +15,8 @@ import {
 } from "@shared/hyperframes/featureAccess";
 import { getHyperframesBlockerCopy } from "@shared/hyperframes/statusCopy";
 import { getHyperframesPlatformPreset } from "@shared/hyperframes/templates";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import type { TenantFeatureFlags } from "../../shared/featureFlags";
 
 export type HyperframesAuthContext = { userId: number; tenantId?: string };
 
@@ -42,11 +44,24 @@ function truthyEnv(value: string | undefined): boolean {
   return ["1", "true", "yes", "on"].includes((value ?? "").toLowerCase());
 }
 
+function falseyEnv(value: string | undefined): boolean {
+  return ["0", "false", "no", "off", "disabled"].includes(
+    (value ?? "").toLowerCase()
+  );
+}
+
 function csvEnv(value: string | undefined): string[] {
   return (value ?? "")
     .split(",")
     .map(item => item.trim())
     .filter(Boolean);
+}
+
+function hyperframesGloballyDisabled(): boolean {
+  return (
+    truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_DISABLED) ||
+    falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ENABLED)
+  );
 }
 
 export function readHyperframesFeatureFlags(
@@ -75,6 +90,67 @@ export function readHyperframesFeatureFlags(
     ),
   };
   return { ...envFlags, ...overrides };
+}
+
+export function readHyperframesFeatureFlagsFromTenantConfig(
+  auth: HyperframesAuthContext,
+  tenantFlags: Pick<
+    TenantFeatureFlags,
+    | "marketplaceHyperframesEnabled"
+    | "marketplaceHyperframesWorkerEnabled"
+    | "marketplaceHyperframesLibrarySaveEnabled"
+    | "marketplaceHyperframesOperatorEnabled"
+  >,
+  overrides: Partial<HyperframesFeatureFlagState> = {}
+): HyperframesFeatureFlagState {
+  const globalDisabled = hyperframesGloballyDisabled();
+  const tenantEnabled =
+    tenantFlags.marketplaceHyperframesEnabled === true && !globalDisabled;
+  const baseFlags: HyperframesFeatureFlagState = {
+    enabled: tenantEnabled,
+    tenantAllowed: tenantEnabled,
+    workerEnabled:
+      tenantEnabled &&
+      tenantFlags.marketplaceHyperframesWorkerEnabled === true &&
+      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED),
+    librarySaveEnabled:
+      tenantEnabled &&
+      tenantFlags.marketplaceHyperframesLibrarySaveEnabled === true &&
+      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE),
+    operatorEnabled:
+      tenantEnabled &&
+      tenantFlags.marketplaceHyperframesOperatorEnabled === true &&
+      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED),
+    templateAllowlist: csvEnv(
+      process.env.MARKETPLACE_HYPERFRAMES_TEMPLATE_ALLOWLIST
+    ),
+  };
+  const merged = { ...baseFlags, ...overrides };
+  const enabled = baseFlags.enabled && merged.enabled !== false;
+  return {
+    ...merged,
+    enabled,
+    tenantAllowed:
+      enabled && baseFlags.tenantAllowed && merged.tenantAllowed !== false,
+    workerEnabled:
+      enabled && baseFlags.workerEnabled && merged.workerEnabled !== false,
+    librarySaveEnabled:
+      enabled &&
+      baseFlags.librarySaveEnabled &&
+      merged.librarySaveEnabled !== false,
+    operatorEnabled:
+      enabled &&
+      baseFlags.operatorEnabled &&
+      merged.operatorEnabled !== false,
+  };
+}
+
+export async function readHyperframesFeatureFlagsForTenant(
+  auth: HyperframesAuthContext,
+  overrides: Partial<HyperframesFeatureFlagState> = {}
+): Promise<HyperframesFeatureFlagState> {
+  const tenantFlags = await getTenantFeatureFlags(auth.tenantId ?? "default");
+  return readHyperframesFeatureFlagsFromTenantConfig(auth, tenantFlags, overrides);
 }
 
 function blocker(
@@ -251,5 +327,18 @@ export function resolveHyperframesFeatureAccess(
     canInspectAsOperator: input.canInspectAsOperator,
     canReplayAsOperator: input.canReplayAsOperator,
     nowIso: input.now?.toISOString(),
+  });
+}
+
+export async function resolveHyperframesFeatureAccessForTenant(
+  input: HyperframesAccessInput
+): Promise<HyperframesFeatureAccessProjection> {
+  const flags = await readHyperframesFeatureFlagsForTenant(
+    input.auth,
+    input.flags
+  );
+  return resolveHyperframesFeatureAccess({
+    ...input,
+    flags,
   });
 }

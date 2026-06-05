@@ -10,6 +10,8 @@ import {
 describe("hyperframesWorkerPolicy", () => {
   const previous = process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
   const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+  const previousEnabled = process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
+  const previousDisabled = process.env.MARKETPLACE_HYPERFRAMES_DISABLED;
 
   afterEach(() => {
     if (previous == null) {
@@ -22,14 +24,39 @@ describe("hyperframesWorkerPolicy", () => {
     } else {
       process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
     }
+    if (previousEnabled == null) {
+      delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
+    } else {
+      process.env.MARKETPLACE_HYPERFRAMES_ENABLED = previousEnabled;
+    }
+    if (previousDisabled == null) {
+      delete process.env.MARKETPLACE_HYPERFRAMES_DISABLED;
+    } else {
+      process.env.MARKETPLACE_HYPERFRAMES_DISABLED = previousDisabled;
+    }
   });
 
-  it("defaults worker execution off", () => {
+  it("defaults the global worker gate open so tenant flags can control rollout", () => {
     delete process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
+    expect(isHyperframesWorkerEnabled()).toBe(true);
+  });
+
+  it("allows explicit env false values to kill worker execution globally", () => {
+    process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "false";
     expect(isHyperframesWorkerEnabled()).toBe(false);
   });
 
-  it("requires an explicit on value", () => {
+  it("respects the global HyperFrames kill switches before tenant rollout", () => {
+    process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "true";
+    process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "true";
+    expect(isHyperframesWorkerEnabled()).toBe(false);
+
+    process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "false";
+    process.env.MARKETPLACE_HYPERFRAMES_ENABLED = "false";
+    expect(isHyperframesWorkerEnabled()).toBe(false);
+  });
+
+  it("keeps explicit on values compatible with existing deployments", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "true";
     expect(isHyperframesWorkerEnabled()).toBe(true);
   });

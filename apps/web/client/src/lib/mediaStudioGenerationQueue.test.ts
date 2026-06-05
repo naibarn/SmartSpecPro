@@ -3,6 +3,7 @@ import {
   collectGenerationQueueTaskIdentityCandidates,
   getGenerationQueueIdentityCandidates,
   isGenerationQueueTaskDismissed,
+  isStaleActiveGenerationQueueTask,
   isStoryboardReviewOnlyQueuedTask,
   mergeGenerationQueueTasks,
   shouldIncludeHistoryTaskInGenerationQueue,
@@ -77,7 +78,7 @@ describe("mediaStudioGenerationQueue", () => {
     ).toBe(true);
   });
 
-  it("hides stale active history tasks unless they are already tracked", () => {
+  it("hides stale active history tasks even when they are already tracked", () => {
     const nowMs = Date.parse("2026-05-16T07:00:00Z");
     const staleTask = {
       id: "backend-stale",
@@ -101,7 +102,45 @@ describe("mediaStudioGenerationQueue", () => {
         new Set<string>(["provider-stale"]),
         { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
       ),
+    ).toBe(false);
+  });
+
+  it("keeps recently updated tracked active history tasks visible", () => {
+    const nowMs = Date.parse("2026-05-16T07:00:00Z");
+    const freshTask = {
+      id: "backend-fresh",
+      taskId: "provider-fresh",
+      updatedAt: "2026-05-16T06:30:00Z",
+    };
+
+    expect(
+      shouldIncludeHistoryTaskInGenerationQueue(
+        "processing",
+        freshTask,
+        new Set<string>(["provider-fresh"]),
+        { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
+      ),
     ).toBe(true);
+  });
+
+  it("detects stale active local queue tasks", () => {
+    const nowMs = Date.parse("2026-05-16T07:00:00Z");
+
+    expect(
+      isStaleActiveGenerationQueueTask(
+        "queued",
+        { id: "local-stale", updatedAt: Date.parse("2026-05-16T03:00:00Z") },
+        { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
+      ),
+    ).toBe(true);
+
+    expect(
+      isStaleActiveGenerationQueueTask(
+        "completed",
+        { id: "local-complete", updatedAt: Date.parse("2026-05-16T03:00:00Z") },
+        { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
+      ),
+    ).toBe(false);
   });
 
   it("treats any known identity as dismissed", () => {

@@ -3172,8 +3172,9 @@ Acceptance:
   estimate, worker readiness, and blockers are visible without requiring selector
   interaction
 - render engine, composition mode, template, platform preset, preview/final
-  intent, frame strategy, audio strategy, and text policy selectors are hidden in
-  a collapsed advanced override area by default
+  intent, frame strategy, image model, quality, shot count, audio strategy, and
+  text policy selectors are hidden in a collapsed advanced override area by
+  default
 - Product Detail shows `Use auto plan` / reset-to-auto when advanced overrides
   are active or create blockers
 - Product Detail timeline renders `HyperframesRenderStatusProjection` through the

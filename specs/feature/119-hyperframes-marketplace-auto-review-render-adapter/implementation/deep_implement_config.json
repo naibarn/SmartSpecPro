@@ -5,7 +5,7 @@
   "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/119-hyperframes-marketplace-auto-review-render-adapter/implementation",
   "git_root": "/home/dev/projects/SmartSpecPro",
   "commit_style": "simple",
-  "test_command": "uv run pytest",
+  "test_command": "npm --prefix apps/web run test",
   "sections": [
     "section-01-contracts-and-runtime-schemas",
     "section-02-auto-plan-and-feature-access",
