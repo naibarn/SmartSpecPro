@@ -27,6 +27,15 @@ export function resolveMarketplaceAutoReviewLaunchMode(input: {
     : "standard_order";
 }
 
+export function shouldShowStandardOrderControls(input: {
+  autoSurfaceVisible: boolean;
+  effectiveLaunchMode: MarketplaceAutoReviewLaunchMode;
+}): boolean {
+  return (
+    !input.autoSurfaceVisible || input.effectiveLaunchMode === "standard_order"
+  );
+}
+
 const HYPERFRAMES_CLIENT_STOP_POLLING_STATUSES = new Set([
   "not_available",
   "blocked_needs_user",

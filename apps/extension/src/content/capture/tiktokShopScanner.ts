@@ -53,39 +53,54 @@ function evidence(text: string | null, source: string, confidence: number, optio
 function parseTikTokShopUrl(inputUrl: string) {
   const originalUrl = inputUrl.trim();
   let origin = "https://www.tiktok.com";
+  let hostname = "www.tiktok.com";
   let pathname = originalUrl.split("?")[0]?.split("#")[0] ?? originalUrl;
   let cleanUrl = pathname;
+  let productIdFromQuery: string | null = null;
   try {
     const parsed = new URL(originalUrl);
     origin = parsed.origin;
+    hostname = parsed.hostname.toLowerCase();
     pathname = parsed.pathname;
     cleanUrl = `${parsed.origin}${parsed.pathname}`;
+    productIdFromQuery = parsed.searchParams.get("product_id") || parsed.searchParams.get("productId");
   } catch {
     if (pathname.startsWith("/")) cleanUrl = `${origin}${pathname}`;
   }
+  const supportsRootRegionPath = hostname === "shop.tiktok.com" || hostname.endsWith(".tiktokglobalshop.com");
+  const canonicalRegionalPath = (region: string, suffix = "") => `${origin}${supportsRootRegionPath ? "" : "/shop"}/${region}${suffix}`;
 
-  const pdpMatch = pathname.match(/^\/shop\/([^/]+)\/pdp\/(\d+)\/?$/i);
+  const pdpMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/pdp\/(?:[^/]+\/)?(\d+)\/?$/i
+    : /^\/shop\/([^/]+)\/pdp\/(?:[^/]+\/)?(\d+)\/?$/i);
   if (pdpMatch) {
     const region = pdpMatch[1];
     const productId = pdpMatch[2];
-    return { productId, categorySlug: null, categoryId: null, region, format: "pdp_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: `${origin}/shop/${region}/pdp/${productId}` };
+    return { productId, categorySlug: null, categoryId: null, region, format: "pdp_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: canonicalRegionalPath(region, `/pdp/${productId}`) };
   }
   const viewMatch = pathname.match(/^\/view\/product\/(\d+)\/?$/i);
   if (viewMatch) {
     const productId = viewMatch[1];
     return { productId, categorySlug: null, categoryId: null, region: null, format: "view_product_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: `${origin}/view/product/${productId}` };
   }
-  const categoryMatch = pathname.match(/^\/shop\/([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i);
+  const categoryMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i
+    : /^\/shop\/([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i);
   if (categoryMatch) {
     const region = categoryMatch[1];
     const categorySlug = categoryMatch[2];
     const categoryId = categoryMatch[3];
-    return { productId: null, categorySlug, categoryId, region, format: "category_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: `${origin}/shop/${region}/c/${categorySlug}/${categoryId}` };
+    return { productId: null, categorySlug, categoryId, region, format: "category_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: canonicalRegionalPath(region, `/c/${categorySlug}/${categoryId}`) };
   }
-  const shopHomeMatch = pathname.match(/^\/shop\/([^/]+)\/?$/i);
+  const shopHomeMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/?$/i
+    : /^\/shop\/([^/]+)\/?$/i);
   if (shopHomeMatch) {
     const region = shopHomeMatch[1];
-    return { productId: null, categorySlug: null, categoryId: null, region, format: "shop_home" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: `${origin}/shop/${region}` };
+    return { productId: null, categorySlug: null, categoryId: null, region, format: "shop_home" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: canonicalRegionalPath(region) };
+  }
+  if (productIdFromQuery) {
+    return { productId: productIdFromQuery, categorySlug: null, categoryId: null, region: null, format: "view_product_url" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: `${origin}/view/product/${productIdFromQuery}` };
   }
   return { productId: null, categorySlug: null, categoryId: null, region: null, format: "not_found" as MarketplaceUrlFormat, originalUrl, cleanUrl, canonicalUrl: null };
 }
@@ -216,7 +231,32 @@ function trimTikTokDescription(text: string) {
   if (stopMatch > 80) {
     output = output.slice(0, stopMatch).trim();
   }
-  return output.slice(0, 12_000);
+  return sanitizeTikTokDescriptionLines(output.split(/\n+/)).slice(0, 12_000);
+}
+
+function isTikTokDescriptionCommercialLine(line: string) {
+  return /^-\d{1,3}%$/.test(line)
+    || /^[฿$]\s*[\d,.]+$/.test(line)
+    || /^[\d,.]+$/.test(line)
+    || /^(ส่งฟรี|free shipping|ซื้อเลย|เพิ่มลงรถเข็น|จำนวน\s*:?)$/i.test(line)
+    || /^(คะแนนสินค้า|รีวิวจากผู้ใช้|รูปภาพจากรีวิว|สินค้านี้|การจัดส่ง|คืนสินค้า|คูปอง|ส่วนลด)$/i.test(line)
+    || /^(ขายโดย|sold by)\s+/i.test(line)
+    || /(?:จำหน่ายไป|ขายแล้ว|sold)\s*[\d,.]+[kKmM]?/i.test(line)
+    || /^[1-5](?:\.\d+)?\s*[★⭐]?\s*\(?[\d,.]+[kKmM]?\)?$/.test(line);
+}
+
+function sanitizeTikTokDescriptionLines(lines: string[]) {
+  const collected: string[] = [];
+  for (const value of lines) {
+    const line = clean(value);
+    if (!line || line.length <= 1) continue;
+    if (/^ดูเพิ่มเติม$|^Show more$/i.test(line)) continue;
+    if (/สำรวจสินค้า|สินค้าที่คล้ายกัน|สินค้าแนะนำ|รีวิวจากผู้ใช้|รูปภาพจากรีวิว|คะแนนสินค้า|You may also like/i.test(line)) break;
+    if (collected.length > 0 && isTikTokDescriptionCommercialLine(line)) break;
+    collected.push(line);
+    if (collected.join("\n").length >= 12_000) break;
+  }
+  return collected.join("\n").trim();
 }
 
 function parseCompactCount(raw: string | null): number | null {
@@ -230,6 +270,14 @@ function parseCompactCount(raw: string | null): number | null {
   if (/k|พัน/.test(text)) return Math.round(value * 1_000);
   if (/หมื่น/.test(text)) return Math.round(value * 10_000);
   return Math.round(value);
+}
+
+function parseTikTokMoney(raw: string | null): number | null {
+  if (!raw) return null;
+  const match = raw.replace(/,/g, "").match(/[฿$]\s*(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
 }
 
 function closestProductCard(anchor: HTMLAnchorElement): HTMLElement | null {
@@ -286,6 +334,265 @@ function scoreTikTokCandidate(input: {
   return { score: Math.round(Math.min(100, score)), reasons };
 }
 
+function isTikTokShowcaseProductListPage() {
+  return location.hostname === "shop.tiktok.com" && /^\/streamer\/showcase\/product\/list\/?$/i.test(location.pathname);
+}
+
+interface TikTokShowcaseRowInfo {
+  node: HTMLElement;
+  text: string;
+  rect: DOMRect;
+  productId: string;
+  imageUrls: string[];
+  imageHashes: string[];
+}
+
+let showcaseEditClickTrackerStarted = false;
+let lastShowcaseEditContext: { productId: string; imageHashes: string[]; at: number } | null = null;
+
+function tiktokPdpUrlFromId(productId: string) {
+  return `https://shop.tiktok.com/th/pdp/${productId}`;
+}
+
+function tiktokImageHash(url: string | null | undefined) {
+  return (url || "").match(/\/([^/?#~]+)~tplv-/)?.[1] ?? null;
+}
+
+function uniqueHttpUrls(urls: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const value of urls) {
+    const url = (value || "").trim();
+    if (!/^https?:\/\//i.test(url) && !url.startsWith("//")) continue;
+    const normalized = url.startsWith("//") ? `https:${url}` : url;
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    output.push(normalized);
+  }
+  return output;
+}
+
+function showcaseImageUrlsFromNode(root: ParentNode) {
+  return uniqueHttpUrls(Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
+    .filter((image) => {
+      const rect = image.getBoundingClientRect();
+      const url = image.currentSrc || image.src || "";
+      if (!url || /avatar|profile|icon|logo/i.test(url)) return false;
+      return rect.width >= 36 && rect.height >= 36;
+    })
+    .map((image) => image.currentSrc || image.src));
+}
+
+function visibleShowcaseEditModal() {
+  return Array.from(document.querySelectorAll<HTMLElement>("[role='dialog'], [aria-modal='true'], .modal, .semi-modal, .semi-modal-content, .arco-modal, .arco-modal-content, div"))
+    .map((node) => ({ node, text: clean(node.innerText || node.textContent || ""), rect: node.getBoundingClientRect() }))
+    .filter((item) => item.rect.width >= 320 && item.rect.height >= 240)
+    .filter((item) => /แก้ไขผลิตภัณฑ์|ภาพผลิตภัณฑ์|Product images?|Edit product/i.test(item.text))
+    .sort((left, right) => left.text.length - right.text.length)[0]?.node ?? null;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForShowcaseEditModal(timeoutMs = 6000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const modal = visibleShowcaseEditModal();
+    if (modal) return modal;
+    await wait(150);
+  }
+  return null;
+}
+
+function rowInfoFromNode(node: HTMLElement): TikTokShowcaseRowInfo | null {
+  const text = clean(node.innerText || node.textContent || "");
+  const productId = text.match(/ID\s*:?\s*(\d{10,})/i)?.[1] ?? null;
+  if (!productId) return null;
+  const imageUrls = showcaseImageUrlsFromNode(node);
+  return {
+    node,
+    text,
+    rect: node.getBoundingClientRect(),
+    productId,
+    imageUrls,
+    imageHashes: imageUrls.map(tiktokImageHash).filter(Boolean) as string[],
+  };
+}
+
+function findShowcaseRowFromElement(element: HTMLElement | null) {
+  let current: HTMLElement | null = element;
+  for (let depth = 0; current && depth < 10; depth += 1) {
+    const info = rowInfoFromNode(current);
+    if (info) return info;
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function findShowcaseRowByProductId(productId: string) {
+  return (Array.from(document.querySelectorAll<HTMLElement>("tr, [role='row'], tbody > *, div"))
+    .map(rowInfoFromNode)
+    .filter(Boolean) as TikTokShowcaseRowInfo[])
+    .filter((row) => row.productId === productId)
+    .sort((left, right) => {
+      const leftHasEdit = Number(Boolean(findShowcaseEditAction(left)));
+      const rightHasEdit = Number(Boolean(findShowcaseEditAction(right)));
+      return rightHasEdit - leftHasEdit || right.rect.width - left.rect.width || right.rect.height - left.rect.height;
+    })[0] ?? null;
+}
+
+function findShowcaseEditAction(row: TikTokShowcaseRowInfo) {
+  return Array.from(row.node.querySelectorAll<HTMLElement>("button, a, span, div, [role='button']"))
+    .find((node) => /^(แก้ไข|Edit)$/i.test(clean(node.innerText || node.textContent || ""))) ?? null;
+}
+
+function closeShowcaseEditModal(modal: HTMLElement) {
+  const cancelButton = Array.from(modal.querySelectorAll<HTMLElement>("button, [role='button'], span, div"))
+    .find((node) => /^(ยกเลิก|Cancel)$/i.test(clean(node.innerText || node.textContent || "")));
+  cancelButton?.click();
+  if (cancelButton) return;
+  const closeIcon = Array.from(modal.querySelectorAll<HTMLElement>("svg, button, [role='button']"))
+    .find((node) => /Delete|Close|ปิด/i.test(node.getAttribute("class") || node.getAttribute("aria-label") || ""));
+  closeIcon?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+}
+
+function ensureShowcaseEditClickTracker() {
+  if (showcaseEditClickTrackerStarted || !isTikTokShowcaseProductListPage()) return;
+  showcaseEditClickTrackerStarted = true;
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof HTMLElement ? event.target : null;
+    const action = target?.closest<HTMLElement>("button, a, span, div") ?? null;
+    const actionText = clean(action?.innerText || action?.textContent || "");
+    if (!/^(แก้ไข|Edit)$/i.test(actionText)) return;
+    const row = findShowcaseRowFromElement(action);
+    if (!row) return;
+    lastShowcaseEditContext = {
+      productId: row.productId,
+      imageHashes: row.imageHashes,
+      at: Date.now(),
+    };
+  }, true);
+}
+
+function extractShowcaseTitle(text: string, productId: string) {
+  const beforeId = clean(text.split(new RegExp(`ID\\s*:?\\s*${productId}`, "i"))[0] ?? "");
+  const withoutRowNumber = beforeId.replace(/^\d+\s+/, "").trim();
+  const title = withoutRowNumber
+    .split(/\s+(?:฿\s*\d|\$\s*\d)/)[0]
+    .replace(/^(?:เลือก|หมายเลข|ผลิตภัณฑ์)\s+/i, "")
+    .trim();
+  return title || text.match(/(.{8,200}?)\s*ID\s*:/i)?.[1]?.trim() || `TikTok product ${productId}`;
+}
+
+function scanTikTokShowcaseProductList(limit = 60): CategoryProductCandidate[] {
+  ensureShowcaseEditClickTracker();
+  const rows = Array.from(document.querySelectorAll<HTMLElement>("tr, [role='row'], tbody > *, div"))
+    .map(rowInfoFromNode)
+    .filter(Boolean) as TikTokShowcaseRowInfo[];
+  const rowNodes = rows
+    .filter((item) => item.text.length >= 30 && item.text.length <= 2_000)
+    .filter((item) => item.rect.width >= 240 && item.rect.height >= 24 && item.rect.height <= 260)
+    .sort((left, right) => left.rect.top - right.rect.top || left.rect.left - right.rect.left);
+
+  const modal = visibleShowcaseEditModal();
+  const modalImageUrls = modal ? showcaseImageUrlsFromNode(modal) : [];
+  const modalImageHashes = new Set(modalImageUrls.map(tiktokImageHash).filter(Boolean) as string[]);
+  const clickedContextIsFresh = Boolean(lastShowcaseEditContext && Date.now() - lastShowcaseEditContext.at < 10 * 60_000);
+  const modalProductId = clickedContextIsFresh
+    ? lastShowcaseEditContext?.productId ?? null
+    : rowNodes.find((row) => row.imageHashes.some((hash) => modalImageHashes.has(hash)))?.productId ?? null;
+
+  const seen = new Set<string>();
+  const candidates: CategoryProductCandidate[] = [];
+  for (const item of rowNodes) {
+    const productId = item.productId;
+    if (seen.has(productId)) continue;
+    seen.add(productId);
+
+    const productUrl = tiktokPdpUrlFromId(productId);
+    const moneyTexts = Array.from(item.text.matchAll(/[฿$]\s*[\d,.]+(?:\.\d+)?/g)).map((match) => match[0]);
+    const priceText = moneyTexts[0] ?? null;
+    const commissionAmountText = moneyTexts.find((money, index) => index > 0 && money !== priceText) ?? null;
+    const priceValue = parseTikTokMoney(priceText);
+    const commissionValue = parseTikTokMoney(commissionAmountText);
+    const commissionRatePercent = priceValue && commissionValue != null
+      ? Math.round((commissionValue / priceValue) * 10_000) / 100
+      : null;
+    const title = extractShowcaseTitle(item.text, productId);
+    const imageUrls = uniqueHttpUrls([
+      ...item.imageUrls,
+      ...(modalProductId === productId ? modalImageUrls : []),
+    ]).slice(0, 24);
+    const imageUrl = imageUrls[0] ?? null;
+    const hasStock = /มีในสต็อก|in stock/i.test(item.text);
+    const score = 35
+      + (priceText ? 10 : 0)
+      + (commissionRatePercent != null && commissionRatePercent > 0 ? Math.min(25, commissionRatePercent) : 0)
+      + (imageUrl ? 10 : 0)
+      + (hasStock ? 10 : 0)
+      + (candidates.length < 10 ? 5 : 0);
+
+    candidates.push({
+      platform: "tiktok_shop",
+      sourceUrl: location.href.split("#")[0],
+      externalProductId: productId,
+      externalShopId: null,
+      title,
+      url: productUrl,
+      priceText,
+      soldCountText: null,
+      discountText: null,
+      ratingText: null,
+      commissionRatePercent,
+      commissionRateText: commissionRatePercent != null ? `${commissionRatePercent}%` : commissionAmountText,
+      imageUrl,
+      imageUrls,
+      originalUrl: productUrl,
+      cleanUrl: productUrl,
+      canonicalUrl: productUrl,
+      urlFormat: "pdp_url",
+      badges: ["showcase", ...(hasStock ? ["in_stock"] : [])],
+      position: candidates.length,
+      score: Math.round(Math.min(100, score)),
+      scoreReasons: [
+        "พบสินค้าใน TikTok showcase",
+        `product id ${productId}`,
+        ...(commissionAmountText ? [`คอมมิชชั่นโดยประมาณ ${commissionAmountText}`] : []),
+        ...(commissionRatePercent != null ? [`คำนวณอัตราคอมมิชชั่น ${commissionRatePercent}%`] : []),
+        ...(modalProductId === productId && modalImageUrls.length > 0 ? [`พบรูปจาก modal แก้ไข ${modalImageUrls.length} รูป`] : []),
+        ...(hasStock ? ["มีสต็อก"] : []),
+      ],
+    });
+
+    if (candidates.length >= limit) break;
+  }
+  return candidates;
+}
+
+export async function collectTikTokShowcaseImagesForProduct(productId: string, timeoutMs = 7000): Promise<CategoryProductCandidate> {
+  if (!isTikTokShowcaseProductListPage()) throw new Error("not_tiktok_showcase_page");
+  ensureShowcaseEditClickTracker();
+  const row = findShowcaseRowByProductId(productId);
+  if (!row) throw new Error("showcase_product_row_not_found");
+  const action = findShowcaseEditAction(row);
+  if (!action) throw new Error("showcase_edit_action_not_found");
+
+  row.node.scrollIntoView({ block: "center", behavior: "smooth" });
+  lastShowcaseEditContext = { productId: row.productId, imageHashes: row.imageHashes, at: Date.now() };
+  await wait(250);
+  action.click();
+  const modal = await waitForShowcaseEditModal(timeoutMs);
+  if (!modal) throw new Error("showcase_edit_modal_not_found");
+  await wait(250);
+
+  const candidate = scanTikTokShowcaseProductList(100).find((item) => item.externalProductId === productId);
+  closeShowcaseEditModal(modal);
+  if (!candidate) throw new Error("showcase_candidate_not_found_after_modal");
+  if (!candidate.imageUrls?.length) throw new Error("showcase_modal_images_not_found");
+  return candidate;
+}
+
 function extractProductName(rawDomText: string) {
   const lines = rawDomText.split(/\n+/).map((line) => clean(line)).filter(Boolean);
   const priceLineIndex = lines.findIndex((line) => /[฿$]\s?[\d,.]+/.test(line));
@@ -298,15 +605,7 @@ function extractDescription(rawDomText: string) {
   const lines = rawDomText.split(/\n+/).map((line) => clean(line)).filter(Boolean);
   const markerIndex = lines.map((line) => /เกี่ยวกับสินค้ารายการนี้|คำอธิบายสินค้า/i.test(line)).lastIndexOf(true);
   if (markerIndex >= 0) {
-    const collected: string[] = [];
-    for (const line of lines.slice(markerIndex + 1)) {
-      if (/สำรวจสินค้า|สินค้าที่คล้ายกัน|สินค้าแนะนำ|รีวิวจากผู้ใช้|รูปภาพจากรีวิว|คะแนนสินค้า|You may also like/i.test(line)) break;
-      if (/^ดูเพิ่มเติม$|^Show more$/i.test(line)) continue;
-      if (line.length <= 1) continue;
-      collected.push(line);
-      if (collected.join("\n").length >= 12_000) break;
-    }
-    const fromLines = collected.join("\n").trim();
+    const fromLines = sanitizeTikTokDescriptionLines(lines.slice(markerIndex + 1));
     if (fromLines.length >= 20) return fromLines.slice(0, 12_000);
   }
 
@@ -460,9 +759,11 @@ function collectTikTokVariants() {
 }
 
 export function scanTikTokShopCategoryPage(limit = 60): CategoryProductCandidate[] {
+  if (isTikTokShowcaseProductListPage()) return scanTikTokShowcaseProductList(limit);
+
   const currentPage = parseTikTokShopUrl(location.href);
   const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))
-    .filter((anchor) => /\/shop\/[^/]+\/pdp\/\d+|\/view\/product\/\d+/i.test(anchor.href));
+    .filter((anchor) => Boolean(parseTikTokShopUrl(anchor.href).productId));
   const uniqueAnchors = Array.from(new Map(anchors.map((anchor) => {
     const parsed = parseTikTokShopUrl(anchor.href);
     return [parsed.canonicalUrl ?? anchor.href, anchor] as const;
@@ -562,6 +863,7 @@ export function scanTikTokShopProductPage(): ProductCapturePayload {
     originalSourceUrl: parsedUrl.originalUrl,
     cleanSourceUrl: parsedUrl.cleanUrl,
     canonicalSourceUrl: parsedUrl.canonicalUrl,
+    productPageUrl: parsedUrl.canonicalUrl ?? parsedUrl.cleanUrl,
     sourceUrlFormat: parsedUrl.format,
     pageType: "product",
     externalProductId: parsedUrl.productId,

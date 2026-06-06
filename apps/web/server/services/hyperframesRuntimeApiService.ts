@@ -25,6 +25,7 @@ import {
 import {
   getMarketplaceAutoReviewRun,
   startMarketplaceAutoReviewRun,
+  type MarketplaceAutoReviewReferenceAnchorsInput,
 } from "./marketplaceAutoReviewService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import { buildHyperframesCompositionInput } from "./hyperframesCompositionService";
@@ -61,6 +62,68 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.map(item => cleanText(item)).filter(Boolean)
     : [];
+}
+
+function buildAutoStoryboardProductReferenceAnchors(
+  productBundle: unknown
+): MarketplaceAutoReviewReferenceAnchorsInput | null {
+  const bundle = isRecord(productBundle) ? productBundle : {};
+  const images = Array.isArray(bundle.images) ? bundle.images : [];
+  const image = images.find(item => cleanText((item as Record<string, unknown>)?.url));
+  if (!isRecord(image)) return null;
+  const url = cleanText(image.url);
+  if (!url) return null;
+  const id = cleanText(image.id);
+  const hash = cleanText(image.sha256) || cleanText(image.hash);
+  const ref = hash
+    ? `product-image-sha256:${hash}`
+    : id
+      ? `marketplace-product-image:${id}`
+      : `product-image-url:${url}`;
+  return {
+    schemaVersion: 1,
+    creationIntent: "auto_review_video",
+    requiredRoles: ["product"],
+    lockPolicy: {
+      mode: "auto_product_anchor_from_product_default",
+      bindingPolicy:
+        "system_selected_hero_or_first_product_image_is_primary_generation_truth",
+      product: "preserve_exact_visible_product_identity",
+      character: "not_required_for_auto_product_review",
+      environment: "not_required_for_auto_product_review",
+      auditMetadataRequired: true,
+    },
+    productImageUrl: url,
+    productImageId: id || null,
+    productImageRef: ref,
+    productImageSource: cleanText(image.source) || "marketplace_product_image",
+    productImageSourceUrl:
+      cleanText(image.sourceUrl) || cleanText(image.originalSourceUrl) || null,
+    productImageStorageKey:
+      cleanText(image.storageKey) || cleanText(image.key) || null,
+    productImageHash: hash || null,
+    productImageIndex: 0,
+    auditMetadata: {
+      product: {
+        id: id || null,
+        source: cleanText(image.source) || "marketplace_product_image",
+        referenceFormat: "single_product_image",
+        selectedBy: "auto_storyboard_review_backend_fallback",
+      },
+    },
+    fileEvidence: {
+      productImage: {
+        url,
+        id: id || null,
+        hash: hash || null,
+        index: 0,
+      },
+    },
+    sourceRefs: [
+      ...(id ? [`product-image:${id}`] : []),
+      ...(hash ? [`product-image-sha256:${hash}`] : []),
+    ],
+  };
 }
 
 function renderJobIdFromRunState(runState: unknown): string {
@@ -364,6 +427,7 @@ export async function startAutoStoryboardReviewForApi(input: {
   expectedPlanHash?: string;
   idempotencyKey?: string;
   overrides?: Record<string, unknown>;
+  referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   runtime?: Record<string, unknown>;
 }) {
   const plan = await getHyperframesAutoStoryboardReviewPlan({
@@ -414,6 +478,13 @@ export async function startAutoStoryboardReviewForApi(input: {
       invalidates: [],
     };
   }
+  const productBundle = await getMarketplaceProductWithAccess(
+    input.productId,
+    input.auth
+  );
+  const referenceAnchors =
+    input.referenceAnchors ??
+    buildAutoStoryboardProductReferenceAnchors(productBundle);
   const run = await startMarketplaceAutoReviewRun(
     {
       productId: input.productId,
@@ -426,6 +497,7 @@ export async function startAutoStoryboardReviewForApi(input: {
       overlayTextMode: plan.defaults.overlayTextMode,
       imageModel: plan.defaults.imageModel,
       qualityMode: toMarketplaceAutoReviewQualityMode(plan.defaults.qualityMode),
+      referenceAnchors,
     },
     input.auth,
     input.runtime ?? {}
@@ -452,7 +524,6 @@ export async function startAutoStoryboardReviewForApi(input: {
       invalidates: INVALIDATES,
     };
   }
-  const productBundle = await getMarketplaceProductWithAccess(input.productId, input.auth);
   const composition = buildHyperframesCompositionInput({
     tenantId: input.auth.tenantId ?? "default",
     userId: input.auth.userId,

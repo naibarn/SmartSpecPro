@@ -167,10 +167,18 @@ function mergeMarketplaceCandidateFallback(capture: MarketplaceCaptureSession, c
   const normalized = asRecord(capture.normalizedResultJson ?? capture.llmResultJson);
   const candidateRaw = asRecord(candidate?.rawJson);
   const candidateAffiliateUrl = normalizeOptionalHttpUrl(candidate?.affiliateUrl ?? candidateRaw.affiliateUrl);
+  const candidateCommissionCheckUrl = normalizeOptionalHttpUrl(
+    candidateRaw.commissionCheckUrl ?? candidateRaw.offerUrl ?? candidateRaw.offerSpecificUrl,
+  );
   const captureAffiliateUrl = normalizeOptionalHttpUrl(capture.affiliateUrl);
   const rawAffiliateUrl = normalizeOptionalHttpUrl(raw.affiliateUrl);
   const normalizedAffiliateUrl = normalizeOptionalHttpUrl(normalized.affiliateUrl);
+  const rawCommissionCheckUrl = normalizeOptionalHttpUrl(raw.commissionCheckUrl);
+  const normalizedCommissionCheckUrl = normalizeOptionalHttpUrl(normalized.commissionCheckUrl);
+  const normalizedPlatformRaw = asRecord(normalized.platformRawJson);
+  const normalizedPlatformCommissionCheckUrl = normalizeOptionalHttpUrl(normalizedPlatformRaw.commissionCheckUrl);
   const effectiveAffiliateUrl = captureAffiliateUrl || rawAffiliateUrl || normalizedAffiliateUrl || candidateAffiliateUrl;
+  const effectiveCommissionCheckUrl = rawCommissionCheckUrl || normalizedCommissionCheckUrl || normalizedPlatformCommissionCheckUrl || candidateCommissionCheckUrl;
 
   const rawCommissionPercent = normalizeCommissionPercent(raw.commissionRatePercent);
   const normalizedCommissionPercent = normalizeCommissionPercent(normalized.commissionRatePercent);
@@ -199,6 +207,20 @@ function mergeMarketplaceCandidateFallback(capture: MarketplaceCaptureSession, c
     nextNormalized.affiliateUrl = effectiveAffiliateUrl;
     confidence.affiliateUrl = 1;
     evidence.affiliateUrl = appendEvidence(evidence.affiliateUrl, "candidate:affiliate_url");
+    changed = true;
+  }
+  if (effectiveCommissionCheckUrl && !rawCommissionCheckUrl) {
+    nextRaw.commissionCheckUrl = effectiveCommissionCheckUrl;
+    changed = true;
+  }
+  if (effectiveCommissionCheckUrl && !normalizedCommissionCheckUrl) {
+    nextNormalized.commissionCheckUrl = effectiveCommissionCheckUrl;
+    nextNormalized.platformRawJson = {
+      ...normalizedPlatformRaw,
+      commissionCheckUrl: effectiveCommissionCheckUrl,
+    };
+    confidence.commissionCheckUrl = 1;
+    evidence.commissionCheckUrl = appendEvidence(evidence.commissionCheckUrl, "candidate:commission_check_url");
     changed = true;
   }
   if (effectiveCommissionPercent != null && rawCommissionPercent == null) {
@@ -263,6 +285,7 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
     originalSourceUrl: parsed.originalSourceUrl ?? shopeeUrl?.originalUrl ?? tiktokUrl?.originalUrl ?? parsed.sourceUrl,
     cleanSourceUrl: parsed.cleanSourceUrl ?? shopeeUrl?.cleanUrl ?? tiktokUrl?.cleanUrl ?? parsed.sourceUrl,
     canonicalSourceUrl: parsed.canonicalSourceUrl ?? shopeeUrl?.canonicalUrl ?? tiktokUrl?.canonicalUrl ?? null,
+    productPageUrl: parsed.productPageUrl ?? parsed.canonicalSourceUrl ?? tiktokUrl?.canonicalUrl ?? tiktokUrl?.cleanUrl ?? parsed.sourceUrl,
     sourceUrlFormat: parsed.sourceUrlFormat ?? shopeeUrl?.format ?? tiktokUrl?.format,
     shopeeUrl,
     tiktokUrl,

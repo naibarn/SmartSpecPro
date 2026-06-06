@@ -229,6 +229,10 @@ function absoluteUrl(value: string | null | undefined): string | null {
   }
 }
 
+function looksTruncatedUrl(value: string | null | undefined) {
+  return Boolean(value && /(?:\.\.\.|…)/.test(value));
+}
+
 function imageUrlFromElement(image: HTMLImageElement): string | null {
   return absoluteUrl(image.currentSrc || image.src || srcsetUrl(image.getAttribute("srcset")));
 }
@@ -251,8 +255,17 @@ function bestCardImageText(card: HTMLElement): string | null {
 }
 
 function extractUrls(value: string | null | undefined): string[] {
-  const urls = value?.match(/https?:\/\/[^\s"'<>]+/g) ?? [];
-  return urls.map((url) => url.replace(/[),.;\]]+$/g, ""));
+  const raw = value || "";
+  const decodedValues = new Set([raw]);
+  try {
+    decodedValues.add(decodeURIComponent(raw));
+  } catch {
+    // Some DOM attributes contain percent-like tracking fragments that are not valid URI components.
+  }
+  const urls = Array.from(decodedValues).flatMap((candidate) => candidate.match(/https?:\/\/[^\s"'<>]+/g) ?? []);
+  return urls
+    .map((url) => url.replace(/[),.;\]]+$/g, ""))
+    .filter((url) => !looksTruncatedUrl(url));
 }
 
 function urlsFromElement(element: HTMLElement) {
@@ -294,6 +307,7 @@ function isLikelyAffiliateUrl(url: string, productUrl: string | null): boolean {
   } catch {
     return false;
   }
+  if (looksTruncatedUrl(url) || looksTruncatedUrl(parsed.href)) return false;
   if (!/^https?:$/i.test(parsed.protocol)) return false;
   if (productUrl && parsed.href === productUrl) return false;
   if (isAffiliateProductOfferUrl(parsed)) return false;
@@ -693,6 +707,7 @@ function scanShopeeAffiliateOfferPage(limit = 60): CategoryProductCandidate[] {
       commissionRatePercent,
       commissionRateText,
       affiliateUrl,
+      commissionCheckUrl: offerSpecificUrl,
       affiliateLinkAvailable: Boolean(findAffiliateLinkButton(item.node)),
       affiliateCardKey: affiliateCardKey(item.node),
       imageUrl,

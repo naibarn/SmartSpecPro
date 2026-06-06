@@ -1,3 +1,3 @@
 # Contracts
 
-No parallel agent contracts. Standard light mode direct inline implementation.
+No cross-agent contracts were needed. This was a direct standard-light UI change.

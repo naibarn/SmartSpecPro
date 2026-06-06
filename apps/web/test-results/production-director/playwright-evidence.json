@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 12,
+                      "duration": 21,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:18.278Z",
+                      "startTime": "2026-06-06T02:49:57.281Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -126,12 +126,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 5,
+                      "duration": 13,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:18.317Z",
+                      "startTime": "2026-06-06T02:49:57.328Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -160,12 +160,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 6,
+                      "duration": 3,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:18.333Z",
+                      "startTime": "2026-06-06T02:49:57.351Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -194,12 +194,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2,
+                      "duration": 3,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:18.345Z",
+                      "startTime": "2026-06-06T02:49:57.366Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -228,12 +228,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4304,
+                      "duration": 4590,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:18.355Z",
+                      "startTime": "2026-06-06T02:49:57.378Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -262,12 +262,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1555,
+                      "duration": 1619,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:22.721Z",
+                      "startTime": "2026-06-06T02:50:02.028Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -296,12 +296,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 8254,
+                      "duration": 8376,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:24.284Z",
+                      "startTime": "2026-06-06T02:50:03.654Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -311,7 +311,7 @@
               ],
               "id": "5a050f4a632e5693260d-bd7f450c3408c58adfff",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1182,
+              "line": 1184,
               "column": 3
             },
             {
@@ -330,12 +330,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1591,
+                      "duration": 1567,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:32.546Z",
+                      "startTime": "2026-06-06T02:50:12.037Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -345,7 +345,7 @@
               ],
               "id": "5a050f4a632e5693260d-b7744272ad5151f825f5",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1209,
+              "line": 1213,
               "column": 3
             },
             {
@@ -364,12 +364,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1462,
+                      "duration": 1537,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:34.143Z",
+                      "startTime": "2026-06-06T02:50:13.617Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -379,7 +379,7 @@
               ],
               "id": "5a050f4a632e5693260d-e4577abced5e8a085415",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1256,
+              "line": 1260,
               "column": 3
             },
             {
@@ -398,12 +398,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 5235,
+                      "duration": 5637,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:35.612Z",
+                      "startTime": "2026-06-06T02:50:15.161Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -413,7 +413,7 @@
               ],
               "id": "5a050f4a632e5693260d-fbb91314520b9a6f9e35",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1332,
+              "line": 1336,
               "column": 3
             },
             {
@@ -432,12 +432,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1525,
+                      "duration": 1666,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:40.855Z",
+                      "startTime": "2026-06-06T02:50:20.810Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -447,7 +447,7 @@
               ],
               "id": "5a050f4a632e5693260d-e6f57ab8dea7403de6d9",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1425,
+              "line": 1447,
               "column": 3
             },
             {
@@ -466,12 +466,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 11615,
+                      "duration": 12230,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-05T16:19:42.386Z",
+                      "startTime": "2026-06-06T02:50:22.487Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -481,7 +481,7 @@
               ],
               "id": "5a050f4a632e5693260d-c22cc173462da1003201",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1460,
+              "line": 1482,
               "column": 3
             }
           ]
@@ -491,8 +491,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-06-05T16:19:12.175Z",
-    "duration": 41943.38,
+    "startTime": "2026-06-06T02:49:52.076Z",
+    "duration": 42767.785,
     "expected": 12,
     "skipped": 0,
     "unexpected": 0,

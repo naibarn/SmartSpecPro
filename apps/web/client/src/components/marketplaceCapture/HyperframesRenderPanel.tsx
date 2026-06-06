@@ -47,6 +47,18 @@ export function HyperframesRenderPanel({
   const output = getHyperframesRenderDisplayOutput(render);
   const durableOutput = getHyperframesRenderLibraryReadyOutput(render);
   const qaPassed = isHyperframesRenderQaPassed(render);
+  const renderDetails = render
+    ? [
+        { label: "Job", value: render.renderJobId },
+        { label: "Template", value: render.templateId },
+        { label: "Mode", value: render.compositionMode },
+        { label: "Intent", value: render.renderIntent },
+        { label: "Input", value: render.compositionInputHash },
+      ].filter(
+        (item): item is { label: string; value: string } =>
+          typeof item.value === "string" && item.value.trim().length > 0
+      )
+    : [];
   const canSaveToLibrary =
     Boolean(onSaveToLibrary) &&
     uiState.completed &&
@@ -113,6 +125,18 @@ export function HyperframesRenderPanel({
           style={{ width: `${render?.progressPercent ?? 0}%` }}
         />
       </div>
+      {renderDetails.length ? (
+        <dl className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-3">
+          {renderDetails.map(item => (
+            <div key={item.label} className="min-w-0 rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950">
+              <dt className="font-medium text-slate-500 dark:text-slate-400">{item.label}</dt>
+              <dd className="mt-1 truncate font-mono text-slate-800 dark:text-slate-100" title={item.value}>
+                {item.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {render?.safeDiagnostics?.length ? (
         <div className="mt-3 rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
           {render.safeDiagnostics.slice(0, 3).map(item => (

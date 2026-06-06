@@ -94,7 +94,6 @@ export function AutoStoryboardAdvancedOverrides({
   const localOverrideFields = describeFields(Object.keys(effectiveValue));
   const serverOverrideFields = describeFields(fields);
   const platformPresetOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกรูปแบบ" : "Auto format" },
     {
       value: "generic_vertical_9_16",
       label: thai ? "แนวตั้ง 9:16" : "Vertical 9:16",
@@ -102,13 +101,15 @@ export function AutoStoryboardAdvancedOverrides({
     { value: "tiktok_reels_shorts_9_16", label: "TikTok / Reels / Shorts" },
   ] as const;
   const qualityModeOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกคุณภาพ" : "Auto quality" },
     { value: "fast", label: thai ? "ร่างเร็ว" : "Fast draft" },
     { value: "balanced", label: thai ? "สมดุล" : "Balanced" },
     { value: "high", label: thai ? "คุณภาพสูง QA" : "High QA" },
   ] as const;
   const audioStrategyOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกเสียง" : "Auto audio" },
+    {
+      value: "auto",
+      label: thai ? "ให้ระบบตัดสินเสียง" : "Auto decision",
+    },
     {
       value: "native_video_audio",
       label: thai ? "ใช้เสียงจากวิดีโอ" : "Use native video audio",
@@ -120,7 +121,6 @@ export function AutoStoryboardAdvancedOverrides({
     { value: "silent", label: thai ? "ไม่มีเสียง" : "Silent" },
   ] as const;
   const overlayTextModeOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกข้อความ" : "Auto text policy" },
     {
       value: "no_text",
       label: thai ? "ไม่สร้างข้อความบนภาพ" : "No generated text",
@@ -131,13 +131,11 @@ export function AutoStoryboardAdvancedOverrides({
     },
   ] as const;
   const shotCountOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกจำนวนช็อต" : "Auto shot count" },
     { value: "7", label: thai ? "7 ช็อต" : "7 shots" },
     { value: "8", label: thai ? "8 ช็อต" : "8 shots" },
     { value: "9", label: thai ? "9 ช็อต" : "9 shots" },
   ] as const;
   const frameStrategyOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกเฟรม" : "Auto frames" },
     {
       value: "storyboard_3x3_split",
       label: thai ? "ตาราง storyboard 3x3" : "3x3 storyboard grid",
@@ -148,7 +146,6 @@ export function AutoStoryboardAdvancedOverrides({
     },
   ] as const;
   const imageModelOptions = [
-    { value: "", label: thai ? "ให้ระบบเลือกโมเดลภาพ" : "Auto image model" },
     {
       value: "google-nano-banana-pro",
       label: thai ? "Nano Banana Pro" : "Nano Banana Pro",
@@ -158,17 +155,12 @@ export function AutoStoryboardAdvancedOverrides({
       label: thai ? "Banana 2" : "Banana 2",
     },
   ] as const;
-  const defaultValueFor = (key: OverrideKey): string => {
-    const defaults = plan?.defaults;
-    if (!defaults) return "";
-    if (key === "platformPresetId") return defaults.platformPreset.presetId;
-    const value = defaults[key as keyof typeof defaults];
-    return typeof value === "number" ? String(value) : String(value ?? "");
-  };
+  const defaultValueFor = (key: OverrideKey): string => baseAutoDefaultValues[key];
+  const selectedValueFor = (key: OverrideKey): string =>
+    overrideValueString(effectiveValue[key] ?? defaultValueFor(key));
   const update = (key: OverrideKey, nextValue: string) => {
     const next = { ...effectiveValue };
     if (
-      !nextValue ||
       nextValue === defaultValueFor(key) ||
       nextValue === baseAutoDefaultValues[key]
     ) {
@@ -224,11 +216,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.format}
                 className={fieldClass}
-                value={effectiveValue.platformPresetId ?? ""}
+                value={selectedValueFor("platformPresetId")}
                 onChange={event => update("platformPresetId", event.target.value)}
               >
                 {platformPresetOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -239,11 +231,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.quality}
                 className={fieldClass}
-                value={effectiveValue.qualityMode ?? ""}
+                value={selectedValueFor("qualityMode")}
                 onChange={event => update("qualityMode", event.target.value)}
               >
                 {qualityModeOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -254,11 +246,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.audio}
                 className={fieldClass}
-                value={effectiveValue.audioStrategy ?? ""}
+                value={selectedValueFor("audioStrategy")}
                 onChange={event => update("audioStrategy", event.target.value)}
               >
                 {audioStrategyOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -269,11 +261,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.textPolicy}
                 className={fieldClass}
-                value={effectiveValue.overlayTextMode ?? ""}
+                value={selectedValueFor("overlayTextMode")}
                 onChange={event => update("overlayTextMode", event.target.value)}
               >
                 {overlayTextModeOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -284,11 +276,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.shots}
                 className={fieldClass}
-                value={effectiveValue.shotCount ? String(effectiveValue.shotCount) : ""}
+                value={selectedValueFor("shotCount")}
                 onChange={event => update("shotCount", event.target.value)}
               >
                 {shotCountOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -299,11 +291,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.frames}
                 className={fieldClass}
-                value={effectiveValue.frameStrategy ?? ""}
+                value={selectedValueFor("frameStrategy")}
                 onChange={event => update("frameStrategy", event.target.value)}
               >
                 {frameStrategyOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -314,11 +306,11 @@ export function AutoStoryboardAdvancedOverrides({
               <select
                 aria-label={labels.imageModel}
                 className={fieldClass}
-                value={effectiveValue.imageModel ?? ""}
+                value={selectedValueFor("imageModel")}
                 onChange={event => update("imageModel", event.target.value)}
               >
                 {imageModelOptions.map(option => (
-                  <option key={option.value || "auto"} value={option.value}>
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}

@@ -270,7 +270,7 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.79";
+const EXTENSION_VERSION = "0.1.84";
 const EXTENSION_BUILD_LABEL = "2026-05-29 21:19 +07";
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -973,6 +973,7 @@ function buildReviewedProductPayload(input: {
     commissionRatePercent: parsePercentInput(editable.commissionRateText),
     commissionRateText: editable.commissionRateText,
     affiliateUrl,
+    commissionCheckUrl: product.commissionCheckUrl ?? null,
     soldCountText: editable.soldCountText,
     ratingScoreText: editable.ratingScoreText,
     reviewCountText: editable.reviewCountText,
@@ -1000,6 +1001,14 @@ function buildReviewedProductPayload(input: {
       priceCurrentText: { text: editable.priceCurrentText, source: "user_review", confidence: editable.priceCurrentText ? 0.95 : 0.2, normalized: parseNumber(editable.priceCurrentText) },
       commissionRate: { text: editable.commissionRateText, source: "user_review", confidence: editable.commissionRateText ? 0.95 : 0.2, normalized: parsePercentInput(editable.commissionRateText) },
       affiliateUrl: { text: affiliateUrl ?? "", source: "user_review", confidence: affiliateUrl ? 0.95 : 0.2, normalized: affiliateUrl },
+      ...(product.commissionCheckUrl ? {
+        commissionCheckUrl: {
+          text: product.commissionCheckUrl,
+          source: "product_list_exact_match",
+          confidence: 1,
+          normalized: product.commissionCheckUrl,
+        },
+      } : {}),
       soldCountText: { text: editable.soldCountText, source: "user_review", confidence: editable.soldCountText ? 0.9 : 0.2, normalized: parseSold(editable.soldCountText) },
       ratingScoreText: { text: editable.ratingScoreText, source: "user_review", confidence: editable.ratingScoreText ? 0.9 : 0.2, normalized: parseRating(editable.ratingScoreText) },
       reviewCountText: { text: editable.reviewCountText, source: "user_review", confidence: editable.reviewCountText ? 0.9 : 0.2, normalized: parseSold(editable.reviewCountText) },
@@ -1408,34 +1417,79 @@ function buildRuleBasedAskAnswer(input: {
 }
 
 function mergeImageCandidates(existing: ImageCandidate[], incoming: ImageCandidate[]) {
-  const byUrl = new Map<string, ImageCandidate>();
+  const keyForImage = (image: ImageCandidate) => {
+    const url = image.url.trim();
+    const tiktokHash = url.match(/\/([^/?#~]+)~tplv-/)?.[1];
+    return tiktokHash ? `tiktok:${tiktokHash}` : url;
+  };
+  const preferImage = (previous: ImageCandidate, image: ImageCandidate) => {
+    const incomingHasSpecificZone = image.kind !== "main" && image.kind !== "unknown";
+    const previousWasGeneric = previous.kind === "main" || previous.kind === "unknown";
+    const previousArea = (previous.width ?? 0) * (previous.height ?? 0);
+    const incomingArea = (image.width ?? 0) * (image.height ?? 0);
+    const betterVisual = incomingArea > previousArea ? image : previous;
+    return {
+      ...previous,
+      ...betterVisual,
+      kind: incomingHasSpecificZone && previousWasGeneric ? image.kind : previous.kind,
+      selected: Boolean(previous.selected || image.selected),
+      metadata: { ...(previous.metadata ?? {}), ...(image.metadata ?? {}) },
+    };
+  };
+  const byKey = new Map<string, ImageCandidate>();
   const merged: ImageCandidate[] = [];
   for (const image of existing.filter((candidate) => candidate.kind !== "related")) {
-    byUrl.set(image.url, image);
+    const key = keyForImage(image);
+    const previous = byKey.get(key);
+    if (previous) {
+      const updated = preferImage(previous, image);
+      byKey.set(key, updated);
+      const index = merged.findIndex((candidate) => keyForImage(candidate) === key);
+      if (index >= 0) merged[index] = updated;
+      continue;
+    }
+    byKey.set(key, image);
     merged.push(image);
   }
   for (const image of incoming.filter((candidate) => candidate.kind !== "related")) {
-    const previous = byUrl.get(image.url);
+    const key = keyForImage(image);
+    const previous = byKey.get(key);
     if (!previous) {
       const nextImage = { ...image, selected: false };
-      byUrl.set(image.url, nextImage);
+      byKey.set(key, nextImage);
       merged.push(nextImage);
       continue;
     }
-    const incomingHasSpecificZone = image.kind !== "main" && image.kind !== "unknown";
-    const previousWasGeneric = previous.kind === "main" || previous.kind === "unknown";
-    const updated = {
-      ...previous,
-      ...image,
-      kind: incomingHasSpecificZone && previousWasGeneric ? image.kind : previous.kind,
-      selected: previous.selected,
-      metadata: { ...(previous.metadata ?? {}), ...(image.metadata ?? {}) },
-    };
-    byUrl.set(image.url, updated);
-    const index = merged.findIndex((candidate) => candidate.url === image.url);
+    const updated = preferImage(previous, { ...image, selected: previous.selected });
+    byKey.set(key, updated);
+    const index = merged.findIndex((candidate) => keyForImage(candidate) === key);
     if (index >= 0) merged[index] = updated;
   }
   return merged;
+}
+
+function imageCandidatesFromMatchedCandidate(candidate: CategoryProductCandidate): ImageCandidate[] {
+  const urls = Array.from(new Set([...(candidate.imageUrls ?? []), candidate.imageUrl].filter(Boolean) as string[]))
+    .filter((url) => /^https?:\/\//i.test(url))
+    .slice(0, 24);
+  return urls.map((url, position): ImageCandidate => ({
+    url,
+    kind: "main",
+    source: "dom",
+    evidenceId: `candidate.${candidate.externalProductId || candidate.position}.image.${position}`,
+    role: position === 0 ? "primary" : "gallery",
+    quality: "unknown",
+    position,
+    selected: position === 0,
+    metadata: {
+      source: candidate.sourceUrl && /\/streamer\/showcase\/product\/list/i.test(candidate.sourceUrl)
+        ? "tiktok_showcase"
+        : "product_list_candidate",
+      platform: candidate.platform,
+      productId: candidate.externalProductId ?? undefined,
+      productPageUrl: candidate.url,
+    },
+  }));
 }
 
 function withoutRelatedProductImages(product: ProductCapturePayload): ProductCapturePayload {
@@ -1484,6 +1538,7 @@ function candidateUrlIdentityKey(candidate: CategoryProductCandidate): string {
     candidate.originalUrl,
     candidate.url,
     candidate.affiliateUrl,
+    candidate.commissionCheckUrl,
   ];
   for (const value of urls) {
     const key = normalizedUrlKey(value);
@@ -1564,9 +1619,11 @@ function mergeCandidateRecord(previous: CategoryProductCandidate, candidate: Cat
     commissionRatePercent: previous.commissionRatePercent ?? candidate.commissionRatePercent,
     commissionRateText: previous.commissionRateText || candidate.commissionRateText,
     affiliateUrl: normalizedAffiliateUrl(previous.affiliateUrl) || normalizedAffiliateUrl(candidate.affiliateUrl),
+    commissionCheckUrl: normalizedAffiliateUrl(previous.commissionCheckUrl) || normalizedAffiliateUrl(candidate.commissionCheckUrl),
     affiliateLinkAvailable: Boolean(previous.affiliateLinkAvailable || candidate.affiliateLinkAvailable),
     affiliateCardKey: previous.affiliateCardKey || candidate.affiliateCardKey,
     imageUrl: previous.imageUrl || candidate.imageUrl,
+    imageUrls: Array.from(new Set([...(previous.imageUrls ?? []), ...(candidate.imageUrls ?? []), previous.imageUrl, candidate.imageUrl].filter(Boolean) as string[])).slice(0, 60),
     originalUrl: identityUrlSource?.originalUrl || previous.originalUrl || candidate.originalUrl,
     cleanUrl: identityUrlSource?.cleanUrl || previous.cleanUrl || candidate.cleanUrl,
     canonicalUrl: identityUrlSource?.canonicalUrl || previous.canonicalUrl || candidate.canonicalUrl,
@@ -1608,10 +1665,12 @@ function candidateListSignature(candidates: CategoryProductCandidate[]) {
     .map((candidate) => [
       candidateStableKey(candidate),
       candidate.affiliateUrl,
+      candidate.commissionCheckUrl,
       candidate.title,
       candidate.priceText,
       candidate.soldCountText,
       candidate.imageUrl,
+      ...(candidate.imageUrls ?? []),
     ].filter(Boolean).join("~"))
     .join("|");
 }
@@ -1645,13 +1704,20 @@ function enrichProductWithMatchedCandidate(product: ProductCapturePayload, candi
   if (!match) return product;
   const { candidate, basis } = match;
   const affiliateUrl = normalizedAffiliateUrl(product.affiliateUrl) || normalizedAffiliateUrl(candidate.affiliateUrl);
+  const commissionCheckUrl = normalizedAffiliateUrl(product.commissionCheckUrl) || normalizedAffiliateUrl(candidate.commissionCheckUrl);
   const commissionRatePercent = product.commissionRatePercent ?? candidate.commissionRatePercent ?? null;
   const commissionRateText = product.commissionRateText || candidate.commissionRateText || (commissionRatePercent != null ? String(commissionRatePercent) : null);
+  const candidateImages = imageCandidatesFromMatchedCandidate(candidate);
+  const imageCandidates = candidateImages.length
+    ? mergeImageCandidates(product.imageCandidates, candidateImages)
+    : product.imageCandidates;
   return {
     ...product,
     commissionRatePercent,
     commissionRateText,
     affiliateUrl,
+    commissionCheckUrl,
+    imageCandidates,
     affiliateMatch: {
       candidateKey: candidateStableKey(candidate),
       basis,
@@ -1677,6 +1743,14 @@ function enrichProductWithMatchedCandidate(product: ProductCapturePayload, candi
           normalized: affiliateUrl,
         },
       } : {}),
+      ...(commissionCheckUrl ? {
+        commissionCheckUrl: {
+          text: commissionCheckUrl,
+          source: `product_list_exact_match:${basis}`,
+          confidence: 1,
+          normalized: commissionCheckUrl,
+        },
+      } : {}),
     },
   };
 }
@@ -1685,6 +1759,8 @@ function hasCandidateEnrichmentChange(before: ProductCapturePayload, after: Prod
   return (before.commissionRatePercent ?? null) !== (after.commissionRatePercent ?? null)
     || (before.commissionRateText || "") !== (after.commissionRateText || "")
     || (normalizedAffiliateUrl(before.affiliateUrl) || "") !== (normalizedAffiliateUrl(after.affiliateUrl) || "")
+    || (normalizedAffiliateUrl(before.commissionCheckUrl) || "") !== (normalizedAffiliateUrl(after.commissionCheckUrl) || "")
+    || before.imageCandidates.map((image) => image.url).join("|") !== after.imageCandidates.map((image) => image.url).join("|")
     || (before.affiliateMatch?.candidateKey || "") !== (after.affiliateMatch?.candidateKey || "");
 }
 
@@ -1800,6 +1876,7 @@ async function appendDiagnosticLog(event: string, details: Record<string, unknow
 }
 
 const TIKTOK_START_URLS = [
+  { label: "TikTok Showcase", url: "https://shop.tiktok.com/streamer/showcase/product/list" },
   { label: "TikTok Shop TH", url: "https://www.tiktok.com/shop/th?source=ecommerce_shoppingguide" },
   { label: "TikTok Home Supplies", url: "https://www.tiktok.com/shop/th/c/home-supplies/600001" },
 ];
@@ -1904,6 +1981,7 @@ export default function App() {
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
   const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
+  const [showcaseImageBusy, setShowcaseImageBusy] = useState<Record<string, boolean>>({});
   const [localAIProvider, setLocalAIProvider] = useState("noop");
   const abortLocalAIRef = useRef<AbortController | null>(null);
   const autoInsightKeyRef = useRef<string | null>(null);
@@ -1913,6 +1991,7 @@ export default function App() {
   const candidateListSignatureRef = useRef("");
   const candidateListSourceUrlRef = useRef("");
   const autoProductListScanUrlRef = useRef("");
+  const focusCaptureReviewProductIdRef = useRef<string | null>(null);
   const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
@@ -2215,6 +2294,11 @@ export default function App() {
       candidateListSignatureRef.current = incomingListSignature;
       candidateListSourceUrlRef.current = snapshot.page.url;
       setCandidates((current) => mergeCandidates(current, snapshot.candidates));
+    } else if (options.updateCandidates && options.replace && isScannableListPage(snapshot.page)) {
+      candidateListSignatureRef.current = "";
+      candidateListSourceUrlRef.current = snapshot.page.url;
+      setCandidates([]);
+      setIgnoredUrls(new Set());
     }
 
     if (snapshot.product) {
@@ -2224,6 +2308,15 @@ export default function App() {
         applyProductForReview(snapshot.product);
       } else {
         mergeProductImagesForReview(snapshot.product);
+      }
+      if (
+        focusCaptureReviewProductIdRef.current
+        && snapshot.product.externalProductId === focusCaptureReviewProductIdRef.current
+      ) {
+        focusCaptureReviewProductIdRef.current = null;
+        setActiveTab("capture");
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+        setStatus(`Loaded product ${snapshot.product.externalProductId}. Review capture before upload.`);
       }
     } else if (pageChanged && snapshot.page.pageType !== "product") {
       setProduct(null);
@@ -2654,7 +2747,7 @@ export default function App() {
     clearDetectedState({ keepCandidates: true });
     updateProgress("Detecting page");
     const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
-    applyLiveSnapshot(snapshot, { replace: true });
+    applyLiveSnapshot(snapshot, { replace: true, updateCandidates: true });
     setActiveTab(snapshot.product ? "capture" : snapshot.candidates.length > 0 ? "products" : "capture");
     setStatus(snapshot.product
       ? "Review latest detected details before upload"
@@ -2732,7 +2825,8 @@ export default function App() {
     setStatus(candidates.length > 0 ? "Product List kept. Click Scan visible products to refresh." : "Click Scan visible products to collect Product List.");
     try {
       const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
-      applyLiveSnapshot(snapshot, { replace: false });
+      const platformChanged = Boolean(snapshot.page.platform && candidates.some((candidate) => candidate.platform !== snapshot.page.platform));
+      applyLiveSnapshot(snapshot, { replace: platformChanged, updateCandidates: true });
       setStatus(isScannableListPage(snapshot.page)
         ? "Product List ready. Click Scan visible products to refresh."
         : candidates.length > 0
@@ -2791,6 +2885,49 @@ export default function App() {
       setStatus("Shopee affiliate link ready");
     } finally {
       setAffiliateLinkBusy((current) => ({ ...current, [key]: false }));
+    }
+  }
+
+  async function collectTikTokShowcaseImages(candidate: CategoryProductCandidate) {
+    if (candidate.platform !== "tiktok_shop" || !candidate.externalProductId) return;
+    const key = candidateIdentity(candidate);
+    setShowcaseImageBusy((current) => ({ ...current, [key]: true }));
+    setError("");
+    setStatus("Opening TikTok showcase edit modal and collecting images");
+    try {
+      const response = await sendToContent<{ candidate: CategoryProductCandidate }>("COLLECT_TIKTOK_SHOWCASE_IMAGES", {
+        productId: candidate.externalProductId,
+      });
+      const mergedCandidate = mergeCandidateRecord(candidate, response.candidate);
+      setCandidates((current) => mergeCandidates([], current.map((item) => (
+        candidateStableKey(item) === key || (item.externalProductId && item.externalProductId === mergedCandidate.externalProductId && item.platform === mergedCandidate.platform)
+          ? mergeCandidateRecord(item, mergedCandidate)
+          : item
+      ))));
+      setQueue((current) => {
+        const next = mergeCandidates([], current.map((item) => (
+          candidateStableKey(item) === key || (item.externalProductId && item.externalProductId === mergedCandidate.externalProductId && item.platform === mergedCandidate.platform)
+            ? mergeCandidateRecord(item, mergedCandidate)
+            : item
+        )));
+        saveQueue(next).catch(() => undefined);
+        return next;
+      });
+      candidateListSignatureRef.current = candidateListSignature(mergeCandidates([], candidates.map((item) => (
+        candidateStableKey(item) === key ? mergedCandidate : item
+      ))));
+      await appendDiagnosticLog("tiktok_showcase_image_collect_panel", {
+        productId: mergedCandidate.externalProductId,
+        imageCount: mergedCandidate.imageUrls?.length ?? 0,
+        priceText: mergedCandidate.priceText ?? null,
+        commissionRateText: mergedCandidate.commissionRateText ?? null,
+        url: mergedCandidate.url,
+      }).catch(() => undefined);
+      focusCaptureReviewProductIdRef.current = mergedCandidate.externalProductId ?? candidate.externalProductId;
+      setStatus(`Collected ${mergedCandidate.imageUrls?.length ?? 0} showcase images. Opening product page.`);
+      chrome.tabs.create({ url: mergedCandidate.url });
+    } finally {
+      setShowcaseImageBusy((current) => ({ ...current, [key]: false }));
     }
   }
 
@@ -2909,6 +3046,7 @@ export default function App() {
         originalSourceUrl: product.originalSourceUrl,
         cleanSourceUrl: product.cleanSourceUrl,
         canonicalSourceUrl: product.canonicalSourceUrl,
+        productPageUrl: product.productPageUrl || product.canonicalSourceUrl || product.cleanSourceUrl || product.sourceUrl,
         sourceUrlFormat: product.sourceUrlFormat,
         pageType: product.pageType,
         externalProductId: product.externalProductId,
@@ -2920,6 +3058,7 @@ export default function App() {
         imageCandidates: selected,
         rawPayload: {
           ...reviewedProduct,
+          productPageUrl: reviewedProduct.productPageUrl || reviewedProduct.canonicalSourceUrl || reviewedProduct.cleanSourceUrl || reviewedProduct.sourceUrl,
           imageCandidates: selected,
           brand: editable.brand,
           heroImageUrl,
@@ -4258,6 +4397,20 @@ export default function App() {
                   </div>
                 </div>
                 <div className="muted">{candidate.scoreReasons.join(", ")}</div>
+                {candidate.platform === "tiktok_shop" && candidate.url ? (
+                  <a
+                    className="candidate-url"
+                    href={candidate.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      chrome.tabs.create({ url: candidate.url });
+                    }}
+                  >
+                    {candidate.url}
+                  </a>
+                ) : null}
                 {candidate.affiliateUrl ? (() => {
                   const affiliateUrl = candidate.affiliateUrl ?? "";
                   return (
@@ -4281,6 +4434,17 @@ export default function App() {
                   {candidate.affiliateLinkAvailable && !candidate.affiliateUrl ? (
                     <button className="button" disabled={affiliateLinkBusy[candidateIdentity(candidate)]} onClick={() => run(() => requestShopeeAffiliateLink(candidate))}>
                       {affiliateLinkBusy[candidateIdentity(candidate)] ? "Getting link..." : "เอา ลิงก์"}
+                    </button>
+                  ) : null}
+                  {candidate.platform === "tiktok_shop" && /\/streamer\/showcase\/product\/list/i.test(candidate.sourceUrl) && candidate.externalProductId ? (
+                    <button
+                      className="button primary"
+                      disabled={showcaseImageBusy[candidateIdentity(candidate)]}
+                      onClick={() => run(() => collectTikTokShowcaseImages(candidate))}
+                    >
+                      {showcaseImageBusy[candidateIdentity(candidate)]
+                        ? "Collecting images..."
+                        : `ดึงรูป + เปิดสินค้า${candidate.imageUrls?.length ? ` (${candidate.imageUrls.length})` : ""}`}
                     </button>
                   ) : null}
                   {candidate.affiliateUrl ? (
@@ -5023,8 +5187,15 @@ export default function App() {
             {commissionRateInvalid ? "Commission rate ต้องเป็นตัวเลข 0-100" : editable.commissionRateText ? "source: user_review | confidence 95%" : fieldEvidenceText(product, "commissionRate")}
           </div>
           <label className="muted">Affiliate link</label>
-          <div className="row" style={{ alignItems: "center" }}>
-            <input className="input" placeholder="https://s.shopee.co.th/..." value={editable.affiliateUrl} onChange={(e) => updateEditable("affiliateUrl", e.target.value)} />
+          <div className="row" style={{ alignItems: "flex-start" }}>
+            <textarea
+              className="textarea affiliate-url-textarea"
+              placeholder="https://s.shopee.co.th/..."
+              rows={2}
+              spellCheck={false}
+              value={editable.affiliateUrl}
+              onChange={(e) => updateEditable("affiliateUrl", e.target.value)}
+            />
             <button
               className="button"
               disabled={!editable.affiliateUrl.trim()}

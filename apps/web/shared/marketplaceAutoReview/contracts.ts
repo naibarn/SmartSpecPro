@@ -800,6 +800,9 @@ export const CharacterIdentityAssetPackSchema = z
     sourceKind: z.enum([
       "none",
       "uploaded_reference",
+      "described_character",
+      "product_only",
+      "hands_only",
       "generated_character",
       "hand_model",
       "voice_persona",

@@ -22,6 +22,7 @@ import {
 import {
   resolveHyperframesRenderRefetchInterval,
   resolveMarketplaceAutoReviewLaunchMode,
+  shouldShowStandardOrderControls,
   shouldShowAutoStoryboardReviewSurface,
 } from "@/lib/marketplaceHyperframesUiState";
 import {
@@ -91,6 +92,16 @@ type AutoReviewShotCount = 7 | 8 | 9;
 type AutoReviewOverlayTextMode = "no_text" | "allow_text";
 type AutoReviewImageModel = "google-nano-banana-pro" | "google-banana-2";
 type AutoReviewStartAction = "storyboard" | "video" | "auto_review_video";
+type AutoReviewCharacterMode =
+  | "product_only"
+  | "hands_only"
+  | "described_character"
+  | "uploaded_reference";
+type AutoReviewCharacterChoice = {
+  id: string;
+  label: string;
+  description?: string;
+};
 type UploadedReferenceAnchor = {
   url: string;
   uploadKey?: string | null;
@@ -169,6 +180,65 @@ const AUTO_REVIEW_OUTPUT_STAGES = new Set([
   "render",
   "library_finalize",
 ]);
+const AUTO_REVIEW_CHARACTER_MODES: Array<
+  AutoReviewCharacterChoice & { id: AutoReviewCharacterMode }
+> = [
+  {
+    id: "hands_only",
+    label: "Hands-only",
+    description: "เห็นมือ/ลำตัวบางส่วน ไม่สร้างหน้าคน",
+  },
+  {
+    id: "described_character",
+    label: "เลือกตัวละคร",
+    description: "เลือกเพศ วัย ลุค และบทบาทจากช้อย",
+  },
+  {
+    id: "uploaded_reference",
+    label: "อัปโหลด reference",
+    description: "ล็อกหน้าหรือตัวแบบจากภาพ/character sheet",
+  },
+  {
+    id: "product_only",
+    label: "Product-only",
+    description: "ไม่ใช้คน เน้นสินค้าอย่างเดียว",
+  },
+];
+const AUTO_REVIEW_CHARACTER_GENDERS: AutoReviewCharacterChoice[] = [
+  { id: "female", label: "ผู้หญิง" },
+  { id: "male", label: "ผู้ชาย" },
+  { id: "gender_neutral", label: "ไม่ระบุเพศ" },
+  { id: "auto", label: "ให้ระบบเลือก" },
+];
+const AUTO_REVIEW_CHARACTER_AGES: AutoReviewCharacterChoice[] = [
+  { id: "young_adult_20_29", label: "20-29" },
+  { id: "adult_30_39", label: "30-39" },
+  { id: "middle_age_40_59", label: "40-59" },
+  { id: "teen_16_19", label: "วัยรุ่น" },
+  { id: "auto", label: "Auto" },
+];
+const AUTO_REVIEW_CHARACTER_APPEARANCES: AutoReviewCharacterChoice[] = [
+  { id: "thai", label: "คนไทย" },
+  { id: "southeast_asian", label: "เอเชียตะวันออกเฉียงใต้" },
+  { id: "east_asian", label: "เอเชียตะวันออก" },
+  { id: "international", label: "International" },
+  { id: "auto", label: "Auto" },
+];
+const AUTO_REVIEW_CHARACTER_ROLES: AutoReviewCharacterChoice[] = [
+  { id: "reviewer", label: "Reviewer" },
+  { id: "buyer", label: "ผู้ซื้อจริง" },
+  { id: "mom_parent", label: "แม่/ผู้ปกครอง" },
+  { id: "office_worker", label: "คนทำงาน" },
+  { id: "technician", label: "ผู้เชี่ยวชาญ" },
+  { id: "creator_host", label: "Creator" },
+];
+const AUTO_REVIEW_CHARACTER_STYLES: AutoReviewCharacterChoice[] = [
+  { id: "casual_home", label: "Casual home" },
+  { id: "clean_ugc", label: "UGC สะอาด" },
+  { id: "premium_neat", label: "Premium neat" },
+  { id: "friendly_everyday", label: "เป็นกันเอง" },
+  { id: "expert_practical", label: "ผู้เชี่ยวชาญ" },
+];
 const PRODUCT_REFERENCE_CATEGORY_LABELS: Record<string, string> = {
   auto: "Auto / ให้ระบบเดาหมวดสินค้า",
   household_product: "เครื่องใช้ในบ้าน",
@@ -310,6 +380,49 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function compactText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function safeHttpUrl(value: unknown): string {
+  const raw = compactText(value);
+  if (!raw) return "";
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function isTikTokShowcaseListUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return /(^|\.)shop\.tiktok\.com$/i.test(url.hostname)
+      && /\/streamer\/showcase\/product\/list\/?$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function tiktokProductPageUrlFromId(value: unknown): string {
+  const id = compactText(value);
+  return /^\d{8,}$/.test(id) ? `https://shop.tiktok.com/th/pdp/${id}` : "";
+}
+
+function marketplaceProductPageUrl(item: Record<string, unknown>, platformRaw: Record<string, unknown>): string {
+  const platform = compactText(item.platform);
+  const explicitUrl = safeHttpUrl(firstCompactText(
+    platformRaw.productPageUrl,
+    platformRaw.latestProductPageUrl,
+    platformRaw.productUrl,
+    platformRaw.latestProductUrl,
+    platformRaw.canonicalSourceUrl,
+    platformRaw.sourceUrl,
+    item.sourceUrl,
+  ));
+  if (explicitUrl && !(platform === "tiktok_shop" && isTikTokShowcaseListUrl(explicitUrl))) {
+    return explicitUrl;
+  }
+  return platform === "tiktok_shop" ? tiktokProductPageUrlFromId(item.externalProductId) : explicitUrl;
 }
 
 function compactDisplayValue(value: unknown): string {
@@ -729,6 +842,10 @@ function firstCompactText(...values: unknown[]): string {
     if (text) return text;
   }
   return "";
+}
+
+function optionLabel(options: AutoReviewCharacterChoice[], id: string): string {
+  return options.find(option => option.id === id)?.label ?? id;
 }
 
 function hyperframesRenderRefFromAutoReviewRun(
@@ -1921,6 +2038,8 @@ export default function MarketplaceCaptureProductDetail() {
     useState<AutoReviewStartAction | null>(null);
   const [showAutoReviewRuns, setShowAutoReviewRuns] = useState(false);
   const [showAutoReviewHistory, setShowAutoReviewHistory] = useState(false);
+  const [optimisticAutoStoryboardStart, setOptimisticAutoStoryboardStart] =
+    useState(false);
   const [collapsedAutoReviewRunIds, setCollapsedAutoReviewRunIds] = useState<
     Set<string>
   >(() => new Set());
@@ -1953,6 +2072,19 @@ export default function MarketplaceCaptureProductDetail() {
     useState<UploadedReferenceAnchor | null>(null);
   const [environmentAnchor, setEnvironmentAnchor] =
     useState<UploadedReferenceAnchor | null>(null);
+  const [autoReviewCharacterMode, setAutoReviewCharacterMode] =
+    useState<AutoReviewCharacterMode>("hands_only");
+  const [autoReviewCharacterGender, setAutoReviewCharacterGender] =
+    useState("female");
+  const [autoReviewCharacterAge, setAutoReviewCharacterAge] = useState(
+    "young_adult_20_29"
+  );
+  const [autoReviewCharacterAppearance, setAutoReviewCharacterAppearance] =
+    useState("thai");
+  const [autoReviewCharacterRole, setAutoReviewCharacterRole] =
+    useState("reviewer");
+  const [autoReviewCharacterStyle, setAutoReviewCharacterStyle] =
+    useState("friendly_everyday");
   const suppressAddImageToastRef = useRef(false);
   const requestedLibraryPageRef = useRef(0);
   const utils = trpc.useUtils();
@@ -2031,6 +2163,7 @@ export default function MarketplaceCaptureProductDetail() {
     Boolean(productId) &&
     (showAutoReviewRuns ||
       Boolean(pendingAutoReviewAction) ||
+      optimisticAutoStoryboardStart ||
       effectiveAutoReviewLaunchMode === "auto_storyboard_review" ||
       Boolean(hyperframesRenderJobId));
   const autoReviewRuns = trpc.marketplaceCapture.listAutoReviewRuns.useQuery(
@@ -2130,6 +2263,17 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  const setProductHeroImageMutation =
+    trpc.marketplaceCapture.setProductHeroImage.useMutation({
+      onSuccess: async () => {
+        await Promise.all([
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+          utils.marketplaceCapture.listProductImages.invalidate(),
+        ]);
+        toast.success("ตั้งรูป Hero / Default image แล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
   const startAutoReviewMutation =
     trpc.marketplaceCapture.startAutoReview.useMutation({
       onSuccess: async (result: any) => {
@@ -2190,9 +2334,13 @@ export default function MarketplaceCaptureProductDetail() {
         ]);
         setShowAutoReviewRuns(true);
         setShowAutoReviewHistory(false);
+        setOptimisticAutoStoryboardStart(false);
         toast.success("เริ่ม Auto Storyboard Review แล้ว");
       },
-      onError: error => toast.error(error.message),
+      onError: error => {
+        setOptimisticAutoStoryboardStart(false);
+        toast.error(error.message);
+      },
     });
   const cancelHyperframesRenderMutation =
     trpc.marketplaceCapture.cancelHyperframesRenderJob.useMutation({
@@ -2263,6 +2411,16 @@ export default function MarketplaceCaptureProductDetail() {
   const itemDescription = asRecord(item.descriptionJson);
   const itemSpecs = asRecord(item.specsJson);
   const itemPlatformRaw = asRecord(item.platformRawJson);
+  const commissionCheckUrl = safeHttpUrl(
+    itemPlatformRaw.commissionCheckUrl ||
+      itemPlatformRaw.latestCommissionCheckUrl ||
+      itemPlatformRaw.offerUrl ||
+      itemPlatformRaw.offerSpecificUrl
+  ) || (compactText(item.platform) === "shopee" && compactText(item.externalProductId)
+    ? `https://affiliate.shopee.co.th/offer/product_offer/${compactText(item.externalProductId)}`
+    : "");
+  const productPageUrl = marketplaceProductPageUrl(item, itemPlatformRaw);
+  const sourceUrl = safeHttpUrl(item.sourceUrl);
   const capturedCategoryText = firstCompactText(
     itemDescription.categoryText,
     itemSpecs.categoryText,
@@ -2300,6 +2458,17 @@ export default function MarketplaceCaptureProductDetail() {
     });
     return alreadyLoaded ? baseImages : [...baseImages, optimisticProductImage];
   }, [baseImages, optimisticProductImage]);
+  const coverImageAssetId = compactText(item.coverImageAssetId);
+  const heroProductImageId = compactText(itemPlatformRaw.heroProductImageId);
+  const heroProductImageUrl = compactText(itemPlatformRaw.heroProductImageUrl);
+  const heroProductImage = useMemo(() => {
+    const matched = images.find((image: any) => (
+      (heroProductImageId && compactText(image?.id) === heroProductImageId) ||
+      (heroProductImageUrl && compactText(image?.url) === heroProductImageUrl) ||
+      (coverImageAssetId && compactText(image?.captureAssetId) === coverImageAssetId)
+    ));
+    return matched ?? images.find((image: any) => asRecord(image?.metadataJson).role === "hero") ?? null;
+  }, [coverImageAssetId, heroProductImageId, heroProductImageUrl, images]);
   const history = (productData?.history ?? []) as any[];
   const health = productData?.health;
   const insights = [...((productInsights.data as any[] | undefined) ?? [])];
@@ -2307,10 +2476,18 @@ export default function MarketplaceCaptureProductDetail() {
   const activeAutoReviewRun = autoReviewRunItems.find(run =>
     isAutoReviewRunBlockingStart(run)
   );
+  const isStartingAutoReviewRun =
+    Boolean(pendingAutoReviewAction) ||
+    startAutoReviewMutation.isPending ||
+    startAutoStoryboardReviewMutation.isPending ||
+    optimisticAutoStoryboardStart;
+  const hideOldTerminalAutoReviewRuns =
+    isStartingAutoReviewRun && !showAutoReviewHistory;
   const latestAutoReviewRunId = compactText(autoReviewRunItems[0]?.id);
   const defaultAutoReviewRunItems = autoReviewRunItems.filter(
     (run, index) =>
       !isAutoReviewRunSuppressed(run, suppressedAutoReviewRunIds) &&
+      (!hideOldTerminalAutoReviewRuns || isAutoReviewRunBlockingStart(run)) &&
       (index === 0 || isAutoReviewRunBlockingStart(run))
   );
   const visibleAutoReviewRunItems = showAutoReviewHistory
@@ -2318,7 +2495,7 @@ export default function MarketplaceCaptureProductDetail() {
     : defaultAutoReviewRunItems;
   const latestVisibleAutoReviewRun = visibleAutoReviewRunItems[0];
   const isHidingPreviousAutoReviewFailures =
-    suppressedAutoReviewRunIds.size > 0 &&
+    (suppressedAutoReviewRunIds.size > 0 || hideOldTerminalAutoReviewRuns) &&
     !showAutoReviewHistory &&
     visibleAutoReviewRunItems.length === 0;
   const statusAutoReviewRun = activeAutoReviewRun ?? latestVisibleAutoReviewRun;
@@ -2449,50 +2626,6 @@ export default function MarketplaceCaptureProductDetail() {
     upsertMediaStudioRenderLibrarySession(session);
     hyperframesRenderLibrarySessionKeyRef.current = sessionKey;
   }, [hyperframesRenderProjection, item.name, item.title, itemPlatformRaw.title]);
-
-  const startAutoStoryboardReview = useCallback(() => {
-    if (!productId || !autoStoryboardPlan) return;
-    if (autoStoryboardPlanRefreshingForOverrides) {
-      toast.info(hyperframesCopy.autoPlanUpdating);
-      return;
-    }
-    if (
-      autoStoryboardPlan.primaryAction.actionId ===
-        "resume_auto_storyboard_review" &&
-      autoStoryboardPlan.activeRunId
-    ) {
-      setAutoReviewLaunchMode("auto_storyboard_review");
-      setShowAutoReviewRuns(true);
-      setShowAutoReviewHistory(false);
-      setCollapsedAutoReviewRunIds(previous => {
-        const next = new Set(previous);
-        next.delete(autoStoryboardPlan.activeRunId ?? "");
-        return next;
-      });
-      setSuppressedAutoReviewRunIds(previous => {
-        const next = new Set(previous);
-        next.delete(autoStoryboardPlan.activeRunId ?? "");
-        return next;
-      });
-      void autoReviewRuns.refetch();
-      return;
-    }
-    setAutoReviewLaunchMode("auto_storyboard_review");
-    startAutoStoryboardReviewMutation.mutate({
-      productId,
-      expectedPlanHash: autoStoryboardPlan.planHash,
-      idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}`,
-      overrides: autoStoryboardOverrides,
-    });
-  }, [
-    autoReviewRuns,
-    autoStoryboardPlan,
-    autoStoryboardPlanRefreshingForOverrides,
-    autoStoryboardOverrides,
-    hyperframesCopy.autoPlanUpdating,
-    productId,
-    startAutoStoryboardReviewMutation,
-  ]);
 
   const cancelHyperframesRender = useCallback(() => {
     const renderJobId = hyperframesRenderProjection?.renderJobId;
@@ -2870,6 +3003,15 @@ export default function MarketplaceCaptureProductDetail() {
     [productId, removeProductImageMutation]
   );
 
+  const setProductImageAsHero = useCallback(
+    (imageId: string) => {
+      if (!imageId) return;
+      setProductHeroImageMutation.mutate({ productId, imageId });
+      setSelectedProductImageId(imageId);
+    },
+    [productId, setProductHeroImageMutation]
+  );
+
   const productImageOptions = useMemo(
     () =>
       images
@@ -2906,12 +3048,18 @@ export default function MarketplaceCaptureProductDetail() {
               image?.sha256,
               image?.hash
             ),
+            isHero: Boolean(
+              (heroProductImageId && id === heroProductImageId) ||
+              (heroProductImageUrl && url === heroProductImageUrl) ||
+              (coverImageAssetId && compactText(image?.captureAssetId) === coverImageAssetId) ||
+              metadata.role === "hero"
+            ),
             index,
             removableId: rawId,
           };
         })
         .filter(image => image.url),
-    [images]
+    [coverImageAssetId, heroProductImageId, heroProductImageUrl, images]
   );
   const selectedProductImage = useMemo(() => {
     if (!selectedProductImageId) return null;
@@ -2920,9 +3068,16 @@ export default function MarketplaceCaptureProductDetail() {
       null
     );
   }, [productImageOptions, selectedProductImageId]);
-  const selectedProductImageUrl = compactText(selectedProductImage?.url);
-  const selectedProductImageDimensions = selectedProductImage
-    ? imageDimensions[selectedProductImage.id]
+  const resolvedProductAnchorImage =
+    selectedProductImage ??
+    productImageOptions.find(image => image.isHero) ??
+    productImageOptions[0] ??
+    null;
+  const resolvedProductAnchorImageUrl = compactText(
+    resolvedProductAnchorImage?.url
+  );
+  const resolvedProductAnchorImageDimensions = resolvedProductAnchorImage
+    ? imageDimensions[resolvedProductAnchorImage.id]
     : undefined;
   const productDiagnosticsRows = [
     {
@@ -2981,16 +3136,65 @@ export default function MarketplaceCaptureProductDetail() {
   ];
   const characterAnchorUrl = compactText(characterAnchor?.url);
   const environmentAnchorUrl = compactText(environmentAnchor?.url);
+  const selectedCharacterMode = AUTO_REVIEW_CHARACTER_MODES.find(
+    option => option.id === autoReviewCharacterMode
+  );
+  const autoReviewCharacterBrief = useMemo(
+    () => ({
+      mode: autoReviewCharacterMode,
+      gender: autoReviewCharacterGender,
+      genderLabel: optionLabel(
+        AUTO_REVIEW_CHARACTER_GENDERS,
+        autoReviewCharacterGender
+      ),
+      age: autoReviewCharacterAge,
+      ageLabel: optionLabel(AUTO_REVIEW_CHARACTER_AGES, autoReviewCharacterAge),
+      appearance: autoReviewCharacterAppearance,
+      appearanceLabel: optionLabel(
+        AUTO_REVIEW_CHARACTER_APPEARANCES,
+        autoReviewCharacterAppearance
+      ),
+      role: autoReviewCharacterRole,
+      roleLabel: optionLabel(AUTO_REVIEW_CHARACTER_ROLES, autoReviewCharacterRole),
+      style: autoReviewCharacterStyle,
+      styleLabel: optionLabel(
+        AUTO_REVIEW_CHARACTER_STYLES,
+        autoReviewCharacterStyle
+      ),
+      summary:
+        autoReviewCharacterMode === "product_only"
+          ? "Product-only review. Do not generate a visible person."
+          : autoReviewCharacterMode === "hands_only"
+            ? "Hands-only product review. Use hands or non-face body framing only; do not generate a recurring face."
+            : autoReviewCharacterMode === "uploaded_reference"
+              ? "Use the uploaded character reference as the identity source of truth."
+              : `${optionLabel(AUTO_REVIEW_CHARACTER_APPEARANCES, autoReviewCharacterAppearance)} ${optionLabel(AUTO_REVIEW_CHARACTER_GENDERS, autoReviewCharacterGender)}, ${optionLabel(AUTO_REVIEW_CHARACTER_AGES, autoReviewCharacterAge)}, role ${optionLabel(AUTO_REVIEW_CHARACTER_ROLES, autoReviewCharacterRole)}, style ${optionLabel(AUTO_REVIEW_CHARACTER_STYLES, autoReviewCharacterStyle)}.`,
+    }),
+    [
+      autoReviewCharacterAge,
+      autoReviewCharacterAppearance,
+      autoReviewCharacterGender,
+      autoReviewCharacterMode,
+      autoReviewCharacterRole,
+      autoReviewCharacterStyle,
+    ]
+  );
   const canStartAutoReview = Boolean(
-    selectedProductImageUrl && characterAnchorUrl && environmentAnchorUrl
+    resolvedProductAnchorImageUrl &&
+      (autoReviewCharacterMode !== "uploaded_reference" || characterAnchorUrl)
   );
   const missingAutoReviewAnchors = useMemo(() => {
     const missing: string[] = [];
-    if (!selectedProductImageUrl) missing.push("Product image anchor");
-    if (!characterAnchorUrl) missing.push("Character/person anchor");
-    if (!environmentAnchorUrl) missing.push("Environment/place anchor");
+    if (!resolvedProductAnchorImageUrl) missing.push("Product image anchor");
+    if (autoReviewCharacterMode === "uploaded_reference" && !characterAnchorUrl) {
+      missing.push("Character/person reference");
+    }
     return missing;
-  }, [selectedProductImageUrl, characterAnchorUrl, environmentAnchorUrl]);
+  }, [
+    autoReviewCharacterMode,
+    resolvedProductAnchorImageUrl,
+    characterAnchorUrl,
+  ]);
 
   useEffect(() => {
     if (
@@ -2999,8 +3203,9 @@ export default function MarketplaceCaptureProductDetail() {
     ) {
       return;
     }
+    const heroOption = productImageOptions.find(image => image.isHero);
     setSelectedProductImageId(
-      productImageOptions.length === 1 ? productImageOptions[0].id : null
+      heroOption?.id ?? (productImageOptions.length === 1 ? productImageOptions[0].id : null)
     );
   }, [productImageOptions, selectedProductImageId]);
 
@@ -3197,6 +3402,278 @@ export default function MarketplaceCaptureProductDetail() {
     [selectedProductImageId]
   );
 
+  const buildAutoReviewReferenceAnchors = useCallback(
+    (creationIntent: AutoReviewStartAction) => {
+      const productImageRef = resolvedProductAnchorImage?.hash
+        ? `product-image-sha256:${resolvedProductAnchorImage.hash}`
+        : resolvedProductAnchorImage?.removableId
+          ? `marketplace-product-image:${resolvedProductAnchorImage.removableId}`
+          : resolvedProductAnchorImage?.id
+            ? `product-image-option:${resolvedProductAnchorImage.id}`
+            : null;
+      const characterRef = buildUploadedAnchorRef("character", characterAnchor);
+      const environmentRef = buildUploadedAnchorRef(
+        "environment",
+        environmentAnchor
+      );
+      const requiredRoles = compactStringList([
+        "product",
+        autoReviewCharacterMode === "described_character" ||
+        autoReviewCharacterMode === "uploaded_reference"
+          ? "character"
+          : null,
+        environmentAnchorUrl ? "environment" : null,
+      ]) as ("product" | "character" | "environment")[];
+      const sourceRefs = Array.from(
+        new Set(
+          compactStringList([
+            resolvedProductAnchorImage?.removableId
+              ? `product-image:${resolvedProductAnchorImage.removableId}`
+              : resolvedProductAnchorImage?.id
+                ? `product-image:${resolvedProductAnchorImage.id}`
+                : null,
+            resolvedProductAnchorImage?.hash
+              ? `product-image-sha256:${resolvedProductAnchorImage.hash}`
+              : null,
+            characterRef,
+            environmentRef,
+          ])
+        )
+      );
+
+      return {
+        schemaVersion: 2,
+        creationIntent,
+        requiredRoles,
+        characterMode: autoReviewCharacterMode,
+        characterBrief: autoReviewCharacterBrief.summary,
+        characterPreset: autoReviewCharacterBrief,
+        lockPolicy: {
+          mode: "strict_reference_anchor_lock",
+          bindingPolicy:
+            "user_selected_anchor_images_and_character_choices_are_generation_truth",
+          product: "preserve_exact_visible_product_identity",
+          character:
+            autoReviewCharacterMode === "uploaded_reference"
+              ? "preserve_same_person_identity_across_all_shots"
+              : autoReviewCharacterMode === "described_character"
+                ? "preserve_selected_character_brief_without_inventing_a_different_demographic"
+                : autoReviewCharacterMode === "hands_only"
+                  ? "hands_only_or_non_face_body_framing_no_recurring_face"
+                  : "not_required_product_only",
+          environment: environmentAnchorUrl
+            ? "preserve_selected_environment_as_scene_truth"
+            : "not_required_for_auto_product_review",
+          multiViewReferenceSheet:
+            "A single uploaded image may contain multiple views or panels of the same product, person, or environment. Treat every panel in that one file as reference evidence for the same subject, not as separate variants.",
+          allowSingleFileMultiViewSheet: true,
+          requireSameSubjectAcrossMultiViewPanels: true,
+          allowProductRecolorOrShapeChange: false,
+          allowFaceMorphingBetweenShots: false,
+          allowEnvironmentReplacement: false,
+          auditMetadataRequired: true,
+        },
+        productImageUrl: resolvedProductAnchorImageUrl,
+        productImageId:
+          resolvedProductAnchorImage?.removableId ||
+          resolvedProductAnchorImage?.id ||
+          null,
+        productImageRef,
+        productImageSource: resolvedProductAnchorImage?.source || null,
+        productImageSourceUrl: resolvedProductAnchorImage?.sourceUrl || null,
+        productImageStorageKey: resolvedProductAnchorImage?.storageKey || null,
+        productImageHash: resolvedProductAnchorImage?.hash || null,
+        productImageIndex: resolvedProductAnchorImage?.index ?? null,
+        characterImageUrl: characterAnchorUrl || null,
+        characterImageRef: characterRef,
+        characterImageSource: characterAnchor?.source ?? null,
+        characterImageUploadKey: characterAnchor?.uploadKey ?? null,
+        characterImageHash: characterAnchor?.hash ?? null,
+        characterImageFileName: characterAnchor?.fileName ?? null,
+        characterImageFileType: characterAnchor?.fileType ?? null,
+        characterImageFileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
+        environmentImageUrl: environmentAnchorUrl || null,
+        environmentImageRef: environmentRef,
+        environmentImageSource: environmentAnchor?.source ?? null,
+        environmentImageUploadKey: environmentAnchor?.uploadKey ?? null,
+        environmentImageHash: environmentAnchor?.hash ?? null,
+        environmentImageFileName: environmentAnchor?.fileName ?? null,
+        environmentImageFileType: environmentAnchor?.fileType ?? null,
+        environmentImageFileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
+        auditMetadata: {
+          product: {
+            source: resolvedProductAnchorImage?.source || null,
+            sourceUrl: resolvedProductAnchorImage?.sourceUrl || null,
+            storageKey: resolvedProductAnchorImage?.storageKey || null,
+            hash: resolvedProductAnchorImage?.hash || null,
+            id:
+              resolvedProductAnchorImage?.removableId ||
+              resolvedProductAnchorImage?.id ||
+              null,
+            index: resolvedProductAnchorImage?.index ?? null,
+            referenceFormat: "single_image_or_single_file_multi_view_sheet",
+            multiViewSheetAllowed: true,
+            dimensions: resolvedProductAnchorImageDimensions ?? null,
+          },
+          character: {
+            mode: autoReviewCharacterMode,
+            brief: autoReviewCharacterBrief,
+            source: characterAnchor?.source || null,
+            sourceRef: characterRef,
+            uploadKey: characterAnchor?.uploadKey || null,
+            hash: characterAnchor?.hash || null,
+            fileName: characterAnchor?.fileName || null,
+            fileType: characterAnchor?.fileType || null,
+            fileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
+            referenceFormat: characterAnchorUrl
+              ? "single_image_or_single_file_multi_view_sheet"
+              : "choice_preset_brief",
+            multiViewSheetAllowed: true,
+          },
+          environment: {
+            source: environmentAnchor?.source || null,
+            sourceRef: environmentRef,
+            uploadKey: environmentAnchor?.uploadKey || null,
+            hash: environmentAnchor?.hash || null,
+            fileName: environmentAnchor?.fileName || null,
+            fileType: environmentAnchor?.fileType || null,
+            fileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
+            referenceFormat: environmentAnchorUrl
+              ? "single_image_or_single_file_multi_view_sheet"
+              : "not_required",
+            multiViewSheetAllowed: true,
+          },
+        },
+        fileEvidence: {
+          productImage: {
+            url: resolvedProductAnchorImageUrl,
+            source: resolvedProductAnchorImage?.source || null,
+            sourceUrl: resolvedProductAnchorImage?.sourceUrl || null,
+            storageKey: resolvedProductAnchorImage?.storageKey || null,
+            hash: resolvedProductAnchorImage?.hash || null,
+            id:
+              resolvedProductAnchorImage?.removableId ||
+              resolvedProductAnchorImage?.id ||
+              null,
+            index: resolvedProductAnchorImage?.index ?? null,
+            dimensions: resolvedProductAnchorImageDimensions ?? null,
+            multiViewSheetAllowed: true,
+          },
+          characterImage: characterAnchorUrl
+            ? {
+                url: characterAnchorUrl,
+                source: characterAnchor?.source || null,
+                sourceRef: characterRef,
+                uploadKey: characterAnchor?.uploadKey || null,
+                hash: characterAnchor?.hash || null,
+                fileName: characterAnchor?.fileName || null,
+                fileType: characterAnchor?.fileType || null,
+                fileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
+                multiViewSheetAllowed: true,
+              }
+            : null,
+          environmentImage: environmentAnchorUrl
+            ? {
+                url: environmentAnchorUrl,
+                source: environmentAnchor?.source || null,
+                sourceRef: environmentRef,
+                uploadKey: environmentAnchor?.uploadKey || null,
+                hash: environmentAnchor?.hash || null,
+                fileName: environmentAnchor?.fileName || null,
+                fileType: environmentAnchor?.fileType || null,
+                fileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
+                multiViewSheetAllowed: true,
+              }
+            : null,
+        },
+        sourceRefs,
+      };
+    },
+    [
+      autoReviewCharacterBrief,
+      autoReviewCharacterMode,
+      characterAnchor,
+      characterAnchorUrl,
+      environmentAnchor,
+      environmentAnchorUrl,
+      resolvedProductAnchorImage,
+      resolvedProductAnchorImageDimensions,
+      resolvedProductAnchorImageUrl,
+    ]
+  );
+
+  function startAutoStoryboardReview() {
+    if (!productId || !autoStoryboardPlan) return;
+    if (autoStoryboardPlanRefreshingForOverrides) {
+      toast.info(hyperframesCopy.autoPlanUpdating);
+      return;
+    }
+    if (!resolvedProductAnchorImageUrl) {
+      toast.error(
+        "Missing product anchor URL. กรุณาเลือก Hero/Product image ก่อนเริ่ม Auto Storyboard Review"
+      );
+      return;
+    }
+    if (autoReviewCharacterMode === "uploaded_reference" && !characterAnchorUrl) {
+      toast.error(
+        "Missing character/person reference. กรุณาอัปโหลดรูปตัวแบบ หรือเลือก Hands-only/Product-only ก่อนเริ่ม"
+      );
+      return;
+    }
+    if (
+      autoStoryboardPlan.primaryAction.actionId ===
+        "resume_auto_storyboard_review" &&
+      autoStoryboardPlan.activeRunId
+    ) {
+      setAutoReviewLaunchMode("auto_storyboard_review");
+      setShowAutoReviewRuns(true);
+      setShowAutoReviewHistory(false);
+      setCollapsedAutoReviewRunIds(previous => {
+        const next = new Set(previous);
+        next.delete(autoStoryboardPlan.activeRunId ?? "");
+        return next;
+      });
+      setSuppressedAutoReviewRunIds(previous => {
+        const next = new Set(previous);
+        next.delete(autoStoryboardPlan.activeRunId ?? "");
+        return next;
+      });
+      void autoReviewRuns.refetch();
+      return;
+    }
+    const confirmed = window.confirm(
+      "ยืนยันเริ่ม Auto Storyboard Review ใหม่?\n\nระบบจะสร้าง run ใหม่จาก Hero/Product image ปัจจุบัน และซ่อน error จาก run เก่าไว้ระหว่างรอสถานะล่าสุด"
+    );
+    if (!confirmed) return;
+    const startAttemptKey = Date.now().toString(36);
+    setAutoReviewLaunchMode("auto_storyboard_review");
+    setOptimisticAutoStoryboardStart(true);
+    setShowAutoReviewRuns(true);
+    setShowAutoReviewHistory(false);
+    setCollapsedAutoReviewRunIds(new Set());
+    setCollapsedAutoReviewPanelIds(new Set());
+    setSuppressedAutoReviewRunIds(previous => {
+      const next = new Set(previous);
+      for (const run of autoReviewRunItems) {
+        if (!isAutoReviewRunBlockingStart(run)) {
+          for (const key of autoReviewRunIdentityKeys(run)) next.add(key);
+        }
+      }
+      return next;
+    });
+    toast.info(
+      "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว กำลังรอ backend สร้าง run ใหม่"
+    );
+    void autoReviewRuns.refetch();
+    startAutoStoryboardReviewMutation.mutate({
+      productId,
+      expectedPlanHash: autoStoryboardPlan.planHash,
+      idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
+      overrides: autoStoryboardOverrides,
+      referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
+    });
+  }
+
   const startAutoReview = useCallback(
     (action: AutoReviewStartAction) => {
       if (activeAutoReviewRun) {
@@ -3205,21 +3682,15 @@ export default function MarketplaceCaptureProductDetail() {
         );
         return;
       }
-      if (!selectedProductImageUrl) {
+      if (!resolvedProductAnchorImageUrl) {
         toast.error(
           "Missing product anchor URL. กรุณาเลือกภาพสินค้าที่จะใช้เป็น Anchor ก่อนเริ่ม | Product anchor image is required to start."
         );
         return;
       }
-      if (!characterAnchorUrl) {
+      if (autoReviewCharacterMode === "uploaded_reference" && !characterAnchorUrl) {
         toast.error(
-          "Missing character/person anchor URL. กรุณาอัปโหลดรูปตัวแบบ/คนที่ใช้เป็น Anchor ก่อนเริ่ม | Character/person anchor image is required to start."
-        );
-        return;
-      }
-      if (!environmentAnchorUrl) {
-        toast.error(
-          "Missing environment/place anchor URL. กรุณาอัปโหลดรูปฉาก/ที่อยู่ที่ใช้เป็น Anchor ก่อนเริ่ม | Environment anchor image is required to start."
+          "Missing character/person anchor URL. กรุณาอัปโหลดรูปตัวแบบ/คนที่ใช้เป็น Anchor หรือเลือกโหมด Hands-only/Product-only ก่อนเริ่ม"
         );
         return;
       }
@@ -3234,159 +3705,7 @@ export default function MarketplaceCaptureProductDetail() {
           : autoReviewAudioStrategy;
       const requestedAudioStrategy: AutoReviewAudioStrategy =
         selectedAudioStrategy;
-      const productImageRef = selectedProductImage?.hash
-        ? `product-image-sha256:${selectedProductImage.hash}`
-        : selectedProductImage?.removableId
-          ? `marketplace-product-image:${selectedProductImage.removableId}`
-          : selectedProductImage?.id
-            ? `product-image-option:${selectedProductImage.id}`
-            : null;
-      const sourceRefs = Array.from(
-        new Set(
-          compactStringList([
-            selectedProductImage?.removableId
-              ? `product-image:${selectedProductImage.removableId}`
-              : selectedProductImage?.id
-                ? `product-image:${selectedProductImage.id}`
-                : null,
-            selectedProductImage?.hash
-              ? `product-image-sha256:${selectedProductImage.hash}`
-              : null,
-            buildUploadedAnchorRef("character", characterAnchor),
-            buildUploadedAnchorRef("environment", environmentAnchor),
-          ])
-        )
-      );
-      const referenceAnchors = {
-        schemaVersion: 1,
-        creationIntent: action,
-        requiredRoles: ["product", "character", "environment"] as (
-          | "product"
-          | "character"
-          | "environment"
-        )[],
-        lockPolicy: {
-          mode: "strict_reference_anchor_lock",
-          bindingPolicy:
-            "user_selected_anchor_images_are_primary_generation_truth",
-          product: "preserve_exact_visible_product_identity",
-          character: "preserve_same_person_identity_across_all_shots",
-          environment: "preserve_selected_environment_as_scene_truth",
-          multiViewReferenceSheet:
-            "A single uploaded image may contain multiple views or panels of the same product, person, or environment. Treat every panel in that one file as reference evidence for the same subject, not as separate variants.",
-          allowSingleFileMultiViewSheet: true,
-          requireSameSubjectAcrossMultiViewPanels: true,
-          allowProductRecolorOrShapeChange: false,
-          allowFaceMorphingBetweenShots: false,
-          allowEnvironmentReplacement: false,
-          auditMetadataRequired: true,
-        },
-        productImageUrl: selectedProductImageUrl,
-        productImageId:
-          selectedProductImage?.removableId || selectedProductImage?.id || null,
-        productImageRef,
-        productImageSource: selectedProductImage?.source || null,
-        productImageSourceUrl: selectedProductImage?.sourceUrl || null,
-        productImageStorageKey: selectedProductImage?.storageKey || null,
-        productImageHash: selectedProductImage?.hash || null,
-        productImageIndex: selectedProductImage?.index ?? null,
-        characterImageUrl: characterAnchorUrl,
-        characterImageRef: buildUploadedAnchorRef("character", characterAnchor),
-        characterImageSource: characterAnchor?.source ?? null,
-        characterImageUploadKey: characterAnchor?.uploadKey ?? null,
-        characterImageHash: characterAnchor?.hash ?? null,
-        characterImageFileName: characterAnchor?.fileName ?? null,
-        characterImageFileType: characterAnchor?.fileType ?? null,
-        characterImageFileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
-        environmentImageUrl: environmentAnchorUrl,
-        environmentImageRef: buildUploadedAnchorRef(
-          "environment",
-          environmentAnchor
-        ),
-        environmentImageSource: environmentAnchor?.source ?? null,
-        environmentImageUploadKey: environmentAnchor?.uploadKey ?? null,
-        environmentImageHash: environmentAnchor?.hash ?? null,
-        environmentImageFileName: environmentAnchor?.fileName ?? null,
-        environmentImageFileType: environmentAnchor?.fileType ?? null,
-        environmentImageFileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
-        auditMetadata: {
-          product: {
-            source: selectedProductImage?.source || null,
-            sourceUrl: selectedProductImage?.sourceUrl || null,
-            storageKey: selectedProductImage?.storageKey || null,
-            hash: selectedProductImage?.hash || null,
-            id:
-              selectedProductImage?.removableId ||
-              selectedProductImage?.id ||
-              null,
-            index: selectedProductImage?.index ?? null,
-            referenceFormat: "single_image_or_single_file_multi_view_sheet",
-            multiViewSheetAllowed: true,
-            dimensions: selectedProductImageDimensions ?? null,
-          },
-          character: {
-            source: characterAnchor?.source || null,
-            sourceRef: buildUploadedAnchorRef("character", characterAnchor),
-            uploadKey: characterAnchor?.uploadKey || null,
-            hash: characterAnchor?.hash || null,
-            fileName: characterAnchor?.fileName || null,
-            fileType: characterAnchor?.fileType || null,
-            fileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
-            referenceFormat: "single_image_or_single_file_multi_view_sheet",
-            multiViewSheetAllowed: true,
-          },
-          environment: {
-            source: environmentAnchor?.source || null,
-            sourceRef: buildUploadedAnchorRef("environment", environmentAnchor),
-            uploadKey: environmentAnchor?.uploadKey || null,
-            hash: environmentAnchor?.hash || null,
-            fileName: environmentAnchor?.fileName || null,
-            fileType: environmentAnchor?.fileType || null,
-            fileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
-            referenceFormat: "single_image_or_single_file_multi_view_sheet",
-            multiViewSheetAllowed: true,
-          },
-        },
-        fileEvidence: {
-          productImage: {
-            url: selectedProductImageUrl,
-            source: selectedProductImage?.source || null,
-            sourceUrl: selectedProductImage?.sourceUrl || null,
-            storageKey: selectedProductImage?.storageKey || null,
-            hash: selectedProductImage?.hash || null,
-            id:
-              selectedProductImage?.removableId ||
-              selectedProductImage?.id ||
-              null,
-            index: selectedProductImage?.index ?? null,
-            dimensions: selectedProductImageDimensions ?? null,
-            multiViewSheetAllowed: true,
-          },
-          characterImage: {
-            url: characterAnchorUrl,
-            source: characterAnchor?.source || null,
-            sourceRef: buildUploadedAnchorRef("character", characterAnchor),
-            uploadKey: characterAnchor?.uploadKey || null,
-            hash: characterAnchor?.hash || null,
-            fileName: characterAnchor?.fileName || null,
-            fileType: characterAnchor?.fileType || null,
-            fileSizeBytes: characterAnchor?.fileSizeBytes ?? null,
-            multiViewSheetAllowed: true,
-          },
-          environmentImage: {
-            url: environmentAnchorUrl,
-            source: environmentAnchor?.source || null,
-            sourceRef: buildUploadedAnchorRef("environment", environmentAnchor),
-            uploadKey: environmentAnchor?.uploadKey || null,
-            hash: environmentAnchor?.hash || null,
-            fileName: environmentAnchor?.fileName || null,
-            fileType: environmentAnchor?.fileType || null,
-            fileSizeBytes: environmentAnchor?.fileSizeBytes ?? null,
-            multiViewSheetAllowed: true,
-          },
-        },
-        sourceRefs,
-      };
+      const referenceAnchors = buildAutoReviewReferenceAnchors(action);
 
       setAutoReviewOutputMode(requestedOutputMode);
       setAutoReviewFrameStrategy(requestedFrameStrategy);
@@ -3423,14 +3742,11 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewOverlayTextMode,
       autoReviewRunItems,
       autoReviewShotCount,
-      characterAnchor,
+      autoReviewCharacterMode,
+      buildAutoReviewReferenceAnchors,
       characterAnchorUrl,
-      environmentAnchor,
-      environmentAnchorUrl,
       productId,
-      selectedProductImage,
-      selectedProductImageDimensions,
-      selectedProductImageUrl,
+      resolvedProductAnchorImageUrl,
       startAutoReviewMutation,
     ]
   );
@@ -3490,6 +3806,192 @@ export default function MarketplaceCaptureProductDetail() {
         autoReviewAudioStrategy === "auto",
     },
   ];
+  const renderCharacterChoiceGroup = (
+    label: string,
+    options: AutoReviewCharacterChoice[],
+    value: string,
+    onChange: (value: string) => void
+  ) => (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {options.map(option => (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={value === option.id}
+            onClick={() => onChange(option.id)}
+            className={`min-h-10 rounded-lg border px-3 py-2 text-left text-sm font-medium transition ${
+              value === option.id
+                ? "border-sky-500 bg-sky-50 text-sky-900 ring-2 ring-sky-100"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const characterChoicePanel = (
+    <section
+      className="mt-4 rounded-lg border border-slate-200 bg-white p-4"
+      aria-label="Auto Review character choices"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            Character / Presenter
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            เลือกแบบตัวละครด้วยช้อย เพื่อลดการพิมพ์และคุมภาพให้ตรง intent
+          </p>
+        </div>
+        <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+          {selectedCharacterMode?.label ?? autoReviewCharacterMode}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {AUTO_REVIEW_CHARACTER_MODES.map(option => (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={autoReviewCharacterMode === option.id}
+            onClick={() =>
+              setAutoReviewCharacterMode(option.id as AutoReviewCharacterMode)
+            }
+            className={`min-h-[4.75rem] rounded-lg border p-3 text-left transition ${
+              autoReviewCharacterMode === option.id
+                ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100"
+                : "border-slate-200 bg-white hover:bg-slate-50"
+            }`}
+          >
+            <span className="block text-sm font-semibold text-slate-900">
+              {option.label}
+            </span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">
+              {option.description}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {autoReviewCharacterMode === "described_character" ? (
+        <div className="mt-4 grid gap-4">
+          {renderCharacterChoiceGroup(
+            "ลักษณะ",
+            AUTO_REVIEW_CHARACTER_APPEARANCES,
+            autoReviewCharacterAppearance,
+            setAutoReviewCharacterAppearance
+          )}
+          {renderCharacterChoiceGroup(
+            "วัย",
+            AUTO_REVIEW_CHARACTER_AGES,
+            autoReviewCharacterAge,
+            setAutoReviewCharacterAge
+          )}
+          {renderCharacterChoiceGroup(
+            "เพศ",
+            AUTO_REVIEW_CHARACTER_GENDERS,
+            autoReviewCharacterGender,
+            setAutoReviewCharacterGender
+          )}
+          {renderCharacterChoiceGroup(
+            "บทบาท",
+            AUTO_REVIEW_CHARACTER_ROLES,
+            autoReviewCharacterRole,
+            setAutoReviewCharacterRole
+          )}
+          {renderCharacterChoiceGroup(
+            "สไตล์",
+            AUTO_REVIEW_CHARACTER_STYLES,
+            autoReviewCharacterStyle,
+            setAutoReviewCharacterStyle
+          )}
+        </div>
+      ) : null}
+
+      {autoReviewCharacterMode === "uploaded_reference" ? (
+        <div
+          onDragOver={event => handleAnchorDragOver(event, "character")}
+          onDragLeave={handleAnchorDragLeave}
+          onDrop={event =>
+            void handleDropAnchorImage(
+              event,
+              setCharacterAnchor,
+              "character",
+              "Character anchor"
+            )
+          }
+          className={`mt-4 rounded-lg border p-3 transition ${
+            activeAnchorDrop === "character"
+              ? "border-sky-400 bg-sky-50 ring-4 ring-sky-100"
+              : characterAnchorUrl
+                ? "border-emerald-300 bg-emerald-50"
+                : "border-dashed border-slate-300 bg-slate-50"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">
+                Reference / character sheet
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                อัปโหลดหรือวางรูปตัวแบบเดียวที่ต้องการให้ระบบยึดเป็น identity
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => characterAnchorUploadInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {characterAnchorUrl ? "เปลี่ยนรูป" : "อัปโหลด"}
+              </Button>
+              {characterAnchorUrl ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCharacterAnchor(null)}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  ลบ
+                </Button>
+              ) : null}
+            </div>
+          </div>
+          {characterAnchorUrl ? (
+            <div className="mt-3 flex items-start gap-3">
+              <img
+                src={characterAnchorUrl}
+                alt="Character anchor"
+                className="h-24 w-24 rounded-md border bg-white object-cover"
+              />
+              <p className="text-xs leading-5 text-slate-600">
+                {multiViewReferencePolicyText("character")}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+          {autoReviewCharacterMode === "hands_only"
+            ? "ระบบจะใช้มือหรือ framing ที่ไม่เห็นหน้า เพื่อเลี่ยง identity ผิดคน"
+            : autoReviewCharacterMode === "product_only"
+              ? "ระบบจะไม่สร้างคน/ตัวละคร และจะเน้นสินค้าเป็นหลัก"
+              : autoReviewCharacterBrief.summary}
+        </p>
+      )}
+    </section>
+  );
+
   const autoStoryboardReviewSurface = showAutoStoryboardReviewSurface ? (
     <div className="mt-4 space-y-3">
       <MarketplaceAutoReviewLaunchModeSwitch
@@ -3544,7 +4046,7 @@ export default function MarketplaceCaptureProductDetail() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : effectiveAutoReviewLaunchMode === "auto_storyboard_review" ? (
         <>
           <AutoStoryboardReviewPlanSummary
             plan={autoStoryboardPlan}
@@ -3558,6 +4060,7 @@ export default function MarketplaceCaptureProductDetail() {
               setShowAutoStoryboardAdvanced(false);
             }}
           />
+          {characterChoicePanel}
           <AutoStoryboardAdvancedOverrides
             plan={autoStoryboardPlan}
             open={showAutoStoryboardAdvanced}
@@ -3570,7 +4073,7 @@ export default function MarketplaceCaptureProductDetail() {
             }}
           />
         </>
-      )}
+      ) : null}
       <HyperframesRenderPanel
         render={hyperframesRenderProjection}
         loading={
@@ -3586,9 +4089,27 @@ export default function MarketplaceCaptureProductDetail() {
       />
     </div>
   ) : null;
+  const showStandardOrderControlPanel = shouldShowStandardOrderControls({
+    autoSurfaceVisible: showAutoStoryboardReviewSurface,
+    effectiveLaunchMode: effectiveAutoReviewLaunchMode,
+  });
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-6">
+      <input
+        ref={characterAnchorUploadInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+        className="hidden"
+        onChange={handleUploadCharacterAnchor}
+      />
+      <input
+        ref={environmentAnchorUploadInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+        className="hidden"
+        onChange={handleUploadEnvironmentAnchor}
+      />
       <div className="mx-auto grid max-w-[1600px] gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-center gap-2">
@@ -3637,20 +4158,108 @@ export default function MarketplaceCaptureProductDetail() {
             className="rounded-lg border bg-white p-6 shadow-sm"
             aria-label="Product summary"
           >
-            <p className="text-sm font-medium text-slate-500">
-              {compactText(item.platform)}
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold">
-              {compactText(item.productName)}
-            </h1>
-            <a
-              className="mt-2 inline-block text-sm text-blue-700 underline"
-              href={compactText(item.sourceUrl)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Source marketplace page
-            </a>
+            <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)]">
+              {heroProductImage ? (
+                <div className="relative overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50">
+                  <div className="absolute left-3 top-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                    Hero / Default
+                  </div>
+                  <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white"
+                      onClick={() =>
+                        setPreviewAutoReviewImage({
+                          url: compactText((heroProductImage as any).url),
+                          title: "Hero / Default image",
+                        })
+                      }
+                      aria-label="ดู Hero image แบบเต็มจอ"
+                      title="ดูภาพเต็มจอ"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </button>
+                    <a
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white"
+                      href={compactText((heroProductImage as any).url)}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label="ดาวน์โหลด Hero image"
+                      title="ดาวน์โหลดภาพ"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    className="block w-full bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                    onClick={() =>
+                      setPreviewAutoReviewImage({
+                        url: compactText((heroProductImage as any).url),
+                        title: "Hero / Default image",
+                      })
+                    }
+                    aria-label="ดู Hero image แบบเต็มจอ"
+                  >
+                    <img
+                      src={compactText((heroProductImage as any).url)}
+                      alt=""
+                      className="h-72 w-full object-contain p-3 md:h-80"
+                    />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex h-72 items-center justify-center rounded-lg border border-dashed border-amber-300 bg-amber-50 p-5 text-center text-sm font-medium text-amber-900 md:h-80">
+                  ยังไม่ได้ตั้ง Hero / Default image
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-500">
+                  {compactText(item.platform)}
+                </p>
+                <h1 className="mt-2 text-3xl font-semibold leading-tight">
+                  {compactText(item.productName)}
+                </h1>
+                {heroProductImage ? (
+                  <p className="mt-3 text-sm text-emerald-700">
+                    รูปนี้เป็นภาพหลักของระบบสำหรับสินค้า และเป็นค่าเริ่มต้นสำหรับ Product Anchor
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm text-amber-700">
+                    เลือก Hero image จากส่วน Product Images ด้านล่าง เพื่อกำหนดรูปหลักของสินค้า
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              {productPageUrl ? (
+                <>
+                  <a
+                    className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-2 font-medium text-blue-700 hover:bg-blue-100"
+                    href={productPageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    เปิดหน้าสินค้าปัจจุบัน
+                  </a>
+                  <span className="break-all text-xs text-slate-500">
+                    {productPageUrl}
+                  </span>
+                </>
+              ) : null}
+              {sourceUrl && sourceUrl !== productPageUrl ? (
+                <a
+                  className="text-blue-700 underline"
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Source marketplace page
+                </a>
+              ) : null}
+            </div>
             {item.affiliateUrl ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 <a
@@ -3669,6 +4278,22 @@ export default function MarketplaceCaptureProductDetail() {
                   <Copy className="mr-1 h-3.5 w-3.5" />
                   Copy
                 </button>
+              </div>
+            ) : null}
+            {commissionCheckUrl ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <a
+                  className="inline-flex items-center rounded-md border border-orange-200 bg-orange-50 px-3 py-2 font-medium text-orange-700 hover:bg-orange-100"
+                  href={commissionCheckUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  ตรวจคอมมิชชั่นปัจจุบัน
+                </a>
+                <span className="break-all text-xs text-slate-500">
+                  {commissionCheckUrl}
+                </span>
               </div>
             ) : null}
             <div className="mt-4 rounded-md border bg-slate-50 p-3">
@@ -3725,6 +4350,42 @@ export default function MarketplaceCaptureProductDetail() {
                 </dt>
                 <dd className="truncate">
                   {compactText(item.affiliateUrl) || "-"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-slate-500">
+                  Product page
+                </dt>
+                <dd>
+                  {productPageUrl ? (
+                    <a
+                      className="inline-flex max-w-full items-center gap-1 break-all text-blue-700 underline"
+                      href={productPageUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                      {productPageUrl}
+                    </a>
+                  ) : "-"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-slate-500">
+                  Commission check page
+                </dt>
+                <dd>
+                  {commissionCheckUrl ? (
+                    <a
+                      className="inline-flex max-w-full items-center gap-1 break-all text-orange-700 underline"
+                      href={commissionCheckUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                      {commissionCheckUrl}
+                    </a>
+                  ) : "-"}
                 </dd>
               </div>
               <div>
@@ -3787,7 +4448,9 @@ export default function MarketplaceCaptureProductDetail() {
           </section>
 
           <section className="rounded-lg border bg-white p-6 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            {showStandardOrderControlPanel ? (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
                   <Settings2 className="h-3.5 w-3.5" />
@@ -3802,20 +4465,6 @@ export default function MarketplaceCaptureProductDetail() {
                   Review ด้านบน
                 </p>
               </div>
-              <input
-                ref={characterAnchorUploadInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={handleUploadCharacterAnchor}
-              />
-              <input
-                ref={environmentAnchorUploadInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={handleUploadEnvironmentAnchor}
-              />
             </div>
 
             <div className="mt-5 rounded-lg border bg-white p-3">
@@ -3883,6 +4532,8 @@ export default function MarketplaceCaptureProductDetail() {
                 })}
               </div>
             </div>
+
+            {characterChoicePanel}
 
             <div className="mt-5 grid gap-4 lg:grid-cols-3">
               <div className="rounded-lg border bg-slate-50 p-3">
@@ -4140,7 +4791,7 @@ export default function MarketplaceCaptureProductDetail() {
                   className={`relative rounded-lg border bg-white p-3 text-left transition ${
                     activeAnchorDrop === "product"
                       ? "border-sky-400 ring-4 ring-sky-100"
-                      : selectedProductImageUrl
+                      : resolvedProductAnchorImageUrl
                         ? "border-emerald-500 ring-2 ring-emerald-50"
                         : "border-slate-200"
                   }`}
@@ -4149,20 +4800,20 @@ export default function MarketplaceCaptureProductDetail() {
                     Product anchor
                   </p>
                   <p className="mt-2 text-sm font-medium text-slate-900">
-                    {selectedProductImageUrl
+                    {resolvedProductAnchorImageUrl
                       ? "รูปสินค้าที่เลือกแล้ว"
                       : "เลือก/วางรูปสินค้าที่ต้องใช้จริง"}
                   </p>
-                  {selectedProductImageUrl ? (
+                  {resolvedProductAnchorImageUrl ? (
                     <div className="mt-2 flex items-start gap-3">
                       <img
-                        src={selectedProductImageUrl}
+                        src={resolvedProductAnchorImageUrl}
                         alt="Selected product anchor"
                         className="h-20 w-20 rounded-md border object-cover"
                         onLoad={event =>
-                          selectedProductImage
+                          resolvedProductAnchorImage
                             ? rememberImageDimensions(
-                                selectedProductImage.id,
+                                resolvedProductAnchorImage.id,
                                 event
                               )
                             : undefined
@@ -4171,12 +4822,12 @@ export default function MarketplaceCaptureProductDetail() {
                       <div className="min-w-0 space-y-1 text-xs text-slate-500">
                         <p className="font-medium text-slate-700">
                           {formatImageDimensions(
-                            selectedProductImageDimensions
+                            resolvedProductAnchorImageDimensions
                           )}
                         </p>
                         <p className="truncate">
                           {productImageSourceLabel(
-                            selectedProductImage?.source
+                            resolvedProductAnchorImage?.source
                           )}
                         </p>
                         <p className="leading-5">
@@ -4231,7 +4882,7 @@ export default function MarketplaceCaptureProductDetail() {
                       )}
                       อัปโหลดสินค้า
                     </Button>
-                    {selectedProductImageUrl ? (
+                    {resolvedProductAnchorImageUrl ? (
                       <>
                         <Button
                           type="button"
@@ -4402,7 +5053,14 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 px-3 py-2">
+              </>
+            ) : null}
+
+            <div
+              className={`${
+                showStandardOrderControlPanel ? "mt-4" : ""
+              } flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 px-3 py-2`}
+            >
               <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
                 {activeAutoReviewRun ? (
                   <>
@@ -4478,16 +5136,16 @@ export default function MarketplaceCaptureProductDetail() {
             {showAutoReviewRuns ? (
               <div className="mt-4 space-y-3">
                 {isHidingPreviousAutoReviewFailures ||
-                startAutoReviewMutation.isPending ? (
+                isStartingAutoReviewRun ? (
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-sky-900">
-                          กำลังเริ่ม run ใหม่
+                          ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว
                         </p>
                         <p className="mt-1 text-xs text-sky-700">
-                          ซ่อน error จาก run เก่าไว้แล้ว รอ backend สร้างสถานะ
-                          run ใหม่กลับมา
+                          ระบบกำลังสร้าง run ใหม่และซ่อน error จาก run เก่าไว้
+                          ระหว่างรอสถานะล่าสุดจาก backend
                         </p>
                       </div>
                       <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
@@ -4592,7 +5250,7 @@ export default function MarketplaceCaptureProductDetail() {
                 {visibleAutoReviewRunItems.length === 0 &&
                 !autoReviewRuns.isFetching &&
                 !isHidingPreviousAutoReviewFailures &&
-                !startAutoReviewMutation.isPending ? (
+                !isStartingAutoReviewRun ? (
                   <div className="rounded-lg border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
                     ยังไม่มีประวัติงานอัตโนมัติ
                   </div>
@@ -5598,11 +6256,42 @@ export default function MarketplaceCaptureProductDetail() {
                   {productImageOptions.map((image, index) => {
                     const imageId = image.id;
                     const isSelected = selectedProductImageId === imageId;
+                    const isHero = Boolean(image.isHero);
                     return (
                       <figure
                         key={imageId}
-                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200"}`}
+                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isHero ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200"}`}
                       >
+                        <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                            onClick={event => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setPreviewAutoReviewImage({
+                                url: image.url,
+                                title: `Product image ${index + 1}`,
+                              });
+                            }}
+                            aria-label={`ดู product image ${index + 1} แบบเต็มจอ`}
+                            title="ดูภาพเต็มจอ"
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </button>
+                          <a
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                            href={image.url}
+                            download
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={event => event.stopPropagation()}
+                            aria-label={`ดาวน์โหลด product image ${index + 1}`}
+                            title="ดาวน์โหลดภาพ"
+                          >
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </div>
                         <button
                           type="button"
                           onClick={() => selectProductAnchor(imageId)}
@@ -5641,7 +6330,22 @@ export default function MarketplaceCaptureProductDetail() {
                               Selected Anchor
                             </span>
                           ) : null}
+                          {isHero ? (
+                            <span className="ml-1 mt-1 inline-block rounded bg-emerald-600 px-2 py-0.5 text-xs text-white">
+                              Hero / Default
+                            </span>
+                          ) : null}
                         </button>
+                        {image.removableId ? (
+                          <button
+                            type="button"
+                            className="mt-2 w-full rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                            onClick={() => setProductImageAsHero(image.removableId)}
+                            disabled={isHero || setProductHeroImageMutation.isPending}
+                          >
+                            {isHero ? "Hero image selected" : "Set as Hero image"}
+                          </button>
+                        ) : null}
                         {image.removableId ? (
                           <button
                             type="button"
@@ -5914,6 +6618,17 @@ export default function MarketplaceCaptureProductDetail() {
             className="relative max-h-[90vh] max-w-[92vw] overflow-hidden rounded-md bg-white shadow-2xl"
             onClick={event => event.stopPropagation()}
           >
+            <a
+              className="absolute right-14 top-2 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow hover:bg-white"
+              href={previewAutoReviewImage.url}
+              download
+              target="_blank"
+              rel="noreferrer"
+              aria-label="ดาวน์โหลดภาพตัวอย่าง"
+            >
+              <Download className="h-4 w-4" />
+              Download
+            </a>
             <button
               type="button"
               className="absolute right-2 top-2 z-10 rounded-full bg-white/90 p-2 text-slate-700 shadow hover:bg-white"

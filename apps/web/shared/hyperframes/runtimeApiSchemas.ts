@@ -38,6 +38,48 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
   expectedPlanHash: z.string().min(6).max(128).optional(),
   idempotencyKey: z.string().min(1).max(192).optional(),
   overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+  referenceAnchors: z
+    .object({
+      schemaVersion: z.number().int().positive().optional(),
+      creationIntent: z
+        .enum(["storyboard", "video", "auto_review_video"])
+        .optional()
+        .nullable(),
+      characterMode: z
+        .enum([
+          "product_only",
+          "hands_only",
+          "described_character",
+          "uploaded_reference",
+        ])
+        .optional(),
+      characterBrief: z.string().min(1).max(2000).optional(),
+      characterPreset: z
+        .union([
+          z.string().max(4000),
+          z.record(z.unknown()),
+          z.array(z.unknown()),
+        ])
+        .optional(),
+      requiredRoles: z
+        .array(z.enum(["product", "character", "environment"]))
+        .optional(),
+      lockPolicy: z.record(z.unknown()).optional(),
+      productImageUrl: z.string().min(1).max(4096),
+      productImageId: z.string().max(160).optional().nullable(),
+      productImageRef: z.string().max(512).optional().nullable(),
+      productImageSource: z.string().max(128).optional().nullable(),
+      productImageSourceUrl: z.string().max(4096).optional().nullable(),
+      productImageStorageKey: z.string().max(1024).optional().nullable(),
+      productImageHash: z.string().max(256).optional().nullable(),
+      productImageIndex: z.number().int().optional().nullable(),
+      auditMetadata: z.record(z.unknown()).optional(),
+      fileEvidence: z.record(z.unknown()).optional(),
+      sourceRefs: z.array(z.string().min(1).max(512)).optional(),
+    })
+    .passthrough()
+    .optional()
+    .nullable(),
 }).strict();
 
 export const StartAutoStoryboardReviewOutputSchema = z

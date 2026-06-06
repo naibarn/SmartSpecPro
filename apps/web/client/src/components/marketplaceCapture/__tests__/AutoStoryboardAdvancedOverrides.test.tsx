@@ -77,6 +77,62 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.queryByLabelText(/render engine/i)).toBeNull();
   });
 
+  it("shows concrete Auto defaults for every optional control", () => {
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{}}
+        onChange={vi.fn()}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText("Format")).toHaveValue("generic_vertical_9_16");
+    expect(screen.getByLabelText("Quality")).toHaveValue("balanced");
+    expect(screen.getByLabelText("Audio")).toHaveValue("native_video_audio");
+    expect(screen.getByLabelText("Text policy")).toHaveValue("no_text");
+    expect(screen.getByLabelText("Shots")).toHaveValue("9");
+    expect(screen.getByLabelText("Frames")).toHaveValue("storyboard_3x3_split");
+    expect(screen.getByLabelText("Image model")).toHaveValue(
+      "google-nano-banana-pro"
+    );
+    expect(screen.getByText(/no overrides active/i)).toBeTruthy();
+  });
+
+  it("keeps 3x3 as the visible frame default when clearing a frame override", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan({ frameStrategy: "video_shot_start_stop" })}
+        open
+        value={{ frameStrategy: "video_shot_start_stop" }}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    const frames = screen.getByLabelText("Frames");
+    expect(frames).toHaveValue("video_shot_start_stop");
+    fireEvent.change(frames, {
+      target: { value: "storyboard_3x3_split" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({});
+    rerender(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+    expect(frames).toHaveValue("storyboard_3x3_split");
+  });
+
   it("clears a local override when the user picks the current auto default", () => {
     const onChange = vi.fn();
     render(

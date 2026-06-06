@@ -24,6 +24,10 @@ function percent(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value.toFixed(2) : null;
 }
 
+function positivePercent(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 100 ? value.toFixed(2) : null;
+}
+
 function countText(value: number | null | undefined, fallback: string | null | undefined): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
@@ -40,6 +44,56 @@ function normalizeOptionalHttpUrl(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function isTikTokShowcaseListUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return /(^|\.)shop\.tiktok\.com$/i.test(url.hostname)
+      && /\/streamer\/showcase\/product\/list\/?$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function tiktokProductPageUrlFromId(productId: unknown): string | null {
+  const id = typeof productId === "string" ? productId.trim() : "";
+  return /^\d{8,}$/.test(id) ? `https://shop.tiktok.com/th/pdp/${id}` : null;
+}
+
+function resolveProductPageUrl(input: {
+  platform: MarketplacePlatform;
+  externalProductId: string | null;
+  sourceUrl: string | null;
+  productRaw: Record<string, unknown>;
+  captureRaw: Record<string, unknown>;
+  captureNormalized: Record<string, unknown>;
+}): string | null {
+  const normalizedPlatformRaw = input.captureNormalized.platformRawJson && typeof input.captureNormalized.platformRawJson === "object" && !Array.isArray(input.captureNormalized.platformRawJson)
+    ? input.captureNormalized.platformRawJson as Record<string, unknown>
+    : {};
+  const explicitUrl = normalizeOptionalHttpUrl(firstString(
+    input.productRaw.productPageUrl,
+    input.productRaw.productUrl,
+    input.productRaw.latestProductPageUrl,
+    input.productRaw.latestProductUrl,
+    input.productRaw.canonicalSourceUrl,
+    input.productRaw.sourceUrl,
+    input.captureRaw.productPageUrl,
+    input.captureRaw.productUrl,
+    input.captureRaw.canonicalSourceUrl,
+    input.captureNormalized.productPageUrl,
+    input.captureNormalized.productUrl,
+    input.captureNormalized.canonicalSourceUrl,
+    normalizedPlatformRaw.productPageUrl,
+    normalizedPlatformRaw.productUrl,
+    normalizedPlatformRaw.canonicalSourceUrl,
+    input.sourceUrl,
+  ));
+  if (explicitUrl && !(input.platform === "tiktok_shop" && isTikTokShowcaseListUrl(explicitUrl))) {
+    return explicitUrl;
+  }
+  return input.platform === "tiktok_shop" ? tiktokProductPageUrlFromId(input.externalProductId) : explicitUrl;
 }
 
 function normalizeProductCategory(value: unknown): string | null {
@@ -335,8 +389,12 @@ async function getActiveGroupIds(auth: { userId: number; tenantId?: string }) {
   return (tenantRows.length > 0 ? tenantRows : rows).map((row) => row.groupId);
 }
 
-function productIdentityWhere(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null }) {
-  if (!capture.externalProductId) return undefined;
+function productIdentityWhere(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null; sourceUrl?: string | null }) {
+  if (!capture.externalProductId) {
+    return capture.sourceUrl
+      ? and(eq(marketplaceProducts.platform, capture.platform), eq(marketplaceProducts.sourceUrl, capture.sourceUrl))
+      : undefined;
+  }
   return capture.externalShopId
     ? and(
       eq(marketplaceProducts.platform, capture.platform),
@@ -349,7 +407,7 @@ function productIdentityWhere(capture: { platform: MarketplacePlatform; external
     );
 }
 
-async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null }, auth: { userId: number; tenantId?: string }) {
+async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null; sourceUrl?: string | null }, auth: { userId: number; tenantId?: string }) {
   const identityWhere = productIdentityWhere(capture);
   if (!identityWhere) return null;
   const db = getDb();
@@ -437,7 +495,7 @@ async function applyConfiguredShares(productId: string, platform: MarketplacePla
   return allowedGroupIds;
 }
 
-async function insertMetricSnapshot(productId: string, captureId: string, product: any, auth: { userId: number }) {
+async function insertMetricSnapshot(productId: string, captureId: string, product: any, auth: { userId: number }, options: { commissionRatePercent?: string | null } = {}) {
   const rawSoldCountText = product.rating.soldCountText ?? null;
   const soldCountNormalized = parseSoldCount(rawSoldCountText);
   const soldCountText = countText(soldCountNormalized, rawSoldCountText);
@@ -454,7 +512,7 @@ async function insertMetricSnapshot(productId: string, captureId: string, produc
     priceOriginal: money(product.price.original),
     currency: product.price.currency ?? "THB",
     discountText: product.price.discountText ?? null,
-    commissionRatePercent: percent(product.commissionRatePercent),
+    commissionRatePercent: options.commissionRatePercent ?? percent(product.commissionRatePercent),
     ratingScore: money(product.rating.score),
     reviewCountText,
     reviewCountNormalized,
@@ -473,6 +531,57 @@ async function linkCaptureInsightsToProduct(captureId: string, productId: string
       eq(marketplaceCaptureInsights.userId, auth.userId),
       auth.tenantId ? eq(marketplaceCaptureInsights.tenantId, auth.tenantId) : sql`${marketplaceCaptureInsights.tenantId} IS NULL`,
     ));
+}
+
+function selectedCaptureAssetIds(product: any): string[] {
+  return [
+    ...product.images.main,
+    ...product.images.description,
+    ...product.images.review,
+    ...product.images.relatedExcluded,
+  ];
+}
+
+function buildProductImageRows(productId: string, product: any, assetById: Map<string, any>) {
+  return [
+    ...product.images.main.map((assetId: string, index: number) => ({ assetId, type: "main" as const, sortOrder: index })),
+    ...product.images.description.map((assetId: string, index: number) => ({ assetId, type: "description" as const, sortOrder: index })),
+    ...product.images.review.map((assetId: string, index: number) => ({ assetId, type: "review" as const, sortOrder: index })),
+    ...product.images.relatedExcluded.map((assetId: string, index: number) => ({ assetId, type: "related_excluded" as const, sortOrder: index })),
+  ].flatMap((item) => {
+    const asset = assetById.get(item.assetId);
+    if (!asset) return [];
+    return {
+      id: createMarketplaceId("mpi"),
+      productId,
+      captureAssetId: asset.id,
+      type: item.type,
+      url: asset.url,
+      storageKey: asset.storageKey,
+      originalSourceUrl: asset.sourceUrl ?? null,
+      sortOrder: item.sortOrder,
+      width: asset.width ?? null,
+      height: asset.height ?? null,
+      metadataJson: {
+        ...(asset.metadataJson ?? {}),
+        captureId: asset.captureId,
+        selectedAsCover: product.images.coverAssetId === asset.id,
+      },
+    };
+  });
+}
+
+async function replaceCaptureProductImages(productId: string, product: any, assetById: Map<string, any>) {
+  const db = getDb();
+  await db.delete(marketplaceProductImages)
+    .where(and(
+      eq(marketplaceProductImages.productId, productId),
+      sql`${marketplaceProductImages.captureAssetId} IS NOT NULL`,
+    ));
+  const rows = buildProductImageRows(productId, product, assetById);
+  if (rows.length > 0) {
+    await db.insert(marketplaceProductImages).values(rows);
+  }
 }
 
 export async function confirmMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
@@ -508,52 +617,104 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
       ?? captureRawPayload.affiliateUrl
       ?? captureNormalized.affiliateUrl,
   );
+  const commissionCheckUrl = normalizeOptionalHttpUrl(
+    productRawJson.commissionCheckUrl
+      ?? productRawJson.offerUrl
+      ?? productRawJson.offerSpecificUrl
+      ?? captureRawPayload.commissionCheckUrl
+      ?? captureRawPayload.offerUrl
+      ?? captureRawPayload.offerSpecificUrl
+      ?? captureNormalized.commissionCheckUrl
+      ?? (captureNormalized.platformRawJson as Record<string, unknown> | undefined)?.commissionCheckUrl,
+  ) ?? (capture.platform === "shopee" && capture.externalProductId
+    ? `https://affiliate.shopee.co.th/offer/product_offer/${capture.externalProductId}`
+    : null);
+  const productPageUrl = resolveProductPageUrl({
+    platform: capture.platform,
+    externalProductId: capture.externalProductId,
+    sourceUrl: capture.sourceUrl,
+    productRaw: productRawJson,
+    captureRaw: captureRawPayload,
+    captureNormalized,
+  });
   const rawSoldCountText = product.rating.soldCountText ?? null;
   const soldCountNormalized = parseSoldCount(rawSoldCountText);
   const soldCountText = countText(soldCountNormalized, rawSoldCountText);
   const rawReviewCountText = product.rating.reviewCountText ?? null;
   const reviewCountNormalized = parseReviewCount(rawReviewCountText);
   const reviewCountText = countText(reviewCountNormalized, rawReviewCountText);
-  if (capture.externalProductId) {
+  const assetIds = selectedCaptureAssetIds(product);
+  const assetRows = assetIds.length > 0
+    ? await db.select().from(marketplaceCaptureAssets)
+      .where(and(eq(marketplaceCaptureAssets.captureId, captureId), eq(marketplaceCaptureAssets.userId, auth.userId)))
+    : [];
+  const assetById = new Map(assetRows.map((asset) => [asset.id, asset]));
+  const coverImageAssetId = product.images.coverAssetId && assetById.has(product.images.coverAssetId)
+    ? product.images.coverAssetId
+    : null;
+
+  if (capture.externalProductId || capture.sourceUrl) {
     const duplicate = await findAccessibleDuplicate(capture, auth);
     if (duplicate) {
       const existing = duplicate.product;
+      const incomingCommissionRatePercent = positivePercent(product.commissionRatePercent);
+      const commissionRatePercent = incomingCommissionRatePercent ?? existing.commissionRatePercent ?? null;
       await db.update(marketplaceProducts)
         .set({
+          productName: product.productName,
+          brand: product.brand ?? null,
+          shopName: product.shopName ?? null,
+          isMall: product.isMall ?? null,
           priceCurrent: money(product.price.current),
           priceOriginal: money(product.price.original),
-          currency: product.price.currency ?? existing.currency ?? "THB",
-          discountText: product.price.discountText ?? existing.discountText,
-          commissionRatePercent: percent(product.commissionRatePercent) ?? existing.commissionRatePercent,
-          productCategory: productCategory ?? existing.productCategory,
-          affiliateUrl: affiliateUrl ?? existing.affiliateUrl,
+          currency: product.price.currency ?? "THB",
+          discountText: product.price.discountText ?? null,
+          commissionRatePercent,
+          productCategory,
+          affiliateUrl,
           sourceUrl: capture.sourceUrl,
           captureId,
           ratingScore: money(product.rating.score),
-          reviewCountText: reviewCountText ?? existing.reviewCountText,
-          soldCountText: soldCountText ?? existing.soldCountText,
-          soldCountNormalized: soldCountNormalized ?? existing.soldCountNormalized,
+          reviewCountText,
+          soldCountText,
+          soldCountNormalized,
+          descriptionText: product.description.rawText ?? "",
           descriptionJson: {
-            ...((existing.descriptionJson as Record<string, unknown>) ?? {}),
-            ...(capturedCategoryText ? { categoryText: capturedCategoryText } : {}),
-            ...(capturedCategoryPath ? { categoryPath: capturedCategoryPath } : {}),
-            ...(productCategory ? { productCategory } : {}),
+            ingredients: product.description.ingredients,
+            claims: product.description.claims,
+            categoryText: capturedCategoryText,
+            categoryPath: capturedCategoryPath,
+            productCategory,
           },
+          specsJson: product.description.specs,
           platformRawJson: {
             ...(existing.platformRawJson as Record<string, unknown> ?? {}),
+            ...(productRawJson ?? {}),
+            affiliateUrl,
+            commissionCheckUrl,
+            productPageUrl,
+            productCategory,
+            categoryText: capturedCategoryText,
+            categoryPath: capturedCategoryPath,
             latestCaptureId: captureId,
             latestCapturedAt: new Date().toISOString(),
             latestCapturedByUserId: auth.userId,
             duplicateAccessType: duplicate.accessType,
-            latestAffiliateUrl: affiliateUrl ?? existing.affiliateUrl ?? null,
-            latestProductCategory: productCategory ?? existing.productCategory ?? null,
-            latestProductDraft: product.platformRawJson,
+            latestAffiliateUrl: affiliateUrl,
+            latestCommissionCheckUrl: commissionCheckUrl,
+            latestIncomingCommissionRatePercent: incomingCommissionRatePercent,
+            preservedCommissionRatePercent: incomingCommissionRatePercent ? null : existing.commissionRatePercent ?? null,
+            latestProductPageUrl: productPageUrl,
+            latestProductCategory: productCategory,
+            latestProductDraft: productRawJson,
           },
+          coverImageAssetId,
           updatedAt: new Date(),
         })
         .where(eq(marketplaceProducts.id, existing.id));
 
-      await insertMetricSnapshot(existing.id, captureId, product, auth);
+      await replaceCaptureProductImages(existing.id, product, assetById);
+      await insertMetricSnapshot(existing.id, captureId, product, auth, { commissionRatePercent });
       await linkCaptureInsightsToProduct(captureId, existing.id, auth);
       await db.update(marketplaceCaptureSessions)
         .set({ status: "confirmed", updatedAt: new Date() })
@@ -565,15 +726,6 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
       };
     }
   }
-  const assetIds = [...product.images.main, ...product.images.description, ...product.images.review, ...product.images.relatedExcluded];
-  const assetRows = assetIds.length > 0
-    ? await db.select().from(marketplaceCaptureAssets)
-      .where(and(eq(marketplaceCaptureAssets.captureId, captureId), eq(marketplaceCaptureAssets.userId, auth.userId)))
-    : [];
-  const assetById = new Map(assetRows.map((asset) => [asset.id, asset]));
-  const coverImageAssetId = product.images.coverAssetId && assetById.has(product.images.coverAssetId)
-    ? product.images.coverAssetId
-    : null;
 
   await db.insert(marketplaceProducts).values({
     id: productId,
@@ -611,6 +763,9 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     platformRawJson: {
       ...(productRawJson ?? {}),
       affiliateUrl,
+      commissionCheckUrl,
+      productPageUrl,
+      latestProductPageUrl: productPageUrl,
       productCategory,
       categoryText: capturedCategoryText,
       categoryPath: capturedCategoryPath,
@@ -621,28 +776,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     updatedAt: new Date(),
   });
 
-  const rows = [
-    ...product.images.main.map((assetId, index) => ({ assetId, type: "main" as const, sortOrder: index })),
-    ...product.images.description.map((assetId, index) => ({ assetId, type: "description" as const, sortOrder: index })),
-    ...product.images.review.map((assetId, index) => ({ assetId, type: "review" as const, sortOrder: index })),
-    ...product.images.relatedExcluded.map((assetId, index) => ({ assetId, type: "related_excluded" as const, sortOrder: index })),
-  ].flatMap((item) => {
-    const asset = assetById.get(item.assetId);
-    if (!asset) return [];
-    return {
-      id: createMarketplaceId("mpi"),
-      productId,
-      captureAssetId: asset.id,
-      type: item.type,
-      url: asset.url,
-      storageKey: asset.storageKey,
-      originalSourceUrl: asset.sourceUrl ?? null,
-      sortOrder: item.sortOrder,
-      width: asset.width ?? null,
-      height: asset.height ?? null,
-      metadataJson: asset.metadataJson ?? {},
-    };
-  });
+  const rows = buildProductImageRows(productId, product, assetById);
   if (rows.length > 0) {
     await db.insert(marketplaceProductImages).values(rows);
   }
@@ -1115,9 +1249,16 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
     }).from(marketplaceProductGroupShares)
       .where(eq(marketplaceProductGroupShares.productId, productId)),
   ]);
+  const productRaw = (product.platformRawJson as Record<string, unknown> | null) ?? {};
+  const heroProductImageId = typeof productRaw.heroProductImageId === "string" ? productRaw.heroProductImageId : "";
+  const orderedImages = [...images].sort((left, right) => {
+    const leftIsCover = (heroProductImageId && left.id === heroProductImageId) || (product.coverImageAssetId && left.captureAssetId === product.coverImageAssetId) ? 0 : 1;
+    const rightIsCover = (heroProductImageId && right.id === heroProductImageId) || (product.coverImageAssetId && right.captureAssetId === product.coverImageAssetId) ? 0 : 1;
+    return leftIsCover - rightIsCover || (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+  });
   return {
     product: { ...product, accessType, groupShare },
-    images,
+    images: orderedImages,
     history,
     shares,
     health: buildProductHealth(product, history),
@@ -1188,6 +1329,53 @@ export async function addMarketplaceProductImageFromUrl(input: {
   return { productId: input.productId, image: created, created: true };
 }
 
+export async function setMarketplaceProductHeroImage(input: {
+  productId: string;
+  imageId: string;
+}, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const access = await getMarketplaceProductForUpdate(input.productId, auth);
+  if (!access) {
+    throw new Error("Product not found or cannot be updated by this user");
+  }
+
+  const [image] = await db.select().from(marketplaceProductImages)
+    .where(and(eq(marketplaceProductImages.id, input.imageId), eq(marketplaceProductImages.productId, input.productId)))
+    .limit(1);
+  if (!image) {
+    throw new Error("Product image not found");
+  }
+
+  await db.update(marketplaceProducts)
+    .set({
+      coverImageAssetId: image.captureAssetId ?? access.product.coverImageAssetId ?? null,
+      platformRawJson: {
+        ...((access.product.platformRawJson as Record<string, unknown> | null) ?? {}),
+        heroProductImageId: image.id,
+        heroProductImageUrl: image.url,
+        heroCaptureAssetId: image.captureAssetId ?? null,
+        heroSelectedByUserId: auth.userId,
+        heroSelectedAt: new Date().toISOString(),
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(marketplaceProducts.id, input.productId));
+
+  await db.update(marketplaceProductImages)
+    .set({
+      metadataJson: {
+        ...(image.metadataJson ?? {}),
+        role: "hero",
+        heroSelectedByUserId: auth.userId,
+        heroSelectedAt: new Date().toISOString(),
+        accessType: access.accessType,
+      },
+    })
+    .where(eq(marketplaceProductImages.id, input.imageId));
+
+  return { productId: input.productId, imageId: input.imageId, coverImageAssetId: image.captureAssetId ?? null };
+}
+
 export async function removeMarketplaceProductImage(input: {
   productId: string;
   imageId: string;
@@ -1209,7 +1397,16 @@ export async function removeMarketplaceProductImage(input: {
     .where(and(eq(marketplaceProductImages.id, input.imageId), eq(marketplaceProductImages.productId, input.productId)));
 
   await db.update(marketplaceProducts)
-    .set({ updatedAt: new Date() })
+    .set({
+      coverImageAssetId: access.product.coverImageAssetId === image.captureAssetId ? null : access.product.coverImageAssetId,
+      platformRawJson: {
+        ...((access.product.platformRawJson as Record<string, unknown> | null) ?? {}),
+        ...(String((access.product.platformRawJson as Record<string, unknown> | null)?.heroProductImageId ?? "") === input.imageId
+          ? { heroProductImageId: null, heroProductImageUrl: null, heroCaptureAssetId: null }
+          : {}),
+      },
+      updatedAt: new Date(),
+    })
     .where(eq(marketplaceProducts.id, input.productId));
 
   return {

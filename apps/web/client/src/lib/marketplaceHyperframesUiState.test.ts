@@ -6,6 +6,7 @@ import {
   resolveHyperframesRenderUiState,
   resolveHyperframesRenderRefetchInterval,
   resolveMarketplaceAutoReviewLaunchMode,
+  shouldShowStandardOrderControls,
   shouldShowAutoStoryboardReviewSurface,
 } from "./marketplaceHyperframesUiState";
 
@@ -86,6 +87,27 @@ describe("marketplaceHyperframesUiState", () => {
         plan: planWithAutoAccess(true),
       })
     ).toBe("auto_storyboard_review");
+  });
+
+  it("shows Standard controls only for Standard mode or when Auto is unavailable", () => {
+    expect(
+      shouldShowStandardOrderControls({
+        autoSurfaceVisible: true,
+        effectiveLaunchMode: "auto_storyboard_review",
+      })
+    ).toBe(false);
+    expect(
+      shouldShowStandardOrderControls({
+        autoSurfaceVisible: true,
+        effectiveLaunchMode: "standard_order",
+      })
+    ).toBe(true);
+    expect(
+      shouldShowStandardOrderControls({
+        autoSurfaceVisible: false,
+        effectiveLaunchMode: "standard_order",
+      })
+    ).toBe(true);
   });
 
   it("uses render polling guidance and stops on terminal or blocked projections", () => {

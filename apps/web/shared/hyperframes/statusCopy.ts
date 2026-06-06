@@ -30,7 +30,10 @@ export const HYPERFRAMES_STATUS_COPY: Record<
   queued: {
     copyId: "hyperframes.status.queued",
     label: { en: "Queued", th: "เข้าคิวแล้ว" },
-    description: { en: "The render job is waiting for a worker.", th: "งานรอ worker เริ่มประมวลผล" },
+    description: {
+      en: "The render job is queued and has not started yet.",
+      th: "งานเข้าคิวแล้ว ยังไม่ได้เริ่ม render",
+    },
   },
   staging_assets: {
     copyId: "hyperframes.status.staging_assets",

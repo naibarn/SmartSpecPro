@@ -212,6 +212,59 @@ describe("hyperframesRenderService", () => {
     });
   });
 
+  it("makes queued render jobs explicit when runtime execution is not ready", async () => {
+    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+    delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+    mockGetDb.mockResolvedValue(
+      createOutboxSelectDb({
+        id: "hf_render_queued",
+        tenantId: "tenant_1",
+        userId: 1,
+        runId: "mar_1",
+        status: "queued",
+        attempts: 0,
+        lockedBy: null,
+        lastError: null,
+        jobType: "hyperframes_render",
+        payloadJson: {
+          productId: "product_1",
+          compositionInputHash: "hf_input_queued",
+          compositionHtmlHash: "hf_html_queued",
+          templateId: "marketplace_storyboard_motion_9x9_v1",
+          templateVersion: "1.0.0",
+          platformPresetId: "generic_vertical_9_16",
+          renderIntent: "preview",
+          compositionMode: "storyboard_motion_preview",
+        },
+        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
+      })
+    );
+
+    try {
+      const projection = await getHyperframesRenderProjection({
+        auth: { userId: 1, tenantId: "tenant_1" },
+        renderJobId: "hf_render_queued",
+        productId: "product_1",
+        runId: "mar_1",
+      });
+
+      expect(projection).toMatchObject({
+        status: "queued",
+        safeMessage: "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render",
+        templateId: "marketplace_storyboard_motion_9x9_v1",
+        renderIntent: "preview",
+        compositionInputHash: "hf_input_queued",
+      });
+      expect(projection.safeDiagnostics[0]).toContain("runtime is not ready");
+    } finally {
+      if (previousRuntimeReady === undefined) {
+        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+      } else {
+        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
+      }
+    }
+  });
+
   it("throws conflict when retry update loses the optimistic race", async () => {
     const db = createOutboxMutationDb(
       {

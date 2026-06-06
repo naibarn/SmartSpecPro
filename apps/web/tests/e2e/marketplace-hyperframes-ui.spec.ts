@@ -1172,7 +1172,9 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await expect(page.getByText("Standard Order").first()).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByRole("button", { name: /use standard/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /use standard|ใช้ Standard/i }).first()
+    ).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath("route-product-detail-feature-disabled-390x844.png"),
       fullPage: true,
@@ -1203,7 +1205,9 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
       .click();
     await expect(page.getByText("โหลด Auto Storyboard Review plan ไม่สำเร็จ")).toBeVisible();
     await expect(page.getByText("Standard Order").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /use standard/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /use standard|ใช้ Standard/i }).first()
+    ).toBeVisible();
   });
 
   test("authenticated Product Detail resumes the active Auto run without starting a duplicate", async ({
@@ -1347,9 +1351,19 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
       timeout: 30_000,
     });
     await expect(page.getByText("Standard Order").first()).toBeVisible();
+    await expect(page.getByText("Custom controls สำหรับ flow เดิม")).toHaveCount(0);
     await page
       .getByRole("button", { name: /ตัวเลือก Auto ขั้นสูง/i })
       .click();
+    await expect(page.getByLabel("รูปแบบ")).toHaveValue("generic_vertical_9_16");
+    await expect(page.getByLabel("คุณภาพ")).toHaveValue("balanced");
+    await expect(page.getByLabel("เสียง")).toHaveValue("native_video_audio");
+    await expect(page.getByLabel("นโยบายข้อความ")).toHaveValue("no_text");
+    await expect(page.getByLabel("จำนวนช็อต")).toHaveValue("9");
+    await expect(page.getByLabel("เฟรม")).toHaveValue("storyboard_3x3_split");
+    await expect(page.getByLabel("โมเดลภาพ")).toHaveValue(
+      "google-nano-banana-pro"
+    );
 
     await page.getByLabel("คุณภาพ").selectOption("high");
     await expect(page.getByText(/กำลังอัปเดตแผนอัตโนมัติ/)).toBeVisible();
@@ -1375,6 +1389,14 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await page.getByRole("button", { name: /ใช้แผนอัตโนมัติ/i }).click();
     await expect(page.getByText(/กำลังอัปเดตแผนอัตโนมัติ/)).toHaveCount(0);
     await expect(page.getByText("Standard Order").first()).toBeVisible();
+    await expect(page.getByText("Custom controls สำหรับ flow เดิม")).toHaveCount(0);
+
+    await page.getByRole("button", { name: /standard mode|โหมด Standard/i }).click();
+    await expect(page.getByText("Custom controls สำหรับ flow เดิม")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /ตัวเลือก Auto ขั้นสูง/i })
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: /auto mode|โหมด Auto/i }).click();
 
     await page
       .getByRole("button", { name: /ตัวเลือก Auto ขั้นสูง/i })

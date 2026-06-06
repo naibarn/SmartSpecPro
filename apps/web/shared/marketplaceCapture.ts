@@ -515,9 +515,11 @@ export const categoryCandidateSchema = z.object({
   commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
   commissionRateText: z.string().max(128).nullable().optional(),
   affiliateUrl: z.string().url().nullable().optional(),
+  commissionCheckUrl: z.string().url().nullable().optional(),
   affiliateLinkAvailable: z.boolean().nullable().optional(),
   affiliateCardKey: z.string().max(512).nullable().optional(),
   imageUrl: z.string().max(4096).nullable().optional(),
+  imageUrls: z.array(z.string().max(4096)).max(60).optional(),
   originalUrl: z.string().max(4096).optional(),
   cleanUrl: z.string().max(4096).optional(),
   canonicalUrl: z.string().max(4096).nullable().optional(),
@@ -536,6 +538,7 @@ export const createMarketplaceCaptureDraftSchema = z.object({
   originalSourceUrl: z.string().max(4096).optional(),
   cleanSourceUrl: z.string().max(4096).optional(),
   canonicalSourceUrl: z.string().max(4096).nullable().optional(),
+  productPageUrl: z.string().max(4096).nullable().optional(),
   sourceUrlFormat: z.enum(marketplaceUrlFormats).optional(),
   pageType: z.enum(marketplacePageTypes),
   externalProductId: z.string().max(128).nullable().optional(),
@@ -753,19 +756,27 @@ export function parseShopeeIds(url: string): { shopId: string | null; itemId: st
 export function parseTikTokShopUrl(inputUrl: string): TikTokShopUrlParts {
   const originalUrl = inputUrl.trim();
   let origin = "https://www.tiktok.com";
+  let hostname = "www.tiktok.com";
   let pathname = originalUrl.split("?")[0]?.split("#")[0] ?? originalUrl;
   let cleanUrl = pathname;
+  let productIdFromQuery: string | null = null;
 
   try {
     const parsed = new URL(originalUrl);
     origin = parsed.origin;
+    hostname = parsed.hostname.toLowerCase();
     pathname = parsed.pathname;
     cleanUrl = `${parsed.origin}${parsed.pathname}`;
+    productIdFromQuery = parsed.searchParams.get("product_id") || parsed.searchParams.get("productId");
   } catch {
     if (pathname.startsWith("/")) cleanUrl = `${origin}${pathname}`;
   }
+  const supportsRootRegionPath = hostname === "shop.tiktok.com" || hostname.endsWith(".tiktokglobalshop.com");
+  const canonicalRegionalPath = (region: string, suffix = "") => `${origin}${supportsRootRegionPath ? "" : "/shop"}/${region}${suffix}`;
 
-  const pdpMatch = pathname.match(/^\/shop\/([^/]+)\/pdp\/(\d+)\/?$/i);
+  const pdpMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/pdp\/(?:[^/]+\/)?(\d+)\/?$/i
+    : /^\/shop\/([^/]+)\/pdp\/(?:[^/]+\/)?(\d+)\/?$/i);
   if (pdpMatch) {
     const region = pdpMatch[1];
     const productId = pdpMatch[2];
@@ -777,7 +788,7 @@ export function parseTikTokShopUrl(inputUrl: string): TikTokShopUrlParts {
       format: "pdp_url",
       originalUrl,
       cleanUrl,
-      canonicalUrl: `${origin}/shop/${region}/pdp/${productId}`,
+      canonicalUrl: canonicalRegionalPath(region, `/pdp/${productId}`),
     };
   }
 
@@ -796,7 +807,9 @@ export function parseTikTokShopUrl(inputUrl: string): TikTokShopUrlParts {
     };
   }
 
-  const categoryMatch = pathname.match(/^\/shop\/([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i);
+  const categoryMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i
+    : /^\/shop\/([^/]+)\/c\/([^/]+)\/(\d+)\/?$/i);
   if (categoryMatch) {
     const region = categoryMatch[1];
     const categorySlug = categoryMatch[2];
@@ -809,11 +822,13 @@ export function parseTikTokShopUrl(inputUrl: string): TikTokShopUrlParts {
       format: "category_url",
       originalUrl,
       cleanUrl,
-      canonicalUrl: `${origin}/shop/${region}/c/${categorySlug}/${categoryId}`,
+      canonicalUrl: canonicalRegionalPath(region, `/c/${categorySlug}/${categoryId}`),
     };
   }
 
-  const shopHomeMatch = pathname.match(/^\/shop\/([^/]+)\/?$/i);
+  const shopHomeMatch = pathname.match(supportsRootRegionPath
+    ? /^\/(?:shop\/)?([^/]+)\/?$/i
+    : /^\/shop\/([^/]+)\/?$/i);
   if (shopHomeMatch) {
     const region = shopHomeMatch[1];
     return {
@@ -824,7 +839,20 @@ export function parseTikTokShopUrl(inputUrl: string): TikTokShopUrlParts {
       format: "shop_home",
       originalUrl,
       cleanUrl,
-      canonicalUrl: `${origin}/shop/${region}`,
+      canonicalUrl: canonicalRegionalPath(region),
+    };
+  }
+
+  if (productIdFromQuery) {
+    return {
+      productId: productIdFromQuery,
+      categorySlug: null,
+      categoryId: null,
+      region: null,
+      format: "view_product_url",
+      originalUrl,
+      cleanUrl,
+      canonicalUrl: `${origin}/view/product/${productIdFromQuery}`,
     };
   }
 

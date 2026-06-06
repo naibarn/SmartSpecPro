@@ -7,6 +7,7 @@ import {
   ProductReferenceStoryboardSkillIncompleteOutputError,
   PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID,
   resolveProductReferenceStoryboardLlmMaxTokensForTest,
+  sanitizeProductReferenceStoryboardUserInputsForTest,
   shouldOptimizeProductReferenceStoryboardPromptForTest,
   stripRenderableStoryboardFrameLabelsForTest,
   validateProductReferenceStoryboardOutputCompletenessForTest,
@@ -431,5 +432,24 @@ describe("unified product reference storyboard skill", () => {
     expect(skillsRouterSource).toContain(
       "product-reference-storyboard output exceeded limit; optimizing before use"
     );
+  });
+
+  it("keeps empty optional reference arrays for schema validation", () => {
+    const sanitized = sanitizeProductReferenceStoryboardUserInputsForTest({
+      generation_mode: "multi_frame_storyboard",
+      reference_product_images: ["https://example.test/product.png"],
+      reference_character_images: [],
+      reference_environment_images: [],
+      ignored_empty_text: "",
+      ignored_empty_array: [],
+    });
+
+    expect(sanitized.reference_product_images).toEqual([
+      "https://example.test/product.png",
+    ]);
+    expect(sanitized.reference_character_images).toEqual([]);
+    expect(sanitized.reference_environment_images).toEqual([]);
+    expect(sanitized).not.toHaveProperty("ignored_empty_text");
+    expect(sanitized).not.toHaveProperty("ignored_empty_array");
   });
 });

@@ -29,7 +29,11 @@ describe("HyperFrames status copy", () => {
     expect(getHyperframesStatusCopy("queued", "th")).toMatchObject({
       copyId: "hyperframes.status.queued",
       label: "เข้าคิวแล้ว",
+      description: "งานเข้าคิวแล้ว ยังไม่ได้เริ่ม render",
     });
+    expect(getHyperframesStatusCopy("queued", "th").description).not.toContain(
+      "worker เริ่ม"
+    );
     expect(getHyperframesBlockerCopy("worker_disabled", "en")).toMatchObject({
       copyId: "hyperframes.blocker.worker_disabled",
       label: "Worker unavailable",

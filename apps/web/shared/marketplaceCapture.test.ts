@@ -77,11 +77,25 @@ describe("marketplace capture parsers", () => {
       format: "category_url",
       canonicalUrl: "https://www.tiktok.com/shop/th/c/home-supplies/600001",
     });
+    expect(parseTikTokShopUrl("https://shop.tiktok.com/th/c/baby-maternity/602284?source=ecommerce_mall")).toMatchObject({
+      productId: null,
+      categorySlug: "baby-maternity",
+      categoryId: "602284",
+      region: "th",
+      format: "category_url",
+      canonicalUrl: "https://shop.tiktok.com/th/c/baby-maternity/602284",
+    });
     expect(parseTikTokShopUrl("https://www.tiktok.com/shop/th/pdp/1735105127894976061")).toMatchObject({
       productId: "1735105127894976061",
       region: "th",
       format: "pdp_url",
       canonicalUrl: "https://www.tiktok.com/shop/th/pdp/1735105127894976061",
+    });
+    expect(parseTikTokShopUrl("https://shop.tiktok.com/th/pdp/demo-product/1735105127894976061")).toMatchObject({
+      productId: "1735105127894976061",
+      region: "th",
+      format: "pdp_url",
+      canonicalUrl: "https://shop.tiktok.com/th/pdp/1735105127894976061",
     });
     expect(parseTikTokShopUrl("https://www.tiktok.com/view/product/1729798722653554943?region=TH&locale=th-TH")).toMatchObject({
       productId: "1729798722653554943",

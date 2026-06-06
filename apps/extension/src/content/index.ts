@@ -2,7 +2,7 @@ import { detectShopeePage } from "./adapters/shopee";
 import { detectTikTokShopPage } from "./adapters/tiktokShop";
 import { captureShopeeAffiliateDomDiagnostics, getLastShopeeAffiliateScanDiagnostics, isShopeeAffiliateProductOfferPage, resolveShopeeAffiliateLink, scanShopeeCategoryPage } from "./capture/categoryScanner";
 import { scanShopeeProductPage } from "./capture/productPageScanner";
-import { scanTikTokShopCategoryPage, scanTikTokShopProductPage } from "./capture/tiktokShopScanner";
+import { collectTikTokShowcaseImagesForProduct, scanTikTokShopCategoryPage, scanTikTokShopProductPage } from "./capture/tiktokShopScanner";
 
 declare const chrome: any;
 
@@ -218,6 +218,30 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
           error: error?.message || "affiliate_link_failed",
         });
         sendResponse({ ok: false, error: error?.message || "affiliate_link_failed" });
+      });
+      return true;
+    }
+    if (message?.type === "COLLECT_TIKTOK_SHOWCASE_IMAGES") {
+      (async () => {
+        const page = detectMarketplacePage();
+        if (page.platform !== "tiktok_shop") throw new Error("unsupported_page");
+        const productId = typeof message.productId === "string" ? message.productId.trim() : "";
+        if (!productId) throw new Error("missing_product_id");
+        const candidate = await collectTikTokShowcaseImagesForProduct(productId);
+        void recordDiagnosticLog("tiktok_showcase_image_collect", {
+          productId,
+          imageCount: candidate.imageUrls?.length ?? 0,
+          priceText: candidate.priceText ?? null,
+          commissionRateText: candidate.commissionRateText ?? null,
+          url: candidate.url,
+        });
+        sendResponse({ ok: true, candidate });
+      })().catch((error) => {
+        void recordDiagnosticLog("tiktok_showcase_image_collect_failed", {
+          productId: message.productId ?? null,
+          error: error?.message || "showcase_image_collect_failed",
+        });
+        sendResponse({ ok: false, error: error?.message || "showcase_image_collect_failed" });
       });
       return true;
     }

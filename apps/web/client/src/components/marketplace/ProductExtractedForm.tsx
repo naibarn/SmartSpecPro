@@ -122,7 +122,9 @@ export function productFormFromExtraction(llm: any): ProductFormValue {
 }
 
 function numberOrNull(value: string): number | null {
-  const n = Number(value);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -150,6 +152,13 @@ function firstCategoryPathParts(...values: unknown[]): string[] {
   return [];
 }
 
+function firstString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 export function productConfirmPayload(form: ProductFormValue, imageSelection: {
   main: string[];
   description: string[];
@@ -157,6 +166,27 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
   relatedExcluded: string[];
   coverAssetId?: string | null;
 }, platformRawJson: Record<string, unknown>) {
+  const rawPlatform = (platformRawJson.platformRawJson && typeof platformRawJson.platformRawJson === "object" && !Array.isArray(platformRawJson.platformRawJson))
+    ? platformRawJson.platformRawJson as Record<string, unknown>
+    : {};
+  const commissionCheckUrl = firstString(
+    platformRawJson.commissionCheckUrl,
+    rawPlatform.commissionCheckUrl,
+    platformRawJson.offerUrl,
+    rawPlatform.offerUrl,
+    platformRawJson.offerSpecificUrl,
+    rawPlatform.offerSpecificUrl,
+  );
+  const productPageUrl = firstString(
+    platformRawJson.productPageUrl,
+    rawPlatform.productPageUrl,
+    platformRawJson.productUrl,
+    rawPlatform.productUrl,
+    platformRawJson.canonicalSourceUrl,
+    rawPlatform.canonicalSourceUrl,
+    platformRawJson.sourceUrl,
+    rawPlatform.sourceUrl,
+  );
   return {
     product: {
       productName: form.productName,
@@ -197,6 +227,9 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
       images: imageSelection,
       platformRawJson: {
         ...platformRawJson,
+        commissionCheckUrl,
+        productPageUrl,
+        latestProductPageUrl: productPageUrl,
         affiliateUrl: form.affiliateUrl || null,
         categoryText: form.categoryText || null,
         categoryPath: categoryPathParts(form.categoryPathText),
@@ -285,9 +318,16 @@ export function ProductExtractedForm({
         <label className={labelClass}>Currency<input className={inputClass} value={value.currency} onChange={(e) => update("currency", e.target.value)} /></label>
         <label className={labelClass}>Discount<input className={inputClass} value={value.discountText} onChange={(e) => update("discountText", e.target.value)} /></label>
         <label className={labelClass}>Commission rate (%)<input className={inputClass} inputMode="decimal" value={value.commissionRatePercent} onChange={(e) => update("commissionRatePercent", e.target.value)} /></label>
-        <label className={labelClass}>Affiliate link
-          <div className="mt-1 flex gap-2">
-            <input className="w-full rounded-md border px-3 py-2 text-sm" value={value.affiliateUrl} onChange={(e) => update("affiliateUrl", e.target.value)} placeholder="https://s.shopee.co.th/..." />
+        <label className={`${labelClass} md:col-span-2`}>Affiliate link
+          <div className="mt-1 flex items-start gap-2">
+            <textarea
+              className="min-h-16 w-full rounded-md border px-3 py-2 font-mono text-xs leading-5 [overflow-wrap:anywhere]"
+              value={value.affiliateUrl}
+              onChange={(e) => update("affiliateUrl", e.target.value)}
+              placeholder="https://s.shopee.co.th/..."
+              rows={3}
+              spellCheck={false}
+            />
             <button
               type="button"
               className="rounded-md border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"

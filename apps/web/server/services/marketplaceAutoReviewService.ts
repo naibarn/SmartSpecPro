@@ -134,6 +134,13 @@ export type MarketplaceAutoReviewStatus =
 export type MarketplaceAutoReviewReferenceAnchorsInput = {
   schemaVersion?: number | null;
   creationIntent?: "storyboard" | "video" | "auto_review_video" | null;
+  characterMode?:
+    | "product_only"
+    | "hands_only"
+    | "described_character"
+    | "uploaded_reference";
+  characterBrief?: string | null;
+  characterPreset?: string | Record<string, unknown> | unknown[] | null;
   requiredRoles?: string[] | null;
   lockPolicy?: Record<string, unknown> | null;
   productImageUrl?: string | null;
@@ -169,6 +176,9 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
 type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   schemaVersion: number;
   creationIntent?: "storyboard" | "video" | "auto_review_video" | null;
+  characterMode?: string | null;
+  characterBrief?: string | null;
+  characterPreset?: string | Record<string, unknown> | unknown[] | null;
   requiredRoles: string[];
   lockPolicy?: Record<string, unknown>;
   productImageUrl: string;
@@ -2626,6 +2636,58 @@ function providerReferenceReadiness(input: {
   };
 }
 
+function normalizeMarketplaceAutoReviewCharacterMode(
+  value: unknown
+):
+  | "product_only"
+  | "hands_only"
+  | "described_character"
+  | "uploaded_reference"
+  | null {
+  const mode = cleanText(value);
+  return (
+    mode === "product_only" ||
+    mode === "hands_only" ||
+    mode === "described_character" ||
+    mode === "uploaded_reference"
+      ? mode
+      : null
+  );
+}
+
+function normalizeMarketplaceAutoReviewCharacterBrief(value: unknown): string | null {
+  return cleanText(value) || null;
+}
+
+function normalizeMarketplaceAutoReviewCharacterPreset(
+  value: unknown
+): string | Record<string, unknown> | unknown[] | null {
+  if (typeof value === "string") return cleanText(value) || null;
+  if (Array.isArray(value)) {
+    const values = value
+      .map(item =>
+        typeof item === "string" ? cleanText(item) : item ? item : null
+      )
+      .filter(Boolean) as Array<unknown>;
+    return values.length > 0 ? values : null;
+  }
+  const record = asRecord(value);
+  return Object.keys(record).length > 0 ? record : null;
+}
+
+function characterPresetContinuityDescriptors(value: unknown): string[] {
+  const record = asRecord(value);
+  const text = cleanText(value);
+  if (text) return [`Character preset: ${text}`];
+  const entries = Object.entries(record);
+  if (entries.length === 0) return [];
+  return [
+    `Character preset: ${entries
+      .map(([key, raw]) => `${key}: ${cleanText(raw)}`)
+      .join(", ")}`,
+  ];
+}
+
 function assertProviderReadyReferenceAnchor(
   kind: "product" | "character" | "environment",
   url: string | null,
@@ -2665,6 +2727,17 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
   const imageUrls = params.productTruth.imageUrls.map(url => cleanText(url));
   let productImageUrl =
     cleanText(params.referenceAnchors?.productImageUrl) || null;
+  const characterMode = normalizeMarketplaceAutoReviewCharacterMode(
+    params.referenceAnchors?.characterMode
+  );
+  const characterBrief =
+    normalizeMarketplaceAutoReviewCharacterBrief(
+      params.referenceAnchors?.characterBrief
+    );
+  const characterPreset =
+    normalizeMarketplaceAutoReviewCharacterPreset(
+      params.referenceAnchors?.characterPreset
+    );
   const characterImageUrl =
     cleanText(params.referenceAnchors?.characterImageUrl) || null;
   const environmentImageUrl =
@@ -2700,6 +2773,21 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
       message: "รูปสินค้าหลักที่เลือกต้องเป็นรูปที่แนบอยู่กับสินค้านี้เท่านั้น",
     });
   }
+  const schemaVersion = Number.isInteger(params.referenceAnchors?.schemaVersion)
+    ? Number(params.referenceAnchors?.schemaVersion)
+    : 1;
+  const requiredRoles = Array.isArray(params.referenceAnchors?.requiredRoles)
+    ? params.referenceAnchors.requiredRoles
+        .map(role => cleanText(role))
+        .filter(role => ["product", "character", "environment"].includes(role))
+    : ["product", "character", "environment"];
+  if (!requiredRoles.includes("product")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Auto Review ต้องมี product reference anchor ก่อนเริ่มงาน",
+    });
+  }
   productMetadata = {
     ...productMetadata,
     verifiedProviderEvidence:
@@ -2716,19 +2804,28 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     productMetadata,
     sourceRefs
   );
+  const isCharacterMode =
+    characterMode === "described_character" ||
+    characterMode === "product_only" ||
+    characterMode === "hands_only";
 
-  const readyCharacterImageUrl = assertProviderReadyReferenceAnchor(
-    "character",
-    characterImageUrl,
-    characterMetadata,
-    sourceRefs
-  );
-  const readyEnvironmentImageUrl = assertProviderReadyReferenceAnchor(
-    "environment",
-    environmentImageUrl,
-    environmentMetadata,
-    sourceRefs
-  );
+  const readyCharacterImageUrl =
+    requiredRoles.includes("character") && !isCharacterMode
+      ? assertProviderReadyReferenceAnchor(
+        "character",
+        characterImageUrl,
+        characterMetadata,
+        sourceRefs
+      )
+      : characterImageUrl;
+  const readyEnvironmentImageUrl = requiredRoles.includes("environment")
+    ? assertProviderReadyReferenceAnchor(
+        "environment",
+        environmentImageUrl,
+        environmentMetadata,
+        sourceRefs
+      )
+    : environmentImageUrl;
   const productImageProvidedRef = cleanText(
     params.referenceAnchors?.productImageRef
   );
@@ -2743,27 +2840,14 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     : productImageRefForIndex(productImageIndex, productImageUrl);
   const characterImageRef = characterImageProvidedRef
     ? characterImageProvidedRef
-    : referenceAnchorRefForUrl("character", readyCharacterImageUrl);
+    : readyCharacterImageUrl
+      ? referenceAnchorRefForUrl("character", readyCharacterImageUrl)
+      : null;
   const environmentImageRef = environmentImageProvidedRef
     ? environmentImageProvidedRef
-    : referenceAnchorRefForUrl("environment", readyEnvironmentImageUrl);
-  const schemaVersion = Number.isInteger(params.referenceAnchors?.schemaVersion)
-    ? Number(params.referenceAnchors?.schemaVersion)
-    : 1;
-  const requiredRoles = Array.isArray(params.referenceAnchors?.requiredRoles)
-    ? params.referenceAnchors.requiredRoles
-        .map(role => cleanText(role))
-        .filter(role => ["product", "character", "environment"].includes(role))
-    : ["product", "character", "environment"];
-  for (const role of ["product", "character", "environment"]) {
-    if (!requiredRoles.includes(role)) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message:
-          "Auto Review ต้องมี product, character และ environment reference anchors ครบก่อนเริ่มงาน",
-      });
-    }
-  }
+    : readyEnvironmentImageUrl
+      ? referenceAnchorRefForUrl("environment", readyEnvironmentImageUrl)
+      : null;
   const sourceMetadata = compactRecord({
     product: productMetadata,
     character: characterMetadata,
@@ -2787,6 +2871,9 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
   return {
     schemaVersion,
     creationIntent: params.referenceAnchors?.creationIntent ?? null,
+    characterMode,
+    characterBrief,
+    characterPreset,
     requiredRoles,
     lockPolicy: asRecord(params.referenceAnchors?.lockPolicy),
     productImageUrl,
@@ -3002,11 +3089,37 @@ function productReferenceStoryboardReferenceImageGroups(
   };
 }
 
+function normalizeProductReferenceStoryboardReferenceImageGroups(
+  groups: ProductReferenceStoryboardReferenceImageGroups
+): ProductReferenceStoryboardReferenceImageGroups {
+  const product = Array.isArray(groups.product)
+    ? groups.product.map(cleanText).filter(Boolean)
+    : [];
+  const character = Array.isArray(groups.character)
+    ? groups.character.map(cleanText).filter(Boolean)
+    : [];
+  const environment = Array.isArray(groups.environment)
+    ? groups.environment.map(cleanText).filter(Boolean)
+    : [];
+  const all = Array.isArray(groups.all)
+    ? groups.all.map(cleanText).filter(Boolean)
+    : [];
+  return {
+    product,
+    character,
+    environment,
+    all: uniqRefs([...all, ...product, ...character, ...environment]),
+  };
+}
+
 function characterIdentityAllowsVisualGeneration(
   metadata: RunMetadata
 ): boolean {
   const pack = asRecord(metadata.characterIdentityAssetPack);
   if (pack.status === "blocked") return false;
+  const sourceKind = cleanText(pack.sourceKind);
+  const faceUsage = cleanText(pack.allowedFaceUsage);
+  const voiceUsage = cleanText(pack.allowedVoiceUsage);
   const referenceImageRefs = Array.isArray(pack.referenceImageRefs)
     ? pack.referenceImageRefs.map(item => cleanText(item)).filter(Boolean)
     : [];
@@ -3024,16 +3137,25 @@ function characterIdentityAllowsVisualGeneration(
     : [];
   const auditRefs = usableAuditRefs(pack.auditRefs);
   if (
-    pack.status !== "ready" ||
-    cleanText(pack.sourceKind) !== "uploaded_reference" ||
-    referenceImageRefs.length === 0 ||
-    referenceImageUrls.length === 0 ||
-    auditRefs.length === 0 ||
-    pack.allowedFaceUsage === "blocked" ||
-    pack.allowedVoiceUsage === "blocked"
-  )
-    return false;
-  return true;
+    sourceKind === "uploaded_reference" &&
+    pack.status === "ready" &&
+    referenceImageRefs.length > 0 &&
+    referenceImageUrls.length > 0 &&
+    auditRefs.length > 0 &&
+    faceUsage !== "blocked" &&
+    voiceUsage !== "blocked"
+  ) {
+    return true;
+  }
+  if (
+    ["described_character", "product_only", "hands_only"].includes(sourceKind) &&
+    pack.status !== "blocked" &&
+    faceUsage !== "blocked" &&
+    voiceUsage !== "blocked"
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function environmentReferenceAllowsVisualGeneration(
@@ -3072,6 +3194,18 @@ function environmentReferenceAllowsVisualGeneration(
     continuityDescriptors.length > 0 &&
     blockedRefs.length === 0
   );
+}
+
+function marketplaceAutoReviewReferenceRoleRequired(
+  metadata: RunMetadata,
+  role: "product" | "character" | "environment"
+): boolean {
+  const referenceAnchors = asRecord(metadata.referenceAnchors);
+  const requiredRoles = Array.isArray(referenceAnchors.requiredRoles)
+    ? referenceAnchors.requiredRoles.map(item => cleanText(item)).filter(Boolean)
+    : [];
+  if (requiredRoles.length === 0) return true;
+  return requiredRoles.includes(role);
 }
 
 type MarketplaceAutoReviewGovernancePhase =
@@ -3423,7 +3557,10 @@ function collectMarketplaceAutoReviewGovernanceBlockers(
       );
     }
   }
-  if (!characterIdentityAllowsVisualGeneration(metadata)) {
+  if (
+    marketplaceAutoReviewReferenceRoleRequired(metadata, "character") &&
+    !characterIdentityAllowsVisualGeneration(metadata)
+  ) {
     blockers.push("character identity asset pack blocks visual generation");
   }
   if (
@@ -3434,6 +3571,7 @@ function collectMarketplaceAutoReviewGovernanceBlockers(
       "render",
       "finalize",
     ].includes(phase) &&
+    marketplaceAutoReviewReferenceRoleRequired(metadata, "environment") &&
     !environmentReferenceAllowsVisualGeneration(metadata)
   ) {
     blockers.push("environment reference asset pack blocks visual generation");
@@ -3756,6 +3894,13 @@ function referenceAnchorsInputSnapshot(
   return compactRecord({
     schemaVersion: toNumber(anchors.schemaVersion, 1),
     creationIntent: cleanText(anchors.creationIntent) || null,
+    characterMode: cleanText(anchors.characterMode) || null,
+    characterBrief: cleanText(anchors.characterBrief),
+    characterPreset: Array.isArray(anchors.characterPreset)
+      ? anchors.characterPreset
+      : Object.keys(asRecord(anchors.characterPreset)).length > 0
+        ? asRecord(anchors.characterPreset)
+        : cleanText(anchors.characterPreset),
     requiredRoles,
     productImageUrl: cleanText(anchors.productImageUrl) || null,
     productImageRef: cleanText(anchors.productImageRef) || null,
@@ -4285,6 +4430,61 @@ function imageAttemptStatusSelectionPriority(status: string): number {
   return 0;
 }
 
+function imageReasonCodeBlocksProductFidelity(code: unknown): boolean {
+  const normalized = cleanText(code).toLowerCase();
+  return /product.*mismatch|productimagemismatch|product.*not.*match|product.*continuity.*mismatch|shape.*mismatch|reference.*mismatch/.test(
+    normalized
+  );
+}
+
+function imageReasonCodesContainProductFidelityBlocker(
+  reasonCodes: unknown[]
+): boolean {
+  return reasonCodes.some(imageReasonCodeBlocksProductFidelity);
+}
+
+function productFidelityFailedFrameCount(
+  qaEnvelopes: Record<string, unknown>[]
+): number {
+  return qaEnvelopes.filter(qa => {
+    const reasonCodes = Array.isArray(qa.reasonCodes) ? qa.reasonCodes : [];
+    if (imageReasonCodesContainProductFidelityBlocker(reasonCodes)) {
+      return true;
+    }
+    if (qa.productMatchesReference === false) return true;
+    const frameVerdicts = Array.isArray(qa.frameVerdicts)
+      ? qa.frameVerdicts.map(item => asRecord(item))
+      : [];
+    return frameVerdicts.some(frame => {
+      const status = cleanText(frame.status || frame.verdict).toLowerCase();
+      const frameReasonCodes = Array.isArray(frame.reasonCodes)
+        ? frame.reasonCodes
+        : [];
+      return (
+        ["repair", "failed", "fail", "needs_targeted_repair"].includes(
+          status
+        ) && imageReasonCodesContainProductFidelityBlocker(frameReasonCodes)
+      );
+    });
+  }).length;
+}
+
+function productFidelityFailureIsWholeStoryboard(input: {
+  reasonCodes: unknown[];
+  qaEnvelopes: Record<string, unknown>[];
+  expectedFrameCount?: number | null;
+}): boolean {
+  if (!imageReasonCodesContainProductFidelityBlocker(input.reasonCodes)) {
+    return false;
+  }
+  const expectedFrameCount = Math.max(0, Math.floor(toNumber(input.expectedFrameCount)));
+  const failedCount = productFidelityFailedFrameCount(input.qaEnvelopes);
+  if (expectedFrameCount > 0 && failedCount > 0) {
+    return failedCount >= expectedFrameCount;
+  }
+  return failedCount === 0;
+}
+
 function buildImageAttemptScoreBreakdown(params: {
   status: "passed" | "accepted_with_warnings" | "repair_required" | "failed";
   attemptRefs: DirectMediaTaskRef[];
@@ -4292,6 +4492,7 @@ function buildImageAttemptScoreBreakdown(params: {
   repairUnits: DirectImageUnit[];
   reasonCodes: string[];
   resultUrls: string[];
+  expectedFrameCount?: number | null;
 }): Record<string, unknown> {
   const qaScores = params.qaEnvelopes
     .map(qa => normalizedImageAttemptQaScore(qa.score))
@@ -4355,6 +4556,18 @@ function buildImageAttemptScoreBreakdown(params: {
     missingResultPenalty +
     statusPenalty;
   const qualityScore = clampImageAttemptScore(baseScore - negativeScore);
+  const productFidelityBlockers = uniqueCleanTexts(
+    params.reasonCodes.filter(imageReasonCodeBlocksProductFidelity)
+  );
+  const productFidelityFailedFrames = productFidelityFailedFrameCount(
+    params.qaEnvelopes
+  );
+  const productFidelityWholeStoryboardFailure =
+    productFidelityFailureIsWholeStoryboard({
+      reasonCodes: params.reasonCodes,
+      qaEnvelopes: params.qaEnvelopes,
+      expectedFrameCount: params.expectedFrameCount,
+    });
   return {
     baseScore: Math.round(baseScore),
     qualityScore,
@@ -4371,6 +4584,9 @@ function buildImageAttemptScoreBreakdown(params: {
     failedTaskCount,
     missingResultCount,
     repairUnitCount: params.repairUnits.length,
+    productFidelityBlockers,
+    productFidelityFailedFrames,
+    productFidelityWholeStoryboardFailure,
   };
 }
 
@@ -4381,6 +4597,20 @@ function cleanStringList(value: unknown): string[] {
 
 function attemptReviewIsSelectable(review: Record<string, unknown>): boolean {
   if (review.selectionEligible === false) return false;
+  const selectionBlockers = cleanStringList(review.selectionBlockers);
+  if (selectionBlockers.some(imageReasonCodeBlocksProductFidelity)) {
+    return false;
+  }
+  const scoreBreakdown = asRecord(review.scoreBreakdown);
+  if (scoreBreakdown.productFidelityWholeStoryboardFailure === true) {
+    return false;
+  }
+  if (
+    Object.keys(scoreBreakdown).length === 0 &&
+    imageReasonCodesContainProductFidelityBlocker(cleanStringList(review.reasonCodes))
+  ) {
+    return false;
+  }
   const expectedFrameCount = toNumber(review.expectedFrameCount);
   if (Boolean(cleanText(review.storyboardGridUrl))) return true;
   if (expectedFrameCount > 0) {
@@ -4638,7 +4868,22 @@ function appendImageAttemptReview(params: {
     repairUnits,
     reasonCodes,
     resultUrls,
+    expectedFrameCount: params.expectedFrameCount,
   });
+  const productFidelityBlockers =
+    productFidelityFailureIsWholeStoryboard({
+      reasonCodes,
+      qaEnvelopes,
+      expectedFrameCount: params.expectedFrameCount,
+    })
+      ? uniqueCleanTexts(reasonCodes.filter(imageReasonCodeBlocksProductFidelity))
+      : [];
+  const hasSelectableResult =
+    resultUrls.length > 0 ||
+    storyboardFrameUrls.length > 0 ||
+    startFrameUrls.length > 0 ||
+    stopFrameUrls.length > 0 ||
+    Boolean(storyboardGridUrl);
   const review = compactRecord({
     reviewId: `image-attempt-review:${params.run.id}:${attempt}`,
     runId: params.run.id,
@@ -4657,12 +4902,8 @@ function appendImageAttemptReview(params: {
     storyboardFrameUrls,
     startFrameUrls,
     stopFrameUrls,
-    selectionEligible:
-      resultUrls.length > 0 ||
-      storyboardFrameUrls.length > 0 ||
-      startFrameUrls.length > 0 ||
-      stopFrameUrls.length > 0 ||
-      Boolean(storyboardGridUrl),
+    selectionEligible: hasSelectableResult && productFidelityBlockers.length === 0,
+    selectionBlockers: productFidelityBlockers,
     qualityScore: scoreBreakdown.qualityScore,
     negativeScore: scoreBreakdown.negativeScore,
     scoreBreakdown,
@@ -6136,6 +6377,10 @@ function buildProductReferenceStoryboardSkillInputs(input: {
       : "No added visible text. No captions, labels, subtitles, video seconds, timecodes, frame labels, dimension text, marketplace UI, prices, ratings, review widgets, platform logos, random glyphs, or readable prop text.";
   const preflightFeedback = input.preflightFeedback;
   const productCategory = inferProductReferenceStoryboardCategory(input.plan);
+  const referenceImageGroups =
+    normalizeProductReferenceStoryboardReferenceImageGroups(
+      input.referenceImageGroups
+    );
   const productDriftGuard =
     "Product drift guard: before the product appears, show clutter on the bed/floor only. Do not show any alternate bedside table, nightstand, cabinet, shelf, storage unit, drawer unit, or similar furniture that can be mistaken for the sellable product.";
 
@@ -6192,9 +6437,9 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     ]
       .filter(Boolean)
       .join("\n"),
-    reference_product_images: input.referenceImageGroups.product,
-    reference_character_images: input.referenceImageGroups.character,
-    reference_environment_images: input.referenceImageGroups.environment,
+    reference_product_images: referenceImageGroups.product,
+    reference_character_images: referenceImageGroups.character,
+    reference_environment_images: referenceImageGroups.environment,
     product_label_text: [
       input.plan.productTruth.brand ? `Brand: ${input.plan.productTruth.brand}` : "",
       `Product title: ${input.plan.productTruth.productName}`,
@@ -6219,10 +6464,10 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     prompt_preflight_blockers: preflightFeedback?.blockers ?? [],
     previous_prompt_excerpt: preflightFeedback?.previousPromptExcerpt ?? "",
     reference_image_role_counts: {
-      product: input.referenceImageGroups.product.length,
-      character: input.referenceImageGroups.character.length,
-      environment: input.referenceImageGroups.environment.length,
-      total: input.referenceImageGroups.all.length,
+      product: referenceImageGroups.product.length,
+      character: referenceImageGroups.character.length,
+      environment: referenceImageGroups.environment.length,
+      total: referenceImageGroups.all.length,
     },
     runtime_contract:
       "Call the product-reference-storyboard skill and return only the final image prompt. Do not use backend fallback prompt text. The final prompt must explicitly satisfy the 9:16 strict 3x3 / 9 vertical frames contract before image provider submission.",
@@ -10025,6 +10270,9 @@ function buildFeature117ContractMetadata(input: {
       runId: input.runId,
       productId: productTruth.productId,
       creationIntent: anchors.creationIntent ?? null,
+      characterMode: anchors.characterMode ?? null,
+      characterBrief: anchors.characterBrief ?? null,
+      characterPreset: anchors.characterPreset ?? null,
       productImageUrl: selectedProductImageUrl,
       productImageRef: selectedProductImageRef,
       productImageProvidedRef: anchors.productImageProvidedRef,
@@ -10122,53 +10370,110 @@ function buildFeature117ContractMetadata(input: {
       providerReadiness: productReferenceReadiness,
       status: productReferenceStatus,
     },
-    characterIdentityAssetPack: {
-      assetPackId: `character-pack:${input.runId}`,
-      sourceKind: anchors.characterImageUrl ? "uploaded_reference" : "none",
-      referenceImageRefs: anchors.characterImageRef
-        ? [anchors.characterImageRef]
-        : [],
-      referenceImageUrls: anchors.characterImageUrl
-        ? [anchors.characterImageUrl]
-        : [],
-      sourceMetadata: characterAnchorMetadata,
-      auditRefs: uniqRefs([
-        anchors.characterImageRef,
-        ...usableAuditRefs(characterAnchorMetadata.auditRefs),
-      ]),
-      consentRefs: anchors.characterImageUrl
-        ? [`character-consent:${input.runId}:user_supplied_reference`]
-        : [],
-      allowedFaceUsage: anchors.characterImageUrl ? "recurring" : "hands_only",
-      allowedVoiceUsage:
-        input.resolvedAudioStrategy === "separate_tts_voiceover"
-          ? "tts"
-          : input.resolvedAudioStrategy === "native_video_audio"
-            ? "native_audio"
-            : "none",
-      continuityDescriptors: anchors.characterImageUrl
+    characterIdentityAssetPack: (() => {
+      const characterMode = normalizeMarketplaceAutoReviewCharacterMode(
+        anchors.characterMode
+      );
+      const characterBrief = cleanText(anchors.characterBrief);
+      const characterPresetLines = characterPresetContinuityDescriptors(
+        anchors.characterPreset
+      );
+      const characterSourceKind = anchors.characterImageUrl
+        ? "uploaded_reference"
+        : characterMode === "described_character"
+          ? "described_character"
+          : characterMode === "product_only"
+            ? "product_only"
+            : characterMode === "hands_only"
+              ? "hands_only"
+              : "none";
+      const characterAllowedFaceUsage = anchors.characterImageUrl
+        ? "recurring"
+        : characterMode === "described_character"
+          ? "generic_person"
+          : characterMode === "product_only"
+            ? "none"
+            : characterMode === "hands_only"
+              ? "hands_only"
+              : "hands_only";
+      const characterFallbackPlan = anchors.characterImageUrl
+        ? "single_shot"
+        : characterMode === "described_character"
+          ? "generic_person"
+          : characterMode === "product_only"
+            ? "product_only"
+            : characterMode === "hands_only"
+              ? "hands_only"
+              : "product_only";
+      const characterContinuityDescriptors = anchors.characterImageUrl
         ? [
             "User supplied a character/person reference for identity continuity.",
             "All visible presenter/person shots must preserve the same face structure, hair, body proportions, styling, and identity across shots.",
             "Do not create turn/reveal shots where a back-facing person becomes a different face.",
           ]
-        : [
-            "No recurring face is approved for this run.",
-            "Visual prompts must use product-only, hands-only, or non-face body framing unless an approved character pack is added.",
-          ],
-      blockedRefs: [],
-      fallbackPlan: anchors.characterImageUrl
-        ? "single_shot"
-        : input.resolvedAudioStrategy === "native_video_audio"
-          ? "product_only"
-          : "separate_tts",
-      qaThresholds: {
-        faceDriftMax: anchors.characterImageUrl ? 0.08 : 0,
-        voiceDriftMax:
-          input.resolvedAudioStrategy === "native_video_audio" ? 0.2 : 0,
-      },
-      status: anchors.characterImageUrl ? "ready" : "limited",
-    },
+        : characterMode === "described_character"
+          ? [
+              "Use the provided character description and preset to maintain a consistent described persona across relevant shots.",
+              ...(characterBrief
+                ? [`Character brief: ${characterBrief}`]
+                : []),
+              ...characterPresetLines,
+            ]
+          : characterMode === "product_only"
+            ? [
+                "No recurring face is approved for this run.",
+                "Visual prompts must use product-only framing with no visible face.",
+              ]
+            : characterMode === "hands_only"
+              ? [
+                  "No recurring face is approved for this run.",
+                  "Use hands-only or non-face body framing; do not generate recurring face continuity.",
+                ]
+              : [
+                  "No recurring face is approved for this run.",
+                  "Visual prompts must use product-only, hands-only, or non-face body framing unless an approved character pack is added.",
+                ];
+      const characterStatus = anchors.characterImageUrl
+        ? "ready"
+        : characterMode
+          ? "limited"
+          : "not_applicable";
+
+      return {
+        assetPackId: `character-pack:${input.runId}`,
+        sourceKind: characterSourceKind,
+        referenceImageRefs: anchors.characterImageRef
+          ? [anchors.characterImageRef]
+          : [],
+        referenceImageUrls: anchors.characterImageUrl
+          ? [anchors.characterImageUrl]
+          : [],
+        sourceMetadata: characterAnchorMetadata,
+        auditRefs: uniqRefs([
+          anchors.characterImageRef,
+          ...usableAuditRefs(characterAnchorMetadata.auditRefs),
+        ]),
+        consentRefs: anchors.characterImageUrl
+          ? [`character-consent:${input.runId}:user_supplied_reference`]
+          : [],
+        allowedFaceUsage: characterAllowedFaceUsage,
+        allowedVoiceUsage:
+          input.resolvedAudioStrategy === "separate_tts_voiceover"
+            ? "tts"
+            : input.resolvedAudioStrategy === "native_video_audio"
+              ? "native_audio"
+              : "none",
+        continuityDescriptors: characterContinuityDescriptors,
+        blockedRefs: [],
+        fallbackPlan: characterFallbackPlan,
+        qaThresholds: {
+          faceDriftMax: anchors.characterImageUrl ? 0.08 : 0,
+          voiceDriftMax:
+            input.resolvedAudioStrategy === "native_video_audio" ? 0.2 : 0,
+        },
+        status: characterStatus,
+      };
+    })(),
     environmentReferenceAssetPack: {
       assetPackId: `environment-pack:${input.runId}`,
       sourceKind: anchors.environmentImageUrl ? "uploaded_reference" : "none",
@@ -13213,6 +13518,9 @@ export async function startMarketplaceAutoReviewRun(
       ),
     });
   } catch (error) {
+    if ((error as any)?.__marketplaceAutoReviewRecheckRequired) {
+      return getMarketplaceAutoReviewRun(runId, auth);
+    }
     const [runForFailure] = await db
       .select()
       .from(marketplaceAutoReviewRuns)
@@ -13397,7 +13705,10 @@ async function scheduleImageAttempt(params: {
   if (!userToken)
     throw new Error("Image generation needs an authenticated media token");
   const plan = extractPlanFromRun(params.run);
-  if (!characterIdentityAllowsVisualGeneration(params.metadata)) {
+  if (
+    marketplaceAutoReviewReferenceRoleRequired(params.metadata, "character") &&
+    !characterIdentityAllowsVisualGeneration(params.metadata)
+  ) {
     throw new Error(
       "Character identity asset pack blocks visual generation for this Marketplace Auto Review run"
     );
@@ -14737,7 +15048,26 @@ async function reconcileDirectImageAttempt(params: {
       repairUnits: qa.repairUnits,
       refs: nextRefs,
     });
-    if (repairBudgetExhausted) {
+    const repairReasonCodes = Array.from(
+      new Set(
+        qa.repairUnits
+          .flatMap(unit => unit.repairReasonCodes ?? [])
+          .map(code => cleanText(code))
+          .filter(Boolean)
+      )
+    );
+    const wholeStoryboardProductFidelityFailure =
+      productFidelityFailureIsWholeStoryboard({
+        reasonCodes: repairReasonCodes,
+        qaEnvelopes: Array.isArray(qa.metadata.shotFrameVisionQaEnvelopes)
+          ? qa.metadata.shotFrameVisionQaEnvelopes.map(item => asRecord(item))
+          : [],
+        expectedFrameCount: shotCountForPlan(params.plan),
+      });
+    if (
+      repairBudgetExhausted &&
+      !wholeStoryboardProductFidelityFailure
+    ) {
       const acceptedMetadata =
         acceptImageQaWithWarningsAfterRepairBudgetExhausted({
           run: params.run,
@@ -14745,14 +15075,6 @@ async function reconcileDirectImageAttempt(params: {
           repairUnits: qa.repairUnits,
           refs: nextRefs,
         });
-      const repairReasonCodes = Array.from(
-        new Set(
-          qa.repairUnits
-            .flatMap(unit => unit.repairReasonCodes ?? [])
-            .map(code => cleanText(code))
-            .filter(Boolean)
-        )
-      );
       console.warn(
         "[marketplaceAutoReview] image_qa_repair_budget_exhausted_storyboard_review_required",
         {
@@ -14834,14 +15156,6 @@ async function reconcileDirectImageAttempt(params: {
       ...params.run,
       metadataJson: qa.metadata,
     } as MarketplaceAutoReviewRun;
-    const repairReasonCodes = Array.from(
-      new Set(
-        qa.repairUnits
-          .flatMap(unit => unit.repairReasonCodes ?? [])
-          .map(code => cleanText(code))
-          .filter(Boolean)
-      )
-    );
     await upsertRunStage({
       db: params.db,
       runId: params.run.id,

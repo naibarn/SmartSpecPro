@@ -112,6 +112,12 @@ button, input, textarea, select {
   resize: vertical;
 }
 
+.affiliate-url-textarea {
+  min-height: 50px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
 .connection-summary {
   border: 1px solid #dbeafe;
   background: #eff6ff;

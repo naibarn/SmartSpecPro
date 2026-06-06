@@ -57,6 +57,14 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function truthyEnv(value: string | undefined): boolean {
+  return /^(1|true|yes|on)$/i.test((value ?? "").trim());
+}
+
+function isHyperframesRuntimeReadyForProjection(): boolean {
+  return truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY);
+}
+
 const HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES = [
   "queued",
   "pending",
@@ -285,6 +293,7 @@ export function buildHyperframesRenderProjection(input: {
   status: HyperframesRenderStatus;
   payload?: Partial<HyperframesRenderJobPayload>;
   safeDiagnostics?: string[];
+  safeMessage?: string;
   outputUrl?: string | null;
   outputRefs?: HyperframesOutputRef[];
   artifactRefs?: HyperframesArtifactRef[];
@@ -309,7 +318,7 @@ export function buildHyperframesRenderProjection(input: {
     status: input.status,
     progressPercent: progressForStatus(input.status),
     statusCopyId: copy.copyId,
-    safeMessage: copy.description,
+    safeMessage: input.safeMessage ?? copy.description,
     safeDiagnostics: (input.safeDiagnostics ?? []).map(redactHyperframesDiagnostics),
     nextAction: copy.nextAction,
     repairActions,
@@ -570,18 +579,35 @@ export async function getHyperframesRenderProjection(input: {
         payload,
         renderJobId: job.id,
       });
+      const renderStatus = mapOutboxStatusToRenderStatus(
+        job.status,
+        job.lastError,
+        job.jobType
+      );
+      const runtimeDeferred =
+        renderStatus === "queued" &&
+        Number(job.attempts ?? 0) === 0 &&
+        !job.lockedBy &&
+        !isHyperframesRuntimeReadyForProjection();
+      const safeDiagnostics = [
+        ...(runtimeDeferred
+          ? [
+              "HyperFrames runtime is not ready; this job is queued and has not started rendering.",
+            ]
+          : []),
+        ...(job.lastError ? [job.lastError.slice(0, 240)] : []),
+      ];
       return buildHyperframesRenderProjection({
         tenantId: job.tenantId ?? tenantId,
         productId: requestedProductId || payloadProductId || "unknown_product",
         runId: job.runId,
         renderJobId: job.id,
-        status: mapOutboxStatusToRenderStatus(
-          job.status,
-          job.lastError,
-          job.jobType
-        ),
+        status: renderStatus,
         payload,
-        safeDiagnostics: job.lastError ? [job.lastError.slice(0, 240)] : [],
+        safeMessage: runtimeDeferred
+          ? "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render"
+          : undefined,
+        safeDiagnostics,
         outputRefs: outputRefs.outputRefs,
         artifactRefs: outputRefs.artifactRefs,
         canMutate,

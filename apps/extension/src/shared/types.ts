@@ -48,9 +48,11 @@ export interface CategoryProductCandidate {
   commissionRatePercent?: number | null;
   commissionRateText?: string | null;
   affiliateUrl?: string | null;
+  commissionCheckUrl?: string | null;
   affiliateLinkAvailable?: boolean | null;
   affiliateCardKey?: string | null;
   imageUrl?: string | null;
+  imageUrls?: string[];
   originalUrl?: string;
   cleanUrl?: string;
   canonicalUrl?: string | null;
@@ -68,8 +70,10 @@ export interface ProductCapturePayload {
   originalSourceUrl?: string;
   cleanSourceUrl?: string;
   canonicalSourceUrl?: string | null;
+  productPageUrl?: string | null;
   sourceUrlFormat?: MarketplaceUrlFormat;
   affiliateUrl?: string | null;
+  commissionCheckUrl?: string | null;
   affiliateMatch?: {
     candidateKey: string;
     basis: "externalProductId" | "url";

@@ -9,7 +9,9 @@ import {
   type ProductFormValue,
 } from "@/components/marketplace/ProductExtractedForm";
 import { ProductImagePicker, type ProductImageSelection } from "@/components/marketplace/ProductImagePicker";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { trpc } from "@/lib/trpc";
+import { CheckCircle2 } from "lucide-react";
 
 function getCaptureId(pathname: string) {
   return pathname.match(/\/marketplace-capture\/captures\/([^/]+)\/preview/)?.[1] ?? "";
@@ -17,6 +19,13 @@ function getCaptureId(pathname: string) {
 
 function isProductImageAsset(asset: any) {
   return ["main_image", "description_image", "review_image"].includes(String(asset?.kind ?? ""));
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
 }
 
 function mutationErrorMessage(error: unknown) {
@@ -79,17 +88,30 @@ export default function MarketplaceCapturePreview() {
     const extractedDescription = Array.isArray(extraction?.images?.description) ? extraction.images.description.filter(Boolean) : [];
     const extractedReview = Array.isArray(extraction?.images?.review) ? extraction.images.review.filter(Boolean) : [];
     const main = [...mainAssetImageIds, ...extractedMain].slice(0, 20);
+    const rawPayload = (capture.rawPayloadJson ?? {}) as Record<string, unknown>;
+    const heroImageUrl = firstString(rawPayload.heroImageUrl, extraction?.images?.heroImageUrl, extraction?.heroImageUrl);
+    const heroAssetId = firstString(
+      extraction?.images?.coverAssetId,
+      assets.find((asset) => asset?.metadataJson?.role === "hero")?.id,
+      heroImageUrl
+        ? assets.find((asset) => asset.url === heroImageUrl || asset.sourceUrl === heroImageUrl)?.id
+        : "",
+    );
     setImages({
       main,
       description: [...descriptionAssetImageIds, ...extractedDescription].slice(0, 20),
       review: [...reviewAssetImageIds, ...extractedReview].slice(0, 30),
       relatedExcluded: Array.isArray(extraction?.images?.excludedRelated) ? extraction.images.excludedRelated.filter(Boolean) : [],
-      coverAssetId: main[0] ?? null,
+      coverAssetId: heroAssetId || main[0] || reviewAssetImageIds[0] || null,
     });
   }, [assets.length, capture, extraction]);
 
   if (captureQuery.isLoading) return <main className="p-8">Loading capture...</main>;
   if (!capture) return <main className="p-8">Capture not found</main>;
+
+  const isConfirmed = capture.status === "confirmed" || Boolean(confirmMutation.data);
+  const savedProductId = confirmMutation.data?.productId ?? null;
+  const savedProductUrl = confirmMutation.data?.productUrl ?? null;
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-6 text-slate-900">
@@ -102,9 +124,9 @@ export default function MarketplaceCapturePreview() {
               {capture.sourceUrl}
             </a>
             {form.affiliateUrl ? (
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                <a className="max-w-xl truncate text-blue-700 underline" href={form.affiliateUrl} target="_blank" rel="noreferrer">
-                  Affiliate link
+              <div className="mt-1 flex max-w-3xl flex-wrap items-start gap-2 text-sm">
+                <a className="min-w-0 flex-1 break-all text-blue-700 underline" href={form.affiliateUrl} target="_blank" rel="noreferrer">
+                  {form.affiliateUrl}
                 </a>
                 <button className="rounded border bg-white px-2 py-1 text-xs" type="button" onClick={() => navigator.clipboard?.writeText(form.affiliateUrl)}>
                   Copy
@@ -112,7 +134,8 @@ export default function MarketplaceCapturePreview() {
               </div>
             ) : null}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <LocaleToggle className="shrink-0" />
             <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => analyzeMutation.mutate({ captureId, analyze: { forceRerun: true } })}>
               Re-run LLM
             </button>
@@ -138,13 +161,13 @@ export default function MarketplaceCapturePreview() {
             </button>
             <button
               className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
-              disabled={!form.productName || confirmMutation.isPending || capture.status === "discarded" || capture.status === "confirmed"}
+              disabled={!form.productName || confirmMutation.isPending || capture.status === "discarded" || isConfirmed}
               onClick={() => confirmMutation.mutate({
                 captureId,
                 data: productConfirmPayload(form, images, extraction),
               })}
             >
-              {confirmMutation.isPending ? "Saving..." : "Confirm & Save Product"}
+              {confirmMutation.isPending ? "Saving..." : isConfirmed ? "Product Saved" : "Confirm & Save Product"}
             </button>
           </div>
         </header>
@@ -165,10 +188,37 @@ export default function MarketplaceCapturePreview() {
           </div>
         ) : null}
 
-        {confirmMutation.data ? (
-          <a className="block rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800" href={confirmMutation.data.productUrl}>
-            Saved: {confirmMutation.data.productId}
-          </a>
+        {isConfirmed ? (
+          <div
+            className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 shadow-sm"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 gap-3">
+                <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-600" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="text-base font-semibold">Product saved successfully</div>
+                  <p className="mt-1 text-sm text-emerald-800">
+                    This capture has been confirmed and the product record is saved.
+                  </p>
+                  {savedProductId ? (
+                    <p className="mt-1 break-all font-mono text-xs text-emerald-700">
+                      Product ID: {savedProductId}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              {savedProductUrl ? (
+                <a
+                  className="shrink-0 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                  href={savedProductUrl}
+                >
+                  View saved product
+                </a>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         {saveDraftMutation.error ? (

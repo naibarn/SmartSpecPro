@@ -6,6 +6,7 @@ type CaptureAsset = {
   section?: string | null;
   url: string;
   contentType?: string | null;
+  metadataJson?: Record<string, unknown> | null;
 };
 
 export interface ProductImageSelection {
@@ -83,7 +84,10 @@ export function ProductImagePicker({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Product Image Picker</h2>
-          <p className="text-xs text-slate-500">Main {value.main.length} | Description {value.description.length} | Review {value.review.length} | Excluded {value.relatedExcluded.length}</p>
+          <p className="text-xs text-slate-500">
+            Main {value.main.length} | Description {value.description.length} | Review {value.review.length} | Excluded {value.relatedExcluded.length}
+            {value.coverAssetId ? " | System default image selected" : " | No system default image selected"}
+          </p>
         </div>
         <button className="rounded-md border bg-white px-2 py-1 text-xs" onClick={() => onChange({ main: [], description: [], review: [], relatedExcluded: dedupe([...value.main, ...value.description, ...value.review, ...value.relatedExcluded]), coverAssetId: null })}>
           Exclude all
@@ -94,11 +98,23 @@ export function ProductImagePicker({
           const asset = assetById.get(id);
           const url = asset?.url ?? id;
           const group = currentGroup(id);
+          const isCover = value.coverAssetId === id;
+          const isPayloadHero = asset?.metadataJson?.role === "hero";
           return (
-            <div key={id} className="rounded-md border bg-slate-50 p-3">
+            <div key={id} className={`rounded-md border p-3 ${isCover ? "border-emerald-400 bg-emerald-50" : "bg-slate-50"}`}>
               <button className="block w-full" onClick={() => setPreviewUrl(url)}>
                 <img src={url} alt="" className="h-36 w-full rounded object-contain" />
               </button>
+              {isCover ? (
+                <div className="mt-2 rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
+                  รูปหลักของระบบ / Default image
+                </div>
+              ) : null}
+              {isPayloadHero && !isCover ? (
+                <div className="mt-2 rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                  Hero selected from extension
+                </div>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <select className="rounded-md border px-2 py-1 text-xs" value={group} onChange={(e) => setGroup(id, e.target.value as any)}>
                   <option value="none">Excluded</option>
@@ -111,10 +127,10 @@ export function ProductImagePicker({
                 <button className="rounded-md border bg-white px-2 py-1 text-xs disabled:opacity-50" disabled={group === "none"} onClick={() => move(id, 1)}>Down</button>
                 <button
                   className="rounded-md border bg-white px-2 py-1 text-xs disabled:opacity-50"
-                  disabled={!value.main.includes(id)}
+                  disabled={group === "none"}
                   onClick={() => onChange({ ...value, coverAssetId: id })}
                 >
-                  {value.coverAssetId === id ? "Cover" : "Set cover"}
+                  {isCover ? "Default image selected" : "Set as default image"}
                 </button>
               </div>
               <p className="mt-2 break-all text-xs text-slate-500">{asset ? `${asset.kind} | ${asset.section ?? "general"}` : "remote URL"}</p>

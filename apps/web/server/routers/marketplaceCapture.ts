@@ -24,6 +24,7 @@ import {
   listMarketplaceProductsWithAccess,
   removeMarketplaceProductImage,
   saveMarketplaceShareSetting,
+  setMarketplaceProductHeroImage,
 } from "../services/marketplaceProductService";
 import {
   advanceMarketplaceAutoReviewRun,
@@ -501,6 +502,17 @@ export const marketplaceCaptureRouter = router({
       removeMarketplaceProductImage(input, authFromCtx(ctx))
     ),
 
+  setProductHeroImage: protectedProcedure
+    .input(
+      z.object({
+        productId: z.string().min(1).max(64),
+        imageId: z.string().min(1).max(64),
+      })
+    )
+    .mutation(async ({ input, ctx }) =>
+      setMarketplaceProductHeroImage(input, authFromCtx(ctx))
+    ),
+
   startAutoReview: protectedProcedure
     .input(
       z.object({
@@ -545,6 +557,22 @@ export const marketplaceCaptureRouter = router({
               .enum(["storyboard", "video", "auto_review_video"])
               .optional()
               .nullable(),
+            characterMode: z
+              .enum([
+                "product_only",
+                "hands_only",
+                "described_character",
+                "uploaded_reference",
+              ])
+              .optional(),
+            characterBrief: z.string().min(1).max(2000).optional(),
+            characterPreset: z
+              .union([
+                z.string().max(4000),
+                z.record(z.unknown()),
+                z.array(z.unknown()),
+              ])
+              .optional(),
             requiredRoles: z
               .array(z.enum(["product", "character", "environment"]))
               .optional(),
@@ -601,7 +629,7 @@ export const marketplaceCaptureRouter = router({
             fileEvidence: z.record(z.unknown()).optional(),
             sourceRefs: z.array(z.string().max(512)).max(50).optional(),
           })
-          .strip()
+          .passthrough()
           .optional()
           .nullable(),
       })
@@ -636,6 +664,7 @@ export const marketplaceCaptureRouter = router({
         expectedPlanHash: input.expectedPlanHash,
         idempotencyKey: input.idempotencyKey,
         overrides: input.overrides,
+        referenceAnchors: input.referenceAnchors,
         auth: authFromCtx(ctx),
         runtime: autoReviewRuntimeFromCtx(ctx),
       })

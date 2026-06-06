@@ -38,6 +38,11 @@ const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS = 500;
 const PRODUCT_REFERENCE_STORYBOARD_FULL_OUTPUT_LOG_DIR = (
   process.env.PRODUCT_REFERENCE_STORYBOARD_FULL_OUTPUT_LOG_DIR || ""
 ).trim() || path.resolve(process.cwd(), "logs", "product-reference-storyboard");
+const PRODUCT_REFERENCE_STORYBOARD_REFERENCE_IMAGE_ARRAY_FIELDS = new Set([
+  "reference_product_images",
+  "reference_character_images",
+  "reference_environment_images",
+]);
 
 type LoadedSkillInputSchema = {
   schemaPath: string;
@@ -301,9 +306,15 @@ function sanitizeUserInputs(
   userInputs: Record<string, unknown>
 ): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(userInputs || {}).filter(([, value]) =>
-      hasUsableInputValue(value)
-    )
+    Object.entries(userInputs || {}).filter(([key, value]) => {
+      if (
+        PRODUCT_REFERENCE_STORYBOARD_REFERENCE_IMAGE_ARRAY_FIELDS.has(key) &&
+        Array.isArray(value)
+      ) {
+        return true;
+      }
+      return hasUsableInputValue(value);
+    })
   );
 }
 
@@ -812,6 +823,12 @@ export function stripRenderableStoryboardFrameLabelsForTest(
   prompt: string
 ): string {
   return stripRenderableStoryboardFrameLabels(prompt);
+}
+
+export function sanitizeProductReferenceStoryboardUserInputsForTest(
+  userInputs: Record<string, unknown>
+): Record<string, unknown> {
+  return sanitizeUserInputs(userInputs);
 }
 
 function shouldOptimizeProductReferenceStoryboardPrompt(
