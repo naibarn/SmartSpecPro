@@ -89,6 +89,18 @@ describe("marketplaceHyperframesUiState", () => {
     ).toBe("auto_storyboard_review");
   });
 
+  it("forces Auto mode when an active run exists even if current is standard order", () => {
+    expect(
+      resolveMarketplaceAutoReviewLaunchMode({
+        current: "standard_order",
+        plan: {
+          ...planWithAutoAccess(false),
+          activeRunId: "mar_active_1",
+        },
+      })
+    ).toBe("auto_storyboard_review");
+  });
+
   it("shows Standard controls only for Standard mode or when Auto is unavailable", () => {
     expect(
       shouldShowStandardOrderControls({
@@ -272,5 +284,29 @@ describe("marketplaceHyperframesUiState", () => {
         ],
       } as never)
     ).toBeNull();
+  });
+
+  it("treats stalled provider-wait states as active render UI state", () => {
+    expect(
+      resolveHyperframesRenderUiState({
+        render: {
+          status: "waiting_provider",
+          permissions: { canCancel: true, canRepair: true },
+          repairActions: [],
+          polling: { terminalState: false },
+        } as never,
+      })
+    ).toMatchObject({ state: "active", active: true, blocked: false });
+
+    expect(
+      resolveHyperframesRenderUiState({
+        render: {
+          status: "repairing",
+          permissions: { canCancel: true, canRepair: true },
+          repairActions: [],
+          polling: { terminalState: false },
+        } as never,
+      })
+    ).toMatchObject({ state: "active", active: true, blocked: false });
   });
 });

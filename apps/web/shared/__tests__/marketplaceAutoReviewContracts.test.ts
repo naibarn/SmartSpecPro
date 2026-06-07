@@ -1565,8 +1565,8 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
       MarketplaceCampaignGovernanceEnvelopeSchema.parse({
         gateId: "campaign_1",
         status: "not_applicable",
-        activeRunDedupePolicy: "single_active_run_per_user_product",
-        duplicateVariationPolicy: "block_same_active_user_product_run",
+        activeRunDedupePolicy: "parallel_runs_allowed_idempotency_key_dedupe_only",
+        duplicateVariationPolicy: "allow_parallel_variants_require_unique_idempotency",
         spendAnomalyPolicy: "credit_precheck_per_paid_stage",
         dailyVariantCapPolicy: "not_requested_for_single_run",
         checkedAt: "2026-05-31T00:00:00.000Z",

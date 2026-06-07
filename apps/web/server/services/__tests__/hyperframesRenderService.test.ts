@@ -249,7 +249,7 @@ describe("hyperframesRenderService", () => {
       });
 
       expect(projection).toMatchObject({
-        status: "queued",
+        status: "blocked_needs_user",
         safeMessage: "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render",
         templateId: "marketplace_storyboard_motion_9x9_v1",
         renderIntent: "preview",

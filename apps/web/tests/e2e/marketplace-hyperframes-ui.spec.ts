@@ -493,6 +493,17 @@ function routeMockData(
   }
   if (procedure === "marketplaceCapture.getProduct") {
     return {
+      images: [
+        {
+          id: "route_image_1",
+          url: ROUTE_IMAGE,
+          type: "main",
+          metadataJson: {
+            role: "hero",
+            source: "marketplace_product_image",
+          },
+        },
+      ],
       product: {
         id: "product_1",
         productId: "product_1",
@@ -1246,15 +1257,30 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     const startCallsBefore = routeLog.filter(entry =>
       entry.procedures.includes("marketplaceCapture.startAutoStoryboardReview")
     ).length;
+    const expectedPlanHash = routePlanHashFromOverrides({});
 
+    page.once("dialog", dialog => void dialog.accept());
     await resumeButton.click();
 
-    await expect(page.getByText(/prod_active_1/).first()).toBeVisible();
-    expect(
-      routeLog.filter(entry =>
-        entry.procedures.includes("marketplaceCapture.startAutoStoryboardReview")
+    await expect
+      .poll(
+        () =>
+          routeLog.filter(entry =>
+            entry.procedures.includes(
+              "marketplaceCapture.startAutoStoryboardReview"
+            )
+          ).length
       )
-    ).toHaveLength(startCallsBefore);
+      .toBe(startCallsBefore + 1);
+    const startCall = routeLog.find(entry =>
+      entry.procedures.includes("marketplaceCapture.startAutoStoryboardReview")
+    );
+    expect(startCall?.requestBodySnippet ?? "").toContain(
+      `"expectedPlanHash":"${expectedPlanHash}"`
+    );
+    expect(startCall?.requestBodySnippet ?? "").toContain(
+      `"idempotencyKey":"hf-auto-resume:${expectedPlanHash}:`
+    );
   });
 
   test("authenticated Product Detail treats an active Standard run as a Standard blocker, not Auto resume", async ({

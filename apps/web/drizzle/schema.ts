@@ -11998,9 +11998,12 @@ export const marketplaceAutoReviewRuns = pgTable("marketplace_auto_review_runs",
   completedAt: timestamp("completedAt", { withTimezone: true }),
 }, (t) => [
   uniqueIndex("marketplace_auto_review_runs_idempotency_unique").on(t.userId, t.idempotencyKey),
-  uniqueIndex("marketplace_auto_review_runs_active_unique")
-    .on(t.userId, t.productId)
-    .where(sql`"status" IN ('queued', 'running', 'waiting_provider')`),
+  index("marketplace_auto_review_runs_user_product_status_idx").on(
+    t.userId,
+    t.productId,
+    t.status,
+    t.updatedAt
+  ),
   index("marketplace_auto_review_runs_product_idx").on(t.productId, t.createdAt),
   index("marketplace_auto_review_runs_user_status_idx").on(t.userId, t.status, t.updatedAt),
   index("marketplace_auto_review_runs_production_idx").on(t.productionRunId),

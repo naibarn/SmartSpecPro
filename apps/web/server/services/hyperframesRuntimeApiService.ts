@@ -25,6 +25,7 @@ import {
 import {
   getMarketplaceAutoReviewRun,
   startMarketplaceAutoReviewRun,
+  queueMarketplaceAutoReviewAdvance,
   type MarketplaceAutoReviewReferenceAnchorsInput,
 } from "./marketplaceAutoReviewService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
@@ -380,9 +381,16 @@ async function buildStartAutoStoryboardReviewResumeResponse(input: {
   productId: string;
   auth: HyperframesAuthContext;
   plan: Awaited<ReturnType<typeof getHyperframesAutoStoryboardReviewPlan>>;
+  runtime?: Record<string, unknown>;
 }) {
   const activeRunId = cleanText(input.plan.activeRunId);
   if (!activeRunId) return null;
+  queueMarketplaceAutoReviewAdvance(
+    activeRunId,
+    input.auth,
+    input.runtime ?? {},
+    500
+  );
   const activeRun = await getMarketplaceAutoReviewRun(activeRunId, input.auth);
   const activeRunRecord = (activeRun ?? {}) as Record<string, unknown>;
   const activeRunProductId = cleanText(activeRunRecord.productId);
@@ -442,6 +450,7 @@ export async function startAutoStoryboardReviewForApi(input: {
             productId: input.productId,
             auth: input.auth,
             plan,
+            runtime: input.runtime,
           })
         : null;
     if (resumeResponse) return resumeResponse;
@@ -458,6 +467,7 @@ export async function startAutoStoryboardReviewForApi(input: {
       productId: input.productId,
       auth: input.auth,
       plan,
+      runtime: input.runtime,
     });
     if (resumeResponse) return resumeResponse;
   }

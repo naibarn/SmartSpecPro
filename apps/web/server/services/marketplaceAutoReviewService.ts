@@ -283,6 +283,7 @@ const MARKETPLACE_AUTO_REVIEW_VIDEO_AUDIO_PROFILES = [
       "Light playful SFX from real scene actions only: soft object clicks, gentle placement, small hand movement ASMR, cozy room tone. No music.",
   },
 ] as const;
+const MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW = 3;
 const RENDER_JOB_TTL_SECONDS = 86_400;
 const DEFAULT_RENDER_STALE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_ADVANCE_LEASE_TTL_MS = 10 * 60 * 1000;
@@ -297,6 +298,19 @@ const ACTIVE_RUN_STATUSES: MarketplaceAutoReviewStatus[] = [
   "running",
   "waiting_provider",
 ];
+const TERMINAL_RUN_STATUSES_FOR_OPERATIONAL_CLEANUP: MarketplaceAutoReviewStatus[] =
+  ["completed", "failed", "cancelled"];
+const MARKETPLACE_AUTO_REVIEW_OPERATIONAL_RETENTION_DAYS = 3;
+
+function shouldPersistAdvanceOutboxJobForSchedulerSource(
+  schedulerSource: unknown
+): boolean {
+  const source = cleanText(schedulerSource);
+  if (!source || source === "manual_or_api") return true;
+  if (source === "auto") return false;
+  if (source.startsWith("outbox:")) return false;
+  return true;
+}
 
 function normalizeMarketplaceAutoReviewShotCount(value: unknown): number {
   const parsed = Math.floor(Number(value));
@@ -1363,6 +1377,116 @@ function buildMarketplaceAutoReviewDurableRuntimePlan(params: {
   };
 }
 
+function marketplaceAutoReviewOperationalCleanupCutoff(input: {
+  now?: Date;
+  retentionDays?: number | null;
+} = {}): Date {
+  const retentionDays = Math.max(
+    1,
+    Math.floor(
+      Number(
+        input.retentionDays ??
+          MARKETPLACE_AUTO_REVIEW_OPERATIONAL_RETENTION_DAYS
+      )
+    )
+  );
+  const now = input.now ?? nowDate();
+  return new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
+}
+
+function isMarketplaceAutoReviewRunEligibleForOperationalCleanup(input: {
+  status: unknown;
+  completedAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+  cutoff: Date;
+}): boolean {
+  const status = cleanText(input.status) as MarketplaceAutoReviewStatus;
+  if (!TERMINAL_RUN_STATUSES_FOR_OPERATIONAL_CLEANUP.includes(status)) {
+    return false;
+  }
+  const reference =
+    input.completedAt ?? input.updatedAt ?? input.createdAt ?? null;
+  const referenceDate =
+    reference instanceof Date
+      ? reference
+      : cleanText(reference)
+        ? new Date(cleanText(reference))
+        : null;
+  return Boolean(
+    referenceDate &&
+      Number.isFinite(referenceDate.getTime()) &&
+      referenceDate < input.cutoff
+  );
+}
+
+async function cleanupMarketplaceAutoReviewOperationalRuntime(params: {
+  db: Db;
+  retentionDays?: number | null;
+  now?: Date;
+}) {
+  const cutoff = marketplaceAutoReviewOperationalCleanupCutoff({
+    now: params.now,
+    retentionDays: params.retentionDays,
+  });
+  await params.db.execute(sql`
+    WITH eligible_runs AS (
+      SELECT "id"
+      FROM "marketplace_auto_review_runs"
+      WHERE "status" IN ('completed', 'failed', 'cancelled')
+        AND COALESCE("completedAt", "updatedAt", "createdAt") < ${cutoff}
+    )
+    DELETE FROM "marketplace_auto_review_stage_attempts"
+    WHERE "runId" IN (SELECT "id" FROM eligible_runs)
+  `);
+  await params.db.execute(sql`
+    WITH eligible_runs AS (
+      SELECT "id"
+      FROM "marketplace_auto_review_runs"
+      WHERE "status" IN ('completed', 'failed', 'cancelled')
+        AND COALESCE("completedAt", "updatedAt", "createdAt") < ${cutoff}
+    )
+    DELETE FROM "marketplace_auto_review_provider_events"
+    WHERE "runId" IN (SELECT "id" FROM eligible_runs)
+  `);
+  await params.db.execute(sql`
+    WITH eligible_runs AS (
+      SELECT "id"
+      FROM "marketplace_auto_review_runs"
+      WHERE "status" IN ('completed', 'failed', 'cancelled')
+        AND COALESCE("completedAt", "updatedAt", "createdAt") < ${cutoff}
+    )
+    DELETE FROM "marketplace_auto_review_run_leases"
+    WHERE "runId" IN (SELECT "id" FROM eligible_runs)
+  `);
+  await params.db.execute(sql`
+    WITH eligible_runs AS (
+      SELECT "id"
+      FROM "marketplace_auto_review_runs"
+      WHERE "status" IN ('completed', 'failed', 'cancelled')
+        AND COALESCE("completedAt", "updatedAt", "createdAt") < ${cutoff}
+    )
+    DELETE FROM "marketplace_auto_review_outbox_jobs"
+    WHERE "runId" IN (SELECT "id" FROM eligible_runs)
+  `);
+}
+
+async function cleanupMarketplaceAutoReviewOperationalRuntimeBeforeStart(
+  db: Db
+) {
+  try {
+    await cleanupMarketplaceAutoReviewOperationalRuntime({ db });
+  } catch (error) {
+    console.warn(
+      "[marketplaceAutoReview] operational_retention_cleanup_failed",
+      {
+        retentionDays: MARKETPLACE_AUTO_REVIEW_OPERATIONAL_RETENTION_DAYS,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }
+    );
+  }
+}
+
 function buildMarketplaceAutoReviewQualityModePolicy(
   metadata: RunMetadata
 ): Record<string, unknown> {
@@ -2039,6 +2163,36 @@ function stageEvidenceStatusForStageStatus(
   if (status === "failed") return "terminal_failure";
   if (status === "cancelled") return "cancelled";
   return null;
+}
+
+function isMarketplaceAutoReviewCompletedStageStatus(status: string): boolean {
+  return ["completed", "completed_with_warnings", "skipped"].includes(
+    cleanText(status)
+  );
+}
+
+function isMarketplaceAutoReviewTerminalStageAttemptStatus(
+  status: string
+): boolean {
+  return [
+    "completed",
+    "completed_with_warnings",
+    "skipped",
+    "blocked",
+    "failed",
+    "cancelled",
+  ].includes(cleanText(status));
+}
+
+function marketplaceAutoReviewStageAttemptKeyForStatus(input: {
+  stageKey: string;
+  status: string;
+  attemptNumber: number;
+}): string {
+  const stageKey = cleanText(input.stageKey) || "queued";
+  return isMarketplaceAutoReviewTerminalStageAttemptStatus(input.status)
+    ? `${stageKey}:${Math.max(1, input.attemptNumber)}`
+    : `${stageKey}:active`;
 }
 
 function buildStageCompletionEvidence(params: {
@@ -5207,10 +5361,10 @@ async function persistDirectMediaSubmitProgress(params: {
                   : ["image_qa_repair_submitted"]
                 : ["provider_image_submitted"],
               safeMessage: isRepairSubmit
-                ? "ภาพสร้างเสร็จแล้ว แต่ QA พบจุดที่ต้องซ่อม ระบบกำลังส่งซ่อมเฉพาะ grid/frame ที่ไม่ผ่าน"
+                ? "ภาพสร้างเสร็จแล้ว แต่ QA พบจุดที่ต้องซ่อม ระบบกำลังส่งซ่อมเฉพาะ grid/frame ที่ไม่ผ่าน และจะส่งต่อเมื่อครบ 3 รอบ"
                 : "ส่งงานสร้างภาพแล้ว กำลังรอผลจาก provider",
               nextAction: isRepairSubmit
-                ? "รอผลซ่อมจาก provider แล้วระบบจะตรวจ QA และส่งเข้า Storyboard Review ต่อ"
+                ? "รอผลซ่อมจาก provider และให้ครบ 3 รอบก่อนส่งเข้า Storyboard Review ต่อ"
                 : "ระบบจะตรวจสถานะให้อัตโนมัติ",
               userActionRequired: false,
               retryable: true,
@@ -6095,23 +6249,40 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
       }
     }
 
-    const requiredFragmentGroups: Array<readonly [string, readonly string[]]> = [
-      ["output_single_image_missing", ["one single 9:16 image", "single 9:16"]],
-      ["exact_frame_count_missing", ["exactly 9 frames", "9 total frames"]],
+    const requiredFragmentGroups: Array<
+      readonly [string, readonly string[], boolean?]
+    > = [
+      [
+        "output_single_image_missing",
+        ["one single 9:16 image", "single 9:16"],
+        true,
+      ],
+      ["exact_frame_count_missing", ["exactly 9 frames", "9 total frames"], true],
       [
         "vertical_frame_count_missing",
         ["exactly 9 vertical frames", "9 vertical frames"],
+        true,
       ],
       [
         "equal_columns_missing",
         ["exactly 3 equal-width columns", "3 equal-width columns"],
+        true,
       ],
       [
         "equal_rows_missing",
         ["exactly 3 equal-height rows", "3 equal-height rows"],
+        true,
       ],
-      ["no_collage_lock_missing", ["no collage/masonry layout", "no collage"]],
-      ["no_separator_lock_missing", ["no separator lines", "no visible dividers"]],
+      [
+        "no_collage_lock_missing",
+        ["no collage/masonry layout", "no collage"],
+        true,
+      ],
+      [
+        "no_separator_lock_missing",
+        ["no separator lines", "no visible dividers"],
+        true,
+      ],
       ["cinematic_realism_lock_missing", ["cinematic realism lock"]],
       ["product_reference_lock_missing", ["product reference lock"]],
       ["text_rendering_policy_missing", ["text rendering policy", "text policy"]],
@@ -6154,9 +6325,13 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         ]
       );
     }
-    for (const [code, fragments] of requiredFragmentGroups) {
+    for (const [code, fragments, hardPromptRequirement] of requiredFragmentGroups) {
       if (!fragments.some(fragment => lower.includes(fragment.toLowerCase()))) {
-        addContractIssue(code);
+        if (hardPromptRequirement === true) {
+          addContractIssue(code, true);
+        } else {
+          addContractIssue(code);
+        }
       }
     }
     for (let index = 1; index <= MAX_SHOT_COUNT; index += 1) {
@@ -7181,6 +7356,110 @@ function acceptImageQaWithWarningsAfterRepairBudgetExhausted(params: {
   return withUpdatedCreditSummary(metadata);
 }
 
+function acceptBestImageAttemptAfterStoryboardFramesReady(params: {
+  run: Pick<MarketplaceAutoReviewRun, "id">;
+  metadata: RunMetadata;
+  repairUnits: DirectImageUnit[];
+  refs: DirectMediaTaskRef[];
+}): RunMetadata | null {
+  const best = bestImageAttemptReview(params.metadata);
+  if (!best) return null;
+  const selected = applyBestImageAttemptSelection(params.metadata);
+  const existingAcceptance = asRecord(
+    selected.generatedMediaAcceptanceEnvelope
+  );
+  const reasonCodes = uniqueCleanTexts([
+    "best_available_attempt_after_storyboard_frames_ready",
+    ...params.repairUnits.flatMap(unit => unit.repairReasonCodes ?? []),
+  ]);
+  const acceptanceId =
+    cleanText(existingAcceptance.acceptanceEnvelopeId) ||
+    cleanText(existingAcceptance.acceptanceId) ||
+    `acceptance:image:${params.run.id}:${nanoid(8)}`;
+  const latestQaRefs = (Array.isArray(
+    selected.shotFrameVisionQaEnvelopes
+  )
+    ? selected.shotFrameVisionQaEnvelopes
+    : []
+  )
+    .map(qa => cleanText(asRecord(qa).qaEnvelopeId))
+    .filter(Boolean);
+  return withUpdatedCreditSummary({
+    ...selected,
+    pendingImageRepairUnits: [],
+    generatedMediaAcceptanceEnvelope: compactRecord({
+      ...existingAcceptance,
+      acceptanceId,
+      acceptanceEnvelopeId: acceptanceId,
+      runId: params.run.id,
+      stageKey: "image_generation",
+      status: "accepted_with_warnings",
+      checkedAt: nowIso(),
+      qaEnvelopeRefs: latestQaRefs,
+      repairUnitCount: params.repairUnits.length,
+      repairPolicy: "best_available_attempt_after_storyboard_frames_ready",
+      warningCount: Math.max(
+        toNumber(existingAcceptance.warningCount),
+        latestQaRefs.length,
+        1
+      ),
+      productReferenceLocked: true,
+      characterConsistencyChecked: true,
+      adComplianceWarningChecked: true,
+      userReviewRequired: true,
+      overrideReason:
+        "best_available_attempt_after_storyboard_frames_ready",
+      overrideMessage:
+        "ภาพครบแล้ว ระบบเลือกภาพที่ดีที่สุดส่งต่อ Storyboard Review เพื่อให้ผู้ใช้ตรวจและปรับแก้เฉพาะเฟรม",
+      reasonCodes,
+    }),
+    imageQaReviewOverride: {
+      status: "accepted_with_warnings",
+      reason: "best_available_attempt_after_storyboard_frames_ready",
+      selectedImageAttempt: toNumber(best.attempt),
+      selectedImageAttemptReviewId: cleanText(best.reviewId),
+      repairUnitIds: params.repairUnits
+        .map(unit => cleanText(unit.unitId))
+        .filter(Boolean),
+      latestTaskRefs: latestTaskRefsByUnit(params.refs).map(ref => ({
+        unitId: cleanText(ref.unitId),
+        taskId: cleanText(ref.taskId),
+        status: cleanText(ref.status),
+        attempt: toNumber(ref.attempt),
+        hasResultUrl: Boolean(cleanText(ref.resultUrl)),
+      })),
+      createdAt: nowIso(),
+    },
+    mediaAcceptance: [
+      ...(Array.isArray(selected.mediaAcceptance)
+        ? selected.mediaAcceptance
+        : []),
+      {
+        acceptanceId,
+        artifactRef: `image-frame-set:${params.run.id}`,
+        mediaUnit: "storyboard_cell_set",
+        status: "accepted_with_warnings",
+        warningApprovalRefs: [
+          "policy:best-available-image-attempt-after-storyboard-frames-ready",
+        ],
+        supersedesRef:
+          cleanText(existingAcceptance.acceptanceEnvelopeId) || null,
+      },
+    ],
+  });
+}
+
+function completedImageAttemptReviewCount(metadata: RunMetadata): number {
+  return Array.isArray(metadata.imageAttemptReviews)
+    ? metadata.imageAttemptReviews
+        .map(item => asRecord(item))
+        .filter(review => {
+          const attempt = toNumber(review.attempt);
+          return attempt > 0 && Boolean(cleanText(review.status));
+        }).length
+    : 0;
+}
+
 export function buildMarketplaceAutoReviewShotFrameRepairUnitsForTest(input: {
   shot: AutoReviewShot;
   expectedFrameRoles: DirectImageFrameRole[];
@@ -7253,12 +7532,71 @@ export function isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest(input: 
   return imageRepairBudgetExhaustedForUnits(input);
 }
 
+export function hasMarketplaceAutoReviewMinimumImageAttemptsForTest(input: {
+  metadata: Pick<RunMetadata, "imageAttemptReviews">;
+}): boolean {
+  return (
+    completedImageAttemptReviewCount(input.metadata as RunMetadata) >=
+    MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW
+  );
+}
+
+export function shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(
+  schedulerSource: unknown
+): boolean {
+  return shouldPersistAdvanceOutboxJobForSchedulerSource(schedulerSource);
+}
+
+export function isMarketplaceAutoReviewCompletedStageStatusForTest(
+  status: string
+): boolean {
+  return isMarketplaceAutoReviewCompletedStageStatus(status);
+}
+
+export function marketplaceAutoReviewStageAttemptKeyForStatusForTest(input: {
+  stageKey: string;
+  status: string;
+  attemptNumber: number;
+}): string {
+  return marketplaceAutoReviewStageAttemptKeyForStatus(input);
+}
+
+export function marketplaceAutoReviewOperationalCleanupCutoffForTest(input: {
+  now?: Date;
+  retentionDays?: number | null;
+} = {}): Date {
+  return marketplaceAutoReviewOperationalCleanupCutoff(input);
+}
+
+export function isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest(input: {
+  status: unknown;
+  completedAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+  cutoff: Date;
+}): boolean {
+  return isMarketplaceAutoReviewRunEligibleForOperationalCleanup(input);
+}
+
 export function acceptMarketplaceAutoReviewImageQaWithWarningsForTest(input: {
   metadata: RunMetadata;
   repairUnits: DirectImageUnit[];
   refs: DirectMediaTaskRef[];
 }): RunMetadata {
   return acceptImageQaWithWarningsAfterRepairBudgetExhausted({
+    run: { id: "mar_test" },
+    metadata: input.metadata,
+    repairUnits: input.repairUnits,
+    refs: input.refs,
+  });
+}
+
+export function acceptMarketplaceAutoReviewImageQaWithWarningsAfterStoryboardFramesReadyForTest(input: {
+  metadata: RunMetadata;
+  repairUnits: DirectImageUnit[];
+  refs: DirectMediaTaskRef[];
+}): RunMetadata | null {
+  return acceptBestImageAttemptAfterStoryboardFramesReady({
     run: { id: "mar_test" },
     metadata: input.metadata,
     repairUnits: input.repairUnits,
@@ -10814,15 +11152,15 @@ function buildFeature117ContractMetadata(input: {
     campaignGovernance: {
       gateId: `campaign:${input.runId}`,
       status: "passed",
-      activeRunDedupePolicy: "single_active_run_per_user_product",
-      duplicateVariationPolicy: "block_same_active_user_product_run",
+      activeRunDedupePolicy: "parallel_runs_allowed_idempotency_key_dedupe_only",
+      duplicateVariationPolicy: "allow_parallel_variants_require_unique_idempotency",
       spendAnomalyPolicy: "credit_precheck_per_paid_stage",
       dailyVariantCapPolicy: "not_requested_for_single_run",
       evidenceRefs: [
-        `campaign-dedupe:${input.runId}:single-active-user-product`,
+        `campaign-dedupe:${input.runId}:idempotency-key-only`,
         `spend-guardrail:${input.runId}:paid-stage-precheck`,
       ],
-      dedupeRefs: [`campaign-dedupe:${input.runId}:single-active-user-product`],
+      dedupeRefs: [`campaign-dedupe:${input.runId}:idempotency-key-only`],
       spendGuardrailRefs: [
         `spend-guardrail:${input.runId}:paid-stage-precheck`,
       ],
@@ -11807,7 +12145,7 @@ async function upsertRunStage(params: {
   if (["running", "waiting_provider"].includes(params.status)) {
     updateSet.startedAt = sql`COALESCE(${marketplaceAutoReviewStages.startedAt}, ${nowIsoText}::timestamptz)`;
   }
-  if (params.status === "completed") {
+  if (isMarketplaceAutoReviewCompletedStageStatus(params.status)) {
     updateSet.completedAt = now;
   }
   await params.db
@@ -11823,7 +12161,9 @@ async function upsertRunStage(params: {
       startedAt: ["running", "waiting_provider"].includes(params.status)
         ? now
         : null,
-      completedAt: params.status === "completed" ? now : null,
+      completedAt: isMarketplaceAutoReviewCompletedStageStatus(params.status)
+        ? now
+        : null,
       createdAt: now,
       updatedAt: now,
     })
@@ -12242,7 +12582,11 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
     toNumber(asRecord(params.metadata.automationControlPlane).advanceAttempt) ||
     1;
   const stageKey = cleanText(params.run.currentStage) || "queued";
-  const attemptKey = `${stageKey}:${attemptNumber}`;
+  const attemptKey = marketplaceAutoReviewStageAttemptKeyForStatus({
+    stageKey,
+    status: params.status,
+    attemptNumber,
+  });
   const now = nowDate();
   const providerTaskRefs = [
     ...directTaskRefs(params.metadata.directImageTasks),
@@ -12275,7 +12619,7 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
         ),
       },
       updatedAt: now,
-      completedAt: ["completed", "blocked", "failed", "cancelled"].includes(
+      completedAt: isMarketplaceAutoReviewTerminalStageAttemptStatus(
         params.status
       )
         ? now
@@ -12288,6 +12632,7 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
       ],
       set: {
         status: params.status,
+        attemptNumber,
         reasonCode: params.reasonCode ?? null,
         providerTaskRefsJson: providerTaskRefs,
         creditRefsJson: creditRefsFromMetadata(params.metadata),
@@ -12307,6 +12652,11 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
           ),
         },
         updatedAt: now,
+        completedAt: isMarketplaceAutoReviewTerminalStageAttemptStatus(
+          params.status
+        )
+          ? now
+          : null,
       } as any,
     });
 }
@@ -12409,25 +12759,28 @@ async function claimMarketplaceAutoReviewAdvanceLease(params: {
     runtime: params.runtime,
     metadata: claimedMetadata,
   });
-  await upsertMarketplaceAutoReviewOutboxJob({
-    db: params.db,
-    run: claimed,
-    auth: params.auth,
-    jobType: "advance_run",
-    idempotencyKey: `marketplace-auto-review:${claimed.id}:advance:${advanceAttempt}`,
-    priority: 50,
-    maxAttempts: MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 2,
-    payload: {
-      runId: claimed.id,
-      stageKey: claimed.currentStage,
-      leaseId,
-      ownerToken,
-      schedulerSource:
-        cleanText(params.runtime.schedulerSource) || "manual_or_api",
-      noNodeCanvasExecution: true,
-      llmGatewayOnly: true,
-    },
-  });
+  const schedulerSource =
+    cleanText(params.runtime.schedulerSource) || "manual_or_api";
+  if (shouldPersistAdvanceOutboxJobForSchedulerSource(schedulerSource)) {
+    await upsertMarketplaceAutoReviewOutboxJob({
+      db: params.db,
+      run: claimed,
+      auth: params.auth,
+      jobType: "advance_run",
+      idempotencyKey: `marketplace-auto-review:${claimed.id}:advance:${advanceAttempt}`,
+      priority: 50,
+      maxAttempts: MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 2,
+      payload: {
+        runId: claimed.id,
+        stageKey: claimed.currentStage,
+        leaseId,
+        ownerToken,
+        schedulerSource,
+        noNodeCanvasExecution: true,
+        llmGatewayOnly: true,
+      },
+    });
+  }
   return {
     claimed: true,
     ownerToken,
@@ -13066,6 +13419,7 @@ export async function startMarketplaceAutoReviewRun(
       code: "INTERNAL_SERVER_ERROR",
       message: "Database unavailable",
     });
+  await cleanupMarketplaceAutoReviewOperationalRuntimeBeforeStart(db);
   const outputMode = input.outputMode;
   const frameStrategy = resolveFrameStrategy(outputMode, input.frameStrategy);
   const audioStrategy: MarketplaceAutoReviewAudioStrategyInput =
@@ -13089,24 +13443,6 @@ export async function startMarketplaceAutoReviewRun(
   const stages = stageKeysForMode(outputMode);
   const tenantId = autoTenantId(auth);
   const requestedIdempotencyKey = cleanText(input.idempotencyKey);
-
-  const active = await db
-    .select()
-    .from(marketplaceAutoReviewRuns)
-    .where(
-      and(
-        eq(marketplaceAutoReviewRuns.userId, auth.userId),
-        tenantAccessClause(auth),
-        eq(marketplaceAutoReviewRuns.productId, input.productId),
-        inArray(marketplaceAutoReviewRuns.status, ACTIVE_RUN_STATUSES)
-      )
-    )
-    .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
-    .limit(1);
-  if (active[0]) {
-    queueMarketplaceAutoReviewAdvance(active[0].id, auth, runtime, 5_000);
-    return getMarketplaceAutoReviewRun(active[0].id, auth);
-  }
 
   const bundle = await getMarketplaceProductWithAccess(input.productId, auth);
   const insights = await loadSupportingInsights(db, bundle, auth);
@@ -13298,28 +13634,6 @@ export async function startMarketplaceAutoReviewRun(
     .onConflictDoNothing()
     .returning({ id: marketplaceAutoReviewRuns.id });
   if (!insertedRun?.id) {
-    const [conflictingActive] = await db
-      .select()
-      .from(marketplaceAutoReviewRuns)
-      .where(
-        and(
-          eq(marketplaceAutoReviewRuns.userId, auth.userId),
-          tenantAccessClause(auth),
-          eq(marketplaceAutoReviewRuns.productId, input.productId),
-          inArray(marketplaceAutoReviewRuns.status, ACTIVE_RUN_STATUSES)
-        )
-      )
-      .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
-      .limit(1);
-    if (conflictingActive?.id) {
-      queueMarketplaceAutoReviewAdvance(
-        conflictingActive.id,
-        auth,
-        runtime,
-        5_000
-      );
-      return getMarketplaceAutoReviewRun(conflictingActive.id, auth);
-    }
     if (requestedIdempotencyKey) {
       const [conflictingByIdempotency] = await db
         .select()
@@ -15064,9 +15378,117 @@ async function reconcileDirectImageAttempt(params: {
           : [],
         expectedFrameCount: shotCountForPlan(params.plan),
       });
+    const storyboardFramesReady =
+      (params.run.frameStrategy as MarketplaceAutoReviewFrameStrategy) ===
+      "storyboard_3x3_split"
+        ? hasCompleteFrameSet(
+            qa.metadata.storyboardFrameUrls,
+            shotCountForPlan(params.plan)
+          )
+        : hasCompleteFrameSet(
+            qa.metadata.startFrameUrls,
+            shotCountForPlan(params.plan)
+          ) &&
+          hasCompleteFrameSet(
+            qa.metadata.stopFrameUrls,
+            shotCountForPlan(params.plan)
+          );
+    const completedImageAttemptCount =
+      completedImageAttemptReviewCount(qa.metadata);
+    const minimumImageAttemptsReached =
+      completedImageAttemptCount >=
+      MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW;
+    if (storyboardFramesReady && minimumImageAttemptsReached) {
+      const acceptedMetadata =
+        acceptBestImageAttemptAfterStoryboardFramesReady({
+          run: params.run,
+          metadata: qa.metadata,
+          repairUnits: qa.repairUnits,
+          refs: nextRefs,
+        });
+      if (acceptedMetadata) {
+        console.warn(
+          "[marketplaceAutoReview] image_qa_best_available_attempt_storyboard_ready",
+          {
+            runId: params.run.id,
+            productionRunId: params.run.productionRunId,
+            productId: params.plan.productTruth.productId,
+            repairUnitIds: qa.repairUnits.map(unit => cleanText(unit.unitId)),
+            reasonCodes: repairReasonCodes,
+          }
+        );
+        await updateRun({
+          db: params.db,
+          runId: params.run.id,
+          status: "running",
+          currentStage: "image_generation",
+          stageIndex: stageIndex("image_generation", stages),
+          stageCount: stages.length,
+          metadataJson: acceptedMetadata,
+        });
+        await upsertRunStage({
+          db: params.db,
+          runId: params.run.id,
+          stageKey: "image_generation",
+          stageOrder: stageIndex("image_generation", stages),
+          status: "completed_with_warnings",
+          providerTaskIds: acceptedMetadata.imageProviderTaskIds,
+          output: {
+            attemptId: params.attemptId,
+            status: "accepted_with_warnings",
+            activeSubstep: "เลือกภาพที่ดีที่สุดและส่งต่อ Storyboard Review",
+            progressPercent: 100,
+            frameUrls: acceptedMetadata.storyboardFrameUrls?.slice(
+              0,
+              shotCountForPlan(params.plan)
+            ),
+            startFrameUrls: acceptedMetadata.startFrameUrls?.slice(
+              0,
+              shotCountForPlan(params.plan)
+            ),
+            stopFrameUrls: acceptedMetadata.stopFrameUrls?.slice(
+              0,
+              shotCountForPlan(params.plan)
+            ),
+            qaVerdictRefs: (Array.isArray(
+              acceptedMetadata.shotFrameVisionQaEnvelopes
+            )
+              ? acceptedMetadata.shotFrameVisionQaEnvelopes
+              : []
+            )
+              .map(item => cleanText(asRecord(item).qaEnvelopeId))
+              .filter(Boolean),
+            repairRefs: qa.repairUnits
+              .map(unit => cleanText(unit.unitId))
+              .filter(Boolean),
+            statusDetail: {
+              state: "completed_with_warnings",
+              severity: "warning",
+              stageKey: "image_generation",
+              reasonCodes: repairReasonCodes.length > 0
+                ? repairReasonCodes
+                : ["best_available_attempt_after_storyboard_frames_ready"],
+              safeMessage:
+                "ภาพครบแล้ว ระบบเลือกภาพที่ดีที่สุดส่งต่อ Storyboard Review เพื่อให้ผู้ใช้ตรวจและปรับแก้เฉพาะเฟรม",
+              nextAction:
+                "เปิด Storyboard Review เพื่อตรวจรูปและแก้เฉพาะเฟรมที่ไม่ชอบ",
+              userActionRequired: false,
+              retryable: true,
+            },
+          },
+        });
+        return {
+          attempt: { attemptId: params.attemptId, status: "completed" },
+          refs: latestTaskRefsByUnit(
+            directTaskRefs(acceptedMetadata.directImageTasks)
+          ),
+        };
+      }
+    }
     if (
       repairBudgetExhausted &&
-      !wholeStoryboardProductFidelityFailure
+      storyboardFramesReady &&
+      minimumImageAttemptsReached
     ) {
       const acceptedMetadata =
         acceptImageQaWithWarningsAfterRepairBudgetExhausted({
@@ -15083,6 +15505,7 @@ async function reconcileDirectImageAttempt(params: {
           productId: params.plan.productTruth.productId,
           repairUnitIds: qa.repairUnits.map(unit => cleanText(unit.unitId)),
           reasonCodes: repairReasonCodes,
+          wholeStoryboardProductFidelityFailure,
         }
       );
       await updateRun({
@@ -15186,9 +15609,9 @@ async function reconcileDirectImageAttempt(params: {
               ? repairReasonCodes
               : ["vision_qa_repair_required"],
           safeMessage:
-            "ภาพสร้างเสร็จแล้ว แต่ QA พบจุดที่ต้องซ่อม ระบบกำลังซ่อม grid/frame ที่ไม่ผ่าน",
+            "ภาพสร้างเสร็จแล้ว แต่ QA พบจุดที่ต้องซ่อม ระบบกำลังซ่อม grid/frame ที่ไม่ผ่าน และจะส่งต่อเมื่อครบ 3 รอบ",
           nextAction:
-            "รอผลซ่อมจาก provider แล้วระบบจะตรวจ QA และส่งเข้า Storyboard Review ต่อ",
+            "รอผลซ่อมจาก provider และให้ครบ 3 รอบก่อนส่งเข้า Storyboard Review ต่อ",
           userActionRequired: false,
           retryable: true,
         },

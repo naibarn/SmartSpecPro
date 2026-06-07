@@ -31,7 +31,6 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  Clock,
   Copy,
   Download,
   ExternalLink,
@@ -2105,7 +2104,8 @@ export default function MarketplaceCaptureProductDetail() {
       { productId, overrides: autoStoryboardOverrides },
       {
         enabled: Boolean(productId),
-        refetchOnWindowFocus: false,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
         staleTime: 30_000,
       }
     );
@@ -2506,6 +2506,40 @@ export default function MarketplaceCaptureProductDetail() {
     ? getAutoReviewTimelineProjection(statusAutoReviewRun)
     : {};
   const statusProjectionDetail = asRecord(statusProjection.statusDetail);
+  const statusAutoReviewRunMetadata = asRecord(statusAutoReviewRun?.metadataJson);
+  const statusAutoReviewRunStoryboardFrameCount = Array.isArray(
+    statusAutoReviewRunMetadata.storyboardFrameUrls
+  )
+    ? statusAutoReviewRunMetadata.storyboardFrameUrls.filter(Boolean).length
+    : 0;
+  const statusAutoReviewRunHasSelectableBestAttempt = Array.isArray(
+    statusAutoReviewRunMetadata.imageAttemptReviews
+  )
+    ? statusAutoReviewRunMetadata.imageAttemptReviews.some(review => {
+        const reviewRecord = asRecord(review);
+        return (
+          reviewRecord.selectionEligible !== false &&
+          Array.isArray(reviewRecord.storyboardFrameUrls) &&
+          reviewRecord.storyboardFrameUrls.filter(Boolean).length >= 3
+        );
+      })
+    : false;
+  const statusAutoReviewRunBestAttemptHint =
+    statusAutoReviewRunStoryboardFrameCount >= 3 &&
+    statusAutoReviewRunHasSelectableBestAttempt &&
+    statusProjectionDetail.state === "frame_vision_qa_repairing"
+      ? "ภาพครบแล้ว ระบบกำลังเลือกภาพที่ดีที่สุดเพื่อส่งเข้า Storyboard Review"
+      : "";
+  const statusAutoReviewRunState = statusAutoReviewRun
+    ? autoReviewStateFamily({
+        status: statusAutoReviewRun.status,
+        detail: statusProjectionDetail,
+        stageKey: statusProjection.currentStage ?? statusAutoReviewRun.currentStage,
+      })
+    : null;
+  const statusAutoReviewRunUpdatedAtText = statusAutoReviewRun?.updatedAt
+    ? formatDiagnosticDateTime(statusAutoReviewRun.updatedAt)
+    : "";
   const statusActiveTimelineItem =
     statusTimelineItems.find(item =>
       [
@@ -2545,6 +2579,11 @@ export default function MarketplaceCaptureProductDetail() {
   const statusNextAction = compactText(
     statusProjection.nextAction ?? statusProjectionDetail.nextAction
   );
+  const optimisticAutoReviewStatusText = isStartingAutoReviewRun
+    ? optimisticAutoStoryboardStart
+      ? "กำลังเริ่มงาน Auto Storyboard Review และรอ backend สร้าง run ใหม่"
+      : "กำลังส่งคำสั่งเริ่มงาน"
+    : "";
   const statusImageTaskSummary =
     autoReviewImageTaskSummary(statusAutoReviewRun);
   const statusOutputLinks = statusAutoReviewRun
@@ -3625,7 +3664,12 @@ export default function MarketplaceCaptureProductDetail() {
         "resume_auto_storyboard_review" &&
       autoStoryboardPlan.activeRunId
     ) {
+      const confirmed = window.confirm(
+        "พบ Auto Storyboard Review run เดิมที่ยังต่อได้\n\nยืนยันว่าต้องการดำเนินต่อจาก run เดิมนี้?"
+      );
+      if (!confirmed) return;
       setAutoReviewLaunchMode("auto_storyboard_review");
+      setOptimisticAutoStoryboardStart(true);
       setShowAutoReviewRuns(true);
       setShowAutoReviewHistory(false);
       setCollapsedAutoReviewRunIds(previous => {
@@ -3638,7 +3682,14 @@ export default function MarketplaceCaptureProductDetail() {
         next.delete(autoStoryboardPlan.activeRunId ?? "");
         return next;
       });
-      void autoReviewRuns.refetch();
+      const startAttemptKey = Date.now().toString(36);
+      startAutoStoryboardReviewMutation.mutate({
+        productId,
+        expectedPlanHash: autoStoryboardPlan.planHash,
+        idempotencyKey: `hf-auto-resume:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
+        overrides: autoStoryboardOverrides,
+        referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
+      });
       return;
     }
     const confirmed = window.confirm(
@@ -3994,6 +4045,32 @@ export default function MarketplaceCaptureProductDetail() {
 
   const autoStoryboardReviewSurface = showAutoStoryboardReviewSurface ? (
     <div className="mt-4 space-y-3">
+      {autoStoryboardPlan?.primaryAction.actionId ===
+        "resume_auto_storyboard_review" &&
+      autoStoryboardPlan.activeRunId ? (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-950/30">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">
+                พบงาน Auto Storyboard Review เดิมที่ยังต่อได้
+              </p>
+              <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
+                งานนี้มีเฟรมพร้อมแล้ว ระบบจะกลับไปทำต่อจาก run เดิมถ้าคุณยืนยัน
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-sky-600 text-white hover:bg-sky-700"
+              aria-label="ทำงานต่อจากงานเดิม"
+              onClick={() => startAutoStoryboardReview()}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              ทำงานต่อจากงานเดิม
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <MarketplaceAutoReviewLaunchModeSwitch
         value={effectiveAutoReviewLaunchMode}
         onChange={setAutoReviewLaunchMode}
@@ -5061,20 +5138,37 @@ export default function MarketplaceCaptureProductDetail() {
                 showStandardOrderControlPanel ? "mt-4" : ""
               } flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 px-3 py-2`}
             >
-              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+              <div className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
                 {activeAutoReviewRun ? (
                   <>
-                    <Clock className="h-4 w-4 text-sky-600" />
-                    <span>
-                      กำลังทำงาน:{" "}
-                      {autoReviewStageLabel(
-                        String(activeAutoReviewRun.currentStage)
-                      )}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      ({activeAutoReviewRun.stageIndex}/
-                      {activeAutoReviewRun.stageCount})
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+                      <span>
+                        {statusAutoReviewRunState?.label ?? "กำลังทำงาน"}:{" "}
+                        {autoReviewStageLabel(
+                          String(activeAutoReviewRun.currentStage)
+                        )}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        ({activeAutoReviewRun.stageIndex}/
+                        {activeAutoReviewRun.stageCount})
+                      </span>
+                    </div>
+                    {statusAutoReviewRunState?.description ? (
+                      <p className="text-xs text-slate-500">
+                        {statusAutoReviewRunState.description}
+                      </p>
+                    ) : null}
+                    {statusAutoReviewRunBestAttemptHint ? (
+                      <p className="text-xs text-amber-700">
+                        {statusAutoReviewRunBestAttemptHint}
+                      </p>
+                    ) : null}
+                    {statusAutoReviewRun?.updatedAt ? (
+                      <p className="text-xs text-slate-400">
+                        อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText} · ยังเช็กสถานะต่อเนื่อง
+                      </p>
+                    ) : null}
                   </>
                 ) : isHidingPreviousAutoReviewFailures ||
                   startAutoReviewMutation.isPending ? (
@@ -5141,7 +5235,8 @@ export default function MarketplaceCaptureProductDetail() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-sky-900">
-                          ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว
+                          {optimisticAutoReviewStatusText ||
+                            "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว"}
                         </p>
                         <p className="mt-1 text-xs text-sky-700">
                           ระบบกำลังสร้าง run ใหม่และซ่อน error จาก run เก่าไว้
@@ -5177,6 +5272,11 @@ export default function MarketplaceCaptureProductDetail() {
                             ถัดไป: {statusNextAction}
                           </p>
                         ) : null}
+                        {statusAutoReviewRunBestAttemptHint ? (
+                          <p className="mt-2 text-sm text-amber-700">
+                            {statusAutoReviewRunBestAttemptHint}
+                          </p>
+                        ) : null}
                         {statusImageTaskSummary ? (
                           <p className="mt-2 text-sm text-slate-700">
                             งานภาพ: {statusImageTaskSummary}
@@ -5205,12 +5305,17 @@ export default function MarketplaceCaptureProductDetail() {
                       </div>
                       <div className="min-w-[11rem] text-right">
                         <p className="text-sm font-semibold text-slate-900">
-                          {statusProgressPercent ?? 0}%
+                        {statusProgressPercent ?? 0}%
                         </p>
                         <p className="text-xs text-slate-500">
                           จบแล้ว {statusCompletedTimelineCount}/
                           {statusTimelineItems.length || 0} ขั้นตอน
                         </p>
+                        {statusAutoReviewRun?.updatedAt ? (
+                          <p className="mt-1 text-[11px] text-slate-400">
+                            อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText}
+                          </p>
+                        ) : null}
                         <div className="mt-2 h-2 rounded-full bg-slate-100">
                           <div
                             className="h-2 rounded-full bg-sky-600"
@@ -5220,6 +5325,30 @@ export default function MarketplaceCaptureProductDetail() {
                           />
                         </div>
                       </div>
+                    </div>
+                  </div>
+                ) : null}
+                {isStartingAutoReviewRun && !statusAutoReviewRun ? (
+                  <div className="rounded-lg border border-dashed border-sky-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
+                          Timeline
+                        </p>
+                        <h3 className="mt-1 text-base font-semibold text-slate-950">
+                          กำลังสร้าง Timeline ของงานใหม่
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          เริ่มงานแล้ว กำลังรอ backend สร้าง run และส่งลำดับ
+                          ขั้นตอนมาแสดง
+                        </p>
+                        <div className="mt-4 space-y-2">
+                          <div className="h-3 w-44 rounded bg-slate-100 animate-pulse" />
+                          <div className="h-3 w-72 rounded bg-slate-100 animate-pulse" />
+                          <div className="h-3 w-60 rounded bg-slate-100 animate-pulse" />
+                        </div>
+                      </div>
+                      <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
                     </div>
                   </div>
                 ) : null}
@@ -5516,6 +5645,20 @@ export default function MarketplaceCaptureProductDetail() {
                           ) : null}
                         </div>
                         <div className="flex flex-wrap gap-2">
+                          {autoStoryboardPlan?.primaryAction.actionId ===
+                            "resume_auto_storyboard_review" &&
+                          autoStoryboardPlan.activeRunId ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                              onClick={() => startAutoStoryboardReview()}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              {hyperframesCopy.resumeAutoReview}
+                            </Button>
+                          ) : null}
                           {runId ? (
                             <Button
                               type="button"

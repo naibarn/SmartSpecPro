@@ -1303,6 +1303,13 @@
       "when": 1780000009000,
       "tag": "0199_marketplace_product_main_category_path_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1780000010000,
+      "tag": "0200_marketplace_auto_review_parallel_runs",
+      "breakpoints": true
     }
   ]
 }

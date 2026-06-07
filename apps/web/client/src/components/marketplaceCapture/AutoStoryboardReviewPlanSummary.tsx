@@ -61,6 +61,7 @@ export function AutoStoryboardReviewPlanSummary({
         ? copy.autoReviewFallbackSummary
         : plan?.display.summary ?? copy.autoReviewFallbackSummary;
   const handlePrimaryAction = primaryUsesStandard ? onUseStandard : onStart;
+  const isActiveRun = Boolean(plan?.activeRunId);
 
   return (
     <section
@@ -76,6 +77,22 @@ export function AutoStoryboardReviewPlanSummary({
           <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
             {summary}
           </p>
+          {starting ? (
+            <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
+              <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
+              {copy.locale === "th"
+                ? "กำลังเริ่มงาน Auto Storyboard Review และรอสร้าง run ใหม่"
+                : "Starting Auto Storyboard Review and waiting for a new run"}
+            </p>
+          ) : null}
+          {isActiveRun ? (
+            <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
+              <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
+              {copy.locale === "th"
+                ? "งาน Auto Review กำลังทำงานและถูกเช็กสถานะอัตโนมัติอยู่"
+                : "Auto Review run is active and being polled"}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           {updating ? (

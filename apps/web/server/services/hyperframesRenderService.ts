@@ -589,6 +589,9 @@ export async function getHyperframesRenderProjection(input: {
         Number(job.attempts ?? 0) === 0 &&
         !job.lockedBy &&
         !isHyperframesRuntimeReadyForProjection();
+      const projectedStatus = runtimeDeferred
+        ? "blocked_needs_user"
+        : renderStatus;
       const safeDiagnostics = [
         ...(runtimeDeferred
           ? [
@@ -602,7 +605,7 @@ export async function getHyperframesRenderProjection(input: {
         productId: requestedProductId || payloadProductId || "unknown_product",
         runId: job.runId,
         renderJobId: job.id,
-        status: renderStatus,
+        status: projectedStatus,
         payload,
         safeMessage: runtimeDeferred
           ? "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render"

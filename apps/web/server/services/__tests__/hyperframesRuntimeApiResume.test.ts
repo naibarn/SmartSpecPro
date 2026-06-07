@@ -29,6 +29,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
     const getHyperframesAutoStoryboardReviewPlan = vi.fn(async () => resumePlan);
     const getMarketplaceAutoReviewRun = vi.fn(async () => activeRun);
     const startMarketplaceAutoReviewRun = vi.fn();
+    const queueMarketplaceAutoReviewAdvance = vi.fn();
     const getHyperframesRenderProjection = vi.fn(async () => ({
       renderJobId: activeRun.renderJobId,
       productId: activeRun.productId,
@@ -50,6 +51,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
     vi.doMock("../marketplaceAutoReviewService", () => ({
       getMarketplaceAutoReviewRun,
       startMarketplaceAutoReviewRun,
+      queueMarketplaceAutoReviewAdvance,
     }));
     vi.doMock("../hyperframesTemplateRegistry", () => ({
       listHyperframesTemplateRegistry: vi.fn(() => []),
@@ -104,6 +106,12 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       runId: activeRun.id,
       renderJobId: activeRun.renderJobId,
     });
+    expect(queueMarketplaceAutoReviewAdvance).toHaveBeenCalledWith(
+      activeRun.id,
+      { userId: 119, tenantId: "tenant_1" },
+      {},
+      500
+    );
     expect(redactHyperframesRenderProjectionForUser).toHaveBeenCalledTimes(1);
     expect(startMarketplaceAutoReviewRun).not.toHaveBeenCalled();
   });
@@ -211,6 +219,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
         overlayTextMode: "allow_text",
         imageModel: "google-banana-2",
         qualityMode: "premium_strict_qa",
+        referenceAnchors: null,
       },
       { userId: 119, tenantId: "tenant_1" },
       {}

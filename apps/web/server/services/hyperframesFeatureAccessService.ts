@@ -286,8 +286,9 @@ export function resolveHyperframesFeatureAccess(
     blockers.push(blocker("missing_character_anchor", "blocking"));
   if (input.environmentAnchorRequired && input.environmentAnchorReady === false)
     blockers.push(blocker("missing_environment_anchor", "blocking"));
+  const warnings: HyperframesBlocker[] = [];
   if (input.complianceReviewRequired)
-    blockers.push(blocker("compliance_review_required", "blocking"));
+    warnings.push(blocker("compliance_review_required", "warning"));
   if (input.quotaDecision === "quota_blocked")
     blockers.push(blocker("quota_blocked", "blocking"));
   if (input.quotaDecision === "credit_blocked")
@@ -312,6 +313,7 @@ export function resolveHyperframesFeatureAccess(
       workerEnabled: workerReady,
     },
     blockers,
+    warnings,
     creditAndQuota: {
       estimate,
       quotaDecision: estimate.quotaDecision,

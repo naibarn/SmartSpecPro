@@ -326,14 +326,7 @@ export function buildHyperframesAutoStoryboardReviewPlan(input: {
     overrides: input.overrides,
   });
   const canStart = input.access.capabilities.canStartAuto && blockers.length === 0;
-  const primaryAction = input.activeRunId
-    ? {
-        actionId: "resume_auto_storyboard_review" as const,
-        label: "Resume Auto Storyboard Review",
-        disabled: false,
-        copyId: "hyperframes.action.resume_auto_storyboard_review",
-      }
-    : canStart
+  const primaryAction = canStart
       ? {
           actionId: "start_auto_storyboard_review" as const,
           label: "Create Auto Storyboard Review",

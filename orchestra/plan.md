@@ -1,46 +1,46 @@
 # Orchestra Plan
 
 ## Task
-Reduce confusing duplicate controls between Marketplace Capture Auto advanced overrides and Standard Order custom controls on the selected product page.
+Diagnose and fix Marketplace Auto Storyboard Review jobs that never finish after image QA repair and cannot resume to Storyboard Review.
 
 ## Classification
-- scope: small
-- risk: low
-- affected_domains: frontend UI
-- estimated_file_count: 3
-- chosen_route: direct-standard-light after design approval
-- task_summary: Make Auto and Standard controls mode-scoped so users do not think they must configure the same choices in two places.
-- bug_route: false
+- scope: medium
+- risk: medium
+- affected_domains: web backend job runtime, Marketplace Auto Review service, HyperFrames/Storyboard Review handoff, tests
+- estimated_file_count: 2
+- chosen_route: direct-inline-waves
+- task_summary: Find the true root cause for a stuck production auto-review run and apply the smallest backend state-machine fix.
+- bug_route: true
 - parallel_default: false
 - planned_agents: []
 - dispatch_preference: direct-standard-light
 
-## Skill Activation
-- orchestra: explicitly requested by user; used for repo-local task state, impact preflight, and gates.
-- brainstorming: required before modifying UI behavior; running a bounded design approval pass before implementation.
+## Activation
+- Explicit skill: orchestra.
+- Additional applicable skill family: rescue-style production incident triage, used inline for read-only diagnosis.
+- SocratiCode status: active, green index, used before targeted shell reads.
 
-## SocratiCode Preflight
-- status: green index, active watcher
-- relevant files narrowed:
-  - apps/web/client/src/pages/MarketplaceCaptureProductDetail.tsx
-  - apps/web/client/src/components/marketplaceCapture/AutoStoryboardAdvancedOverrides.tsx
-  - apps/web/client/src/components/marketplaceCapture/hyperframesUiCopy.ts
-  - apps/web/client/src/components/marketplaceCapture/__tests__/AutoStoryboardAdvancedOverrides.test.tsx
-- impact: AutoStoryboardAdvancedOverrides has no detected callers in graph, but grep shows it is imported by Product Detail and tested directly.
+## Root Cause Summary
+- Product `mp_b98391b821d7a3e76d38f414d8b2a00f` has run `mar_f7666678bf3b1fb8add90bbaa479d8b4`.
+- The run has 9 storyboard frames and three completed image provider attempts, but every attempt is marked `repair_required` with whole-storyboard product fidelity failure.
+- Existing code required three completed attempts before Storyboard Review, but the repair-budget path skipped whole-storyboard product mismatch and kept the stage in `repairing`.
+- `scheduleImageAttempt()` skipped exhausted repair units without clearing `pendingImageRepairUnits` or moving to a terminal handoff/blocker state.
+- Each background/outbox advance call also persisted a new unique `advance_run` outbox job, causing recursive queue amplification.
 
-## Proposed UX Decision
-- Auto mode: show Auto plan summary and an optional collapsed Advanced Auto section. Advanced Auto should be framed as optional tuning for the Auto plan, not as required setup.
-- Standard mode: show the existing Standard Order custom controls. Keep output mode, frame strategy, image model, shot count, audio/text policy, and anchors here because this is the explicit manual/custom flow.
-- When Auto mode is selected, collapse or hide the full Standard custom controls behind the launch switch / Standard button so the two overlapping control sets are not visible at the same time.
-- When Standard mode is selected, hide Advanced Auto controls and show Standard custom controls as the active working area.
+## Impact Preflight
+- Directly changed files:
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/services/marketplaceAutoReviewService.ts`
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/services/__tests__/marketplaceAutoReviewService.test.ts`
+- Dependent files/tests:
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/jobs/marketplaceAutoReviewJob.ts`
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/routers/marketplaceCapture.ts`
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/services/hyperframesAutoPlanService.ts`
+  - `/home/dev/projects/SmartSpecPro/apps/web/server/services/hyperframesRuntimeApiService.ts`
+- Risk-sensitive surfaces:
+  - Background job lifecycle and provider-spend retry control.
+  - No auth, tenant isolation, schema, or external provider API changes.
 
-## Candidate Implementation
-- Gate the Standard Order section in Product Detail by `effectiveAutoReviewLaunchMode === "standard_order"` when Auto Storyboard Review is available.
-- Keep Standard controls always visible when Auto Storyboard Review is unavailable, preserving existing behavior.
-- Update section copy/tests so the page proves Auto mode does not show Standard custom controls simultaneously.
-
-## Blast Radius
-- directly changed files: Product Detail UI and focused component/page tests
-- dependent files/tests: Marketplace HyperFrames/Product Detail focused tests and TypeScript check
-- risk-sensitive surfaces: none; frontend display/state only, no auth/API/schema changes
-- confidence: medium-high
+## Wave Plan
+- Wave 1: Diagnose production run state and code paths.
+- Wave 2: Patch state-machine handoff after exhausted image repair and stop recursive advance outbox persistence for background schedulers.
+- Wave 3: Run focused service tests and TypeScript check.

@@ -68,6 +68,32 @@ describe("hyperframesFeatureAccessService", () => {
     expect(estimate.estimatedCredits).toBeGreaterThan(0);
   });
 
+  it("keeps compliance review as a warning so Auto can still start", () => {
+    const access = resolveHyperframesFeatureAccess({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      complianceReviewRequired: true,
+      flags: {
+        enabled: true,
+        tenantAllowed: true,
+        workerEnabled: true,
+      },
+    });
+
+    expect(access.accessState).toBe("enabled");
+    expect(access.capabilities.canStartAuto).toBe(true);
+    expect(access.blockers.map(blocker => blocker.code)).not.toContain(
+      "compliance_review_required"
+    );
+    expect(access.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "compliance_review_required",
+          severity: "warning",
+        }),
+      ])
+    );
+  });
+
   it("reads Marketplace HyperFrames access from tenant feature flags without env enablement", () => {
     delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
     delete process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;

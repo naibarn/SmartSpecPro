@@ -33,6 +33,12 @@ import {
   buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest,
   acceptMarketplaceAutoReviewBestImageAttemptAfterProviderFailureForTest,
   acceptMarketplaceAutoReviewImageQaWithWarningsForTest,
+  hasMarketplaceAutoReviewMinimumImageAttemptsForTest,
+  isMarketplaceAutoReviewCompletedStageStatusForTest,
+  isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest,
+  marketplaceAutoReviewOperationalCleanupCutoffForTest,
+  marketplaceAutoReviewStageAttemptKeyForStatusForTest,
+  shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest,
   applyMarketplaceAutoReviewVoiceoverLinesToPlanForTest,
   buildMarketplaceAutoReviewImageAttemptReviewsForTest,
   buildMarketplaceAutoReviewRunIdempotencyKeyForTest,
@@ -3055,6 +3061,63 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.blockers).not.toContain("storyboard_guide_field_missing");
   });
 
+  it("blocks skill-generated storyboard prompts that drop hard 3x3 layout instructions", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, no collage/masonry layout, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: [
+          "generation_mode",
+          "product_category",
+          "storyboard_layout_preset",
+          "aspect_ratio",
+          "storyboard_guide",
+          "voiceover_script",
+          "product_detail",
+          "reference_product_images",
+          "production_concept_details",
+          "marketplace_platform",
+          "product_item_id",
+          "product_source_url",
+          "product_title",
+        ],
+      },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.blockers).toContain("equal_rows_missing");
+    expect(result.blockers).toContain("no_separator_lock_missing");
+  });
+
   it("warns but does not block skill-generated storyboard prompts with incomplete frame coverage", () => {
     const plan = {
       ...basePlan,
@@ -3565,6 +3628,190 @@ describe("marketplace auto review audio/video planning", () => {
       reason: "repair_budget_exhausted_storyboard_review_required",
       repairUnitIds: ["storyboard-grid-image"],
     });
+  });
+
+  it("hands off whole-storyboard product mismatch to user review after repair budget is exhausted", () => {
+    const repairUnit =
+      buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+        qa: {
+          qaEnvelopeId: "vision-qa:mar_1:shot-1",
+          shotId: "shot-1",
+          verdict: "repair",
+          reasonCodes: ["productMismatch", "adWarningTextOverlap"],
+          failedFrameRoles: ["storyboard_frame"],
+          repairInstruction:
+            "Regenerate with stricter product reference fidelity.",
+        },
+      });
+    const refs = [1, 2, 3].map(attempt => ({
+      unitId: "storyboard-grid-image",
+      mediaType: "image",
+      stageKey: "image_generation",
+      role: "storyboard_grid",
+      attempt,
+      taskId: `task-${attempt}`,
+      status: "completed",
+      resultUrl: `https://cdn.example.test/grid-${attempt}.png`,
+    }));
+
+    const metadata = acceptMarketplaceAutoReviewImageQaWithWarningsForTest({
+      metadata: {
+        storyboardGridUrl: "https://cdn.example.test/grid-3.png",
+        storyboardFrameUrls: Array.from(
+          { length: 9 },
+          (_, index) => `https://cdn.example.test/grid-3-shot-${index + 1}.png`
+        ),
+        pendingImageRepairUnits: [repairUnit],
+        imageAttemptReviews: [1, 2, 3].map(attempt => ({
+          reviewId: `image-attempt-review:mar_test:${attempt}`,
+          attempt,
+          status: "repair_required",
+          qualityScore: 0,
+          negativeScore: 104,
+          selectionEligible: false,
+          selectionBlockers: ["productMismatch"],
+          storyboardGridUrl: `https://cdn.example.test/grid-${attempt}.png`,
+          storyboardFrameUrls: Array.from(
+            { length: 9 },
+            (_, index) =>
+              `https://cdn.example.test/grid-${attempt}-shot-${index + 1}.png`
+          ),
+          scoreBreakdown: {
+            productFidelityWholeStoryboardFailure: true,
+            productFidelityFailedFrames: 9,
+          },
+        })),
+        generatedMediaAcceptanceEnvelope: {
+          acceptanceEnvelopeId: "acceptance:image:old",
+          status: "repair_required",
+          warningCount: 9,
+        },
+        shotFrameVisionQaEnvelopes: Array.from({ length: 9 }, (_, index) => ({
+          qaEnvelopeId: `vision-qa:mar_1:shot-${index + 1}`,
+          verdict: "repair",
+          reasonCodes: ["productMismatch"],
+          failedFrameRoles: ["storyboard_frame"],
+        })),
+      },
+      repairUnits: [repairUnit],
+      refs: refs as any,
+    });
+
+    expect(metadata.pendingImageRepairUnits).toEqual([]);
+    expect(metadata.storyboardFrameUrls).toHaveLength(9);
+    expect(metadata.generatedMediaAcceptanceEnvelope).toMatchObject({
+      status: "accepted_with_warnings",
+      userReviewRequired: true,
+      overrideReason: "repair_budget_exhausted_storyboard_review_required",
+    });
+    expect(metadata.imageQaReviewOverride).toMatchObject({
+      status: "accepted_with_warnings",
+      reason: "repair_budget_exhausted_storyboard_review_required",
+      repairUnitIds: ["storyboard-grid-image"],
+    });
+  });
+
+  it("does not persist recursive advance outbox jobs for background schedulers", () => {
+    expect(
+      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(undefined)
+    ).toBe(true);
+    expect(
+      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(
+        "manual_or_api"
+      )
+    ).toBe(true);
+    expect(
+      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest("auto")
+    ).toBe(false);
+    expect(
+      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(
+        "outbox:advance_run"
+      )
+    ).toBe(false);
+  });
+
+  it("treats warning-complete stages as completed and keeps running attempt snapshots stable", () => {
+    expect(
+      isMarketplaceAutoReviewCompletedStageStatusForTest(
+        "completed_with_warnings"
+      )
+    ).toBe(true);
+    expect(isMarketplaceAutoReviewCompletedStageStatusForTest("completed")).toBe(
+      true
+    );
+    expect(isMarketplaceAutoReviewCompletedStageStatusForTest("running")).toBe(
+      false
+    );
+    expect(
+      marketplaceAutoReviewStageAttemptKeyForStatusForTest({
+        stageKey: "image_generation",
+        status: "running",
+        attemptNumber: 2698,
+      })
+    ).toBe("image_generation:active");
+    expect(
+      marketplaceAutoReviewStageAttemptKeyForStatusForTest({
+        stageKey: "image_generation",
+        status: "completed_with_warnings",
+        attemptNumber: 2698,
+      })
+    ).toBe("image_generation:2698");
+  });
+
+  it("keeps operational cleanup scoped to terminal runs older than the retention window", () => {
+    const now = new Date("2026-06-07T12:00:00.000Z");
+    const cutoff = marketplaceAutoReviewOperationalCleanupCutoffForTest({
+      now,
+      retentionDays: 3,
+    });
+
+    expect(cutoff.toISOString()).toBe("2026-06-04T12:00:00.000Z");
+    expect(
+      isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest({
+        status: "completed",
+        completedAt: "2026-06-04T11:59:59.000Z",
+        cutoff,
+      })
+    ).toBe(true);
+    expect(
+      isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest({
+        status: "completed",
+        completedAt: "2026-06-04T12:00:01.000Z",
+        cutoff,
+      })
+    ).toBe(false);
+    expect(
+      isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest({
+        status: "running",
+        updatedAt: "2026-06-01T12:00:00.000Z",
+        cutoff,
+      })
+    ).toBe(false);
+  });
+
+  it("requires three completed image attempts before storyboard review can finalize", () => {
+    expect(
+      hasMarketplaceAutoReviewMinimumImageAttemptsForTest({
+        metadata: {
+          imageAttemptReviews: [
+            { attempt: 1, status: "repair_required" },
+            { attempt: 2, status: "repair_required" },
+          ],
+        } as any,
+      })
+    ).toBe(false);
+
+    expect(
+      hasMarketplaceAutoReviewMinimumImageAttemptsForTest({
+        metadata: {
+          imageAttemptReviews: [
+            { attempt: 1, status: "repair_required" },
+            { attempt: 2, status: "repair_required" },
+            { attempt: 3, status: "accepted_with_warnings" },
+          ],
+        } as any,
+      })
+    ).toBe(true);
   });
 
   it("scores image generation attempts with negative QA and repair penalties", () => {

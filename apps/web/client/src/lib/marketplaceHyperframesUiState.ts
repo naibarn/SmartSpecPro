@@ -19,6 +19,7 @@ export function resolveMarketplaceAutoReviewLaunchMode(input: {
   loading?: boolean;
   error?: boolean;
 }): MarketplaceAutoReviewLaunchMode {
+  if (input.plan?.activeRunId) return "auto_storyboard_review";
   return shouldShowAutoStoryboardReviewSurface(input.plan, {
     loading: input.loading,
     error: input.error,
@@ -53,6 +54,8 @@ const HYPERFRAMES_CLIENT_ACTIVE_STATUSES = new Set([
   "qa_checking",
   "saving_to_library",
   "cancel_requested",
+  "waiting_provider",
+  "repairing",
 ]);
 
 const HYPERFRAMES_CLIENT_SUCCESS_STATUSES = new Set([

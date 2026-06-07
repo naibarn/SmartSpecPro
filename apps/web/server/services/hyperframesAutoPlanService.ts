@@ -43,6 +43,82 @@ function renderJobIdFrom(value: unknown): string {
   return record ? compactText(record.renderJobId) : "";
 }
 
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => compactText(item)).filter(Boolean)
+    : [];
+}
+
+function resumeCandidateFrameUrlsFromReviewSummaries(
+  reviews: unknown
+): string[] {
+  const reviewList = Array.isArray(reviews) ? reviews.map(item => recordFromJsonLike(item)) : [];
+  return reviewList.flatMap(review => [
+    ...stringList(review?.storyboardFrameUrls),
+    ...stringList(review?.resultUrls),
+    ...stringList(review?.startFrameUrls),
+    ...stringList(review?.stopFrameUrls),
+    ...stringList(review?.thumbnailUrls),
+    compactText(review?.storyboardGridUrl),
+  ]);
+}
+
+function storyboardReadyResumeCandidate(
+  run: Record<string, unknown>
+): boolean {
+  const metadata = recordFromJsonLike(run.metadataJson);
+  const result = recordFromJsonLike(run.resultJson);
+  const storyboardReviewId =
+    compactText(run.storyboardReviewId) ||
+    compactText(result?.storyboardReviewId) ||
+    compactText(linksFromRunState(run).storyboardReview);
+  if (storyboardReviewId) return false;
+
+  const frameUrls = [
+    ...stringList(metadata?.storyboardFrameUrls),
+    ...stringList(metadata?.startFrameUrls),
+    ...stringList(metadata?.stopFrameUrls),
+    ...resumeCandidateFrameUrlsFromReviewSummaries(
+      metadata?.imageAttemptReviews
+    ),
+    ...stringList(result?.frameUrls),
+    ...stringList(result?.storyboardFrameUrls),
+    ...stringList(result?.startFrameUrls),
+    ...stringList(result?.stopFrameUrls),
+    ...resumeCandidateFrameUrlsFromReviewSummaries(result?.imageAttemptReviews),
+  ];
+  if (frameUrls.length === 0) return false;
+
+  const currentStage = compactText(run.currentStage);
+  const runStatus = compactText(run.status);
+  const resumableStatuses = new Set([
+    "",
+    "queued",
+    "running",
+    "waiting_provider",
+    "repairing",
+    "repair_required",
+    "qa_pending",
+    "completed_with_warnings",
+  ]);
+  const imageStageStatus = stageStatusFromRunSummary(run, "image_generation");
+  const storyboardStageStatus = stageStatusFromRunSummary(
+    run,
+    "storyboard_review"
+  );
+  return (
+    ["image_generation", "storyboard_review"].includes(currentStage) ||
+    resumableStatuses.has(runStatus) ||
+    resumableStatuses.has(imageStageStatus) ||
+    resumableStatuses.has(storyboardStageStatus)
+  );
+}
+
+function linksFromRunState(runState: unknown): Record<string, unknown> {
+  const run = isRecord(runState) ? runState : {};
+  return isRecord(run.links) ? run.links : {};
+}
+
 function arrayLength(value: unknown): number {
   return Array.isArray(value) ? value.length : 0;
 }
@@ -66,9 +142,15 @@ function isHyperframesAutoStoryboardReviewRun(
   run?: Record<string, unknown> | null
 ): boolean {
   if (!run) return false;
-  if (compactText(run.idempotencyKey).startsWith("hf-auto-start:")) {
+  const idempotencyKey = compactText(run.idempotencyKey);
+  if (
+    idempotencyKey.startsWith("hf-auto-start:") ||
+    idempotencyKey.startsWith("mar-run:")
+  ) {
     return true;
   }
+  if (idempotencyKey !== "marketplace-auto-review:legacy") return false;
+
   if (compactText(run.renderJobId)) return true;
 
   const metadata = recordFromJsonLike(run.metadataJson);
@@ -79,7 +161,7 @@ function isHyperframesAutoStoryboardReviewRun(
   if (compactText(result?.hyperframesRenderJobId)) return true;
   if (renderJobIdFrom(result?.render)) return true;
 
-  return false;
+  return storyboardReadyResumeCandidate(run);
 }
 
 function autoPlanWorkerComplexityMultiplier(
@@ -96,6 +178,64 @@ function autoPlanWorkerComplexityMultiplier(
     defaults.frameStrategy === "video_shot_start_stop" ? 1.15 : 1;
   return Number(
     (qualityMultiplier * shotMultiplier * frameMultiplier).toFixed(2)
+  );
+}
+
+function stringListFrom(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => compactText(item)).filter(Boolean)
+    : [];
+}
+
+function stageStatusFromRunSummary(
+  run: Record<string, unknown> | null | undefined,
+  stageKey: string
+): string {
+  const stages = Array.isArray(run?.stages) ? run?.stages : [];
+  const stage = stages.find(item => {
+    if (!isRecord(item)) return false;
+    return compactText(item.stageKey) === stageKey;
+  });
+  return isRecord(stage) ? compactText(stage.status) : "";
+}
+
+function isResumableAutoStoryboardReviewRun(
+  run?: Record<string, unknown> | null
+): boolean {
+  if (!isHyperframesAutoStoryboardReviewRun(run)) return false;
+  if (compactText(run?.storyboardReviewId)) return false;
+
+  const storyboardFrames = [
+    ...stringListFrom(run?.metadataJson && isRecord(run.metadataJson)
+      ? run.metadataJson.storyboardFrameUrls
+      : undefined),
+    ...stringListFrom(run?.resultJson && isRecord(run.resultJson)
+      ? run.resultJson.frameUrls
+      : undefined),
+    ...stringListFrom(run?.resultJson && isRecord(run.resultJson)
+      ? run.resultJson.storyboardFrameUrls
+      : undefined),
+  ];
+  if (storyboardFrames.length === 0) return false;
+
+  const storyboardStageStatus = stageStatusFromRunSummary(
+    run,
+    "storyboard_review"
+  );
+  const imageStageStatus = stageStatusFromRunSummary(run, "image_generation");
+  const resumableStatuses = new Set([
+    "",
+    "queued",
+    "running",
+    "waiting_provider",
+    "repair_required",
+    "completed_with_warnings",
+  ]);
+
+  return (
+    resumableStatuses.has(storyboardStageStatus) ||
+    resumableStatuses.has(imageStageStatus) ||
+    compactText(run?.currentStage) === "storyboard_review"
   );
 }
 
@@ -228,16 +368,25 @@ export async function getHyperframesAutoStoryboardReviewPlan(input: {
     if (error instanceof TRPCError) throw error;
     throw error;
   }
-  const runs = await listMarketplaceAutoReviewRuns(
+  const recentRuns = await listMarketplaceAutoReviewRuns(
     { productId: input.productId, limit: 3, summary: true },
     input.auth
   );
-  const activeRun =
+  const findActiveRun = (runs: Record<string, unknown>[]) =>
     runs.find(run =>
       ["queued", "running", "waiting_provider"].includes(
         compactText((run as Record<string, unknown>).status)
-      )
+      ) ||
+      isResumableAutoStoryboardReviewRun(run as Record<string, unknown>)
     ) ?? null;
+  let activeRun = findActiveRun(recentRuns as Record<string, unknown>[]);
+  if (!activeRun) {
+    const broaderRuns = await listMarketplaceAutoReviewRuns(
+      { productId: input.productId, limit: 10, summary: true },
+      input.auth
+    );
+    activeRun = findActiveRun(broaderRuns as Record<string, unknown>[]);
+  }
   const readiness = inferHyperframesProductReadiness(productBundle);
   const access = await resolveHyperframesFeatureAccessForTenant({
     auth: input.auth,
