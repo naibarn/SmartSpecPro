@@ -335,7 +335,23 @@ function scoreTikTokCandidate(input: {
 }
 
 function isTikTokShowcaseProductListPage() {
-  return location.hostname === "shop.tiktok.com" && /^\/streamer\/showcase\/product\/list\/?$/i.test(location.pathname);
+  return location.hostname === "shop.tiktok.com" && (
+    /^\/(?:shop\/)?streamer\/showcase\/product\/list(?:\/.*)?$/i.test(location.pathname)
+    || /^\/(?:shop\/)?streamer\/live\/product\/set(?:\/.*)?$/i.test(location.pathname)
+  );
+}
+
+function collectShowcaseRows() {
+  const selector = /^\/(?:shop\/)?streamer\/live\/product\/set(?:\/.*)?$/i.test(location.pathname)
+    ? "tr.arco-table-tr[data-exposure-key], tr[data-exposure-key], [role='row'][data-exposure-key], tr, [role='row'], tbody > *"
+    : "tr, [role='row'], tbody > *, div";
+  return Array.from(document.querySelectorAll<HTMLElement>(selector));
+}
+
+function isTikTokLiveProductSetRowPage() {
+  if (location.hostname !== "shop.tiktok.com") return false;
+  if (!/^\/(?:shop\/)?streamer\/live\/product\/set(?:\/.*)?$/i.test(location.pathname)) return false;
+  return collectShowcaseRows().some((row) => /ID\s*:?\s*\d{10,}/i.test(row.textContent || ""));
 }
 
 interface TikTokShowcaseRowInfo {
@@ -431,7 +447,7 @@ function findShowcaseRowFromElement(element: HTMLElement | null) {
 }
 
 function findShowcaseRowByProductId(productId: string) {
-  return (Array.from(document.querySelectorAll<HTMLElement>("tr, [role='row'], tbody > *, div"))
+  return (collectShowcaseRows()
     .map(rowInfoFromNode)
     .filter(Boolean) as TikTokShowcaseRowInfo[])
     .filter((row) => row.productId === productId)
@@ -487,7 +503,7 @@ function extractShowcaseTitle(text: string, productId: string) {
 
 function scanTikTokShowcaseProductList(limit = 60): CategoryProductCandidate[] {
   ensureShowcaseEditClickTracker();
-  const rows = Array.from(document.querySelectorAll<HTMLElement>("tr, [role='row'], tbody > *, div"))
+  const rows = collectShowcaseRows()
     .map(rowInfoFromNode)
     .filter(Boolean) as TikTokShowcaseRowInfo[];
   const rowNodes = rows
@@ -759,7 +775,7 @@ function collectTikTokVariants() {
 }
 
 export function scanTikTokShopCategoryPage(limit = 60): CategoryProductCandidate[] {
-  if (isTikTokShowcaseProductListPage()) return scanTikTokShowcaseProductList(limit);
+  if (isTikTokShowcaseProductListPage() || isTikTokLiveProductSetRowPage()) return scanTikTokShowcaseProductList(limit);
 
   const currentPage = parseTikTokShopUrl(location.href);
   const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))

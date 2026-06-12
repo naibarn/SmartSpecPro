@@ -12,6 +12,7 @@ import {
   MEDIA_MODELS,
   DEFAULT_MODELS,
   type MediaType,
+  type MediaTask,
   type AudioModel,
   type TaskStatus,
 } from "../services/mediaGenerationService";
@@ -31,8 +32,13 @@ import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
-import { mediaModels, mediaProviders, users } from "../../drizzle/schema";
-import { eq, asc, and } from "drizzle-orm";
+import {
+  marketplaceAutoReviewOutboxJobs,
+  mediaModels,
+  mediaProviders,
+  users,
+} from "../../drizzle/schema";
+import { eq, asc, and, desc, inArray, sql } from "drizzle-orm";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
@@ -89,6 +95,111 @@ const extraParamsSchema = z
   });
 
 const creditOriginSurfaceSchema = z.enum(["media_studio"]).optional();
+
+function compactText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function dateToIso(value: unknown): string {
+  return value instanceof Date ? value.toISOString() : new Date().toISOString();
+}
+
+function hyperframesJobToMediaTask(job: typeof marketplaceAutoReviewOutboxJobs.$inferSelect): MediaTask | null {
+  const payload = job.payloadJson && typeof job.payloadJson === "object"
+    ? job.payloadJson as Record<string, unknown>
+    : {};
+  const outputUrl = compactText(payload.outputUrl);
+  if (!outputUrl) return null;
+  const artifact = payload.outputArtifactRef && typeof payload.outputArtifactRef === "object"
+    ? payload.outputArtifactRef as Record<string, unknown>
+    : {};
+  const renderIntent = compactText(payload.renderIntent);
+  const playableProbe = payload.playableProbe && typeof payload.playableProbe === "object"
+    ? payload.playableProbe as Record<string, unknown>
+    : {};
+  const contentHash = compactText(artifact.contentHash);
+  if (!contentHash) return null;
+  if (renderIntent === "final" && playableProbe.passed !== true) return null;
+  const prompt =
+    compactText(payload.renderTitle) ||
+    compactText(payload.title) ||
+    compactText(payload.compositionMode) ||
+    "HyperFrames Final Composite";
+  const completedAt = job.completedAt ?? job.updatedAt ?? job.createdAt;
+  return {
+    id: job.id,
+    taskId: job.id,
+    userId: String(job.userId),
+    mediaType: "video",
+    status: "completed",
+    model: "marketplace_auto_review_hyperframes_render",
+    prompt,
+    parameters: {
+      source: "marketplace_auto_review_hyperframes_render",
+      productId: compactText(payload.productId),
+      runId: job.runId,
+      renderJobId: job.id,
+      renderIntent,
+      compositionMode: compactText(payload.compositionMode),
+      compositionInputHash: compactText(payload.compositionInputHash),
+    },
+    resultUrl: outputUrl,
+    resultData: {
+      source: "marketplace_auto_review_hyperframes_render",
+      outputUrl,
+      thumbnailUrl: compactText(payload.thumbnailUrl) || null,
+      productId: compactText(payload.productId),
+      runId: job.runId,
+      renderJobId: job.id,
+      renderIntent,
+      compositionMode: compactText(payload.compositionMode),
+      contentHash,
+      artifactKind: compactText(artifact.kind),
+      sizeBytes: Number(artifact.sizeBytes) || null,
+      playableProbe,
+      audioMixReport:
+        payload.audioMixReport && typeof payload.audioMixReport === "object"
+          ? payload.audioMixReport
+          : null,
+    },
+    creditsUsed: 0,
+    createdAt: dateToIso(job.createdAt),
+    startedAt: dateToIso(job.createdAt),
+    completedAt: dateToIso(completedAt),
+  };
+}
+
+async function listHyperframesRenderHistoryTasks(input: {
+  userId: number;
+  mediaType?: MediaType;
+  status?: TaskStatus;
+  limit: number;
+  daysAgo?: number;
+}): Promise<MediaTask[]> {
+  if (input.mediaType && input.mediaType !== "video") return [];
+  if (input.status && input.status !== "completed") return [];
+  const db = await getDb();
+  if (!db) return [];
+  const predicates = [
+    eq(marketplaceAutoReviewOutboxJobs.userId, input.userId),
+    inArray(marketplaceAutoReviewOutboxJobs.status, ["completed", "saved_to_library"]),
+    inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+      "hyperframes_render",
+      "hyperframes_final_composite",
+    ]),
+    sql`${marketplaceAutoReviewOutboxJobs.payloadJson}->>'outputUrl' is not null`,
+  ];
+  if (input.daysAgo) {
+    predicates.push(sql`${marketplaceAutoReviewOutboxJobs.createdAt} >= now() - (${input.daysAgo}::text || ' days')::interval`);
+  }
+  const rows = await db
+    .select()
+    .from(marketplaceAutoReviewOutboxJobs)
+    .where(and(...predicates))
+    .orderBy(desc(marketplaceAutoReviewOutboxJobs.completedAt), desc(marketplaceAutoReviewOutboxJobs.updatedAt))
+    .limit(input.limit);
+  return rows.map(hyperframesJobToMediaTask).filter((task): task is MediaTask => Boolean(task));
+}
 
 function getGeminiOmniIds(extraParams: Record<string, any> | undefined, key: "character_ids" | "audio_ids"): string[] {
   const value = extraParams?.[key];
@@ -3113,6 +3224,13 @@ export const mediaRouter = router({
           daysAgo: input?.daysAgo,
         });
         const deferredTasks = await listDeferredMediaTasks(ctx.user.id, input?.limit ?? 50);
+        const hyperframesTasks = await listHyperframesRenderHistoryTasks({
+          userId: ctx.user.id,
+          mediaType: input?.mediaType as MediaType | undefined,
+          status: input?.status as TaskStatus | undefined,
+          limit: input?.limit ?? 50,
+          daysAgo: input?.daysAgo,
+        });
         const filteredDeferredTasks = deferredTasks.filter((task) => {
           if (input?.mediaType && task.mediaType !== input.mediaType) return false;
           if (input?.status && task.status !== input.status) return false;
@@ -3155,13 +3273,17 @@ export const mediaRouter = router({
           if (task.taskId && deferredLinkedIds.has(task.taskId)) return false;
           return true;
         });
-        const mergedTasks = [...activeDeferredTasks, ...providerTasks]
+        const providerTaskIds = new Set(
+          providerTasks.flatMap(task => [task.id, task.taskId].filter(Boolean) as string[])
+        );
+        const nonDuplicateHyperframesTasks = hyperframesTasks.filter(task => !providerTaskIds.has(task.id));
+        const mergedTasks = [...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
           .slice(0, input?.limit ?? 50);
         return {
           ...result,
           tasks: mergedTasks,
-          total: (result.total ?? result.tasks?.length ?? 0) + activeDeferredTasks.length,
+          total: (result.total ?? result.tasks?.length ?? 0) + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
           limit: input?.limit ?? result.limit,
           offset: input?.offset ?? result.offset,
         };

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronLeft, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,13 @@ import {
   buildHyperframesLibraryIdempotencyKey,
   type HyperframesRenderStatusProjection,
 } from "@shared/hyperframes/contracts";
+import type { HyperframesFinalCompositeConfig } from "@shared/hyperframes/runtimeApiSchemas";
+import {
+  hyperframesThaiFontFamilies,
+  listHyperframesCreativePresets,
+  type HyperframesAudioEvent,
+  type HyperframesCreativePreset,
+} from "@shared/hyperframes/creativePresets";
 import {
   DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
   clearStoryboardReviewDraft,
@@ -268,6 +275,73 @@ function findStoryboardImageUrl(value: unknown, visited = new WeakSet<object>())
     if (found) return found;
   }
   return null;
+}
+
+function compactStoryboardHistoryText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function stringifyStoryboardHistoryValue(value: unknown, visited = new WeakSet<object>()): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value !== "object") return "";
+  if (visited.has(value)) return "";
+  visited.add(value);
+  if (Array.isArray(value)) {
+    return value.map((item) => stringifyStoryboardHistoryValue(item, visited)).join(" ");
+  }
+  return Object.entries(value as Record<string, unknown>)
+    .map(([key, item]) => `${key} ${stringifyStoryboardHistoryValue(item, visited)}`)
+    .join(" ");
+}
+
+function storyboardProductContextFromValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getStoryboardHistoryProductFilter(draft: StoryboardReviewDraft | null) {
+  if (!draft) return null;
+  const contexts = [
+    storyboardProductContextFromValue(draft.marketplaceContext),
+    ...draft.tasks.flatMap((task) => [
+      storyboardProductContextFromValue(task.marketplaceProduct),
+      storyboardProductContextFromValue(task.storyboardContext?.extraParams?.marketplaceContext),
+    ]),
+  ].filter((item): item is Record<string, unknown> => Boolean(item));
+  if (contexts.length === 0) return null;
+  const firstNonEmpty = (keys: string[]) => {
+    for (const context of contexts) {
+      for (const key of keys) {
+        const text = compactStoryboardHistoryText(context[key]);
+        if (text) return text;
+      }
+    }
+    return "";
+  };
+  const filter = {
+    productId: firstNonEmpty(["productId", "marketplaceProductId", "product_id"]),
+    itemId: firstNonEmpty(["itemId", "productItemId", "externalProductId", "product_item_id"]),
+    shopId: firstNonEmpty(["shopId", "externalShopId", "productShopId", "product_shop_id"]),
+    sourceUrl: firstNonEmpty(["sourceUrl", "productSourceUrl", "product_source_url"]),
+    productName: firstNonEmpty(["productName", "productTitle", "title", "product_title"]),
+  };
+  return Object.values(filter).some(Boolean) ? filter : null;
+}
+
+function storyboardHistoryTaskMatchesProduct(task: unknown, filter: NonNullable<ReturnType<typeof getStoryboardHistoryProductFilter>>) {
+  const text = stringifyStoryboardHistoryValue(task).toLowerCase();
+  if (!text) return false;
+  const exactNeedles = [filter.productId, filter.itemId, filter.shopId, filter.sourceUrl]
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  if (exactNeedles.some((needle) => text.includes(needle))) return true;
+  const productName = filter.productName.trim().toLowerCase();
+  return productName.length >= 8 && text.includes(productName);
 }
 
 function toCanvasSafeStoryboardImageUrl(imageUrl: string): string {
@@ -653,6 +727,222 @@ const STORYBOARD_GENERATION_POLL_RETRY_INTERVAL_MS = 15000;
 const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-20260527-2325";
 
 type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
+type HyperframesFinalOverlayPreset = HyperframesFinalCompositeConfig["overlayPreset"];
+type HyperframesFinalSubtitlePreset = HyperframesFinalCompositeConfig["subtitlePreset"];
+
+const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
+  id: HyperframesFinalOverlayPreset;
+  labelTh: string;
+  labelEn: string;
+  kind: "auto" | "hook" | "spec" | "cards" | "price" | "review" | "clean";
+}> = [
+  { id: "auto", labelTh: "Auto ตามสินค้า", labelEn: "Auto by product", kind: "auto" },
+  { id: "premium_product_hero", labelTh: "Premium Product Hero", labelEn: "Premium product hero", kind: "hook" },
+  { id: "hook_sequence", labelTh: "Hook ทีละจังหวะ", labelEn: "Hook sequence", kind: "hook" },
+  { id: "kinetic_bold_hook", labelTh: "Kinetic Bold Hook", labelEn: "Kinetic bold hook", kind: "hook" },
+  { id: "spec_highlight", labelTh: "Spec Highlight", labelEn: "Spec highlight", kind: "spec" },
+  { id: "electronics_spec_stack", labelTh: "Electronics Spec Stack", labelEn: "Electronics spec stack", kind: "spec" },
+  { id: "split_product_specs", labelTh: "Split Product Specs", labelEn: "Split product specs", kind: "spec" },
+  { id: "neon_gaming_specs", labelTh: "Neon Gaming Specs", labelEn: "Neon gaming specs", kind: "spec" },
+  { id: "feature_cards", labelTh: "Feature Cards", labelEn: "Feature cards", kind: "cards" },
+  { id: "badge_cascade", labelTh: "Badge Cascade", labelEn: "Badge cascade", kind: "cards" },
+  { id: "lower_third_review", labelTh: "Review Lower Third", labelEn: "Review lower third", kind: "review" },
+  { id: "price_impact", labelTh: "Price Impact", labelEn: "Price impact", kind: "price" },
+  { id: "hero_price_billboard", labelTh: "Hero Price Billboard", labelEn: "Hero price billboard", kind: "price" },
+  { id: "clean_subtitle", labelTh: "Subtitle อย่างเดียว", labelEn: "Subtitle only", kind: "clean" },
+];
+
+function getHyperframesOverlayPresetMeta(id: HyperframesFinalOverlayPreset) {
+  return HYPERFRAMES_FINAL_OVERLAY_PRESETS.find(preset => preset.id === id) ?? HYPERFRAMES_FINAL_OVERLAY_PRESETS[0]!;
+}
+
+const HYPERFRAMES_FINAL_SUBTITLE_PRESETS: Array<{
+  id: HyperframesFinalSubtitlePreset;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: "classic_box", labelTh: "Classic Box", labelEn: "Classic box" },
+  { id: "minimal_shadow", labelTh: "Minimal Shadow", labelEn: "Minimal shadow" },
+  { id: "creator_pop", labelTh: "Creator Pop", labelEn: "Creator pop" },
+  { id: "karaoke_word", labelTh: "Karaoke Word Highlight", labelEn: "Karaoke word highlight" },
+  { id: "highlight_bar", labelTh: "Highlight Bar", labelEn: "Highlight bar" },
+  { id: "lower_third", labelTh: "Lower Third", labelEn: "Lower third" },
+  { id: "cinematic_wide", labelTh: "Cinematic Wide", labelEn: "Cinematic wide" },
+  { id: "neon_glow", labelTh: "Neon Glow", labelEn: "Neon glow" },
+  { id: "review_bubble", labelTh: "Review Bubble", labelEn: "Review bubble" },
+  { id: "no_subtitle_style", labelTh: "ไม่แสดง Subtitle", labelEn: "No subtitles" },
+];
+
+const HYPERFRAMES_FINAL_MUSIC_PRESETS = listHyperframesCreativePresets({
+  category: "music",
+  includeCandidate: true,
+});
+const HYPERFRAMES_FINAL_SFX_PRESETS = listHyperframesCreativePresets({
+  category: "sfx",
+  includeCandidate: true,
+});
+const HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS = listHyperframesCreativePresets({
+  category: "audio_pack",
+  includeCandidate: true,
+});
+
+const DEFAULT_HYPERFRAMES_FINAL_AUDIO_PACK_ID =
+  HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS.find(preset =>
+    preset.id.includes("ecommerce_fast_cut")
+  )?.id ?? HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS[0]?.id ?? "";
+const DEFAULT_HYPERFRAMES_FINAL_MUSIC_ID =
+  HYPERFRAMES_FINAL_MUSIC_PRESETS.find(preset =>
+    preset.id.includes("upbeat_ecommerce")
+  )?.id ?? HYPERFRAMES_FINAL_MUSIC_PRESETS[0]?.id ?? "";
+const DEFAULT_HYPERFRAMES_FINAL_SFX_IDS = HYPERFRAMES_FINAL_SFX_PRESETS
+  .filter(preset =>
+    /whoosh_scene_transition|riser_impact_reveal|cash_register_sales/i.test(preset.id)
+  )
+  .map(preset => preset.id)
+  .slice(0, 3);
+
+function getCreativePresetLabel(
+  preset: Pick<HyperframesCreativePreset, "labels" | "id">,
+  locale: string
+): string {
+  return locale === "th" ? preset.labels.th || preset.labels.en : preset.labels.en || preset.id;
+}
+
+const ELECTRONICS_SPEC_PATTERNS = [
+  /(?:จอ|screen|display|amoled|oled|lcd|นิ้ว|inch|hz|refresh|nits)/i,
+  /(?:แบต|battery|mah|ชาร์จ|charging|\b\d+\s*w\b)/i,
+  /(?:ram|rom|storage|ssd|gb|tb|หน่วยความจำ|ความจุ)/i,
+  /(?:กล้อง|camera|mp|megapixel|sensor|เลนส์)/i,
+  /(?:chip|processor|cpu|gpu|snapdragon|dimensity|intel|ryzen|apple\s*m\d|core\s*i\d)/i,
+  /(?:wifi|wi-fi|bluetooth|5g|lte|sim|ip\d{2}|กันน้ำ)/i,
+];
+
+function cleanHyperframesOverlayText(value: unknown): string {
+  return compactStoryboardText(value)
+    .replace(/^PRODUCT FACTS LOCK:\s*/i, "")
+    .replace(/\s*\/\s*Guide:\s*.*$/i, "")
+    .replace(/^Context\s+แนวคิด:\s*/i, "")
+    .trim();
+}
+
+function uniqueHyperframesOverlayLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const line of lines) {
+    const clean = cleanHyperframesOverlayText(line);
+    const key = clean.replace(/[\s…]+/g, "").toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(clean);
+  }
+  return unique;
+}
+
+function isElectronicsProductContext(value: Record<string, unknown> | null, description: string): boolean {
+  const haystack = compactStoryboardText([
+    value?.category,
+    value?.capturedCategory,
+    value?.mainStoryboardCategory,
+    value?.title,
+    value?.name,
+    value?.productName,
+    description,
+  ].filter(Boolean).join(" "));
+  return /(?:มือถือ|โทรศัพท์|แท็บเล็ต|tablet|pad|notebook|โน้ตบุ๊ก|laptop|camera|กล้อง|electronics|อิเล็ก|xiaomi|samsung|iphone|ipad|macbook|lenovo|asus|acer|dell|hp)/i.test(haystack);
+}
+
+function formatProductPriceForOverlay(value: Record<string, unknown> | null): string {
+  const raw = value?.price ?? value?.salePrice ?? value?.currentPrice ?? value?.priceText ?? "";
+  const text = compactStoryboardText(raw);
+  if (!text) return "";
+  if (/บาท|thb|฿|^-?\d/i.test(text)) {
+    return text.replace(/\bTHB\b/i, "บาท");
+  }
+  return text;
+}
+
+function extractSpecOverlayLines(description: string, maxLines = 4): string[] {
+  const candidates = description
+    .split(/(?:\n|•|- |\u2022|;|\|)/)
+    .map(item => cleanHyperframesOverlayText(item))
+    .filter(item => item.length >= 4 && item.length <= 80);
+  const specs: string[] = [];
+  for (const pattern of ELECTRONICS_SPEC_PATTERNS) {
+    const line = candidates.find(item => pattern.test(item) && !specs.includes(item));
+    if (line) specs.push(fullThaiProductLine(line, 80));
+    if (specs.length >= maxLines) break;
+  }
+  if (specs.length < maxLines) {
+    for (const item of candidates) {
+      if (specs.includes(item)) continue;
+      if (!/[0-9]/.test(item)) continue;
+      specs.push(fullThaiProductLine(item, 80));
+      if (specs.length >= maxLines) break;
+    }
+  }
+  return specs.slice(0, maxLines);
+}
+
+function resolveHyperframesAutoOverlayPreset(input: {
+  productContext: Record<string, unknown> | null;
+  description: string;
+  hasPrice: boolean;
+}): Exclude<HyperframesFinalOverlayPreset, "auto"> {
+  if (isElectronicsProductContext(input.productContext, input.description)) return "electronics_spec_stack";
+  if (input.hasPrice) return "hero_price_billboard";
+  return "premium_product_hero";
+}
+
+function buildHyperframesShotOverlayDraft(input: {
+  preset: HyperframesFinalOverlayPreset;
+  productContext: Record<string, unknown> | null;
+  productTitle: string;
+  description: string;
+  hookText: string;
+  supportingText: string;
+  clip: StoryboardClipCandidate;
+  index: number;
+  total: number;
+}): string {
+  const price = formatProductPriceForOverlay(input.productContext);
+  const resolvedPreset = input.preset === "auto"
+    ? resolveHyperframesAutoOverlayPreset({
+      productContext: input.productContext,
+      description: input.description,
+      hasPrice: Boolean(price),
+    })
+    : input.preset;
+  if (resolvedPreset === "clean_subtitle") return "";
+  if (resolvedPreset === "price_impact" || resolvedPreset === "hero_price_billboard") {
+    return uniqueHyperframesOverlayLines([input.productTitle, price ? `เริ่มต้น ${price}` : input.supportingText, "กดดูโปรเลย"]).join("\n");
+  }
+  const specLines = extractSpecOverlayLines(input.description, 4);
+  if (
+    resolvedPreset === "spec_highlight" ||
+    resolvedPreset === "electronics_spec_stack" ||
+    resolvedPreset === "split_product_specs" ||
+    resolvedPreset === "neon_gaming_specs"
+  ) {
+    if (input.index === 0) {
+      return uniqueHyperframesOverlayLines([input.productTitle, input.hookText || input.supportingText]).join("\n");
+    }
+    const offset = Math.max(0, (input.index - 1) * 2);
+    const lines = specLines.slice(offset, offset + 2);
+    if (lines.length > 0) return lines.join("\n");
+    if (input.index >= input.total - 2) {
+      return uniqueHyperframesOverlayLines([price ? `เริ่มต้น ${price}` : "", "ผ่อน 0%"]).join("\n");
+    }
+    return cleanHyperframesOverlayText(input.supportingText);
+  }
+  if (resolvedPreset === "feature_cards" || resolvedPreset === "badge_cascade") {
+    const lines = specLines.slice(input.index % Math.max(1, specLines.length), input.index % Math.max(1, specLines.length) + 2);
+    return uniqueHyperframesOverlayLines(lines.length > 0 ? lines : [input.hookText, input.supportingText]).join("\n");
+  }
+  if (resolvedPreset === "lower_third_review") {
+    return uniqueHyperframesOverlayLines([input.index === 0 ? input.supportingText : "", input.hookText]).join("\n");
+  }
+  return uniqueHyperframesOverlayLines([input.index === 0 ? input.hookText : "", input.supportingText]).join("\n");
+}
 
 function buildHyperframesLibrarySaveKey(
   render: HyperframesRenderStatusProjection | null | undefined,
@@ -676,6 +966,183 @@ function buildHyperframesLibrarySaveKey(
     compositionInputHash: render.compositionInputHash,
     outputHash: output.contentHash,
   });
+}
+
+function compactStoryboardText(value: unknown, fallback = ""): string {
+  const text = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.length > 0 ? text : fallback;
+}
+
+function firstThaiProductLine(
+  value: string,
+  maxLength = 64,
+  options: { ellipsis?: boolean } = {},
+): string {
+  const text = cleanHyperframesOverlayText(value);
+  if (!text) return "";
+  const sentence = text
+    .split(/(?:\n|\.|!|\?|。|;)/)
+    .map(item => item.trim())
+    .find(Boolean) ?? text;
+  if (sentence.length <= maxLength) return sentence;
+  const truncated = sentence.slice(0, Math.max(1, maxLength - 1)).trim();
+  return options.ellipsis === false ? truncated : `${truncated}…`;
+}
+
+function fullThaiProductLine(value: string, maxLength = 180): string {
+  return firstThaiProductLine(value, maxLength, { ellipsis: false })
+    .replace(/(?:…|\.{3})$/u, "")
+    .trim();
+}
+
+function expandLegacyEllipsizedHyperframesText(
+  value: string,
+  sources: string[],
+  maxLength = 180,
+): string {
+  const clean = cleanHyperframesOverlayText(value);
+  if (!/(?:…|\.{3})$/u.test(clean) || clean.length > 90) return clean;
+  const stem = clean.replace(/(?:…|\.{3})$/u, "").trim();
+  if (stem.length < 3) return clean;
+  for (const source of sources) {
+    const full = fullThaiProductLine(source, maxLength);
+    if (full.length > clean.length && full.startsWith(stem)) return full;
+  }
+  return clean;
+}
+
+function defaultHyperframesShotText(clip: StoryboardClipCandidate, index: number): string {
+  return "";
+}
+
+function defaultHyperframesSubtitleText(clip: StoryboardClipCandidate): string {
+  const voice = compactStoryboardText(extractStoryboardNativeSpeechText(clip.prompt));
+  if (voice) return voice;
+  return fullThaiProductLine(clip.prompt, 160);
+}
+
+function isHyperframesFinalCompositeRender(
+  render?: HyperframesRenderStatusProjection | null,
+): render is HyperframesRenderStatusProjection {
+  return (
+    render?.compositionMode === "captioned_final_composite" ||
+    render?.renderIntent === "final"
+  );
+}
+
+function formatHyperframesFinalCompositeStatus(
+  render: HyperframesRenderStatusProjection | null,
+  locale: string,
+): string | null {
+  if (!render) return null;
+  const status = render.status.replace(/_/g, " ");
+  const progress = Math.round(render.progressPercent);
+  const prefix = locale === "th" ? "สถานะ Final Composite" : "Final Composite status";
+  const updated = render.updatedAt ? ` · ${render.updatedAt}` : "";
+  return `${prefix}: ${status} · ${progress}%${updated}`;
+}
+
+function getHyperframesPrimaryVideoOutput(render: HyperframesRenderStatusProjection | null) {
+  const outputRefs = Array.isArray(render?.outputRefs) ? render.outputRefs : [];
+  return outputRefs.find(ref =>
+    (ref.kind === "final_video" ||
+      ref.kind === "preview_video" ||
+      ref.kind === "library_item") &&
+    typeof ref.url === "string" &&
+    ref.url.trim().length > 0
+  ) ?? null;
+}
+
+function subtitleCuesFromEditableText(
+  text: string,
+  startSec: number,
+  durationSec: number,
+): HyperframesFinalCompositeConfig["shots"][number]["subtitleCues"] {
+  const lines = text
+    .split(/\n+/)
+    .map(line => compactStoryboardText(line))
+    .filter(Boolean)
+    .slice(0, 8);
+  if (lines.length === 0) return [];
+  const timedCues = lines
+    .map(line => {
+      const match = line.match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*:\s*(.+)$/);
+      if (!match) return null;
+      const cueStart = Number(match[1]);
+      const cueEnd = Number(match[2]);
+      const cueText = compactStoryboardText(match[3]);
+      if (!Number.isFinite(cueStart) || !Number.isFinite(cueEnd) || cueEnd <= cueStart || !cueText) return null;
+      return {
+        startSec: Math.round((startSec + cueStart) * 10) / 10,
+        endSec: Math.round((startSec + Math.min(cueEnd, durationSec)) * 10) / 10,
+        text: cueText,
+      };
+    })
+    .filter((cue): cue is HyperframesFinalCompositeConfig["shots"][number]["subtitleCues"][number] => Boolean(cue));
+  if (timedCues.length === lines.length) return timedCues;
+  const cueDuration = durationSec / lines.length;
+  return lines.map((line, index) => ({
+    startSec: Math.round((startSec + index * cueDuration) * 10) / 10,
+    endSec: Math.round((startSec + (index + 1) * cueDuration) * 10) / 10,
+    text: line,
+  }));
+}
+
+function buildHyperframesFinalAudioEvents(input: {
+  finalVideoLengthSec: number;
+  shots: HyperframesFinalCompositeConfig["shots"];
+  musicPresetId?: string;
+  sfxPresetIds: string[];
+}): HyperframesAudioEvent[] {
+  const events: HyperframesAudioEvent[] = [];
+  const musicPresetId = input.musicPresetId?.trim();
+  if (musicPresetId) {
+    events.push({
+      id: "music_bed_main",
+      role: "music",
+      presetId: musicPresetId,
+      visualTrigger: "video_start",
+      startSec: 0,
+      durationSec: Math.max(1, Math.round(input.finalVideoLengthSec * 10) / 10),
+      volume: 0.18,
+      assetRef: `/api/storage/hyperframes/audio-presets/${musicPresetId}.wav`,
+      notes: "Background bed. FFmpeg fallback uses deterministic synthetic audio unless a staged licensed asset is supplied.",
+    });
+  }
+
+  const selectedSfx = input.sfxPresetIds.map(id => id.trim()).filter(Boolean).slice(0, 8);
+  selectedSfx.forEach((presetId, sfxIndex) => {
+    const isPrice = /cash_register|sales|price/i.test(presetId);
+    const trigger = isPrice
+      ? "price_badge_pop"
+      : /button|tap/i.test(presetId)
+        ? "button_depress"
+        : /riser|reveal/i.test(presetId)
+          ? "product_reveal"
+          : "scene_cut";
+    const targetShots = isPrice
+      ? input.shots.slice(Math.max(0, input.shots.length - 2))
+      : input.shots;
+    targetShots.forEach((shot, shotIndex) => {
+      const startSec = isPrice
+        ? shot.startSec + Math.max(0.8, shot.durationSec * 0.48)
+        : shot.startSec + (shotIndex === 0 ? 0.2 : 0);
+      events.push({
+        id: `sfx_${sfxIndex + 1}_${shot.id}_${shotIndex + 1}`,
+        role: isPrice ? "accent_sfx" : "transition_sfx",
+        presetId,
+        visualTrigger: trigger,
+        startSec: Math.round(startSec * 10) / 10,
+        durationSec: isPrice ? 0.45 : 0.22,
+        volume: isPrice ? 0.32 : 0.22,
+        assetRef: `/api/storage/hyperframes/audio-presets/${presetId}.wav`,
+        notes: "SFX follows visual trigger timing and is ducked under native audio in fallback mode.",
+      });
+    });
+  });
+  return events.slice(0, 80);
 }
 
 function normalizeStoryboardProviderTaskStatus(value: unknown): StoryboardProviderTaskStatus {
@@ -1147,6 +1614,7 @@ export default function StoryboardReviewPage() {
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [projectSearchQuery, setProjectSearchQuery] = useState("");
+  const [isProjectSidebarCollapsed, setIsProjectSidebarCollapsed] = useState(false);
   const [isEditingProjectName, setIsEditingProjectName] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState("");
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
@@ -1173,7 +1641,25 @@ export default function StoryboardReviewPage() {
   const [galleryLightbox, setGalleryLightbox] = useState<{ url: string; title: string } | null>(null);
   const [videoPreview, setVideoPreview] = useState<StoryboardVideoPreview | null>(null);
   const [isImageToolsPanelOpen, setIsImageToolsPanelOpen] = useState(false);
+  const [historyGalleryProductFilterEnabled, setHistoryGalleryProductFilterEnabled] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<StoryboardReviewDeleteTarget | null>(null);
+  const [hyperframesFinalFont, setHyperframesFinalFont] = useState<HyperframesFinalCompositeConfig["fontFamily"]>("Prompt");
+  const [hyperframesFinalTextMode, setHyperframesFinalTextMode] = useState<HyperframesFinalCompositeConfig["textMode"]>("hook_and_per_shot");
+  const [hyperframesFinalOverlayPreset, setHyperframesFinalOverlayPreset] = useState<HyperframesFinalOverlayPreset>("auto");
+  const [hyperframesFinalSubtitlePreset, setHyperframesFinalSubtitlePreset] = useState<HyperframesFinalSubtitlePreset>("classic_box");
+  const [hyperframesFinalAudioPackPresetId, setHyperframesFinalAudioPackPresetId] = useState(DEFAULT_HYPERFRAMES_FINAL_AUDIO_PACK_ID);
+  const [hyperframesFinalMusicPresetId, setHyperframesFinalMusicPresetId] = useState(DEFAULT_HYPERFRAMES_FINAL_MUSIC_ID);
+  const [hyperframesFinalSfxPresetIds, setHyperframesFinalSfxPresetIds] = useState<string[]>(DEFAULT_HYPERFRAMES_FINAL_SFX_IDS);
+  const [hyperframesFinalPreserveNativeAudio, setHyperframesFinalPreserveNativeAudio] = useState(true);
+  const [hyperframesFinalSyntheticAudioFallback, setHyperframesFinalSyntheticAudioFallback] = useState(true);
+  const [hyperframesFinalBurnInSubtitles, setHyperframesFinalBurnInSubtitles] = useState(true);
+  const [hyperframesFinalHookText, setHyperframesFinalHookText] = useState("");
+  const [hyperframesFinalSupportingText, setHyperframesFinalSupportingText] = useState("");
+  const [hyperframesFinalShotTextById, setHyperframesFinalShotTextById] = useState<Record<string, string>>({});
+  const [hyperframesFinalSubtitleById, setHyperframesFinalSubtitleById] = useState<Record<string, string>>({});
+  const [isHyperframesFinalPanelExpanded, setIsHyperframesFinalPanelExpanded] = useState(false);
+  const hyperframesFinalStateRevisionRef = useRef<number | null>(null);
+  const hyperframesFinalStateHydrationKeyRef = useRef<string | null>(null);
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
@@ -1203,14 +1689,62 @@ export default function StoryboardReviewPage() {
     { id: canonicalReviewId ?? 0 },
     { enabled: typeof canonicalReviewId === "number" && Number.isFinite(canonicalReviewId) },
   );
+  const reviewRecord = review as any;
+  const reviewRecordMatchesRoute = Boolean(
+    !canonicalReviewId || (reviewRecord && Number(reviewRecord.id) === canonicalReviewId)
+  );
+  const reviewDataRecord =
+    reviewRecordMatchesRoute && reviewRecord?.reviewData && typeof reviewRecord.reviewData === "object"
+      ? (reviewRecord.reviewData as Record<string, any>)
+      : {};
+  const reviewMarketplaceContext =
+    reviewDataRecord.marketplaceContext &&
+    typeof reviewDataRecord.marketplaceContext === "object"
+      ? (reviewDataRecord.marketplaceContext as Record<string, any>)
+      : {};
+  const reviewDataAutoReview =
+    reviewDataRecord.autoReview &&
+    typeof reviewDataRecord.autoReview === "object"
+      ? (reviewDataRecord.autoReview as Record<string, any>)
+      : {};
+  const reviewHyperframesFinalComposite =
+    reviewDataRecord.hyperframesFinalComposite &&
+    typeof reviewDataRecord.hyperframesFinalComposite === "object"
+      ? (reviewDataRecord.hyperframesFinalComposite as Record<string, any>)
+      : null;
+  const reviewHyperframesProductId =
+    compactStoryboardText(
+      reviewMarketplaceContext.productId ??
+        reviewMarketplaceContext.marketplaceProductId ??
+        reviewMarketplaceContext.id
+    ) || undefined;
+  const canUseHyperframesQueryContext =
+    reviewRecordMatchesRoute &&
+    (!canonicalReviewId || Boolean(reviewRecord)) &&
+    (!reviewHyperframesProductId ||
+      (Boolean(hyperframesProductId) && hyperframesProductId === reviewHyperframesProductId));
+  const effectiveHyperframesRenderJobId = canUseHyperframesQueryContext ? hyperframesRenderJobId : null;
+  const effectiveHyperframesProductId =
+    reviewHyperframesProductId ??
+    (canUseHyperframesQueryContext ? hyperframesProductId : undefined);
+  const effectiveHyperframesRunId =
+    compactStoryboardText(
+      reviewRecord?.autoReview?.runId ??
+        reviewDataRecord.autoReviewRunId ??
+        reviewDataRecord.marketplaceAutoReviewRunId ??
+        reviewDataAutoReview.runId ??
+        reviewMarketplaceContext.autoReviewRunId ??
+        reviewMarketplaceContext.marketplaceAutoReviewRunId
+    ) ||
+    (canUseHyperframesQueryContext ? hyperframesRunId : undefined);
   const hyperframesRenderQuery = trpc.marketplaceCapture.getHyperframesRenderJob.useQuery(
     {
-      renderJobId: hyperframesRenderJobId ?? "",
-      productId: hyperframesProductId,
-      runId: hyperframesRunId,
+      renderJobId: effectiveHyperframesRenderJobId ?? "",
+      productId: effectiveHyperframesProductId,
+      runId: effectiveHyperframesRunId,
     },
     {
-      enabled: Boolean(hyperframesRenderJobId),
+      enabled: Boolean(effectiveHyperframesRenderJobId),
       refetchInterval: query => {
         return resolveHyperframesRenderRefetchInterval(
           (query.state.data as any)?.render
@@ -1235,6 +1769,36 @@ export default function StoryboardReviewPage() {
           runId: result.render?.runId,
         });
         toast.success("สร้าง HyperFrames preview แล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const createHyperframesFinalCompositeMutation =
+    trpc.marketplaceCapture.createHyperframesFinalComposite.useMutation({
+      onSuccess: result => {
+        const nextRenderJobId = result.render?.renderJobId;
+        if (nextRenderJobId && typeof window !== "undefined") {
+          const params = new URLSearchParams(search);
+          params.set("hyperframesRenderJobId", nextRenderJobId);
+          if (result.render.productId) params.set("productId", result.render.productId);
+          if (result.render.runId) params.set("runId", result.render.runId);
+          setLocation(`${window.location.pathname}?${params.toString()}`);
+        }
+        void trpcUtils.marketplaceCapture.getHyperframesRenderJob.invalidate({
+          renderJobId: nextRenderJobId ?? "",
+          productId: result.render?.productId,
+          runId: result.render?.runId,
+        });
+        toast.success(locale === "th" ? "เริ่ม render HyperFrames final composite แล้ว" : "HyperFrames final composite render started.");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const updateHyperframesFinalCompositeStateMutation =
+    trpc.videoEditorProjects.updateStoryboardReviewHyperframesFinalComposite.useMutation({
+      onSuccess: result => {
+        hyperframesFinalStateRevisionRef.current = result.state.revision;
+        void trpcUtils.videoEditorProjects.getStoryboardReview.invalidate({
+          id: Number(result.state.storyboardReviewProjectId),
+        });
       },
       onError: error => toast.error(error.message),
     });
@@ -1300,10 +1864,43 @@ export default function StoryboardReviewPage() {
   );
   const hyperframesRenderProjection =
     hyperframesRenderQuery.data?.render ??
+    createHyperframesFinalCompositeMutation.data?.render ??
     createHyperframesPreviewMutation.data?.render ??
     null;
+  const hyperframesFinalRenderProjection =
+    [
+      hyperframesRenderQuery.data?.render,
+      createHyperframesFinalCompositeMutation.data?.render,
+      hyperframesRenderProjection,
+    ].find(isHyperframesFinalCompositeRender) ?? null;
+  const hyperframesFinalCompositeStatusText = createHyperframesFinalCompositeMutation.isPending
+    ? locale === "th"
+      ? "กำลังส่งงาน Final Composite เข้า queue..."
+      : "Submitting Final Composite render to the queue..."
+    : formatHyperframesFinalCompositeStatus(hyperframesFinalRenderProjection, locale);
+  const hyperframesFinalCompositeStatusDetail = hyperframesFinalRenderProjection?.safeMessage ?? null;
+  const hyperframesFinalCompositeIsProblem = Boolean(
+    hyperframesFinalRenderProjection?.status.startsWith("failed") ||
+      hyperframesFinalRenderProjection?.status === "dead_lettered" ||
+      hyperframesFinalRenderProjection?.status === "blocked_needs_user" ||
+      hyperframesFinalRenderProjection?.status === "compliance_blocked"
+  );
+  const hyperframesFinalCompositeIsActive = Boolean(
+    createHyperframesFinalCompositeMutation.isPending ||
+      (hyperframesFinalRenderProjection &&
+        !hyperframesFinalCompositeIsProblem &&
+        hyperframesFinalRenderProjection.progressPercent < 100)
+  );
+  const hyperframesFinalVideoOutput = getHyperframesPrimaryVideoOutput(
+    hyperframesFinalRenderProjection,
+  );
+  const hyperframesFinalVideoUrl =
+    typeof hyperframesFinalVideoOutput?.url === "string"
+      ? hyperframesFinalVideoOutput.url
+      : "";
   const hyperframesContextAvailable = Boolean(
-    hyperframesRenderJobId || (hyperframesProductId && hyperframesRunId),
+    effectiveHyperframesRenderJobId ||
+      (effectiveHyperframesProductId && effectiveHyperframesRunId),
   );
   const hyperframesSnapshots = useMemo(
     () =>
@@ -1318,15 +1915,19 @@ export default function StoryboardReviewPage() {
     [hyperframesRenderProjection],
   );
   const createHyperframesPreview = useCallback(() => {
-    if (!hyperframesProductId || !hyperframesRunId) {
+    if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
       toast.error("ยังไม่มี product/run context สำหรับ HyperFrames preview");
       return;
     }
     createHyperframesPreviewMutation.mutate({
-      productId: hyperframesProductId,
-      runId: hyperframesRunId,
+      productId: effectiveHyperframesProductId,
+      runId: effectiveHyperframesRunId,
     });
-  }, [createHyperframesPreviewMutation, hyperframesProductId, hyperframesRunId]);
+  }, [
+    createHyperframesPreviewMutation,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+  ]);
   const saveHyperframesRenderToLibrary = useCallback(() => {
     const render = hyperframesRenderProjection;
     const idempotencyKey = buildHyperframesLibrarySaveKey(render);
@@ -1408,6 +2009,19 @@ export default function StoryboardReviewPage() {
     }
   }, [queryReviewId, location, routeParams?.reviewId, setLocation]);
 
+  useEffect(() => {
+    if (!canonicalReviewId || !reviewRecordMatchesRoute) return;
+    if (!hyperframesProductId || !reviewHyperframesProductId) return;
+    if (hyperframesProductId === reviewHyperframesProductId) return;
+    setLocation(`/storyboard-review/${canonicalReviewId}`);
+  }, [
+    canonicalReviewId,
+    hyperframesProductId,
+    reviewHyperframesProductId,
+    reviewRecordMatchesRoute,
+    setLocation,
+  ]);
+
   useEffect(() => () => {
     isStoryboardReviewMountedRef.current = false;
     storyboardGenerationPollersRef.current.clear();
@@ -1488,6 +2102,15 @@ export default function StoryboardReviewPage() {
     });
   }, [reviewId, writeStoryboardReviewClientDebug]);
 
+  const activeDraft = reviewId && draft?.reviewId !== reviewId ? null : draft;
+  const historyGalleryProductFilter = useMemo(
+    () => getStoryboardHistoryProductFilter(activeDraft),
+    [activeDraft],
+  );
+  const isHistoryGalleryProductFilterActive = Boolean(
+    historyGalleryProductFilterEnabled && historyGalleryProductFilter,
+  );
+
   const { data: mediaHistoryData, isLoading: isMediaHistoryLoading } = trpc.media.listTasks.useQuery(
     {
       mediaType: mediaPickerKind,
@@ -1505,7 +2128,7 @@ export default function StoryboardReviewPage() {
     {
       mediaType: "image",
       status: "completed",
-      limit: 36,
+      limit: isHistoryGalleryProductFilterActive ? 100 : 36,
       offset: 0,
       daysAgo: 30,
     },
@@ -1517,15 +2140,22 @@ export default function StoryboardReviewPage() {
 
   useEffect(() => {
     if (reviewId) {
-      const localDraft = readStoryboardReviewDraft();
-      const matchingLocalDraft = localDraft?.reviewId === reviewId ? localDraft : null;
       emitStoryboardReviewClientDebug("route.localDraftLoaded", {
-        localDraft: summarizeStoryboardDraftForDebug(localDraft),
-        matchingLocalDraft: summarizeStoryboardDraftForDebug(matchingLocalDraft),
+        localDraft: null,
+        matchingLocalDraft: null,
+        routeReviewId: reviewId,
+        source: "server_canonical_route",
       });
-      setDraft(matchingLocalDraft);
-      setRenderJobId(matchingLocalDraft?.renderJobId ?? null);
+      draftRef.current = null;
+      setDraft(null);
+      setRenderJobId(null);
       setRegeneratingTaskId(null);
+      setSelectedLibraryItemId(null);
+      setLibrarySearchQuery("");
+      setReplacingReferenceFrameKey(null);
+      setUploadingVideoSlotKey(null);
+      setVideoPreview(null);
+      setGalleryLightbox(null);
       return;
     }
 
@@ -1534,6 +2164,7 @@ export default function StoryboardReviewPage() {
       localDraft: summarizeStoryboardDraftForDebug(localDraft),
       matchingLocalDraft: summarizeStoryboardDraftForDebug(localDraft),
     });
+    draftRef.current = localDraft;
     setDraft(localDraft);
     setRenderJobId(localDraft?.renderJobId ?? null);
     setRegeneratingTaskId(null);
@@ -1551,7 +2182,8 @@ export default function StoryboardReviewPage() {
       reviewId: canonicalReviewId,
       name: nextDraft.name ?? (typeof reviewRecord.name === "string" ? reviewRecord.name : null),
     } : null;
-    const current = draftRef.current;
+    const current =
+      draftRef.current?.reviewId === canonicalReviewId ? draftRef.current : null;
     const mergedIncoming = mergeFresherStoryboardReviewTasks(current, rawIncoming);
     const incoming = preferCanonicalServerCompanionAudio(
       current,
@@ -1568,7 +2200,10 @@ export default function StoryboardReviewPage() {
       && isDraftNewerThan(current, incoming)
       && !serverCompanionAudioIsCanonical
     ) {
-      const mergedCurrent = mergeFresherStoryboardReviewTasks(incoming, current);
+      const mergedCurrentBase = mergeFresherStoryboardReviewTasks(incoming, current);
+      const mergedCurrent = rawIncoming?.marketplaceContext && !getStoryboardHistoryProductFilter(mergedCurrentBase)
+        ? { ...mergedCurrentBase, marketplaceContext: rawIncoming.marketplaceContext }
+        : mergedCurrentBase;
       emitStoryboardReviewClientDebug("serverReview.appliedLocalNewer", {
         reviewRecordFound: true,
         serverCompanionAudioIsCanonical,
@@ -1584,7 +2219,10 @@ export default function StoryboardReviewPage() {
       setRenderJobId(mergedCurrent.renderJobId ?? null);
       return;
     }
-    if (incoming) {
+    const incomingWithMarketplaceContext = incoming && rawIncoming?.marketplaceContext && !getStoryboardHistoryProductFilter(incoming)
+      ? { ...incoming, marketplaceContext: rawIncoming.marketplaceContext }
+      : incoming;
+    if (incomingWithMarketplaceContext) {
       emitStoryboardReviewClientDebug("serverReview.appliedIncoming", {
         reviewRecordFound: true,
         serverCompanionAudioIsCanonical,
@@ -1592,16 +2230,15 @@ export default function StoryboardReviewPage() {
         currentCompanionAudioUpdatedAt,
         rawIncoming: summarizeStoryboardDraftForDebug(rawIncoming),
         mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
-        appliedDraft: summarizeStoryboardDraftForDebug(incoming),
+        appliedDraft: summarizeStoryboardDraftForDebug(incomingWithMarketplaceContext),
       });
-      draftRef.current = incoming;
-      writeStoryboardReviewDraft(incoming);
+      draftRef.current = incomingWithMarketplaceContext;
+      writeStoryboardReviewDraft(incomingWithMarketplaceContext);
     }
-    setDraft(incoming);
-    setRenderJobId(incoming?.renderJobId ?? null);
+    setDraft(incomingWithMarketplaceContext);
+    setRenderJobId(incomingWithMarketplaceContext?.renderJobId ?? null);
   }, [canonicalReviewId, emitStoryboardReviewClientDebug, review]);
 
-  const activeDraft = reviewId && draft?.reviewId !== reviewId ? null : draft;
   const tasks = useMemo(() => storyboardDraftToReviewTasks(activeDraft), [activeDraft]);
   const selectedTaskIds = activeDraft?.selectedTaskIds ?? [];
   const completedCount = tasks.filter((task) => task.status === "completed" && task.url).length;
@@ -1621,6 +2258,16 @@ export default function StoryboardReviewPage() {
       .filter((item): item is { task: any; url: string; title: string } => Boolean(item.url)),
     [imageHistoryData?.tasks, t],
   );
+  const visibleImageHistoryTasks = useMemo(
+    () => isHistoryGalleryProductFilterActive && historyGalleryProductFilter
+      ? imageHistoryTasks.filter((item) => storyboardHistoryTaskMatchesProduct(item.task, historyGalleryProductFilter))
+      : imageHistoryTasks,
+    [historyGalleryProductFilter, imageHistoryTasks, isHistoryGalleryProductFilterActive],
+  );
+  const historyGalleryProductFilterLabel = historyGalleryProductFilter?.productName
+    || historyGalleryProductFilter?.productId
+    || historyGalleryProductFilter?.itemId
+    || "";
   const currentProjectName = activeDraft ? getStoryboardReviewName(activeDraft) : t("mediaStudio.storyboardReview");
   const storyboardVoiceoverSummaryText = useMemo(
     () => getStoryboardDraftVoiceoverSummary(activeDraft, locale),
@@ -2477,12 +3124,44 @@ export default function StoryboardReviewPage() {
     input: { url: string; title: string; filename?: string },
   ) => {
     const filename = input.filename ?? `${input.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "storyboard-image"}.jpg`;
+    const storageKey = input.url.startsWith("data:image/")
+      ? `smartaihub:storyboard-drag-image:${Date.now()}:${Math.random().toString(36).slice(2)}`
+      : "";
+    if (storageKey) {
+      try {
+        window.sessionStorage.setItem(storageKey, JSON.stringify({
+          mediaType: "image",
+          url: input.url,
+          title: input.title,
+          filename,
+          createdAt: Date.now(),
+        }));
+      } catch {
+        // Continue with inline drag payloads when sessionStorage is unavailable.
+      }
+    }
+    const setDragData = (type: string, value: string) => {
+      try {
+        event.dataTransfer.setData(type, value);
+      } catch {
+        // Some browsers reject large data URLs for standard drag payload types.
+      }
+    };
     event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.setData("text/uri-list", input.url);
-    event.dataTransfer.setData("text/plain", input.url);
-    event.dataTransfer.setData("application/x-smartspec-media-type", "image");
-    event.dataTransfer.setData("text/x-smartspec-media-type", "image");
-    event.dataTransfer.setData("DownloadURL", `image/jpeg:${filename}:${input.url}`);
+    const dragUrl = storageKey ? `storyboard-drag:${storageKey}` : input.url;
+    setDragData("text/uri-list", dragUrl);
+    setDragData("text/plain", dragUrl);
+    setDragData("application/x-smartspec-storyboard-image", JSON.stringify({
+      mediaType: "image",
+      url: storageKey ? undefined : input.url,
+      storageKey: storageKey || undefined,
+      title: input.title,
+      filename,
+    }));
+    setDragData("application/x-smartspec-media-url", dragUrl);
+    setDragData("application/x-smartspec-media-type", "image");
+    setDragData("text/x-smartspec-media-type", "image");
+    setDragData("DownloadURL", `image/jpeg:${filename}:${dragUrl}`);
   }, []);
 
   const downloadStoryboardImage = useCallback((url: string, title: string) => {
@@ -2692,6 +3371,402 @@ export default function StoryboardReviewPage() {
       generationExtraParams: task.generationExtraParams,
     }));
   }, [draft]);
+
+  const hyperframesFinalSourceClips = useMemo<StoryboardClipCandidate[]>(() => {
+    const isVideoClip = (clip: StoryboardClipCandidate) =>
+      Boolean(clip.url) && clip.mediaType !== "image" && !isProbablyImageUrl(clip.url);
+    const selectedVideos = selectedRenderClips.filter(isVideoClip);
+    if (selectedVideos.length > 0) return selectedVideos;
+    if (!draft) return [];
+    return storyboardDraftToReviewTasks(draft)
+      .filter(task => task.status === "completed" && task.url && task.mediaType !== "image" && !isProbablyImageUrl(task.url))
+      .map(task => ({
+        id: task.id,
+        prompt: task.prompt,
+        url: task.url!,
+        model: task.model,
+        durationSeconds: task.durationSeconds,
+        mediaType: task.mediaType,
+        transition: task.transition,
+        generationModelId: task.generationModelId,
+        referenceUrls: task.referenceUrls,
+        generationAspectRatio: task.generationAspectRatio,
+        generationExtraParams: task.generationExtraParams,
+      }));
+  }, [draft, selectedRenderClips]);
+
+  useEffect(() => {
+    const state = reviewHyperframesFinalComposite;
+    if (!state) return;
+    const revision = typeof state.revision === "number" ? state.revision : null;
+    hyperframesFinalStateRevisionRef.current = revision;
+    const hydrationKey = `${canonicalReviewId ?? "local"}:${revision ?? "unknown"}:${state.updatedAt ?? ""}`;
+    if (hyperframesFinalStateHydrationKeyRef.current === hydrationKey) return;
+    hyperframesFinalStateHydrationKeyRef.current = hydrationKey;
+    const textVariables =
+      state.textVariables && typeof state.textVariables === "object"
+        ? (state.textVariables as Record<string, any>)
+        : {};
+    if (typeof textVariables.fontFamily === "string") {
+      setHyperframesFinalFont(textVariables.fontFamily as HyperframesFinalCompositeConfig["fontFamily"]);
+    }
+    if (typeof textVariables.hookText === "string") {
+      setHyperframesFinalHookText(textVariables.hookText);
+    }
+    if (typeof textVariables.supportingText === "string") {
+      setHyperframesFinalSupportingText(textVariables.supportingText);
+    }
+    if (typeof textVariables.overlayPresetId === "string") {
+      const legacyOverlay = textVariables.overlayPresetId as HyperframesFinalOverlayPreset;
+      if (HYPERFRAMES_FINAL_OVERLAY_PRESETS.some(preset => preset.id === legacyOverlay)) {
+        setHyperframesFinalOverlayPreset(legacyOverlay);
+      }
+    }
+    if (typeof textVariables.subtitlePresetId === "string") {
+      const legacySubtitle = textVariables.subtitlePresetId as HyperframesFinalSubtitlePreset;
+      if (HYPERFRAMES_FINAL_SUBTITLE_PRESETS.some(preset => preset.id === legacySubtitle)) {
+        setHyperframesFinalSubtitlePreset(legacySubtitle);
+      }
+    }
+    if (typeof textVariables.audioPackPresetId === "string") {
+      setHyperframesFinalAudioPackPresetId(textVariables.audioPackPresetId);
+    }
+    if (typeof textVariables.musicPresetId === "string") {
+      setHyperframesFinalMusicPresetId(textVariables.musicPresetId);
+    }
+    if (Array.isArray(textVariables.sfxPresetIds)) {
+      setHyperframesFinalSfxPresetIds(
+        textVariables.sfxPresetIds.map((id: unknown) => String(id ?? "").trim()).filter(Boolean)
+      );
+    }
+    if (typeof textVariables.preserveNativeAudio === "boolean") {
+      setHyperframesFinalPreserveNativeAudio(textVariables.preserveNativeAudio);
+    }
+    if (typeof textVariables.syntheticAudioFallback === "boolean") {
+      setHyperframesFinalSyntheticAudioFallback(textVariables.syntheticAudioFallback);
+    }
+    if (textVariables.perShotText && typeof textVariables.perShotText === "object") {
+      setHyperframesFinalShotTextById(textVariables.perShotText as Record<string, string>);
+    }
+    if (textVariables.perShotSubtitles && typeof textVariables.perShotSubtitles === "object") {
+      setHyperframesFinalSubtitleById(textVariables.perShotSubtitles as Record<string, string>);
+    }
+  }, [canonicalReviewId, reviewHyperframesFinalComposite]);
+
+  useEffect(() => {
+    if (!draft) return;
+    const productContext = resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null;
+    const productTitle = compactStoryboardText(
+      productContext?.title ?? productContext?.name ?? productContext?.productName ?? "",
+    );
+    const description = compactStoryboardText(
+      productContext?.description ?? productContext?.descriptionText ?? draft.conceptDetails ?? "",
+    );
+    setHyperframesFinalHookText(current =>
+      current.trim() || fullThaiProductLine(description || productTitle || getStoryboardReviewName(draft), 180)
+    );
+    setHyperframesFinalSupportingText(current =>
+      current.trim() || fullThaiProductLine(productTitle || description, 160)
+    );
+    setHyperframesFinalShotTextById(current => {
+      const next = { ...current };
+      const hookText = hyperframesFinalHookText.trim() || fullThaiProductLine(description || productTitle || getStoryboardReviewName(draft), 180);
+      const supportingText = hyperframesFinalSupportingText.trim() || fullThaiProductLine(productTitle || description, 160);
+      hyperframesFinalSourceClips.forEach((clip, index) => {
+        if (!next[clip.id]) {
+          next[clip.id] = buildHyperframesShotOverlayDraft({
+            preset: hyperframesFinalOverlayPreset,
+            productContext,
+            productTitle: productTitle || getStoryboardReviewName(draft),
+            description,
+            hookText,
+            supportingText,
+            clip,
+            index,
+            total: hyperframesFinalSourceClips.length,
+          });
+        }
+      });
+      return next;
+    });
+    setHyperframesFinalSubtitleById(current => {
+      const next = { ...current };
+      hyperframesFinalSourceClips.forEach(clip => {
+        if (!next[clip.id]) next[clip.id] = defaultHyperframesSubtitleText(clip);
+      });
+      return next;
+    });
+  }, [
+    draft,
+    hyperframesFinalHookText,
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalSourceClips,
+    hyperframesFinalSupportingText,
+  ]);
+
+  const hyperframesFinalDurationSeconds = useMemo(
+    () =>
+      hyperframesFinalSourceClips.reduce(
+        (sum, clip) => sum + Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+        0,
+      ),
+    [hyperframesFinalSourceClips],
+  );
+
+  const hyperframesFinalCompositeDisabledReason = useMemo(() => {
+    if (hyperframesFinalSourceClips.length === 0) {
+      return locale === "th"
+        ? "ยังไม่มี MP4 ที่ completed"
+        : "No completed MP4 shots";
+    }
+    if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return locale === "th"
+        ? "กำลังรอ context จาก Marketplace Capture"
+        : "Waiting for Marketplace Capture context";
+    }
+    if (
+      !hyperframesFinalSyntheticAudioFallback &&
+      (hyperframesFinalMusicPresetId || hyperframesFinalSfxPresetIds.length > 0)
+    ) {
+      return locale === "th"
+        ? "ต้องมี licensed staged audio assets หรือเปิด synthetic fallback ก่อน render"
+        : "Licensed staged audio assets are required, or enable synthetic fallback before rendering";
+    }
+    return null;
+  }, [
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalSourceClips.length,
+    hyperframesFinalSfxPresetIds.length,
+    hyperframesFinalSyntheticAudioFallback,
+    locale,
+  ]);
+
+  const persistHyperframesFinalCompositeState = useCallback(async (patch: {
+    shotMediaAssignments?: Array<Record<string, unknown>>;
+    textVariables?: Record<string, unknown>;
+    creativePlanHash?: string | null;
+    latestRenderJobRef?: Record<string, unknown>;
+  }) => {
+    if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return null;
+    }
+    const result = await updateHyperframesFinalCompositeStateMutation.mutateAsync({
+      storyboardReviewProjectId: canonicalReviewId,
+      productId: effectiveHyperframesProductId,
+      runId: effectiveHyperframesRunId,
+      expectedRevision: hyperframesFinalStateRevisionRef.current ?? 0,
+      patch: patch as any,
+    });
+    hyperframesFinalStateRevisionRef.current = result.state.revision;
+    return result.state;
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    updateHyperframesFinalCompositeStateMutation,
+  ]);
+
+  const createHyperframesFinalComposite = useCallback(async () => {
+    if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      toast.error(locale === "th" ? "ยังไม่มี product/run context สำหรับ HyperFrames final composite" : "Missing product/run context for HyperFrames final composite.");
+      return;
+    }
+    if (hyperframesFinalSourceClips.length === 0) {
+      toast.error(locale === "th" ? "ต้องมี MP4 ที่ completed อย่างน้อย 1 shot ก่อน render final composite" : "At least one completed MP4 shot is required.");
+      return;
+    }
+    try {
+      const productContext = draft
+        ? resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null
+        : null;
+      const productDescription = compactStoryboardText(
+        productContext?.description ?? productContext?.descriptionText ?? draft?.conceptDetails ?? "",
+      );
+      const storyboardName = draft ? getStoryboardReviewName(draft) : "";
+      const productTitle = compactStoryboardText(
+        productContext?.title ?? productContext?.name ?? productContext?.productName ?? storyboardName,
+      );
+      const textExpansionSources = [
+        productDescription,
+        productTitle,
+        storyboardName,
+      ].filter(Boolean);
+      const renderHookText = expandLegacyEllipsizedHyperframesText(
+        hyperframesFinalHookText,
+        textExpansionSources,
+        180,
+      );
+      const renderSupportingText = expandLegacyEllipsizedHyperframesText(
+        hyperframesFinalSupportingText,
+        [productTitle, productDescription, storyboardName].filter(Boolean),
+        160,
+      );
+      const resolvedOverlayPreset = hyperframesFinalOverlayPreset === "auto"
+        ? resolveHyperframesAutoOverlayPreset({
+          productContext,
+          description: productDescription,
+          hasPrice: Boolean(formatProductPriceForOverlay(productContext)),
+        })
+        : hyperframesFinalOverlayPreset;
+      let cursor = 0;
+      const shots: HyperframesFinalCompositeConfig["shots"] = [];
+      const shotMediaAssignments: Array<Record<string, unknown>> = [];
+      const renderPerShotTextById: Record<string, string> = {};
+      for (const [index, clip] of hyperframesFinalSourceClips.entries()) {
+        const durationSec = Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS);
+        const storedUrl = await importStoryboardAssetForRender(clip.url, "video");
+        shotMediaAssignments.push({
+          storyboardReviewProjectId: canonicalReviewId,
+          shotId: clip.id,
+          shotIndex: index,
+          source: "storyboard_generated_clip",
+          mediaKind: "video",
+          sourceUrl: storedUrl,
+          storageRef: storedUrl,
+          durationSec,
+          assignedByUserId: "storyboard_review_user",
+          assignedAt: new Date().toISOString(),
+        });
+        const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
+        const editableOverlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+        const overlayLines = uniqueHyperframesOverlayLines(editableOverlayText
+          .split(/\n+/)
+          .map(line => expandLegacyEllipsizedHyperframesText(
+            compactStoryboardText(line),
+            [productDescription, productTitle, renderHookText, renderSupportingText].filter(Boolean),
+            180,
+          )))
+          .slice(0, 4);
+        const firstShotHookLines =
+          index === 0 && resolvedOverlayPreset !== "clean_subtitle" && hyperframesFinalTextMode !== "none"
+            ? uniqueHyperframesOverlayLines([renderSupportingText, renderHookText]).slice(0, 4)
+            : [];
+        const resolvedShotOverlayLines = overlayLines.length > 0 ? overlayLines : firstShotHookLines;
+        renderPerShotTextById[clip.id] = resolvedShotOverlayLines.join("\n");
+        shots.push({
+          id: clip.id,
+          index,
+          title: firstThaiProductLine(clip.prompt, 80),
+          sourceVideoUrl: storedUrl,
+          sourceVideoRef: clip.url,
+          startSec: Math.round(cursor * 10) / 10,
+          durationSec,
+          onScreenText: resolvedShotOverlayLines,
+          subtitleCues: subtitleCuesFromEditableText(subtitleText, cursor, durationSec),
+          animationPreset: index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal",
+          transition: "fade",
+        });
+        cursor += durationSec;
+      }
+      const finalVideoLengthSec = Math.round(cursor * 10) / 10;
+      const selectedSfxPresetIds = hyperframesFinalSfxPresetIds
+        .map(id => id.trim())
+        .filter(Boolean)
+        .slice(0, 8);
+      const audioEvents = buildHyperframesFinalAudioEvents({
+        finalVideoLengthSec,
+        shots,
+        musicPresetId: hyperframesFinalMusicPresetId || undefined,
+        sfxPresetIds: selectedSfxPresetIds,
+      });
+      const audioAssetRefs = audioEvents.map(event => event.assetRef);
+      const config: HyperframesFinalCompositeConfig = {
+        finalVideoLengthSec,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: hyperframesFinalTextMode,
+        overlayPreset: resolvedOverlayPreset,
+        includeHookText: hyperframesFinalTextMode === "hook_only" || hyperframesFinalTextMode === "hook_and_per_shot",
+        includeShotText: hyperframesFinalTextMode === "per_shot" || hyperframesFinalTextMode === "hook_and_per_shot",
+        burnInSubtitles: hyperframesFinalBurnInSubtitles,
+        preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+        subtitlePreset: hyperframesFinalSubtitlePreset,
+        audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
+        musicPresetId: hyperframesFinalMusicPresetId || undefined,
+        sfxPresetIds: selectedSfxPresetIds,
+        audioEvents,
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: hyperframesFinalSyntheticAudioFallback,
+          missingAssetRefs: audioAssetRefs,
+          validatedAssetRefs: [],
+          validatedAssets: [],
+        },
+        fontFamily: hyperframesFinalFont,
+        styleBrief: "Premium Thai ecommerce ad, cinematic motion graphic, fast but readable pacing, warm lighting, clean product-focused layout, smooth CSS/GSAP-style animation.",
+        hookText: renderHookText,
+        supportingText: renderSupportingText,
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots,
+      };
+      const persistedState = await persistHyperframesFinalCompositeState({
+        shotMediaAssignments,
+        textVariables: {
+          fontFamily: hyperframesFinalFont,
+          overlayPresetId: resolvedOverlayPreset,
+          subtitlePresetId: hyperframesFinalSubtitlePreset,
+          audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
+          musicPresetId: hyperframesFinalMusicPresetId || undefined,
+          sfxPresetIds: selectedSfxPresetIds,
+          preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+          syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+          hookText: renderHookText,
+          supportingText: renderSupportingText,
+          perShotText: renderPerShotTextById,
+          perShotSubtitles: hyperframesFinalSubtitleById,
+        },
+      });
+      const result = await createHyperframesFinalCompositeMutation.mutateAsync({
+        productId: effectiveHyperframesProductId,
+        runId: effectiveHyperframesRunId,
+        config,
+      });
+      if (result.render?.renderJobId && persistedState) {
+        await persistHyperframesFinalCompositeState({
+          latestRenderJobRef: {
+            renderJobId: result.render.renderJobId,
+            status: result.render.status,
+            outputUrl: hyperframesFinalVideoUrl || undefined,
+            createdAt: result.render.updatedAt,
+            updatedAt: result.render.updatedAt,
+          },
+        }).catch(() => undefined);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : locale === "th" ? "สร้าง HyperFrames final composite ไม่สำเร็จ" : "Failed to create HyperFrames final composite.");
+    }
+  }, [
+    createHyperframesFinalCompositeMutation,
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    hyperframesFinalVideoUrl,
+    hyperframesFinalAudioPackPresetId,
+    hyperframesFinalBurnInSubtitles,
+    hyperframesFinalFont,
+    hyperframesFinalHookText,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalPreserveNativeAudio,
+    hyperframesFinalShotTextById,
+    hyperframesFinalSourceClips,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitlePreset,
+    hyperframesFinalSupportingText,
+    hyperframesFinalSyntheticAudioFallback,
+    hyperframesFinalTextMode,
+    importStoryboardAssetForRender,
+    locale,
+    draft,
+    persistHyperframesFinalCompositeState,
+  ]);
 
   const inferredRenderAspectRatio = useMemo(
     () => inferStoryboardRenderAspectRatio(selectedRenderClips),
@@ -3528,7 +4603,14 @@ export default function StoryboardReviewPage() {
   const isLoading = !!canonicalReviewId && !reviewNotFound && (isReviewLoading || !activeDraft);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-slate-50 xl:h-dvh xl:overflow-hidden">
+    <div
+      className={cn(
+        "flex min-h-dvh flex-col bg-slate-50",
+        isHyperframesFinalPanelExpanded
+          ? "xl:min-h-dvh"
+          : "xl:h-dvh xl:overflow-hidden"
+      )}
+    >
       <header className="border-b bg-white px-3 py-2 sm:px-4 xl:shrink-0">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -3651,17 +4733,771 @@ export default function StoryboardReviewPage() {
             manualFallbackVisible
             locale={locale}
           />
+          <div className="mt-3 rounded-lg border border-sky-200 bg-white p-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="rounded-full">
+                    {locale === "th" ? "HyperFrames Final Composite" : "HyperFrames Final Composite"}
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full">
+                    {hyperframesFinalSourceClips.length} shots
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full">
+                    {Math.round(hyperframesFinalDurationSeconds)}s
+                  </Badge>
+                </div>
+                <h2 className="mt-2 text-sm font-semibold text-slate-950">
+                  {locale === "th" ? "Render รวม MP4 จาก Storyboard Review พร้อมข้อความและ Subtitle" : "Render Storyboard Review MP4 shots with text and subtitles"}
+                </h2>
+                <p className="mt-1 text-xs text-slate-600">
+                  {locale === "th"
+                    ? "ใช้คลิปที่เลือกไว้ก่อน ถ้าไม่ได้เลือกจะใช้ทุก shot ที่ completed แล้ว แยกจาก render เดิมของหน้า"
+                    : "Uses selected completed clips first, otherwise all completed shots. This is separate from the existing page render."}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsHyperframesFinalPanelExpanded(current => !current)}
+                  className="h-9"
+                >
+                  <ChevronDown
+                    className={cn(
+                      "mr-2 h-4 w-4 transition-transform",
+                      isHyperframesFinalPanelExpanded ? "rotate-180" : ""
+                    )}
+                  />
+                  {isHyperframesFinalPanelExpanded
+                    ? locale === "th" ? "ย่อ" : "Collapse"
+                    : locale === "th" ? "ตั้งค่า" : "Settings"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void createHyperframesFinalComposite()}
+                  disabled={
+                    createHyperframesFinalCompositeMutation.isPending ||
+                    updateHyperframesFinalCompositeStateMutation.isPending ||
+                    Boolean(hyperframesFinalCompositeDisabledReason)
+                  }
+                  className="h-9"
+                >
+                  {createHyperframesFinalCompositeMutation.isPending ||
+                  updateHyperframesFinalCompositeStateMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Film className="mr-2 h-4 w-4" />
+                  )}
+                  {locale === "th" ? "Render Final Composite" : "Render Final Composite"}
+                </Button>
+              </div>
+            </div>
+            {hyperframesFinalCompositeStatusText ? (
+              <div
+                className={cn(
+                  "mt-3 flex flex-col gap-1 rounded-md border px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between",
+                  createHyperframesFinalCompositeMutation.isPending
+                    ? "border-sky-200 bg-sky-50 text-sky-900"
+                    : hyperframesFinalCompositeIsProblem
+                      ? "border-amber-200 bg-amber-50 text-amber-900"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                )}
+                aria-live="polite"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-medium">
+                    {hyperframesFinalCompositeIsActive ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : hyperframesFinalCompositeIsProblem ? (
+                      <X className="h-3.5 w-3.5" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                    <span className="truncate">{hyperframesFinalCompositeStatusText}</span>
+                  </div>
+                  {hyperframesFinalCompositeStatusDetail ? (
+                    <p className="mt-1 line-clamp-1 text-[11px] opacity-85">
+                      {hyperframesFinalCompositeStatusDetail}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {hyperframesFinalVideoUrl ? (
+                    <>
+                      <Button
+                        asChild
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 bg-white/90"
+                      >
+                        <a href={hyperframesFinalVideoUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                          {locale === "th" ? "เปิดวิดีโอ" : "Open video"}
+                        </a>
+                      </Button>
+                      <Button
+                        asChild
+                        type="button"
+                        size="sm"
+                        className="h-8"
+                      >
+                        <a href={hyperframesFinalVideoUrl} download>
+                          <Download className="mr-2 h-3.5 w-3.5" />
+                          {locale === "th" ? "ดาวน์โหลด MP4" : "Download MP4"}
+                        </a>
+                      </Button>
+                    </>
+                  ) : null}
+                  {hyperframesFinalRenderProjection?.renderJobId ? (
+                    <span className="rounded-full bg-white/80 px-2 py-0.5 font-mono text-[10px]">
+                      Job {hyperframesFinalRenderProjection.renderJobId}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {hyperframesFinalCompositeDisabledReason ? (
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {hyperframesFinalCompositeDisabledReason}
+              </p>
+            ) : null}
+            {isHyperframesFinalPanelExpanded ? (
+              <div className="mt-3 max-h-[calc(100dvh-14rem)] overflow-y-auto pr-1">
+            <div className="grid gap-3 lg:grid-cols-6">
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Overlay preset" : "Overlay preset"}
+                <select
+                  value={hyperframesFinalOverlayPreset}
+                  onChange={event => {
+                    setHyperframesFinalOverlayPreset(event.target.value as HyperframesFinalOverlayPreset);
+                    setHyperframesFinalShotTextById({});
+                  }}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  {HYPERFRAMES_FINAL_OVERLAY_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {locale === "th" ? preset.labelTh : preset.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "ฟอนต์ไทย" : "Thai font"}
+                <select
+                  value={hyperframesFinalFont}
+                  onChange={event => setHyperframesFinalFont(event.target.value as HyperframesFinalCompositeConfig["fontFamily"])}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  {hyperframesThaiFontFamilies.map(font => (
+                    <option key={font} value={font}>{font}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Text layer" : "Text layer"}
+                <select
+                  value={hyperframesFinalTextMode}
+                  onChange={event => setHyperframesFinalTextMode(event.target.value as HyperframesFinalCompositeConfig["textMode"])}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  <option value="hook_and_per_shot">{locale === "th" ? "Hook + ทุก shot" : "Hook + per shot"}</option>
+                  <option value="hook_only">{locale === "th" ? "เฉพาะ Hook" : "Hook only"}</option>
+                  <option value="per_shot">{locale === "th" ? "เฉพาะแต่ละ shot" : "Per shot only"}</option>
+                  <option value="none">{locale === "th" ? "ไม่ใส่ข้อความ" : "No text"}</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+                <input
+                  type="checkbox"
+                  checked={hyperframesFinalBurnInSubtitles}
+                  onChange={event => setHyperframesFinalBurnInSubtitles(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                {locale === "th" ? "Burn-in Subtitle" : "Burn-in subtitles"}
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Subtitle preset" : "Subtitle preset"}
+                <select
+                  value={hyperframesFinalSubtitlePreset}
+                  onChange={event => setHyperframesFinalSubtitlePreset(event.target.value as HyperframesFinalSubtitlePreset)}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  {HYPERFRAMES_FINAL_SUBTITLE_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {locale === "th" ? preset.labelTh : preset.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Audio pack" : "Audio pack"}
+                <select
+                  value={hyperframesFinalAudioPackPresetId}
+                  onChange={event => setHyperframesFinalAudioPackPresetId(event.target.value)}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  <option value="">{locale === "th" ? "ไม่ใช้แพ็กเสียง" : "No audio pack"}</option>
+                  {HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {getCreativePresetLabel(preset, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Music bed" : "Music bed"}
+                <select
+                  value={hyperframesFinalMusicPresetId}
+                  onChange={event => setHyperframesFinalMusicPresetId(event.target.value)}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  <option value="">{locale === "th" ? "ไม่ใส่เพลง" : "No music bed"}</option>
+                  {HYPERFRAMES_FINAL_MUSIC_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {getCreativePresetLabel(preset, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700 lg:col-span-2">
+                {locale === "th" ? "SFX triggers" : "SFX triggers"}
+                <select
+                  multiple
+                  value={hyperframesFinalSfxPresetIds}
+                  onChange={event => {
+                    const selected = Array.from(event.currentTarget.selectedOptions)
+                      .map(option => option.value)
+                      .filter(Boolean)
+                      .slice(0, 8);
+                    setHyperframesFinalSfxPresetIds(selected);
+                  }}
+                  className="min-h-[5.5rem] rounded-md border bg-white px-2 py-1 text-sm"
+                >
+                  {HYPERFRAMES_FINAL_SFX_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {getCreativePresetLabel(preset, locale)}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] font-normal text-slate-500">
+                  {locale === "th" ? "กด Ctrl/⌘ เพื่อเลือกหลายเสียง" : "Use Ctrl/⌘ to select multiple effects."}
+                </span>
+              </label>
+              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+                <input
+                  type="checkbox"
+                  checked={hyperframesFinalPreserveNativeAudio}
+                  onChange={event => setHyperframesFinalPreserveNativeAudio(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                {locale === "th" ? "เก็บเสียงเดิมของคลิป" : "Preserve native audio"}
+              </label>
+              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+                <input
+                  type="checkbox"
+                  checked={hyperframesFinalSyntheticAudioFallback}
+                  onChange={event => setHyperframesFinalSyntheticAudioFallback(event.target.checked)}
+                  className="h-4 w-4"
+                />
+                {locale === "th" ? "ใช้เสียง fallback ถ้ายังไม่มี asset" : "Synthetic fallback"}
+              </label>
+              <div className="rounded-md border bg-slate-50 px-3 py-2 text-xs text-slate-600 lg:mt-5">
+                CSS/GSAP timeline, 9:16, MP4 1080x1920
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Hook text" : "Hook text"}
+                <Input
+                  value={hyperframesFinalHookText}
+                  onChange={event => setHyperframesFinalHookText(event.target.value)}
+                  placeholder={locale === "th" ? "เช่น จอใหญ่ ลื่นแรง แบตอึด" : "Large, smooth, long battery"}
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Supporting text" : "Supporting text"}
+                <Input
+                  value={hyperframesFinalSupportingText}
+                  onChange={event => setHyperframesFinalSupportingText(event.target.value)}
+                  placeholder={locale === "th" ? "ชื่อสินค้า / ราคา / โปรโมชัน" : "Product / price / promotion"}
+                />
+              </label>
+            </div>
+            <div className="mt-3 rounded-lg border bg-slate-50 p-3 text-xs text-slate-700">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-semibold text-slate-900">
+                  <Music2 className="h-4 w-4 text-sky-600" />
+                  {locale === "th" ? "Audio event map preview" : "Audio event map preview"}
+                </div>
+                <Badge variant="outline" className="rounded-full">
+                  {hyperframesFinalPreserveNativeAudio
+                    ? locale === "th" ? "เก็บเสียงเดิม" : "native audio"
+                    : locale === "th" ? "ปิดเสียงเดิม" : "native muted"}
+                </Badge>
+              </div>
+              {(() => {
+                const previewShots = hyperframesFinalSourceClips.map((clip, index) => {
+                  const startSec = hyperframesFinalSourceClips
+                    .slice(0, index)
+                    .reduce(
+                      (sum, item) => sum + Math.max(1, item.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+                      0
+                    );
+                  return {
+                    id: clip.id,
+                    index,
+                    title: `Shot ${index + 1}`,
+                    sourceVideoUrl: clip.url,
+                    sourceVideoRef: clip.url,
+                    startSec: Math.round(startSec * 10) / 10,
+                    durationSec: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+                    onScreenText: [],
+                    subtitleCues: [],
+                    animationPreset: "smooth_reveal" as const,
+                    transition: "fade" as const,
+                  };
+                });
+                const events = buildHyperframesFinalAudioEvents({
+                  finalVideoLengthSec: hyperframesFinalDurationSeconds,
+                  shots: previewShots,
+                  musicPresetId: hyperframesFinalMusicPresetId || undefined,
+                  sfxPresetIds: hyperframesFinalSfxPresetIds,
+                }).slice(0, 12);
+                if (events.length === 0) {
+                  return (
+                    <p className="text-slate-500">
+                      {locale === "th" ? "ยังไม่มี music/SFX event เลือก Music bed หรือ SFX เพื่อดู timeline" : "No music/SFX events yet. Select a music bed or SFX to preview the timeline."}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                    {events.map(event => (
+                      <div key={event.id} className="rounded-md border bg-white px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-semibold text-slate-900">{event.role}</span>
+                          <span className="rounded-full bg-sky-50 px-2 py-0.5 font-mono text-[10px] text-sky-700">
+                            {event.startSec.toFixed(1)}s
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-slate-500">{event.presetId}</p>
+                        <p className="mt-1 text-[11px] text-slate-600">
+                          {event.visualTrigger} · vol {Math.round(event.volume * 100)}%
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <p className="mt-2 text-[11px] text-slate-500">
+                {locale === "th"
+                  ? "ถ้ายังไม่มี licensed staged asset ระบบจะบันทึก missing asset refs และใช้ fallback ตาม policy ที่เลือก"
+                  : "When licensed staged assets are not available, missing refs are recorded and the selected fallback policy is used."}
+              </p>
+            </div>
+            <div className="mt-3 rounded-lg border bg-slate-950 p-3 text-white">
+              <style>{`
+                @keyframes hfPreviewRise { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                @keyframes hfPreviewPop { 0% { opacity: 0; transform: scale(.72) rotate(-2deg); } 70% { opacity: 1; transform: scale(1.08) rotate(0deg); } 100% { opacity: 1; transform: scale(1); } }
+                @keyframes hfPreviewSlide { from { opacity: 0; transform: translateX(44px); } to { opacity: 1; transform: translateX(0); } }
+                @keyframes hfPreviewGlow { 0%, 100% { box-shadow: 0 0 0 rgba(34,211,238,0); } 50% { box-shadow: 0 0 34px rgba(34,211,238,.42); } }
+                @keyframes hfPreviewPrice { 0% { opacity: 0; transform: translateY(24px) scale(.82); } 60% { opacity: 1; transform: translateY(-4px) scale(1.14); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+                .hf-preview-stage { min-height: 230px; position: relative; overflow: hidden; }
+                .hf-preview-stage::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 18% 18%, rgba(255,255,255,.55), transparent 28%), linear-gradient(135deg, rgba(255,255,255,.85), rgba(226,232,240,.82)); pointer-events: none; }
+                .hf-preview-stage[data-preset="auto"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.26), transparent 30%), radial-gradient(circle at 82% 18%, rgba(250,204,21,.3), transparent 26%), linear-gradient(135deg, #f8fafc, #dbeafe 52%, #fff7ed); }
+                .hf-preview-stage[data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 22%, rgba(255,255,255,.72), transparent 32%), linear-gradient(145deg, #fef3c7, #f8fafc 45%, #e2e8f0); }
+                .hf-preview-stage[data-preset="hook_sequence"]::before { background: linear-gradient(135deg, #eff6ff 0 58%, #0f172a 59% 100%); }
+                .hf-preview-stage[data-preset="kinetic_bold_hook"]::before { background: radial-gradient(circle at 72% 22%, rgba(250,204,21,.34), transparent 30%), linear-gradient(135deg, #111827, #020617 55%, #facc15 56% 100%); }
+                .hf-preview-stage[data-preset="neon_gaming_specs"]::before { background: radial-gradient(circle at 70% 20%, rgba(34,211,238,.28), transparent 30%), linear-gradient(135deg, #020617, #172554 45%, #111827); }
+                .hf-preview-stage[data-preset="hero_price_billboard"]::before,
+                .hf-preview-stage[data-preset="price_impact"]::before { background: linear-gradient(160deg, #f8fafc 0 48%, #111827 49% 100%); }
+                .hf-preview-stage[data-preset="lower_third_review"]::before { background: linear-gradient(180deg, rgba(15,23,42,.1), rgba(15,23,42,.55)), linear-gradient(135deg, #e0f2fe, #f8fafc); }
+                .hf-preview-badge { animation: hfPreviewPop .55s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-preview-title { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .12s both; }
+                .hf-preview-hook { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .34s both; }
+                .hf-preview-chip { animation: hfPreviewSlide .48s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-preview-chip:nth-child(1) { animation-delay: .58s; }
+                .hf-preview-chip:nth-child(2) { animation-delay: .76s; }
+                .hf-preview-chip:nth-child(3) { animation-delay: .94s; }
+                .hf-preview-chip:nth-child(4) { animation-delay: 1.12s; }
+                .hf-preview-stage[data-preset="hero_price_billboard"] .hf-preview-price,
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-price { animation: hfPreviewPrice .72s cubic-bezier(.2,.9,.2,1) .42s both; }
+                .hf-preview-stage[data-preset="neon_gaming_specs"] .hf-preview-chip { animation-name: hfPreviewPop, hfPreviewGlow; animation-duration: .48s, 1.4s; animation-iteration-count: 1, infinite; }
+                .hf-preview-stage[data-preset="auto"] .hf-preview-title { max-width: 72%; border-radius: 18px; background: rgba(255,255,255,.82); padding: 10px 12px; color: #0f172a; }
+                .hf-preview-stage[data-preset="auto"] .hf-preview-hook { display: inline-block; border-radius: 999px; background: #0ea5e9; padding: 8px 12px; color: white; }
+                .hf-preview-stage[data-preset="auto"] .hf-preview-chip { border: 1px solid rgba(14,165,233,.3); background: rgba(255,255,255,.9); color: #0f172a; }
+                .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-badge { transform-origin: left center; }
+                .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-title { margin-inline: auto; max-width: 86%; text-align: center; font-size: 34px; color: #111827; }
+                .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-hook { margin-inline: auto; width: fit-content; border-radius: 999px; background: rgba(255,255,255,.82); padding: 8px 16px; color: #334155; }
+                .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-chip { margin-inline: auto; width: fit-content; background: rgba(15,23,42,.82); color: white; }
+                .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-title { max-width: 68%; color: #0f172a; }
+                .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-hook { display: inline-block; border-radius: 12px; background: #0f172a; padding: 8px 12px; color: white; }
+                .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-chip { width: fit-content; background: #2563eb; color: white; }
+                .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-badge { background: #facc15; color: #020617; transform: rotate(-4deg); }
+                .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-title { max-width: 96%; font-size: 40px; color: white; text-shadow: 0 4px 0 rgba(0,0,0,.55); }
+                .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-hook { display: inline-block; transform: rotate(-2deg); border-radius: 10px; background: #facc15; padding: 8px 12px; color: #020617; }
+                .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-chip { border-radius: 10px; background: white; color: #020617; transform: rotate(-1deg); }
+                .hf-sub-preview { min-height: 198px; position: relative; overflow: hidden; }
+                .hf-sub-line { animation: hfPreviewRise .52s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-sub-preview[data-subtitle-preset="classic_box"] .hf-sub-line { border-radius: 10px; background: rgba(0,0,0,.76); padding: 10px 14px; color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="minimal_shadow"] .hf-sub-line { background: transparent; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9); }
+                .hf-sub-preview[data-subtitle-preset="creator_pop"] .hf-sub-line { border-radius: 999px; background: #fff; padding: 10px 16px; color: #020617; box-shadow: 0 10px 24px rgba(0,0,0,.28); animation-name: hfPreviewPop; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word { display: inline-block; margin: 0 2px 4px; border-radius: 8px; padding: 2px 6px; animation: hfPreviewPop .42s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(odd) { background: #facc15; color: #020617; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(even) { color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="highlight_bar"] .hf-sub-line { background: linear-gradient(transparent 52%, rgba(250,204,21,.82) 52%); color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.9); }
+                .hf-sub-preview[data-subtitle-preset="lower_third"] .hf-sub-line { width: 100%; border-left: 5px solid #38bdf8; background: rgba(15,23,42,.82); padding: 12px 16px; text-align: left; color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="cinematic_wide"] .hf-sub-line { width: 100%; background: rgba(0,0,0,.58); padding: 12px 20px; color: #f8fafc; }
+                .hf-sub-preview[data-subtitle-preset="neon_glow"] .hf-sub-line { border: 1px solid rgba(34,211,238,.55); border-radius: 12px; background: rgba(2,6,23,.72); padding: 10px 14px; color: #cffafe; box-shadow: 0 0 28px rgba(34,211,238,.32); }
+                .hf-sub-preview[data-subtitle-preset="review_bubble"] .hf-sub-line { border-radius: 18px 18px 18px 4px; background: #fff; padding: 12px 16px; color: #0f172a; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
+                .hf-sub-preview[data-subtitle-preset="no_subtitle_style"] .hf-sub-line { display: none; }
+              `}</style>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold">
+                    {locale === "th" ? "Preview ข้อความก่อน Render" : "Text preview before render"}
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    {locale === "th" ? "ใช้ข้อความชุดเดียวกับที่จะส่งเข้า renderer จริง" : "Uses the same copy that will be sent to the renderer."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => setHyperframesFinalShotTextById({})}
+                >
+                  {locale === "th" ? "เติมจาก preset อีกครั้ง" : "Refill from preset"}
+                </Button>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+                {(() => {
+                  const previewPreset = hyperframesFinalOverlayPreset;
+                  const presetMeta = getHyperframesOverlayPresetMeta(hyperframesFinalOverlayPreset);
+                  const previewLines = uniqueHyperframesOverlayLines([
+                    hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                    hyperframesFinalHookText,
+                    ...(hyperframesFinalSourceClips[0]
+                      ? (hyperframesFinalShotTextById[hyperframesFinalSourceClips[0].id] ?? defaultHyperframesShotText(hyperframesFinalSourceClips[0], 0)).split(/\n+/)
+                      : []),
+                  ]).slice(0, 4);
+                  const title = previewLines[0] || (locale === "th" ? "ข้อความ Hook" : "Hook text");
+                  const hook = previewLines[1] || (locale === "th" ? "จุดขายหลักของสินค้า" : "Main selling point");
+                  const chips = previewLines.slice(2);
+                  const priceText = chips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? hook;
+                  return (
+                    <div
+                      className={cn(
+                        "hf-preview-stage rounded-md p-4 text-slate-950",
+                        previewPreset === "neon_gaming_specs" || previewPreset === "kinetic_bold_hook" ? "text-white" : "",
+                      )}
+                      data-preset={previewPreset}
+                    >
+                      <div className="relative z-10 flex h-full min-h-[198px] flex-col justify-between">
+                        <div>
+                          <div className={cn(
+                            "hf-preview-badge inline-block rounded-sm px-2 py-1 text-[11px] font-black uppercase",
+                            presetMeta.kind === "price" ? "bg-yellow-300 text-slate-950" : "bg-cyan-300 text-slate-950",
+                          )}>
+                            {locale === "th" ? presetMeta.labelTh : presetMeta.labelEn}
+                          </div>
+                          <div className={cn(
+                            "hf-preview-title mt-3 max-w-[92%] font-black leading-tight",
+                            presetMeta.kind === "price" ? "text-2xl" : "text-3xl",
+                            previewPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
+                          )}>
+                            {title}
+                          </div>
+                          {presetMeta.kind === "price" ? (
+                            <div className="hf-preview-price mt-2 text-5xl font-black leading-none text-yellow-400 drop-shadow">
+                              {priceText}
+                            </div>
+                          ) : (
+                            <div className={cn(
+                              "hf-preview-hook mt-1 text-xl font-extrabold",
+                              previewPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
+                            )}>
+                              {hook}
+                            </div>
+                          )}
+                        </div>
+                        {presetMeta.kind !== "clean" ? (
+                          <div className={cn(
+                            "mt-4 grid gap-2",
+                            presetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
+                            presetMeta.kind === "cards" ? "grid-cols-2" : "",
+                          )}>
+                            {(chips.length > 0 ? chips : [hook, title]).slice(0, 4).map((line, index) => (
+                              <div
+                                key={`${line}-${index}`}
+                                className={cn(
+                                  "hf-preview-chip rounded-full px-3 py-2 text-sm font-black shadow-sm",
+                                  previewPreset === "neon_gaming_specs"
+                                    ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                                    : presetMeta.kind === "price"
+                                      ? "bg-white text-slate-950"
+                                      : "bg-white/85 text-slate-950",
+                                )}
+                              >
+                                {line}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div
+                  className="hf-sub-preview flex items-end rounded-md bg-black p-4"
+                  data-subtitle-preset={hyperframesFinalSubtitlePreset}
+                >
+                  <p className="text-[11px] font-semibold text-slate-300">
+                    {locale === "th" ? "Subtitle / Voiceover shot แรก" : "First shot subtitle / voiceover"}
+                  </p>
+                  <div className="absolute inset-x-4 bottom-5 flex justify-center text-center text-sm font-bold leading-relaxed">
+                    {(() => {
+                      const subtitleText = hyperframesFinalSourceClips[0]
+                        ? hyperframesFinalSubtitleById[hyperframesFinalSourceClips[0].id] ?? defaultHyperframesSubtitleText(hyperframesFinalSourceClips[0])
+                        : locale === "th" ? "ยังไม่มี shot ที่พร้อม" : "No ready shot";
+                      const line = firstThaiProductLine(subtitleText, 74);
+                      if (hyperframesFinalSubtitlePreset === "karaoke_word") {
+                        return (
+                          <div className="hf-sub-line max-w-[92%]">
+                            {line.split(/\s+/).filter(Boolean).slice(0, 8).map((word, index) => (
+                              <span
+                                key={`${word}-${index}`}
+                                className="hf-sub-word"
+                                style={{ animationDelay: `${index * 0.11}s` }}
+                              >
+                                {word}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return <div className="hf-sub-line max-w-[92%]">{line}</div>;
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              {hyperframesFinalSourceClips.slice(0, 12).map((clip, index) => (
+                <div key={clip.id} className="rounded-lg border bg-slate-50 p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-slate-900">
+                        Shot {index + 1} · {Math.round(clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
+                      </p>
+                      <p className="truncate text-[11px] text-slate-500">{clip.url}</p>
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setVideoPreview({ url: clip.url, title: `Shot ${index + 1}` })}>
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                    {locale === "th" ? "Spec / Feature overlay" : "Spec / feature overlay"}
+                    <Textarea
+                      value={hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index)}
+                      onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [clip.id]: event.target.value }))}
+                      className="min-h-[64px] bg-white text-xs"
+                    />
+                  </label>
+                  <label className="mt-2 grid gap-1 text-[11px] font-medium text-slate-600">
+                    {locale === "th" ? "Subtitle / Voiceover" : "Subtitle / voiceover"}
+                    <span className="text-[10px] font-normal text-slate-500">
+                      {locale === "th"
+                        ? "หนึ่งบรรทัด = 1 subtitle cue ระบบแบ่งเวลาตาม shot ให้อัตโนมัติ หรือใส่ 0.0-2.0: ข้อความ เพื่อกำหนดเวลาเอง"
+                        : "One line = one subtitle cue. Timing is auto-split, or use 0.0-2.0: text for manual timing."}
+                    </span>
+                    <Textarea
+                      value={hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip)}
+                      onChange={event => setHyperframesFinalSubtitleById(current => ({ ...current, [clip.id]: event.target.value }))}
+                      className="min-h-[72px] bg-white text-xs"
+                      placeholder={locale === "th" ? "เช่น\n0.0-2.0: เปิดด้วยปัญหา\n2.0-5.0: เสนอสินค้า\nหรือพิมพ์ทีละบรรทัดให้ระบบแบ่งเวลาเอง" : "Example\n0.0-2.0: Hook line\n2.0-5.0: Product benefit\nOr type one line per cue for automatic timing"}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+            {hyperframesFinalSourceClips.length === 0 ? (
+              <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {locale === "th" ? "ยังไม่มี MP4 ที่ completed ใน Storyboard Review ให้ render final composite" : "No completed MP4 shots are available for final composite rendering."}
+              </p>
+            ) : null}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-600">
+                {locale === "th"
+                  ? "ย่อไว้เพื่อลดพื้นที่ กดตั้งค่าเพื่อแก้ Hook, ข้อความบนจอ, subtitle และฟอนต์ไทย"
+                  : "Collapsed to save space. Open settings to edit hook text, on-screen text, subtitles, and Thai font."}
+              </p>
+            )}
+          </div>
         </div>
       ) : null}
 
       <main
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2 xl:overflow-hidden",
+          "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2",
+          !isHyperframesFinalPanelExpanded ? "xl:overflow-hidden" : "",
           rightPanelTab === "history_gallery" && imageToolsSourceUrl && isImageToolsPanelOpen
-            ? "xl:grid-cols-[minmax(0,1fr)_50rem] 2xl:grid-cols-[minmax(0,1fr)_56rem]"
-            : "xl:grid-cols-[minmax(0,1fr)_26rem] 2xl:grid-cols-[minmax(0,1fr)_30rem]",
+            ? isProjectSidebarCollapsed
+              ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_50rem] 2xl:grid-cols-[3.25rem_minmax(0,1fr)_56rem]"
+              : "xl:grid-cols-[18rem_minmax(0,1fr)_50rem] 2xl:grid-cols-[20rem_minmax(0,1fr)_56rem]"
+            : isProjectSidebarCollapsed
+              ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_26rem] 2xl:grid-cols-[3.25rem_minmax(0,1fr)_30rem]"
+              : "xl:grid-cols-[18rem_minmax(0,1fr)_26rem] 2xl:grid-cols-[20rem_minmax(0,1fr)_30rem]",
         )}
       >
+        <aside
+          className={cn(
+            "flex min-h-[12rem] flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0",
+            isProjectSidebarCollapsed ? "min-h-0" : "",
+          )}
+        >
+          {isProjectSidebarCollapsed ? (
+            <div className="flex h-full min-h-[3rem] items-center justify-between gap-2 p-2 xl:min-h-0 xl:flex-col">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setIsProjectSidebarCollapsed(false)}
+                aria-label={locale === "th" ? "เปิด panel โปรเจกต์" : "Open project panel"}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <div className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600 xl:[writing-mode:vertical-rl]">
+                {t("mediaStudio.storyboardReviewProjects")}
+              </div>
+              <Badge variant="secondary" className="shrink-0 xl:[writing-mode:vertical-rl]">
+                {t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}
+              </Badge>
+            </div>
+          ) : (
+            <>
+              <div className="border-b p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-sm font-semibold text-slate-950">{t("mediaStudio.storyboardReviewProjects")}</h2>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {t("mediaStudio.storyboardReviewSavedReviews", { count: reviewProjectsData?.total ?? 0 })}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => setIsProjectSidebarCollapsed(true)}
+                    aria-label={locale === "th" ? "ยุบ panel โปรเจกต์" : "Collapse project panel"}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
+                </div>
+                <div className="relative mt-3">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={projectSearchQuery}
+                    onChange={(event) => setProjectSearchQuery(event.target.value)}
+                    placeholder={locale === "th" ? "ค้นหา project ด้วยชื่อ..." : "Search projects by name..."}
+                    className="h-9 bg-white pl-9"
+                  />
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain pr-1">
+                <div className="space-y-2 p-3 pr-2">
+                  {filteredReviewProjects.length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-slate-500">
+                      {projectSearchQuery.trim()
+                        ? (locale === "th" ? "ไม่พบ project ที่ตรงกับคำค้นหา" : "No projects match this search.")
+                        : t("mediaStudio.storyboardReviewProjectsEmpty")}
+                    </div>
+                  ) : (
+                    filteredReviewProjects.map((item: any) => {
+                      const thumbnailUrl = getStoryboardReviewProjectThumbnail(item);
+                      const showVideoThumbnail = thumbnailUrl ? isProbablyVideoUrl(thumbnailUrl) : false;
+                      const showImageThumbnail = thumbnailUrl ? isProbablyImageUrl(thumbnailUrl) || !showVideoThumbnail : false;
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "rounded-lg border p-3 transition-colors",
+                            item.id === selectedReviewId ? "border-cyan-300 bg-cyan-50" : "bg-white hover:bg-slate-50",
+                          )}
+                        >
+                          <div className="flex gap-3 xl:flex-col 2xl:flex-row">
+                            <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md border bg-slate-100 xl:h-24 xl:w-full 2xl:h-14 2xl:w-20">
+                              {showVideoThumbnail && thumbnailUrl ? (
+                                <video src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                              ) : showImageThumbnail && thumbnailUrl ? (
+                                <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-slate-400">
+                                  <Video className="h-5 w-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="line-clamp-2 text-sm font-semibold text-slate-950">{item.name}</div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {t("mediaStudio.storyboardReviewClipsReady", {
+                                  completed: item.completedClipCount ?? 0,
+                                  total: item.clipCount ?? 0,
+                                })}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {item.updatedAt ? new Date(item.updatedAt).toLocaleString(locale === "th" ? "th-TH" : "en-US") : "-"}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedLibraryItemId(null);
+                                setVideoPreview(null);
+                                setGalleryLightbox(null);
+                                setLocation(`/storyboard-review/${item.id}`);
+                              }}
+                            >
+                              {t("mediaStudio.storyboardReviewOpen")}
+                            </Button>
+                            {item.videoEditorProjectId ? (
+                              <Button size="sm" variant="outline" onClick={() => setLocation(`/video-editor?projectId=${item.videoEditorProjectId}`)}>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                {t("mediaStudio.storyboardReviewOpenEditor")}
+                              </Button>
+                            ) : null}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeleteTarget({ id: item.id, name: String(item.name ?? "") })}
+                              disabled={deleteReviewMutation.isPending}
+                              aria-label={locale === "th" ? "ลบโปรเจกต์" : "Delete project"}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </aside>
         <section className="min-h-[72dvh] overflow-hidden rounded-lg border bg-white sm:min-h-[calc(100dvh-6rem)] xl:h-full xl:min-h-0">
           {isLoading ? (
             <div className="flex h-full min-h-[24rem] items-center justify-center text-slate-500">
@@ -3706,8 +5542,12 @@ export default function StoryboardReviewPage() {
               onRemoveTask={removeStoryboardTask}
               onAutoCompound={autoCompound}
               onCreateProject={createProject}
+              onCreateHyperframesFinalComposite={createHyperframesFinalComposite}
               isCompounding={isCompounding}
               isCreatingProject={isCreatingProject}
+              isCreatingHyperframesFinalComposite={createHyperframesFinalCompositeMutation.isPending}
+              hyperframesFinalCompositeDisabledReason={hyperframesFinalCompositeDisabledReason}
+              hyperframesFinalCompositeStatus={hyperframesFinalCompositeStatusText}
               isCancellingGeneration={isCancellingGeneration}
               regeneratingTaskId={regeneratingTaskId}
               compoundStatus={activeDraft.compoundStatus}
@@ -3736,7 +5576,7 @@ export default function StoryboardReviewPage() {
         </section>
 
         <aside className="flex max-h-[calc(100dvh-1rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0 xl:max-h-none">
-          <div className="max-h-none shrink-0 space-y-3 overflow-y-visible border-b p-2.5 sm:p-3 xl:max-h-[68%] xl:overflow-y-auto xl:overscroll-contain">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-2.5 sm:p-3">
             <div className="rounded-xl border bg-slate-50/70 p-3">
               <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 className="text-sm font-semibold text-slate-950">{t("mediaStudio.storyboardReviewAddMedia")}</h2>
@@ -4066,23 +5906,76 @@ export default function StoryboardReviewPage() {
                         <History className="h-3.5 w-3.5" />
                         History Gallery
                       </h3>
-                      {isImageHistoryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" /> : null}
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex rounded-full border bg-white p-0.5 shadow-sm">
+                          <button
+                            type="button"
+                            className={cn(
+                              "h-7 rounded-full px-2.5 text-[11px] font-medium transition-colors",
+                              isHistoryGalleryProductFilterActive
+                                ? "bg-sky-600 text-white shadow-sm"
+                                : "text-slate-600 hover:bg-slate-100",
+                              !historyGalleryProductFilter ? "cursor-not-allowed opacity-50 hover:bg-transparent" : "",
+                            )}
+                            disabled={!historyGalleryProductFilter}
+                            onClick={() => setHistoryGalleryProductFilterEnabled(true)}
+                            aria-pressed={isHistoryGalleryProductFilterActive}
+                          >
+                            {locale === "th" ? "สินค้าเดียวกัน" : "Same product"}
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              "h-7 rounded-full px-2.5 text-[11px] font-medium transition-colors",
+                              !isHistoryGalleryProductFilterActive
+                                ? "bg-slate-800 text-white shadow-sm"
+                                : "text-slate-600 hover:bg-slate-100",
+                            )}
+                            onClick={() => setHistoryGalleryProductFilterEnabled(false)}
+                            aria-pressed={!isHistoryGalleryProductFilterActive}
+                          >
+                            {locale === "th" ? "ทั้งหมด" : "All"}
+                          </button>
+                        </div>
+                        {isImageHistoryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" /> : null}
+                      </div>
                     </div>
-                    {imageHistoryTasks.length === 0 && !isImageHistoryLoading ? (
+                    <div className="mb-2 flex items-center justify-between gap-2 rounded-md bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
+                      <span className="min-w-0 truncate">
+                        {!historyGalleryProductFilter
+                          ? (locale === "th" ? "ยังไม่พบข้อมูลสินค้าใน review นี้" : "No product context found for this review")
+                          : isHistoryGalleryProductFilterActive
+                            ? (locale === "th" ? "Filter เปิด: กรองเฉพาะสินค้านี้" : "Filter on: showing this product")
+                            : (locale === "th" ? "Filter ปิด: แสดงทั้งหมด" : "Filter off: showing all")}
+                        {historyGalleryProductFilterLabel ? ` · ${historyGalleryProductFilterLabel}` : ""}
+                      </span>
+                      </div>
+                    {visibleImageHistoryTasks.length === 0 && !isImageHistoryLoading ? (
                       <div className="rounded-md border border-dashed p-3 text-xs text-slate-500">
-                        {locale === "th" ? "ยังไม่มีรูปใน History Gallery" : "No image history yet."}
+                        {isHistoryGalleryProductFilterActive
+                          ? (locale === "th" ? "ยังไม่มีรูป History Gallery ที่ตรงกับสินค้านี้" : "No history images matched this product.")
+                          : (locale === "th" ? "ยังไม่มีรูปใน History Gallery" : "No image history yet.")}
+                        {isHistoryGalleryProductFilterActive ? (
+                          <button
+                            type="button"
+                            className="mt-2 block text-sky-700 hover:underline"
+                            onClick={() => setHistoryGalleryProductFilterEnabled(false)}
+                          >
+                            {locale === "th" ? "แสดงทั้งหมดแทน" : "Show all instead"}
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       <div className={cn(
-                        "grid max-h-[28rem] grid-cols-2 gap-2 overflow-y-auto overscroll-contain pr-1",
-                        imageToolsSourceUrl && isImageToolsPanelOpen ? "xl:max-h-[calc(100dvh-14rem)]" : "",
+                        "grid max-h-[28rem] auto-rows-max grid-cols-2 items-start gap-2 overflow-y-auto overscroll-contain pr-1 xl:h-[calc(100dvh-16rem)] xl:max-h-none",
+                        imageToolsSourceUrl && isImageToolsPanelOpen ? "xl:h-[calc(100dvh-14rem)]" : "",
                       )}>
-                        {imageHistoryTasks.map(({ task, url, title }) => {
+                        {visibleImageHistoryTasks.map(({ task, url, title }) => {
                           const cardKey = String(task.id ?? task.taskId ?? url);
                           return (
                             <div
                               key={cardKey}
-                              className="overflow-hidden rounded-lg border bg-white shadow-sm"
+                              className="self-start overflow-hidden rounded-lg border bg-white shadow-sm"
                               draggable
                               onDragStart={(event) => startStoryboardImageDrag(event, {
                                 url,
@@ -4094,6 +5987,7 @@ export default function StoryboardReviewPage() {
                               <button
                                 type="button"
                                 className="group relative block aspect-square w-full overflow-hidden bg-slate-100"
+                                style={{ aspectRatio: "1 / 1" }}
                                 onClick={() => setGalleryLightbox({ url, title })}
                               >
                                 <img src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} />
@@ -4408,96 +6302,6 @@ export default function StoryboardReviewPage() {
             </div>
           </div>
 
-          <div className="border-b p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-950">{t("mediaStudio.storyboardReviewProjects")}</h2>
-                <p className="mt-1 text-xs text-slate-500">
-                  {t("mediaStudio.storyboardReviewSavedReviews", { count: reviewProjectsData?.total ?? 0 })}
-                </p>
-              </div>
-              <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
-            </div>
-            <div className="relative mt-3">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={projectSearchQuery}
-                onChange={(event) => setProjectSearchQuery(event.target.value)}
-                placeholder={locale === "th" ? "ค้นหา project ด้วยชื่อ..." : "Search projects by name..."}
-                className="h-9 bg-white pl-9"
-              />
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain pr-1">
-            <div className="space-y-2 p-3 pr-2">
-              {filteredReviewProjects.length === 0 ? (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-slate-500">
-                  {projectSearchQuery.trim()
-                    ? (locale === "th" ? "ไม่พบ project ที่ตรงกับคำค้นหา" : "No projects match this search.")
-                    : t("mediaStudio.storyboardReviewProjectsEmpty")}
-                </div>
-              ) : (
-                filteredReviewProjects.map((item: any) => {
-                  const thumbnailUrl = getStoryboardReviewProjectThumbnail(item);
-                  const showVideoThumbnail = thumbnailUrl ? isProbablyVideoUrl(thumbnailUrl) : false;
-                  const showImageThumbnail = thumbnailUrl ? isProbablyImageUrl(thumbnailUrl) || !showVideoThumbnail : false;
-                  return (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "rounded-lg border p-3 transition-colors",
-                        item.id === selectedReviewId ? "border-cyan-300 bg-cyan-50" : "bg-white hover:bg-slate-50",
-                      )}
-                    >
-                      <div className="flex gap-3">
-                        <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md border bg-slate-100">
-                          {showVideoThumbnail && thumbnailUrl ? (
-                            <video src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                          ) : showImageThumbnail && thumbnailUrl ? (
-                            <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-slate-400">
-                              <Video className="h-5 w-5" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-slate-950">{item.name}</div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            {t("mediaStudio.storyboardReviewClipsReady", {
-                              completed: item.completedClipCount ?? 0,
-                              total: item.clipCount ?? 0,
-                            })}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500">
-                            {item.updatedAt ? new Date(item.updatedAt).toLocaleString(locale === "th" ? "th-TH" : "en-US") : "-"}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button size="sm" onClick={() => setLocation(`/storyboard-review/${item.id}`)}>{t("mediaStudio.storyboardReviewOpen")}</Button>
-                        {item.videoEditorProjectId ? (
-                          <Button size="sm" variant="outline" onClick={() => setLocation(`/video-editor?projectId=${item.videoEditorProjectId}`)}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            {t("mediaStudio.storyboardReviewOpenEditor")}
-                          </Button>
-                        ) : null}
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => setDeleteTarget({ id: item.id, name: String(item.name ?? "") })}
-                          disabled={deleteReviewMutation.isPending}
-                          aria-label={locale === "th" ? "ลบโปรเจกต์" : "Delete project"}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
         </aside>
       </main>
 

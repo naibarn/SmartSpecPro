@@ -10848,6 +10848,8 @@ export default function MediaStudio() {
   const [productionProjectSearch, setProductionProjectSearch] = useState("");
   const [productionProjectPickerOpen, setProductionProjectPickerOpen] =
     useState(true);
+  const [productionProjectPickerExpanded, setProductionProjectPickerExpanded] =
+    useState(false);
   const [locallyDeletedProductionRunIds, setLocallyDeletedProductionRunIds] =
     useState<Set<string>>(() => new Set());
   const [productionSpaceDraft, setProductionSpaceDraft] =
@@ -25246,6 +25248,9 @@ export default function MediaStudio() {
     (run: any) =>
       !locallyDeletedProductionRunIds.has(String(run?.productionRunId ?? ""))
   );
+  const productionRunsVisible = productionProjectPickerExpanded
+    ? productionRuns
+    : productionRuns.slice(0, 6);
   const activeProductionProjectTitle =
     productionDirector.title ||
     productionDirector.goalSummary ||
@@ -35146,7 +35151,10 @@ export default function MediaStudio() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setProductionProjectPickerOpen(false)}
+                  onClick={() => {
+                    setProductionProjectPickerOpen(false);
+                    setProductionProjectPickerExpanded(false);
+                  }}
                 >
                   <X className="mr-2 h-4 w-4" />
                   {isThaiLocale ? "ปิด" : "Close"}
@@ -35170,7 +35178,7 @@ export default function MediaStudio() {
                       : "No existing projects found."}
                   </div>
                 )}
-              {productionRuns.map((run: any) => {
+              {productionRunsVisible.map((run: any) => {
                 const thumbnailUrl =
                   typeof run.thumbnailUrl === "string" &&
                   isUsableMediaUrl(run.thumbnailUrl)
@@ -35240,6 +35248,19 @@ export default function MediaStudio() {
                   </div>
                 );
               })}
+              {!productionProjectPickerExpanded && productionRuns.length > 6 ? (
+                <div className="md:col-span-2 xl:col-span-3 flex justify-center pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-sky-800 hover:bg-sky-50 hover:text-sky-900"
+                    onClick={() => setProductionProjectPickerExpanded(true)}
+                  >
+                    {isThaiLocale ? "เพิ่มเติม" : "More"}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

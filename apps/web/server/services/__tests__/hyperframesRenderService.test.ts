@@ -14,7 +14,10 @@ vi.mock("../marketplaceProductService", () => ({
 }));
 
 import { HyperframesArtifactRefSchema } from "@shared/hyperframes/contracts";
-import { buildHyperframesCompositionInput } from "../hyperframesCompositionService";
+import {
+  buildHyperframesCompositionInput,
+  buildHyperframesFinalCompositeCompositionInput,
+} from "../hyperframesCompositionService";
 import {
   buildHyperframesRenderJobPayload,
   buildHyperframesRenderProjection,
@@ -90,6 +93,56 @@ describe("hyperframesRenderService", () => {
     });
     expect(payload.compositionHtmlHash).toMatch(/^hf_/);
     expect(payload.runtimeProfileHash).toMatch(/^hf_/);
+  });
+
+  it("projects final composite creative and audio metadata into outbox payload", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        overlayPreset: "spec_highlight",
+        subtitlePreset: "classic_box",
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+        sfxPresetIds: ["hf_audio_sfx_whoosh_scene_transition_v1"],
+        audioEvents: [
+          {
+            id: "music_bed_main",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.18,
+            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          },
+        ],
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+          },
+        ],
+      },
+    });
+    const payload = buildHyperframesRenderJobPayload({ composition });
+
+    expect(payload.creativePlanHash).toMatch(/^hf_/);
+    expect(payload.presetManifestHash).toMatch(/^hf_/);
+    expect(payload.audioEventMapHash).toMatch(/^hf_/);
+    expect(payload.overlayPresetId).toBe("spec_highlight");
+    expect(payload.subtitlePresetId).toBe("classic_box");
+    expect(payload.musicPresetId).toBe("hf_audio_music_upbeat_ecommerce_social_v1");
+    expect(payload.sfxPresetIds).toEqual(["hf_audio_sfx_whoosh_scene_transition_v1"]);
+    expect(payload.rendererPolicyVersion).toBe(
+      "ffmpeg_ass_final_composite_overlay_wrap_v2"
+    );
   });
 
   it("always returns explicit repairActions arrays", () => {
@@ -368,6 +421,7 @@ describe("hyperframesRenderService", () => {
         traceId: "trace_1",
         correlationId: "corr_1",
         qaStatus: "passed",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
       },
       artifactRefs: [artifact],
       outputRefs: [
@@ -390,6 +444,143 @@ describe("hyperframesRenderService", () => {
     expect(projection.qaStatus).toBe("passed");
     expect(projection.compositionHtmlHash).toBe("hf_html");
     expect(projection.runtimeProfileHash).toBe("hf_runtime");
+  });
+
+  it("exposes completed final video output links only from sanitized projection refs", () => {
+    const projection = buildHyperframesRenderProjection({
+      tenantId: "tenant_1",
+      productId: "product_1",
+      runId: "mar_1",
+      renderJobId: "hf_render_final",
+      status: "completed",
+      payload: {
+        productId: "product_1",
+        compositionInputHash: "hf_input",
+        compositionHtmlHash: "hf_html",
+        templateId: "marketplace_storyboard_motion_9x9_v1",
+        templateVersion: "1.0.0",
+        templateContentHash: "hf_template",
+        platformPresetId: "generic_vertical_9_16",
+        platformPresetVersion: "1.0.0",
+        renderIntent: "final",
+        compositionMode: "captioned_final_composite",
+        runtimeProfileHash: "hf_runtime",
+        launchMode: "auto_storyboard_review",
+        traceId: "trace_final",
+        correlationId: "corr_final",
+        qaStatus: "passed",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
+      },
+      outputRefs: [
+        {
+          outputId: "hf_render_final_output",
+          kind: "final_video",
+          url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_final/output.mp4",
+          storageRef:
+            "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_final/output.mp4",
+          contentHash: "hf_final_content",
+          accessibleLabel: "HyperFrames rendered output",
+        },
+      ],
+      updatedAt: "2026-06-04T00:00:00.000Z",
+    });
+    const publicProjection = redactHyperframesRenderProjectionForUser(projection);
+
+    expect(publicProjection).toMatchObject({
+      renderJobId: "hf_render_final",
+      updatedAt: "2026-06-04T00:00:00.000Z",
+      progressPercent: 100,
+      status: "completed",
+    });
+    expect(publicProjection.outputRefs[0]).toMatchObject({
+      kind: "final_video",
+      url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_final/output.mp4",
+      storageRef: null,
+      contentHash: "hf_final_content",
+    });
+  });
+
+  it("downgrades completed final projection when playable probe is missing", () => {
+    const projection = buildHyperframesRenderProjection({
+      tenantId: "tenant_1",
+      productId: "product_1",
+      runId: "mar_1",
+      renderJobId: "hf_render_missing_probe",
+      status: "completed",
+      payload: {
+        productId: "product_1",
+        compositionInputHash: "hf_input",
+        compositionHtmlHash: "hf_html",
+        templateId: "marketplace_storyboard_motion_9x9_v1",
+        templateVersion: "1.0.0",
+        templateContentHash: "hf_template",
+        platformPresetId: "generic_vertical_9_16",
+        platformPresetVersion: "1.0.0",
+        renderIntent: "final",
+        compositionMode: "captioned_final_composite",
+        runtimeProfileHash: "hf_runtime",
+        launchMode: "auto_storyboard_review",
+        traceId: "trace_final",
+        correlationId: "corr_final",
+        qaStatus: "passed",
+      },
+      outputRefs: [
+        {
+          outputId: "hf_render_missing_probe_output",
+          kind: "final_video",
+          url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_missing_probe/output.mp4",
+          contentHash: "hf_final_content",
+          accessibleLabel: "HyperFrames rendered output",
+        },
+      ],
+    });
+
+    expect(projection.status).toBe("failed_permanent");
+    expect(projection.progressPercent).toBe(100);
+    expect(projection.safeDiagnostics[0]).toContain("verified playable final video");
+  });
+
+  it("does not report completed final renders without playable probe and final video output", async () => {
+    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "1";
+    mockGetDb.mockResolvedValue(
+      createOutboxSelectDb({
+        id: "hf_final_missing_output",
+        tenantId: "tenant_1",
+        userId: 1,
+        runId: "mar_1",
+        status: "completed",
+        attempts: 1,
+        lockedBy: null,
+        lastError: null,
+        jobType: "hyperframes_render",
+        payloadJson: {
+          productId: "product_1",
+          compositionInputHash: "hf_input",
+          compositionHtmlHash: "hf_html",
+          templateId: "marketplace_storyboard_motion_9x9_v1",
+          templateVersion: "1.0.0",
+          templateContentHash: "hf_template",
+          platformPresetId: "generic_vertical_9_16",
+          platformPresetVersion: "1.0.0",
+          renderIntent: "final",
+          compositionMode: "captioned_final_composite",
+          runtimeProfileHash: "hf_runtime",
+        },
+        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
+      })
+    );
+
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "hf_final_missing_output",
+      productId: "product_1",
+      runId: "mar_1",
+    });
+
+    expect(projection.status).toBe("failed_permanent");
+    expect(projection.progressPercent).toBe(100);
+    expect(projection.outputRefs).toEqual([]);
+    expect(projection.safeDiagnostics[0]).toContain("verified playable final video");
   });
 
   it("redacts normal-user render projections without mutating internal artifact refs", () => {
@@ -418,6 +609,7 @@ describe("hyperframesRenderService", () => {
         renderIntent: "final",
         compositionMode: "storyboard_motion_preview",
         qaStatus: "passed",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
       },
       artifactRefs: [artifact],
       outputRefs: [
@@ -511,6 +703,35 @@ describe("hyperframesRenderService", () => {
     expect(publicProjection.outputRefs[0]?.thumbnailUrl).toBe(
       "/media/hyperframes/thumb.png"
     );
+  });
+
+  it("keeps storage API output URLs while hiding raw storage refs", () => {
+    const projection = buildHyperframesRenderProjection({
+      tenantId: "tenant_1",
+      productId: "product_1",
+      runId: "mar_1",
+      renderJobId: "hf_render_1",
+      status: "completed",
+      outputRefs: [
+        {
+          outputId: "output_1",
+          kind: "final_video",
+          url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/output.mp4?v=1",
+          storageRef:
+            "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/output.mp4",
+          contentHash: "hf_output",
+          accessibleLabel: "Final HyperFrames video",
+        },
+      ],
+    });
+
+    const publicProjection = redactHyperframesRenderProjectionForUser(projection);
+
+    expect(publicProjection.outputRefs[0]?.url).toBe(
+      "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_1/output.mp4"
+    );
+    expect(publicProjection.outputRefs[0]?.storageRef).toBeNull();
+    expect(publicProjection.artifactRefs).toEqual([]);
   });
 
   it("does not expose insecure, credentialed, private, or signed relative output links", () => {

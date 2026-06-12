@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { isMarketplaceAutoReviewAdvanceOutboxJobType } from "../marketplaceAutoReviewJob";
+import {
+  isMarketplaceAutoReviewAdvanceOutboxJobType,
+  runMarketplaceAutoReviewJob,
+} from "../marketplaceAutoReviewJob";
+
+function createEmptySchedulerDb() {
+  const chain = {
+    from: () => chain,
+    where: () => chain,
+    orderBy: () => chain,
+    limit: async () => [],
+  };
+  return {
+    select: () => chain,
+  };
+}
 
 describe("marketplaceAutoReviewJob", () => {
   it("only claims auto-review advance outbox jobs", () => {
@@ -16,5 +31,30 @@ describe("marketplaceAutoReviewJob", () => {
     expect(isMarketplaceAutoReviewAdvanceOutboxJobType("hyperframes_finalize")).toBe(
       false
     );
+  });
+
+  it("runs the HyperFrames worker as part of the in-process scheduler tick", async () => {
+    const calls: unknown[] = [];
+    const result = await runMarketplaceAutoReviewJob({
+      db: createEmptySchedulerDb(),
+      runHyperframesWorker: async (options) => {
+        calls.push(options);
+        return {
+          processed: 2,
+          disabled: false,
+          runtimeDeferred: false,
+        };
+      },
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ limit: 25 });
+    expect(result).toMatchObject({
+      scannedRuns: 0,
+      processedOutboxJobs: 0,
+      processedHyperframesJobs: 2,
+      hyperframesRuntimeDeferred: false,
+      hyperframesWorkerDisabled: false,
+    });
   });
 });

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "../db";
-import { marketplaceCaptureInsights, marketplaceCaptureSessions, marketplaceProducts } from "../../drizzle/schema";
+import { marketplaceCaptureInsights, marketplaceCaptureSessions, marketplaceProductImages, marketplaceProducts } from "../../drizzle/schema";
 import {
   marketplaceCaptureInsightSyncSchema,
   marketplaceClaimResolutionSchema,
@@ -16,6 +16,11 @@ import {
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { marketplaceCaptureError } from "./marketplaceCaptureConfig";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
+import { executeSkillLlmWithFallback } from "./skillModelFallback";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectBestLlmModel } from "./intelligentModelSelector";
+import { buildWebSearchParams, detectProviderFamily } from "./webSearchToolInjector";
+import { getProviderForModel } from "./llmRouter";
 
 type MarketplaceInsightAuth = { userId: number; tenantId?: string };
 
@@ -236,6 +241,149 @@ function createServerDeterministicProductBrief(source: SanitizedLocalAIInput): P
   }, source);
 }
 
+function sourceRef(source: SanitizedLocalAIInput) {
+  return { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null };
+}
+
+function buildSupplementalInsightPayloads(source: SanitizedLocalAIInput, brief: ProductBrief) {
+  const evidenceIds = source.evidence.map((item) => item.id).slice(0, 20);
+  return [
+    {
+      insightType: "review_insight" as const,
+      payload: {
+        schemaVersion: "1.0",
+        source: sourceRef(source),
+        positiveThemes: brief.trustSignals.length ? brief.trustSignals : brief.keySellingPoints.slice(0, 3),
+        negativeThemes: [],
+        repeatedPhrases: [],
+        commonBuyerQuestions: brief.buyerObjections.map((objection) => `ลูกค้าอาจถามเรื่อง ${objection}`),
+        objectionsToAddress: brief.buyerObjections,
+        recommendedFAQ: brief.buyerObjections.slice(0, 4).map((objection) => ({
+          question: `ควรอธิบายเรื่อง ${objection} อย่างไร?`,
+          answerDraft: "ใช้ข้อมูลจากหน้าสินค้าและหลักฐานที่เลือกเท่านั้นก่อนเผยแพร่",
+        })),
+        contentRecommendations: brief.contentAngles,
+        confidence: Math.min(brief.confidence, source.reviews.length > 0 ? 0.75 : 0.45),
+        evidenceIds,
+      },
+    },
+    {
+      insightType: "combined_opportunity" as const,
+      payload: {
+        schemaVersion: "1.0",
+        shopeeCaptureId: source.platform === "shopee" ? source.captureId : undefined,
+        tiktokCaptureId: source.platform === "tiktok_shop" ? source.captureId : undefined,
+        opportunitySummary: brief.shortSummary,
+        productTrendFitScore: Math.round(Math.min(brief.confidence, 1) * 100),
+        recommendedContentFormat: source.platform === "tiktok_shop" ? "TikTok Shop short" : "Shopee product support video",
+        suggestedPositioning: brief.contentAngles[0] || brief.keySellingPoints[0] || brief.shortSummary,
+        risks: brief.buyerObjections,
+        nextActions: ["create_video_brief", "send_to_ai_video_studio", "save_to_product_library"],
+      },
+    },
+  ];
+}
+
+function safeInsightUrl(value: unknown, productId: string) {
+  const raw = String(value ?? "").trim();
+  try {
+    const url = new URL(raw);
+    return ["http:", "https:"].includes(url.protocol) ? url.toString() : "";
+  } catch {
+    return `${(process.env.PUBLIC_URL || "https://smartaihub.app").replace(/\/$/, "")}/marketplace-capture/products/${productId}`;
+  }
+}
+
+function addEvidence(evidence: SanitizedLocalAIInput["evidence"], type: SanitizedLocalAIInput["evidence"][number]["type"], id: string, text: unknown, confidence = 0.7) {
+  const normalized = String(text ?? "").trim();
+  if (!normalized) return;
+  evidence.push({ id: `${type}:${id}`, type, text: normalized.slice(0, 1200), confidence });
+}
+
+async function buildSanitizedInputFromProduct(productId: string, auth: MarketplaceInsightAuth): Promise<SanitizedLocalAIInput> {
+  const bundle = await getMarketplaceProductWithAccess(productId, auth);
+  const product = bundle.product as any;
+  const description = product.descriptionText || "";
+  const images = (bundle.images ?? []).map((image: any) => String(image.url ?? "")).filter(Boolean).slice(0, 30);
+  const descriptionJson = product.descriptionJson && typeof product.descriptionJson === "object" ? product.descriptionJson as Record<string, unknown> : {};
+  const platformRaw = product.platformRawJson && typeof product.platformRawJson === "object" ? product.platformRawJson as Record<string, unknown> : {};
+  const evidence: SanitizedLocalAIInput["evidence"] = [];
+  addEvidence(evidence, "title", "product", product.productName, 0.9);
+  addEvidence(evidence, "price", "current", product.priceCurrent ? `${product.priceCurrent} ${product.currency ?? "THB"}` : "", 0.85);
+  addEvidence(evidence, "metric", "commission_rate", product.commissionRatePercent ? `Commission rate ${product.commissionRatePercent}%` : "", 0.8);
+  addEvidence(evidence, "rating", "score", product.ratingScore, 0.75);
+  addEvidence(evidence, "metric", "sold", product.soldCountText, 0.7);
+  addEvidence(evidence, "description", "product", description, 0.7);
+  addEvidence(evidence, "seller_info", "shop", product.shopName, 0.7);
+  addEvidence(evidence, "specification", "category", descriptionJson.categoryText ?? platformRaw.categoryText, 0.65);
+  images.slice(0, 12).forEach((url, index) => addEvidence(evidence, "image", String(index + 1), url, 0.55));
+  return {
+    schemaVersion: "1.0",
+    captureId: product.captureId ?? undefined,
+    platform: product.platform,
+    sourceUrl: safeInsightUrl(product.sourceUrl, productId),
+    affiliateUrl: product.affiliateUrl ?? null,
+    capturedAt: new Date().toISOString(),
+    product: {
+      title: product.productName ?? undefined,
+      price: product.priceCurrent ? `${product.priceCurrent} ${product.currency ?? "THB"}` : undefined,
+      commissionRatePercent: product.commissionRatePercent != null ? Number(product.commissionRatePercent) : undefined,
+      rating: product.ratingScore ? String(product.ratingScore) : undefined,
+      soldCount: product.soldCountText ?? undefined,
+      description,
+      category: String(descriptionJson.categoryText ?? platformRaw.categoryText ?? ""),
+      productCategory: product.productCategory ?? descriptionJson.productCategory ?? "auto",
+      selectedImageUrls: images,
+    },
+    shop: { name: product.shopName ?? undefined },
+    reviews: [],
+    comments: [],
+    evidence,
+    payloadHash: sha256Short({ productId, updatedAt: product.updatedAt, evidence }, 32),
+  };
+}
+
+async function executeMarketplaceJsonLlm(input: {
+  userId: number;
+  skillSlug: string;
+  systemPrompt: string;
+  userPrompt: string;
+  requiresWebSearch?: boolean;
+}) {
+  const requirements = {
+    supportsJsonMode: true,
+    ...(input.requiresWebSearch ? { supportsWebSearch: true } : {}),
+  };
+  const rows = await loadEnabledLlmModelRows();
+  const modelId = selectBestLlmModel(requirements, rows);
+  if (!modelId) {
+    throw new Error(input.requiresWebSearch ? "no_web_search_model_available" : "no_json_model_available");
+  }
+  const provider = modelId ? await getProviderForModel(modelId, { allowFreeModels: false }) : null;
+  const webSearch = input.requiresWebSearch && provider
+    ? buildWebSearchParams(detectProviderFamily(provider.providerName))
+    : { bodyParams: {}, systemPromptSuffix: "" };
+  const result = await executeSkillLlmWithFallback({
+    skillSlug: input.skillSlug,
+    userId: input.userId,
+    executionPolicy: {
+      modelId,
+      allowFreeModels: false,
+      modelSource: "requirements_match",
+      matchedCapabilities: Object.keys(requirements),
+    },
+    maxModelAttempts: 3,
+    temperature: 0,
+    extraBodyParams: webSearch.bodyParams,
+    messages: [
+      { role: "system", content: `${input.systemPrompt}${webSearch.systemPromptSuffix ?? ""}` },
+      { role: "user", content: input.userPrompt },
+    ],
+  });
+  if (!result.success || !result.content) throw new Error(result.error || "llm_failed");
+  return { content: result.content, modelId: result.modelId, providerName: result.provider?.providerName };
+}
+
 function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePreference: string) {
   return [
     "You are SmartSpecPro server AI fallback for marketplace capture insights.",
@@ -248,37 +396,20 @@ function buildServerProductBriefPrompt(source: SanitizedLocalAIInput, languagePr
   ].join("\n\n");
 }
 
-async function maybeRunServerProductBriefLlm(source: SanitizedLocalAIInput, languagePreference: string): Promise<ProductBrief | null> {
-  if (process.env.MARKETPLACE_CAPTURE_LLM_ENABLED !== "true") return null;
-  const token = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.WEB_GATEWAY_TOKEN;
-  if (!token) return null;
-  const baseUrl = (process.env.MARKETPLACE_CAPTURE_LLM_GATEWAY_URL || process.env.PUBLIC_URL || `http://127.0.0.1:${process.env.PORT || 3000}`).replace(/\/$/, "");
-  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      model: process.env.MARKETPLACE_CAPTURE_LLM_MODEL || "gpt-4.1-mini",
-      messages: [
-        { role: "system", content: "Return valid JSON only." },
-        { role: "user", content: buildServerProductBriefPrompt(source, languagePreference) },
-      ],
-      temperature: 0,
-    }),
+async function maybeRunServerProductBriefLlm(source: SanitizedLocalAIInput, languagePreference: string, auth: MarketplaceInsightAuth): Promise<ProductBrief | null> {
+  const result = await executeMarketplaceJsonLlm({
+    userId: auth.userId,
+    skillSlug: "marketplace-capture-product-brief",
+    systemPrompt: "Return valid JSON only.",
+    userPrompt: buildServerProductBriefPrompt(source, languagePreference),
   });
-  if (!response.ok) throw new Error(`gateway_${response.status}`);
-  const json = await response.json();
-  const content = json?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") throw new Error("missing_llm_content");
-  return normalizeProductBriefFromServer(parseLlmJson(content), source);
+  return normalizeProductBriefFromServer(parseLlmJson(result.content), source);
 }
 
-export async function generateMarketplaceServerInsight(input: unknown, _auth: MarketplaceInsightAuth): Promise<MarketplaceServerInsightGenerationResponse> {
+export async function generateMarketplaceServerInsight(input: unknown, auth: MarketplaceInsightAuth): Promise<MarketplaceServerInsightGenerationResponse> {
   const parsed = marketplaceServerInsightGenerationSchema.parse(input);
   try {
-    const llmBrief = await maybeRunServerProductBriefLlm(parsed.source, parsed.languagePreference);
+    const llmBrief = await maybeRunServerProductBriefLlm(parsed.source, parsed.languagePreference, auth);
     if (llmBrief) {
       return { ok: true, provider: "server_ai", insightType: "product_brief", payload: llmBrief, fallbackMode: "llm_gateway" };
     }
@@ -292,6 +423,112 @@ export async function generateMarketplaceServerInsight(input: unknown, _auth: Ma
     payload: createServerDeterministicProductBrief(parsed.source),
     fallbackMode: "deterministic_fallback",
   };
+}
+
+export async function enhanceMarketplaceProductDescription(
+  productId: string,
+  auth: MarketplaceInsightAuth,
+) {
+  const db = getDb();
+  const bundle = await getMarketplaceProductWithAccess(productId, auth);
+  const product = bundle.product as any;
+  if (product.accessType === "group" && product.groupShare?.permission !== "read_update") {
+    throw marketplaceCaptureError("product_read_only", "Product is shared read-only", 403);
+  }
+  const source = await buildSanitizedInputFromProduct(productId, auth);
+  const result = await executeMarketplaceJsonLlm({
+    userId: auth.userId,
+    skillSlug: "marketplace-product-description-web-enrichment",
+    requiresWebSearch: true,
+    systemPrompt: [
+      "Return valid JSON only.",
+      "You improve marketplace product descriptions using web search grounding.",
+      "Do not invent unavailable price, warranty, compatibility, or certification claims.",
+      "Prefer Thai output when the existing product text is Thai.",
+      "Return shape: {\"descriptionText\":\"...\", \"sources\":[\"https://...\"]}.",
+    ].join("\n"),
+    userPrompt: [
+      "Find additional public product details for this marketplace item and merge them into a clearer description.",
+      "Keep seller-specific warnings/conditions from the existing description if present.",
+      "Use concise sections and keep claims source-grounded.",
+      `Product evidence:\n${JSON.stringify(source, null, 2).slice(0, 18_000)}`,
+    ].join("\n\n"),
+  });
+  const parsed = parseLlmJson(result.content);
+  const descriptionText = String(parsed.descriptionText ?? parsed.description ?? "").trim();
+  if (!descriptionText) throw marketplaceCaptureError("description_enrichment_empty", "LLM did not return an improved description", 502);
+  const updatedAt = new Date();
+  const platformRaw = product.platformRawJson && typeof product.platformRawJson === "object" ? product.platformRawJson as Record<string, unknown> : {};
+  await db.update(marketplaceProducts)
+    .set({
+      descriptionText: descriptionText.slice(0, 80_000),
+      platformRawJson: {
+        ...platformRaw,
+        descriptionEnrichedAt: updatedAt.toISOString(),
+        descriptionEnrichedByUserId: auth.userId,
+        descriptionEnrichmentModel: result.modelId ?? null,
+        descriptionEnrichmentProvider: result.providerName ?? null,
+        descriptionEnrichmentSources: Array.isArray(parsed.sources) ? parsed.sources.slice(0, 8) : [],
+      },
+      updatedAt,
+    })
+    .where(eq(marketplaceProducts.id, productId));
+  return {
+    ok: true,
+    productId,
+    descriptionText: descriptionText.slice(0, 80_000),
+    updatedAt,
+    modelId: result.modelId ?? null,
+    providerName: result.providerName ?? null,
+    sources: Array.isArray(parsed.sources) ? parsed.sources.slice(0, 8) : [],
+  };
+}
+
+export async function analyzeMarketplaceProductInsights(productId: string, auth: MarketplaceInsightAuth) {
+  await getMarketplaceProductWithAccess(productId, auth);
+  const source = await buildSanitizedInputFromProduct(productId, auth);
+  const brief = (await maybeRunServerProductBriefLlm(source, "auto", auth)
+    .catch(() => null)) ?? createServerDeterministicProductBrief(source);
+  const payloads = [
+    { insightType: "product_brief" as const, payload: brief },
+    ...buildSupplementalInsightPayloads(source, brief),
+  ];
+  const synced = [];
+  for (const item of payloads) {
+    const payloadHash = sha256Short(item.payload, 64);
+    synced.push(await syncMarketplaceInsight({
+      extensionVersion: "web-product-detail",
+      idempotencyKey: `web:${productId}:${item.insightType}:${payloadHash}`.slice(0, 160),
+      schemaVersion: "1.0",
+      insightCreatedAt: new Date().toISOString(),
+      payloadHash,
+      source: {
+        platform: source.platform,
+        url: source.sourceUrl,
+        affiliateUrl: source.affiliateUrl ?? null,
+        capturedAt: source.capturedAt,
+        captureId: source.captureId,
+        marketplaceProductId: productId,
+      },
+      insightType: item.insightType,
+      provider: "server_ai",
+      status: "ready",
+      metadata: {
+        sourceIdentity: {
+          platform: source.platform,
+          canonicalSourceUrl: source.sourceUrl,
+        },
+        sourceIds: {
+          canonicalSourceUrl: source.sourceUrl,
+        },
+        inputEvidenceIds: source.evidence.map((evidence) => evidence.id),
+        providerDecision: "server_ai",
+      },
+      payload: item.payload,
+      rawCaptureIncluded: false,
+    }, auth));
+  }
+  return { ok: true, productId, insightIds: synced.map((item) => item.insightId), count: synced.length };
 }
 
 async function resolveProductId(input: MarketplaceCaptureInsightSyncInput, auth: MarketplaceInsightAuth) {
@@ -424,6 +661,53 @@ export async function getMarketplaceInsightForUser(insightId: string, auth: Mark
     .where(and(eq(marketplaceCaptureInsights.id, insightId), tenantScope(marketplaceCaptureInsights, auth)))
     .limit(1);
   if (!insight) throw marketplaceCaptureError("insight_not_found", "Marketplace insight not found", 404);
+  return sanitizeInsightRow(insight);
+}
+
+async function canReadInsightThroughAccessibleProduct(
+  insight: typeof marketplaceCaptureInsights.$inferSelect,
+  auth: MarketplaceInsightAuth,
+) {
+  const db = getDb();
+  const productIds = new Set<string>();
+  if (insight.productId) productIds.add(insight.productId);
+
+  const relatedProducts = await db.select({ id: marketplaceProducts.id })
+    .from(marketplaceProducts)
+    .where(or(
+      insight.captureId ? eq(marketplaceProducts.captureId, insight.captureId) : undefined,
+      and(
+        eq(marketplaceProducts.platform, insight.platform),
+        eq(marketplaceProducts.sourceUrl, insight.sourceUrl),
+      ),
+    ))
+    .limit(10);
+  for (const product of relatedProducts) productIds.add(product.id);
+
+  for (const productId of productIds) {
+    try {
+      await getMarketplaceProductWithAccess(productId, auth);
+      return true;
+    } catch {
+      // Keep probing other related products without leaking which product matched.
+    }
+  }
+  return false;
+}
+
+export async function getMarketplaceInsightReadableForUser(insightId: string, auth: MarketplaceInsightAuth) {
+  const db = getDb();
+  const [ownedInsight] = await db.select().from(marketplaceCaptureInsights)
+    .where(and(eq(marketplaceCaptureInsights.id, insightId), tenantScope(marketplaceCaptureInsights, auth)))
+    .limit(1);
+  if (ownedInsight) return sanitizeInsightRow(ownedInsight);
+
+  const [insight] = await db.select().from(marketplaceCaptureInsights)
+    .where(eq(marketplaceCaptureInsights.id, insightId))
+    .limit(1);
+  if (!insight || !(await canReadInsightThroughAccessibleProduct(insight, auth))) {
+    throw marketplaceCaptureError("insight_not_found", "Marketplace insight not found", 404);
+  }
   return sanitizeInsightRow(insight);
 }
 

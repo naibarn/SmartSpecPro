@@ -1,10 +1,175 @@
 import { describe, expect, it } from "vitest";
 import {
+  getStoryboardReviewAutoReviewRunId,
+  mergeStoryboardReviewMarketplaceContext,
   mergeFresherExistingReviewTasks,
   sanitizeStoryboardReviewClientDebugPayload,
 } from "../videoEditorProjects";
 
+describe("getStoryboardReviewAutoReviewRunId", () => {
+  it("reads the canonical top-level Auto Review run ID", () => {
+    expect(
+      getStoryboardReviewAutoReviewRunId({
+        version: 1,
+        autoReviewRunId: "mar_top_level",
+        tasks: [
+          {
+            id: "shot-1",
+            storyboardContext: {
+              extraParams: {
+                autoReviewRunId: "mar_task_level",
+              },
+            },
+          },
+        ],
+      }),
+    ).toBe("mar_top_level");
+  });
+
+  it("reads the Auto Review run ID from task extra params", () => {
+    expect(
+      getStoryboardReviewAutoReviewRunId({
+        version: 1,
+        tasks: [
+          {
+            id: "shot-1",
+            storyboardContext: {
+              extraParams: {
+                autoReviewRunId: "mar_11cac76761cfe7ffc5146cf64a35901d",
+              },
+            },
+          },
+        ],
+      }),
+    ).toBe("mar_11cac76761cfe7ffc5146cf64a35901d");
+  });
+
+  it("does not guess when task extra params contain mixed Auto Review runs", () => {
+    expect(
+      getStoryboardReviewAutoReviewRunId({
+        version: 1,
+        tasks: [
+          {
+            id: "shot-1",
+            storyboardContext: {
+              extraParams: {
+                autoReviewRunId: "mar_a",
+              },
+            },
+          },
+          {
+            id: "shot-2",
+            storyboardContext: {
+              extraParams: {
+                autoReviewRunId: "mar_b",
+              },
+            },
+          },
+        ],
+      }),
+    ).toBe("");
+  });
+
+  it("reads the Auto Review run ID from marketplace context", () => {
+    expect(
+      getStoryboardReviewAutoReviewRunId({
+        marketplaceContext: {
+          marketplaceAutoReviewRunId: "mar_current",
+        },
+      }),
+    ).toBe("mar_current");
+  });
+});
+
+describe("mergeStoryboardReviewMarketplaceContext", () => {
+  it("adds auto review product context when stored storyboard review data does not have one", () => {
+    expect(
+      mergeStoryboardReviewMarketplaceContext(
+        {
+          version: 1,
+          marketplaceContext: null,
+          tasks: [],
+        },
+        {
+          productId: "mp_1",
+          itemId: "1729778762045557072",
+          sourceUrl: "https://shop.tiktok.com/th/pdp/1729778762045557072",
+          productName: "รถสามล้อเด็ก",
+        },
+      ),
+    ).toMatchObject({
+      marketplaceContext: {
+        productId: "mp_1",
+        itemId: "1729778762045557072",
+        productName: "รถสามล้อเด็ก",
+      },
+      marketplaceProduct: {
+        productId: "mp_1",
+      },
+    });
+  });
+
+  it("preserves an existing product context instead of replacing it", () => {
+    const reviewData = {
+      version: 1,
+      marketplaceContext: {
+        productId: "mp_existing",
+        productName: "Existing product",
+      },
+    };
+
+    expect(
+      mergeStoryboardReviewMarketplaceContext(reviewData, {
+        productId: "mp_new",
+        productName: "New product",
+      }),
+    ).toBe(reviewData);
+  });
+});
+
 describe("mergeFresherExistingReviewTasks", () => {
+  it("keeps incoming dropped video media when it is newer than the stored task", () => {
+    const existing = {
+      version: 1,
+      updatedAt: 1000,
+      taskIds: ["shot-1"],
+      selectedTaskIds: ["shot-1"],
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 1000,
+          url: undefined,
+          status: "queued",
+        },
+      ],
+    };
+    const incoming = {
+      ...existing,
+      updatedAt: 5000,
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 5000,
+          url: "/api/storage/files/uploads/shot-1.mp4",
+          status: "completed",
+          source: "imported",
+        },
+      ],
+    };
+
+    expect(mergeFresherExistingReviewTasks(existing, incoming)).toMatchObject({
+      tasks: [
+        {
+          id: "shot-1",
+          updatedAt: 5000,
+          url: "/api/storage/files/uploads/shot-1.mp4",
+          status: "completed",
+          source: "imported",
+        },
+      ],
+    });
+  });
+
   it("preserves fresher existing task media when a stale client resaves with a newer draft timestamp", () => {
     const existing = {
       version: 1,

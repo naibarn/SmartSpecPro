@@ -511,13 +511,20 @@ const authRouter = router({
   me: publicProcedure.query(opts => {
     // If no user is authenticated, return null (expected for public procedure)
     if (!opts.ctx.user) {
-      console.log("[Auth] auth.me called without authenticated user");
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[Auth] auth.me called without authenticated user");
+      }
       return null;
     }
 
     // Return user data with all required fields
     const user = opts.ctx.user;
-    console.log("[Auth] auth.me returning user:", { id: user.id, email: user.email });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[Auth] auth.me returning user:", {
+        id: user.id,
+        email: user.email,
+      });
+    }
 
     return {
       id: user.id,

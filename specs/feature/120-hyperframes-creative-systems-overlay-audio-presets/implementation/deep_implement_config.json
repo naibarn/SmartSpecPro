@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-creative-contracts-and-registry",
+    "section-02-storyboard-review-persistence-and-provenance",
+    "section-03-runtime-api-feature-access-and-credit-gates",
+    "section-04-preview-and-editable-ux",
+    "section-05-composition-builder-timeline-and-fallback",
+    "section-06-render-worker-and-output-projection",
+    "section-07-library-history-video-editor-handoff",
+    "section-08-observability-cleanup-retention-operator",
+    "section-09-fixtures-e2e-rollout-gates"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-06-12T07:14:51.130603+00:00"
+}

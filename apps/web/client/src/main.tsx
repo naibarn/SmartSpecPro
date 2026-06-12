@@ -280,6 +280,8 @@ setupAuthInterceptor();
 let isRedirectingToLogin = false;
 let authRecheckInFlight: Promise<boolean> | null = null;
 let lastUnauthorizedAt = 0;
+const debugTrpcFetch =
+  import.meta.env.DEV || import.meta.env.VITE_DEBUG_TRPC === "1";
 
 const hasActiveSession = async (): Promise<boolean> => {
   if (typeof window === "undefined") return false;
@@ -372,12 +374,14 @@ const trpcClient = trpc.createClient({
             : input instanceof URL
               ? input.href
               : input.url;
-        console.log("[tRPC Fetch]", {
-          requestUrl,
-          method: init?.method,
-          pageOrigin: globalThis.location?.origin,
-          bodySummary: summarizeTrpcRequestBody(init?.body),
-        });
+        if (debugTrpcFetch) {
+          console.log("[tRPC Fetch]", {
+            requestUrl,
+            method: init?.method,
+            pageOrigin: globalThis.location?.origin,
+            bodySummary: summarizeTrpcRequestBody(init?.body),
+          });
+        }
       try {
         const headers = new Headers(init?.headers || {});
         const privateVaultToken = getPrivateVaultAccessToken();
@@ -390,13 +394,15 @@ const trpcClient = trpc.createClient({
           credentials: "include",
         });
           await assertJsonApiResponse(response, requestUrl);
-          console.log("[tRPC Response]", {
-            requestUrl,
-            responseUrl: response.url,
-            status: response.status,
-            statusText: response.statusText,
-            contentType: response.headers.get("content-type"),
-          });
+          if (debugTrpcFetch) {
+            console.log("[tRPC Response]", {
+              requestUrl,
+              responseUrl: response.url,
+              status: response.status,
+              statusText: response.statusText,
+              contentType: response.headers.get("content-type"),
+            });
+          }
           return response;
         } catch (err) {
           console.error("[tRPC Fetch Error]", err);

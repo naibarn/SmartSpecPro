@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, Loader2, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
+import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
+import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, Loader2, Plus, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -139,6 +140,21 @@ export default function MarketplaceCaptureProducts() {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [deletedProductIds, setDeletedProductIds] = useState<Set<string>>(() => new Set());
   const [productPendingDelete, setProductPendingDelete] = useState<any | null>(null);
+  const [manualProductOpen, setManualProductOpen] = useState(false);
+  const [manualProductForm, setManualProductForm] = useState({
+    platform: "shopee" as "shopee" | "tiktok_shop",
+    productName: "",
+    productPageUrl: "",
+    priceCurrent: "",
+    commissionRatePercent: "",
+    soldCountText: "",
+    capturedCategoryText: "",
+    shopName: "",
+    productCategory: "auto" as ProductReferenceCategory,
+    ratingScore: "",
+    reviewCountText: "",
+    descriptionText: "",
+  });
   const { i18n } = useScopedTranslation(["common"]);
   const language = i18n.resolvedLanguage || i18n.language || "en";
   const copy = copyFor(language);
@@ -151,6 +167,28 @@ export default function MarketplaceCaptureProducts() {
     { productId: selectedProductId ?? "" },
     { enabled: Boolean(selectedProductId) },
   );
+  const createManualProductMutation = trpc.marketplaceCapture.createManualProduct.useMutation({
+    onSuccess: async result => {
+      toast.success("เพิ่มสินค้า Manual แล้ว");
+      setManualProductOpen(false);
+      setManualProductForm(current => ({
+        ...current,
+        productName: "",
+        productPageUrl: "",
+        priceCurrent: "",
+        commissionRatePercent: "",
+        soldCountText: "",
+        capturedCategoryText: "",
+        shopName: "",
+        ratingScore: "",
+        reviewCountText: "",
+        descriptionText: "",
+      }));
+      await utils.marketplaceCapture.listProducts.invalidate();
+      setLocation(result.productUrl);
+    },
+    onError: error => toast.error(error.message),
+  });
   const deleteProductMutation = trpc.marketplaceCapture.deleteProduct.useMutation({
     onMutate: async (variables) => {
       await utils.marketplaceCapture.listProducts.cancel();
@@ -290,6 +328,18 @@ export default function MarketplaceCaptureProducts() {
     const productId = productPendingDelete.id;
     setProductPendingDelete(null);
     deleteProductMutation.mutate({ productId });
+  }
+
+  function updateManualProductField(key: keyof typeof manualProductForm, value: string) {
+    setManualProductForm(current => ({ ...current, [key]: value }));
+  }
+
+  function submitManualProduct() {
+    if (!manualProductForm.productName.trim()) {
+      toast.error("กรุณากรอกชื่อสินค้า");
+      return;
+    }
+    createManualProductMutation.mutate(manualProductForm);
   }
 
   function productCard(product: any) {
@@ -435,6 +485,10 @@ export default function MarketplaceCaptureProducts() {
               </select>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" onClick={() => setManualProductOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add manual product
+              </Button>
               {(["all", "shopee", "tiktok_shop"] as PlatformFilter[]).map((item) => (
                 <button
                   key={item}
@@ -593,6 +647,90 @@ export default function MarketplaceCaptureProducts() {
             </section>
           </div>
         </aside>
+      ) : null}
+      {manualProductOpen ? (
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-4">
+          <section className="mx-auto my-8 max-w-4xl rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Add manual product</h2>
+                <p className="mt-1 text-sm text-slate-500">กรอกข้อมูลสินค้าเอง แล้วนำไปแก้ไข/วิเคราะห์ AI Insights ต่อได้ทันที</p>
+              </div>
+              <button className="rounded-md border p-2" onClick={() => setManualProductOpen(false)} aria-label="Close">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <label className="text-sm font-medium">
+                Platform
+                <select className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.platform} onChange={event => updateManualProductField("platform", event.target.value)}>
+                  <option value="shopee">Shopee</option>
+                  <option value="tiktok_shop">TikTok Shop</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                Product name
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.productName} onChange={event => updateManualProductField("productName", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium md:col-span-2">
+                Product page
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.productPageUrl} onChange={event => updateManualProductField("productPageUrl", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Price
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.priceCurrent} onChange={event => updateManualProductField("priceCurrent", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Commission (%)
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.commissionRatePercent} onChange={event => updateManualProductField("commissionRatePercent", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Sold
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.soldCountText} onChange={event => updateManualProductField("soldCountText", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Rating
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.ratingScore} onChange={event => updateManualProductField("ratingScore", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Reviews
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.reviewCountText} onChange={event => updateManualProductField("reviewCountText", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Shop
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.shopName} onChange={event => updateManualProductField("shopName", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Captured category
+                <input className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.capturedCategoryText} onChange={event => updateManualProductField("capturedCategoryText", event.target.value)} />
+              </label>
+              <label className="text-sm font-medium">
+                Main storyboard category
+                <select className="mt-1 w-full rounded-md border px-3 py-2" value={manualProductForm.productCategory} onChange={event => updateManualProductField("productCategory", event.target.value as ProductReferenceCategory)}>
+                  <option value="auto">Auto / ให้ระบบเดา</option>
+                  <option value="mobile_tablet">มือถือและแท็บเล็ต</option>
+                  <option value="electronics">อุปกรณ์อิเล็กทรอนิกส์</option>
+                  <option value="household_product">เครื่องใช้ในบ้าน</option>
+                  <option value="cosmetics">เครื่องสำอางและสกินแคร์</option>
+                  <option value="fashion_clothing">เสื้อผ้าแฟชั่น</option>
+                  <option value="food_beverage">อาหารและเครื่องดื่ม</option>
+                  <option value="furniture">เฟอร์นิเจอร์</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium md:col-span-2">
+                Description
+                <textarea className="mt-1 min-h-48 w-full rounded-md border px-3 py-2" value={manualProductForm.descriptionText} onChange={event => updateManualProductField("descriptionText", event.target.value)} />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setManualProductOpen(false)}>Cancel</Button>
+              <Button type="button" disabled={createManualProductMutation.isPending} onClick={submitManualProduct}>
+                {createManualProductMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Create product
+              </Button>
+            </div>
+          </section>
+        </div>
       ) : null}
       <AlertDialog
         open={Boolean(productPendingDelete)}

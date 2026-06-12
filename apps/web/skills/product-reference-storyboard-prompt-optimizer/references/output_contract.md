@@ -12,7 +12,7 @@ For product-reference storyboard prompts, preserve:
 - no `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover lines, timecodes, subtitles, or captions inside frame text;
 - one shared `CAMERA/LIGHT/DEPTH:` block;
 - one shared `PRODUCT VERIFY:` block;
-- explicit wording that the attached product reference image is a strict product visual lock and the product must match that reference exactly;
+- explicit wording that the attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, and the product must match that reference exactly;
 - core product reference, text rendering, and cinematic realism locks.
 
 The output must not exceed `target_max_chars` and should prefer `preferred_target_chars`. It must not end mid-frame or at a bare label.

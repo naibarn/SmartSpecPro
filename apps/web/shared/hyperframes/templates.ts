@@ -204,7 +204,7 @@ export const HYPERFRAMES_BUILT_IN_TEMPLATES = [
     maxAssets: 24,
     minShots: 0,
     maxShots: 9,
-    durationRangeSeconds: [15, 60],
+    durationRangeSeconds: [15, 120],
     safeAreaRequired: true,
     disclosureRequiredWhenClaimed: true,
     compatibilitySchemaVersion: HYPERFRAMES_TEMPLATE_COMPATIBILITY_VERSION,

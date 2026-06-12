@@ -6,6 +6,7 @@ import { ENV } from "./_core/env";
 import { getCachedAppRuntimeConfig } from "./services/appRuntimeConfig";
 import path from "path";
 import fs from "fs";
+import { pipeline } from "stream/promises";
 import { fileURLToPath } from "url";
 import {
   S3Client,
@@ -443,6 +444,45 @@ export async function storagePutFromPath(
     case "forge": {
       const buffer = fs.readFileSync(sourcePath);
       return storagePut(relKey, buffer, contentType);
+    }
+  }
+}
+
+export async function storageCopyToPath(
+  relKey: string,
+  targetPath: string,
+): Promise<{ key: string }> {
+  const config = await getActiveStorageConfig();
+
+  switch (config.provider) {
+    case "local": {
+      const key = normalizeKey(relKey);
+      fs.copyFileSync(path.join(UPLOADS_DIR, key), targetPath);
+      return { key };
+    }
+    case "s3": {
+      const key = normalizeKey(relKey);
+      const result = await config.client.send(
+        new GetObjectCommand({
+          Bucket: config.bucket,
+          Key: key,
+        }),
+      );
+      const body = result.Body as
+        | NodeJS.ReadableStream
+        | { transformToByteArray?: () => Promise<Uint8Array> }
+        | undefined;
+      if (!body) throw new Error(`Storage object body missing for ${key}`);
+      if (typeof (body as { transformToByteArray?: () => Promise<Uint8Array> }).transformToByteArray === "function") {
+        const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+        fs.writeFileSync(targetPath, Buffer.from(bytes));
+      } else {
+        await pipeline(body as NodeJS.ReadableStream, fs.createWriteStream(targetPath));
+      }
+      return { key };
+    }
+    case "forge": {
+      throw new Error("Forge storage copy-to-path is not supported for HyperFrames render staging.");
     }
   }
 }

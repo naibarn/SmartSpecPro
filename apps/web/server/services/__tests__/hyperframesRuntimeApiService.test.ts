@@ -8,6 +8,7 @@ import {
   buildHyperframesFinalizeInputFromCompletedRender,
   buildHyperframesLibrarySaveChargeSummary,
   isHyperframesRunEligibleForPreview,
+  validateHyperframesFinalCompositeAudioAssets,
 } from "../hyperframesRuntimeApiService";
 import { buildHyperframesRenderProjection } from "../hyperframesRenderService";
 import { CreateHyperframesPreviewInputSchema } from "@shared/hyperframes/runtimeApiSchemas";
@@ -80,6 +81,544 @@ describe("hyperframesRuntimeApiService", () => {
         idempotencyKey: "caller_supplied",
       })
     ).toThrow();
+  });
+
+  it("blocks final composite music/SFX when staged licensed assets are missing and fallback is disabled", () => {
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [
+          {
+            id: "music_bed_main",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.18,
+            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          },
+        ],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [
+            "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          ],
+          validatedAssetRefs: [],
+        },
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+          },
+        ],
+      })
+    ).toThrow(/staged licensed assets/i);
+  });
+
+  it("allows final composite music/SFX only when asset refs are validated or explicit fallback is enabled", () => {
+    const assetRef =
+      "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav";
+    const config = {
+      finalVideoLengthSec: 8,
+      audioEvents: [
+        {
+          id: "music_bed_main",
+          role: "music" as const,
+          presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+          visualTrigger: "video_start" as const,
+          startSec: 0,
+          durationSec: 8,
+          volume: 0.18,
+          assetRef,
+        },
+      ],
+      audioAssetValidation: {
+        stagedAssetsRequired: true,
+        allowSyntheticFallback: false,
+        missingAssetRefs: [],
+        validatedAssetRefs: [assetRef],
+        validatedAssets: [
+          {
+            assetRef,
+            source: "bundled" as const,
+            licenseName: "Internal licensed ecommerce music bed",
+            checksum: {
+              algorithm: "sha256" as const,
+              value:
+                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            },
+            mimeType: "audio/wav",
+            durationSec: 8,
+          },
+        ],
+      },
+      shots: [
+        {
+          id: "shot_1",
+          index: 0,
+          sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+          startSec: 0,
+          durationSec: 8,
+        },
+      ],
+    };
+
+    expect(() => validateHyperframesFinalCompositeAudioAssets(config)).not.toThrow();
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...config,
+        audioAssetValidation: {
+          ...config.audioAssetValidation,
+          allowSyntheticFallback: true,
+          validatedAssetRefs: [],
+          validatedAssets: [],
+          missingAssetRefs: [assetRef],
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it("requires checksum and license metadata for staged audio when fallback is disabled", () => {
+    const assetRef =
+      "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav";
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [
+          {
+            id: "music_bed_main",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.18,
+            assetRef,
+          },
+        ],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [],
+          validatedAssetRefs: [assetRef],
+          validatedAssets: [],
+        },
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+          },
+        ],
+      })
+    ).toThrow(/checksum metadata/i);
+  });
+
+  it("blocks audio events that exceed the final composite timeline", () => {
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [
+          {
+            id: "late_sfx",
+            role: "accent_sfx",
+            presetId: "hf_audio_sfx_cash_register_sales_moment_v1",
+            visualTrigger: "price_badge_pop",
+            startSec: 7.8,
+            durationSec: 1,
+            volume: 0.25,
+            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_sfx_cash_register_sales_moment_v1.wav",
+          },
+        ],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+          },
+        ],
+      })
+    ).toThrow(/timing exceeds/i);
+  });
+
+  it("blocks SFX events that repeat too tightly or exceed safe mix policy", () => {
+    const baseShot = {
+      id: "shot_1",
+      index: 0,
+      sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+      startSec: 0,
+      durationSec: 8,
+    };
+    const baseSfx = {
+      role: "transition_sfx" as const,
+      presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+      visualTrigger: "scene_cut" as const,
+      durationSec: 0.22,
+      volume: 0.22,
+      assetRef:
+        "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+    };
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [
+          { ...baseSfx, id: "sfx_1", startSec: 1 },
+          { ...baseSfx, id: "sfx_2", startSec: 1.05 },
+        ],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+          validatedAssets: [],
+        },
+        shots: [baseShot],
+      })
+    ).toThrow(/too close/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [{ ...baseSfx, id: "sfx_loud", startSec: 1, volume: 0.9 }],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+          validatedAssets: [],
+        },
+        shots: [baseShot],
+      })
+    ).toThrow(/volume/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 8,
+        audioEvents: [{ ...baseSfx, id: "sfx_long", startSec: 1, durationSec: 3 }],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+          validatedAssets: [],
+        },
+        shots: [baseShot],
+      })
+    ).toThrow(/duration/i);
+  });
+
+  it("enforces audio volume ceilings by role and preset family", () => {
+    const baseShot = {
+      id: "shot_1",
+      index: 0,
+      sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+      startSec: 0,
+      durationSec: 8,
+    };
+    const baseValidation = {
+      stagedAssetsRequired: true,
+      allowSyntheticFallback: true,
+      missingAssetRefs: [],
+      validatedAssetRefs: [],
+      validatedAssets: [],
+    };
+    const baseConfig = {
+      finalVideoLengthSec: 8,
+      audioAssetValidation: baseValidation,
+      shots: [baseShot],
+    };
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "music_loud",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.5,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/music without voiceover/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "voiceover_main",
+            role: "voiceover",
+            presetId: "manual_voiceover",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.9,
+            assetRef: "/api/storage/hyperframes/audio-presets/voiceover.wav",
+          },
+          {
+            id: "music_under_vo_loud",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.25,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/music under voiceover/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "cash_loud",
+            role: "accent_sfx",
+            presetId: "hf_audio_sfx_cash_register_sales_moment_v1",
+            visualTrigger: "price_badge_pop",
+            startSec: 1,
+            durationSec: 0.4,
+            volume: 0.6,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_cash_register_sales_moment_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/cash register SFX/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "ambience_loud",
+            role: "ambience",
+            presetId: "hf_audio_ambience_beach_soft_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.2,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_ambience_beach_soft_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/ambience/i);
+  });
+
+  it("enforces SFX visual trigger families and timing policies", () => {
+    const baseShot = {
+      id: "shot_1",
+      index: 0,
+      sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+      startSec: 0,
+      durationSec: 8,
+    };
+    const baseValidation = {
+      stagedAssetsRequired: true,
+      allowSyntheticFallback: true,
+      missingAssetRefs: [],
+      validatedAssetRefs: [],
+      validatedAssets: [],
+    };
+    const baseConfig = {
+      finalVideoLengthSec: 8,
+      audioAssetValidation: baseValidation,
+      shots: [baseShot],
+    };
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "cash_wrong_trigger",
+            role: "accent_sfx",
+            presetId: "hf_audio_sfx_cash_register_sales_moment_v1",
+            visualTrigger: "scene_cut",
+            startSec: 4,
+            durationSec: 0.4,
+            volume: 0.32,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_cash_register_sales_moment_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/matching visual trigger/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "cash_too_early",
+            role: "accent_sfx",
+            presetId: "hf_audio_sfx_cash_register_sales_moment_v1",
+            visualTrigger: "price_badge_pop",
+            startSec: 0.1,
+            durationSec: 0.4,
+            volume: 0.32,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_cash_register_sales_moment_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/price\/sales lock/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        ...baseConfig,
+        audioEvents: [
+          {
+            id: "whoosh_mid_shot",
+            role: "transition_sfx",
+            presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+            visualTrigger: "scene_cut",
+            startSec: 4,
+            durationSec: 0.22,
+            volume: 0.22,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+          },
+        ],
+      })
+    ).toThrow(/scene cut boundary/i);
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 16,
+        audioAssetValidation: baseValidation,
+        shots: [
+          baseShot,
+          {
+            id: "shot_2",
+            index: 1,
+            sourceVideoUrl: "/api/storage/files/shot-2.mp4",
+            startSec: 8,
+            durationSec: 8,
+          },
+        ],
+        audioEvents: [
+          {
+            id: "riser_at_next_shot_start",
+            role: "accent_sfx",
+            presetId: "hf_audio_sfx_riser_impact_reveal_v1",
+            visualTrigger: "product_reveal",
+            startSec: 8,
+            durationSec: 0.6,
+            volume: 0.35,
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_riser_impact_reveal_v1.wav",
+          },
+        ],
+      })
+    ).not.toThrow();
+  });
+
+  it("keeps SFX events inside a single storyboard shot while allowing global music", () => {
+    const musicRef =
+      "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav";
+    const sfxRef =
+      "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav";
+    const shots = [
+      {
+        id: "shot_1",
+        index: 0,
+        sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+        startSec: 0,
+        durationSec: 8,
+      },
+      {
+        id: "shot_2",
+        index: 1,
+        sourceVideoUrl: "/api/storage/files/shot-2.mp4",
+        startSec: 8,
+        durationSec: 8,
+      },
+    ];
+    const baseValidation = {
+      stagedAssetsRequired: true,
+      allowSyntheticFallback: true,
+      missingAssetRefs: [],
+      validatedAssetRefs: [],
+      validatedAssets: [],
+    };
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 16,
+        audioEvents: [
+          {
+            id: "music_bed_main",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 16,
+            volume: 0.18,
+            assetRef: musicRef,
+          },
+          {
+            id: "sfx_scene_cut",
+            role: "transition_sfx",
+            presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+            visualTrigger: "scene_cut",
+            startSec: 8,
+            durationSec: 0.22,
+            volume: 0.22,
+            assetRef: sfxRef,
+          },
+        ],
+        audioAssetValidation: baseValidation,
+        shots,
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      validateHyperframesFinalCompositeAudioAssets({
+        finalVideoLengthSec: 16,
+        audioEvents: [
+          {
+            id: "sfx_crosses_shot",
+            role: "transition_sfx",
+            presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+            visualTrigger: "scene_cut",
+            startSec: 7.9,
+            durationSec: 0.3,
+            volume: 0.22,
+            assetRef: sfxRef,
+          },
+        ],
+        audioAssetValidation: baseValidation,
+        shots,
+      })
+    ).toThrow(/single storyboard shot/i);
   });
 
   it("separates new and duplicate Library finalize no-charge reasons", () => {
@@ -165,6 +704,7 @@ describe("hyperframesRuntimeApiService", () => {
         traceId: "trace_1",
         correlationId: "corr_1",
         qaStatus: "passed",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
       },
       artifactRefs: [outputArtifactRef],
       outputRefs: [
@@ -246,6 +786,7 @@ describe("hyperframesRuntimeApiService", () => {
         traceId: "trace_1",
         correlationId: "corr_1",
         qaStatus: "passed",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
       },
       artifactRefs: [snapshotArtifactRef, outputArtifactRef],
       outputRefs: [
@@ -328,12 +869,14 @@ describe("hyperframesRuntimeApiService", () => {
         launchMode: "auto_storyboard_review",
         traceId: "trace_1",
         correlationId: "corr_1",
+        playableProbe: { passed: true, hasVideo: true, hasAudio: true },
       },
       artifactRefs: [outputArtifactRef],
       outputRefs: [
         {
           outputId: "output_1",
           kind: "final_video",
+          url: "https://cdn.example.com/output.mp4",
           storageRef: outputArtifactRef.storageRef,
           contentHash: outputArtifactRef.contentHash,
           accessibleLabel: "Final HyperFrames video",

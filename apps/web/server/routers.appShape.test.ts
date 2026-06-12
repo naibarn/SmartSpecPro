@@ -43,6 +43,7 @@ describe("appRouter compatibility shape", () => {
         "marketplaceCapture.getAutoReviewRun",
         "marketplaceCapture.listAutoReviewRuns",
         "marketplaceCapture.advanceAutoReviewRun",
+        "marketplaceCapture.selectAutoReviewImageAttemptForStoryboardReview",
         "marketplaceCapture.cancelAutoReviewRun",
         "marketplaceCapture.getAutoStoryboardReviewPlan",
         "marketplaceCapture.startAutoStoryboardReview",

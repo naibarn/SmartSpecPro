@@ -5,15 +5,25 @@ import fs from "fs";
 import path from "path";
 
 const LOG_FILE = path.resolve(process.cwd(), "server-debug.log");
+const DEBUG_LOG_ENABLED =
+  process.env.SMARTSPEC_DEBUG_LOGS === "1" ||
+  process.env.SMARTSPEC_DEBUG_LOGS === "true" ||
+  process.env.NODE_ENV !== "production";
 
 // Append a startup marker so debug history survives restarts.
-try {
-  fs.appendFileSync(LOG_FILE, `=== Server started at ${new Date().toISOString()} ===\n`);
-} catch (e) {
-  // Ignore if can't write
+if (DEBUG_LOG_ENABLED) {
+  try {
+    fs.appendFileSync(
+      LOG_FILE,
+      `=== Server started at ${new Date().toISOString()} ===\n`
+    );
+  } catch (e) {
+    // Ignore if can't write
+  }
 }
 
 export function debugLog(category: string, message: string, data?: any) {
+  if (!DEBUG_LOG_ENABLED) return;
   const timestamp = new Date().toISOString();
   const line = `[${timestamp}] [${category}] ${message}${data ? " " + JSON.stringify(data) : ""}\n`;
 

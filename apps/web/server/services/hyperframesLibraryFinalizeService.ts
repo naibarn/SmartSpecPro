@@ -43,6 +43,25 @@ function textValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function boolValue(value: unknown): boolean {
+  return value === true;
+}
+
+function stringArrayValue(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => textValue(item)).filter((item): item is string => Boolean(item))
+    : [];
+}
+
+function textRecordValue(value: unknown): Record<string, string> {
+  const record = recordValue(value);
+  return Object.fromEntries(
+    Object.entries(record)
+      .map(([key, item]) => [key, textValue(item)] as const)
+      .filter((entry): entry is readonly [string, string] => Boolean(entry[1]))
+  );
+}
+
 export function buildHyperframesLibrarySurfaceProjection(input: {
   libraryItem: Record<string, unknown>;
   metadata?: Partial<HyperframesLibraryFinalizeMetadata> | Record<string, unknown>;
@@ -136,6 +155,16 @@ export function buildHyperframesLibraryFinalizeMetadata(
   input: HyperframesFinalizeInput
 ): HyperframesLibraryFinalizeMetadata {
   const tenantId = input.auth.tenantId ?? "default";
+  const payloadRecord = input.payload as unknown as Record<string, unknown>;
+  const finalCompositeConfig = recordValue(input.payload.finalCompositeConfig);
+  const playableProbe = recordValue(input.payload.playableProbe);
+  const audioMixReport = recordValue(input.payload.audioMixReport);
+  const overlayPresetId =
+    textValue(payloadRecord.overlayPresetId) ??
+    textValue(finalCompositeConfig.overlayPreset);
+  const subtitlePresetId =
+    textValue(payloadRecord.subtitlePresetId) ??
+    textValue(finalCompositeConfig.subtitlePreset);
   const expectedKey = buildHyperframesLibraryIdempotencyKey({
     tenantId,
     runId: input.runId,
@@ -158,8 +187,29 @@ export function buildHyperframesLibraryFinalizeMetadata(
     platformPresetId: input.payload.platformPresetId,
     platformPresetVersion: input.payload.platformPresetVersion,
     renderIntent: input.payload.renderIntent,
+    compositionMode: input.payload.compositionMode,
     compositionInputHash: input.payload.compositionInputHash,
     compositionHtmlHash: input.payload.compositionHtmlHash,
+    templateContentHash: input.payload.templateContentHash,
+    runtimeProfileHash: input.payload.runtimeProfileHash,
+    creativePlanHash: input.payload.creativePlanHash,
+    presetManifestHash: input.payload.presetManifestHash,
+    audioEventMapHash: input.payload.audioEventMapHash,
+    fallbackQuality: input.payload.fallbackQuality,
+    overlayPresetId,
+    subtitlePresetId,
+    audioPackPresetId: textValue(payloadRecord.audioPackPresetId) ?? undefined,
+    musicPresetId: textValue(payloadRecord.musicPresetId) ?? undefined,
+    sfxPresetIds: stringArrayValue(payloadRecord.sfxPresetIds),
+    presetVersions: {
+      ...(overlayPresetId ? { [overlayPresetId]: "current" } : {}),
+      ...(subtitlePresetId ? { [subtitlePresetId]: "current" } : {}),
+      ...textRecordValue(payloadRecord.presetVersions),
+    },
+    hasAudio: boolValue(playableProbe.hasAudio),
+    hasNativeAudio: Number(audioMixReport.nativeInputWithAudioCount ?? 0) > 0,
+    audioMixReport,
+    outputProbe: playableProbe,
     outputHash: input.outputArtifactRef.contentHash,
     outputArtifactRef: input.outputArtifactRef,
     thumbnailRef: input.thumbnailRef ?? null,

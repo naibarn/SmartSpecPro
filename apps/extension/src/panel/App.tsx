@@ -270,7 +270,7 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.84";
+const EXTENSION_VERSION = "0.1.87";
 const EXTENSION_BUILD_LABEL = "2026-05-29 21:19 +07";
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -1981,7 +1981,6 @@ export default function App() {
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
   const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
-  const [showcaseImageBusy, setShowcaseImageBusy] = useState<Record<string, boolean>>({});
   const [localAIProvider, setLocalAIProvider] = useState("noop");
   const abortLocalAIRef = useRef<AbortController | null>(null);
   const autoInsightKeyRef = useRef<string | null>(null);
@@ -2888,49 +2887,6 @@ export default function App() {
     }
   }
 
-  async function collectTikTokShowcaseImages(candidate: CategoryProductCandidate) {
-    if (candidate.platform !== "tiktok_shop" || !candidate.externalProductId) return;
-    const key = candidateIdentity(candidate);
-    setShowcaseImageBusy((current) => ({ ...current, [key]: true }));
-    setError("");
-    setStatus("Opening TikTok showcase edit modal and collecting images");
-    try {
-      const response = await sendToContent<{ candidate: CategoryProductCandidate }>("COLLECT_TIKTOK_SHOWCASE_IMAGES", {
-        productId: candidate.externalProductId,
-      });
-      const mergedCandidate = mergeCandidateRecord(candidate, response.candidate);
-      setCandidates((current) => mergeCandidates([], current.map((item) => (
-        candidateStableKey(item) === key || (item.externalProductId && item.externalProductId === mergedCandidate.externalProductId && item.platform === mergedCandidate.platform)
-          ? mergeCandidateRecord(item, mergedCandidate)
-          : item
-      ))));
-      setQueue((current) => {
-        const next = mergeCandidates([], current.map((item) => (
-          candidateStableKey(item) === key || (item.externalProductId && item.externalProductId === mergedCandidate.externalProductId && item.platform === mergedCandidate.platform)
-            ? mergeCandidateRecord(item, mergedCandidate)
-            : item
-        )));
-        saveQueue(next).catch(() => undefined);
-        return next;
-      });
-      candidateListSignatureRef.current = candidateListSignature(mergeCandidates([], candidates.map((item) => (
-        candidateStableKey(item) === key ? mergedCandidate : item
-      ))));
-      await appendDiagnosticLog("tiktok_showcase_image_collect_panel", {
-        productId: mergedCandidate.externalProductId,
-        imageCount: mergedCandidate.imageUrls?.length ?? 0,
-        priceText: mergedCandidate.priceText ?? null,
-        commissionRateText: mergedCandidate.commissionRateText ?? null,
-        url: mergedCandidate.url,
-      }).catch(() => undefined);
-      focusCaptureReviewProductIdRef.current = mergedCandidate.externalProductId ?? candidate.externalProductId;
-      setStatus(`Collected ${mergedCandidate.imageUrls?.length ?? 0} showcase images. Opening product page.`);
-      chrome.tabs.create({ url: mergedCandidate.url });
-    } finally {
-      setShowcaseImageBusy((current) => ({ ...current, [key]: false }));
-    }
-  }
-
   async function refreshLiveSnapshot() {
     const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
     applyLiveSnapshot(snapshot, { replace: true });
@@ -3510,6 +3466,8 @@ export default function App() {
       if (projects.length === 0) {
         setSelectedStoryboardProjectId(null);
         setSelectedStoryboardProject(null);
+      } else if (selectedStoryboardProjectId && projects.some((project) => project.id === selectedStoryboardProjectId)) {
+        await loadStoryboardReviewProject(selectedStoryboardProjectId);
       } else if (!selectedStoryboardProjectId || !projects.some((project) => project.id === selectedStoryboardProjectId)) {
         await loadStoryboardReviewProject(projects[0].id);
       }
@@ -4434,17 +4392,6 @@ export default function App() {
                   {candidate.affiliateLinkAvailable && !candidate.affiliateUrl ? (
                     <button className="button" disabled={affiliateLinkBusy[candidateIdentity(candidate)]} onClick={() => run(() => requestShopeeAffiliateLink(candidate))}>
                       {affiliateLinkBusy[candidateIdentity(candidate)] ? "Getting link..." : "เอา ลิงก์"}
-                    </button>
-                  ) : null}
-                  {candidate.platform === "tiktok_shop" && /\/streamer\/showcase\/product\/list/i.test(candidate.sourceUrl) && candidate.externalProductId ? (
-                    <button
-                      className="button primary"
-                      disabled={showcaseImageBusy[candidateIdentity(candidate)]}
-                      onClick={() => run(() => collectTikTokShowcaseImages(candidate))}
-                    >
-                      {showcaseImageBusy[candidateIdentity(candidate)]
-                        ? "Collecting images..."
-                        : `ดึงรูป + เปิดสินค้า${candidate.imageUrls?.length ? ` (${candidate.imageUrls.length})` : ""}`}
                     </button>
                   ) : null}
                   {candidate.affiliateUrl ? (

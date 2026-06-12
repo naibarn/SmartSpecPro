@@ -84,7 +84,7 @@ If the source prompt is a 3x3 storyboard, preserve:
 - `TEXT RENDERING POLICY`;
 - one shared `CAMERA/LIGHT/DEPTH:` block;
 - one shared `PRODUCT VERIFY:` block;
-- explicit wording that the attached product reference image is a strict product visual lock and the product must match that reference exactly;
+- explicit wording that the attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, and the product must match that reference exactly;
 - human realism requirements in natural visual prose only, never as a `HUMAN REALISM:` label.
 
 ## Compression Rules
@@ -102,7 +102,7 @@ First remove or merge content that does not change image quality:
 Then optimize the frame section:
 
 - Keep frame order unchanged.
-- Keep the explicit product-reference instruction. The optimized prompt must still say that the attached product reference image is a strict product visual lock, the product must match that reference exactly, and the reference image controls appearance, proportions, construction, material, color, countable parts, and scale.
+- Keep the explicit product-reference instruction. The optimized prompt must still say that the attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, the product must match that reference exactly, and the reference image controls appearance, proportions, construction, material, color, countable parts, and scale.
 - Keep the product role visible in product-relevant frames, but write it as a short cue, not a full verification list.
 - Keep character identity only where people appear.
 - Prefer one concise visual-only sentence per `Frame N:`.

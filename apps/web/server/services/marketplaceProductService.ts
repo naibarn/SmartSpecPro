@@ -16,6 +16,26 @@ import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, prod
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { searchImages } from "./vectorize-search";
 
+type MarketplaceProductEditableFields = {
+  productName: string;
+  descriptionText?: string | null;
+  priceCurrent?: string | number | null;
+  commissionRatePercent?: string | number | null;
+  productPageUrl?: string | null;
+  soldCountText?: string | null;
+  capturedCategoryText?: string | null;
+  shopName?: string | null;
+  productCategory?: string | null;
+  ratingScore?: string | number | null;
+  reviewCountText?: string | null;
+};
+
+type ManualMarketplaceProductInput = MarketplaceProductEditableFields & {
+  platform: MarketplacePlatform;
+  sourceUrl?: string | null;
+  affiliateUrl?: string | null;
+};
+
 function money(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
 }
@@ -26,6 +46,24 @@ function percent(value: number | null | undefined): string | null {
 
 function positivePercent(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 100 ? value.toFixed(2) : null;
+}
+
+function decimalText(value: string | number | null | undefined, options: { min?: number; max?: number } = {}): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  const normalized = typeof value === "number" ? value : Number(String(value).replace(/,/g, "").trim());
+  if (!Number.isFinite(normalized)) return null;
+  if (options.min !== undefined && normalized < options.min) return null;
+  if (options.max !== undefined && normalized > options.max) return null;
+  return normalized.toFixed(2);
+}
+
+function optionalText(value: unknown, max = 4096): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text ? text.slice(0, max) : null;
+}
+
+function manualProductSourceUrl(productId: string, productPageUrl: string | null, sourceUrl?: string | null) {
+  return normalizeOptionalHttpUrl(sourceUrl) ?? productPageUrl ?? `${(process.env.PUBLIC_URL || "https://smartaihub.app").replace(/\/$/, "")}/marketplace-capture/products/${productId}`;
 }
 
 function countText(value: number | null | undefined, fallback: string | null | undefined): string | null {
@@ -495,6 +533,58 @@ async function applyConfiguredShares(productId: string, platform: MarketplacePla
   return allowedGroupIds;
 }
 
+async function syncConfiguredSharesForOwnedProducts(platform: MarketplacePlatform, setting: {
+  enabled: boolean;
+  groupIdsJson: number[];
+  permission: string;
+}, auth: { userId: number; tenantId?: string }) {
+  if (!auth.tenantId) return { productCount: 0, sharedGroupIds: [] as number[] };
+  const db = getDb();
+  await db.delete(marketplaceProductGroupShares).where(and(
+    eq(marketplaceProductGroupShares.sharedByUserId, auth.userId),
+    eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+    eq(marketplaceProductGroupShares.platform, platform),
+  ));
+
+  const configuredGroupIds = setting.enabled
+    ? (setting.groupIdsJson ?? []).filter((id) => Number.isInteger(id))
+    : [];
+  if (configuredGroupIds.length === 0) return { productCount: 0, sharedGroupIds: [] as number[] };
+
+  const activeGroupIds = new Set(await getActiveGroupIds(auth));
+  const allowedGroupIds = configuredGroupIds.filter((groupId) => activeGroupIds.has(groupId));
+  if (allowedGroupIds.length === 0) return { productCount: 0, sharedGroupIds: [] as number[] };
+
+  const products = await db.select({ id: marketplaceProducts.id }).from(marketplaceProducts)
+    .where(and(
+      eq(marketplaceProducts.userId, auth.userId),
+      eq(marketplaceProducts.tenantId, auth.tenantId),
+      eq(marketplaceProducts.platform, platform),
+      or(eq(marketplaceProducts.status, "active"), sql`${marketplaceProducts.status} IS NULL`),
+    ));
+  if (products.length === 0) return { productCount: 0, sharedGroupIds: allowedGroupIds };
+
+  const now = new Date();
+  await db.insert(marketplaceProductGroupShares).values(products.flatMap((product) =>
+    allowedGroupIds.map((groupId) => ({
+      id: createMarketplaceId("mpgs"),
+      productId: product.id,
+      tenantId: auth.tenantId!,
+      groupId,
+      sharedByUserId: auth.userId,
+      platform,
+      permission: setting.permission,
+      createdAt: now,
+      updatedAt: now,
+    }))
+  )).onConflictDoUpdate({
+    target: [marketplaceProductGroupShares.productId, marketplaceProductGroupShares.groupId],
+    set: { permission: setting.permission, updatedAt: now },
+  });
+
+  return { productCount: products.length, sharedGroupIds: allowedGroupIds };
+}
+
 async function insertMetricSnapshot(productId: string, captureId: string, product: any, auth: { userId: number }, options: { commissionRatePercent?: string | null } = {}) {
   const rawSoldCountText = product.rating.soldCountText ?? null;
   const soldCountNormalized = parseSoldCount(rawSoldCountText);
@@ -868,7 +958,8 @@ export async function saveMarketplaceShareSetting(input: {
       updatedAt: now,
     },
   });
-  return { saved: true, setting: row };
+  const sync = await syncConfiguredSharesForOwnedProducts(input.platform, row, { ...auth, tenantId });
+  return { saved: true, setting: row, sync };
 }
 
 async function snapshotsForProductIds(productIds: string[]) {
@@ -1263,6 +1354,134 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
     shares,
     health: buildProductHealth(product, history),
   };
+}
+
+function assertMarketplaceProductWriteAccess(bundle: Awaited<ReturnType<typeof getMarketplaceProductWithAccess>>) {
+  if (bundle.product.accessType === "group" && bundle.product.groupShare?.permission !== "read_update") {
+    throw new Error("Product is shared read-only");
+  }
+}
+
+function editableProductUpdate(input: MarketplaceProductEditableFields) {
+  const category = optionalText(input.capturedCategoryText, 300);
+  const productCategory = productReferenceCategorySchema.catch("auto").parse(input.productCategory || "auto");
+  const productPageUrl = normalizeOptionalHttpUrl(input.productPageUrl);
+  const soldCountText = optionalText(input.soldCountText, 128);
+  const reviewCountText = optionalText(input.reviewCountText, 128);
+  return {
+    productName: optionalText(input.productName, 500) || "Manual marketplace product",
+    shopName: optionalText(input.shopName, 300),
+    priceCurrent: decimalText(input.priceCurrent, { min: 0 }),
+    commissionRatePercent: decimalText(input.commissionRatePercent, { min: 0, max: 100 }),
+    soldCountText,
+    soldCountNormalized: parseSoldCount(soldCountText),
+    ratingScore: decimalText(input.ratingScore, { min: 0, max: 5 }),
+    reviewCountText,
+    descriptionText: optionalText(input.descriptionText, 80_000) ?? "",
+    productCategory,
+    category,
+    productPageUrl,
+  };
+}
+
+export async function updateMarketplaceProductDetails(
+  productId: string,
+  input: MarketplaceProductEditableFields,
+  auth: { userId: number; tenantId?: string },
+) {
+  const db = getDb();
+  const bundle = await getMarketplaceProductWithAccess(productId, auth);
+  assertMarketplaceProductWriteAccess(bundle);
+  const currentDescription = bundle.product.descriptionJson && typeof bundle.product.descriptionJson === "object"
+    ? bundle.product.descriptionJson as Record<string, unknown>
+    : {};
+  const currentPlatformRaw = bundle.product.platformRawJson && typeof bundle.product.platformRawJson === "object"
+    ? bundle.product.platformRawJson as Record<string, unknown>
+    : {};
+  const update = editableProductUpdate(input);
+  const updatedAt = new Date();
+  const [product] = await db.update(marketplaceProducts)
+    .set({
+      productName: update.productName,
+      shopName: update.shopName,
+      priceCurrent: update.priceCurrent,
+      commissionRatePercent: update.commissionRatePercent,
+      soldCountText: update.soldCountText,
+      soldCountNormalized: update.soldCountNormalized,
+      ratingScore: update.ratingScore,
+      reviewCountText: update.reviewCountText,
+      descriptionText: update.descriptionText,
+      productCategory: update.productCategory,
+      descriptionJson: {
+        ...currentDescription,
+        categoryText: update.category,
+        productCategory: update.productCategory,
+      },
+      platformRawJson: {
+        ...currentPlatformRaw,
+        productPageUrl: update.productPageUrl,
+        latestProductPageUrl: update.productPageUrl,
+        categoryText: update.category,
+        productCategory: update.productCategory,
+        manualUpdatedAt: updatedAt.toISOString(),
+        manualUpdatedByUserId: auth.userId,
+      },
+      updatedAt,
+    })
+    .where(eq(marketplaceProducts.id, bundle.product.id))
+    .returning();
+  return { product, updatedAt };
+}
+
+export async function createManualMarketplaceProduct(
+  input: ManualMarketplaceProductInput,
+  auth: { userId: number; tenantId?: string },
+) {
+  const db = getDb();
+  const productId = createMarketplaceId("mp");
+  const update = editableProductUpdate(input);
+  const productPageUrl = normalizeOptionalHttpUrl(input.productPageUrl);
+  const sourceUrl = manualProductSourceUrl(productId, productPageUrl, input.sourceUrl);
+  const now = new Date();
+  await db.insert(marketplaceProducts).values({
+    id: productId,
+    captureId: null,
+    userId: auth.userId,
+    tenantId: auth.tenantId ?? null,
+    platform: input.platform,
+    sourceUrl,
+    affiliateUrl: normalizeOptionalHttpUrl(input.affiliateUrl),
+    productName: update.productName,
+    shopName: update.shopName,
+    priceCurrent: update.priceCurrent,
+    commissionRatePercent: update.commissionRatePercent,
+    productCategory: update.productCategory,
+    ratingScore: update.ratingScore,
+    reviewCountText: update.reviewCountText,
+    soldCountText: update.soldCountText,
+    soldCountNormalized: update.soldCountNormalized,
+    descriptionText: update.descriptionText,
+    descriptionJson: {
+      categoryText: update.category,
+      productCategory: update.productCategory,
+      manualEntry: true,
+    },
+    specsJson: {},
+    platformRawJson: {
+      productPageUrl,
+      latestProductPageUrl: productPageUrl,
+      categoryText: update.category,
+      productCategory: update.productCategory,
+      manualEntry: true,
+      manualCreatedAt: now.toISOString(),
+      manualCreatedByUserId: auth.userId,
+    },
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+  });
+  await applyConfiguredShares(productId, input.platform, auth);
+  return { productId, productUrl: `/marketplace-capture/products/${productId}` };
 }
 
 export async function addMarketplaceProductImageFromUrl(input: {

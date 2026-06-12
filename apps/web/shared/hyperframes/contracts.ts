@@ -560,6 +560,14 @@ export const HyperframesRenderStatusProjectionSchema = z
     compositionHtmlHash: SafeHashSchema.optional(),
     templateContentHash: SafeHashSchema.optional(),
     runtimeProfileHash: SafeHashSchema.optional(),
+    creativePlanHash: SafeHashSchema.optional(),
+    presetManifestHash: SafeHashSchema.optional(),
+    audioEventMapHash: SafeHashSchema.optional(),
+    fallbackQuality: z.enum(["full", "partial", "not_supported"]).optional(),
+    hasAudio: z.boolean().optional(),
+    hasNativeAudio: z.boolean().optional(),
+    playableProbe: z.record(z.unknown()).default({}),
+    audioMixReport: z.record(z.unknown()).default({}),
     qaStatus: z.enum(["passed", "passed_with_warnings", "failed"]).optional(),
     outputRefs: z.array(HyperframesOutputRefSchema).default([]),
     artifactRefs: z.array(HyperframesArtifactRefSchema).default([]),
@@ -598,8 +606,25 @@ export const HyperframesLibraryFinalizeMetadataSchema = z
     platformPresetId: HyperframesPlatformPresetIdSchema,
     platformPresetVersion: SafeIdSchema,
     renderIntent: HyperframesRenderIntentSchema,
+    compositionMode: MarketplaceAutoReviewCompositionModeSchema.optional(),
     compositionInputHash: SafeHashSchema,
     compositionHtmlHash: SafeHashSchema,
+    templateContentHash: SafeHashSchema.optional(),
+    runtimeProfileHash: SafeHashSchema.optional(),
+    creativePlanHash: SafeHashSchema.optional(),
+    presetManifestHash: SafeHashSchema.optional(),
+    audioEventMapHash: SafeHashSchema.optional(),
+    fallbackQuality: z.enum(["full", "partial", "not_supported"]).optional(),
+    overlayPresetId: SafeIdSchema.optional(),
+    subtitlePresetId: SafeIdSchema.optional(),
+    audioPackPresetId: SafeIdSchema.optional(),
+    musicPresetId: SafeIdSchema.optional(),
+    sfxPresetIds: z.array(SafeIdSchema).default([]),
+    presetVersions: z.record(SafeIdSchema).default({}),
+    hasAudio: z.boolean().default(false),
+    hasNativeAudio: z.boolean().default(false),
+    audioMixReport: z.record(z.unknown()).default({}),
+    outputProbe: z.record(z.unknown()).default({}),
     outputHash: SafeHashSchema,
     outputArtifactRef: HyperframesArtifactRefSchema,
     thumbnailRef: HyperframesArtifactRefSchema.nullable().optional(),
@@ -683,6 +708,7 @@ export function buildHyperframesRenderJobIdempotencyKey(input: {
   platformPresetId: HyperframesPlatformPresetId;
   renderIntent: HyperframesRenderIntent;
   compositionInputHash: string;
+  runtimeProfileHash?: string;
 }): string {
   return [
     "hyperframes",
@@ -693,6 +719,7 @@ export function buildHyperframesRenderJobIdempotencyKey(input: {
     input.platformPresetId,
     input.renderIntent,
     input.compositionInputHash,
+    ...(input.runtimeProfileHash ? [input.runtimeProfileHash] : []),
   ].join(":");
 }
 

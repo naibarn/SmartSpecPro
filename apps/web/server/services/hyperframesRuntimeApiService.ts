@@ -10,9 +10,17 @@ import {
   type MarketplaceAutoReviewCompositionMode,
 } from "@shared/hyperframes/contracts";
 import {
+  HyperframesFinalCompositeConfigSchema,
   RepairHyperframesRenderJobOutputSchema,
+  type CreateHyperframesFinalCompositeInput,
+  type ListHyperframesCreativePresetsInput,
   type RepairHyperframesRenderJobOutput,
 } from "@shared/hyperframes/runtimeApiSchemas";
+import {
+  HYPERFRAMES_CREATIVE_PRESET_ALIASES,
+  listHyperframesCreativePresets,
+  type HyperframesCreativePreset,
+} from "@shared/hyperframes/creativePresets";
 import { listHyperframesTemplateRegistry } from "./hyperframesTemplateRegistry";
 import {
   getHyperframesAutoStoryboardReviewPlan,
@@ -29,7 +37,10 @@ import {
   type MarketplaceAutoReviewReferenceAnchorsInput,
 } from "./marketplaceAutoReviewService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
-import { buildHyperframesCompositionInput } from "./hyperframesCompositionService";
+import {
+  buildHyperframesCompositionInput,
+  buildHyperframesFinalCompositeCompositionInput,
+} from "./hyperframesCompositionService";
 import {
   buildHyperframesRenderJobPayload,
   buildHyperframesRenderProjection,
@@ -63,6 +74,386 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.map(item => cleanText(item)).filter(Boolean)
     : [];
+}
+
+function isCompleteValidatedAudioAsset(value: {
+  assetRef?: string;
+  licenseName?: string;
+  checksum?: { algorithm?: string; value?: string };
+  mimeType?: string;
+  durationSec?: number;
+}): boolean {
+  return (
+    Boolean(cleanText(value.assetRef)) &&
+    Boolean(cleanText(value.licenseName)) &&
+    value.checksum?.algorithm === "sha256" &&
+    /^[a-f0-9]{32,128}$/i.test(cleanText(value.checksum.value)) &&
+    /^audio\/[a-z0-9.+-]+$/i.test(cleanText(value.mimeType)) &&
+    Number.isFinite(value.durationSec) &&
+    Number(value.durationSec) > 0
+  );
+}
+
+function isSfxAudioRole(role: string): boolean {
+  return role === "transition_sfx" || role === "ui_sfx" || role === "accent_sfx";
+}
+
+function sfxPresetFamily(presetId?: string): string {
+  const value = cleanText(presetId).toLowerCase();
+  if (/whoosh|scene_transition/.test(value)) return "whoosh";
+  if (/button|click|tap/.test(value)) return "button";
+  if (/cash|register|sales/.test(value)) return "cash";
+  if (/riser|impact|reveal/.test(value)) return "riser";
+  if (/extraction|ping|detect/.test(value)) return "extraction";
+  if (/keyboard|typing/.test(value)) return "typing";
+  if (/shutter|capture/.test(value)) return "shutter";
+  if (/completion|cta/.test(value)) return "completion";
+  if (/notification|message|pop|chime|bell/.test(value)) return "notification";
+  if (/error|warning|buzz/.test(value)) return "warning";
+  return "custom";
+}
+
+function allowedSfxTriggersForFamily(family: string): string[] {
+  switch (family) {
+    case "whoosh":
+      return ["scene_cut"];
+    case "button":
+      return ["button_depress", "cta_lock"];
+    case "notification":
+      return ["card_materializes", "text_appears"];
+    case "cash":
+      return ["price_badge_pop", "sales_number_lock"];
+    case "riser":
+      return ["product_reveal"];
+    case "extraction":
+      return ["text_appears", "card_materializes"];
+    case "typing":
+      return ["text_appears"];
+    case "shutter":
+      return ["product_reveal", "card_materializes"];
+    case "completion":
+      return ["cta_lock"];
+    case "warning":
+      return ["text_appears", "manual"];
+    default:
+      return [
+        "scene_cut",
+        "text_appears",
+        "card_materializes",
+        "button_depress",
+        "price_badge_pop",
+        "sales_number_lock",
+        "product_reveal",
+        "cta_lock",
+      ];
+  }
+}
+
+function storyboardShotRanges(
+  shots: Array<{
+    id: string;
+    index: number;
+    startSec: number;
+    durationSec: number;
+  }>
+): Array<{ id: string; startSec: number; endSec: number }> {
+  return [...shots]
+    .sort((a, b) => a.index - b.index)
+    .map(shot => ({
+      id: shot.id,
+      startSec: Number(shot.startSec),
+      endSec: Number(shot.startSec) + Number(shot.durationSec),
+    }));
+}
+
+function audioVolumePolicyForEvent(input: {
+  role: string;
+  presetId?: string;
+  hasVoiceover: boolean;
+}): { label: string; maxVolume: number } | null {
+  const role = cleanText(input.role);
+  const presetId = cleanText(input.presetId).toLowerCase();
+  if (role === "voiceover") {
+    return { label: "voiceover", maxVolume: 1 };
+  }
+  if (role === "music") {
+    return input.hasVoiceover
+      ? { label: "music under voiceover", maxVolume: 0.18 }
+      : { label: "music without voiceover", maxVolume: 0.45 };
+  }
+  if (role === "ambience") {
+    return { label: "ambience", maxVolume: 0.1 };
+  }
+  if (role === "ui_sfx") {
+    return { label: "UI click SFX", maxVolume: 0.42 };
+  }
+  if (role === "transition_sfx") {
+    return { label: "transition whoosh SFX", maxVolume: 0.65 };
+  }
+  if (role === "accent_sfx") {
+    if (/cash|register|sales/.test(presetId)) {
+      return { label: "cash register SFX", maxVolume: 0.55 };
+    }
+    if (/notification|chime|bell/.test(presetId)) {
+      return { label: "notification SFX", maxVolume: 0.4 };
+    }
+    if (/riser/.test(presetId)) {
+      return { label: "riser SFX", maxVolume: 0.5 };
+    }
+    return { label: "impact SFX", maxVolume: 0.7 };
+  }
+  return null;
+}
+
+function validateHyperframesAudioVolumePolicy(input: {
+  audioEvents: Array<{
+    role: string;
+    presetId?: string;
+    volume: number;
+  }>;
+}): void {
+  const hasVoiceover = input.audioEvents.some(event => event.role === "voiceover");
+  for (const event of input.audioEvents) {
+    const policy = audioVolumePolicyForEvent({
+      role: event.role,
+      presetId: event.presetId,
+      hasVoiceover,
+    });
+    if (!policy) continue;
+    const volume = Number(event.volume);
+    if (Number.isFinite(volume) && volume > policy.maxVolume + 0.001) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Audio event volume exceeds the safe mix policy for ${policy.label}.`,
+      });
+    }
+  }
+}
+
+function validateHyperframesSfxPolicy(input: {
+  audioEvents: Array<{
+    role: string;
+    presetId?: string;
+    startSec: number;
+    durationSec?: number;
+    volume: number;
+  }>;
+  shotCount: number;
+}): void {
+  const sfxEvents = input.audioEvents.filter(event => isSfxAudioRole(event.role));
+  const maxPerPreset = Math.max(4, input.shotCount + 2);
+  const byPreset = new Map<string, typeof sfxEvents>();
+  for (const event of sfxEvents) {
+    const presetId = cleanText(event.presetId) || event.role;
+    if (Number(event.durationSec ?? 0) > 2) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "SFX duration exceeds the allowed trigger policy.",
+      });
+    }
+    if (Number(event.volume) > 0.75) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "SFX volume exceeds the safe mix policy.",
+      });
+    }
+    const events = byPreset.get(presetId) ?? [];
+    events.push(event);
+    byPreset.set(presetId, events);
+  }
+  for (const [presetId, events] of byPreset) {
+    if (events.length > maxPerPreset) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `SFX preset ${presetId} repeats too often for the final composite.`,
+      });
+    }
+    const sorted = [...events].sort((a, b) => Number(a.startSec) - Number(b.startSec));
+    for (let index = 1; index < sorted.length; index += 1) {
+      const previous = sorted[index - 1];
+      const current = sorted[index];
+      if (Number(current.startSec) - Number(previous.startSec) < 0.15) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Repeated SFX triggers are too close together.",
+        });
+      }
+    }
+  }
+}
+
+function validateHyperframesSfxShotBounds(input: {
+  audioEvents: Array<{
+    role: string;
+    id?: string;
+    startSec: number;
+    durationSec?: number;
+  }>;
+  shots: Array<{
+    id: string;
+    index: number;
+    startSec: number;
+    durationSec: number;
+  }>;
+}): void {
+  const ranges = storyboardShotRanges(input.shots);
+  for (const event of input.audioEvents.filter(item => isSfxAudioRole(item.role))) {
+    const eventStart = Number(event.startSec);
+    const eventEnd = eventStart + Number(event.durationSec ?? 0);
+    const ownerShot = ranges.find(
+      range =>
+        eventStart >= range.startSec - 0.05 &&
+        eventEnd <= range.endSec + 0.05
+    );
+    if (!ownerShot || eventEnd > ownerShot.endSec + 0.05) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "SFX event timing must stay within a single storyboard shot range.",
+      });
+    }
+  }
+}
+
+function validateHyperframesSfxTriggerPolicy(input: {
+  audioEvents: Array<{
+    role: string;
+    presetId?: string;
+    visualTrigger: string;
+    startSec: number;
+    durationSec?: number;
+  }>;
+  shots: Array<{
+    id: string;
+    index: number;
+    startSec: number;
+    durationSec: number;
+  }>;
+}): void {
+  const ranges = storyboardShotRanges(input.shots);
+  for (const event of input.audioEvents.filter(item => isSfxAudioRole(item.role))) {
+    const family = sfxPresetFamily(event.presetId);
+    const visualTrigger = cleanText(event.visualTrigger);
+    if (!visualTrigger || visualTrigger === "video_start") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Every SFX event must reference a concrete visual trigger.",
+      });
+    }
+    const allowedTriggers = allowedSfxTriggersForFamily(family);
+    if (!allowedTriggers.includes(visualTrigger)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `SFX preset ${cleanText(event.presetId) || family} requires a matching visual trigger.`,
+      });
+    }
+
+    const eventStart = Number(event.startSec);
+    const ownerShot = ranges.find(
+      (range, index) =>
+        eventStart >= range.startSec - 0.05 &&
+        (eventStart < range.endSec - 0.05 ||
+          (index === ranges.length - 1 && eventStart <= range.endSec + 0.05))
+    );
+    if (!ownerShot) continue;
+    const offsetFromShotStart = eventStart - ownerShot.startSec;
+    const offsetToNearestBoundary = Math.min(
+      Math.abs(eventStart - ownerShot.startSec),
+      Math.abs(ownerShot.endSec - eventStart)
+    );
+
+    if (family === "whoosh" && offsetToNearestBoundary > 0.25) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Whoosh SFX must be timed near a storyboard scene cut boundary.",
+      });
+    }
+    if (family === "cash" && offsetFromShotStart < 0.5) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Cash register SFX must fire after the price/sales lock, not at sentence start.",
+      });
+    }
+    if (family === "riser" && offsetFromShotStart > 1.2) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Riser SFX must start close to the product or feature reveal.",
+      });
+    }
+  }
+}
+
+export function validateHyperframesFinalCompositeAudioAssets(
+  rawConfig: unknown
+): void {
+  const config = HyperframesFinalCompositeConfigSchema.parse(rawConfig);
+  const audioEvents = Array.isArray(config.audioEvents) ? config.audioEvents : [];
+  if (audioEvents.length === 0) return;
+  const validation = config.audioAssetValidation ?? {
+    stagedAssetsRequired: true,
+    allowSyntheticFallback: true,
+    missingAssetRefs: [],
+    validatedAssetRefs: [],
+  };
+  const missingAssetRefs = new Set(
+    (validation.missingAssetRefs ?? []).map(ref => cleanText(ref)).filter(Boolean)
+  );
+  const validatedAssetRefs = new Set(
+    (validation.validatedAssetRefs ?? []).map(ref => cleanText(ref)).filter(Boolean)
+  );
+  const validatedAssets = new Map(
+    (validation.validatedAssets ?? [])
+      .filter(asset => isCompleteValidatedAudioAsset(asset))
+      .map(asset => [cleanText(asset.assetRef), asset])
+  );
+  const finalDuration = Number(config.finalVideoLengthSec) || 0;
+  validateHyperframesAudioVolumePolicy({ audioEvents });
+  validateHyperframesSfxPolicy({
+    audioEvents,
+    shotCount: Array.isArray(config.shots) ? config.shots.length : 0,
+  });
+  validateHyperframesSfxTriggerPolicy({
+    audioEvents,
+    shots: config.shots,
+  });
+  for (const event of audioEvents) {
+    const assetRef = cleanText(event.assetRef);
+    const eventEnd = Number(event.startSec ?? 0) + Number(event.durationSec ?? 0);
+    if (Number.isFinite(finalDuration) && finalDuration > 0 && eventEnd > finalDuration + 0.5) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Audio/SFX event timing exceeds the final composite timeline.",
+      });
+    }
+    if (
+      validation.stagedAssetsRequired &&
+      !validatedAssetRefs.has(assetRef) &&
+      !validatedAssets.has(assetRef)
+    ) {
+      missingAssetRefs.add(assetRef);
+    }
+    if (
+      validation.stagedAssetsRequired &&
+      validation.allowSyntheticFallback === false &&
+      !validatedAssets.has(assetRef)
+    ) {
+      missingAssetRefs.add(assetRef);
+    }
+  }
+  validateHyperframesSfxShotBounds({
+    audioEvents,
+    shots: config.shots,
+  });
+  if (
+    validation.stagedAssetsRequired &&
+    missingAssetRefs.size > 0 &&
+    validation.allowSyntheticFallback === false
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Final composite audio/SFX requires staged licensed assets with checksum metadata, or enable explicit synthetic fallback.",
+    });
+  }
 }
 
 function buildAutoStoryboardProductReferenceAnchors(
@@ -692,6 +1083,140 @@ export async function createHyperframesPreviewForApi(input: {
   };
 }
 
+export async function createHyperframesFinalCompositeForApi(
+  input: CreateHyperframesFinalCompositeInput & {
+    auth: HyperframesAuthContext;
+  }
+) {
+  const access = await resolveHyperframesFeatureAccessForTenant({
+    auth: input.auth,
+    productId: input.productId,
+    runId: input.runId,
+  });
+  if (!access.capabilities.canStartAuto) {
+    const render = buildHyperframesRenderProjection({
+      tenantId: input.auth.tenantId ?? "default",
+      productId: input.productId,
+      runId: input.runId,
+      renderJobId: `hf_final_unavailable_${input.runId}`,
+      status: "not_available",
+      safeDiagnostics: [
+        "HyperFrames final composite is unavailable for this tenant or run.",
+      ],
+    });
+    return {
+      contractVersion:
+        HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+      render,
+      chargeSummary: {
+        chargeRequired: false,
+        quotaDecision: access.creditAndQuota.quotaDecision,
+        noChargeReason: "feature_disabled" as const,
+      },
+      polling: render.polling,
+      invalidates: [],
+    };
+  }
+  const sourceVideos = input.config.shots
+    .map(shot => cleanText(shot.sourceVideoUrl))
+    .filter(Boolean);
+  if (sourceVideos.length === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Final composite requires at least one Storyboard Review MP4 source.",
+    });
+  }
+  validateHyperframesFinalCompositeAudioAssets(input.config);
+  const [productBundle, runRecord] = await Promise.all([
+    getMarketplaceProductWithAccess(input.productId, input.auth),
+    getMarketplaceAutoReviewRun(input.runId, input.auth),
+  ]);
+  const runProductId = cleanText((runRecord as Record<string, unknown>).productId);
+  if (runProductId && runProductId !== input.productId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Auto review run was not found for this product.",
+    });
+  }
+  let composition: ReturnType<typeof buildHyperframesFinalCompositeCompositionInput>;
+  try {
+    composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: input.auth.tenantId ?? "default",
+      userId: input.auth.userId,
+      productId: input.productId,
+      runId: input.runId,
+      productState: productBundle,
+      runState: runRecord,
+      finalComposite: input.config,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (/HyperFrames (stale|invalid) timeline/i.test(message)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message,
+      });
+    }
+    throw error;
+  }
+  if (
+    input.expectedCompositionInputHash &&
+    input.expectedCompositionInputHash !==
+      composition.provenance.compositionInputHash
+  ) {
+    const render = buildHyperframesRenderProjection({
+      tenantId: input.auth.tenantId ?? "default",
+      productId: input.productId,
+      runId: input.runId,
+      renderJobId: `hf_final_stale_${input.runId}`,
+      status: "stale_input_hash",
+      payload: buildHyperframesRenderJobPayload({ composition }),
+    });
+    return {
+      contractVersion:
+        HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+      render,
+      chargeSummary: {
+        chargeRequired: false,
+        quotaDecision: "no_charge" as const,
+        noChargeReason: "not_applicable" as const,
+      },
+      polling: render.polling,
+      invalidates: [],
+    };
+  }
+  const render = await queueHyperframesRenderJob({
+    auth: input.auth,
+    composition,
+    priority: 82,
+    maxAttempts: 3,
+  });
+  return {
+    contractVersion:
+      HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+    render,
+    chargeSummary: {
+      chargeRequired: true,
+      creditEstimate: buildHyperframesCreditEstimate({
+        tenantId: input.auth.tenantId ?? "default",
+        userId: input.auth.userId,
+        runId: input.runId,
+        renderIntent: "final",
+        compositionMode: "captioned_final_composite",
+        costClass: "composition_render",
+        compositionInputHash: composition.provenance.compositionInputHash,
+        templateVersion: composition.template.templateVersion,
+        platformPreset: composition.platformPreset,
+        workerComplexityMultiplier: Math.max(1, input.config.shots.length / 6),
+      }),
+      quotaDecision: "allowed" as const,
+      noChargeReason: null,
+    },
+    polling: render.polling,
+    invalidates: INVALIDATES,
+  };
+}
+
 export async function getHyperframesRenderJobForApi(input: {
   auth: HyperframesAuthContext;
   renderJobId: string;
@@ -810,6 +1335,71 @@ export async function listHyperframesTemplatesForApi(input: {
       renderIntent: input.renderIntent,
       allowlist: access.flags.templateAllowlist,
     }),
+  };
+}
+
+export async function listHyperframesCreativePresetsForApi(
+  input: ListHyperframesCreativePresetsInput & {
+    auth: HyperframesAuthContext;
+  }
+) {
+  const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
+  const hyperframesProducer = access.flags.workerEnabled && access.capabilities.canStartAuto;
+  const runtimeCapabilities = {
+    ffmpegAssFallback: true,
+    smokeRenderer: true,
+    hyperframesProducer,
+    minRuntimeProfile: "feature_120_runtime_v1",
+    testedRuntimeProfileHash: "hf_runtime_feature_120_v1",
+  };
+  const presets = listHyperframesCreativePresets({
+    includeDisabled: input.includeDisabled,
+    includeCandidate: input.includeCandidate,
+    category: input.category,
+  }).filter(preset => {
+    if (preset.capabilityState !== "producer_ready") return true;
+    return hyperframesProducer || input.includeDisabled;
+  });
+  const presetAvailability = presets.reduce<
+    Record<string, { selectable: boolean; reason: string | null; fallbackMode: "producer" | "ffmpeg_ass" | "not_available" }>
+  >((availability, preset: HyperframesCreativePreset) => {
+    const producerOnly = preset.capabilityState === "producer_ready";
+    const fallbackReady =
+      preset.capabilityState === "fallback_only" || preset.runtimeSupport.ffmpegAssFallback;
+    const selectable =
+      access.capabilities.canAccessAuto &&
+      (producerOnly ? hyperframesProducer : fallbackReady);
+    availability[preset.id] = {
+      selectable,
+      reason: selectable
+        ? null
+        : producerOnly
+          ? "HyperFrames producer runtime is not ready for this tenant."
+          : "This preset is not available in the current runtime profile.",
+      fallbackMode: producerOnly
+        ? hyperframesProducer
+          ? "producer"
+          : "not_available"
+        : fallbackReady
+          ? "ffmpeg_ass"
+          : "not_available",
+    };
+    return availability;
+  }, {});
+  return {
+    contractVersion:
+      HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+    access,
+    presets,
+    aliases: HYPERFRAMES_CREATIVE_PRESET_ALIASES,
+    creativeCapabilities: {
+      canUseProducerPresets: hyperframesProducer,
+      canUseFallbackPresets: access.capabilities.canAccessAuto,
+      canUseAudioPacks: hyperframesProducer,
+      canUseSfx: hyperframesProducer,
+    },
+    runtimeCapabilities,
+    presetAvailability,
   };
 }
 

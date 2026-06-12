@@ -10,6 +10,7 @@ import {
   buildMarketplaceAutoReviewClaimEvidenceMappingForTest,
   buildMarketplaceAutoReview3x3StoryboardPromptForTest,
   buildMarketplaceAutoReviewCreativeConceptSetForTest,
+  buildMarketplaceAutoReviewCreativeConceptSetWithRetryMemoryForTest,
   buildMarketplaceAutoReviewCreativePlannerFallbackConceptSetForTest,
   buildMarketplaceAutoReviewCreativeVariationSeedForTest,
   buildMarketplaceAutoReviewCreativeShotForTest,
@@ -34,6 +35,7 @@ import {
   acceptMarketplaceAutoReviewBestImageAttemptAfterProviderFailureForTest,
   acceptMarketplaceAutoReviewImageQaWithWarningsForTest,
   hasMarketplaceAutoReviewMinimumImageAttemptsForTest,
+  hydrateMarketplaceAutoReviewPlanForStoryboardReviewForTest,
   isMarketplaceAutoReviewCompletedStageStatusForTest,
   isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest,
   marketplaceAutoReviewOperationalCleanupCutoffForTest,
@@ -56,15 +58,18 @@ import {
   buildProductReferenceStoryboardSkillInputsForTest,
   buildMarketplaceAutoReviewWarningOverlayVerificationForTest,
   collectPaidStageAuthorityFreshnessForTest,
+  describedCharacterAnchorDirectiveForTest,
   evaluateMarketplaceAutoReviewInputChangeImpactForTest,
+  ensureMinorSafetyClothingLockInImagePromptForTest,
+  ensureStoryboardGridContractLockInImagePromptForTest,
   filterMarketplaceAutoReviewImageRepairUnitsForTest,
   inferProductReferenceStoryboardCategoryForTest,
   isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest,
   prepareMarketplaceAutoReviewImagePromptForTest,
   productReferenceStoryboardReferenceImageGroupsForTest,
+  promptSkillDebugStageOutputFromErrorForTest,
   resolveMarketplaceAutoReviewAudioStrategy,
   resolveMarketplaceAutoReviewReferenceAnchorsForTest,
-  reusableStoryboardGridPromptAuditForTest,
   selectMarketplaceAutoReviewBestImageAttemptForTest,
   mergeMarketplaceAutoReviewQaCacheEntriesForTest,
   maybeQueueHyperframesPreviewAfterStoryboardReadyForTest,
@@ -279,6 +284,67 @@ describe("Marketplace Auto Review Storyboard Review links", () => {
       "hyperframesRenderJobId=hf_summary_1"
     );
   });
+
+  it("keeps full image attempt prompts in lightweight summary metadata", () => {
+    const fullPrompt = [
+      "OUTPUT FORMAT LOCK: Generate one single 9:16 image canvas.",
+      "MINOR SAFETY CLOTHING LOCK: every visible child must be fully clothed.",
+      "Frame 1: product story panel.",
+    ].join("\n");
+    const serialized = serializeMarketplaceAutoReviewRunForTest(
+      {
+        id: "mar_prompt_summary_1",
+        tenantId: "tenant_1",
+        userId: 119,
+        productId: "product_1",
+        productionRunId: "prod_prompt_summary_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+        status: "running",
+        currentStage: "image_generation",
+        stageIndex: 3,
+        stageCount: 3,
+        storyboardReviewId: null,
+        videoEditorProjectId: null,
+        renderJobId: null,
+        resultLibraryItemId: null,
+        resultJson: {},
+        metadataJson: {
+          imageAttemptReviews: [
+            {
+              reviewId: "image-attempt-review:mar_prompt_summary_1:1",
+              attempt: 1,
+              status: "repair_required",
+              promptHash: "prompt_hash_1",
+              promptLengthChars: fullPrompt.length,
+              prompt: fullPrompt,
+              promptSnippet: "OUTPUT FORMAT LOCK: Generate...",
+              promptAudits: [
+                {
+                  auditId: "image-prompt-audit:1",
+                  promptHash: "prompt_hash_1",
+                  promptLengthChars: fullPrompt.length,
+                  prompt: fullPrompt,
+                  promptSnippet: "OUTPUT FORMAT LOCK: Generate...",
+                },
+              ],
+            },
+          ],
+        },
+        errorMessage: null,
+        idempotencyKey: "marketplace-auto-review:legacy",
+        createdAt: new Date("2026-06-05T00:00:00.000Z"),
+        updatedAt: new Date("2026-06-05T00:00:00.000Z"),
+        completedAt: null,
+      } as any,
+      [],
+      { includeHeavyMetadata: false }
+    ) as any;
+
+    const [review] = serialized.metadataJson.imageAttemptReviews;
+    expect(review.prompt).toBe(fullPrompt);
+    expect(review.promptAudits[0].prompt).toBe(fullPrompt);
+  });
 });
 
 describe("Marketplace Auto Review HyperFrames preview queue", () => {
@@ -448,6 +514,21 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
     ]);
   });
 
+  it("keeps a spoken line wrapped in brackets when splitting skill output", () => {
+    const lines = splitMarketplaceAutoReviewVoiceoverSkillOutputForTest(
+      [
+        "[นึกภาพว่าบ้านมีพื้นที่ให้ลูกเล่นได้แบบปลอดโปร่ง แต่ก็ต้องกันซนอยู่ใช่ไหมคะ]",
+        "EvianAngel คอกกั้นเด็กสูง 68 ซม. ช่วยแบ่งพื้นที่ให้เล่นอย่างเป็นสัดส่วน",
+      ].join("\n"),
+      2
+    );
+
+    expect(lines).toEqual([
+      "นึกภาพว่าบ้านมีพื้นที่ให้ลูกเล่นได้แบบปลอดโปร่ง แต่ก็ต้องกันซนอยู่ใช่ไหมคะ",
+      "EvianAngel คอกกั้นเด็กสูง 68 ซม. ช่วยแบ่งพื้นที่ให้เล่นอย่างเป็นสัดส่วน",
+    ]);
+  });
+
   it("applies rewritten voiceover without changing visual shot contracts", () => {
     const rewritten = applyMarketplaceAutoReviewVoiceoverLinesToPlanForTest({
       plan: reviewPlan,
@@ -464,10 +545,58 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
     expect(rewritten.voiceoverScript).toContain("VOICEOVER SCRIPT BY SHOT");
     expect(rewritten.voiceoverScript).toContain("1. 0-5s เปิดปัญหาของรก");
   });
+
+  it("hydrates a scaffold plan from stored voiceover rewrite before Storyboard Review", () => {
+    const scaffoldPlan = {
+      ...reviewPlan,
+      title: "Product-truth scaffold: Greenforst โต๊ะวางของข้างเตียง",
+      storyboardGuide:
+        "PRODUCT TRUTH SCAFFOLD ONLY: Greenforst โต๊ะวางของข้างเตียง",
+      voiceoverScript:
+        "PRODUCT TRUTH SCAFFOLD ONLY. NO AUDIO COPY.\n1. 0-5s Product truth slot 1: product_truth_scaffold_no_spoken_line\n2. 5-10s Product truth slot 2: product_truth_scaffold_no_spoken_line",
+      shots: reviewPlan.shots.map(shot => ({
+        ...shot,
+        title: `Product truth slot ${shot.order}`,
+        storyboardGuide: `${shot.order}. product truth only; not a media prompt.`,
+        voiceover: "product_truth_scaffold_no_spoken_line",
+        camera: "product_truth_scaffold_no_camera_direction",
+        visual: "product_truth_scaffold_no_visual_direction",
+        movement: "product_truth_scaffold_no_motion_direction",
+        productRole: "product_truth_anchor_only",
+      })),
+    };
+
+    const hydrated =
+      hydrateMarketplaceAutoReviewPlanForStoryboardReviewForTest({
+        plan: scaffoldPlan,
+        metadata: {
+          creativePlanning: {
+            voiceoverSkillRewrite: {
+              status: "rewritten",
+              rawOutputPreview: [
+                "ข้างเตียงรกแบบนี้ หยิบของทีไรก็เสียเวลาใช่ไหม",
+                "วางโต๊ะ Greenforst เข้ามา แล้วของจำเป็นก็มีที่อยู่เป็นสัดส่วนขึ้น",
+              ].join("\n"),
+            },
+          },
+        },
+      });
+
+    expect(hydrated.repairedFromVoiceoverRewrite).toBe(true);
+    expect(hydrated.plan.title).toContain("Marketplace review");
+    expect(hydrated.plan.storyboardGuide).not.toContain(
+      "PRODUCT TRUTH SCAFFOLD ONLY"
+    );
+    expect(hydrated.plan.voiceoverScript).not.toContain(
+      "product_truth_scaffold_no_spoken_line"
+    );
+    expect(hydrated.plan.shots[0]?.voiceover).toContain("หยิบของทีไรก็เสียเวลา");
+    expect(hydrated.plan.shots[0]?.visual).toContain("visually supports");
+  });
 });
 
 describe("Marketplace Auto Review image model selection", () => {
-  it("accepts Nano Banana 2 and falls back invalid values to Nano Banana Pro", () => {
+  it("accepts Nano Banana Pro and falls back invalid values to Nano Banana 2", () => {
     expect(
       normalizeMarketplaceAutoReviewImageModelForTest("google-banana-2")
     ).toBe("google-banana-2");
@@ -475,7 +604,7 @@ describe("Marketplace Auto Review image model selection", () => {
       normalizeMarketplaceAutoReviewImageModelForTest("google-nano-banana-pro")
     ).toBe("google-nano-banana-pro");
     expect(normalizeMarketplaceAutoReviewImageModelForTest("banana")).toBe(
-      "google-nano-banana-pro"
+      "google-banana-2"
     );
   });
 });
@@ -935,6 +1064,14 @@ describe("marketplace auto review audio/video planning", () => {
       style: "casual",
       voice: "warm",
     });
+    const directive = describedCharacterAnchorDirectiveForTest({
+      characterMode: anchors.characterMode,
+      characterBrief: anchors.characterBrief,
+      characterPreset: anchors.characterPreset,
+    });
+    expect(directive).toContain("USER-SELECTED DESCRIBED CHARACTER LOCK");
+    expect(directive).toContain("ผู้หญิงใส่ชุดแฟชั่นบ้าน");
+    expect(directive).toContain("must not become the recurring hero");
   });
 
   it.each(["product_only", "hands_only"])(
@@ -1569,6 +1706,49 @@ describe("marketplace auto review audio/video planning", () => {
       (CreativeConceptSetSchema.parse(set) as any).alternatives.length
     ).toBe(set.alternatives.length);
     expect((set as any).fallbackExpanded).toBe(false);
+  });
+
+  it("reuses the previous valid concept set when a schema-repair retry omits concepts", () => {
+    const previous = buildMarketplaceAutoReviewCreativeConceptSetForTest({
+      parsed: {
+        creativeConceptSet: {
+          alternatives: [
+            {
+              conceptId: "concept-a",
+              title: "จัดมุมหัวเตียงให้น่าใช้",
+              angle: "problem solution",
+            },
+            {
+              conceptId: "concept-b",
+              title: "เช็คพื้นที่วางจริงก่อนซื้อ",
+              angle: "space fit",
+            },
+            {
+              conceptId: "concept-c",
+              title: "ดูรายละเอียดชั้นวางก่อนตัดสินใจ",
+              angle: "buyer verification",
+            },
+          ],
+        },
+      },
+      fallbackPlan: basePlan as any,
+      priorFingerprints: [],
+    }) as any;
+
+    const result =
+      buildMarketplaceAutoReviewCreativeConceptSetWithRetryMemoryForTest({
+        parsed: {
+          conceptTitle: "retry fixed shot fields only",
+          shots: basePlan.shots,
+        },
+        fallbackPlan: basePlan as any,
+        previousConceptSet: previous,
+        priorFingerprints: [],
+      });
+
+    expect(result.reusedPreviousConceptSet).toBe(true);
+    expect(result.creativeConceptSet).toBe(previous);
+    expect(result.reuseReason).toMatch(/returned 0 usable concepts/);
   });
 
   it("builds a deterministic creative concept fallback when planner adapter is unavailable", () => {
@@ -2620,6 +2800,75 @@ describe("marketplace auto review audio/video planning", () => {
     expect(allowTextPrompt).not.toMatch(/\b5-10s\b/);
   });
 
+  it("requires minor clothing safety locks for mother-baby storyboard image prompts", () => {
+    const plan = {
+      ...basePlan,
+      productTruth: {
+        ...basePlan.productTruth,
+        productName: "Sumikko ผ้าอ้อมเด็ก",
+        productCategory: "mother_baby",
+        categoryText: "แม่และเด็ก ผ้าอ้อมเด็ก",
+        categoryPath: ["แม่และเด็ก", "ผ้าอ้อมเด็ก"],
+      },
+      productDetail:
+        "สินค้า: ผ้าอ้อมเด็ก ใช้กับทารกและเด็กเล็กในบ้าน",
+      shots: [baseShot],
+    } as any;
+    const unit = {
+      unitId: "storyboard-grid-image",
+      role: "storyboard_grid",
+    } as any;
+
+    const prompt = buildMarketplaceAutoReview3x3StoryboardPromptForTest({
+      plan,
+      overlayTextMode: "no_text",
+    });
+    const preflight = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      prompt,
+      unit,
+      plan,
+      overlayTextMode: "no_text",
+    });
+    const unsafePrompt = prompt.replace(
+      /MINOR SAFETY CLOTHING LOCK:[\s\S]*?(?=\n\n|$)/,
+      ""
+    );
+    const unsafePreflight =
+      validateMarketplaceAutoReviewImagePromptPreflightForTest({
+        prompt: unsafePrompt,
+        unit,
+        plan,
+        overlayTextMode: "no_text",
+      });
+    const backendEnforcedPrompt =
+      ensureMinorSafetyClothingLockInImagePromptForTest({
+        prompt: unsafePrompt,
+        plan,
+      });
+    const backendEnforcedPreflight =
+      validateMarketplaceAutoReviewImagePromptPreflightForTest({
+        prompt: backendEnforcedPrompt,
+        unit,
+        plan,
+        overlayTextMode: "no_text",
+      });
+
+    expect(prompt).toContain("MINOR SAFETY CLOTHING LOCK");
+    expect(prompt).toMatch(/no shirtless child/i);
+    expect(prompt).toMatch(/no underwear-only\/diaper-only/i);
+    expect(preflight.blockers).not.toContain(
+      "minor_safety_clothing_lock_missing"
+    );
+    expect(unsafePreflight.status).toBe("failed");
+    expect(unsafePreflight.blockers).toContain(
+      "minor_safety_clothing_lock_missing"
+    );
+    expect(backendEnforcedPrompt).toContain("MINOR SAFETY CLOTHING LOCK");
+    expect(backendEnforcedPreflight.blockers).not.toContain(
+      "minor_safety_clothing_lock_missing"
+    );
+  });
+
   it("sanitizes review/rating beats before building 3x3 image prompts", () => {
     const plan = {
       ...basePlan,
@@ -2788,6 +3037,144 @@ describe("marketplace auto review audio/video planning", () => {
       environment: 0,
       total: 1,
     });
+  });
+
+  it("resolves relative storage reference URLs before calling product-reference-storyboard", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const storageUrl =
+      "/api/storage/files/marketplace-captures/cap-123/images/product.png";
+
+    const inputs = buildProductReferenceStoryboardSkillInputsForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      referenceImageGroups: {
+        product: [storageUrl],
+        character: [],
+        environment: [],
+        all: [storageUrl],
+      },
+      publicUrl: "https://smartaihub.app",
+      promptSkillAttempt: 1,
+    });
+
+    expect(inputs.reference_product_images).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-123/images/product.png",
+    ]);
+    expect(inputs.reference_image_role_counts).toEqual({
+      product: 1,
+      character: 0,
+      environment: 0,
+      total: 1,
+    });
+  });
+
+  it("fails fast instead of falling back when storyboard reference URLs are relative without publicUrl", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const storageUrl =
+      "/api/storage/files/marketplace-captures/cap-123/images/product.png";
+
+    expect(() =>
+      buildProductReferenceStoryboardSkillInputsForTest({
+        plan,
+        unit: {
+          unitId: "storyboard-grid-image",
+          role: "storyboard_grid",
+        } as any,
+        overlayTextMode: "no_text",
+        referenceImageGroups: {
+          product: [storageUrl],
+          character: [],
+          environment: [],
+          all: [storageUrl],
+        },
+        promptSkillAttempt: 1,
+      })
+    ).toThrow(
+      "product-reference-storyboard reference image URL requires publicUrl before LLM dispatch"
+    );
+  });
+
+  it("surfaces OpenRouter credit errors without masking the real provider cause", () => {
+    const output = promptSkillDebugStageOutputFromErrorForTest(
+      new Error(
+        [
+          "product-reference-storyboard LLM call failed",
+          "This request requires more credits, or fewer max_tokens.",
+          "You requested up to 4000 tokens, but can only afford 3180.",
+          "To increase, visit https://openrouter.ai/workspaces/default/keys/19b1f7803431216a3c43f58823f945af1d3b55285a86711b13ab0b2bf09",
+        ].join(": ")
+      )
+    );
+
+    expect(output?.status).toBe("provider_credit_blocked");
+    expect((output?.providerError as any)?.provider).toBe("openrouter");
+    expect((output?.providerError as any)?.requestedMaxTokens).toBe(4000);
+    expect((output?.providerError as any)?.affordableTokens).toBe(3180);
+    expect((output?.statusDetail as any)?.state).toBe(
+      "llm_provider_credit_or_max_tokens"
+    );
+    expect((output?.statusDetail as any)?.reasonCodes).toEqual([
+      "openrouter_credit_or_max_tokens",
+    ]);
+    expect(JSON.stringify(output)).toContain(
+      "This request requires more credits"
+    );
+    expect(JSON.stringify(output)).toContain("[openrouter_key_url_redacted]");
+    expect(JSON.stringify(output)).not.toContain("19b1f7803431216a3c43f588");
+  });
+
+  it("keeps described presenter locks in storyboard skill inputs without character images", () => {
+    const describedDirective = describedCharacterAnchorDirectiveForTest({
+      characterMode: "described_character",
+      characterBrief: "คนไทย ผู้หญิง, 20-29, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+    });
+    const plan = {
+      ...basePlan,
+      productDetail: [
+        basePlan.productDetail,
+        "USER-SELECTED REFERENCE ANCHOR LOCK:",
+        describedDirective,
+      ].join("\n\n"),
+      shots: [baseShot],
+    } as any;
+
+    const inputs = buildProductReferenceStoryboardSkillInputsForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      referenceImageGroups: {
+        product: ["https://example.com/product.png"],
+        character: [],
+        environment: [],
+        all: ["https://example.com/product.png"],
+      } as any,
+      promptSkillAttempt: 1,
+    });
+
+    expect(inputs.reference_character_images).toEqual([]);
+    expect(String(inputs.storyboard_guide)).toContain(
+      "USER-SELECTED DESCRIBED CHARACTER LOCK"
+    );
+    expect(String(inputs.storyboard_guide)).toContain("คนไทย ผู้หญิง, 20-29");
+    expect(String(inputs.storyboard_guide)).not.toContain(
+      "No character reference image is supplied"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "USER-SELECTED DESCRIBED CHARACTER LOCK"
+    );
   });
 
   it("records comparable skill input snapshots and marks repair attempts as different inputs", () => {
@@ -3004,7 +3391,7 @@ describe("marketplace auto review audio/video planning", () => {
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
       "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, 35mm lens feel, warm practical window light, soft shadows, depth separation, grounded wood highlights.",
-      "PRODUCT VERIFY: Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts; light wood finish; compact bedside scale; no drawers; no doors.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts; light wood finish; compact bedside scale; no drawers; no doors.",
       ...Array.from(
         { length: 9 },
         (_item, index) =>
@@ -3061,6 +3448,92 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.blockers).not.toContain("storyboard_guide_field_missing");
   });
 
+  it("blocks skill-generated storyboard prompts that do not make product reference image primary", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images"],
+      },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.blockers).toContain(
+      "product_reference_primary_visual_lock_missing"
+    );
+  });
+
+  it("blocks skill-generated storyboard prompts that bind uploaded character reference to a child", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK: The child character must consistently match the facial features, hair, and likeness of the child in @Image2.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "mother_baby",
+        referenceProductImageCount: 1,
+        referenceCharacterImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images", "reference_character_images"],
+      },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.blockers).toContain("character_reference_age_role_mismatch");
+  });
+
   it("blocks skill-generated storyboard prompts that drop hard 3x3 layout instructions", () => {
     const plan = {
       ...basePlan,
@@ -3071,7 +3544,7 @@ describe("marketplace auto review audio/video planning", () => {
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
       "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, no collage/masonry layout, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
-      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       ...Array.from(
         { length: 9 },
         (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
@@ -3127,7 +3600,7 @@ describe("marketplace auto review audio/video planning", () => {
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
       "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
-      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       "Frame 1: visual-only product story panel.",
       "Frame 2: visual-only product story panel.",
       "Frame 3: visual-only product story panel.",
@@ -3161,6 +3634,75 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.warnings).toContain("frame_6_missing");
   });
 
+  it("adds a deterministic storyboard contract lock when skill prompt wording omits exact grid phrases", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const unit = {
+      unitId: "storyboard-grid-image",
+      role: "storyboard_grid",
+    } as any;
+    const skillPrompt = [
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create a vertical storyboard board with nine panels for the product story.",
+      "Use @Image1 as the primary visual source of truth and match the exact same actual reference image product; written product description is secondary and must never override the attached product image.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const rawPreflight = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit,
+      overlayTextMode: "no_text",
+      prompt: skillPrompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images"],
+      },
+    });
+    expect(rawPreflight.status).toBe("failed");
+    expect(rawPreflight.blockers).toContain("output_single_image_missing");
+
+    const locked = ensureStoryboardGridContractLockInImagePromptForTest({
+      prompt: skillPrompt,
+      overlayTextMode: "no_text",
+    });
+    const lockedPreflight =
+      validateMarketplaceAutoReviewImagePromptPreflightForTest({
+        plan,
+        unit,
+        overlayTextMode: "no_text",
+        prompt: locked.prompt,
+        skillRuntime: {
+          selectedSkill: "product-reference-storyboard",
+          fallbackUsed: false,
+          generationMode: "multi_frame_storyboard",
+          layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+          aspectRatio: "9:16",
+          productCategory: "furniture",
+          referenceProductImageCount: 1,
+          schemaAudit: { status: "passed" },
+          inputKeys: ["reference_product_images"],
+        },
+      });
+
+    expect(locked.applied).toBe(true);
+    expect(locked.addedFragments).toContain("one single 9:16 image");
+    expect(locked.prompt).toContain("STORYBOARD GRID CONTRACT LOCK");
+    expect(lockedPreflight.status).toBe("passed");
+    expect(lockedPreflight.blockers).not.toContain("output_single_image_missing");
+  });
+
   it("warns but does not stop repair attempts when a skill prompt omits the exact no-text phrase", () => {
     const plan = {
       ...basePlan,
@@ -3172,7 +3714,7 @@ describe("marketplace auto review audio/video planning", () => {
       "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
       "TEXT RENDERING POLICY: Avoid visible captions, labels, dimension text, timecodes, and marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
-      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       ...Array.from(
         { length: 9 },
         (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
@@ -3814,6 +4356,28 @@ describe("marketplace auto review audio/video planning", () => {
     ).toBe(true);
   });
 
+  it("treats unavailable vision QA as a repair signal, not a clean pass", () => {
+    const qa = buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest({
+      runId: "mar_qa_unavailable",
+      shotId: "shot-1",
+      error: {
+        code: "adapter_runtime_error",
+        message: "adapter runtime error",
+      },
+    });
+
+    expect(qa).toMatchObject({
+      status: "qa_unavailable_warning",
+      verdict: "repair",
+      score: 0,
+      productMatchesReference: false,
+      continuityMatchesShot: false,
+    });
+    expect(qa.reasonCodes).toContain("vision_qa_runtime_unavailable");
+    expect(qa.reasonCodes).toContain("adapter_runtime_error");
+    expect(qa.repairInstruction).toContain("cannot be treated as QA-passed");
+  });
+
   it("scores image generation attempts with negative QA and repair penalties", () => {
     const repairUnit = buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
       qa: {
@@ -3874,7 +4438,8 @@ describe("marketplace auto review audio/video planning", () => {
       qualityScore: 34,
       negativeScore: 54,
       storyboardGridUrl: "https://cdn.example.test/grid-1.png",
-      selectionEligible: true,
+      selectionEligible: false,
+      selectionBlockers: ["productMismatch"],
     });
     expect(review.scoreBreakdown).toMatchObject({
       baseScore: 88,
@@ -3889,7 +4454,7 @@ describe("marketplace auto review audio/video planning", () => {
     });
   });
 
-  it("blocks an image attempt only when product mismatch affects the whole 9-frame storyboard", () => {
+  it("blocks an image attempt when product mismatch appears in QA reason codes", () => {
     const reviews = buildMarketplaceAutoReviewImageAttemptReviewsForTest({
       metadata: {
         storyboardGridUrl: "https://cdn.example.test/grid-1.png",
@@ -4156,57 +4721,6 @@ describe("marketplace auto review audio/video planning", () => {
     expect(metadata.storyboardGridUrl).toBe(
       "https://cdn.example.test/grid-3.png"
     );
-  });
-
-  it("reuses the first passed storyboard-grid prompt audit for repair attempts", () => {
-    const promptAudit = reusableStoryboardGridPromptAuditForTest({
-      refs: [
-        {
-          unitId: "storyboard-grid-image",
-          mediaType: "image",
-          stageKey: "image_generation",
-          role: "storyboard_grid",
-          attempt: 1,
-          taskId: "task-1",
-          model: "google-banana-2",
-          status: "completed",
-          submittedAt: "2026-06-03T00:00:00.000Z",
-          providerSubmitEvidence: {
-            promptAudit: {
-              attempt: 1,
-              prompt: "first stable 3x3 prompt",
-              promptHash: "hash-1",
-              promptPreflight: { status: "passed" },
-            },
-          },
-        },
-        {
-          unitId: "storyboard-grid-image",
-          mediaType: "image",
-          stageKey: "image_generation",
-          role: "storyboard_grid",
-          attempt: 2,
-          taskId: "task-2",
-          model: "google-banana-2",
-          status: "completed",
-          submittedAt: "2026-06-03T00:01:00.000Z",
-          providerSubmitEvidence: {
-            promptAudit: {
-              attempt: 2,
-              prompt: "repair drift prompt",
-              promptHash: "hash-2",
-              promptPreflight: { status: "passed" },
-            },
-          },
-        },
-      ] as any,
-    });
-
-    expect(promptAudit).toMatchObject({
-      attempt: 1,
-      prompt: "first stable 3x3 prompt",
-      promptHash: "hash-1",
-    });
   });
 
   it("normalizes repairing stage evidence from QA and repair refs in output", () => {
@@ -4546,7 +5060,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(both.map(unit => unit.role)).toEqual(["start_frame", "stop_frame"]);
   });
 
-  it("keeps completed provider images accepted when vision QA runtime is unavailable", () => {
+  it("requires repair when vision QA runtime is unavailable", () => {
     const qa =
       buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest({
         runId: "mar_1",
@@ -4564,13 +5078,22 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(qa).toMatchObject({
       status: "qa_unavailable_warning",
-      verdict: "pass",
+      verdict: "repair",
       qaUnavailable: true,
       failedFrameRoles: [],
       qaCacheKey: "qa-cache-1",
     });
     expect(qa.reasonCodes).toContain("vision_qa_runtime_unavailable");
-    expect(repairUnits).toEqual([]);
+    expect(repairUnits).toHaveLength(1);
+    expect(repairUnits[0]).toMatchObject({
+      role: "storyboard_frame",
+    });
+    expect(repairUnits[0].repairReasonCodes).toContain(
+      "vision_qa_runtime_unavailable"
+    );
+    expect(repairUnits[0].repairReasonCodes).toContain(
+      "adapter_request_failed"
+    );
   });
 
   it("places required Thai advertising warning text into the video editor timeline", () => {

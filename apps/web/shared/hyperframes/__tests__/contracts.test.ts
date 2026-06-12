@@ -69,6 +69,20 @@ describe("HyperFrames Marketplace contracts", () => {
       "hyperframes:tenant_1:mar_1:marketplace_storyboard_motion_9x9_v1:1.0.0:generic_vertical_9_16:preview:hf_input"
     );
     expect(
+      buildHyperframesRenderJobIdempotencyKey({
+        tenantId: "tenant_1",
+        runId: "mar_1",
+        templateId: "marketplace_storyboard_motion_9x9_v1",
+        templateVersion: "1.0.0",
+        platformPresetId: "generic_vertical_9_16",
+        renderIntent: "final",
+        compositionInputHash: "hf_input",
+        runtimeProfileHash: "hf_runtime_v2",
+      })
+    ).toBe(
+      "hyperframes:tenant_1:mar_1:marketplace_storyboard_motion_9x9_v1:1.0.0:generic_vertical_9_16:final:hf_input:hf_runtime_v2"
+    );
+    expect(
       buildHyperframesLibraryIdempotencyKey({
         tenantId: "tenant_1",
         runId: "mar_1",

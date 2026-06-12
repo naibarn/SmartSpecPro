@@ -69,6 +69,13 @@ type RolloutGateOutput = {
   blockers: string[];
   mvpSmokeReady: boolean;
   productionRuntimePrerequisitesReady: boolean;
+  evidence: {
+    bundleExcludesHyperframesPackages: boolean;
+    seededRouteE2ePassed: boolean;
+    fixtureFinalOutputPassed: boolean;
+    goldenSnapshotsPassed: boolean;
+    productionRuntimePrerequisitesReady: boolean;
+  };
 };
 
 function buildCrcTable() {
@@ -164,6 +171,82 @@ function writeRouteEvidence(
         productDetailFirstViewport,
         screenshots,
         ...evidenceOverrides,
+      },
+      null,
+      2
+    )
+  );
+  writeFileSync(
+    resolve(evidenceDir, "fixture-render-manifest.json"),
+    JSON.stringify(
+      {
+        gate: "fixture-render",
+        status: "passed",
+        creativePlanHash: "hf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        presetManifestHash: "hf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        audioEventMapHash: "hf_cccccccccccccccccccccccccccccccc",
+        fixtureMatrix: {
+          coveredCases: [
+            "ecommerce_toy_no_audio_silent_policy",
+            "electronics_spec_overlay",
+            "price_deal_overlay",
+            "ugc_review_subtitle_style",
+            "thai_long_text_safe_area",
+            "music_sfx_event_map",
+            "native_audio_policy",
+            "fallback_only_runtime",
+          ],
+          policyCases: [
+            "licensed_audio_asset_pending",
+            "missing_license_source_blocks_without_fallback",
+            "stale_price_requires_evidence_refresh",
+            "unsupported_user_claim_requires_review",
+            "product_truth_hash_mismatch_blocks_render",
+          ],
+        },
+        output: {
+          path: resolve(evidenceDir, "fixture.mp4"),
+          sizeBytes: 4096,
+          ok: true,
+        },
+        outputRef: {
+          kind: "final_video",
+          url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_fixture/output.mp4",
+          contentHash: "hf_fixture_content",
+        },
+        playableProbe: {
+          passed: true,
+          durationSec: 72,
+          hasVideo: true,
+          hasAudio: true,
+        },
+        exactDuration: {
+          expectedDurationSec: 72,
+          actualDurationSec: 72,
+          toleranceSec: 0.25,
+          passed: true,
+        },
+        safeArea: {
+          safeInsetPx: 48,
+          textSafe: true,
+          subtitleSafe: true,
+          overflowElementCount: 0,
+        },
+        audioMixReport: {
+          preserveNativeAudio: true,
+          nativeInputWithAudioCount: 6,
+          outputAudioPolicy: "preserve_native_or_silence",
+          explicitSilentPolicy: false,
+          audioEventMapHash: "hf_cccccccccccccccccccccccccccccccc",
+        },
+        mediaHistory: {
+          source: "marketplace_auto_review_hyperframes_render",
+          mediaKind: "video",
+          productId: "product_1",
+          runId: "mar_1",
+          openAction: true,
+          downloadAction: true,
+        },
       },
       null,
       2
@@ -274,7 +357,11 @@ describe("hyperframes-production-rollout-gate script", () => {
 
       expect(gate.gate).toBe("blocked");
       expect(gate.mvpSmokeReady).toBe(true);
+      expect(gate.evidence.seededRouteE2ePassed).toBe(true);
+      expect(gate.evidence.fixtureFinalOutputPassed).toBe(true);
+      expect(gate.evidence.goldenSnapshotsPassed).toBe(true);
       expect(gate.productionRuntimePrerequisitesReady).toBe(false);
+      expect(gate.evidence.productionRuntimePrerequisitesReady).toBe(false);
       expect(gate.blockers).toContain("chrome_not_ready");
       expect(gate.blockers).toContain("ffmpeg_not_ready");
       expect(gate.blockers).not.toContain("seeded_route_e2e_missing");
@@ -520,6 +607,157 @@ describe("hyperframes-production-rollout-gate script", () => {
 
       expect(gate.gate).toBe("blocked");
       expect(gate.blockers).toContain("seeded_route_e2e_missing");
+    } finally {
+      rmSync(evidenceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects manifest-only final evidence without playable final video output", () => {
+    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+    writeFileSync(
+      resolve(evidenceDir, "fixture-render-manifest.json"),
+      JSON.stringify(
+        {
+          gate: "fixture-render",
+          status: "passed",
+          output: {
+            path: resolve(evidenceDir, "manifest.json"),
+            sizeBytes: 4096,
+            ok: true,
+          },
+          outputRef: {
+            kind: "manifest",
+            url: "/api/storage/files/manifest.json",
+            contentHash: "hf_manifest_only",
+          },
+          playableProbe: {
+            passed: false,
+            hasVideo: false,
+            hasAudio: false,
+          },
+          mediaHistory: {
+            source: "marketplace_auto_review_hyperframes_render",
+            mediaKind: "video",
+            productId: "product_1",
+            runId: "mar_1",
+            openAction: false,
+            downloadAction: false,
+          },
+        },
+        null,
+        2
+      )
+    );
+    try {
+      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
+
+      expect(gate.gate).toBe("blocked");
+      expect(gate.blockers).toContain("fixture_final_output_missing");
+      expect(gate.evidence.seededRouteE2ePassed).toBe(true);
+      expect(gate.evidence.fixtureFinalOutputPassed).toBe(false);
+    } finally {
+      rmSync(evidenceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects playable fixture evidence without safe-area and duration proof", () => {
+    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+    writeFileSync(
+      resolve(evidenceDir, "fixture-render-manifest.json"),
+      JSON.stringify(
+        {
+          gate: "fixture-render",
+          status: "passed",
+          creativePlanHash: "hf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          presetManifestHash: "hf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          audioEventMapHash: "hf_cccccccccccccccccccccccccccccccc",
+          fixtureMatrix: {
+            coveredCases: [
+              "ecommerce_toy_no_audio_silent_policy",
+              "electronics_spec_overlay",
+              "price_deal_overlay",
+              "ugc_review_subtitle_style",
+              "thai_long_text_safe_area",
+              "music_sfx_event_map",
+              "native_audio_policy",
+              "fallback_only_runtime",
+            ],
+            policyCases: [
+              "licensed_audio_asset_pending",
+              "missing_license_source_blocks_without_fallback",
+              "stale_price_requires_evidence_refresh",
+              "unsupported_user_claim_requires_review",
+              "product_truth_hash_mismatch_blocks_render",
+            ],
+          },
+          output: {
+            path: resolve(evidenceDir, "fixture.mp4"),
+            sizeBytes: 4096,
+            ok: true,
+          },
+          outputRef: {
+            kind: "final_video",
+            url: "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_fixture/output.mp4",
+            contentHash: "hf_fixture_content",
+          },
+          playableProbe: {
+            passed: true,
+            durationSec: 72,
+            hasVideo: true,
+            hasAudio: false,
+          },
+          exactDuration: {
+            expectedDurationSec: 72,
+            actualDurationSec: 70,
+            toleranceSec: 0.25,
+            passed: false,
+          },
+          safeArea: {
+            safeInsetPx: 48,
+            textSafe: true,
+            subtitleSafe: false,
+            overflowElementCount: 1,
+          },
+          audioMixReport: {
+            preserveNativeAudio: false,
+            nativeInputWithAudioCount: 0,
+            outputAudioPolicy: "no_audio_explicit_silent_policy",
+            explicitSilentPolicy: true,
+            audioEventMapHash: "hf_cccccccccccccccccccccccccccccccc",
+          },
+          mediaHistory: {
+            source: "marketplace_auto_review_hyperframes_render",
+            mediaKind: "video",
+            productId: "product_1",
+            runId: "mar_1",
+            openAction: true,
+            downloadAction: true,
+          },
+        },
+        null,
+        2
+      )
+    );
+    try {
+      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
+
+      expect(gate.gate).toBe("blocked");
+      expect(gate.blockers).toContain("fixture_final_output_missing");
+      expect(gate.evidence.fixtureFinalOutputPassed).toBe(false);
+    } finally {
+      rmSync(evidenceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects enabled capabilities that still depend on open question rows", () => {
+    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+    try {
+      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000), {
+        MARKETPLACE_HYPERFRAMES_ENABLE_SFX_PACKS: "true",
+      });
+
+      expect(gate.gate).toBe("blocked");
+      expect(gate.blockers).toContain("open_question_OQ-01");
     } finally {
       rmSync(evidenceDir, { recursive: true, force: true });
     }

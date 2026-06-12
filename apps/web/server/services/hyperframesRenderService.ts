@@ -32,8 +32,12 @@ export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
 
 export type HyperframesOutboxJobType = (typeof HYPERFRAMES_OUTBOX_JOB_TYPES)[number];
 
+const HYPERFRAMES_FINAL_COMPOSITE_RENDERER_POLICY_VERSION =
+  "ffmpeg_ass_final_composite_overlay_wrap_v2";
+
 export interface HyperframesRenderJobPayload {
   productId: string;
+  productTitle?: string;
   compositionInputHash: string;
   compositionHtmlHash: string;
   templateId: string;
@@ -47,10 +51,38 @@ export interface HyperframesRenderJobPayload {
   launchMode: "auto_storyboard_review";
   traceId: string;
   correlationId: string;
+  fps?: number;
+  quality?: string;
+  compositionInput?: HyperframesCompositionInput;
+  compositionHtml?: string;
+  finalCompositeConfig?: Record<string, unknown>;
+  creativePlanHash?: string;
+  presetManifestHash?: string;
+  audioEventMapHash?: string;
+  fallbackQuality?: "full" | "partial" | "not_supported";
+  overlayPresetId?: string;
+  subtitlePresetId?: string;
+  audioPackPresetId?: string;
+  musicPresetId?: string;
+  sfxPresetIds?: string[];
+  presetVersions?: Record<string, string>;
+  rendererPolicyVersion?: string;
   outputArtifactRef?: HyperframesArtifactRef | null;
   outputUrl?: string | null;
   thumbnailUrl?: string | null;
   qaStatus?: "passed" | "passed_with_warnings" | "failed" | null;
+  playableProbe?: {
+    passed?: boolean;
+    durationSec?: number | null;
+    hasVideo?: boolean;
+    hasAudio?: boolean;
+    errorMessage?: string;
+  } | null;
+  audioMixReport?: {
+    preserveNativeAudio?: boolean;
+    nativeInputWithAudioCount?: number;
+    outputAudioPolicy?: string;
+  } | null;
 }
 
 function nowIso(): string {
@@ -207,6 +239,8 @@ const HYPERFRAMES_SENSITIVE_OUTPUT_URL_PARAM_RE =
   /^(?:x-amz-|awsaccesskeyid$|sig$|signature$|token$|key$|secret$|password$|passwd$|pwd$|session$|jwt$|policy$|authorization$|auth$|bearer$|expires?$|credential$|access[_-]?(?:key|token)$|refresh[_-]?token$|id[_-]?token$)/i;
 const HYPERFRAMES_PUBLIC_RELATIVE_OUTPUT_PATH_RE =
   /^\/(?:media|uploads|static\/media)\//i;
+const HYPERFRAMES_PUBLIC_STORAGE_API_OUTPUT_PATH_RE =
+  /^\/api\/storage\/files\/[^?#]+/i;
 
 function hasSensitiveHyperframesOutputUrlParams(url: URL): boolean {
   for (const key of url.searchParams.keys()) {
@@ -220,23 +254,26 @@ function redactHyperframesOutputUrlForUser(
 ): string | null {
   const raw = typeof value === "string" ? value.trim() : "";
   if (!raw) return null;
-  if (
-    HYPERFRAMES_PRIVATE_OUTPUT_PATH_RE.test(raw) ||
-    HYPERFRAMES_PRIVATE_STORAGE_REF_RE.test(raw)
-  ) {
-    return null;
-  }
   if (raw.startsWith("/") && !raw.startsWith("//")) {
     try {
       const url = new URL(raw, "https://smartspec.local");
       if (hasSensitiveHyperframesOutputUrlParams(url)) return null;
-      if (!HYPERFRAMES_PUBLIC_RELATIVE_OUTPUT_PATH_RE.test(url.pathname)) {
+      if (
+        !HYPERFRAMES_PUBLIC_RELATIVE_OUTPUT_PATH_RE.test(url.pathname) &&
+        !HYPERFRAMES_PUBLIC_STORAGE_API_OUTPUT_PATH_RE.test(url.pathname)
+      ) {
         return null;
       }
       return url.pathname;
     } catch {
       return null;
     }
+  }
+  if (
+    HYPERFRAMES_PRIVATE_OUTPUT_PATH_RE.test(raw) ||
+    HYPERFRAMES_PRIVATE_STORAGE_REF_RE.test(raw)
+  ) {
+    return null;
   }
   try {
     const url = new URL(raw);
@@ -252,7 +289,10 @@ function redactHyperframesOutputUrlForUser(
 }
 
 export function buildHyperframesRenderJobPayload(input: {
-  composition: HyperframesCompositionInput;
+  composition: HyperframesCompositionInput & {
+    compositionHtml?: string;
+    finalCompositeConfig?: Record<string, unknown>;
+  };
   traceId?: string;
   correlationId?: string;
 }): HyperframesRenderJobPayload {
@@ -261,8 +301,75 @@ export function buildHyperframesRenderJobPayload(input: {
     copy: input.composition.copy,
     platform: input.composition.platformPreset.presetId,
   });
+  const finalCompositeConfig =
+    input.composition.finalCompositeConfig &&
+    typeof input.composition.finalCompositeConfig === "object"
+      ? input.composition.finalCompositeConfig
+      : {};
+  const overlayPresetId =
+    typeof finalCompositeConfig.overlayPreset === "string"
+      ? finalCompositeConfig.overlayPreset
+      : undefined;
+  const subtitlePresetId =
+    typeof finalCompositeConfig.subtitlePreset === "string"
+      ? finalCompositeConfig.subtitlePreset
+      : undefined;
+  const audioPackPresetId =
+    typeof finalCompositeConfig.audioPackPresetId === "string"
+      ? finalCompositeConfig.audioPackPresetId
+      : undefined;
+  const musicPresetId =
+    typeof finalCompositeConfig.musicPresetId === "string"
+      ? finalCompositeConfig.musicPresetId
+      : undefined;
+  const sfxPresetIds = Array.isArray(finalCompositeConfig.sfxPresetIds)
+    ? finalCompositeConfig.sfxPresetIds.map(id => String(id ?? "").trim()).filter(Boolean)
+    : [];
+  const presetIds = [
+    overlayPresetId,
+    subtitlePresetId,
+    audioPackPresetId,
+    musicPresetId,
+    ...sfxPresetIds,
+  ].filter((id): id is string => Boolean(id));
+  const presetVersions = Object.fromEntries(presetIds.map(id => [id, "1"]));
+  const presetManifestHash =
+    presetIds.length > 0 ? stableHash({ presetIds, presetVersions }) : undefined;
+  const audioEventMapHash =
+    typeof finalCompositeConfig.audioEventMapHash === "string"
+      ? finalCompositeConfig.audioEventMapHash
+      : Array.isArray(finalCompositeConfig.audioEvents) && finalCompositeConfig.audioEvents.length > 0
+        ? stableHash({
+            audioPackPresetId,
+            musicPresetId,
+            sfxPresetIds,
+            audioEvents: finalCompositeConfig.audioEvents,
+            validation: finalCompositeConfig.audioAssetValidation,
+          })
+        : undefined;
+  const creativePlanHash = stableHash({
+    compositionInputHash: input.composition.provenance.compositionInputHash,
+    presetManifestHash,
+    audioEventMapHash,
+    finalCompositeConfig,
+  });
+  const rendererPolicyVersion =
+    input.composition.compositionMode === "captioned_final_composite"
+      ? HYPERFRAMES_FINAL_COMPOSITE_RENDERER_POLICY_VERSION
+      : undefined;
+  const runtimeProfileHash = stableHash({
+    fps: input.composition.platformPreset.fps,
+    width: input.composition.platformPreset.width,
+    height: input.composition.platformPreset.height,
+    renderEngine: input.composition.renderEngine,
+    rendererPolicyVersion,
+  });
   return {
     productId: input.composition.provenance.productId,
+    productTitle:
+      typeof input.composition.productTruth.title === "string"
+        ? input.composition.productTruth.title
+        : undefined,
     compositionInputHash: input.composition.provenance.compositionInputHash,
     compositionHtmlHash,
     templateId: input.composition.template.templateId,
@@ -272,16 +379,32 @@ export function buildHyperframesRenderJobPayload(input: {
     platformPresetVersion: input.composition.platformPreset.platformPresetVersion,
     renderIntent: input.composition.renderIntent,
     compositionMode: input.composition.compositionMode,
-    runtimeProfileHash: stableHash({
-      fps: input.composition.platformPreset.fps,
-      width: input.composition.platformPreset.width,
-      height: input.composition.platformPreset.height,
-      renderEngine: input.composition.renderEngine,
-    }),
+    runtimeProfileHash,
     launchMode: "auto_storyboard_review",
     traceId: input.traceId ?? `trace_${stableHash(input.composition.provenance)}`,
     correlationId:
       input.correlationId ?? `corr_${stableHash(input.composition.provenance)}`,
+    fps: input.composition.platformPreset.fps,
+    quality: input.composition.renderIntent === "final" ? "high" : "standard",
+    compositionInput: input.composition,
+    compositionHtml: input.composition.compositionHtml,
+    finalCompositeConfig,
+    creativePlanHash,
+    presetManifestHash,
+    audioEventMapHash,
+    fallbackQuality:
+      typeof finalCompositeConfig.fallbackCapability === "object" &&
+      finalCompositeConfig.fallbackCapability &&
+      "fallbackQuality" in finalCompositeConfig.fallbackCapability
+        ? (finalCompositeConfig.fallbackCapability as Record<string, unknown>).fallbackQuality as never
+        : undefined,
+    overlayPresetId,
+    subtitlePresetId,
+    audioPackPresetId,
+    musicPresetId,
+    sfxPresetIds,
+    presetVersions,
+    rendererPolicyVersion,
   };
 }
 
@@ -305,9 +428,44 @@ export function buildHyperframesRenderProjection(input: {
   canMutate?: boolean;
   updatedAt?: string;
 }): HyperframesRenderStatusProjection {
-  const copy = getHyperframesStatusCopy(input.status, "th");
-  const repairActions = repairActionsForStatus(input.status);
+  const outputRefs = input.outputRefs ?? (input.outputUrl
+    ? [
+        {
+          outputId: `${input.renderJobId}_output`,
+          kind: input.libraryItemId ? "library_item" : "preview_video",
+          url: input.outputUrl,
+          storageRef: null,
+          contentHash: undefined,
+          libraryItemId: input.libraryItemId ?? null,
+          accessibleLabel: input.libraryItemId
+            ? "HyperFrames Library video"
+            : "HyperFrames preview video",
+        } satisfies HyperframesOutputRef,
+      ]
+    : []);
+  const completedFinalNeedsPlayableOutput =
+    input.status === "completed" && input.payload?.renderIntent === "final";
+  const hasPlayableFinalOutput = outputRefs.some(ref =>
+    ref.kind === "final_video" &&
+    Boolean(ref.url) &&
+    Boolean(ref.contentHash)
+  );
+  const finalProbePassed = input.payload?.playableProbe?.passed === true;
+  const projectedStatus: HyperframesRenderStatus =
+    completedFinalNeedsPlayableOutput && (!hasPlayableFinalOutput || !finalProbePassed)
+      ? "failed_permanent"
+      : input.status;
+  const copy = getHyperframesStatusCopy(projectedStatus, "th");
+  const repairActions = repairActionsForStatus(projectedStatus);
   const canMutate = Boolean(input.canMutate);
+  const safeDiagnostics = [
+    ...(completedFinalNeedsPlayableOutput && (!hasPlayableFinalOutput || !finalProbePassed)
+      ? [
+          "HyperFrames final render completed without a verified playable final video output.",
+        ]
+      : []),
+    ...(input.safeDiagnostics ?? []),
+  ];
   return HyperframesRenderStatusProjectionSchema.parse({
     contractVersion: HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
     renderJobId: input.renderJobId,
@@ -315,17 +473,17 @@ export function buildHyperframesRenderProjection(input: {
     productId: input.productId,
     runId: input.runId,
     launchMode: "auto_storyboard_review",
-    status: input.status,
-    progressPercent: progressForStatus(input.status),
+    status: projectedStatus,
+    progressPercent: progressForStatus(projectedStatus),
     statusCopyId: copy.copyId,
     safeMessage: input.safeMessage ?? copy.description,
-    safeDiagnostics: (input.safeDiagnostics ?? []).map(redactHyperframesDiagnostics),
+    safeDiagnostics: safeDiagnostics.map(redactHyperframesDiagnostics),
     nextAction: copy.nextAction,
     repairActions,
     permissions: {
       canCancel:
         input.permissions?.canCancel ??
-        (canMutate && HYPERFRAMES_CANCELLABLE_RENDER_STATUSES.has(input.status)),
+        (canMutate && HYPERFRAMES_CANCELLABLE_RENDER_STATUSES.has(projectedStatus)),
       canRepair:
         input.permissions?.canRepair ??
         (canMutate &&
@@ -333,8 +491,8 @@ export function buildHyperframesRenderProjection(input: {
             action => !action.requiresOperator && !action.disabledReason
           )),
     },
-    polling: createDefaultHyperframesPollingGuidance(input.status, {
-      etag: stableHash({ status: input.status, updatedAt: input.updatedAt }),
+    polling: createDefaultHyperframesPollingGuidance(projectedStatus, {
+      etag: stableHash({ status: projectedStatus, updatedAt: input.updatedAt }),
     }),
     templateId: input.payload?.templateId,
     templateVersion: input.payload?.templateVersion,
@@ -346,22 +504,17 @@ export function buildHyperframesRenderProjection(input: {
     compositionInputHash: input.payload?.compositionInputHash,
     compositionHtmlHash: input.payload?.compositionHtmlHash,
     runtimeProfileHash: input.payload?.runtimeProfileHash,
+    creativePlanHash: input.payload?.creativePlanHash,
+    presetManifestHash: input.payload?.presetManifestHash,
+    audioEventMapHash: input.payload?.audioEventMapHash,
+    fallbackQuality: input.payload?.fallbackQuality,
+    hasAudio: input.payload?.playableProbe?.hasAudio,
+    hasNativeAudio:
+      Number(input.payload?.audioMixReport?.nativeInputWithAudioCount ?? 0) > 0,
+    playableProbe: input.payload?.playableProbe ?? {},
+    audioMixReport: input.payload?.audioMixReport ?? {},
     qaStatus: input.payload?.qaStatus ?? undefined,
-    outputRefs: input.outputRefs ?? (input.outputUrl
-      ? [
-          {
-            outputId: `${input.renderJobId}_output`,
-            kind: input.libraryItemId ? "library_item" : "preview_video",
-            url: input.outputUrl,
-            storageRef: null,
-            contentHash: undefined,
-            libraryItemId: input.libraryItemId ?? null,
-            accessibleLabel: input.libraryItemId
-              ? "HyperFrames Library video"
-              : "HyperFrames preview video",
-          },
-        ]
-      : []),
+    outputRefs,
     artifactRefs: input.artifactRefs ?? [],
     updatedAt: input.updatedAt ?? nowIso(),
   });
@@ -460,6 +613,7 @@ export async function queueHyperframesRenderJob(input: {
     platformPresetId: input.composition.platformPreset.presetId,
     renderIntent: input.composition.renderIntent,
     compositionInputHash: payload.compositionInputHash,
+    runtimeProfileHash: payload.runtimeProfileHash,
   });
   const renderJobId = `hf_${stableHash(idempotencyKey)}`;
   const db = await getDb();
@@ -584,15 +738,32 @@ export async function getHyperframesRenderProjection(input: {
         job.lastError,
         job.jobType
       );
+      const hasSafeFinalVideoOutput = outputRefs.outputRefs.some(ref =>
+        ref.kind === "final_video" &&
+        Boolean(ref.url) &&
+        Boolean(ref.contentHash)
+      );
+      const finalProbePassed = payload.playableProbe?.passed === true;
+      const completedFinalMissingPlayableOutput =
+        renderStatus === "completed" &&
+        payload.renderIntent === "final" &&
+        (!hasSafeFinalVideoOutput || !finalProbePassed);
       const runtimeDeferred =
         renderStatus === "queued" &&
         Number(job.attempts ?? 0) === 0 &&
         !job.lockedBy &&
         !isHyperframesRuntimeReadyForProjection();
-      const projectedStatus = runtimeDeferred
+      const projectedStatus = completedFinalMissingPlayableOutput
+        ? "failed_permanent"
+        : runtimeDeferred
         ? "blocked_needs_user"
         : renderStatus;
       const safeDiagnostics = [
+        ...(completedFinalMissingPlayableOutput
+          ? [
+              "HyperFrames final render completed without a verified playable final video output.",
+            ]
+          : []),
         ...(runtimeDeferred
           ? [
               "HyperFrames runtime is not ready; this job is queued and has not started rendering.",

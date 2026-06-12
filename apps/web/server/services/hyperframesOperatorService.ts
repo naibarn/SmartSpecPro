@@ -74,7 +74,25 @@ export function buildHyperframesOperatorAuditEvent(input: {
 }
 
 export function buildHyperframesMetricsSnapshot(input: {
-  renders: Array<Pick<HyperframesRenderStatusProjection, "status" | "qaStatus">>;
+  renders: Array<
+    Pick<
+      HyperframesRenderStatusProjection,
+      | "status"
+      | "qaStatus"
+      | "renderJobId"
+      | "productId"
+      | "runId"
+      | "creativePlanHash"
+      | "presetManifestHash"
+      | "audioEventMapHash"
+      | "fallbackQuality"
+      | "hasAudio"
+      | "hasNativeAudio"
+      | "playableProbe"
+      | "outputRefs"
+      | "safeDiagnostics"
+    >
+  >;
 }) {
   const counters = {
     queued: 0,
@@ -86,6 +104,21 @@ export function buildHyperframesMetricsSnapshot(input: {
     deadLettered: 0,
     libraryReady: 0,
   };
+  const renderSignals = input.renders.map(render => ({
+    renderJobId: render.renderJobId,
+    productId: render.productId,
+    runId: render.runId,
+    status: render.status,
+    creativePlanHash: render.creativePlanHash ?? null,
+    presetManifestHash: render.presetManifestHash ?? null,
+    audioEventMapHash: render.audioEventMapHash ?? null,
+    fallbackQuality: render.fallbackQuality ?? null,
+    hasAudio: render.hasAudio === true,
+    hasNativeAudio: render.hasNativeAudio === true,
+    outputProbePassed: render.playableProbe?.passed === true,
+    outputRefCount: render.outputRefs.length,
+    diagnostics: render.safeDiagnostics.map(redactHyperframesDiagnostics),
+  }));
   for (const render of input.renders) {
     if (render.status === "queued") counters.queued += 1;
     if (
@@ -113,7 +146,7 @@ export function buildHyperframesMetricsSnapshot(input: {
       counters.libraryReady += 1;
     }
   }
-  return counters;
+  return { counters, renderSignals };
 }
 
 export interface HyperframesOperatorAuditSink {

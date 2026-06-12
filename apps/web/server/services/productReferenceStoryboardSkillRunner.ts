@@ -329,6 +329,62 @@ function inputStringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function uniqueInputStrings(values: string[]): string[] {
+  return Array.from(new Set(values.map(item => item.trim()).filter(Boolean)));
+}
+
+function resolveProductReferenceStoryboardReferenceUrl(
+  value: unknown,
+  publicUrl?: string | null
+): string {
+  const url = cleanInputString(value);
+  if (!url) return "";
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("data:")
+  ) {
+    return url;
+  }
+  if (url.startsWith("/uploads/") || url.startsWith("/api/storage/files/")) {
+    const base = cleanInputString(publicUrl);
+    if (!base) {
+      throw new Error(
+        "product-reference-storyboard reference image URL requires publicUrl before LLM dispatch"
+      );
+    }
+    return `${base.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`;
+  }
+  return url;
+}
+
+function normalizeProductReferenceStoryboardReferenceUrls(
+  values: unknown,
+  publicUrl?: string | null
+): string[] {
+  return uniqueInputStrings(
+    inputStringArray(values).map(url =>
+      resolveProductReferenceStoryboardReferenceUrl(url, publicUrl)
+    )
+  );
+}
+
+function normalizeProductReferenceStoryboardInputReferenceUrls(
+  userInputs: Record<string, unknown>,
+  publicUrl?: string | null
+): Record<string, unknown> {
+  const next = { ...userInputs };
+  for (const fieldName of PRODUCT_REFERENCE_STORYBOARD_REFERENCE_IMAGE_ARRAY_FIELDS) {
+    if (Array.isArray(next[fieldName])) {
+      next[fieldName] = normalizeProductReferenceStoryboardReferenceUrls(
+        next[fieldName],
+        publicUrl
+      );
+    }
+  }
+  return next;
+}
+
 function inputFieldType(value: unknown): string {
   if (Array.isArray(value)) return "array";
   if (value === null) return "null";
@@ -703,7 +759,8 @@ function buildSkillRuntimeSystemPrompt(input: {
       `Return only the final image-generation prompt text. The output must be <= ${input.maxOutputChars} characters.`,
       "Do not return JSON, Markdown fences, QA notes, explanations, alternatives, or implementation notes.",
       "The final prompt must explicitly include these image-generation contract phrases: one single 9:16 image; strict 3x3 grid; exactly 9 frames; exactly 9 vertical frames; exactly 3 equal-width columns; exactly 3 equal-height rows; no collage/masonry layout; no separator lines; no visible dividers; CINEMATIC REALISM LOCK; PRODUCT REFERENCE LOCK; TEXT RENDERING POLICY.",
-      "The PRODUCT REFERENCE LOCK and PRODUCT VERIFY blocks must explicitly say that @Image1 / the first attached product reference image is the strict product visual lock and source of truth, and that character/environment images must not change or replace the product shape.",
+      "The PRODUCT REFERENCE LOCK and PRODUCT VERIFY blocks must explicitly say that @Image1 / the first attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, and character/environment images must not change or replace the product shape.",
+      "If reference_character_images are supplied, @Image2 is the uploaded presenter/reviewer identity reference by default. Never call @Image2 a child, toddler, kid, or baby unless the user explicitly supplied a child reference. Do not age-transform the uploaded presenter to fit a child product story.",
       "The final prompt must include complete Frame 1 through Frame 9 before ending. Frame lines must be visual-only prose: do not use VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, or captions. Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block outside the frame list. Do not repeat CAMERA/LIGHT/DEPTH: or PRODUCT VERIFY: in every frame.",
       "Completeness beats polish: never stop at a partial Frame line or a bare label. If the prompt is near the limit, shorten global locks first, then shorten each frame to one compact visual sentence while still returning all 9 frames.",
       "The final prompt must include the text policy phrases no text, dimension text, timecodes, and marketplace/mobile app screenshots when image_text_mode is no_text.",
@@ -787,9 +844,18 @@ function validateProductReferenceStoryboardOutputCompleteness(prompt: string): s
     blockers.push("product_verify_global_missing");
   }
   if (
-    !/product reference image/i.test(prompt) ||
-    !/(?:@Image1|first attached product reference image)/i.test(prompt) ||
-    !/(?:recreate|match|copy|replicate)[^\n]{0,80}(?:exact|same)[^\n]{0,120}product/i.test(prompt)
+    !/(?:@Image1|product reference image|attached product image)/i.test(
+      prompt
+    ) ||
+    !/(?:primary visual source of truth|strict product visual lock|strict visual source of truth)/i.test(
+      prompt
+    ) ||
+    !/(?:text|description)[^\n]{0,100}(?:secondary|must never override|never override)|(?:not|never)[^\n]{0,140}(?:generic product description|text description)/i.test(
+      prompt
+    ) ||
+    !/(?:recreate|match|copy|replicate)[^\n]{0,180}(?:exact|same|actual reference|reference image)/i.test(
+      prompt
+    )
   ) {
     blockers.push("product_reference_image_exact_recreation_missing");
   }
@@ -1151,6 +1217,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
   promptAttempt?: number | null;
   model?: string | null;
   maxOutputChars?: number | null;
+  publicUrl?: string | null;
   originSurface?: "marketplace_capture" | "media_studio" | null;
 }): Promise<ProductReferenceStoryboardPromptSkillRunResult> {
   const maxOutputChars =
@@ -1172,21 +1239,35 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     );
   }
 
-  const mergedUserInputs = sanitizeUserInputs({
-    ...loadSkillInputDefaults(skill),
-    ...input.userInputs,
-    generation_mode: "multi_frame_storyboard",
-    storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
-    aspect_ratio: "9:16",
-    maxPromptLength: maxOutputChars,
-    prompt_budget_chars: maxOutputChars,
-    max_output_chars: maxOutputChars,
-  });
+  const mergedUserInputs = sanitizeUserInputs(
+    normalizeProductReferenceStoryboardInputReferenceUrls(
+      {
+        ...loadSkillInputDefaults(skill),
+        ...input.userInputs,
+        generation_mode: "multi_frame_storyboard",
+        storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspect_ratio: "9:16",
+        maxPromptLength: maxOutputChars,
+        prompt_budget_chars: maxOutputChars,
+        max_output_chars: maxOutputChars,
+      },
+      input.publicUrl
+    )
+  );
+  const referenceImages = uniqueInputStrings([
+    ...normalizeProductReferenceStoryboardReferenceUrls(
+      input.referenceImages,
+      input.publicUrl
+    ),
+    ...inputStringArray(mergedUserInputs.reference_product_images),
+    ...inputStringArray(mergedUserInputs.reference_character_images),
+    ...inputStringArray(mergedUserInputs.reference_environment_images),
+  ]);
   const inputSchema = loadSkillInputSchema(skill);
   const schemaAudit = buildSkillInputSchemaAudit({
     schema: inputSchema,
     userInputs: mergedUserInputs,
-    referenceImages: input.referenceImages,
+    referenceImages,
   });
   if (schemaAudit.status === "failed") {
     console.error(
@@ -1251,7 +1332,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     );
   }
   const userPrompt = buildCustomSkillUserPrompt(mergedUserInputs, {
-    referenceImageCount: input.referenceImages.length,
+    referenceImageCount: referenceImages.length,
   });
   const policy = await resolveSkillExecutionPolicy({
     skill,
@@ -1286,7 +1367,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     modelSource: policy.modelSource,
     providerId: provider.providerId,
     providerName: provider.providerName,
-    referenceImageCount: input.referenceImages.length,
+    referenceImageCount: referenceImages.length,
     referenceProductImageCount: Array.isArray(
       mergedUserInputs.reference_product_images
     )
@@ -1348,7 +1429,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       layoutPreset: mergedUserInputs.storyboard_layout_preset,
       generationMode: mergedUserInputs.generation_mode,
       aspectRatio: mergedUserInputs.aspect_ratio,
-      referenceImageCount: input.referenceImages.length,
+      referenceImageCount: referenceImages.length,
       referenceProductImageCount: Array.isArray(
         mergedUserInputs.reference_product_images
       )
@@ -1374,7 +1455,8 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       schemaAudit,
     },
     dynamicParams: mergedUserInputs,
-    referenceImages: input.referenceImages,
+    referenceImages,
+    publicUrl: input.publicUrl ?? null,
     requestLabel: "marketplace-auto-review-product-reference-storyboard",
     runId: input.runId ?? undefined,
     schemaHint: {
@@ -1387,7 +1469,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
         messages: buildVisionMessages({
           systemPrompt,
           userPrompt,
-          referenceImages: input.referenceImages,
+          referenceImages,
         }),
         stream: false,
         userId: input.userId,
@@ -1489,7 +1571,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
           tokensUsed: usage.promptTokens + usage.completionTokens,
           promptTokens: usage.promptTokens,
           completionTokens: usage.completionTokens,
-          referenceImageCount: input.referenceImages.length,
+          referenceImageCount: referenceImages.length,
           maxOutputChars,
           llmMaxTokens,
           llmFinishReason: finishReason,
@@ -1713,7 +1795,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
   const completenessBlockers =
     validateProductReferenceStoryboardOutputCompleteness(rawOutput);
   if (completenessBlockers.length > 0) {
-    console.warn("[productReferenceStoryboardSkillRunner] incomplete_output_warning", {
+    console.error("[productReferenceStoryboardSkillRunner] incomplete_output_blocked", {
       skillId: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
       runId: input.runId ?? null,
       unitId: input.unitId ?? null,
@@ -1722,6 +1804,20 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       blockers: completenessBlockers,
       outputLengthChars: rawOutput.length,
       fullOutputLogPath,
+    });
+    throw new ProductReferenceStoryboardSkillIncompleteOutputError({
+      runId: input.runId ?? null,
+      unitId: input.unitId ?? null,
+      attempt: input.attempt ?? null,
+      promptAttempt: input.promptAttempt ?? null,
+      maxOutputChars,
+      rawOutput,
+      fullOutputLogPath,
+      promptLengthPlan,
+      modelId: finalModelId,
+      providerName: finalProviderName,
+      finishReason,
+      blockers: completenessBlockers,
     });
   }
 
@@ -1748,7 +1844,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       0,
       PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS
     ),
-    referenceImageCount: input.referenceImages.length,
+    referenceImageCount: referenceImages.length,
     referenceProductImageCount: Array.isArray(
       mergedUserInputs.reference_product_images
     )
@@ -1810,4 +1906,26 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     runtime: finalRuntime,
     skillAudit,
   };
+}
+
+export function normalizeProductReferenceStoryboardReferenceUrlsForTest(input: {
+  values: unknown;
+  publicUrl?: string | null;
+}): string[] {
+  return normalizeProductReferenceStoryboardReferenceUrls(
+    input.values,
+    input.publicUrl
+  );
+}
+
+export function normalizeProductReferenceStoryboardUserInputsReferenceUrlsForTest(
+  input: {
+    userInputs: Record<string, unknown>;
+    publicUrl?: string | null;
+  }
+): Record<string, unknown> {
+  return normalizeProductReferenceStoryboardInputReferenceUrls(
+    input.userInputs,
+    input.publicUrl
+  );
 }

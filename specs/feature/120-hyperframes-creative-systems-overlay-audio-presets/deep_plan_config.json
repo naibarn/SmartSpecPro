@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/home/dev/projects/SmartSpecPro/specs/feature/120-hyperframes-creative-systems-overlay-audio-presets",
+  "initial_file": "/home/dev/projects/SmartSpecPro/specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/spec.md",
+  "review_mode": "self_review"
+}

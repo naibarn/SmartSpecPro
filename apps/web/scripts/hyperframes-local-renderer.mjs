@@ -83,8 +83,42 @@ export async function renderFixtureFrames(options = {}) {
     await page.screenshot({ path: framePath });
     framePaths.push(framePath);
   }
+  const safeAreaReport = await page.evaluate(() => {
+    const composition = document.querySelector(
+      '[data-composition-id="marketplace_storyboard_motion_9x9_v1"]'
+    );
+    const title = document.querySelector("h1");
+    const caption = document.querySelector(".caption");
+    const compositionBox = composition?.getBoundingClientRect();
+    const titleBox = title?.getBoundingClientRect();
+    const captionBox = caption?.getBoundingClientRect();
+    const safeInsetPx = 48;
+    const withinSafeArea = rect => {
+      if (!compositionBox || !rect) return false;
+      return (
+        rect.left >= compositionBox.left + safeInsetPx &&
+        rect.right <= compositionBox.right - safeInsetPx &&
+        rect.top >= compositionBox.top + safeInsetPx &&
+        rect.bottom <= compositionBox.bottom - safeInsetPx
+      );
+    };
+    const titleScrollOk = title
+      ? title.scrollWidth <= title.clientWidth + 1 &&
+        title.scrollHeight <= title.clientHeight + 1
+      : false;
+    const captionScrollOk = caption
+      ? caption.scrollWidth <= caption.clientWidth + 1 &&
+        caption.scrollHeight <= caption.clientHeight + 1
+      : false;
+    return {
+      safeInsetPx,
+      textSafe: withinSafeArea(titleBox) && titleScrollOk,
+      subtitleSafe: withinSafeArea(captionBox) && captionScrollOk,
+      overflowElementCount: Number(!titleScrollOk) + Number(!captionScrollOk),
+    };
+  });
   await browser.close();
-  return { htmlPath, frameDir, framePaths };
+  return { htmlPath, frameDir, framePaths, safeAreaReport };
 }
 
 export function encodeFramesToMp4(input) {

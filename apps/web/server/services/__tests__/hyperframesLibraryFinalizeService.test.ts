@@ -25,8 +25,33 @@ const payload = {
   platformPresetId: "generic_vertical_9_16",
   platformPresetVersion: "1.0.0",
   renderIntent: "final",
-  compositionMode: "storyboard_motion_preview",
+  compositionMode: "captioned_final_composite",
   runtimeProfileHash: "hf_runtime",
+  creativePlanHash: "hf_creative_plan",
+  presetManifestHash: "hf_preset_manifest",
+  audioEventMapHash: "hf_audio_event_map",
+  fallbackQuality: "partial" as const,
+  overlayPresetId: "electronics_spec_stack",
+  subtitlePresetId: "karaoke_word",
+  audioPackPresetId: "thai_marketplace_pack",
+  musicPresetId: "premium_warm_bed",
+  sfxPresetIds: ["whoosh_soft", "price_impact"],
+  presetVersions: {
+    electronics_spec_stack: "1.0.0",
+    karaoke_word: "1.0.0",
+    premium_warm_bed: "1.0.0",
+  },
+  playableProbe: {
+    passed: true,
+    durationSec: 72,
+    hasVideo: true,
+    hasAudio: true,
+  },
+  audioMixReport: {
+    preserveNativeAudio: true,
+    nativeInputWithAudioCount: 7,
+    outputAudioPolicy: "preserve_native_or_silence",
+  },
   launchMode: "auto_storyboard_review" as const,
   traceId: "trace_1",
   correlationId: "corr_1",
@@ -60,6 +85,35 @@ describe("hyperframesLibraryFinalizeService", () => {
     expect(metadata.idempotencyKey).toBe(
       "hyperframes-library:tenant_1:mar_1:final:hf_input:hf_output"
     );
+    expect(metadata).toMatchObject({
+      compositionMode: "captioned_final_composite",
+      templateContentHash: "hf_template",
+      runtimeProfileHash: "hf_runtime",
+      creativePlanHash: "hf_creative_plan",
+      presetManifestHash: "hf_preset_manifest",
+      audioEventMapHash: "hf_audio_event_map",
+      fallbackQuality: "partial",
+      overlayPresetId: "electronics_spec_stack",
+      subtitlePresetId: "karaoke_word",
+      audioPackPresetId: "thai_marketplace_pack",
+      musicPresetId: "premium_warm_bed",
+      sfxPresetIds: ["whoosh_soft", "price_impact"],
+      hasAudio: true,
+      hasNativeAudio: true,
+      outputHash: "hf_output",
+    });
+    expect(metadata.presetVersions).toMatchObject({
+      electronics_spec_stack: "1.0.0",
+      karaoke_word: "1.0.0",
+    });
+    expect(metadata.outputProbe).toMatchObject({
+      passed: true,
+      hasAudio: true,
+    });
+    expect(metadata.audioMixReport).toMatchObject({
+      preserveNativeAudio: true,
+      nativeInputWithAudioCount: 7,
+    });
   });
 
   it("rejects mismatched finalize idempotency", () => {

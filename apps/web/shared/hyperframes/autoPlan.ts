@@ -144,7 +144,7 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   audioStrategy: "native_video_audio",
   shotCount: "9",
   overlayTextMode: "no_text",
-  imageModel: "google-nano-banana-pro",
+  imageModel: "google-banana-2",
   qualityMode: "balanced",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
 

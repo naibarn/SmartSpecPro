@@ -113,8 +113,12 @@ interface StoryboardBatchReviewDialogProps {
   onRemoveTask?: (taskId: string) => void;
   onAutoCompound: () => void;
   onCreateProject: () => void;
+  onCreateHyperframesFinalComposite?: () => void;
   isCompounding: boolean;
   isCreatingProject: boolean;
+  isCreatingHyperframesFinalComposite?: boolean;
+  hyperframesFinalCompositeDisabledReason?: string | null;
+  hyperframesFinalCompositeStatus?: string | null;
   isCancellingGeneration?: boolean;
   regeneratingTaskId?: string | null;
   compoundStatus?: string | null;
@@ -144,6 +148,19 @@ type StoryboardLightboxMedia = {
   url: string;
   title: string;
 } | null;
+
+function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
+  let current = element?.parentElement ?? null;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const canScroll =
+      /(auto|scroll)/.test(style.overflowY) &&
+      current.scrollHeight > current.clientHeight;
+    if (canScroll) return current;
+    current = current.parentElement;
+  }
+  return null;
+}
 
 function summarizePrompt(prompt: string): string {
   const normalized = prompt.replace(/\s+/g, " ").trim();
@@ -231,8 +248,12 @@ export function StoryboardBatchReviewPanel({
   onRemoveTask,
   onAutoCompound,
   onCreateProject,
+  onCreateHyperframesFinalComposite,
   isCompounding,
   isCreatingProject,
+  isCreatingHyperframesFinalComposite = false,
+  hyperframesFinalCompositeDisabledReason = null,
+  hyperframesFinalCompositeStatus = null,
   isCancellingGeneration = false,
   regeneratingTaskId,
   compoundStatus,
@@ -285,6 +306,16 @@ export function StoryboardBatchReviewPanel({
       setVoiceoverFullScriptDraft(voiceoverFullScript ?? "");
     }
   }, [isEditingVoiceoverFullScript, voiceoverFullScript]);
+
+  useEffect(() => {
+    const clearDragState = () => setDraggingVideoTaskId(null);
+    window.addEventListener("dragend", clearDragState);
+    window.addEventListener("drop", clearDragState);
+    return () => {
+      window.removeEventListener("dragend", clearDragState);
+      window.removeEventListener("drop", clearDragState);
+    };
+  }, []);
 
   useEffect(() => {
     setDraftPrompts((prev) => {
@@ -375,6 +406,19 @@ export function StoryboardBatchReviewPanel({
     event.stopPropagation();
     event.dataTransfer.dropEffect = "copy";
     setDraggingVideoTaskId(dragKey);
+    const edgeThreshold = 96;
+    const scrollStep = 18;
+    const scrollParent = findScrollableParent(event.currentTarget);
+    const scrollTargetRect = scrollParent?.getBoundingClientRect();
+    const topEdge = scrollTargetRect?.top ?? 0;
+    const bottomEdge = scrollTargetRect?.bottom ?? window.innerHeight;
+    if (event.clientY - topEdge < edgeThreshold) {
+      if (scrollParent) scrollParent.scrollTop -= scrollStep;
+      else window.scrollBy({ top: -scrollStep, behavior: "auto" });
+    } else if (bottomEdge - event.clientY < edgeThreshold) {
+      if (scrollParent) scrollParent.scrollTop += scrollStep;
+      else window.scrollBy({ top: scrollStep, behavior: "auto" });
+    }
   };
 
   const handleVideoSlotDrop = async (
@@ -397,12 +441,58 @@ export function StoryboardBatchReviewPanel({
       reader.onerror = () => reject(reader.error ?? new Error("Failed to read dropped image"));
       reader.readAsDataURL(file);
     });
+  const readStoredStoryboardDragImage = (value: unknown): string => {
+    const key = typeof value === "string"
+      ? value.trim().replace(/^storyboard-drag:/, "")
+      : "";
+    if (!key.startsWith("smartaihub:storyboard-drag-image:")) return "";
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return "";
+      const parsed = JSON.parse(raw) as { url?: unknown; createdAt?: unknown };
+      const createdAt = typeof parsed.createdAt === "number" ? parsed.createdAt : 0;
+      if (createdAt > 0 && Date.now() - createdAt > 10 * 60 * 1000) {
+        window.sessionStorage.removeItem(key);
+        return "";
+      }
+      const url = typeof parsed.url === "string" ? parsed.url.trim() : "";
+      if (url.startsWith("data:image/")) {
+        window.sessionStorage.removeItem(key);
+        return url;
+      }
+    } catch {
+      return "";
+    }
+    return "";
+  };
   const getDroppedImageUrl = async (dataTransfer: DataTransfer): Promise<string> => {
     const file = Array.from(dataTransfer.files ?? []).find((item) => item.type.startsWith("image/"));
     if (file) return readDroppedImageFileAsDataUrl(file);
+    const storyboardPayload = dataTransfer.getData("application/x-smartspec-storyboard-image");
+    if (storyboardPayload) {
+      try {
+        const parsed = JSON.parse(storyboardPayload) as { url?: unknown; mediaType?: unknown; storageKey?: unknown };
+        const storedUrl = readStoredStoryboardDragImage(parsed.storageKey);
+        if (storedUrl) return storedUrl;
+        const payloadUrl = typeof parsed.url === "string" ? parsed.url.trim() : "";
+        if (payloadUrl && (parsed.mediaType === "image" || payloadUrl.startsWith("data:image/"))) {
+          return payloadUrl;
+        }
+      } catch {
+        // Fall through to simpler drag payload formats.
+      }
+    }
+    const explicitMediaUrl = dataTransfer.getData("application/x-smartspec-media-url").trim();
+    const storedExplicitMediaUrl = readStoredStoryboardDragImage(explicitMediaUrl);
+    if (storedExplicitMediaUrl) return storedExplicitMediaUrl;
+    if (explicitMediaUrl && !explicitMediaUrl.startsWith("storyboard-drag:")) return explicitMediaUrl;
+    const downloadUrl = dataTransfer.getData("DownloadURL");
+    const downloadUrlMedia = downloadUrl.split(":").slice(2).join(":").trim();
     const mediaType = dataTransfer.getData("application/x-smartspec-media-type")
       || dataTransfer.getData("text/x-smartspec-media-type");
-    const url = dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain");
+    const url = dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain") || downloadUrlMedia;
+    const storedUrl = readStoredStoryboardDragImage(url);
+    if (storedUrl) return storedUrl;
     const looksLikeImage = url.startsWith("data:image/")
       || /\.(jpg|jpeg|png|webp|gif|avif|bmp)([?#].*)?$/i.test(url.trim())
       || url.startsWith("/api/storage/files/")
@@ -414,7 +504,13 @@ export function StoryboardBatchReviewPanel({
     const file = Array.from(event.dataTransfer.files ?? []).find((item) => item.type.startsWith("image/"));
     const mediaType = event.dataTransfer.getData("application/x-smartspec-media-type")
       || event.dataTransfer.getData("text/x-smartspec-media-type");
-    const hasTextPayload = Array.from(event.dataTransfer.types ?? []).some((type) => type === "text/uri-list" || type === "text/plain");
+    const hasTextPayload = Array.from(event.dataTransfer.types ?? []).some((type) =>
+      type === "text/uri-list"
+      || type === "text/plain"
+      || type === "DownloadURL"
+      || type === "application/x-smartspec-storyboard-image"
+      || type === "application/x-smartspec-media-url"
+    );
     if (!file && mediaType !== "image" && !hasTextPayload) return;
     event.preventDefault();
     event.stopPropagation();
@@ -1635,6 +1731,35 @@ export function StoryboardBatchReviewPanel({
                   {t("mediaStudio.storyboardReviewRenderVideoAudio")}
                 </Button>
               </div>
+              {onCreateHyperframesFinalComposite ? (
+                <div className="flex w-full flex-col gap-1 sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-full px-2 text-xs"
+                    onClick={() => onCreateHyperframesFinalComposite()}
+                    disabled={isCreatingHyperframesFinalComposite || Boolean(hyperframesFinalCompositeDisabledReason)}
+                    title={hyperframesFinalCompositeDisabledReason ?? (locale === "th" ? "Render รวมด้วย HyperFrames พร้อมข้อความและ subtitle" : "Render with HyperFrames text and subtitles")}
+                  >
+                    {isCreatingHyperframesFinalComposite ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Video className="mr-2 h-4 w-4" />
+                    )}
+                    {locale === "th" ? "HyperFrames Final" : "HyperFrames Final"}
+                  </Button>
+                  {hyperframesFinalCompositeStatus ? (
+                    <span className="max-w-[13rem] truncate text-[10px] text-sky-700">
+                      {hyperframesFinalCompositeStatus}
+                    </span>
+                  ) : hyperframesFinalCompositeDisabledReason ? (
+                    <span className="max-w-[13rem] truncate text-[10px] text-slate-500">
+                      {hyperframesFinalCompositeDisabledReason}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="flex w-full flex-col gap-1 sm:w-auto">
                 <Button
                   type="button"

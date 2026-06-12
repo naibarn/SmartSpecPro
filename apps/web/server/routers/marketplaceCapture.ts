@@ -17,6 +17,7 @@ import { analyzeMarketplaceCapture } from "../services/marketplaceExtractionServ
 import {
   addMarketplaceProductImageFromUrl,
   confirmMarketplaceCapture,
+  createManualMarketplaceProduct,
   deleteMarketplaceProduct,
   getMarketplaceProductWithAccess,
   getMarketplaceShareSettings,
@@ -25,6 +26,7 @@ import {
   removeMarketplaceProductImage,
   saveMarketplaceShareSetting,
   setMarketplaceProductHeroImage,
+  updateMarketplaceProductDetails,
 } from "../services/marketplaceProductService";
 import {
   advanceMarketplaceAutoReviewRun,
@@ -32,12 +34,16 @@ import {
   getMarketplaceAutoReviewRun,
   listMarketplaceAutoReviewRuns,
   queueMarketplaceAutoReviewAdvance,
+  selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
   startMarketplaceAutoReviewRun,
 } from "../services/marketplaceAutoReviewService";
 import {
   applyMarketplaceClaimResolution,
+  analyzeMarketplaceProductInsights,
   buildBasicStorytellingHandoffFromCapture,
+  enhanceMarketplaceProductDescription,
   generateMarketplaceServerInsight,
+  getMarketplaceInsightReadableForUser,
   getMarketplaceInsightForUser,
   listMarketplaceInsightsByCapture,
   listMarketplaceInsightsByProduct,
@@ -49,17 +55,22 @@ import {
   marketplaceCaptureInsightSyncSchema,
   marketplaceClaimResolutionSchema,
   marketplaceConfirmProductSchema,
+  productReferenceCategorySchema,
   marketplaceServerInsightGenerationSchema,
 } from "@shared/marketplaceCapture";
 import {
   CancelHyperframesRenderJobInputSchema,
   CancelHyperframesRenderJobOutputSchema,
+  CreateHyperframesFinalCompositeInputSchema,
+  CreateHyperframesFinalCompositeOutputSchema,
   CreateHyperframesPreviewInputSchema,
   CreateHyperframesPreviewOutputSchema,
   GetAutoStoryboardReviewPlanInputSchema,
   GetAutoStoryboardReviewPlanOutputSchema,
   GetHyperframesRenderJobInputSchema,
   GetHyperframesRenderJobOutputSchema,
+  ListHyperframesCreativePresetsInputSchema,
+  ListHyperframesCreativePresetsOutputSchema,
   ListHyperframesTemplatesInputSchema,
   ListHyperframesTemplatesOutputSchema,
   RepairHyperframesRenderJobInputSchema,
@@ -75,9 +86,11 @@ import {
 } from "@shared/hyperframes/contracts";
 import {
   cancelHyperframesRenderJobForApi,
+  createHyperframesFinalCompositeForApi,
   createHyperframesPreviewForApi,
   getAutoStoryboardReviewPlanForApi,
   getHyperframesRenderJobForApi,
+  listHyperframesCreativePresetsForApi,
   listHyperframesTemplatesForApi,
   repairHyperframesRenderJobForApi,
   saveHyperframesRenderToLibraryForApi,
@@ -100,6 +113,26 @@ function authFromCtx(ctx: any) {
     undefined;
   return { userId, tenantId };
 }
+
+const editableProductDetailsSchema = z.object({
+  productName: z.string().trim().min(1).max(500),
+  descriptionText: z.string().max(80_000).optional().nullable(),
+  priceCurrent: z.union([z.string().max(64), z.number()]).optional().nullable(),
+  commissionRatePercent: z.union([z.string().max(64), z.number()]).optional().nullable(),
+  productPageUrl: z.string().trim().max(4096).optional().nullable(),
+  soldCountText: z.string().trim().max(128).optional().nullable(),
+  capturedCategoryText: z.string().trim().max(300).optional().nullable(),
+  shopName: z.string().trim().max(300).optional().nullable(),
+  productCategory: productReferenceCategorySchema.optional().nullable(),
+  ratingScore: z.union([z.string().max(64), z.number()]).optional().nullable(),
+  reviewCountText: z.string().trim().max(128).optional().nullable(),
+});
+
+const manualProductSchema = editableProductDetailsSchema.extend({
+  platform: z.enum(["shopee", "tiktok_shop"]).default("shopee"),
+  sourceUrl: z.string().trim().max(4096).optional().nullable(),
+  affiliateUrl: z.string().trim().max(4096).optional().nullable(),
+});
 
 async function operatorAuthFromCtx(ctx: any) {
   const auth = authFromCtx(ctx);
@@ -305,7 +338,7 @@ export const marketplaceCaptureRouter = router({
   getInsight: protectedProcedure
     .input(z.object({ insightId: z.string().min(1).max(64) }))
     .query(async ({ input, ctx }) =>
-      getMarketplaceInsightForUser(input.insightId, authFromCtx(ctx))
+      getMarketplaceInsightReadableForUser(input.insightId, authFromCtx(ctx))
     ),
 
   syncInsight: protectedProcedure
@@ -472,6 +505,30 @@ export const marketplaceCaptureRouter = router({
       getMarketplaceProductWithAccess(input.productId, authFromCtx(ctx))
     ),
 
+  createManualProduct: protectedProcedure
+    .input(manualProductSchema)
+    .mutation(async ({ input, ctx }) =>
+      createManualMarketplaceProduct(input, authFromCtx(ctx))
+    ),
+
+  updateProductDetails: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64), data: editableProductDetailsSchema }))
+    .mutation(async ({ input, ctx }) =>
+      updateMarketplaceProductDetails(input.productId, input.data, authFromCtx(ctx))
+    ),
+
+  enhanceProductDescription: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) =>
+      enhanceMarketplaceProductDescription(input.productId, authFromCtx(ctx))
+    ),
+
+  analyzeProductInsights: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) =>
+      analyzeMarketplaceProductInsights(input.productId, authFromCtx(ctx))
+    ),
+
   addProductImageFromUrl: protectedProcedure
     .input(
       z.object({
@@ -545,7 +602,7 @@ export const marketplaceCaptureRouter = router({
         imageModel: z
           .enum(["google-nano-banana-pro", "google-banana-2"])
           .optional()
-          .default("google-nano-banana-pro"),
+          .default("google-banana-2"),
         qualityMode: z
           .enum(["fast_draft", "balanced", "premium_strict_qa"])
           .optional()
@@ -682,6 +739,21 @@ export const marketplaceCaptureRouter = router({
       })
     ),
 
+  createHyperframesFinalComposite: protectedProcedure
+    .input(CreateHyperframesFinalCompositeInputSchema)
+    .output(CreateHyperframesFinalCompositeOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      createHyperframesFinalCompositeForApi({
+        productId: input.productId,
+        runId: input.runId,
+        expectedCompositionInputHash: input.expectedCompositionInputHash,
+        renderIntent: input.renderIntent,
+        compositionMode: input.compositionMode,
+        config: input.config,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
   getHyperframesRenderJob: protectedProcedure
     .input(GetHyperframesRenderJobInputSchema)
     .output(GetHyperframesRenderJobOutputSchema)
@@ -717,6 +789,18 @@ export const marketplaceCaptureRouter = router({
         includeDisabled: input.includeDisabled,
         compositionMode: input.compositionMode,
         renderIntent: input.renderIntent,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  listHyperframesCreativePresets: protectedProcedure
+    .input(ListHyperframesCreativePresetsInputSchema)
+    .output(ListHyperframesCreativePresetsOutputSchema)
+    .query(async ({ input, ctx }) =>
+      listHyperframesCreativePresetsForApi({
+        includeDisabled: input.includeDisabled,
+        includeCandidate: input.includeCandidate,
+        category: input.category,
         auth: authFromCtx(ctx),
       })
     ),
@@ -911,6 +995,21 @@ export const marketplaceCaptureRouter = router({
         input.runId,
         authFromCtx(ctx),
         autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  selectAutoReviewImageAttemptForStoryboardReview: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        attempt: z.number().int().positive().max(20),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      selectMarketplaceAutoReviewImageAttemptForStoryboardReview(
+        input,
+        authFromCtx(ctx)
       )
     ),
 

@@ -58,7 +58,7 @@ describe("hyperframesAutoPlanService", () => {
       overrides: {
         frameStrategy: "video_shot_start_stop",
         qualityMode: "high",
-        imageModel: "google-banana-2",
+        imageModel: "google-nano-banana-pro",
         shotCount: 7,
         platformPresetId: "tiktok_reels_shorts_9_16",
         renderEngine: "existing_ffmpeg_timeline",
@@ -68,7 +68,7 @@ describe("hyperframesAutoPlanService", () => {
     expect(customizedPlan.defaults).toMatchObject({
       frameStrategy: "video_shot_start_stop",
       qualityMode: "high",
-      imageModel: "google-banana-2",
+      imageModel: "google-nano-banana-pro",
       shotCount: 7,
       renderEngine: "hyperframes_composition",
     });

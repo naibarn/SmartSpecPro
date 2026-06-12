@@ -12,10 +12,16 @@ import {
   type MarketplaceAutoReviewStatus,
 } from "../services/marketplaceAutoReviewService";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import {
+  runHyperframesRenderWorkerOnce,
+  type HyperframesWorkerRunOptions,
+  type HyperframesWorkerRunResult,
+} from "../workers/hyperframesRenderWorker";
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_RUN_LIMIT = 12;
 const DEFAULT_OUTBOX_LIMIT = 12;
+const DEFAULT_HYPERFRAMES_WORKER_LIMIT = 25;
 const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
   "queued",
   "running",
@@ -89,11 +95,18 @@ export async function runMarketplaceAutoReviewJob(
     db?: any;
     limit?: number;
     outboxLimit?: number;
+    hyperframesWorkerLimit?: number;
+    runHyperframesWorker?: (
+      options?: HyperframesWorkerRunOptions
+    ) => Promise<HyperframesWorkerRunResult>;
   } = {}
 ): Promise<{
   scannedRuns: number;
   advancedRuns: number;
   processedOutboxJobs: number;
+  processedHyperframesJobs: number;
+  hyperframesRuntimeDeferred: boolean;
+  hyperframesWorkerDisabled: boolean;
   skippedRuns: number;
   errors: Array<{ runId: string; message: string }>;
 }> {
@@ -102,6 +115,9 @@ export async function runMarketplaceAutoReviewJob(
       scannedRuns: 0,
       advancedRuns: 0,
       processedOutboxJobs: 0,
+      processedHyperframesJobs: 0,
+      hyperframesRuntimeDeferred: false,
+      hyperframesWorkerDisabled: false,
       skippedRuns: 0,
       errors: [],
     };
@@ -115,6 +131,9 @@ export async function runMarketplaceAutoReviewJob(
         scannedRuns: 0,
         advancedRuns: 0,
         processedOutboxJobs: 0,
+        processedHyperframesJobs: 0,
+        hyperframesRuntimeDeferred: false,
+        hyperframesWorkerDisabled: false,
         skippedRuns: 0,
         errors: [],
       };
@@ -152,6 +171,9 @@ export async function runMarketplaceAutoReviewJob(
     const runtimeConfig = await getAppRuntimeConfig();
     let advancedRuns = 0;
     let processedOutboxJobs = 0;
+    let processedHyperframesJobs = 0;
+    let hyperframesRuntimeDeferred = false;
+    let hyperframesWorkerDisabled = false;
     let skippedRuns = 0;
     const errors: Array<{ runId: string; message: string }> = [];
 
@@ -291,10 +313,36 @@ export async function runMarketplaceAutoReviewJob(
       }
     }
 
+    try {
+      const hyperframesWorker =
+        options.runHyperframesWorker ?? runHyperframesRenderWorkerOnce;
+      const hyperframesResult = await hyperframesWorker({
+        limit: Math.min(
+          Math.max(
+            options.hyperframesWorkerLimit ?? DEFAULT_HYPERFRAMES_WORKER_LIMIT,
+            1
+          ),
+          25
+        ),
+        now,
+      });
+      processedHyperframesJobs = hyperframesResult.processed;
+      hyperframesRuntimeDeferred = hyperframesResult.runtimeDeferred;
+      hyperframesWorkerDisabled = hyperframesResult.disabled;
+    } catch (error) {
+      errors.push({
+        runId: "hyperframes_worker",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     return {
       scannedRuns: runs.length,
       advancedRuns,
       processedOutboxJobs,
+      processedHyperframesJobs,
+      hyperframesRuntimeDeferred,
+      hyperframesWorkerDisabled,
       skippedRuns,
       errors,
     };
@@ -307,9 +355,14 @@ async function tick(): Promise<void> {
   if (!isJobEnabled()) return;
   try {
     const result = await runMarketplaceAutoReviewJob();
-    if (result.scannedRuns > 0 || result.errors.length > 0) {
+    if (
+      result.scannedRuns > 0 ||
+      result.processedHyperframesJobs > 0 ||
+      result.hyperframesRuntimeDeferred ||
+      result.errors.length > 0
+    ) {
       console.log(
-        `[marketplace-auto-review] scanned=${result.scannedRuns} advanced=${result.advancedRuns} outbox=${result.processedOutboxJobs} skipped=${result.skippedRuns} errors=${result.errors.length}`
+        `[marketplace-auto-review] scanned=${result.scannedRuns} advanced=${result.advancedRuns} outbox=${result.processedOutboxJobs} hyperframes=${result.processedHyperframesJobs} hyperframesDeferred=${result.hyperframesRuntimeDeferred} skipped=${result.skippedRuns} errors=${result.errors.length}`
       );
     }
   } catch (error) {

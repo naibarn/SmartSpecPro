@@ -6,6 +6,8 @@ import { appendProductReferenceStoryboardCategoryRules } from "../productReferen
 import {
   ProductReferenceStoryboardSkillIncompleteOutputError,
   PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID,
+  normalizeProductReferenceStoryboardReferenceUrlsForTest,
+  normalizeProductReferenceStoryboardUserInputsReferenceUrlsForTest,
   resolveProductReferenceStoryboardLlmMaxTokensForTest,
   sanitizeProductReferenceStoryboardUserInputsForTest,
   shouldOptimizeProductReferenceStoryboardPromptForTest,
@@ -107,7 +109,10 @@ describe("unified product reference storyboard skill", () => {
     expect(skillContent).toContain("Do not repeat this full verification list inside every frame");
     expect(skillContent).toContain("3 levels; 4 vertical posts; light wood finish");
     expect(skillContent).toContain("Product visual lock from @Image1 / first attached product reference image");
-    expect(skillContent).toContain("strict product visual lock");
+    expect(skillContent).toContain("primary visual source of truth");
+    expect(skillContent).toContain("must never override the attached product image");
+    expect(skillContent).toContain("uploaded presenter/reviewer identity anchor");
+    expect(skillContent).toContain("Never write `child from @Image2`");
     expect(skillContent).not.toContain("Recreate exact product from product reference image");
     expect(skillContent).toContain("blank/unreadable book covers and spines");
     expect(skillContent).toContain("Aim to keep the final plain-text prompt under 4300 characters");
@@ -242,9 +247,12 @@ describe("unified product reference storyboard skill", () => {
     expect(outputContract).toContain("rear-only shot");
     expect(outputContract).toContain("VIDEO IDENTITY SAFETY LOCK");
     expect(outputContract).toContain("PRODUCT REFERENCE LOCK");
-    expect(outputContract).toContain("strict product visual lock");
+    expect(outputContract).toContain("primary visual source of truth");
+    expect(outputContract).toContain("must never override the attached product image");
     expect(outputContract).toContain("@Image1 / the first attached product reference image");
     expect(outputContract).toContain("must match that reference exactly");
+    expect(outputContract).toContain("uploaded presenter/reviewer identity anchor");
+    expect(outputContract).toContain("Never write `child from @Image2`");
     expect(outputContract).toContain("A frame where the person is correct but the product changes");
     expect(outputContract).toContain("Frame 8 / reconfirming-value frames are product-critical");
     expect(outputContract).toContain("wrong nightstand/drawer/table substitution");
@@ -296,7 +304,7 @@ describe("unified product reference storyboard skill", () => {
 
     const promptWithReferenceImageLock = [
       "CAMERA/LIGHT/DEPTH: compact cinematic light.",
-      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst shelf, 3 levels, 4 posts.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst shelf, 3 levels, 4 posts.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
       ...Array.from(
         { length: 9 },
@@ -309,6 +317,24 @@ describe("unified product reference storyboard skill", () => {
     ).toContain("product_reference_image_exact_recreation_missing");
     expect(
       validateProductReferenceStoryboardOutputCompletenessForTest(promptWithReferenceImageLock)
+    ).not.toContain("product_reference_image_exact_recreation_missing");
+  });
+
+  it("accepts @Image1 primary-source wording without repeating product reference image", () => {
+    const prompt = [
+      "CAMERA/LIGHT/DEPTH: compact cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1. Product must match that reference exactly.",
+      "PRODUCT REFERENCE LOCK: Use @Image1 as the primary visual source of truth; the written product description is secondary and must never override the attached product image. The generated product must match that actual reference exactly for appearance, proportions, construction, material, color, countable parts, and scale.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      ...Array.from(
+        { length: 9 },
+        (_, index) =>
+          `Frame ${index + 1}: Complete visual-only product storyboard panel with the same referenced product clearly visible in a cozy kitchen.`
+      ),
+    ].join("\n");
+
+    expect(
+      validateProductReferenceStoryboardOutputCompletenessForTest(prompt)
     ).not.toContain("product_reference_image_exact_recreation_missing");
   });
 
@@ -380,7 +406,8 @@ describe("unified product reference storyboard skill", () => {
     expect(skillContent).toContain("Frame 1` through `Frame 9");
     expect(skillContent).toContain("one shared `CAMERA/LIGHT/DEPTH:` block");
     expect(skillContent).toContain("one shared `PRODUCT VERIFY:` block");
-    expect(skillContent).toContain("strict product visual lock");
+    expect(skillContent).toContain("primary visual source of truth");
+    expect(skillContent).toContain("must never override the attached product image");
     expect(skillContent).toContain("the product must match that reference exactly");
     expect(skillContent).not.toContain("product must be recreated from the product reference image exactly");
     expect(inputSchema.required).toContain("source_prompt");
@@ -451,5 +478,48 @@ describe("unified product reference storyboard skill", () => {
     expect(sanitized.reference_environment_images).toEqual([]);
     expect(sanitized).not.toHaveProperty("ignored_empty_text");
     expect(sanitized).not.toHaveProperty("ignored_empty_array");
+  });
+
+  it("normalizes relative storage references before product-reference-storyboard LLM dispatch", () => {
+    const storageUrl =
+      "/api/storage/files/marketplace-captures/cap-123/images/product.png";
+    const publicUrl = "https://smartaihub.app";
+
+    expect(
+      normalizeProductReferenceStoryboardReferenceUrlsForTest({
+        values: [storageUrl],
+        publicUrl,
+      })
+    ).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-123/images/product.png",
+    ]);
+
+    const normalizedInputs =
+      normalizeProductReferenceStoryboardUserInputsReferenceUrlsForTest({
+        userInputs: {
+          reference_product_images: [storageUrl],
+          reference_character_images: [],
+          reference_environment_images: [],
+        },
+        publicUrl,
+      });
+
+    expect(normalizedInputs.reference_product_images).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-123/images/product.png",
+    ]);
+    expect(normalizedInputs.reference_character_images).toEqual([]);
+    expect(normalizedInputs.reference_environment_images).toEqual([]);
+  });
+
+  it("fails fast instead of falling back when relative references have no publicUrl", () => {
+    expect(() =>
+      normalizeProductReferenceStoryboardReferenceUrlsForTest({
+        values: [
+          "/api/storage/files/marketplace-captures/cap-123/images/product.png",
+        ],
+      })
+    ).toThrow(
+      "product-reference-storyboard reference image URL requires publicUrl before LLM dispatch"
+    );
   });
 });

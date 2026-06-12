@@ -10,7 +10,10 @@ export function detectTikTokShopPage(): PageDetection {
     return { platform: "tiktok_shop", pageType: "unknown", title: document.title, url: location.href };
   }
   const text = document.body.innerText || "";
-  const hasShowcaseProductListUrl = /^\/streamer\/showcase\/product\/list\/?$/i.test(location.pathname);
+  const hasLiveProductSetPage = /^\/(?:shop\/)?streamer\/live\/product\/set(?:\/.*)?$/i.test(location.pathname);
+  const hasShowcaseProductListUrl = /^\/(?:shop\/)?streamer\/showcase\/product\/list(?:\/.*)?$/i.test(location.pathname);
+  const hasShowcaseRowsWithProductId = Array.from(document.querySelectorAll<HTMLElement>("tr.arco-table-tr[data-exposure-key], [role='row'][data-exposure-key], tr[data-exposure-key]"))
+    .some((row) => /ID\s*:?\s*\d{10,}/i.test(row.textContent || ""));
   const supportsRootRegionPath = host === "shop.tiktok.com" || host.endsWith(".tiktokglobalshop.com");
   const productPathPattern = supportsRootRegionPath
     ? /\/view\/product\/\d+|\/(?:shop\/)?[^/]+\/pdp\/(?:[^/]+\/)?\d+/i
@@ -24,7 +27,12 @@ export function detectTikTokShopPage(): PageDetection {
   const hasListingSignals = document.querySelectorAll("a[href]").length > 20 && /shop|สินค้า|products?|search/i.test(text);
   return {
     platform: "tiktok_shop",
-    pageType: hasShowcaseProductListUrl ? "category" : hasProductSignals ? "product" : hasCategoryUrl ? "category" : hasShopHomeUrl ? "shop" : hasListingSignals ? "category" : "unknown",
+    pageType: hasShowcaseProductListUrl || hasLiveProductSetPage || hasShowcaseRowsWithProductId ? "category"
+      : hasProductSignals ? "product"
+      : hasCategoryUrl ? "category"
+      : hasShopHomeUrl ? "shop"
+      : hasListingSignals ? "category"
+      : "unknown",
     title: document.title,
     url: location.href,
   };

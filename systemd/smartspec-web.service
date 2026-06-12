@@ -16,21 +16,21 @@ Group=dev
 WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
 
 # Environment
-Environment="PATH=/home/dev/.nvm/versions/node/v24.13.0/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PATH=/home/dev/.nvm/versions/node/v20.20.0/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
-Environment="NODE_OPTIONS=--max-old-space-size=2048"
+Environment="NODE_OPTIONS=--max-old-space-size=8192"
 Environment="PORT=3000"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
 # Kill orphan on port, then wait until port is actually free (up to 10s)
-ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 3000/tcp 2>/dev/null || true'
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep -q ":3000 " || exit 0; sleep 0.5; done; echo "WARN: port 3000 still in use after 10s"'
+ExecStartPre=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed -n "s/.*pid=\\([0-9]\\+\\).*/\\1/p" | sort -u); if [ -n "$pids" ]; then echo "Stopping stale process(es) on port 3000: $pids"; kill $pids 2>/dev/null || true; sleep 2; for pid in $pids; do kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true; done; fi'
+ExecStartPre=/bin/bash -lc 'for i in $(seq 1 20); do ss -H -ltn "sport = :3000" 2>/dev/null | grep -q . || exit 0; sleep 0.5; done; echo "FATAL: port 3000 still in use after 10s"; exit 1'
 
 # Start directly via tsx (not npm run start — avoids extra parent process)
-ExecStart=/home/dev/.nvm/versions/node/v24.13.0/bin/npx tsx server/_core/index.ts
+ExecStart=/home/dev/.nvm/versions/node/v20.20.0/bin/npx tsx server/_core/index.ts
 
-# Verify server is actually responding after startup (wait up to 15s for cold start)
-ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 15s"; exit 1'
+# Verify server is actually responding after startup (wait up to 45s for cold start)
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 45); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 45s"; exit 1'
 
 # Clean shutdown: SIGTERM to main, then SIGKILL entire cgroup after 15s
 KillMode=mixed
@@ -38,7 +38,7 @@ KillSignal=SIGTERM
 TimeoutStopSec=15s
 
 # Clean up port after stop
-ExecStopPost=/bin/bash -c '/usr/bin/fuser -k 3000/tcp 2>/dev/null || true'
+ExecStopPost=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed -n "s/.*pid=\\([0-9]\\+\\).*/\\1/p" | sort -u); if [ -n "$pids" ]; then echo "Stopping stale process(es) on port 3000 after stop: $pids"; kill $pids 2>/dev/null || true; fi'
 
 # Restart policy: exponential backoff to prevent tight crash loops
 # Sequence: 5s → 10s → 20s → 40s → 80s → 120s (cap)

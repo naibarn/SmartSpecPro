@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   buildCompletedHyperframesStagePayload,
+  buildFinalCompositeAss,
   isHyperframesRuntimeExecutionReady,
   isHyperframesWorkerEnabled,
+  resolveHyperframesFfmpegBinary,
   runHyperframesRenderWorkerOnce,
 } from "../../workers/hyperframesRenderWorker";
 
@@ -61,6 +63,10 @@ describe("hyperframesWorkerPolicy", () => {
     expect(isHyperframesWorkerEnabled()).toBe(true);
   });
 
+  it("resolves an ffmpeg binary for local smoke renders", () => {
+    expect(resolveHyperframesFfmpegBinary()).toMatch(/ffmpeg$/);
+  });
+
   it("keeps runtime execution gated separately from worker enablement", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
     expect(isHyperframesRuntimeExecutionReady()).toBe(false);
@@ -112,5 +118,48 @@ describe("hyperframesWorkerPolicy", () => {
         payload: { productId: "product_1" },
       })
     ).toBeNull();
+  });
+
+  it("expands legacy ellipsized Thai overlay text before writing the final ASS render script", () => {
+    const longThaiOverlay =
+      "พร้อมส่ง ของเล่นที่ตักทราย ชุดตักทราย ชุดเล่นทราย ของเล่นชายหาด";
+    const ass = buildFinalCompositeAss(
+      [
+        {
+          index: 0,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v001.mp4",
+          onScreenText: ["พร้อมส่ง..."],
+          subtitleCues: [
+            {
+              startSec: 0,
+              endSec: 3,
+              text: "วันหยุดที่บ้านอยากพาเด็ก ๆ ไปเล่น แต่กลัวแบกของเยอะ",
+            },
+          ],
+          animationPreset: "glow_feature",
+        },
+      ],
+      {
+        productTitle: longThaiOverlay,
+        finalCompositeConfig: {
+          overlayPreset: "premium_product_hero",
+          subtitlePreset: "classic_box",
+          textMode: "hook_and_per_shot",
+          includeShotText: true,
+          includeHookText: true,
+          burnInSubtitles: true,
+          hookText: "พร้อมส่ง...",
+          supportingText: "ของเล่นตักทรายพร้อมส่ง",
+        },
+      }
+    );
+
+    expect(ass).toContain("พร้อมส่ง ของเล่นที่ตักทราย");
+    expect(ass).toContain("ชุดตักทราย");
+    expect(ass).toContain("ชุดเล่นทราย");
+    expect(ass).toContain("\\N");
+    expect(ass).not.toContain("พร้อมส่ง…");
+    expect(ass).not.toContain("พร้อมส่ง...");
   });
 });

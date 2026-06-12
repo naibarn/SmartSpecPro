@@ -1,6 +1,8 @@
-import { RefreshCw, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUserSafeHyperframesRepairAction } from "@/lib/marketplaceHyperframesUiState";
+import { cn } from "@/lib/utils";
 import type { HyperframesRenderStatusProjection } from "@shared/hyperframes/contracts";
 import { HyperframesRenderPanel } from "./HyperframesRenderPanel";
 import { HyperframesSnapshotComparison } from "./HyperframesSnapshotComparison";
@@ -40,6 +42,7 @@ export function HyperframesStoryboardReviewPanel({
   locale,
 }: HyperframesStoryboardReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
+  const [expanded, setExpanded] = useState(false);
   const repairAction = getUserSafeHyperframesRepairAction(render);
   const derivedSnapshots =
     snapshots && snapshots.length > 0
@@ -54,19 +57,30 @@ export function HyperframesStoryboardReviewPanel({
           }));
   return (
     <section
-      className="space-y-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100"
+      className="space-y-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100"
       aria-label="HyperFrames storyboard review"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded(current => !current)}
+          className="min-w-0 flex-1 text-left"
+          aria-expanded={expanded}
+        >
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-sky-900 dark:text-sky-100">
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform",
+                expanded ? "rotate-180" : ""
+              )}
+            />
             <Sparkles className="h-4 w-4" />
             {copy.autoPreviewTitle}
           </div>
-          <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
-            {copy.autoPreviewDescription}
+          <p className="mt-1 line-clamp-1 text-xs leading-5 text-sky-800 dark:text-sky-100/85">
+            {render?.safeMessage ?? copy.autoPreviewDescription}
           </p>
-        </div>
+        </button>
         {!render && onCreatePreview ? (
           <Button
             type="button"
@@ -85,17 +99,21 @@ export function HyperframesStoryboardReviewPanel({
           </Button>
         ) : null}
       </div>
-      <HyperframesRenderPanel
-        render={render}
-        loading={loading}
-        onRetry={repairAction ? undefined : onRetry}
-        onSaveToLibrary={onSaveToLibrary}
-        saving={saving}
-        locale={locale}
-      />
-      <HyperframesSnapshotComparison snapshots={derivedSnapshots} locale={locale} />
-      {manualFallbackVisible ? (
-        <p className="text-xs text-slate-600 dark:text-slate-300">{copy.manualFallback}</p>
+      {expanded ? (
+        <>
+          <HyperframesRenderPanel
+            render={render}
+            loading={loading}
+            onRetry={repairAction ? undefined : onRetry}
+            onSaveToLibrary={onSaveToLibrary}
+            saving={saving}
+            locale={locale}
+          />
+          <HyperframesSnapshotComparison snapshots={derivedSnapshots} locale={locale} />
+          {manualFallbackVisible ? (
+            <p className="text-xs text-slate-600 dark:text-slate-300">{copy.manualFallback}</p>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

@@ -111,6 +111,7 @@ export const productReferenceCategorySchema = z.enum([
   "furniture",
   "cosmetics",
 ]);
+export type ProductReferenceCategory = z.infer<typeof productReferenceCategorySchema>;
 
 export const evidenceItemSchema = z.object({
   id: z.string().min(1).max(120),

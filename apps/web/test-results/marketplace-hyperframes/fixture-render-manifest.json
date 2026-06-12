@@ -2,7 +2,29 @@
   "gate": "fixture-render",
   "status": "passed",
   "renderer": "playwright_chromium_ffmpeg_smoke",
-  "generatedAt": "2026-06-05T08:20:47.192Z",
+  "generatedAt": "2026-06-12T12:35:16.188Z",
+  "creativePlanHash": "hf_8aef3664839c14bf8830fca6c7d3f8f0b5bb972f9f5cc3b9",
+  "presetManifestHash": "hf_77a70590932c3c474e9b03dc569a3697cfaf66c30a05e0ae",
+  "audioEventMapHash": "hf_3717599fb555fd1f88d1ca46ad1bdb94bb1f2b3d352f9744",
+  "fixtureMatrix": {
+    "coveredCases": [
+      "ecommerce_toy_no_audio_silent_policy",
+      "electronics_spec_overlay",
+      "price_deal_overlay",
+      "ugc_review_subtitle_style",
+      "thai_long_text_safe_area",
+      "music_sfx_event_map",
+      "native_audio_policy",
+      "fallback_only_runtime"
+    ],
+    "policyCases": [
+      "licensed_audio_asset_pending",
+      "missing_license_source_blocks_without_fallback",
+      "stale_price_requires_evidence_refresh",
+      "unsupported_user_claim_requires_review",
+      "product_truth_hash_mismatch_blocks_render"
+    ]
+  },
   "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture.html",
   "frameCount": 5,
   "frames": [
@@ -36,6 +58,44 @@
     "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-fixture.mp4",
     "sizeBytes": 87774,
     "ok": true
+  },
+  "outputRef": {
+    "kind": "final_video",
+    "url": "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_fixture/output.mp4",
+    "contentHash": "hf_383774411f6d544889dd5b6f8e40c98f169cd0135c7ecadc"
+  },
+  "playableProbe": {
+    "passed": true,
+    "durationSec": 5,
+    "hasVideo": true,
+    "hasAudio": false
+  },
+  "exactDuration": {
+    "expectedDurationSec": 5,
+    "actualDurationSec": 5,
+    "toleranceSec": 0.25,
+    "passed": true
+  },
+  "safeArea": {
+    "safeInsetPx": 48,
+    "textSafe": true,
+    "subtitleSafe": true,
+    "overflowElementCount": 0
+  },
+  "audioMixReport": {
+    "preserveNativeAudio": false,
+    "nativeInputWithAudioCount": 0,
+    "outputAudioPolicy": "no_audio_explicit_silent_policy",
+    "explicitSilentPolicy": true,
+    "audioEventMapHash": "hf_3717599fb555fd1f88d1ca46ad1bdb94bb1f2b3d352f9744"
+  },
+  "mediaHistory": {
+    "source": "marketplace_auto_review_hyperframes_render",
+    "mediaKind": "video",
+    "productId": "product_1",
+    "runId": "mar_1",
+    "openAction": true,
+    "downloadAction": true
   },
   "expectedArtifacts": [
     "input envelope HTML",

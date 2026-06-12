@@ -234,6 +234,7 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
           priceText: candidate.priceText ?? null,
           commissionRateText: candidate.commissionRateText ?? null,
           url: candidate.url,
+          source: "visible_rows",
         });
         sendResponse({ ok: true, candidate });
       })().catch((error) => {

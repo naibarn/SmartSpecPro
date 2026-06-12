@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { marketplaceCaptureRouter } from "../marketplaceCapture";
 import type { TrpcContext } from "../../_core/context";
-import { RepairHyperframesRenderJobOutputSchema } from "@shared/hyperframes/runtimeApiSchemas";
+import {
+  ListHyperframesCreativePresetsOutputSchema,
+  RepairHyperframesRenderJobOutputSchema,
+} from "@shared/hyperframes/runtimeApiSchemas";
 import { getDb } from "../../db";
 
 vi.mock("../../db", () => ({
@@ -32,6 +35,9 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     expect(procedures).toContain("getAutoReviewRun");
     expect(procedures).toContain("listAutoReviewRuns");
     expect(procedures).toContain("advanceAutoReviewRun");
+    expect(procedures).toContain(
+      "selectAutoReviewImageAttemptForStoryboardReview"
+    );
     expect(procedures).toContain("cancelAutoReviewRun");
     expect(procedures).toContain("getAutoStoryboardReviewPlan");
     expect(procedures).toContain("startAutoStoryboardReview");
@@ -39,6 +45,7 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     expect(procedures).toContain("getHyperframesRenderJob");
     expect(procedures).toContain("repairHyperframesRenderJob");
     expect(procedures).toContain("listHyperframesTemplates");
+    expect(procedures).toContain("listHyperframesCreativePresets");
     expect(procedures).toContain("cancelHyperframesRenderJob");
     expect(procedures).toContain("saveHyperframesRenderToLibrary");
     expect(procedures).toContain("inspectHyperframesRenderDiagnostics");
@@ -56,6 +63,16 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     })._def.procedures.repairHyperframesRenderJob;
 
     expect(procedure._def.output).toBe(RepairHyperframesRenderJobOutputSchema);
+  });
+
+  it("exposes creative preset listing through the runtime API schema", () => {
+    const procedure = (marketplaceCaptureRouter as unknown as {
+      _def: {
+        procedures: Record<string, { _def: { output?: unknown } }>;
+      };
+    })._def.procedures.listHyperframesCreativePresets;
+
+    expect(procedure._def.output).toBe(ListHyperframesCreativePresetsOutputSchema);
   });
 
   it("requires authentication through the real protectedProcedure middleware", async () => {
@@ -76,6 +93,9 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
         actionId: "repair_retry_worker_step",
         actionType: "retry_worker_step",
       })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(
+      caller.listHyperframesCreativePresets({})
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 
@@ -109,6 +129,37 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
       },
     });
     expect(result.render.outputRefs).toEqual([]);
+  });
+
+  it("returns backend-derived creative preset availability", async () => {
+    const caller = marketplaceCaptureRouter.createCaller(
+      createContext({
+        id: 119,
+        email: "router@smartspec.local",
+        role: "admin",
+        currentTenantId: "tenant_router",
+      })
+    );
+
+    const result = await caller.listHyperframesCreativePresets({
+      includeCandidate: true,
+      category: "overlay",
+    });
+
+    expect(result.creativeCapabilities).toMatchObject({
+      canUseProducerPresets: false,
+      canUseFallbackPresets: false,
+    });
+    expect(result.runtimeCapabilities).toMatchObject({
+      ffmpegAssFallback: true,
+      hyperframesProducer: false,
+    });
+    expect(result.presets.some(preset => preset.id === "hf_text_price_badge_pop_ecommerce_v1")).toBe(true);
+    expect(result.presets.some(preset => preset.capabilityState === "producer_ready")).toBe(false);
+    expect(result.presetAvailability.hf_text_price_badge_pop_ecommerce_v1).toMatchObject({
+      selectable: false,
+      fallbackMode: "ffmpeg_ass",
+    });
   });
 
   it("guards operator diagnostics behind the HyperFrames operator procedure", async () => {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-06T02:50:34.695Z",
+  "generatedAt": "2026-06-07T03:23:52.495Z",
   "routeLevel": true,
   "authenticated": true,
   "routes": [
@@ -1216,7 +1216,7 @@
     "autoFirstActionTop": 116,
     "autoCtaTop": 530,
     "standardModeTop": 296,
-    "productSummaryTop": 1126
+    "productSummaryTop": 1988
   },
   "overflowElementCount": 0,
   "scrollableOverflowElementCount": 68,

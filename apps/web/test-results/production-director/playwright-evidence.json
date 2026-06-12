@@ -73,7 +73,7 @@
         {
           "title": "Marketplace HyperFrames Auto Review UI gate",
           "file": "marketplace-hyperframes-ui.spec.ts",
-          "line": 857,
+          "line": 868,
           "column": 6,
           "specs": [
             {
@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 21,
+                      "duration": 15,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:49:57.281Z",
+                      "startTime": "2026-06-07T03:23:09.504Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -107,7 +107,7 @@
               ],
               "id": "5a050f4a632e5693260d-3c129df8802b10807f79",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 858,
+              "line": 869,
               "column": 3
             },
             {
@@ -126,12 +126,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 13,
+                      "duration": 9,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:49:57.328Z",
+                      "startTime": "2026-06-07T03:23:09.550Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -141,7 +141,7 @@
               ],
               "id": "5a050f4a632e5693260d-b6c41ce1a4570ffff55f",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 881,
+              "line": 892,
               "column": 3
             },
             {
@@ -160,12 +160,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3,
+                      "duration": 2,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:49:57.351Z",
+                      "startTime": "2026-06-07T03:23:09.574Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -175,7 +175,7 @@
               ],
               "id": "5a050f4a632e5693260d-674e9513c850cfde5255",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 916,
+              "line": 927,
               "column": 3
             },
             {
@@ -194,12 +194,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 3,
+                      "duration": 4,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:49:57.366Z",
+                      "startTime": "2026-06-07T03:23:09.588Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -209,7 +209,7 @@
               ],
               "id": "5a050f4a632e5693260d-3a6073c5cf7977a7a02d",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 933,
+              "line": 944,
               "column": 3
             },
             {
@@ -228,12 +228,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4590,
+                      "duration": 4671,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:49:57.378Z",
+                      "startTime": "2026-06-07T03:23:09.607Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -243,7 +243,7 @@
               ],
               "id": "5a050f4a632e5693260d-cf73364e632cec38f224",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 953,
+              "line": 964,
               "column": 3
             },
             {
@@ -262,12 +262,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1619,
+                      "duration": 1842,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:02.028Z",
+                      "startTime": "2026-06-07T03:23:14.387Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -277,7 +277,7 @@
               ],
               "id": "5a050f4a632e5693260d-c7cda166ab031d52f4f3",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1152,
+              "line": 1163,
               "column": 3
             },
             {
@@ -296,12 +296,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 8376,
+                      "duration": 8363,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:03.654Z",
+                      "startTime": "2026-06-07T03:23:16.235Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -311,7 +311,7 @@
               ],
               "id": "5a050f4a632e5693260d-bd7f450c3408c58adfff",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1184,
+              "line": 1195,
               "column": 3
             },
             {
@@ -330,12 +330,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1567,
+                      "duration": 1684,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:12.037Z",
+                      "startTime": "2026-06-07T03:23:24.608Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -345,7 +345,7 @@
               ],
               "id": "5a050f4a632e5693260d-b7744272ad5151f825f5",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1213,
+              "line": 1224,
               "column": 3
             },
             {
@@ -364,12 +364,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1537,
+                      "duration": 1429,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:13.617Z",
+                      "startTime": "2026-06-07T03:23:26.301Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -379,12 +379,12 @@
               ],
               "id": "5a050f4a632e5693260d-e4577abced5e8a085415",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1260,
+              "line": 1286,
               "column": 3
             },
             {
               "title": "authenticated Product Detail supports Advanced Auto overrides, reset, and start payload",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -397,23 +397,53 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 5637,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 10113,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n    at /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts:1448:8",
+                        "location": {
+                          "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
+                          "column": 8,
+                          "line": 1448
+                        },
+                        "snippet": "  1446 |         return startCall?.requestBodySnippet ?? \"\";\n  1447 |       })\n> 1448 |       .toContain('\"qualityMode\":\"high\"');\n       |        ^\n  1449 |     const startCall = routeLog.find(entry =>\n  1450 |       entry.procedures.includes(\"marketplaceCapture.startAutoStoryboardReview\")\n  1451 |     );"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
+                            "column": 8,
+                            "line": 1448
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  1446 |         return startCall?.requestBodySnippet ?? \"\";\n  1447 |       })\n> 1448 |       .toContain('\"qualityMode\":\"high\"');\n       |        ^\n  1449 |     const startCall = routeLog.find(entry =>\n  1450 |       entry.procedures.includes(\"marketplaceCapture.startAutoStoryboardReview\")\n  1451 |     );\n    at /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts:1448:8"
+                        }
+                      ],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:15.161Z",
+                      "startTime": "2026-06-07T03:23:27.740Z",
                       "annotations": [],
-                      "attachments": []
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/production-director/marketplace-hyperframes-ui-aa39e-des-reset-and-start-payload-chromium/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
+                        "column": 8,
+                        "line": 1448
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "5a050f4a632e5693260d-fbb91314520b9a6f9e35",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1336,
+              "line": 1362,
               "column": 3
             },
             {
@@ -429,15 +459,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1666,
+                      "duration": 2186,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:20.810Z",
+                      "startTime": "2026-06-07T03:23:38.430Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -447,7 +477,7 @@
               ],
               "id": "5a050f4a632e5693260d-e6f57ab8dea7403de6d9",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1447,
+              "line": 1473,
               "column": 3
             },
             {
@@ -463,15 +493,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 1,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 12230,
+                      "duration": 11820,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-06T02:50:22.487Z",
+                      "startTime": "2026-06-07T03:23:40.694Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -481,7 +511,7 @@
               ],
               "id": "5a050f4a632e5693260d-c22cc173462da1003201",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1482,
+              "line": 1508,
               "column": 3
             }
           ]
@@ -491,11 +521,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-06-06T02:49:52.076Z",
-    "duration": 42767.785,
-    "expected": 12,
+    "startTime": "2026-06-07T03:22:52.665Z",
+    "duration": 59976.887,
+    "expected": 11,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 1,
     "flaky": 0
   }
 }

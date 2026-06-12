@@ -67,9 +67,23 @@ import {
   type MarketplaceAutoReviewLaunchMode,
   type HyperframesRenderStatusProjection,
 } from "@shared/hyperframes/contracts";
+import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
 
 type ProductMediaTab = "image" | "video" | "audio";
 type ProductPanelTab = "history" | "library" | "product";
+type ProductEditForm = {
+  productName: string;
+  descriptionText: string;
+  priceCurrent: string;
+  commissionRatePercent: string;
+  productPageUrl: string;
+  soldCountText: string;
+  capturedCategoryText: string;
+  shopName: string;
+  productCategory: ProductReferenceCategory;
+  ratingScore: string;
+  reviewCountText: string;
+};
 type ProductMediaAsset = {
   url: string;
   title: string;
@@ -261,6 +275,9 @@ const PRODUCT_REFERENCE_CATEGORY_LABELS: Record<string, string> = {
   furniture: "เฟอร์นิเจอร์",
   cosmetics: "เครื่องสำอางและสกินแคร์",
 };
+const PRODUCT_REFERENCE_CATEGORY_OPTIONS = Object.entries(
+  PRODUCT_REFERENCE_CATEGORY_LABELS
+).map(([id, label]) => ({ id, label }));
 
 function getProductId(pathname: string) {
   return pathname.match(/\/marketplace-capture\/products\/([^/]+)/)?.[1] ?? "";
@@ -625,6 +642,13 @@ type AutoReviewImageAttemptCard = {
   promptSnippet: string;
   qaRefs: string[];
   repairRefs: string[];
+  storyboardGridUrl: string;
+  storyboardFrameUrls: string[];
+  startFrameUrls: string[];
+  stopFrameUrls: string[];
+  selected: boolean;
+  canCreateStoryboardReview: boolean;
+  hasPublishSafetyBlocker: boolean;
 };
 
 function autoReviewAttemptTone(
@@ -658,8 +682,21 @@ function autoReviewAttemptMessage(status: string, reasons: string[]): string {
   return "รอผลจาก provider หรือ QA";
 }
 
+function autoReviewReasonBlocksPublishSafety(reason: string): boolean {
+  return /minor.*safety|child.*safety|child.*clothing|baby.*clothing|shirtless|bare.*(chest|torso)|(diaper|underwear).*only|nudit|semi.*nude|เด็ก.*(ไม่ใส่เสื้อ|เปลือย|เสื้อผ้าไม่ครบ)|เด็ก.*ผ้าอ้อมอย่างเดียว/i.test(
+    reason
+  );
+}
+
 function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
   const metadata = asRecord(run?.metadataJson);
+  const acceptance = asRecord(metadata.generatedMediaAcceptanceEnvelope);
+  const manualSelection = asRecord(metadata.manualImageAttemptSelection);
+  const selectedAttempt =
+    Number(manualSelection.attempt) ||
+    Number(acceptance.selectedImageAttempt) ||
+    Number(metadata.selectedImageAttempt) ||
+    0;
   const reviews = Array.isArray(metadata.imageAttemptReviews)
     ? (metadata.imageAttemptReviews as unknown[]).map(item => asRecord(item))
     : [];
@@ -709,6 +746,11 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
           unitId: `attempt-${attempt}-result-${index + 1}`,
         }));
       const reasons = compactStringList(review.reasonCodes);
+      const publishSafetyBlockers = [
+        ...reasons,
+        ...compactStringList(asRecord(review.scoreBreakdown).publishSafetyBlockers),
+        ...compactStringList(review.selectionBlockers),
+      ].filter(autoReviewReasonBlocksPublishSafety);
       const promptAudits = Array.isArray(review.promptAudits)
         ? (review.promptAudits as unknown[]).map(item => asRecord(item))
         : [];
@@ -726,6 +768,18 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
           promptAudits.find(audit => Number(audit.promptLengthChars))
             ?.promptLengthChars
         ) || 0;
+      const storyboardGridUrl = compactText(review.storyboardGridUrl);
+      const storyboardFrameUrls = compactStringList(review.storyboardFrameUrls);
+      const startFrameUrls = compactStringList(review.startFrameUrls);
+      const stopFrameUrls = compactStringList(review.stopFrameUrls);
+      const canCreateStoryboardReview =
+        publishSafetyBlockers.length === 0 &&
+        Boolean(
+          storyboardGridUrl ||
+            storyboardFrameUrls.length > 0 ||
+            startFrameUrls.length > 0 ||
+            stopFrameUrls.length > 0
+        );
       return {
         attempt,
         status,
@@ -747,6 +801,13 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
           compactText(review.promptSnippet) || promptSnippetFromAudit,
         qaRefs: compactStringList(review.qaVerdictRefs),
         repairRefs: compactStringList(review.repairRefs),
+        storyboardGridUrl,
+        storyboardFrameUrls,
+        startFrameUrls,
+        stopFrameUrls,
+        selected: selectedAttempt === attempt,
+        canCreateStoryboardReview,
+        hasPublishSafetyBlocker: publishSafetyBlockers.length > 0,
       };
     });
   }
@@ -778,6 +839,9 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
           )
         )
       );
+      const publishSafetyBlockers = reasons.filter(
+        autoReviewReasonBlocksPublishSafety
+      );
       const promptAudits = attemptTasks
         .map(task => asRecord(asRecord(task.providerSubmitEvidence).promptAudit))
         .filter(audit => compactText(audit.promptHash));
@@ -795,6 +859,9 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
           promptAudits.find(audit => Number(audit.promptLengthChars))
             ?.promptLengthChars
         ) || 0;
+      const resultUrls = attemptTasks
+        .map(task => compactText(task.resultUrl))
+        .filter(Boolean);
       return {
         attempt,
         status,
@@ -825,6 +892,14 @@ function autoReviewImageAttemptCards(run: any): AutoReviewImageAttemptCard[] {
         ) || promptSnippetFromAudit,
         qaRefs: [],
         repairRefs: reasons,
+        storyboardGridUrl: resultUrls[0] ?? "",
+        storyboardFrameUrls: [],
+        startFrameUrls: [],
+        stopFrameUrls: [],
+        selected: selectedAttempt === attempt,
+        canCreateStoryboardReview:
+          resultUrls.length > 0 && publishSafetyBlockers.length === 0,
+        hasPublishSafetyBlocker: publishSafetyBlockers.length > 0,
       };
     });
 }
@@ -2002,6 +2077,20 @@ export default function MarketplaceCaptureProductDetail() {
   const [productFilterEnabled, setProductFilterEnabled] = useState(true);
   const [libraryPageIndex, setLibraryPageIndex] = useState(0);
   const [libraryPanelItems, setLibraryPanelItems] = useState<any[]>([]);
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [productEditForm, setProductEditForm] = useState<ProductEditForm>({
+    productName: "",
+    descriptionText: "",
+    priceCurrent: "",
+    commissionRatePercent: "",
+    productPageUrl: "",
+    soldCountText: "",
+    capturedCategoryText: "",
+    shopName: "",
+    productCategory: "auto",
+    ratingScore: "",
+    reviewCountText: "",
+  });
   const [deletedLibraryItemIds, setDeletedLibraryItemIds] = useState<
     Set<number>
   >(() => new Set());
@@ -2020,7 +2109,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewOverlayTextMode, setAutoReviewOverlayTextMode] =
     useState<AutoReviewOverlayTextMode>("no_text");
   const [autoReviewImageModel, setAutoReviewImageModel] =
-    useState<AutoReviewImageModel>("google-nano-banana-pro");
+    useState<AutoReviewImageModel>("google-banana-2");
   const [autoReviewLaunchMode, setAutoReviewLaunchMode] =
     useState<MarketplaceAutoReviewLaunchMode>("auto_storyboard_review");
   const [showAutoStoryboardAdvanced, setShowAutoStoryboardAdvanced] =
@@ -2274,6 +2363,44 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  const updateProductDetailsMutation =
+    trpc.marketplaceCapture.updateProductDetails.useMutation({
+      onSuccess: async () => {
+        await Promise.all([
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+          utils.marketplaceCapture.listProducts.invalidate(),
+        ]);
+        setIsEditingProduct(false);
+        toast.success("บันทึกข้อมูลสินค้าแล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const enhanceProductDescriptionMutation =
+    trpc.marketplaceCapture.enhanceProductDescription.useMutation({
+      onSuccess: async result => {
+        setProductEditForm(current => ({
+          ...current,
+          descriptionText: result.descriptionText ?? current.descriptionText,
+        }));
+        await Promise.all([
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+          utils.marketplaceCapture.listProducts.invalidate(),
+        ]);
+        toast.success("เติมรายละเอียด Description แล้ว");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const analyzeProductInsightsMutation =
+    trpc.marketplaceCapture.analyzeProductInsights.useMutation({
+      onSuccess: async result => {
+        await Promise.all([
+          utils.marketplaceCapture.listInsightsByProduct.invalidate({ productId }),
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+        ]);
+        toast.success(`วิเคราะห์ AI Insights แล้ว (${result.count ?? 0} records)`);
+      },
+      onError: error => toast.error(error.message),
+    });
   const startAutoReviewMutation =
     trpc.marketplaceCapture.startAutoReview.useMutation({
       onSuccess: async (result: any) => {
@@ -2341,6 +2468,27 @@ export default function MarketplaceCaptureProductDetail() {
         setOptimisticAutoStoryboardStart(false);
         toast.error(error.message);
       },
+    });
+  const selectAutoReviewImageAttemptMutation =
+    trpc.marketplaceCapture.selectAutoReviewImageAttemptForStoryboardReview.useMutation({
+      onSuccess: async (result: any) => {
+        await Promise.all([
+          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
+            productId,
+            limit: 8,
+          }),
+          utils.marketplaceCapture.getProduct.invalidate({ productId }),
+        ]);
+        setShowAutoReviewRuns(true);
+        setShowAutoReviewHistory(false);
+        const storyboardUrl = compactText(result?.links?.storyboardReview);
+        toast.success(
+          storyboardUrl
+            ? "ใช้ภาพชุดที่เลือกสร้าง Storyboard Review แล้ว"
+            : "เลือกภาพชุดนี้สำหรับ Storyboard Review แล้ว"
+        );
+      },
+      onError: error => toast.error(error.message),
     });
   const cancelHyperframesRenderMutation =
     trpc.marketplaceCapture.cancelHyperframesRenderJob.useMutation({
@@ -2444,6 +2592,45 @@ export default function MarketplaceCaptureProductDetail() {
     itemPlatformRaw.marketplaceCategoryPath,
     itemPlatformRaw.breadcrumbs,
   );
+  const productFormFromCurrent = useCallback((): ProductEditForm => ({
+    productName: compactText(item.productName),
+    descriptionText: compactText(item.descriptionText),
+    priceCurrent: compactDisplayValue(item.priceCurrent),
+    commissionRatePercent: compactDisplayValue(item.commissionRatePercent),
+    productPageUrl,
+    soldCountText: compactText(item.soldCountText),
+    capturedCategoryText,
+    shopName: compactText(item.shopName),
+    productCategory: PRODUCT_REFERENCE_CATEGORY_LABELS[mainProductCategory]
+      ? mainProductCategory as ProductReferenceCategory
+      : "auto",
+    ratingScore: compactDisplayValue(item.ratingScore),
+    reviewCountText: compactText(item.reviewCountText),
+  }), [
+    capturedCategoryText,
+    item.commissionRatePercent,
+    item.descriptionText,
+    item.priceCurrent,
+    item.productName,
+    item.ratingScore,
+    item.reviewCountText,
+    item.shopName,
+    item.soldCountText,
+    mainProductCategory,
+    productPageUrl,
+  ]);
+  useEffect(() => {
+    if (!isEditingProduct) setProductEditForm(productFormFromCurrent());
+  }, [isEditingProduct, productFormFromCurrent]);
+  function updateProductEditField<Key extends keyof ProductEditForm>(
+    key: Key,
+    value: ProductEditForm[Key]
+  ) {
+    setProductEditForm(current => ({ ...current, [key]: value }));
+  }
+  function saveProductEdits() {
+    updateProductDetailsMutation.mutate({ productId, data: productEditForm });
+  }
   const baseImages = (productData?.images ?? []) as any[];
   const images = useMemo(() => {
     if (!optimisticProductImage) return baseImages;
@@ -4295,9 +4482,17 @@ export default function MarketplaceCaptureProductDetail() {
                 <p className="text-sm font-medium text-slate-500">
                   {compactText(item.platform)}
                 </p>
-                <h1 className="mt-2 text-3xl font-semibold leading-tight">
-                  {compactText(item.productName)}
-                </h1>
+                {isEditingProduct ? (
+                  <input
+                    className="mt-2 w-full rounded-md border px-3 py-2 text-2xl font-semibold leading-tight"
+                    value={productEditForm.productName}
+                    onChange={event => updateProductEditField("productName", event.target.value)}
+                  />
+                ) : (
+                  <h1 className="mt-2 text-3xl font-semibold leading-tight">
+                    {compactText(item.productName)}
+                  </h1>
+                )}
                 {heroProductImage ? (
                   <p className="mt-3 text-sm text-emerald-700">
                     รูปนี้เป็นภาพหลักของระบบสำหรับสินค้า และเป็นค่าเริ่มต้นสำหรับ Product Anchor
@@ -4307,6 +4502,56 @@ export default function MarketplaceCaptureProductDetail() {
                     เลือก Hero image จากส่วน Product Images ด้านล่าง เพื่อกำหนดรูปหลักของสินค้า
                   </p>
                 )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {isEditingProduct ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={updateProductDetailsMutation.isPending}
+                        onClick={saveProductEdits}
+                      >
+                        {updateProductDetailsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setProductEditForm(productFormFromCurrent());
+                          setIsEditingProduct(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsEditingProduct(true)}>
+                      Edit product
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={enhanceProductDescriptionMutation.isPending}
+                    onClick={() => enhanceProductDescriptionMutation.mutate({ productId })}
+                  >
+                    {enhanceProductDescriptionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                    Enhance description
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={analyzeProductInsightsMutation.isPending}
+                    onClick={() => analyzeProductInsightsMutation.mutate({ productId })}
+                  >
+                    {analyzeProductInsightsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                    Analyze AI Insights
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -4411,15 +4656,21 @@ export default function MarketplaceCaptureProductDetail() {
               <div>
                 <dt className="text-sm font-medium text-slate-500">Price</dt>
                 <dd>
+                  {isEditingProduct ? (
+                    <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.priceCurrent} onChange={event => updateProductEditField("priceCurrent", event.target.value)} />
+                  ) : (
+                  <>
                   {compactText(item.priceCurrent) || "-"}{" "}
                   {compactText(item.currency) || "THB"}
+                  </>
+                  )}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
                   Commission
                 </dt>
-                <dd>{compactText(item.commissionRatePercent) || "-"}%</dd>
+                <dd>{isEditingProduct ? <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.commissionRatePercent} onChange={event => updateProductEditField("commissionRatePercent", event.target.value)} /> : `${compactText(item.commissionRatePercent) || "-"}%`}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
@@ -4434,7 +4685,9 @@ export default function MarketplaceCaptureProductDetail() {
                   Product page
                 </dt>
                 <dd>
-                  {productPageUrl ? (
+                  {isEditingProduct ? (
+                    <textarea className="mt-1 min-h-16 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.productPageUrl} onChange={event => updateProductEditField("productPageUrl", event.target.value)} />
+                  ) : productPageUrl ? (
                     <a
                       className="inline-flex max-w-full items-center gap-1 break-all text-blue-700 underline"
                       href={productPageUrl}
@@ -4468,7 +4721,9 @@ export default function MarketplaceCaptureProductDetail() {
               <div>
                 <dt className="text-sm font-medium text-slate-500">Sold</dt>
                 <dd>
-                  {formatCount(
+                  {isEditingProduct ? (
+                    <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.soldCountText} onChange={event => updateProductEditField("soldCountText", event.target.value)} />
+                  ) : formatCount(
                     item.soldCountNormalized as any,
                     item.soldCountText as any
                   )}
@@ -4476,19 +4731,27 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">Shop</dt>
-                <dd>{compactText(item.shopName) || "-"}</dd>
+                <dd>{isEditingProduct ? <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.shopName} onChange={event => updateProductEditField("shopName", event.target.value)} /> : compactText(item.shopName) || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
                   Captured category
                 </dt>
-                <dd>{capturedCategoryText || "-"}</dd>
+                <dd>{isEditingProduct ? <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.capturedCategoryText} onChange={event => updateProductEditField("capturedCategoryText", event.target.value)} /> : capturedCategoryText || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
                   Main storyboard category
                 </dt>
-                <dd>{productCategoryLabel(mainProductCategory)}</dd>
+                <dd>
+                  {isEditingProduct ? (
+                    <select className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.productCategory} onChange={event => updateProductEditField("productCategory", event.target.value as ProductReferenceCategory)}>
+                      {PRODUCT_REFERENCE_CATEGORY_OPTIONS.map(option => (
+                        <option key={option.id} value={option.id}>{option.label} ({option.id})</option>
+                      ))}
+                    </select>
+                  ) : productCategoryLabel(mainProductCategory)}
+                </dd>
               </div>
               {categoryPath.length > 0 ? (
                 <div className="md:col-span-2">
@@ -4502,12 +4765,14 @@ export default function MarketplaceCaptureProductDetail() {
               ) : null}
               <div>
                 <dt className="text-sm font-medium text-slate-500">Rating</dt>
-                <dd>{compactText(item.ratingScore) || "-"}</dd>
+                <dd>{isEditingProduct ? <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.ratingScore} onChange={event => updateProductEditField("ratingScore", event.target.value)} /> : compactText(item.ratingScore) || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">Reviews</dt>
                 <dd>
-                  {formatCount(
+                  {isEditingProduct ? (
+                    <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.reviewCountText} onChange={event => updateProductEditField("reviewCountText", event.target.value)} />
+                  ) : formatCount(
                     item.reviewCountText as any,
                     history[0]?.reviewCountNormalized
                   )}
@@ -4706,14 +4971,14 @@ export default function MarketplaceCaptureProductDetail() {
                   {(
                     [
                       [
-                        "google-nano-banana-pro",
-                        "Nano Banana Pro",
-                        "คุณภาพสูง เหมาะกับภาพสินค้าและรายละเอียดซับซ้อน",
-                      ],
-                      [
                         "google-banana-2",
                         "Nano Banana 2",
                         "เร็วกว่า เหมาะกับงาน draft หรือ batch",
+                      ],
+                      [
+                        "google-nano-banana-pro",
+                        "Nano Banana Pro",
+                        "คุณภาพสูง เหมาะกับภาพสินค้าและรายละเอียดซับซ้อน",
                       ],
                     ] as const
                   ).map(([model, label, description]) => (
@@ -6000,13 +6265,74 @@ export default function MarketplaceCaptureProductDetail() {
                                                     <span className="font-semibold">
                                                       {card.title}
                                                     </span>
-                                                    <span className="rounded bg-white/80 px-2 py-0.5 text-[11px]">
-                                                      {card.status}
-                                                    </span>
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                      {card.selected ? (
+                                                        <span className="rounded bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                                                          ใช้สร้าง Storyboard Review แล้ว
+                                                        </span>
+                                                      ) : null}
+                                                      <span className="rounded bg-white/80 px-2 py-0.5 text-[11px]">
+                                                        {card.status}
+                                                      </span>
+                                                    </div>
                                                   </div>
                                                   <p className="mt-1">
                                                     {card.message}
                                                   </p>
+                                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <Button
+                                                      type="button"
+                                                      size="sm"
+                                                      variant={
+                                                        card.selected
+                                                          ? "secondary"
+                                                          : "default"
+                                                      }
+                                                      disabled={
+                                                        card.selected ||
+                                                        !card.canCreateStoryboardReview ||
+                                                        selectAutoReviewImageAttemptMutation.isPending
+                                                      }
+                                                      onClick={() =>
+                                                        selectAutoReviewImageAttemptMutation.mutate(
+                                                          {
+                                                            runId: compactText(
+                                                              run.id
+                                                            ),
+                                                            attempt:
+                                                              card.attempt,
+                                                          }
+                                                        )
+                                                      }
+                                                      className="h-8 gap-1 rounded-md text-xs"
+                                                    >
+                                                      {selectAutoReviewImageAttemptMutation.isPending ? (
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                      ) : (
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                      )}
+                                                      {card.selected
+                                                        ? "ใช้ชุดนี้อยู่"
+                                                        : "ใช้ภาพชุดนี้สร้าง Storyboard Review"}
+                                                    </Button>
+                                                    {card.hasPublishSafetyBlocker ? (
+                                                      <span className="text-[11px] font-semibold text-red-700">
+                                                        บล็อกการส่งต่อ: ภาพเด็กเสื้อผ้าไม่ครบหรือไม่เหมาะกับ publish
+                                                      </span>
+                                                    ) : !card.canCreateStoryboardReview ? (
+                                                      <span className="text-[11px] text-amber-700">
+                                                        ยังไม่มีภาพหรือเฟรมที่ใช้สร้างได้
+                                                      </span>
+                                                    ) : card.selected ? (
+                                                      <span className="text-[11px] text-sky-700">
+                                                        สร้าง Storyboard Review จากชุดนี้แล้ว
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-[11px] text-slate-500">
+                                                        ใช้เมื่อระบบเลือกชุดอื่นผิดจากที่ต้องการ
+                                                      </span>
+                                                    )}
+                                                  </div>
                                                   {card.reasons.length > 0 ? (
                                                     <div className="mt-2 flex flex-wrap gap-1">
                                                       {card.reasons
@@ -6082,19 +6408,19 @@ export default function MarketplaceCaptureProductDetail() {
                                                         ตรวจ Prompt รอบนี้{" "}
                                                         <span className="font-normal text-slate-500">
                                                           {card.prompt
-                                                            ? `${card.prompt.length.toLocaleString()} chars`
-                                                            : "preview"}
+                                                            ? `เต็ม ${card.prompt.length.toLocaleString()} chars`
+                                                            : `preview ${card.promptLengthChars ? `${card.promptLengthChars.toLocaleString()} chars` : ""}`}
                                                         </span>
                                                       </summary>
                                                       <textarea
                                                         readOnly
                                                         spellCheck={false}
-                                                        rows={8}
+                                                        rows={14}
                                                         value={
                                                           card.prompt ||
                                                           card.promptSnippet
                                                         }
-                                                        className="mt-2 min-h-[10rem] w-full resize-y rounded-md border border-slate-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
+                                                        className="mt-2 min-h-[18rem] w-full resize-y rounded-md border border-slate-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
                                                         aria-label={`Prompt รูปชุดที่ ${card.attempt}`}
                                                       />
                                                     </details>
@@ -6574,9 +6900,17 @@ export default function MarketplaceCaptureProductDetail() {
             ) : null}
 
             <h2 className="mt-8 text-lg font-semibold">Description</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-              {compactText(item.descriptionText) || "-"}
-            </p>
+            {isEditingProduct ? (
+              <textarea
+                className="mt-2 min-h-72 w-full rounded-md border px-3 py-2 text-sm leading-6"
+                value={productEditForm.descriptionText}
+                onChange={event => updateProductEditField("descriptionText", event.target.value)}
+              />
+            ) : (
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                {compactText(item.descriptionText) || "-"}
+              </p>
+            )}
             <details className="mt-6 rounded-md border bg-slate-50 p-3">
               <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
                 {t("marketplaceCapture.productDiagnostics.summary")}

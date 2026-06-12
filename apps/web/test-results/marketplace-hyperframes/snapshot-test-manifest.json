@@ -2,7 +2,7 @@
   "gate": "snapshot-test",
   "status": "passed",
   "renderer": "playwright_chromium_snapshot_smoke",
-  "generatedAt": "2026-06-05T08:20:57.061Z",
+  "generatedAt": "2026-06-12T12:35:27.621Z",
   "cases": [
     {
       "case": "marketplace_storyboard_motion_9x9_v1",

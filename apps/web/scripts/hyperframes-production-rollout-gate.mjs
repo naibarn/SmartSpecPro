@@ -77,6 +77,20 @@ const zeroCountEvidenceFields = [
   "overflowElementCount",
   "scrollableInteractiveWithoutAriaLabelCount",
 ];
+const openQuestionDecisionLogPath =
+  process.env.MARKETPLACE_HYPERFRAMES_OPEN_QUESTION_LOG ||
+  join(
+    here,
+    "../../..",
+    "specs/feature/120-hyperframes-creative-systems-overlay-audio-presets/reviews/open-question-decision-log.md"
+  );
+const capabilityDecisionEnvMap = [
+  ["MARKETPLACE_HYPERFRAMES_ENABLE_SFX_PACKS", "OQ-01"],
+  ["MARKETPLACE_HYPERFRAMES_ENABLE_MUSIC_PACKS", "OQ-02"],
+  ["MARKETPLACE_HYPERFRAMES_ENABLE_KARAOKE_WORD", "OQ-03"],
+  ["MARKETPLACE_HYPERFRAMES_ENABLE_PRODUCER_RUNTIME", "OQ-04"],
+  ["MARKETPLACE_HYPERFRAMES_ENABLE_STUDIO_PREVIEW", "OQ-05"],
+];
 const routeAuditCountFields = [
   "overflowElementCount",
   "scrollableOverflowElementCount",
@@ -310,6 +324,123 @@ function routeEvidencePassed() {
   return screenshots.every(screenshotEvidenceValid);
 }
 
+function fixtureFinalOutputEvidencePassed() {
+  const manifest = readJsonIfExists(join(evidenceDir, "fixture-render-manifest.json"));
+  if (!manifest || manifest.status !== "passed") return false;
+  const output = manifest.output && typeof manifest.output === "object"
+    ? manifest.output
+    : {};
+  const outputRef = manifest.outputRef && typeof manifest.outputRef === "object"
+    ? manifest.outputRef
+    : {};
+  const playableProbe = manifest.playableProbe && typeof manifest.playableProbe === "object"
+    ? manifest.playableProbe
+    : {};
+  const mediaHistory = manifest.mediaHistory && typeof manifest.mediaHistory === "object"
+    ? manifest.mediaHistory
+    : {};
+  const audioMixReport = manifest.audioMixReport && typeof manifest.audioMixReport === "object"
+    ? manifest.audioMixReport
+    : {};
+  const exactDuration = manifest.exactDuration && typeof manifest.exactDuration === "object"
+    ? manifest.exactDuration
+    : {};
+  const safeArea = manifest.safeArea && typeof manifest.safeArea === "object"
+    ? manifest.safeArea
+    : {};
+  const fixtureMatrix = manifest.fixtureMatrix && typeof manifest.fixtureMatrix === "object"
+    ? manifest.fixtureMatrix
+    : {};
+  const coveredCases = Array.isArray(fixtureMatrix.coveredCases)
+    ? new Set(fixtureMatrix.coveredCases)
+    : new Set();
+  const policyCases = Array.isArray(fixtureMatrix.policyCases)
+    ? new Set(fixtureMatrix.policyCases)
+    : new Set();
+  const requiredFixtureCases = [
+    "ecommerce_toy_no_audio_silent_policy",
+    "electronics_spec_overlay",
+    "price_deal_overlay",
+    "ugc_review_subtitle_style",
+    "thai_long_text_safe_area",
+    "music_sfx_event_map",
+    "native_audio_policy",
+    "fallback_only_runtime",
+  ];
+  const requiredPolicyCases = [
+    "licensed_audio_asset_pending",
+    "missing_license_source_blocks_without_fallback",
+    "stale_price_requires_evidence_refresh",
+    "unsupported_user_claim_requires_review",
+    "product_truth_hash_mismatch_blocks_render",
+  ];
+  const validHash = value =>
+    typeof value === "string" && /^hf_[a-f0-9]{24,128}$/i.test(value);
+  const audioPolicyOk =
+    playableProbe.hasAudio === true ||
+    (audioMixReport.outputAudioPolicy === "no_audio_explicit_silent_policy" &&
+      audioMixReport.explicitSilentPolicy === true);
+  return Boolean(
+    validHash(manifest.creativePlanHash) &&
+      validHash(manifest.presetManifestHash) &&
+      validHash(manifest.audioEventMapHash) &&
+      requiredFixtureCases.every(item => coveredCases.has(item)) &&
+      requiredPolicyCases.every(item => policyCases.has(item)) &&
+      output.ok === true &&
+      Number(output.sizeBytes) > 1024 &&
+      outputRef.kind === "final_video" &&
+      typeof outputRef.url === "string" &&
+      outputRef.url.startsWith("/api/storage/files/") &&
+      typeof outputRef.contentHash === "string" &&
+      outputRef.contentHash.startsWith("hf_") &&
+      playableProbe.passed === true &&
+      playableProbe.hasVideo === true &&
+      typeof playableProbe.durationSec === "number" &&
+      playableProbe.durationSec > 0 &&
+      exactDuration.passed === true &&
+      typeof exactDuration.expectedDurationSec === "number" &&
+      Math.abs(Number(exactDuration.actualDurationSec) - exactDuration.expectedDurationSec) <=
+        Number(exactDuration.toleranceSec ?? 0.25) &&
+      safeArea.textSafe === true &&
+      safeArea.subtitleSafe === true &&
+      safeArea.overflowElementCount === 0 &&
+      mediaHistory.source === "marketplace_auto_review_hyperframes_render" &&
+      mediaHistory.mediaKind === "video" &&
+      mediaHistory.productId === "product_1" &&
+      mediaHistory.runId === "mar_1" &&
+      mediaHistory.openAction === true &&
+      mediaHistory.downloadAction === true &&
+      typeof audioMixReport.outputAudioPolicy === "string" &&
+      audioMixReport.audioEventMapHash === manifest.audioEventMapHash &&
+      audioPolicyOk
+  );
+}
+
+function readOpenDecisionIds() {
+  if (!existsSync(openQuestionDecisionLogPath)) return new Set(["OQ-01", "OQ-02", "OQ-03", "OQ-04", "OQ-05"]);
+  const text = readFileSync(openQuestionDecisionLogPath, "utf8");
+  const openIds = new Set();
+  for (const line of text.split(/\r?\n/)) {
+    const cells = line
+      .split("|")
+      .map(cell => cell.trim())
+      .filter(Boolean);
+    if (cells.length < 4) continue;
+    const [id, , , decisionStatus] = cells;
+    if (/^OQ-\d+$/i.test(id) && /^Open$/i.test(decisionStatus)) {
+      openIds.add(id.toUpperCase());
+    }
+  }
+  return openIds;
+}
+
+function enabledCapabilityOpenQuestionBlockers() {
+  const openIds = readOpenDecisionIds();
+  return capabilityDecisionEnvMap
+    .filter(([envName, decisionId]) => truthy(process.env[envName]) && openIds.has(decisionId))
+    .map(([, decisionId]) => `open_question_${decisionId}`);
+}
+
 const input = {
   packageInstallDeferred: !truthy(process.env.MARKETPLACE_HYPERFRAMES_PACKAGES_READY),
   pinnedVersionsKnown: truthy(process.env.MARKETPLACE_HYPERFRAMES_PINNED_VERSIONS_REVIEWED),
@@ -322,10 +453,12 @@ const input = {
   ffmpegReady: truthy(process.env.MARKETPLACE_HYPERFRAMES_FFMPEG_READY),
   bundleExcludesHyperframesPackages: !truthy(process.env.MARKETPLACE_HYPERFRAMES_ALLOW_WEB_BUNDLE_IMPORT),
   seededRouteE2ePassed: routeEvidencePassed(),
+  fixtureFinalOutputPassed: fixtureFinalOutputEvidencePassed(),
   goldenSnapshotsPassed: truthy(process.env.MARKETPLACE_HYPERFRAMES_GOLDEN_SNAPSHOTS_PASSED),
 };
 
 const blockers = [];
+const openQuestionBlockers = enabledCapabilityOpenQuestionBlockers();
 if (input.packageInstallDeferred) blockers.push("package_install_deferred");
 if (!input.pinnedVersionsKnown) blockers.push("pinned_versions_missing");
 if (!input.licenseReviewed) blockers.push("license_not_reviewed");
@@ -337,7 +470,9 @@ if (!input.chromeReady) blockers.push("chrome_not_ready");
 if (!input.ffmpegReady) blockers.push("ffmpeg_not_ready");
 if (!input.bundleExcludesHyperframesPackages) blockers.push("main_bundle_import_risk");
 if (!input.seededRouteE2ePassed) blockers.push("seeded_route_e2e_missing");
+if (!input.fixtureFinalOutputPassed) blockers.push("fixture_final_output_missing");
 if (!input.goldenSnapshotsPassed) blockers.push("golden_snapshots_missing");
+blockers.push(...openQuestionBlockers);
 
 const pass = blockers.length === 0;
 const mvpSmokeReady =
@@ -360,7 +495,9 @@ const milestoneGroups = [
     : null,
   !input.bundleExcludesHyperframesPackages ? "bundle-import" : null,
   !input.seededRouteE2ePassed ? "seeded-route" : null,
+  !input.fixtureFinalOutputPassed ? "fixture-final-output" : null,
   !input.goldenSnapshotsPassed ? "golden-snapshot" : null,
+  openQuestionBlockers.length > 0 ? "open-question-decision" : null,
 ].filter(Boolean);
 console.log(
   JSON.stringify(
@@ -373,6 +510,13 @@ console.log(
       producerRuntimeBlocked: !pass,
       installAllowed: pass,
       installCommandAllowed: pass,
+      evidence: {
+        bundleExcludesHyperframesPackages: input.bundleExcludesHyperframesPackages,
+        seededRouteE2ePassed: input.seededRouteE2ePassed,
+        fixtureFinalOutputPassed: input.fixtureFinalOutputPassed,
+        goldenSnapshotsPassed: input.goldenSnapshotsPassed,
+        productionRuntimePrerequisitesReady,
+      },
       packageNames: ["@hyperframes/producer", "@hyperframes/cli"],
       blockers,
       requiredEvidence: blockers,

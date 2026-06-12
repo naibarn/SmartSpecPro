@@ -443,17 +443,19 @@ function storyboardReferenceImagesFromTask(task: Record<string, unknown> | undef
 function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIndex: number) {
   const context = asStoryboardRecord(task.storyboardContext);
   const referenceImages = storyboardReferenceImagesFromTask(task);
+  const startReferenceImage = referenceImages.find((image) => image.role === "start") ?? referenceImages[0];
+  const stopReferenceImage = referenceImages.find((image) => image.role === "stop") ?? referenceImages[1];
   const referenceUrls = Array.isArray(task.referenceUrls)
     ? task.referenceUrls.map((url) => storyboardMediaString(url)).filter(Boolean)
     : [];
-  const startFrameUrl = storyboardMediaFromRecord(task, ["startFrameUrl", "start_frame_url", "startImageUrl"])
+  const startFrameUrl = startReferenceImage?.url
     || storyboardMediaFromRecord(context, ["startFrameUrl", "start_frame_url", "startImageUrl"])
-    || referenceImages[0]?.url
+    || storyboardMediaFromRecord(task, ["startFrameUrl", "start_frame_url", "startImageUrl"])
     || referenceUrls[0]
     || "";
-  const stopFrameUrl = storyboardMediaFromRecord(task, ["stopFrameUrl", "endFrameUrl", "stopImageUrl", "endImageUrl"])
+  const stopFrameUrl = stopReferenceImage?.url
     || storyboardMediaFromRecord(context, ["stopFrameUrl", "endFrameUrl", "stopImageUrl", "endImageUrl"])
-    || referenceImages[1]?.url
+    || storyboardMediaFromRecord(task, ["stopFrameUrl", "endFrameUrl", "stopImageUrl", "endImageUrl"])
     || referenceUrls[1]
     || "";
   const referenceImageUrl = storyboardMediaFromRecord(task, ["referenceImageUrl", "thumbnailUrl", "posterUrl"])

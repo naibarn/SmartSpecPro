@@ -333,6 +333,39 @@ describe("executeSharedSkillTextRuntime", () => {
     expect(client.run).toHaveBeenCalledTimes(1);
   });
 
+  it("passes publicUrl into the context-pack request for relative reference images", async () => {
+    const input = makeInput();
+    const buildContextPack = vi.fn().mockResolvedValue({
+      contextPack: makeContextPack(),
+      contextPackRef: "context-pack:skill:req-shared-runtime-public-url",
+    });
+    const result = await executeSharedSkillTextRuntime({
+      ...input,
+      publicUrl: "https://smartaihub.app",
+      referenceImages: ["/api/storage/files/marketplace-captures/cap-123/images/product.png"],
+      builderDeps: {
+        ...input.builderDeps,
+        buildContextPack,
+      },
+      client: {
+        run: vi.fn().mockResolvedValue(makeRuntimeResponse()),
+      },
+      legacyExecute: vi.fn().mockResolvedValue(makeLegacyTextResult()),
+    });
+
+    expect(buildContextPack).toHaveBeenCalledTimes(1);
+    const contextPackRequest = buildContextPack.mock.calls[0]?.[0];
+    expect(
+      contextPackRequest?.request.conversationContext?.publicUrl
+    ).toBe("https://smartaihub.app");
+    expect(contextPackRequest?.request.attachments).toEqual([
+      {
+        type: "image",
+        url: "/api/storage/files/marketplace-captures/cap-123/images/product.png",
+      },
+    ]);
+  });
+
   it("fails closed in active mode when the manifest gate blocks execution", async () => {
     await expect(
       executeSharedSkillTextRuntime({

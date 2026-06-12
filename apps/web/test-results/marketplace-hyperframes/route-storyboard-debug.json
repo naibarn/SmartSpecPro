@@ -141,7 +141,7 @@
     }
   ],
   "storyboardPanelDebug": {
-    "text": "Auto previewตรวจผล preview อัตโนมัติก่อน Manual render ยังเป็น fallback ได้HyperFrames renderRender complete and ready for review.บันทึกเข้า Libraryเปิด outputSnapshot comparisonSafe area snapshotManual render controls ยังพร้อมใช้เป็น retry หรือ fallback",
+    "text": "Auto previewตรวจผล preview อัตโนมัติก่อน Manual render ยังเป็น fallback ได้HyperFrames renderRender complete and ready for review.บันทึกเข้า Libraryเปิด outputJobhf_route_1Templatemarketplace_storyboard_motion_9x9_v1Modestoryboard_motion_previewIntentfinalInputhf_inputSnapshot comparisonSafe area snapshotManual render controls ยังพร้อมใช้เป็น retry หรือ fallback",
     "buttons": [
       "บันทึกเข้า Library"
     ],

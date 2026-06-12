@@ -198,7 +198,33 @@ describe("hyperframesOperatorService", () => {
           runId: "mar_1",
           renderJobId: "hf_done",
           status: "completed",
-          payload: { qaStatus: "passed" },
+          payload: {
+            qaStatus: "passed",
+            creativePlanHash: "hf_creative_plan",
+            presetManifestHash: "hf_preset_manifest",
+            audioEventMapHash: "hf_audio_event_map",
+            fallbackQuality: "partial",
+            playableProbe: {
+              passed: true,
+              hasVideo: true,
+              hasAudio: true,
+            },
+            audioMixReport: {
+              nativeInputWithAudioCount: 3,
+            },
+          },
+          outputRefs: [
+            {
+              outputId: "hf_done_output",
+              kind: "final_video",
+              url: "/api/storage/files/output.mp4",
+              contentHash: "hf_output",
+              accessibleLabel: "HyperFrames final video",
+            },
+          ],
+          safeDiagnostics: [
+            "checked /tmp/hyperframes https://cdn.example.test/out.mp4?sig=secret",
+          ],
         }),
         buildHyperframesRenderProjection({
           tenantId: "tenant_1",
@@ -217,7 +243,7 @@ describe("hyperframesOperatorService", () => {
       ],
     });
 
-    expect(snapshot).toEqual({
+    expect(snapshot.counters).toEqual({
       queued: 1,
       started: 1,
       completed: 1,
@@ -227,6 +253,22 @@ describe("hyperframesOperatorService", () => {
       deadLettered: 1,
       libraryReady: 1,
     });
+    expect(snapshot.renderSignals.find(signal => signal.renderJobId === "hf_done")).toMatchObject({
+      productId: "product_1",
+      runId: "mar_1",
+      creativePlanHash: "hf_creative_plan",
+      presetManifestHash: "hf_preset_manifest",
+      audioEventMapHash: "hf_audio_event_map",
+      fallbackQuality: "partial",
+      hasAudio: true,
+      hasNativeAudio: true,
+      outputProbePassed: true,
+      outputRefCount: 1,
+    });
+    expect(
+      snapshot.renderSignals.find(signal => signal.renderJobId === "hf_done")
+        ?.diagnostics[0]
+    ).not.toContain("/tmp/hyperframes");
   });
 
   it("persists replay audit and delegates the actual dead-letter transition", async () => {

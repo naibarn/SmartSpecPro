@@ -13,3 +13,22 @@
 - PASS: `npm --prefix apps/web run check`
 - PASS: `npm --prefix apps/web run test -- server/services/__tests__/hyperframesFeatureAccessService.test.ts server/services/__tests__/hyperframesAutoPlanService.test.ts server/services/__tests__/hyperframesAutoPlanServiceProjection.test.ts server/services/__tests__/hyperframesRuntimeApiResume.test.ts server/services/__tests__/marketplaceAutoReviewService.test.ts shared/__tests__/marketplaceAutoReviewContracts.test.ts`
 - PASS: `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check`
+
+## Feature 120 Deep Plan Progress
+
+[COMPLETE] deep-plan-session - Created file-based deep-plan config for Feature 120.
+[COMPLETE] codebase-research - Used SocratiCode status/search plus targeted shell discovery for HyperFrames schemas, Storyboard Review storage, feature gates, render worker, output refs, Media History, and package scripts.
+[COMPLETE] plan-files - Created Feature 120 research, implementation plan, TDD plan, section index, 9 implementation section plans, and self-review file.
+[COMPLETE] plan-verification - Verified 15 markdown files, no trailing whitespace, 9 section manifest entries, no missing section files, and scoped git status.
+[COMPLETE] deep-plan-section-check - `check-sections.py` returned complete, manifest_valid true, progress 9/9, and no warnings.
+[COMPLETE] feature-120-spec-completeness-review - Compared Feature 120 spec to plan/TDD/sections and added missing coverage for evidence-bound copy, exact Thai fonts, accessibility/responsive evidence, audio license/SFX timing, Admin Tenant flags metadata, and open-question decision gates.
+[COMPLETE] feature-120-traceability-hardening - Added traceability matrix and filled deeper gaps for social variants, artifact/output compatibility, HyperFrames data attributes, runtime version diagnostics, staged manifest validation, raw enum copy leakage, and retention skip rules.
+[COMPLETE] feature-120-final-plan-review - Rechecked deep-plan coverage after hardening; tracked keyword gaps are closed, `check-sections.py` passes 9/9, and markdown has no trailing whitespace.
+[COMPLETE] feature-120-acceptance-keyword-review - Compared all 46 acceptance criteria and spec keyword groups to plan artifacts; added explicit coverage for lifecycle, subtitle families, staged assets, QA artifacts, mandatory disclosure, repair actions, canaries, and candidate promotion.
+[COMPLETE] feature-120-final-completeness-audit - Acceptance criteria coverage is clean, tracked spec keyword gaps are closed, section manifest is valid 9/9, and markdown whitespace check is clean.
+[COMPLETE] feature-120-security-open-question-hardening - Added explicit plan coverage for tenant-authored HTML rejection, no manual audio JS, preview sandbox/trusted-player boundary, raw signed/private URL redaction, SFX starter pack/music generation decisions, and thumbnail policy.
+[COMPLETE] feature-120-exact-symbol-id-hardening - Added exact starter preset id, exported contract/schema symbol, runtime readiness, provenance, and render credit idempotency coverage to close the remaining spec-to-plan ambiguity.
+[COMPLETE] feature-120-exact-compatibility-name-hardening - Added exact Feature 119 contract/version, capability, flag, API, data-attribute, timeline, outbox, artifact, output, and Storyboard Review state field coverage to prevent naming drift during implementation.
+[COMPLETE] feature-120-final-exact-term-hardening - Added remaining exact audio role, policy pack, native audio, runtime capability hash, style brief, platform profile, raw enum leakage, legacy shot start, and lifecycle timestamp coverage.
+[COMPLETE] feature-120-release-gate-hardening - Added package-script availability, dependency-audit/doctor fail-closed behavior, and Feature 119 disabled-flag regression requirements to close rollout evidence gaps.
+[COMPLETE] feature-120-open-question-decision-log - Added a decision-log artifact and rollout gate requirement so unresolved SFX, music, karaoke, producer, and Studio/player decisions cannot accidentally enable dependent capabilities.

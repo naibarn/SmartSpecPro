@@ -6,10 +6,20 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { mediaStudioStoryboardReviews, videoEditorProjects } from "../../drizzle/schema";
+import {
+  marketplaceAutoReviewRuns,
+  marketplaceProducts,
+  mediaStudioStoryboardReviews,
+  videoEditorProjects,
+} from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import {
+  UpdateStoryboardReviewHyperframesFinalCompositeInputSchema,
+  mergeStoryboardReviewHyperframesFinalCompositeState,
+} from "../../shared/hyperframes/storyboardReviewState";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
@@ -40,6 +50,278 @@ function getTaskUrl(task: unknown): string {
 
 function isStoryboardReviewRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasStoryboardMarketplaceContext(value: unknown): value is Record<string, unknown> {
+  if (!isStoryboardReviewRecord(value)) return false;
+  return [
+    "productId",
+    "marketplaceProductId",
+    "itemId",
+    "productItemId",
+    "externalProductId",
+    "shopId",
+    "externalShopId",
+    "sourceUrl",
+    "productSourceUrl",
+    "productName",
+    "productTitle",
+    "title",
+  ].some((key) => {
+    const item = value[key];
+    return (typeof item === "string" && item.trim().length > 0) || typeof item === "number";
+  });
+}
+
+function cleanString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getStoryboardReviewMarketplaceProductId(reviewData: unknown): string {
+  if (!isStoryboardReviewRecord(reviewData)) return "";
+  const contexts = [
+    reviewData.marketplaceContext,
+    reviewData.marketplaceProduct,
+  ];
+  for (const context of contexts) {
+    if (!isStoryboardReviewRecord(context)) continue;
+    const productId =
+      cleanString(context.productId) ||
+      cleanString(context.marketplaceProductId) ||
+      cleanString(context.id);
+    if (productId) return productId;
+  }
+  return "";
+}
+
+function getStoryboardReviewTaskAutoReviewRunIds(reviewData: unknown): Set<string> {
+  const runIds = new Set<string>();
+  if (!isStoryboardReviewRecord(reviewData)) return runIds;
+  const tasks = Array.isArray(reviewData.tasks) ? reviewData.tasks : [];
+  for (const task of tasks) {
+    if (!isStoryboardReviewRecord(task)) continue;
+    const storyboardContext = isStoryboardReviewRecord(task.storyboardContext)
+      ? task.storyboardContext
+      : null;
+    const extraParams = isStoryboardReviewRecord(storyboardContext?.extraParams)
+      ? storyboardContext.extraParams
+      : null;
+    const runId =
+      cleanString(extraParams?.autoReviewRunId) ||
+      cleanString(extraParams?.marketplaceAutoReviewRunId);
+    if (runId) runIds.add(runId);
+  }
+  return runIds;
+}
+
+export function getStoryboardReviewAutoReviewRunId(reviewData: unknown): string {
+  if (!isStoryboardReviewRecord(reviewData)) return "";
+  const topLevelRunId =
+    cleanString(reviewData.autoReviewRunId) ||
+    cleanString(reviewData.marketplaceAutoReviewRunId);
+  if (topLevelRunId) return topLevelRunId;
+
+  const directContext = isStoryboardReviewRecord(reviewData.marketplaceContext)
+    ? reviewData.marketplaceContext
+    : null;
+  const directRunId =
+    cleanString(directContext?.autoReviewRunId) ||
+    cleanString(directContext?.marketplaceAutoReviewRunId);
+  if (directRunId) return directRunId;
+
+  const taskRunIds = getStoryboardReviewTaskAutoReviewRunIds(reviewData);
+  return taskRunIds.size === 1 ? [...taskRunIds][0]! : "";
+}
+
+function parseStoryboardReviewId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  const parsed = Number(cleanString(value));
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+}
+
+export function mergeStoryboardReviewMarketplaceContext(
+  reviewData: unknown,
+  marketplaceContext: Record<string, unknown> | null,
+): unknown {
+  if (!isStoryboardReviewRecord(reviewData)) return reviewData;
+  const existingContext = hasStoryboardMarketplaceContext(reviewData.marketplaceContext)
+    ? reviewData.marketplaceContext
+    : null;
+  if (existingContext) return reviewData;
+
+  const embeddedProduct = hasStoryboardMarketplaceContext(reviewData.marketplaceProduct)
+    ? reviewData.marketplaceProduct
+    : null;
+  const resolvedContext = embeddedProduct
+    ? { ...(marketplaceContext ?? {}), ...embeddedProduct }
+    : marketplaceContext;
+  if (!resolvedContext || !hasStoryboardMarketplaceContext(resolvedContext)) return reviewData;
+
+  return {
+    ...reviewData,
+    marketplaceContext: resolvedContext,
+    marketplaceProduct: reviewData.marketplaceProduct ?? resolvedContext,
+  };
+}
+
+async function getStoryboardReviewAutoReviewContext(params: {
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
+  userId: number;
+  reviewId: number;
+  reviewData: unknown;
+}) {
+  const autoReviewRunId = getStoryboardReviewAutoReviewRunId(params.reviewData);
+  const where = autoReviewRunId
+    ? and(
+        eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
+        eq(marketplaceAutoReviewRuns.userId, params.userId),
+      )
+    : and(
+        eq(marketplaceAutoReviewRuns.storyboardReviewId, String(params.reviewId)),
+        eq(marketplaceAutoReviewRuns.userId, params.userId),
+      );
+
+  const [autoReviewProduct] = await params.db
+    .select({
+      runId: marketplaceAutoReviewRuns.id,
+      currentStoryboardReviewId: marketplaceAutoReviewRuns.storyboardReviewId,
+      productId: marketplaceProducts.id,
+      platform: marketplaceProducts.platform,
+      itemId: marketplaceProducts.externalProductId,
+      productItemId: marketplaceProducts.externalProductId,
+      externalProductId: marketplaceProducts.externalProductId,
+      shopId: marketplaceProducts.externalShopId,
+      externalShopId: marketplaceProducts.externalShopId,
+      sourceUrl: marketplaceProducts.sourceUrl,
+      productSourceUrl: marketplaceProducts.sourceUrl,
+      affiliateUrl: marketplaceProducts.affiliateUrl,
+      productName: marketplaceProducts.productName,
+      productTitle: marketplaceProducts.productName,
+      title: marketplaceProducts.productName,
+      brand: marketplaceProducts.brand,
+      shopName: marketplaceProducts.shopName,
+      productCategory: marketplaceProducts.productCategory,
+    })
+    .from(marketplaceAutoReviewRuns)
+    .innerJoin(
+      marketplaceProducts,
+      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+    )
+    .where(where)
+    .orderBy(desc(marketplaceAutoReviewRuns.updatedAt))
+    .limit(1);
+
+  if (!autoReviewProduct) return null;
+  const currentStoryboardReviewId = parseStoryboardReviewId(
+    autoReviewProduct.currentStoryboardReviewId,
+  );
+  return {
+    ...autoReviewProduct,
+    currentStoryboardReviewId,
+    isSuperseded:
+      currentStoryboardReviewId !== null &&
+      currentStoryboardReviewId !== params.reviewId,
+  };
+}
+
+async function normalizeStoryboardReviewCanonicalLinks(params: {
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
+  userId: number;
+  reviewData: unknown;
+}) {
+  if (!isStoryboardReviewRecord(params.reviewData)) return params.reviewData;
+  const autoReviewRunId = getStoryboardReviewAutoReviewRunId(params.reviewData);
+  if (!autoReviewRunId) return params.reviewData;
+  const taskRunIds = getStoryboardReviewTaskAutoReviewRunIds(params.reviewData);
+  if ([...taskRunIds].some(runId => runId !== autoReviewRunId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Storyboard Review contains mixed Auto Review run IDs.",
+    });
+  }
+
+  const [runProduct] = await params.db
+    .select({
+      runId: marketplaceAutoReviewRuns.id,
+      storyboardReviewId: marketplaceAutoReviewRuns.storyboardReviewId,
+      productId: marketplaceProducts.id,
+      platform: marketplaceProducts.platform,
+      itemId: marketplaceProducts.externalProductId,
+      productItemId: marketplaceProducts.externalProductId,
+      externalProductId: marketplaceProducts.externalProductId,
+      shopId: marketplaceProducts.externalShopId,
+      externalShopId: marketplaceProducts.externalShopId,
+      sourceUrl: marketplaceProducts.sourceUrl,
+      productSourceUrl: marketplaceProducts.sourceUrl,
+      affiliateUrl: marketplaceProducts.affiliateUrl,
+      productName: marketplaceProducts.productName,
+      productTitle: marketplaceProducts.productName,
+      title: marketplaceProducts.productName,
+      brand: marketplaceProducts.brand,
+      shopName: marketplaceProducts.shopName,
+      productCategory: marketplaceProducts.productCategory,
+    })
+    .from(marketplaceAutoReviewRuns)
+    .innerJoin(
+      marketplaceProducts,
+      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+    )
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
+        eq(marketplaceAutoReviewRuns.userId, params.userId),
+      ),
+    )
+    .limit(1);
+
+  if (!runProduct) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Auto review run linked to this Storyboard Review was not found.",
+    });
+  }
+
+  const existingProductId = getStoryboardReviewMarketplaceProductId(params.reviewData);
+  if (existingProductId && existingProductId !== runProduct.productId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Storyboard Review product does not match its Auto Review run.",
+    });
+  }
+
+  const existingContext = isStoryboardReviewRecord(params.reviewData.marketplaceContext)
+    ? params.reviewData.marketplaceContext
+    : {};
+  const existingProduct = isStoryboardReviewRecord(params.reviewData.marketplaceProduct)
+    ? params.reviewData.marketplaceProduct
+    : {};
+  const canonicalContext = {
+    ...runProduct,
+    ...existingProduct,
+    ...existingContext,
+    productId: runProduct.productId,
+    marketplaceProductId: runProduct.productId,
+    autoReviewRunId,
+    marketplaceAutoReviewRunId: autoReviewRunId,
+  };
+
+  return {
+    ...params.reviewData,
+    autoReviewRunId,
+    marketplaceAutoReviewRunId: autoReviewRunId,
+    sourceProductId: runProduct.productId,
+    marketplaceContext: canonicalContext,
+    marketplaceProduct: {
+      ...canonicalContext,
+      ...existingProduct,
+      productId: runProduct.productId,
+      marketplaceProductId: runProduct.productId,
+      autoReviewRunId,
+      marketplaceAutoReviewRunId: autoReviewRunId,
+    },
+  };
 }
 
 function mergeStoryboardPlannerMetadata(existingValue: unknown, incomingValue: unknown): unknown {
@@ -394,7 +676,109 @@ export const videoEditorProjectsRouter = router({
         stored: summarizeCompanionAudio(review?.reviewData),
       });
 
-      return review ?? null;
+      if (!review) return null;
+
+      const autoReviewProduct = await getStoryboardReviewAutoReviewContext({
+        db,
+        userId: ctx.user.id,
+        reviewId: input.id,
+        reviewData: review.reviewData,
+      });
+
+      return {
+        ...review,
+        reviewData: mergeStoryboardReviewMarketplaceContext(
+          review.reviewData,
+          autoReviewProduct ?? null,
+        ),
+        autoReview: autoReviewProduct
+          ? {
+              runId: autoReviewProduct.runId,
+              currentStoryboardReviewId:
+                autoReviewProduct.currentStoryboardReviewId,
+              isSuperseded: autoReviewProduct.isSuperseded,
+            }
+          : null,
+      };
+    }),
+
+  /** Persist server-owned HyperFrames Final Composite state for Storyboard Review. */
+  updateStoryboardReviewHyperframesFinalComposite: protectedProcedure
+    .input(UpdateStoryboardReviewHyperframesFinalCompositeInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const [existing] = await db
+        .select({
+          id: mediaStudioStoryboardReviews.id,
+          reviewData: mediaStudioStoryboardReviews.reviewData,
+        })
+        .from(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Storyboard Review project was not found.",
+        });
+      }
+
+      const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
+        db,
+        userId: ctx.user.id,
+        reviewData: existing.reviewData,
+      });
+      const canonicalProductId =
+        getStoryboardReviewMarketplaceProductId(normalizedReviewData);
+      const canonicalRunId = getStoryboardReviewAutoReviewRunId(normalizedReviewData);
+      if (canonicalProductId !== input.productId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review product does not match HyperFrames input.",
+        });
+      }
+      if (canonicalRunId !== input.runId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review Auto Review run does not match HyperFrames input.",
+        });
+      }
+
+      try {
+        const now = new Date();
+        const merged = mergeStoryboardReviewHyperframesFinalCompositeState({
+          reviewData: normalizedReviewData,
+          input,
+          nowIso: now.toISOString(),
+        });
+
+        await db
+          .update(mediaStudioStoryboardReviews)
+          .set({
+            reviewData: merged.reviewData,
+            updatedAt: now,
+          })
+          .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId));
+
+        return {
+          state: merged.state,
+          reviewData: merged.reviewData,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Invalid HyperFrames state update.";
+        throw new TRPCError({
+          code: message.includes("revision conflict") ? "CONFLICT" : "BAD_REQUEST",
+          message,
+        });
+      }
     }),
 
   /** Save a Media Studio storyboard review workspace */
@@ -431,7 +815,11 @@ export const videoEditorProjectsRouter = router({
           )
           .limit(1);
         if (!existing) throw new Error("Storyboard review not found");
-        const reviewData = mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData);
+        const reviewData = await normalizeStoryboardReviewCanonicalLinks({
+          db,
+          userId: ctx.user.id,
+          reviewData: mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
+        });
         writeStoryboardReviewDebugLog({
           event: "saveStoryboardReview.update",
           reviewId: input.id,
@@ -460,12 +848,17 @@ export const videoEditorProjectsRouter = router({
         return { id: input.id, reviewData };
       }
 
+      const reviewData = await normalizeStoryboardReviewCanonicalLinks({
+        db,
+        userId: ctx.user.id,
+        reviewData: input.reviewData,
+      });
       const [inserted] = await db
         .insert(mediaStudioStoryboardReviews)
         .values({
           userId: ctx.user.id,
           name: input.name,
-          reviewData: input.reviewData,
+          reviewData,
           clipCount: input.clipCount,
           completedClipCount: input.completedClipCount,
           thumbnailUrl: input.thumbnailUrl ?? undefined,
@@ -481,10 +874,10 @@ export const videoEditorProjectsRouter = router({
         userId: ctx.user.id,
         debugSource: input.debugSource ?? null,
         request: summarizeDebugRequest(ctx),
-        incoming: summarizeCompanionAudio(input.reviewData),
+        incoming: summarizeCompanionAudio(reviewData),
       });
 
-      return { id: inserted.id, reviewData: input.reviewData };
+      return { id: inserted.id, reviewData };
     }),
 
   /** Delete a storyboard review workspace after it is no longer needed */

@@ -4078,6 +4078,7 @@ export const skillsRouter = router({
           referenceImages: input.referenceImages || [],
           model: input.model ?? null,
           maxOutputChars: promptLengthPlan?.maxPromptLength ?? PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS,
+          publicUrl: ctx.publicUrl ?? null,
           originSurface: input.originSurface ?? "media_studio",
         });
 
@@ -4298,6 +4299,7 @@ export const skillsRouter = router({
           userPrompt,
           dynamicParams: mergedUserInputs,
           referenceImages: input.referenceImages || [],
+          publicUrl: ctx.publicUrl ?? null,
           schemaHint: {
             name: "custom_skill_text_output",
             validationMode: "text_output",

@@ -111,6 +111,7 @@ export interface ExecuteSharedSkillRuntimeInput<TLegacy, TResult> {
   planContext?: Record<string, unknown> | null;
   dynamicParams?: Record<string, unknown> | null;
   referenceImages?: string[];
+  publicUrl?: string | null;
   approvalGranted?: boolean;
   requestLabel?: string | null;
   roomId?: string | null;
@@ -315,6 +316,7 @@ function buildDefaultContextPackRequest(
     | "systemPrompt"
     | "referenceImages"
     | "requestLabel"
+    | "publicUrl"
   >,
 ): BuildContextPackRequest {
   const contextSurface = contextPackSurfaceForRuntime("skill");
@@ -327,6 +329,9 @@ function buildDefaultContextPackRequest(
       type: "image" as const,
       url,
     })),
+    ...(input.publicUrl
+      ? { conversationContext: { publicUrl: input.publicUrl } }
+      : {}),
     ...(input.dynamicParams ? { dynamicParams: input.dynamicParams } : {}),
   };
 
