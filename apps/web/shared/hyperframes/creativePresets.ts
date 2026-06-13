@@ -33,6 +33,10 @@ export const hyperframesCreativePresetLifecycleStates = [
 ] as const;
 
 export const hyperframesCreativePresetCapabilityStates = [
+  "official_cli_ready",
+  "official_producer_ready",
+  "diagnostic_fallback_only",
+  "official_runtime_blocked",
   "producer_ready",
   "fallback_only",
   "unsupported",
@@ -143,12 +147,16 @@ export type HyperframesPresetSafeAreaPolicy = z.infer<
 
 export const HyperframesCreativeRuntimeSupportSchema = z
   .object({
-    ffmpegAssFallback: z.boolean(),
-    smokeRenderer: z.boolean(),
+    diagnosticFallbackOnly: z.boolean().default(false),
+    hyperframesCli: z.boolean().default(true),
     hyperframesProducer: z.boolean(),
     minRuntimeProfile: SafeIdSchema,
     testedRuntimeProfileHash: SafeHashSchema,
+    minHyperframesVersion: SafeTextSchema.default("0.6.95"),
+    testedHyperframesVersion: SafeTextSchema.default("0.6.95"),
     unsupportedFeatures: z.array(SafeTextSchema).default([]),
+    ffmpegAssFallback: z.boolean().default(false),
+    smokeRenderer: z.boolean().default(false),
   })
   .strict();
 
@@ -332,7 +340,7 @@ export const HyperframesCreativeVariablesSchema = z
     specLines: z.array(z.string().trim().max(160)).max(20).optional(),
     benefitLines: z.array(z.string().trim().max(160)).max(20).optional(),
     reviewQuote: z.string().trim().max(360).optional(),
-    styleBrief: z.string().trim().max(1200).optional(),
+    styleBrief: z.string().trim().max(4000).optional(),
     subtitleCues: z
       .array(
         z
@@ -582,17 +590,25 @@ const defaultTiming = {
 
 const producerSupport = {
   ...commonRuntimeSupport,
-  ffmpegAssFallback: false,
-  smokeRenderer: true,
+  diagnosticFallbackOnly: false,
+  hyperframesCli: true,
   hyperframesProducer: true,
+  minHyperframesVersion: "0.6.95",
+  testedHyperframesVersion: "0.6.95",
+  ffmpegAssFallback: false,
+  smokeRenderer: false,
   unsupportedFeatures: [] as string[],
 };
 
 const fallbackSupport = {
   ...commonRuntimeSupport,
-  ffmpegAssFallback: true,
-  smokeRenderer: true,
+  diagnosticFallbackOnly: true,
+  hyperframesCli: false,
   hyperframesProducer: false,
+  minHyperframesVersion: "0.6.95",
+  testedHyperframesVersion: "0.6.95",
+  ffmpegAssFallback: true,
+  smokeRenderer: false,
   unsupportedFeatures: ["rich_gsap_timeline"],
 };
 

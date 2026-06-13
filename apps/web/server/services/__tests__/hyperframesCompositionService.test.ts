@@ -337,6 +337,7 @@ describe("hyperframesCompositionService", () => {
             sourceVideoRef: "storage://shot-1",
             startSec: 0,
             durationSec: 8,
+            overlayPreset: "price_impact",
             onScreenText: ["แท็บเล็ตจอใหญ่"],
             subtitleCues: [{ startSec: 0, endSec: 2, text: "กำลังมองหาแท็บเล็ตไหม" }],
             animationPreset: "glow_feature",
@@ -351,9 +352,10 @@ describe("hyperframesCompositionService", () => {
       timelineVersion: 1,
     });
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
+    expect(composition.compositionHtml).toContain('data-overlay-preset="price_impact"');
     expect(composition.compositionHtml).toContain('data-media-start="0"');
     expect(composition.compositionHtml).toContain('data-track-index="0"');
-    expect(composition.compositionHtml).toContain('class="audio-event"');
+    expect(composition.compositionHtml).toContain('class="clip audio-event"');
     expect(composition.compositionHtml).toContain('data-volume="0.18"');
     expect(composition.compositionHtml).toContain("data-audio-event-map-hash=");
     expect(composition.compositionHtml).toContain("window.__timelines");

@@ -97,6 +97,14 @@ const routeAuditCountFields = [
   "interactiveScrollableOverflowElementCount",
   "scrollableInteractiveWithoutAriaLabelCount",
 ];
+const genericEvidenceMaxAgeMs = Number.parseInt(
+  process.env.MARKETPLACE_HYPERFRAMES_EVIDENCE_MAX_AGE_MS ?? "",
+  10
+);
+const evidenceFreshnessMs =
+  Number.isFinite(genericEvidenceMaxAgeMs) && genericEvidenceMaxAgeMs > 0
+    ? genericEvidenceMaxAgeMs
+    : DEFAULT_ROUTE_EVIDENCE_MAX_AGE_MS;
 
 function readJsonIfExists(path) {
   if (!existsSync(path)) return null;
@@ -112,6 +120,121 @@ function routeEvidenceFresh(evidence) {
   if (!Number.isFinite(generatedAt)) return false;
   const ageMs = Date.now() - generatedAt;
   return ageMs >= 0 && ageMs <= routeEvidenceFreshnessMs;
+}
+
+function evidenceFresh(evidence) {
+  const generatedAt = Date.parse(evidence?.generatedAt ?? "");
+  if (!Number.isFinite(generatedAt)) return false;
+  const ageMs = Date.now() - generatedAt;
+  return ageMs >= 0 && ageMs <= evidenceFreshnessMs;
+}
+
+function dependencyEvidencePassed() {
+  const report = readJsonIfExists(join(evidenceDir, "dependency-audit-report.json"));
+  if (!report || !evidenceFresh(report)) return false;
+  const packages = Array.isArray(report.packages) ? report.packages : [];
+  const requiredNames = new Set(["hyperframes", "@hyperframes/producer"]);
+  const packageByName = new Map();
+  for (const item of packages) {
+    if (!requiredNames.has(item?.name) || packageByName.has(item.name)) {
+      return false;
+    }
+    packageByName.set(item.name, item);
+  }
+  const requiredPackageEvidenceOk = [...requiredNames].every(name => {
+    const item = packageByName.get(name);
+    return Boolean(
+      item &&
+        item.lockVersion === item.pinnedVersion &&
+        item.installedVersion === item.pinnedVersion &&
+        typeof item.integrity === "string" &&
+        item.integrity.startsWith("sha512-") &&
+        item.hasInstallScript === false
+    );
+  });
+  return Boolean(
+    report.gate === "pass" &&
+      report.status === "passed" &&
+      report.packageInstallDeferred === false &&
+      report.pinnedVersionsKnown === true &&
+      report.licenseReviewed === true &&
+      report.nativePostinstallReviewed === true &&
+      report.provenanceReviewed === true &&
+      report.mainBundleExcluded === true &&
+      requiredPackageEvidenceOk
+  );
+}
+
+function doctorEvidence() {
+  const report = readJsonIfExists(join(evidenceDir, "doctor-report.json"));
+  if (!report || !evidenceFresh(report)) return null;
+  return report;
+}
+
+function doctorRuntimeEvidencePassed(report) {
+  return Boolean(
+    report?.gate === "official_runtime_ready" &&
+      report?.officialHyperframesNode?.ok === true &&
+      report?.hyperframesRuntime?.ok === true &&
+      report?.chrome?.ok === true &&
+      report?.ffmpeg?.ok === true &&
+      report?.ffprobe?.ok === true &&
+      report?.fonts?.ok === true &&
+      report?.tempWorkspace?.ok === true &&
+      report?.storage?.ok === true &&
+      report?.workerImage?.reviewed === true &&
+      report?.officialCli?.ok === true
+  );
+}
+
+function snapshotEvidencePassed() {
+  const manifest = readJsonIfExists(join(evidenceDir, "snapshot-test-manifest.json"));
+  if (!manifest || !evidenceFresh(manifest)) return false;
+  return Boolean(
+    manifest.gate === "snapshot-test" &&
+      manifest.status === "passed" &&
+      manifest.officialRuntime === true &&
+      typeof manifest.goldenSnapshotHash === "string" &&
+      /^hf_[a-f0-9]{24,128}$/i.test(manifest.goldenSnapshotHash) &&
+      manifest.checks?.officialRuntime === true &&
+      manifest.checks?.playableVideo === true &&
+      manifest.checks?.exactDuration === true &&
+      manifest.checks?.textSafeArea === true &&
+      manifest.checks?.subtitleSafeArea === true &&
+      manifest.checks?.outputHashPresent === true &&
+      manifest.checks?.requiredCasesCovered === true
+  );
+}
+
+function officialCliEvidencePassed(report) {
+  const compatibility = readJsonIfExists(join(evidenceDir, "official-compatibility-report.json"));
+  if (!doctorRuntimeEvidencePassed(report)) return false;
+  if (!compatibility || !evidenceFresh(compatibility)) return false;
+  return Boolean(
+    compatibility.gate === "official-compatibility" &&
+      compatibility.node?.officialRuntimeReady === true &&
+      compatibility.fixture?.commandRan === true &&
+      compatibility.fixture?.status === 0 &&
+      compatibility.fixture?.manifestStatus === "passed" &&
+      compatibility.fixture?.officialRuntime === true &&
+      compatibility.fixture?.renderer === "hyperframes_cli_official"
+  );
+}
+
+function rollbackEvidencePassed() {
+  const evidence = readJsonIfExists(join(evidenceDir, "rollback-evidence.json"));
+  if (!evidence || !evidenceFresh(evidence)) return false;
+  const checks = evidence.checks && typeof evidence.checks === "object" ? evidence.checks : {};
+  return Boolean(
+    evidence.gate === "rollback-drill" &&
+      evidence.status === "passed" &&
+      checks.featureFlagRollbackPathDocumented === true &&
+      checks.newJobsBlockedWhenRuntimeDisabled === true &&
+      checks.diagnosticFallbackCannotCompleteUserFacingFinal === true &&
+      checks.completedLibraryArtifactsRemainReadable === true &&
+      checks.standardOrderFallbackPreserved === true &&
+      checks.transientArtifactPurgeIsDryRunFirst === true
+  );
 }
 
 function buildCrcTable() {
@@ -351,22 +474,27 @@ function fixtureFinalOutputEvidencePassed() {
   const fixtureMatrix = manifest.fixtureMatrix && typeof manifest.fixtureMatrix === "object"
     ? manifest.fixtureMatrix
     : {};
+  const officialRuntimeEvidenceOk =
+    manifest.officialRuntime === true &&
+    typeof manifest.renderer === "string" &&
+    /^hyperframes_(cli|producer)_official$/.test(manifest.renderer);
   const coveredCases = Array.isArray(fixtureMatrix.coveredCases)
     ? new Set(fixtureMatrix.coveredCases)
     : new Set();
   const policyCases = Array.isArray(fixtureMatrix.policyCases)
     ? new Set(fixtureMatrix.policyCases)
     : new Set();
-  const requiredFixtureCases = [
-    "ecommerce_toy_no_audio_silent_policy",
-    "electronics_spec_overlay",
-    "price_deal_overlay",
-    "ugc_review_subtitle_style",
-    "thai_long_text_safe_area",
-    "music_sfx_event_map",
-    "native_audio_policy",
-    "fallback_only_runtime",
-  ];
+	  const requiredFixtureCases = [
+	    "ecommerce_toy_no_audio_silent_policy",
+	    "electronics_spec_overlay",
+	    "price_deal_overlay",
+	    "ugc_review_subtitle_style",
+	    "thai_long_text_safe_area",
+	    "music_sfx_event_map",
+	    "native_audio_policy",
+	    "generated_clip_source_preservation",
+	    "multi_scene_transition",
+	  ];
   const requiredPolicyCases = [
     "licensed_audio_asset_pending",
     "missing_license_source_blocks_without_fallback",
@@ -382,6 +510,7 @@ function fixtureFinalOutputEvidencePassed() {
       audioMixReport.explicitSilentPolicy === true);
   return Boolean(
     validHash(manifest.creativePlanHash) &&
+      officialRuntimeEvidenceOk &&
       validHash(manifest.presetManifestHash) &&
       validHash(manifest.audioEventMapHash) &&
       requiredFixtureCases.every(item => coveredCases.has(item)) &&
@@ -441,20 +570,27 @@ function enabledCapabilityOpenQuestionBlockers() {
     .map(([, decisionId]) => `open_question_${decisionId}`);
 }
 
+const doctorReport = doctorEvidence();
+const dependencyReady = dependencyEvidencePassed();
+const runtimeReady = doctorRuntimeEvidencePassed(doctorReport);
 const input = {
-  packageInstallDeferred: !truthy(process.env.MARKETPLACE_HYPERFRAMES_PACKAGES_READY),
-  pinnedVersionsKnown: truthy(process.env.MARKETPLACE_HYPERFRAMES_PINNED_VERSIONS_REVIEWED),
-  licenseReviewed: truthy(process.env.MARKETPLACE_HYPERFRAMES_LICENSE_REVIEWED),
-  nativePostinstallReviewed: truthy(process.env.MARKETPLACE_HYPERFRAMES_POSTINSTALL_REVIEWED),
-  provenanceReviewed: truthy(process.env.MARKETPLACE_HYPERFRAMES_PROVENANCE_REVIEWED),
-  workerImageReviewed: truthy(process.env.MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_REVIEWED),
-  fontsReviewed: truthy(process.env.MARKETPLACE_HYPERFRAMES_FONTS_REVIEWED),
-  chromeReady: truthy(process.env.MARKETPLACE_HYPERFRAMES_CHROME_READY),
-  ffmpegReady: truthy(process.env.MARKETPLACE_HYPERFRAMES_FFMPEG_READY),
+  packageInstallDeferred: !dependencyReady,
+  pinnedVersionsKnown: dependencyReady,
+  licenseReviewed: dependencyReady,
+  nativePostinstallReviewed: dependencyReady,
+  provenanceReviewed: dependencyReady,
+  workerImageReviewed: runtimeReady,
+  fontsReviewed: runtimeReady,
+  chromeReady: runtimeReady,
+  ffmpegReady: runtimeReady,
   bundleExcludesHyperframesPackages: !truthy(process.env.MARKETPLACE_HYPERFRAMES_ALLOW_WEB_BUNDLE_IMPORT),
   seededRouteE2ePassed: routeEvidencePassed(),
   fixtureFinalOutputPassed: fixtureFinalOutputEvidencePassed(),
-  goldenSnapshotsPassed: truthy(process.env.MARKETPLACE_HYPERFRAMES_GOLDEN_SNAPSHOTS_PASSED),
+  goldenSnapshotsPassed: snapshotEvidencePassed(),
+  officialCliReady: officialCliEvidencePassed(doctorReport),
+  producerRuntimeRequested: truthy(process.env.MARKETPLACE_HYPERFRAMES_ENABLE_PRODUCER_RUNTIME),
+  canaryApproved: truthy(process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_CANARY_APPROVED),
+  rollbackVerified: rollbackEvidencePassed(),
 };
 
 const blockers = [];
@@ -472,13 +608,23 @@ if (!input.bundleExcludesHyperframesPackages) blockers.push("main_bundle_import_
 if (!input.seededRouteE2ePassed) blockers.push("seeded_route_e2e_missing");
 if (!input.fixtureFinalOutputPassed) blockers.push("fixture_final_output_missing");
 if (!input.goldenSnapshotsPassed) blockers.push("golden_snapshots_missing");
+if (!input.officialCliReady) blockers.push("official_cli_not_ready");
+if (!input.rollbackVerified) blockers.push("rollback_not_verified");
 blockers.push(...openQuestionBlockers);
 
 const pass = blockers.length === 0;
-const mvpSmokeReady =
+const diagnosticOnlyReady =
   input.bundleExcludesHyperframesPackages && input.seededRouteE2ePassed;
 const productionRuntimePrerequisitesReady =
   input.bundleExcludesHyperframesPackages && input.chromeReady && input.ffmpegReady;
+const officialRuntimeReady = pass;
+const runtimeMode = pass
+  ? input.canaryApproved
+    ? "canary"
+    : input.producerRuntimeRequested
+      ? "official_producer_ready"
+      : "official_cli_ready"
+  : "official_runtime_blocked";
 const milestoneGroups = [
   input.packageInstallDeferred ||
   !input.pinnedVersionsKnown ||
@@ -497,32 +643,39 @@ const milestoneGroups = [
   !input.seededRouteE2ePassed ? "seeded-route" : null,
   !input.fixtureFinalOutputPassed ? "fixture-final-output" : null,
   !input.goldenSnapshotsPassed ? "golden-snapshot" : null,
+  !input.officialCliReady ? "official-cli-runtime" : null,
+  !input.rollbackVerified ? "rollback-proof" : null,
   openQuestionBlockers.length > 0 ? "open-question-decision" : null,
 ].filter(Boolean);
 console.log(
   JSON.stringify(
     {
       gate: pass ? "pass" : "blocked",
-      runtimeMode: pass ? "producer_ready" : "smoke_only",
-      mvpSmokeReady,
+      runtimeMode,
+      diagnosticOnlyReady,
+      officialRuntimeReady,
       productionRuntimePrerequisitesReady,
       productionRuntimeReady: pass,
       producerRuntimeBlocked: !pass,
       installAllowed: pass,
       installCommandAllowed: pass,
-      evidence: {
-        bundleExcludesHyperframesPackages: input.bundleExcludesHyperframesPackages,
-        seededRouteE2ePassed: input.seededRouteE2ePassed,
-        fixtureFinalOutputPassed: input.fixtureFinalOutputPassed,
-        goldenSnapshotsPassed: input.goldenSnapshotsPassed,
-        productionRuntimePrerequisitesReady,
-      },
-      packageNames: ["@hyperframes/producer", "@hyperframes/cli"],
+	      evidence: {
+	        dependencyAuditPassed: dependencyReady,
+	        bundleExcludesHyperframesPackages: input.bundleExcludesHyperframesPackages,
+	        seededRouteE2ePassed: input.seededRouteE2ePassed,
+	        fixtureFinalOutputPassed: input.fixtureFinalOutputPassed,
+	        goldenSnapshotsPassed: input.goldenSnapshotsPassed,
+	        productionRuntimePrerequisitesReady,
+	        officialCliReady: input.officialCliReady,
+	        rollbackVerified: input.rollbackVerified,
+	        doctorOfficialRuntimeReady: runtimeReady,
+	      },
+      packageNames: ["hyperframes", "@hyperframes/producer"],
       blockers,
       requiredEvidence: blockers,
       nextMilestone: pass
-        ? "Install pinned @hyperframes packages in the dedicated worker image and run production render verification."
-        : `Keep MVP smoke renderer only; finish ${milestoneGroups.join(", ")} gates before installing @hyperframes packages.`,
+        ? "Enable pinned official HyperFrames runtime in the dedicated worker image and continue canary monitoring."
+        : `Keep diagnostic fallback blocked from user-facing completion; finish ${milestoneGroups.join(", ")} gates before enabling official HyperFrames runtime.`,
     },
     null,
     2

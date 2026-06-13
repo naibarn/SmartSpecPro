@@ -1,8 +1,8 @@
 # Feature 119: HyperFrames Marketplace Auto Review Render Adapter
 
-Version: 1.0.0
-Date: 2026-06-04
-Status: Proposed
+Version: 1.1.0
+Date: 2026-06-13
+Status: Proposed - direction updated to official HyperFrames runtime platform
 Depends-on:
 - Feature 113 Marketplace Capture Extension
 - Feature 117 Production Director Agents SDK Auto Storyboard And Video
@@ -16,6 +16,7 @@ External references:
 - HyperFrames CLI docs: https://hyperframes.heygen.com/packages/cli
 - HyperFrames producer docs: https://hyperframes.heygen.com/packages/producer
 - HyperFrames engine docs: https://hyperframes.heygen.com/packages/engine
+- HyperFrames render platform design: `docs/portable-skill-pack/specs/2026-06-13-hyperframes-render-platform-design.md`
 Audience: Marketplace Capture, Marketplace Auto Review, Media Studio, Storyboard Review, Video Editor, Media Library, Node Backend, Render Workers, Security, QA, DevOps, Product
 
 ---
@@ -24,7 +25,15 @@ Audience: Marketplace Capture, Marketplace Auto Review, Media Studio, Storyboard
 
 Add a HyperFrames-based deterministic HTML-to-video composition layer to SmartSpecPro Marketplace Auto Review.
 
-This feature does not replace Marketplace Capture, product evidence extraction, product truth, Agents SDK planning, provider video generation, Storyboard Review, Video Editor, or Media Library. It adds a render/composition adapter that can turn approved Marketplace Auto Review artifacts into deterministic motion previews, captioned product explainers, branded social variants, and final overlay/composite renders using HTML, CSS, JavaScript, headless Chrome, and FFmpeg.
+This feature does not replace Marketplace Capture, product evidence extraction, product truth, Agents SDK planning, provider video generation, Storyboard Review, Video Editor, or Media Library. It adds a render/composition adapter that can turn approved Marketplace Auto Review artifacts into deterministic motion previews, captioned product explainers, branded social variants, and final overlay/composite renders using official HyperFrames composition and render runtimes.
+
+The approved direction is a centralized HyperFrames Render Platform, not a
+parallel SmartSpecPro-owned renderer. SmartSpecPro should generate safe
+HyperFrames composition projects and render them with the official HyperFrames
+CLI, `@hyperframes/producer`, or producer server in an isolated worker. Bespoke
+Playwright/FFmpeg render code may remain only as a health-check, fixture, or
+break-glass diagnostic fallback and must not be treated as a feature-complete
+production renderer.
 
 The target product behavior is:
 
@@ -32,8 +41,8 @@ The target product behavior is:
 Marketplace captured product
   -> Product truth, selected product references, storyboard plan, and optional generated clips
   -> HyperFrames composition input envelope
-  -> Safe template-driven HTML composition
-  -> Browser preview / storyboard motion preview / MP4 render
+  -> Safe HyperFrames project: index.html, assets, manifest, runtime profile
+  -> Official HyperFrames lint / inspect / snapshot / render
   -> Storyboard Review, Video Editor, or Media Library output with provenance
 ```
 
@@ -106,8 +115,10 @@ As of the external documentation reviewed on 2026-06-04:
 Important product interpretation:
 
 - Use HyperFrames for deterministic composition and render.
-- Use the CLI for local development, diagnostics, scaffolding, and fallback worker execution.
-- Use `@hyperframes/producer` for production-grade programmatic rendering when the worker needs direct Node integration.
+- Use the CLI for local development, diagnostics, scaffolding, compatibility-first worker execution, and official runtime fallback.
+- Use `@hyperframes/producer` or producer server for production-grade programmatic rendering when the worker needs direct Node integration.
+- Do not recreate HyperFrames rendering behavior as a production path with bespoke Playwright frame capture, FFmpeg filters, ASS overlays, or template-specific render code. Those paths are diagnostic/fallback only.
+- User prompts and custom overlay requests must be converted into HyperFrames composition projects, not passed to a custom renderer.
 - Avoid using `hyperframes capture` against authenticated third-party marketplace pages as a server-side crawler. Marketplace Capture already has a safer user-assisted capture model.
 
 ---
@@ -123,6 +134,7 @@ Important product interpretation:
 5. Preserve product truth, evidence provenance, tenant isolation, credit safety, and run/stage traceability.
 6. Keep HyperFrames integration isolated behind an adapter so it can be disabled, replaced, or moved to a separate render worker without breaking Marketplace Auto Review.
 7. Add deterministic QA around text overflow, clipped containers, safe areas, exact duration, playable output, missing assets, and visual regression frames.
+8. Centralize HyperFrames runtime versioning, compatibility gates, and update maintenance so upstream HyperFrames releases can be adopted safely.
 
 ### 3.2 Secondary Goals
 
@@ -131,6 +143,7 @@ Important product interpretation:
 3. Create a clear migration path from existing FFmpeg timeline render to HyperFrames composition render for overlay-heavy videos.
 4. Support future agent-generated HTML compositions while keeping production renders template-sandboxed and sanitized.
 5. Support golden frame tests for product templates so UI/design regressions are caught before shipping.
+6. Support a compatibility fixture suite that proves text overlays, Thai captions, CTA/disclosure layout, audio/SFX, transitions, and generated-clip composites across pinned and candidate HyperFrames versions.
 
 ### 3.3 Non-Goals
 
@@ -146,6 +159,7 @@ This feature must not:
 - Replace existing Media Library, Storyboard Review, Video Editor, credit ledger, or audit systems.
 - Add a generic website-to-video product for arbitrary URLs in the first release.
 - Promote final renders to public publishing without the publishable package, disclosure, subtitle, CTA, and platform metadata checks described by Feature 117.
+- Build or expand a production-equivalent custom renderer that bypasses the official HyperFrames CLI/producer path.
 
 ---
 
@@ -1883,15 +1897,21 @@ Recommended worker modes:
 
 1. Local development:
    - use `npx hyperframes doctor`, `lint`, `inspect`, `snapshot`, and `render`
-   - useful for template development and CI smoke tests
+   - useful for template development, fixture evidence, and CI compatibility checks
 
 2. Production V1:
-   - Node render worker with `@hyperframes/producer`
+   - dedicated official HyperFrames worker using either the CLI or
+     `@hyperframes/producer`/producer server
    - worker image includes Node 22+, FFmpeg, FFprobe, Chrome/chrome-headless-shell, fonts, and storage credentials
    - MVP worker claims HyperFrames job types from
      `marketplace_auto_review_outbox_jobs`;
    - worker stages assets locally, renders, uploads artifacts, and updates
      outbox/artifact rows;
+   - render output is accepted only when produced by an official HyperFrames
+     runtime and accompanied by runtime/version diagnostics;
+   - bespoke FFmpeg/Playwright smoke output may verify worker plumbing but must
+     not unlock user-facing custom overlay, caption, transition, audio/SFX, or
+     final render features;
    - if migration promotion criteria are met, a later worker can claim
      dedicated `hyperframes_render_jobs` rows instead
 
@@ -1900,6 +1920,20 @@ Recommended worker modes:
    - choose only after V1 metrics show render duration and concurrency needs
 
 The worker must not execute arbitrary user code. It renders built-in or tenant-approved templates with escaped/sanitized data.
+
+Runtime mode names should be capability-oriented:
+
+- `official_runtime_blocked`: only disabled UI, queue projections, and
+  diagnostics are allowed.
+- `official_cli_ready`: the isolated worker can render with HyperFrames CLI.
+- `official_producer_ready`: the isolated worker can render with
+  `@hyperframes/producer` or producer server.
+- `canary`: a candidate pinned HyperFrames version is limited to selected
+  tenants/jobs.
+- `rollback`: new jobs use the previous pinned official runtime.
+
+Legacy labels such as `smoke_only` may remain for migration compatibility, but
+new implementation must not treat smoke output as production-ready.
 
 ### 8.3 Worker Retry, Dead-Letter, And Replay Policy
 
@@ -2827,9 +2861,11 @@ Tasks:
   - lockfile reproducibility
   - transitive native/postinstall review
   - Chrome/FFmpeg/font version capture
-- Decide first render execution path:
-  - CLI in dev
-  - `@hyperframes/producer` in worker for production
+- Decide the first official render execution path:
+  - HyperFrames CLI in local/dev and compatibility-first workers
+  - `@hyperframes/producer` or producer server in production worker when
+    programmatic control is required
+  - no production-equivalent custom renderer
 - Document install and runtime requirements.
 
 Acceptance:
@@ -2874,6 +2910,13 @@ Tasks:
 - Add HTML generation from template and sanitized props.
 - Add subtitle/audio sync integration for captioned composites.
 - Add composition hash, manifest, and provenance envelope generation.
+- Add prompt/customization intake for text overlays, captions, CTA, style,
+  timing, transitions, music, SFX, aspect ratio, and output quality, and compile
+  those choices into HyperFrames composition files instead of custom render
+  instructions.
+- Produce a worker-ready composition directory contract containing `index.html`,
+  staged assets, manifest, runtime profile, template hashes, and redacted prompt
+  metadata.
 
 Acceptance:
 
@@ -2881,6 +2924,8 @@ Acceptance:
 - All rendered text is escaped.
 - Composition hash changes when product truth, template version, copy plan, subtitle plan, audio sync plan, compliance plan, or platform profile changes.
 - Composition builder can produce preview HTML for fixture products.
+- Prompt/custom overlay changes affect the composition hash and are visible in
+  lint/inspect/snapshot evidence before render.
 
 ### Phase 3: Asset Staging
 
@@ -2906,9 +2951,13 @@ Acceptance:
 Tasks:
 
 - Create HyperFrames render worker entrypoint.
-- Support `lint`, `snapshot`, `inspect`, and `render`.
-- Use `@hyperframes/producer` where possible for programmatic render.
-- Support CLI fallback for local/dev if producer integration is blocked.
+- Support official HyperFrames `doctor`, `lint`, `snapshot`, `inspect`, and
+  `render` commands or equivalent producer APIs.
+- Use HyperFrames CLI as the compatibility-first worker path.
+- Use `@hyperframes/producer` or producer server for programmatic production
+  render when the worker image and rollout gate pass.
+- Keep any Playwright/FFmpeg smoke renderer explicit, disabled for production
+  feature completion, and limited to diagnostics/break-glass fallback.
 - Consume `marketplace_auto_review_outbox_jobs` for MVP with HyperFrames
   job types and idempotency keys.
 - Upload MP4, snapshots, manifest, and logs.
@@ -2916,11 +2965,15 @@ Tasks:
 - Add cancellation best-effort handling.
 - Add retry classification, stale-lock recovery, dead-letter, and operator
   replay hooks.
+- Record HyperFrames CLI/package version, worker image digest, Node, Chrome,
+  FFmpeg/FFprobe, font profile, template hash, composition hash, and runtime
+  capability for every render.
 
 Acceptance:
 
 - Fixture composition renders to MP4.
 - Worker records version diagnostics.
+- User-facing completed render requires official HyperFrames runtime evidence.
 - Failed render stores sanitized reason.
 - Exhausted transient failure becomes dead-lettered and replayable by an
   authorized operator.
@@ -3306,6 +3359,33 @@ Must prove before adding or enabling HyperFrames dependencies:
   resolved versions;
 - security review approves any dependency that can execute browser, filesystem,
   or process-level render operations.
+- floating `latest` is never used by production render jobs; it is allowed only
+  in read-only update detection that produces an update report or PR;
+- update reports include upstream version, changelog/release links, dependency
+  changes, runtime image impact, and required compatibility evidence.
+
+### 16.2.1 HyperFrames Version Maintenance Gate
+
+Every upstream HyperFrames update must pass a controlled maintenance pipeline
+before it can become the default runtime:
+
+1. Detect GitHub/npm update and compare it with the pinned runtime registry.
+2. Open a dependency/update PR or internal review artifact.
+3. Run dependency audit, doctor, and official runtime fixture render.
+4. Render the compatibility suite with both current and candidate runtimes.
+5. Compare golden snapshots, MP4 playability, duration, audio, Thai text,
+   captions, CTA/disclosure overlays, safe areas, manifests, and diagnostics.
+6. Run seeded Product Detail, Storyboard Review, MediaStudio, Media History, and
+   Library handoff evidence.
+7. Promote only to canary until error rate, render duration, and output QA are
+   accepted.
+8. Promote to default only after rollback to the previous pinned runtime is
+   verified.
+
+The compatibility suite must include at least product intro overlays, long Thai
+captions, TikTok/Reels 9:16 safe areas, CTA/disclosure text, evidence-bound
+price/rating/spec copy, multi-scene transitions, generated-clip composites,
+music/SFX, source audio preservation, and text overflow inspection.
 
 ### 16.3 Worker Fixture Render Gate
 
@@ -3603,10 +3683,14 @@ MVP is complete when:
 V1 production-ready is complete when:
 
 - worker isolation, quotas, cleanup, observability, and alerts are in place
+- official HyperFrames CLI or producer/server runtime is enabled in the
+  dedicated worker with pinned versions and compatibility evidence
 - final QA blocks missing disclosures, unsupported claims, clipped captions, blank frames, and unplayable output
 - tenant allowlist rollout is available
 - operators have a runbook for failed/stuck render jobs
 - template golden snapshots are part of CI or a release gate
+- HyperFrames upstream update detection, canary, promotion, and rollback
+  maintenance gates are documented and tested
 - release gates for contracts, worker fixture render, visual snapshots,
   security, timeline/library, UI surfaces, retention/operator,
   dependency/supply-chain, and rollout have executable commands and passing
@@ -3628,7 +3712,11 @@ Resolved MVP decisions:
   HyperFrames motion preview should be selected/queued by the backend auto plan
   when eligible; render engine/template/platform controls stay collapsed under
   advanced overrides.
-- Use CLI in dev, `@hyperframes/producer` worker in production.
+- Use official HyperFrames runtimes only for production renders: CLI for
+  compatibility-first worker execution and `@hyperframes/producer` or producer
+  server for programmatic production control.
+- Custom Playwright/FFmpeg renderer code is diagnostic/break-glass only and
+  must not unlock user-facing full render features.
 - Require Storyboard Review or final QA approval before Library save.
 - Built-in templates only in V1.
 - Preview artifacts expire after 7 days unless saved to Library.
@@ -3653,6 +3741,8 @@ Open beyond MVP:
    support/compliance review of the initial rollout?
 5. Should sidecar subtitles become user-downloadable after Library metadata and
    download UX are proven?
+6. When should the official runtime default move from CLI worker to producer
+   server for all tenants, after canary metrics and maintenance gates are stable?
 
 ---
 

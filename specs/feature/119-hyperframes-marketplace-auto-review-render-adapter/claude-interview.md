@@ -19,4 +19,7 @@ Open decisions to preserve for implementation kickoff:
 
 - Whether MVP launch preset is 9:16 only or 9:16 plus 1:1. The spec recommends 9:16 first.
 - Whether render cost consumes quota only at first or credits immediately. The spec recommends quota first, then credits after measured cost data.
-- Whether CLI or `@hyperframes/producer` is used first in production. The spec recommends CLI for local/dev and producer in production worker.
+- Whether the default official runtime starts with HyperFrames CLI worker or
+  `@hyperframes/producer`/producer server. The updated spec recommends CLI for
+  compatibility-first worker execution and producer/server promotion after
+  dependency, canary, and rollback gates pass.

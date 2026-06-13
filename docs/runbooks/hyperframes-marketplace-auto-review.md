@@ -4,23 +4,37 @@
 
 1. Keep all flags off.
 2. Run dependency audit and doctor. `hyperframes:doctor` must report
-   `mvp_smoke_ready`; if it exits non-zero, fix Node engine, browser,
-   FFmpeg/FFprobe, temp workspace, storage, or render font readiness before
-   enabling worker execution.
-   Use the repo-pinned Node runtime first (`nvm use`, `fnm use`, `mise install`,
-   `asdf install`, or `PATH=/home/dev/.nvm/versions/node/v20.20.0/bin:$PATH`)
-   so doctor output reflects the intended `>=20.20.0 <21 || >=22.22.0`
-   runtime instead of an older shell default.
-3. Run `hyperframes:production-rollout-gate`; it must remain blocked until all
-   production package/runtime checks are explicitly approved.
-   - `runtimeMode: "smoke_only"` allows only the MVP smoke renderer.
-   - `installCommandAllowed: false` means do not install `@hyperframes/*`.
+   `official_runtime_ready` before user-facing HyperFrames completion is
+   allowed. `diagnostic_ready` is useful for plumbing checks only and must not
+   unlock render completion, Library save, or credit charging.
+   Use a Node >=22.22 worker runtime for official HyperFrames execution because
+   the pinned HyperFrames packages require Node 22+.
+3. Run `hyperframes:fixture-render` and `hyperframes:official-compatibility`
+   with the Node >=22.22 worker image. The fixture command must produce a
+   manifest with `renderer: "hyperframes_cli_official"` or
+   `renderer: "hyperframes_producer_official"` and `officialRuntime: true`.
+   The worker stages a Thai-capable font as
+   `assets/fonts/smartspec-thai-runtime.ttf`; generated composition HTML must
+   lint cleanly with the official HyperFrames CLI, not just SmartSpecPro smoke
+   tooling.
+4. Run `hyperframes:snapshot-test`, `hyperframes:rollback-drill`, then
+   `hyperframes:production-rollout-gate`. The rollout gate reads the generated
+   evidence artifacts and must remain blocked until all package/runtime/browser/
+   fixture/golden/rollback checks are current and explicitly proven.
+   - `runtimeMode: "official_runtime_blocked"` allows only diagnostics and
+     disabled/blocked projections.
+   - `runtimeMode: "official_cli_ready"` allows the dedicated worker to render
+     with the pinned HyperFrames CLI.
+   - `runtimeMode: "official_producer_ready"` allows the dedicated worker to
+     render with `@hyperframes/producer` or producer server.
+   - `installCommandAllowed: false` means do not enable official runtime in the
+     worker.
    - `requiredEvidence` is the current checklist of missing production proof.
    - Seeded route E2E evidence must be current. The default freshness window is
      24 hours and can be tightened with
      `MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`.
-   - Do not use manual env flags to bypass seeded route evidence; the CLI gate
-     requires the current `route-evidence.json` and referenced screenshots.
+   - Do not use manual env flags to bypass evidence; the CLI gate requires the
+     current evidence JSON files and referenced screenshots/fixtures.
    - When refreshing route UI evidence locally, use a dedicated Playwright port
      instead of touching a shared dev server:
      `PLAYWRIGHT_E2E_PORT=3017 npm --prefix apps/web run e2e:marketplace-hyperframes`.
@@ -32,53 +46,60 @@
 4. In Admin, open `Tenants -> Edit Tenant -> Feature Flags -> Media Production
    & HyperFrames`, then enable `marketplaceHyperframesEnabled` for the internal
    tenant.
-5. Keep `marketplaceHyperframesWorkerEnabled` off until Node engine, Chrome,
+5. Keep `marketplaceHyperframesWorkerEnabled` off until Node >=22.22, Chrome,
    FFmpeg/FFprobe, fonts,
    storage, and temp workspace checks pass in the worker image.
    `MARKETPLACE_HYPERFRAMES_FFMPEG_READY=true` must be set explicitly after
    that evidence is captured; the rollout gate treats a missing value as
    `ffmpeg_not_ready`.
-6. Enable `marketplaceHyperframesWorkerEnabled` only in internal smoke
-   environments after `hyperframes:doctor` reports `mvp_smoke_ready`.
+6. Enable `marketplaceHyperframesWorkerEnabled` only in internal environments
+   after `hyperframes:doctor` reports `official_runtime_ready` for the worker
+   image.
    `MARKETPLACE_HYPERFRAMES_RUNTIME_READY` remains a global runtime-readiness
-   guard for producer execution and should not be used as the tenant rollout
+   guard for official runtime execution and should not be used as the tenant rollout
    switch.
 7. Confirm Auto Storyboard Review appears on the internal tenant Product Detail
    page. The default Auto path must start from one primary CTA without opening
    Advanced Auto. The collapsed Advanced Auto area may expose only optional
    add-ons: platform format, quality, image model, audio policy, text policy,
    shot count, and frame evidence strategy.
-8. Enable `marketplaceHyperframesLibrarySaveEnabled` after QA and duplicate
+8. Confirm Storyboard Review final composite opens with the HyperFrames prompt
+   and payload preview visible before final render, and that edits to the style
+   brief/text/subtitle/audio controls are reflected in the submitted
+   `HyperframesFinalCompositeConfig`.
+9. Enable `marketplaceHyperframesLibrarySaveEnabled` after QA and duplicate
    finalize gates pass.
-9. Enable `marketplaceHyperframesOperatorEnabled` only for tenants whose
+10. Enable `marketplaceHyperframesOperatorEnabled` only for tenants whose
    owner/operator/support roles may use delegated diagnostics.
-10. Enable production producer execution only after
+11. Enable production official runtime execution only after
     `hyperframes:production-rollout-gate` passes with
-    `installCommandAllowed: true`. Set `HYPERFRAMES_RUNTIME_MODE=producer` and
-    `HYPERFRAMES_PRODUCTION_RUNTIME_READY=1` together with the worker runtime
-    flags; never set them while the rollout gate is blocked.
+    `installCommandAllowed: true`. Start with `HYPERFRAMES_RUNTIME_MODE=cli`
+    and `HYPERFRAMES_OFFICIAL_RUNTIME_READY=1`; promote to
+    `HYPERFRAMES_RUNTIME_MODE=producer` only after canary metrics and rollback
+    proof are accepted. Never set them while the rollout gate is blocked.
 
 ## Production Evidence Checklist
 
-Close each rollout blocker with dated evidence before setting its matching
-environment flag:
+Close each rollout blocker with dated evidence before enabling the worker:
 
-| Blocker | Evidence required | Env flag |
+| Blocker | Evidence required | Artifact |
 | --- | --- | --- |
-| `package_install_deferred` | pinned `@hyperframes/producer` and `@hyperframes/cli` versions installed only in the dedicated worker image | `MARKETPLACE_HYPERFRAMES_PACKAGES_READY=true` |
-| `pinned_versions_missing` | package versions and lockfile diff reviewed | `MARKETPLACE_HYPERFRAMES_PINNED_VERSIONS_REVIEWED=true` |
-| `license_not_reviewed` | direct and transitive license review approved | `MARKETPLACE_HYPERFRAMES_LICENSE_REVIEWED=true` |
-| `native_postinstall_not_reviewed` | native binaries and postinstall scripts reviewed | `MARKETPLACE_HYPERFRAMES_POSTINSTALL_REVIEWED=true` |
-| `provenance_not_reviewed` | package provenance, registry source, and integrity checks recorded | `MARKETPLACE_HYPERFRAMES_PROVENANCE_REVIEWED=true` |
-| `worker_image_not_reviewed` | worker container proof for CPU/memory/duration caps, sandboxing, temp dirs, and no web-thread rendering | `MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_REVIEWED=true` |
-| `fonts_not_reviewed` | Thai-capable production fonts verified in the worker image | `MARKETPLACE_HYPERFRAMES_FONTS_REVIEWED=true` |
-| `chrome_not_ready` | production Chrome/headless browser version and sandbox mode verified | `MARKETPLACE_HYPERFRAMES_CHROME_READY=true` |
-| `ffmpeg_not_ready` | production FFmpeg/FFprobe versions verified with fixture render output | `MARKETPLACE_HYPERFRAMES_FFMPEG_READY=true` |
-| `golden_snapshots_missing` | approved golden-frame baseline set for seeded fixtures, including long Thai text and 9:16 safe area | `MARKETPLACE_HYPERFRAMES_GOLDEN_SNAPSHOTS_PASSED=true` |
+| `package_install_deferred` | pinned `hyperframes` and `@hyperframes/producer` versions installed only in the dedicated worker image | `dependency-audit-report.json` |
+| `pinned_versions_missing` | package versions and lockfile diff reviewed | `dependency-audit-report.json` |
+| `license_not_reviewed` | direct package license/no-declared-license review recorded | `dependency-audit-report.json` |
+| `native_postinstall_not_reviewed` | native binaries and postinstall scripts reviewed | `dependency-audit-report.json` |
+| `provenance_not_reviewed` | registry source and integrity checks recorded | `dependency-audit-report.json` |
+| `worker_image_not_reviewed` | worker runtime proof for Node, Chrome, FFmpeg, fonts, temp dirs, and storage | `doctor-report.json` |
+| `fonts_not_reviewed` | Thai-capable production fonts verified in the worker image | `doctor-report.json` |
+| `chrome_not_ready` | Chrome/headless browser version verified | `doctor-report.json` |
+| `ffmpeg_not_ready` | FFmpeg/FFprobe versions verified | `doctor-report.json` |
+| `official_cli_not_ready` | HyperFrames CLI compatibility fixture passes in Node >=22.22 | `official-compatibility-report.json` plus `fixture-render-manifest.json` |
+| `rollback_not_verified` | runtime disable/rollback drill preserves completed artifacts and Standard fallback | `rollback-evidence.json` |
+| `golden_snapshots_missing` | official fixture golden baseline, safe area, duration, audio/video, and required cases approved | `snapshot-test-manifest.json` |
 
-Do not set these flags from local smoke evidence alone. Local doctor can prove
-`mvp_smoke_ready`; production rollout requires worker-image and supply-chain
-evidence captured in the target deployment environment.
+Do not set env flags from diagnostic evidence alone. Production rollout requires
+fresh worker-image, official runtime, supply-chain, route, golden, compatibility,
+and rollback evidence captured in the target deployment environment.
 
 ## Rollback
 

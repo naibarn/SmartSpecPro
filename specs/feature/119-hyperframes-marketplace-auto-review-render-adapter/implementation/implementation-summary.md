@@ -35,12 +35,20 @@ Implemented all planned sections as an additive MVP slice:
 
 ## Dependency Decision
 
-HyperFrames runtime package installation remains deferred. The MVP executes a
-local Playwright Chromium + FFmpeg smoke renderer for worker, fixture,
-snapshot, and handoff gates without importing `@hyperframes/*` into the web app
-bundle. Production `@hyperframes/*` execution remains separately gated by
-dependency, license/provenance, browser-image, font, and worker-isolation
-approval.
+HyperFrames runtime package installation was deferred in the original MVP
+slice. That MVP used a local Playwright Chromium + FFmpeg smoke renderer for
+worker, fixture, snapshot, and handoff gates without importing `@hyperframes/*`
+into the web app bundle.
+
+Direction update on 2026-06-13: the smoke renderer is diagnostic-only and must
+not be expanded into a production-equivalent renderer. Future production
+HyperFrames output must be produced by official HyperFrames CLI,
+`@hyperframes/producer`, or producer server in a dedicated worker. Production
+execution remains gated by dependency audit, doctor, production rollout, seeded
+route E2E, worker-image, font, Chrome, FFmpeg, golden snapshot evidence, and
+the version-maintenance/canary/rollback pipeline documented in the updated
+Feature 119 spec and
+`docs/portable-skill-pack/specs/2026-06-13-hyperframes-render-platform-design.md`.
 
 ## Verification
 
@@ -71,24 +79,21 @@ Notes:
   390x844, 768x1024, 1024x768, and 1440x900 viewports, light/dark color
   schemes, reduced motion, keyboard focus, axe checks, Library/Media History,
   and Video Editor handoff affordances.
-- The dependency audit gate reports `partial` by design because package install
-  is deferred for production `@hyperframes/*` rollout.
-- The doctor reports `mvp_smoke_ready` only when the runtime satisfies the
-  SmartSpecPro Node engine range, Playwright/browser, FFmpeg/FFprobe, temp
-  workspace, storage policy, and render-font checks. It exits non-zero when any
-  required local smoke runtime proof is missing.
+- The dependency audit gate reports `partial` by design until official
+  HyperFrames runtime packages are pinned and approved for the worker image.
+- The doctor reports diagnostic smoke readiness only for worker plumbing. It
+  must also prove HyperFrames CLI/producer availability before any user-facing
+  render can be marked complete.
 - The production rollout gate remains `blocked` until pinned versions, license,
   provenance, native postinstall review, worker image, fonts, Chrome, FFmpeg,
-  and golden snapshots pass. `mvpSmokeReady` is scoped to the smoke lane: the
-  web bundle excludes `@hyperframes/*` and fresh seeded route E2E evidence
-  passes, including Product Detail Auto-first first-viewport proof and preserved
-  Standard Order access. `productionRuntimePrerequisitesReady` separately
-  reports Chrome/FFmpeg readiness for producer execution. Fresh seeded route E2E
-  evidence clears the seeded-route gate only when the route suite runs before
-  the rollout gate and the generated evidence is inside the configured
-  freshness window (`MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`, default
-  24 hours). Manual seeded-route env flags cannot bypass missing or stale route
-  evidence in the CLI gate.
+  golden snapshots, compatibility fixtures, canary, and rollback proof pass.
+  Diagnostic smoke readiness cannot unlock custom overlay/caption/audio/SFX
+  production features. Fresh seeded route E2E evidence clears the seeded-route
+  gate only when the route suite runs before the rollout gate and the generated
+  evidence is inside the configured freshness window
+  (`MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`, default 24 hours).
+  Manual seeded-route env flags cannot bypass missing or stale route evidence
+  in the CLI gate.
 - Browser evidence refreshes use a no-kill Playwright lane by default:
   `PLAYWRIGHT_E2E_PORT=3017 npm --prefix apps/web run e2e:marketplace-hyperframes`.
   Port 3000 does not need to be stopped or restarted. To validate a specific

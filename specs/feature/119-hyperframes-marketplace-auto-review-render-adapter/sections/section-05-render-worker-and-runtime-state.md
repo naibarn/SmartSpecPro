@@ -2,9 +2,9 @@
 
 ## Goal
 
-Implement the HyperFrames render worker service and runtime state mapping while keeping MVP persistence compatible with existing Marketplace Auto Review outbox/artifact patterns.
+Implement the centralized HyperFrames render worker service and runtime state mapping while keeping MVP persistence compatible with existing Marketplace Auto Review outbox/artifact patterns.
 
-This section should make render jobs observable, retryable, cancellable, and recoverable without replacing existing Auto Review run/stage state.
+This section should make render jobs observable, retryable, cancellable, and recoverable without replacing existing Auto Review run/stage state. Production render output must be produced by official HyperFrames CLI or producer/runtime APIs; custom Playwright/FFmpeg smoke rendering is diagnostic-only.
 
 ## In Scope
 
@@ -14,7 +14,9 @@ This section should make render jobs observable, retryable, cancellable, and rec
 - Retry classification.
 - Dead-letter and stale-lock recovery policy.
 - Cancellation behavior.
-- Fixture render smoke command interface.
+- Official HyperFrames runtime execution through CLI and/or producer/server.
+- Fixture render command interface.
+- Runtime version diagnostics and compatibility mode projection.
 - Tenant/run scoped storage path contract.
 
 ## Files To Create
@@ -55,6 +57,10 @@ Add failing tests for:
 - safe auto-repair recommendations are produced only for stale hash, missing
   snapshot, retryable worker/dependency/storage failure, and minor layout warning
   cases that can be recovered without unsafe customization.
+- production-complete render jobs reject diagnostic-only smoke output and
+  require official HyperFrames runtime evidence.
+- runtime mode projection differentiates `official_runtime_blocked`,
+  `official_cli_ready`, `official_producer_ready`, `canary`, and `rollback`.
 
 ## Job Lifecycle
 
@@ -104,6 +110,20 @@ MVP artifact contract:
 - `metadataJson` stores retention class, checksum details, template/runtime diagnostics, sanitized log refs, and redaction state.
 - Raw composition HTML and worker logs must not be exposed to normal user UI.
 
+Official runtime evidence contract:
+
+- Every completed user-facing render records `hyperframesCliVersion` and/or
+  `hyperframesProducerVersion`.
+- Every completed user-facing render records Node, Chrome/headless-shell,
+  FFmpeg, FFprobe, font profile, worker image digest/build id, template hash,
+  composition hash, and runtime capability.
+- A job rendered only by SmartSpecPro diagnostic Playwright/FFmpeg fallback
+  cannot transition to `completed`, `ready_for_review`, `saved_to_library`, or
+  any state that consumes credit or presents the output as a full HyperFrames
+  render.
+- Diagnostic output may be attached only as redacted evidence for blocked,
+  failed, fixture, or operator-debug states.
+
 Storage path contract:
 
 ```text
@@ -144,13 +164,16 @@ Migration decision checkpoint:
 1. Load job and validate tenant/product/run access.
 2. Recompute or verify input hash.
 3. Stage assets.
-4. Run template lint.
-5. Produce key-frame snapshots.
-6. Run composition inspect.
-7. Render preview or final output.
-8. Run final QA.
-9. Persist artifacts and status.
-10. Emit timeline/status projection.
+4. Materialize the HyperFrames composition project directory.
+5. Run official HyperFrames lint.
+6. Produce key-frame snapshots with official HyperFrames snapshot or equivalent
+   producer path.
+7. Run official HyperFrames inspect.
+8. Render preview or final output with HyperFrames CLI, `@hyperframes/producer`,
+   or producer server.
+9. Run final QA.
+10. Persist artifacts and status.
+11. Emit timeline/status projection.
 
 ## Safe Auto-Repair Policy
 
@@ -202,6 +225,10 @@ Permanent:
 - Existing Marketplace Auto Review run progression remains usable.
 - No automatic retry masks permanent unsafe input.
 - Standard Order continues to function when worker is disabled.
+- Completed user-facing render output requires official HyperFrames runtime
+  evidence; diagnostic smoke output cannot satisfy completion.
+- Prompt/custom overlay, caption, CTA, transition, audio, and SFX changes are
+  represented in the composition project and hash, not in custom render filters.
 - Dedicated HyperFrames tables are not introduced without a migration decision
   checkpoint and migration sub-plan.
 - Safe auto-repair actions are typed, auditable, and absent when policy,

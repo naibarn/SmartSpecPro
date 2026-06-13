@@ -66,7 +66,8 @@ Add failing tests for:
 - composition HTML cannot access SmartSpecPro API calls, cookies, localStorage,
   raw signed URLs, or private URLs;
 - Thai fonts resolve through allowed local/staged references;
-- FFmpeg fallback reports partial or unsupported for rich GSAP presets;
+- diagnostic fallback reports partial or unsupported for rich GSAP presets and
+  cannot satisfy production-complete render gates;
 - QA detects text overflow, subtitle overflow, blank frames, missing audio, and
   duration drift.
 - QA detects clipped Thai glyphs and treats blocking clipping as render-failing.
@@ -81,7 +82,8 @@ Add failing tests for:
 The fallback adapter should not pretend it can render kinetic typography,
 per-word animation, rich CSS, GSAP timelines, shader transitions, or audio-reactive
 animation when it cannot. Return a capability report and let API/UI block or warn
-based on access policy.
+based on access policy. Production-complete creative output must be rendered by
+official HyperFrames CLI, `@hyperframes/producer`, or producer server.
 
 Platform defaults should resolve from profile ids such as `generic_vertical_9_16`
 and `tiktok_reels_shorts_9_16`. Manual dimension overrides must be explicit
@@ -92,7 +94,8 @@ metadata, not silent drift from the platform profile.
 - The same canonical timeline drives preview, render, subtitles, audio, and QA.
 - Composition HTML is reproducible and hashable.
 - Unsafe composition content is rejected before worker execution.
-- FFmpeg fallback quality is explicit.
+- Diagnostic fallback quality is explicit and cannot be used as proof of a
+  completed production render.
 - Composition artifacts remain compatible with Feature 119 artifact/output kinds
   unless a migration is explicitly approved.
 

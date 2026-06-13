@@ -21,6 +21,7 @@ export const HyperframesFinalCompositeTextVariablesSchema = z
     sfxPresetIds: z.array(SafeIdSchema).default([]),
     preserveNativeAudio: z.boolean().default(true),
     syntheticAudioFallback: z.boolean().default(true),
+    styleBrief: z.string().trim().max(4000).optional(),
     hookText: z.string().trim().max(240).optional(),
     supportingText: z.string().trim().max(240).optional(),
     perShotText: z.record(SafeTextSchema).default({}),

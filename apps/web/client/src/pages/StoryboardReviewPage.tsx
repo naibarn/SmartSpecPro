@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,8 @@ import {
 } from "@shared/hyperframes/contracts";
 import type { HyperframesFinalCompositeConfig } from "@shared/hyperframes/runtimeApiSchemas";
 import {
+  hyperframesAudioRoles,
+  hyperframesAudioVisualTriggers,
   hyperframesThaiFontFamilies,
   listHyperframesCreativePresets,
   type HyperframesAudioEvent,
@@ -729,6 +731,21 @@ const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-2
 type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 type HyperframesFinalOverlayPreset = HyperframesFinalCompositeConfig["overlayPreset"];
 type HyperframesFinalSubtitlePreset = HyperframesFinalCompositeConfig["subtitlePreset"];
+type HyperframesFinalShotAnimationPreset = HyperframesFinalCompositeConfig["shots"][number]["animationPreset"];
+type HyperframesFinalShotTransition = HyperframesFinalCompositeConfig["shots"][number]["transition"];
+type HyperframesFinalSfxRole = Exclude<(typeof hyperframesAudioRoles)[number], "voiceover" | "music" | "ambience">;
+type HyperframesFinalSfxTrigger = Exclude<(typeof hyperframesAudioVisualTriggers)[number], "video_start">;
+type HyperframesFinalSfxTarget = "all" | "first" | "last" | string;
+type HyperframesFinalSfxDraft = {
+  id: string;
+  presetId: string;
+  target: HyperframesFinalSfxTarget;
+  visualTrigger: HyperframesFinalSfxTrigger;
+  offsetSec: number;
+  durationSec: number;
+  volume: number;
+  role: HyperframesFinalSfxRole;
+};
 
 const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
   id: HyperframesFinalOverlayPreset;
@@ -781,6 +798,47 @@ const HYPERFRAMES_FINAL_SFX_PRESETS = listHyperframesCreativePresets({
   category: "sfx",
   includeCandidate: true,
 });
+
+const HYPERFRAMES_FINAL_SHOT_ANIMATION_PRESETS: Array<{
+  id: HyperframesFinalShotAnimationPreset;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: "smooth_reveal", labelTh: "Smooth reveal", labelEn: "Smooth reveal" },
+  { id: "slide_pop", labelTh: "Slide pop", labelEn: "Slide pop" },
+  { id: "bounce_price", labelTh: "Price bounce", labelEn: "Price bounce" },
+  { id: "floating_product", labelTh: "Floating product", labelEn: "Floating product" },
+  { id: "glow_feature", labelTh: "Feature glow", labelEn: "Feature glow" },
+  { id: "fade_clean", labelTh: "Clean fade", labelEn: "Clean fade" },
+];
+
+const HYPERFRAMES_FINAL_SHOT_TRANSITIONS: Array<{
+  id: HyperframesFinalShotTransition;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: "fade", labelTh: "Fade", labelEn: "Fade" },
+  { id: "slide", labelTh: "Slide", labelEn: "Slide" },
+  { id: "zoom", labelTh: "Zoom", labelEn: "Zoom" },
+  { id: "whip", labelTh: "Whip", labelEn: "Whip" },
+  { id: "none", labelTh: "ไม่ใช้ transition", labelEn: "No transition" },
+];
+
+const HYPERFRAMES_FINAL_SFX_TRIGGER_OPTIONS: Array<{
+  id: HyperframesFinalSfxTrigger;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: "scene_cut", labelTh: "ตอนเปลี่ยนช็อต", labelEn: "Scene cut" },
+  { id: "text_appears", labelTh: "ตอนข้อความขึ้น", labelEn: "Text appears" },
+  { id: "card_materializes", labelTh: "ตอนการ์ด/สเปกขึ้น", labelEn: "Card appears" },
+  { id: "button_depress", labelTh: "ตอน CTA/ปุ่ม", labelEn: "CTA tap" },
+  { id: "price_badge_pop", labelTh: "ตอนราคาเด้ง", labelEn: "Price pop" },
+  { id: "sales_number_lock", labelTh: "ตอนตัวเลขล็อก", labelEn: "Sales number lock" },
+  { id: "product_reveal", labelTh: "ตอนสินค้า reveal", labelEn: "Product reveal" },
+  { id: "cta_lock", labelTh: "ตอนจบ CTA", labelEn: "CTA lock" },
+  { id: "manual", labelTh: "กำหนดเอง", labelEn: "Manual" },
+];
 const HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS = listHyperframesCreativePresets({
   category: "audio_pack",
   includeCandidate: true,
@@ -800,6 +858,9 @@ const DEFAULT_HYPERFRAMES_FINAL_SFX_IDS = HYPERFRAMES_FINAL_SFX_PRESETS
   )
   .map(preset => preset.id)
   .slice(0, 3);
+const DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF =
+  "Create a 9:16 vertical Thai ecommerce product ad video using HyperFrames.";
+const HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH = 4000;
 
 function getCreativePresetLabel(
   preset: Pick<HyperframesCreativePreset, "labels" | "id">,
@@ -881,6 +942,53 @@ function extractSpecOverlayLines(description: string, maxLines = 4): string[] {
     }
   }
   return specs.slice(0, maxLines);
+}
+
+function buildHyperframesBenefitHookDraft(input: {
+  productTitle: string;
+  description: string;
+  productContext: Record<string, unknown> | null;
+}): string {
+  const haystack = compactStoryboardText([
+    input.productTitle,
+    input.description,
+    input.productContext?.category,
+    input.productContext?.capturedCategory,
+  ].filter(Boolean).join(" "));
+  if (/กาแฟ|coffee|espresso|barista|เครื่องชง/i.test(haystack)) {
+    return "ชงกาแฟหอมเข้ม แบบโปรในเครื่องเดียว";
+  }
+  if (/แท็บเล็ต|tablet|pad|ipad/i.test(haystack)) {
+    return "จอใหญ่ ลื่นแรง แบตอึด";
+  }
+  if (/มือถือ|smartphone|phone|iphone|android/i.test(haystack)) {
+    return "เร็ว คมชัด พร้อมใช้ทั้งวัน";
+  }
+  if (/โน้ตบุ๊ก|notebook|laptop|macbook/i.test(haystack)) {
+    return "ทำงานลื่น พกง่าย พร้อมลุยทุกวัน";
+  }
+  if (/กล้อง|camera|lens|เลนส์/i.test(haystack)) {
+    return "เก็บทุกช็อตให้คมชัดกว่าเดิม";
+  }
+  if (/สกินแคร์|serum|cream|beauty|ผิว|ครีม|เซรั่ม/i.test(haystack)) {
+    return "ผิวดูดีขึ้นในรูทีนที่ง่ายกว่า";
+  }
+  if (/รองเท้า|shoe|sneaker|สนีกเกอร์/i.test(haystack)) {
+    return "ใส่สบาย ลุคดี พร้อมทุกวัน";
+  }
+  const specLine = extractSpecOverlayLines(input.description, 1)[0];
+  if (specLine) return fullThaiProductLine(specLine, 90);
+  const productWords = fullThaiProductLine(input.productTitle, 80);
+  return productWords ? `${productWords} ที่ตอบโจทย์ทุกวัน` : "จุดขายเด่นของสินค้า";
+}
+
+function buildHyperframesSupportingTextDraft(input: {
+  productTitle: string;
+  description: string;
+}): string {
+  const title = fullThaiProductLine(input.productTitle, 140);
+  if (title) return title;
+  return fullThaiProductLine(input.description, 140);
 }
 
 function resolveHyperframesAutoOverlayPreset(input: {
@@ -997,6 +1105,160 @@ function fullThaiProductLine(value: string, maxLength = 180): string {
     .trim();
 }
 
+function hyperframesPromptLines(value: string, maxLines = 6): string[] {
+  return uniqueHyperframesOverlayLines(
+    value
+      .split(/\n+/)
+      .map(line => fullThaiProductLine(line, 180))
+      .filter(Boolean),
+  ).slice(0, maxLines);
+}
+
+function formatHyperframesPromptBulletLines(lines: string[]): string {
+  if (lines.length === 0) return "- Use only product-safe, evidence-backed copy from the storyboard review.";
+  return lines.map(line => `- ${line}`).join("\n");
+}
+
+function formatHyperframesPromptTimeline(input: {
+  durationSeconds: number;
+  shots: Array<{
+    prompt: string;
+    overlayText: string;
+    subtitleText: string;
+    durationSeconds: number;
+    overlayPreset?: string;
+    animationPreset?: string;
+    transition?: string;
+  }>;
+}): string {
+  if (input.shots.length === 0) {
+    return "0-10s: build the product ad from approved storyboard clips once ready.";
+  }
+  let cursor = 0;
+  return input.shots.map((shot, index) => {
+    const duration = Math.max(1, Math.round(shot.durationSeconds * 10) / 10);
+    const start = Math.round(cursor * 10) / 10;
+    const end = Math.round((cursor + duration) * 10) / 10;
+    cursor += duration;
+    const overlay = hyperframesPromptLines(shot.overlayText, 2).join(" / ");
+    const subtitle = hyperframesPromptLines(shot.subtitleText, 1)[0] ?? "";
+    const source = firstThaiProductLine(shot.prompt, 90);
+    const text = overlay || subtitle || source || `Shot ${index + 1}`;
+    const style = [shot.overlayPreset, shot.animationPreset, shot.transition ? `transition ${shot.transition}` : ""]
+      .filter(Boolean)
+      .join(", ");
+    const motion =
+      index === 0
+        ? "open with product identity and smooth hook reveal"
+        : index === input.shots.length - 1
+          ? "hold final product/CTA clearly"
+          : "show the next selling point with smooth easing";
+    return `${start}-${end}s: ${motion}; display "${text}"${style ? `; style ${style}` : ""}.`;
+  }).join("\n");
+}
+
+function buildHyperframesFinalRenderPrompt(input: {
+  productTitle: string;
+  productDescription: string;
+  priceText: string;
+  styleBrief: string;
+  overlayPreset: HyperframesFinalOverlayPreset;
+  subtitlePreset: HyperframesFinalSubtitlePreset;
+  textMode: HyperframesFinalCompositeConfig["textMode"];
+  fontFamily: HyperframesFinalCompositeConfig["fontFamily"];
+  hookText: string;
+  supportingText: string;
+  audioPackPresetLabel: string;
+  musicPresetLabel: string;
+  sfxPresetLabels: string[];
+  preserveNativeAudio: boolean;
+  syntheticAudioFallback: boolean;
+  burnInSubtitles: boolean;
+  durationSeconds: number;
+  shots: Array<{
+    id: string;
+    prompt: string;
+    overlayText: string;
+    subtitleText: string;
+    durationSeconds: number;
+    overlayPreset?: string;
+    animationPreset?: string;
+    transition?: string;
+  }>;
+}): string {
+  const productTitle = fullThaiProductLine(input.productTitle, 180) || "Approved Marketplace product";
+  const description = fullThaiProductLine(input.productDescription, 320);
+  const priceText = fullThaiProductLine(input.priceText, 120);
+  const style = fullThaiProductLine(input.styleBrief, 420) || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF;
+  const hookText = fullThaiProductLine(input.hookText, 180) || productTitle;
+  const supportingText = fullThaiProductLine(input.supportingText, 180) || description || productTitle;
+  const overlayLines = uniqueHyperframesOverlayLines([
+    hookText,
+    supportingText,
+    ...extractSpecOverlayLines(input.productDescription, 6),
+    ...input.shots.flatMap(shot => hyperframesPromptLines(shot.overlayText, 4)),
+  ]).slice(0, 8);
+  const subtitleLines = uniqueHyperframesOverlayLines(
+    input.shots.flatMap(shot => hyperframesPromptLines(shot.subtitleText, 2)),
+  ).slice(0, 6);
+  const sourceClipCount = input.shots.length;
+  const duration = Math.max(0, Math.round(input.durationSeconds * 10) / 10);
+  const subtitlePolicy = input.subtitlePreset === "no_subtitle_style" || !input.burnInSubtitles
+    ? "No subtitles. Do not add extra subtitle boxes."
+    : `Burn in clear Thai subtitles using ${input.subtitlePreset}; keep text inside the lower safe area.`;
+  const audioPolicy = [
+    input.preserveNativeAudio ? "preserve native clip audio where present" : "mute native clip audio",
+    input.musicPresetLabel ? `music bed: ${input.musicPresetLabel}` : "no music bed unless provided",
+    input.sfxPresetLabels.length > 0 ? `SFX: ${input.sfxPresetLabels.join(", ")}` : "minimal or no SFX",
+    input.syntheticAudioFallback ? "synthetic fallback audio is allowed for missing staged assets" : "use only licensed staged audio assets",
+  ].join("; ");
+  const timeline = formatHyperframesPromptTimeline({
+    durationSeconds: duration,
+    shots: input.shots,
+  });
+  return [
+    "Create a 9:16 vertical product ad video using HyperFrames.",
+    "",
+    `Style: ${style}`,
+    "",
+    `Product: ${productTitle}.`,
+    description ? `Product context: ${description}` : "Product context: use the approved Storyboard Review product facts only.",
+    `Visual: compose ${sourceClipCount || "the approved"} storyboard video clip${sourceClipCount === 1 ? "" : "s"} as the main product footage. Keep product identity visible, use subtle floating/parallax motion, soft shadow, clean product-focused layout, and readable Thai typography.`,
+    "",
+    `Headline: "${hookText}"`,
+    `Subheadline: "${supportingText}"`,
+    "Feature callouts:",
+    formatHyperframesPromptBulletLines(overlayLines.slice(0, 6)),
+    "",
+    "Price / trust section:",
+    priceText
+      ? `- Price or offer text: "${priceText}"`
+      : "- Show only evidence-backed price, offer, and trust text when available. Do not invent a sale price.",
+    "- Trust text: use official/source-backed trust copy only; otherwise omit.",
+    "",
+    "Text and layout:",
+    `- Overlay preset: ${input.overlayPreset}`,
+    `- Text mode: ${input.textMode}`,
+    `- Thai font: ${input.fontFamily}`,
+    "- Keep every Thai line clear, uncut, and inside the 9:16 safe area.",
+    "- Do not invent unsupported product claims, prices, logos, or badges.",
+    "",
+    "Subtitle policy:",
+    `- ${subtitlePolicy}`,
+    subtitleLines.length > 0 ? `- Subtitle/script source:\n${formatHyperframesPromptBulletLines(subtitleLines)}` : "- Use no extra subtitle text beyond the approved storyboard copy.",
+    "",
+    "Animation:",
+    timeline,
+    "",
+    "Audio:",
+    `- ${audioPolicy}`,
+    "",
+    "Export:",
+    `- MP4, 1080x1920, 30fps, ${duration || "auto"} seconds.`,
+    "- No extra logos unless provided. No unrelated text. Final frame must keep product and CTA readable.",
+  ].join("\n").slice(0, HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH);
+}
+
 function expandLegacyEllipsizedHyperframesText(
   value: string,
   sources: string[],
@@ -1021,6 +1283,116 @@ function defaultHyperframesSubtitleText(clip: StoryboardClipCandidate): string {
   const voice = compactStoryboardText(extractStoryboardNativeSpeechText(clip.prompt));
   if (voice) return voice;
   return fullThaiProductLine(clip.prompt, 160);
+}
+
+function buildHyperframesFinalPayloadPreview(input: {
+  renderPrompt: string;
+  overlayPreset: HyperframesFinalOverlayPreset;
+  subtitlePreset: HyperframesFinalSubtitlePreset;
+  textMode: HyperframesFinalCompositeConfig["textMode"];
+  fontFamily: HyperframesFinalCompositeConfig["fontFamily"];
+  hookText: string;
+  supportingText: string;
+  audioPackPresetId: string;
+  musicPresetId: string;
+  sfxPresetIds: string[];
+  sfxDrafts?: HyperframesFinalSfxDraft[];
+  preserveNativeAudio: boolean;
+  syntheticAudioFallback: boolean;
+  burnInSubtitles: boolean;
+  durationSeconds: number;
+  shots: Array<{
+    id: string;
+    prompt: string;
+    overlayText: string;
+    subtitleText: string;
+    durationSeconds: number;
+    overlayPreset?: HyperframesFinalOverlayPreset;
+    animationPreset?: HyperframesFinalShotAnimationPreset;
+    transition?: HyperframesFinalShotTransition;
+  }>;
+}): string {
+  return JSON.stringify(
+    {
+      hyperframesRuntime: "official",
+      compositionMode: "captioned_final_composite",
+      renderIntent: "final",
+      prompt: input.renderPrompt.trim() || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF,
+      output: {
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        durationSeconds: Math.round(input.durationSeconds * 10) / 10,
+      },
+      text: {
+        mode: input.textMode,
+        fontFamily: input.fontFamily,
+        overlayPreset: input.overlayPreset,
+        subtitlePreset: input.subtitlePreset,
+        burnInSubtitles: input.burnInSubtitles,
+        hookText: input.hookText,
+        supportingText: input.supportingText,
+      },
+      audio: {
+        audioPackPresetId: input.audioPackPresetId || null,
+        musicPresetId: input.musicPresetId || null,
+        sfxPresetIds: input.sfxPresetIds,
+        sfxDrafts: input.sfxDrafts ?? [],
+        preserveNativeAudio: input.preserveNativeAudio,
+        syntheticAudioFallback: input.syntheticAudioFallback,
+      },
+      shots: input.shots.map((shot, index) => ({
+        index,
+        id: shot.id,
+        durationSeconds: Math.max(1, Math.round(shot.durationSeconds * 10) / 10),
+        overlayPreset: shot.overlayPreset ?? input.overlayPreset,
+        animationPreset: shot.animationPreset ?? "smooth_reveal",
+        transition: shot.transition ?? "fade",
+        sourcePrompt: firstThaiProductLine(shot.prompt, 180),
+        onScreenText: shot.overlayText
+          .split(/\n+/)
+          .map(line => compactStoryboardText(line))
+          .filter(Boolean)
+          .slice(0, 4),
+        subtitle: shot.subtitleText
+          .split(/\n+/)
+          .map(line => compactStoryboardText(line))
+          .filter(Boolean)
+          .slice(0, 4),
+      })),
+    },
+    null,
+    2,
+  );
+}
+
+function extractHyperframesPromptFromSkillMessage(message: string | undefined | null): string {
+  const trimmed = String(message ?? "").trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object") {
+      const prompt = (parsed as Record<string, unknown>).prompt;
+      if (typeof prompt === "string" && prompt.trim()) return prompt.trim();
+      const renderPrompt = (parsed as Record<string, unknown>).renderPrompt;
+      if (typeof renderPrompt === "string" && renderPrompt.trim()) return renderPrompt.trim();
+    }
+  } catch {
+    // LLM skills may return plain text or fenced JSON.
+  }
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+  if (fenced) {
+    try {
+      const parsed = JSON.parse(fenced);
+      const prompt = parsed && typeof parsed === "object"
+        ? ((parsed as Record<string, unknown>).prompt ?? (parsed as Record<string, unknown>).renderPrompt)
+        : null;
+      if (typeof prompt === "string" && prompt.trim()) return prompt.trim();
+    } catch {
+      return fenced;
+    }
+  }
+  return trimmed;
 }
 
 function isHyperframesFinalCompositeRender(
@@ -1090,11 +1462,56 @@ function subtitleCuesFromEditableText(
   }));
 }
 
+function defaultHyperframesFinalSfxTrigger(presetId: string): HyperframesFinalSfxTrigger {
+  if (/cash_register|sales|price/i.test(presetId)) return "price_badge_pop";
+  if (/button|tap/i.test(presetId)) return "button_depress";
+  if (/riser|reveal/i.test(presetId)) return "product_reveal";
+  if (/notification|message/i.test(presetId)) return "text_appears";
+  return "scene_cut";
+}
+
+function defaultHyperframesFinalSfxRole(presetId: string): HyperframesFinalSfxRole {
+  if (/cash_register|sales|price|impact|riser|reveal/i.test(presetId)) return "accent_sfx";
+  if (/button|tap|click/i.test(presetId)) return "ui_sfx";
+  return "transition_sfx";
+}
+
+function defaultHyperframesFinalSfxTarget(presetId: string): HyperframesFinalSfxTarget {
+  if (/cash_register|sales|price|cta/i.test(presetId)) return "last";
+  if (/riser|reveal/i.test(presetId)) return "first";
+  return "all";
+}
+
+function buildDefaultHyperframesFinalSfxDraft(presetId: string, index: number): HyperframesFinalSfxDraft {
+  const trigger = defaultHyperframesFinalSfxTrigger(presetId);
+  return {
+    id: `sfx_draft_${index + 1}_${presetId.replace(/[^a-z0-9_-]/gi, "_")}`,
+    presetId,
+    target: defaultHyperframesFinalSfxTarget(presetId),
+    visualTrigger: trigger,
+    offsetSec: trigger === "price_badge_pop" || trigger === "sales_number_lock" ? 1.2 : 0.2,
+    durationSec: trigger === "price_badge_pop" || trigger === "sales_number_lock" ? 0.45 : 0.22,
+    volume: trigger === "price_badge_pop" || trigger === "sales_number_lock" ? 0.32 : 0.22,
+    role: defaultHyperframesFinalSfxRole(presetId),
+  };
+}
+
+function resolveHyperframesFinalSfxTargetShots(
+  target: HyperframesFinalSfxTarget,
+  shots: HyperframesFinalCompositeConfig["shots"],
+): HyperframesFinalCompositeConfig["shots"] {
+  if (target === "all") return shots;
+  if (target === "first") return shots.slice(0, 1);
+  if (target === "last") return shots.slice(-1);
+  return shots.filter(shot => shot.id === target);
+}
+
 function buildHyperframesFinalAudioEvents(input: {
   finalVideoLengthSec: number;
   shots: HyperframesFinalCompositeConfig["shots"];
   musicPresetId?: string;
   sfxPresetIds: string[];
+  sfxDrafts?: HyperframesFinalSfxDraft[];
 }): HyperframesAudioEvent[] {
   const events: HyperframesAudioEvent[] = [];
   const musicPresetId = input.musicPresetId?.trim();
@@ -1112,33 +1529,27 @@ function buildHyperframesFinalAudioEvents(input: {
     });
   }
 
-  const selectedSfx = input.sfxPresetIds.map(id => id.trim()).filter(Boolean).slice(0, 8);
-  selectedSfx.forEach((presetId, sfxIndex) => {
+  const selectedSfx = input.sfxDrafts && input.sfxDrafts.length > 0
+    ? input.sfxDrafts
+    : input.sfxPresetIds.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id.trim(), index));
+  selectedSfx.filter(draft => draft.presetId.trim()).slice(0, 12).forEach((draft, sfxIndex) => {
+    const presetId = draft.presetId.trim();
     const isPrice = /cash_register|sales|price/i.test(presetId);
-    const trigger = isPrice
-      ? "price_badge_pop"
-      : /button|tap/i.test(presetId)
-        ? "button_depress"
-        : /riser|reveal/i.test(presetId)
-          ? "product_reveal"
-          : "scene_cut";
-    const targetShots = isPrice
-      ? input.shots.slice(Math.max(0, input.shots.length - 2))
-      : input.shots;
+    const trigger = draft.visualTrigger || defaultHyperframesFinalSfxTrigger(presetId);
+    const targetShots = resolveHyperframesFinalSfxTargetShots(draft.target || (isPrice ? "last" : "all"), input.shots);
     targetShots.forEach((shot, shotIndex) => {
-      const startSec = isPrice
-        ? shot.startSec + Math.max(0.8, shot.durationSec * 0.48)
-        : shot.startSec + (shotIndex === 0 ? 0.2 : 0);
+      const fallbackOffset = isPrice ? Math.max(0.8, shot.durationSec * 0.48) : shotIndex === 0 ? 0.2 : 0;
+      const startSec = shot.startSec + Math.max(0, Math.min(shot.durationSec, Number.isFinite(draft.offsetSec) ? draft.offsetSec : fallbackOffset));
       events.push({
         id: `sfx_${sfxIndex + 1}_${shot.id}_${shotIndex + 1}`,
-        role: isPrice ? "accent_sfx" : "transition_sfx",
+        role: draft.role || (isPrice ? "accent_sfx" : "transition_sfx"),
         presetId,
         visualTrigger: trigger,
         startSec: Math.round(startSec * 10) / 10,
-        durationSec: isPrice ? 0.45 : 0.22,
-        volume: isPrice ? 0.32 : 0.22,
+        durationSec: Math.max(0.05, Math.round((draft.durationSec || (isPrice ? 0.45 : 0.22)) * 100) / 100),
+        volume: Math.max(0, Math.min(1, draft.volume || (isPrice ? 0.32 : 0.22))),
         assetRef: `/api/storage/hyperframes/audio-presets/${presetId}.wav`,
-        notes: "SFX follows visual trigger timing and is ducked under native audio in fallback mode.",
+        notes: `SFX follows ${trigger} on ${draft.target || "all"} and is ducked under native audio in fallback mode.`,
       });
     });
   });
@@ -1653,11 +2064,24 @@ export default function StoryboardReviewPage() {
   const [hyperframesFinalPreserveNativeAudio, setHyperframesFinalPreserveNativeAudio] = useState(true);
   const [hyperframesFinalSyntheticAudioFallback, setHyperframesFinalSyntheticAudioFallback] = useState(true);
   const [hyperframesFinalBurnInSubtitles, setHyperframesFinalBurnInSubtitles] = useState(true);
+  const [hyperframesFinalStyleBrief, setHyperframesFinalStyleBrief] = useState(DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF);
+  const [isHyperframesFinalPromptEdited, setIsHyperframesFinalPromptEdited] = useState(false);
   const [hyperframesFinalHookText, setHyperframesFinalHookText] = useState("");
   const [hyperframesFinalSupportingText, setHyperframesFinalSupportingText] = useState("");
   const [hyperframesFinalShotTextById, setHyperframesFinalShotTextById] = useState<Record<string, string>>({});
   const [hyperframesFinalSubtitleById, setHyperframesFinalSubtitleById] = useState<Record<string, string>>({});
+  const [hyperframesFinalShotOverlayPresetById, setHyperframesFinalShotOverlayPresetById] = useState<Record<string, HyperframesFinalOverlayPreset>>({});
+  const [hyperframesFinalShotAnimationById, setHyperframesFinalShotAnimationById] = useState<Record<string, HyperframesFinalShotAnimationPreset>>({});
+  const [hyperframesFinalShotTransitionById, setHyperframesFinalShotTransitionById] = useState<Record<string, HyperframesFinalShotTransition>>({});
+  const [hyperframesFinalPreviewShotIndex, setHyperframesFinalPreviewShotIndex] = useState(0);
+  const [hyperframesFinalSfxDrafts, setHyperframesFinalSfxDrafts] = useState<HyperframesFinalSfxDraft[]>(() =>
+    DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
+  );
   const [isHyperframesFinalPanelExpanded, setIsHyperframesFinalPanelExpanded] = useState(false);
+  const [isHyperframesFinalPayloadExpanded, setIsHyperframesFinalPayloadExpanded] = useState(false);
+  const [isHyperframesFinalAudioPreviewExpanded, setIsHyperframesFinalAudioPreviewExpanded] = useState(false);
+  const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(false);
+  const [hyperframesFinalPromptGeneratedSignature, setHyperframesFinalPromptGeneratedSignature] = useState("");
   const hyperframesFinalStateRevisionRef = useRef<number | null>(null);
   const hyperframesFinalStateHydrationKeyRef = useRef<string | null>(null);
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
@@ -1792,6 +2216,9 @@ export default function StoryboardReviewPage() {
       },
       onError: error => toast.error(error.message),
     });
+  const generateHyperframesFinalPromptSkillMutation = trpc.chat.executeSkill.useMutation({
+    onError: error => toast.error(error.message),
+  });
   const updateHyperframesFinalCompositeStateMutation =
     trpc.videoEditorProjects.updateStoryboardReviewHyperframesFinalComposite.useMutation({
       onSuccess: result => {
@@ -3395,6 +3822,62 @@ export default function StoryboardReviewPage() {
       }));
   }, [draft, selectedRenderClips]);
 
+  const hyperframesFinalSourceReadiness = useMemo(() => {
+    const reviewTasks = draft ? storyboardDraftToReviewTasks(draft) : [];
+    const tasksWithUrl = reviewTasks.filter(task => Boolean(task.url));
+    const isTaskImage = (task: typeof reviewTasks[number]) =>
+      task.mediaType === "image" || isProbablyImageUrl(task.url ?? "");
+    const completedVideoCount = tasksWithUrl.filter(
+      task => task.status === "completed" && !isTaskImage(task),
+    ).length;
+    const selectedCompletedVideoCount = selectedRenderClips.filter(
+      clip => clip.mediaType !== "image" && !isProbablyImageUrl(clip.url),
+    ).length;
+    const completedImageCount = tasksWithUrl.filter(
+      task => task.status === "completed" && isTaskImage(task),
+    ).length;
+    const incompleteVideoCount = tasksWithUrl.filter(
+      task => task.status !== "completed" && !isTaskImage(task),
+    ).length;
+    const hasOnlyCompletedImages = completedVideoCount === 0 && completedImageCount > 0;
+    return {
+      completedVideoCount,
+      selectedCompletedVideoCount,
+      completedImageCount,
+      incompleteVideoCount,
+      hasOnlyCompletedImages,
+    };
+  }, [draft, selectedRenderClips]);
+
+  const hyperframesFinalMissingVideoTitle = locale === "th"
+    ? "ยังไม่มีวิดีโอ MP4 ที่ completed สำหรับ Final Composite"
+    : "No completed MP4 video shots are available for Final Composite";
+
+  const hyperframesFinalMissingVideoDetail = useMemo(() => {
+    if (hyperframesFinalSourceReadiness.completedVideoCount > 0) return "";
+    const details: string[] = [];
+    if (locale === "th") {
+      details.push("Final Composite ต้องใช้วิดีโอ MP4 อย่างน้อย 1 shot ก่อนส่ง HyperFrames render จริง");
+      if (hyperframesFinalSourceReadiness.hasOnlyCompletedImages) {
+        details.push(`ตอนนี้มีภาพ/Storyboard frame ที่ completed ${hyperframesFinalSourceReadiness.completedImageCount} รายการ แต่ภาพนิ่งยังไม่ใช่ source video สำหรับ final render`);
+      }
+      if (hyperframesFinalSourceReadiness.incompleteVideoCount > 0) {
+        details.push(`มีวิดีโอ ${hyperframesFinalSourceReadiness.incompleteVideoCount} shot ที่ยังไม่ completed ให้รอหรือ repair ให้เสร็จก่อน`);
+      }
+      details.push("ให้สร้างหรือ import MP4 ใน shot อย่างน้อยหนึ่งรายการ แล้วกลับมากด Render Final Composite");
+      return details.join(" ");
+    }
+    details.push("Final Composite requires at least one completed MP4 video shot before submitting a real HyperFrames render.");
+    if (hyperframesFinalSourceReadiness.hasOnlyCompletedImages) {
+      details.push(`There are ${hyperframesFinalSourceReadiness.completedImageCount} completed image/storyboard frame(s), but still images are not valid source video for final render.`);
+    }
+    if (hyperframesFinalSourceReadiness.incompleteVideoCount > 0) {
+      details.push(`${hyperframesFinalSourceReadiness.incompleteVideoCount} video shot(s) are not completed yet. Wait for them or repair them first.`);
+    }
+    details.push("Create or import at least one MP4 shot, then return to Render Final Composite.");
+    return details.join(" ");
+  }, [hyperframesFinalSourceReadiness, locale]);
+
   useEffect(() => {
     const state = reviewHyperframesFinalComposite;
     if (!state) return;
@@ -3435,8 +3918,37 @@ export default function StoryboardReviewPage() {
       setHyperframesFinalMusicPresetId(textVariables.musicPresetId);
     }
     if (Array.isArray(textVariables.sfxPresetIds)) {
-      setHyperframesFinalSfxPresetIds(
-        textVariables.sfxPresetIds.map((id: unknown) => String(id ?? "").trim()).filter(Boolean)
+      const ids = textVariables.sfxPresetIds.map((id: unknown) => String(id ?? "").trim()).filter(Boolean);
+      setHyperframesFinalSfxPresetIds(ids);
+      if (!Array.isArray(textVariables.sfxDrafts)) {
+        setHyperframesFinalSfxDrafts(ids.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)));
+      }
+    }
+    if (Array.isArray(textVariables.sfxDrafts)) {
+      setHyperframesFinalSfxDrafts(
+        textVariables.sfxDrafts
+          .map((draft: unknown, index: number) => {
+            const item = draft && typeof draft === "object" ? draft as Record<string, unknown> : {};
+            const presetId = compactStoryboardText(item.presetId ?? "");
+            if (!presetId) return null;
+            const fallback = buildDefaultHyperframesFinalSfxDraft(presetId, index);
+            return {
+              ...fallback,
+              id: compactStoryboardText(item.id ?? fallback.id) || fallback.id,
+              target: compactStoryboardText(item.target ?? fallback.target) || fallback.target,
+              visualTrigger: hyperframesAudioVisualTriggers.includes(item.visualTrigger as any) && item.visualTrigger !== "video_start"
+                ? item.visualTrigger as HyperframesFinalSfxTrigger
+                : fallback.visualTrigger,
+              role: hyperframesAudioRoles.includes(item.role as any) && item.role !== "voiceover" && item.role !== "music" && item.role !== "ambience"
+                ? item.role as HyperframesFinalSfxRole
+                : fallback.role,
+              offsetSec: Number.isFinite(Number(item.offsetSec)) ? Math.max(0, Math.min(30, Number(item.offsetSec))) : fallback.offsetSec,
+              durationSec: Number.isFinite(Number(item.durationSec)) ? Math.max(0.05, Math.min(5, Number(item.durationSec))) : fallback.durationSec,
+              volume: Number.isFinite(Number(item.volume)) ? Math.max(0, Math.min(1, Number(item.volume))) : fallback.volume,
+            };
+          })
+          .filter((draft): draft is HyperframesFinalSfxDraft => Boolean(draft))
+          .slice(0, 12),
       );
     }
     if (typeof textVariables.preserveNativeAudio === "boolean") {
@@ -3445,11 +3957,24 @@ export default function StoryboardReviewPage() {
     if (typeof textVariables.syntheticAudioFallback === "boolean") {
       setHyperframesFinalSyntheticAudioFallback(textVariables.syntheticAudioFallback);
     }
+    if (typeof textVariables.styleBrief === "string") {
+      setHyperframesFinalStyleBrief(textVariables.styleBrief || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF);
+      setIsHyperframesFinalPromptEdited(Boolean(textVariables.styleBrief?.trim()));
+    }
     if (textVariables.perShotText && typeof textVariables.perShotText === "object") {
       setHyperframesFinalShotTextById(textVariables.perShotText as Record<string, string>);
     }
     if (textVariables.perShotSubtitles && typeof textVariables.perShotSubtitles === "object") {
       setHyperframesFinalSubtitleById(textVariables.perShotSubtitles as Record<string, string>);
+    }
+    if (textVariables.perShotOverlayPreset && typeof textVariables.perShotOverlayPreset === "object") {
+      setHyperframesFinalShotOverlayPresetById(textVariables.perShotOverlayPreset as Record<string, HyperframesFinalOverlayPreset>);
+    }
+    if (textVariables.perShotAnimationPreset && typeof textVariables.perShotAnimationPreset === "object") {
+      setHyperframesFinalShotAnimationById(textVariables.perShotAnimationPreset as Record<string, HyperframesFinalShotAnimationPreset>);
+    }
+    if (textVariables.perShotTransition && typeof textVariables.perShotTransition === "object") {
+      setHyperframesFinalShotTransitionById(textVariables.perShotTransition as Record<string, HyperframesFinalShotTransition>);
     }
   }, [canonicalReviewId, reviewHyperframesFinalComposite]);
 
@@ -3462,16 +3987,21 @@ export default function StoryboardReviewPage() {
     const description = compactStoryboardText(
       productContext?.description ?? productContext?.descriptionText ?? draft.conceptDetails ?? "",
     );
-    setHyperframesFinalHookText(current =>
-      current.trim() || fullThaiProductLine(description || productTitle || getStoryboardReviewName(draft), 180)
-    );
-    setHyperframesFinalSupportingText(current =>
-      current.trim() || fullThaiProductLine(productTitle || description, 160)
-    );
+    const draftedHookText = buildHyperframesBenefitHookDraft({
+      productContext,
+      productTitle: productTitle || getStoryboardReviewName(draft),
+      description,
+    });
+    const draftedSupportingText = buildHyperframesSupportingTextDraft({
+      productTitle: productTitle || getStoryboardReviewName(draft),
+      description,
+    });
+    setHyperframesFinalHookText(current => current.trim() || draftedHookText);
+    setHyperframesFinalSupportingText(current => current.trim() || draftedSupportingText);
     setHyperframesFinalShotTextById(current => {
       const next = { ...current };
-      const hookText = hyperframesFinalHookText.trim() || fullThaiProductLine(description || productTitle || getStoryboardReviewName(draft), 180);
-      const supportingText = hyperframesFinalSupportingText.trim() || fullThaiProductLine(productTitle || description, 160);
+      const hookText = hyperframesFinalHookText.trim() || draftedHookText;
+      const supportingText = hyperframesFinalSupportingText.trim() || draftedSupportingText;
       hyperframesFinalSourceClips.forEach((clip, index) => {
         if (!next[clip.id]) {
           next[clip.id] = buildHyperframesShotOverlayDraft({
@@ -3513,11 +4043,232 @@ export default function StoryboardReviewPage() {
     [hyperframesFinalSourceClips],
   );
 
+  useEffect(() => {
+    setHyperframesFinalPreviewShotIndex(current => {
+      if (hyperframesFinalSourceClips.length === 0) return 0;
+      return Math.min(Math.max(0, current), hyperframesFinalSourceClips.length - 1);
+    });
+  }, [hyperframesFinalSourceClips.length]);
+
+  const hyperframesFinalProductPromptContext = useMemo(() => {
+    const productContext = draft
+      ? resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null
+      : null;
+    const storyboardName = draft ? getStoryboardReviewName(draft) : "";
+    const productTitle = compactStoryboardText(
+      productContext?.title ?? productContext?.name ?? productContext?.productName ?? storyboardName,
+    );
+    const productDescription = compactStoryboardText(
+      productContext?.description ?? productContext?.descriptionText ?? draft?.conceptDetails ?? "",
+    );
+    return {
+      productTitle: productTitle || storyboardName,
+      productDescription,
+      priceText: formatProductPriceForOverlay(productContext),
+    };
+  }, [draft]);
+
+  const generatedHyperframesFinalRenderPrompt = useMemo(() => {
+    const audioPackPreset = HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS.find(
+      preset => preset.id === hyperframesFinalAudioPackPresetId,
+    );
+    const musicPreset = HYPERFRAMES_FINAL_MUSIC_PRESETS.find(
+      preset => preset.id === hyperframesFinalMusicPresetId,
+    );
+    const sfxPresetLabels = hyperframesFinalSfxPresetIds
+      .map(id => HYPERFRAMES_FINAL_SFX_PRESETS.find(preset => preset.id === id))
+      .filter((preset): preset is HyperframesCreativePreset => Boolean(preset))
+      .map(preset => getCreativePresetLabel(preset, locale));
+    return buildHyperframesFinalRenderPrompt({
+      productTitle: hyperframesFinalProductPromptContext.productTitle,
+      productDescription: hyperframesFinalProductPromptContext.productDescription,
+      priceText: hyperframesFinalProductPromptContext.priceText,
+      styleBrief: DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF,
+      overlayPreset: hyperframesFinalOverlayPreset,
+      subtitlePreset: hyperframesFinalSubtitlePreset,
+      textMode: hyperframesFinalTextMode,
+      fontFamily: hyperframesFinalFont,
+      hookText: hyperframesFinalHookText,
+      supportingText: hyperframesFinalSupportingText,
+      audioPackPresetLabel: audioPackPreset ? getCreativePresetLabel(audioPackPreset, locale) : "",
+      musicPresetLabel: musicPreset ? getCreativePresetLabel(musicPreset, locale) : "",
+      sfxPresetLabels,
+      preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+      syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+      burnInSubtitles: hyperframesFinalBurnInSubtitles,
+      durationSeconds: hyperframesFinalDurationSeconds,
+      shots: hyperframesFinalSourceClips.map((clip, index) => ({
+        id: clip.id,
+        prompt: clip.prompt,
+        overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+        subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
+        durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+        overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
+        animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+        transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+      })),
+    });
+  }, [
+    hyperframesFinalAudioPackPresetId,
+    hyperframesFinalBurnInSubtitles,
+    hyperframesFinalDurationSeconds,
+    hyperframesFinalFont,
+    hyperframesFinalHookText,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalPreserveNativeAudio,
+    hyperframesFinalShotAnimationById,
+    hyperframesFinalShotOverlayPresetById,
+    hyperframesFinalProductPromptContext,
+    hyperframesFinalShotTextById,
+    hyperframesFinalSourceClips,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalShotTransitionById,
+    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitlePreset,
+    hyperframesFinalSupportingText,
+    hyperframesFinalSyntheticAudioFallback,
+    hyperframesFinalTextMode,
+    locale,
+  ]);
+
+  const hyperframesFinalPromptInputSignature = useMemo(
+    () =>
+      JSON.stringify({
+        productTitle: hyperframesFinalProductPromptContext.productTitle,
+        productDescription: hyperframesFinalProductPromptContext.productDescription,
+        priceText: hyperframesFinalProductPromptContext.priceText,
+        overlayPreset: hyperframesFinalOverlayPreset,
+        subtitlePreset: hyperframesFinalSubtitlePreset,
+        textMode: hyperframesFinalTextMode,
+        fontFamily: hyperframesFinalFont,
+        hookText: hyperframesFinalHookText,
+        supportingText: hyperframesFinalSupportingText,
+        audioPackPresetId: hyperframesFinalAudioPackPresetId,
+        musicPresetId: hyperframesFinalMusicPresetId,
+        sfxPresetIds: hyperframesFinalSfxPresetIds,
+        sfxDrafts: hyperframesFinalSfxDrafts,
+        preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+        syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+        burnInSubtitles: hyperframesFinalBurnInSubtitles,
+        durationSeconds: hyperframesFinalDurationSeconds,
+        shots: hyperframesFinalSourceClips.map((clip, index) => ({
+          id: clip.id,
+          prompt: clip.prompt,
+          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
+          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
+          animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+          transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+          durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+        })),
+      }),
+    [
+      hyperframesFinalAudioPackPresetId,
+      hyperframesFinalBurnInSubtitles,
+      hyperframesFinalDurationSeconds,
+      hyperframesFinalFont,
+      hyperframesFinalHookText,
+      hyperframesFinalMusicPresetId,
+      hyperframesFinalOverlayPreset,
+      hyperframesFinalPreserveNativeAudio,
+      hyperframesFinalProductPromptContext,
+      hyperframesFinalShotTextById,
+      hyperframesFinalShotAnimationById,
+      hyperframesFinalShotOverlayPresetById,
+      hyperframesFinalSourceClips,
+      hyperframesFinalSfxDrafts,
+      hyperframesFinalSfxPresetIds,
+      hyperframesFinalSubtitleById,
+      hyperframesFinalSubtitlePreset,
+      hyperframesFinalShotTransitionById,
+      hyperframesFinalSupportingText,
+      hyperframesFinalSyntheticAudioFallback,
+      hyperframesFinalTextMode,
+    ],
+  );
+
+  const isHyperframesFinalPromptStale = Boolean(
+    hyperframesFinalPromptGeneratedSignature &&
+      hyperframesFinalPromptGeneratedSignature !== hyperframesFinalPromptInputSignature,
+  );
+
+  useEffect(() => {
+    if (hyperframesFinalPromptGeneratedSignature) return;
+    if (!generatedHyperframesFinalRenderPrompt.trim()) return;
+    setHyperframesFinalPromptGeneratedSignature(hyperframesFinalPromptInputSignature);
+    setHyperframesFinalStyleBrief(current => {
+      if (current.trim() && current !== DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF) return current;
+      return generatedHyperframesFinalRenderPrompt;
+    });
+  }, [
+    generatedHyperframesFinalRenderPrompt,
+    hyperframesFinalPromptGeneratedSignature,
+    hyperframesFinalPromptInputSignature,
+  ]);
+
+  const hyperframesFinalPayloadPreview = useMemo(
+    () =>
+      buildHyperframesFinalPayloadPreview({
+        renderPrompt: hyperframesFinalStyleBrief,
+        overlayPreset: hyperframesFinalOverlayPreset,
+        subtitlePreset: hyperframesFinalSubtitlePreset,
+        textMode: hyperframesFinalTextMode,
+        fontFamily: hyperframesFinalFont,
+        hookText: hyperframesFinalHookText,
+        supportingText: hyperframesFinalSupportingText,
+        audioPackPresetId: hyperframesFinalAudioPackPresetId,
+        musicPresetId: hyperframesFinalMusicPresetId,
+        sfxPresetIds: hyperframesFinalSfxPresetIds,
+        sfxDrafts: hyperframesFinalSfxDrafts,
+        preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+        syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+        burnInSubtitles: hyperframesFinalBurnInSubtitles,
+        durationSeconds: hyperframesFinalDurationSeconds,
+        shots: hyperframesFinalSourceClips.map((clip, index) => ({
+          id: clip.id,
+          prompt: clip.prompt,
+          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
+          durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
+          animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+          transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+        })),
+      }),
+    [
+      hyperframesFinalAudioPackPresetId,
+      hyperframesFinalBurnInSubtitles,
+      hyperframesFinalDurationSeconds,
+      hyperframesFinalFont,
+      hyperframesFinalHookText,
+      hyperframesFinalMusicPresetId,
+      hyperframesFinalOverlayPreset,
+      hyperframesFinalPreserveNativeAudio,
+      hyperframesFinalShotAnimationById,
+      hyperframesFinalShotOverlayPresetById,
+      hyperframesFinalShotTextById,
+      hyperframesFinalSourceClips,
+      hyperframesFinalSfxDrafts,
+      hyperframesFinalSfxPresetIds,
+      hyperframesFinalShotTransitionById,
+      hyperframesFinalStyleBrief,
+      hyperframesFinalSubtitleById,
+      hyperframesFinalSubtitlePreset,
+      hyperframesFinalSupportingText,
+      hyperframesFinalSyntheticAudioFallback,
+      hyperframesFinalTextMode,
+    ],
+  );
+
   const hyperframesFinalCompositeDisabledReason = useMemo(() => {
     if (hyperframesFinalSourceClips.length === 0) {
+      return hyperframesFinalMissingVideoTitle;
+    }
+    if (isHyperframesFinalPromptStale) {
       return locale === "th"
-        ? "ยังไม่มี MP4 ที่ completed"
-        : "No completed MP4 shots";
+        ? "มีการเปลี่ยน option แล้ว ต้อง Generate prompt ใหม่ก่อน render"
+        : "Options changed. Generate a fresh prompt before rendering";
     }
     if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
       return locale === "th"
@@ -3536,10 +4287,102 @@ export default function StoryboardReviewPage() {
   }, [
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalMissingVideoTitle,
     hyperframesFinalMusicPresetId,
     hyperframesFinalSourceClips.length,
     hyperframesFinalSfxPresetIds.length,
     hyperframesFinalSyntheticAudioFallback,
+    isHyperframesFinalPromptStale,
+    locale,
+  ]);
+
+  const generateHyperframesFinalPromptWithSkill = useCallback(async () => {
+    const skillInputPrompt = generatedHyperframesFinalRenderPrompt.trim() || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF;
+    try {
+      const result = await generateHyperframesFinalPromptSkillMutation.mutateAsync({
+        skillId: "hyperframes-render-prompt",
+        prompt: [
+          "Use the hyperframes-render-prompt skill to create one complete HyperFrames final composite render prompt.",
+          "Return only the final prompt text or JSON with a prompt field.",
+          "Do not invent product claims, prices, logos, or unsupported facts.",
+          "",
+          skillInputPrompt,
+        ].join("\n").slice(0, 5000),
+        dynamicParams: {
+          purpose: "marketplace_hyperframes_final_composite_prompt",
+          productTitle: hyperframesFinalProductPromptContext.productTitle,
+          productDescription: hyperframesFinalProductPromptContext.productDescription,
+          priceText: hyperframesFinalProductPromptContext.priceText,
+          overlayPreset: hyperframesFinalOverlayPreset,
+          subtitlePreset: hyperframesFinalSubtitlePreset,
+          textMode: hyperframesFinalTextMode,
+          fontFamily: hyperframesFinalFont,
+          hookText: hyperframesFinalHookText,
+          supportingText: hyperframesFinalSupportingText,
+          audioPackPresetId: hyperframesFinalAudioPackPresetId,
+          musicPresetId: hyperframesFinalMusicPresetId,
+          sfxPresetIds: hyperframesFinalSfxPresetIds,
+          sfxDrafts: hyperframesFinalSfxDrafts,
+          preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+          syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+          burnInSubtitles: hyperframesFinalBurnInSubtitles,
+          durationSeconds: hyperframesFinalDurationSeconds,
+          shots: hyperframesFinalSourceClips.map((clip, index) => ({
+            id: clip.id,
+            prompt: clip.prompt,
+            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+            subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
+            overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
+            animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+            transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+            durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+          })),
+        },
+      });
+      const skillPrompt = extractHyperframesPromptFromSkillMessage(
+        (result as { message?: string | null } | undefined)?.message,
+      );
+      if (!skillPrompt.trim()) {
+        throw new Error(locale === "th" ? "hyperframes-render-prompt skill ไม่ได้ส่ง prompt กลับมา" : "hyperframes-render-prompt skill returned an empty prompt.");
+      }
+      setHyperframesFinalStyleBrief(skillPrompt.slice(0, HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH));
+      setIsHyperframesFinalPromptEdited(false);
+      setHyperframesFinalPromptGeneratedSignature(hyperframesFinalPromptInputSignature);
+      toast.success(locale === "th" ? "Generate prompt ด้วย hyperframes-render-prompt แล้ว" : "Generated prompt with hyperframes-render-prompt.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn("hyperframes-render-prompt skill failed; prompt remains stale and render stays blocked.", error);
+      toast.error(
+        locale === "th"
+          ? `Generate prompt ด้วย skill ไม่สำเร็จ: ${message}`
+          : `Prompt skill failed: ${message}`,
+      );
+    }
+  }, [
+    generatedHyperframesFinalRenderPrompt,
+    generateHyperframesFinalPromptSkillMutation,
+    hyperframesFinalAudioPackPresetId,
+    hyperframesFinalBurnInSubtitles,
+    hyperframesFinalDurationSeconds,
+    hyperframesFinalFont,
+    hyperframesFinalHookText,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalPreserveNativeAudio,
+    hyperframesFinalProductPromptContext,
+    hyperframesFinalPromptInputSignature,
+    hyperframesFinalShotAnimationById,
+    hyperframesFinalShotOverlayPresetById,
+    hyperframesFinalShotTextById,
+    hyperframesFinalSourceClips,
+    hyperframesFinalSfxDrafts,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalShotTransitionById,
+    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitlePreset,
+    hyperframesFinalSupportingText,
+    hyperframesFinalSyntheticAudioFallback,
+    hyperframesFinalTextMode,
     locale,
   ]);
 
@@ -3574,7 +4417,11 @@ export default function StoryboardReviewPage() {
       return;
     }
     if (hyperframesFinalSourceClips.length === 0) {
-      toast.error(locale === "th" ? "ต้องมี MP4 ที่ completed อย่างน้อย 1 shot ก่อน render final composite" : "At least one completed MP4 shot is required.");
+      toast.error(hyperframesFinalMissingVideoDetail || hyperframesFinalMissingVideoTitle);
+      return;
+    }
+    if (isHyperframesFinalPromptStale) {
+      toast.error(locale === "th" ? "มีการเปลี่ยน option แล้ว ต้อง Generate prompt ใหม่ก่อน render" : "Options changed. Generate a fresh prompt before rendering.");
       return;
     }
     try {
@@ -3655,8 +4502,9 @@ export default function StoryboardReviewPage() {
           durationSec,
           onScreenText: resolvedShotOverlayLines,
           subtitleCues: subtitleCuesFromEditableText(subtitleText, cursor, durationSec),
-          animationPreset: index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal",
-          transition: "fade",
+          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedOverlayPreset,
+          animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+          transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
         });
         cursor += durationSec;
       }
@@ -3670,6 +4518,7 @@ export default function StoryboardReviewPage() {
         shots,
         musicPresetId: hyperframesFinalMusicPresetId || undefined,
         sfxPresetIds: selectedSfxPresetIds,
+        sfxDrafts: hyperframesFinalSfxDrafts,
       });
       const audioAssetRefs = audioEvents.map(event => event.assetRef);
       const config: HyperframesFinalCompositeConfig = {
@@ -3696,7 +4545,7 @@ export default function StoryboardReviewPage() {
           validatedAssets: [],
         },
         fontFamily: hyperframesFinalFont,
-        styleBrief: "Premium Thai ecommerce ad, cinematic motion graphic, fast but readable pacing, warm lighting, clean product-focused layout, smooth CSS/GSAP-style animation.",
+        styleBrief: hyperframesFinalStyleBrief.trim() || generatedHyperframesFinalRenderPrompt,
         hookText: renderHookText,
         supportingText: renderSupportingText,
         subtitlePlacement: "bottom",
@@ -3714,12 +4563,17 @@ export default function StoryboardReviewPage() {
           audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
           musicPresetId: hyperframesFinalMusicPresetId || undefined,
           sfxPresetIds: selectedSfxPresetIds,
+          sfxDrafts: hyperframesFinalSfxDrafts,
           preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
           syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+          styleBrief: hyperframesFinalStyleBrief.trim() || generatedHyperframesFinalRenderPrompt,
           hookText: renderHookText,
           supportingText: renderSupportingText,
           perShotText: renderPerShotTextById,
           perShotSubtitles: hyperframesFinalSubtitleById,
+          perShotOverlayPreset: hyperframesFinalShotOverlayPresetById,
+          perShotAnimationPreset: hyperframesFinalShotAnimationById,
+          perShotTransition: hyperframesFinalShotTransitionById,
         },
       });
       const result = await createHyperframesFinalCompositeMutation.mutateAsync({
@@ -3746,6 +4600,7 @@ export default function StoryboardReviewPage() {
     canonicalReviewId,
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    generatedHyperframesFinalRenderPrompt,
     hyperframesFinalVideoUrl,
     hyperframesFinalAudioPackPresetId,
     hyperframesFinalBurnInSubtitles,
@@ -3754,15 +4609,23 @@ export default function StoryboardReviewPage() {
     hyperframesFinalMusicPresetId,
     hyperframesFinalOverlayPreset,
     hyperframesFinalPreserveNativeAudio,
+    hyperframesFinalMissingVideoDetail,
+    hyperframesFinalMissingVideoTitle,
+    hyperframesFinalShotAnimationById,
+    hyperframesFinalShotOverlayPresetById,
     hyperframesFinalShotTextById,
     hyperframesFinalSourceClips,
+    hyperframesFinalSfxDrafts,
     hyperframesFinalSfxPresetIds,
+    hyperframesFinalShotTransitionById,
+    hyperframesFinalStyleBrief,
     hyperframesFinalSubtitleById,
     hyperframesFinalSubtitlePreset,
     hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
     importStoryboardAssetForRender,
+    isHyperframesFinalPromptStale,
     locale,
     draft,
     persistHyperframesFinalCompositeState,
@@ -4741,7 +5604,29 @@ export default function StoryboardReviewPage() {
                     {locale === "th" ? "HyperFrames Final Composite" : "HyperFrames Final Composite"}
                   </Badge>
                   <Badge variant="outline" className="rounded-full">
-                    {hyperframesFinalSourceClips.length} shots
+                    {hyperframesFinalSourceReadiness.completedVideoCount} video shots
+                  </Badge>
+                  {hyperframesFinalSourceReadiness.completedImageCount > 0 ? (
+                    <Badge variant="outline" className="rounded-full">
+                      {hyperframesFinalSourceReadiness.completedImageCount} images
+                    </Badge>
+                  ) : null}
+                  {hyperframesFinalSourceReadiness.incompleteVideoCount > 0 ? (
+                    <Badge variant="outline" className="rounded-full">
+                      {locale === "th"
+                        ? `${hyperframesFinalSourceReadiness.incompleteVideoCount} วิดีโอยังไม่เสร็จ`
+                        : `${hyperframesFinalSourceReadiness.incompleteVideoCount} pending video`}
+                    </Badge>
+                  ) : null}
+                  {hyperframesFinalSourceReadiness.selectedCompletedVideoCount > 0 ? (
+                    <Badge variant="outline" className="rounded-full">
+                      {locale === "th"
+                        ? `เลือกไว้ ${hyperframesFinalSourceReadiness.selectedCompletedVideoCount}`
+                        : `${hyperframesFinalSourceReadiness.selectedCompletedVideoCount} selected`}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline" className="rounded-full">
+                    {locale === "th" ? "ตั้งค่ายุบเริ่มต้น" : "settings collapsed by default"}
                   </Badge>
                   <Badge variant="outline" className="rounded-full">
                     {Math.round(hyperframesFinalDurationSeconds)}s
@@ -4784,6 +5669,8 @@ export default function StoryboardReviewPage() {
                     Boolean(hyperframesFinalCompositeDisabledReason)
                   }
                   className="h-9"
+                  title={hyperframesFinalCompositeDisabledReason ?? undefined}
+                  aria-disabled={Boolean(hyperframesFinalCompositeDisabledReason)}
                 >
                   {createHyperframesFinalCompositeMutation.isPending ||
                   updateHyperframesFinalCompositeStateMutation.isPending ? (
@@ -4861,9 +5748,39 @@ export default function StoryboardReviewPage() {
               </div>
             ) : null}
             {hyperframesFinalCompositeDisabledReason ? (
-              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {hyperframesFinalCompositeDisabledReason}
-              </p>
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold">
+                      {locale === "th" ? "ยังไม่พร้อม render" : "Not render-ready"}
+                      {": "}
+                      {hyperframesFinalCompositeDisabledReason}
+                    </p>
+                    {hyperframesFinalSourceClips.length === 0 ? (
+                      <p className="mt-1 leading-relaxed text-amber-800">
+                        {hyperframesFinalMissingVideoDetail}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 border-amber-300 bg-white/80 text-amber-900 hover:bg-amber-100"
+                    onClick={() => setIsHyperframesFinalPanelExpanded(current => !current)}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "mr-2 h-3.5 w-3.5 transition-transform",
+                        isHyperframesFinalPanelExpanded ? "rotate-180" : ""
+                      )}
+                    />
+                    {isHyperframesFinalPanelExpanded
+                      ? locale === "th" ? "ยุบรายละเอียด" : "Hide details"
+                      : locale === "th" ? "ดูรายละเอียด" : "View details"}
+                  </Button>
+                </div>
+              </div>
             ) : null}
             {isHyperframesFinalPanelExpanded ? (
               <div className="mt-3 max-h-[calc(100dvh-14rem)] overflow-y-auto pr-1">
@@ -4904,9 +5821,9 @@ export default function StoryboardReviewPage() {
                   onChange={event => setHyperframesFinalTextMode(event.target.value as HyperframesFinalCompositeConfig["textMode"])}
                   className="h-9 rounded-md border bg-white px-2 text-sm"
                 >
-                  <option value="hook_and_per_shot">{locale === "th" ? "Hook + ทุก shot" : "Hook + per shot"}</option>
-                  <option value="hook_only">{locale === "th" ? "เฉพาะ Hook" : "Hook only"}</option>
-                  <option value="per_shot">{locale === "th" ? "เฉพาะแต่ละ shot" : "Per shot only"}</option>
+                  <option value="hook_and_per_shot">{locale === "th" ? "Hook shot แรก + overlay ทุก shot" : "First-shot hook + per-shot overlay"}</option>
+                  <option value="hook_only">{locale === "th" ? "Hook เฉพาะ shot แรก" : "First-shot hook only"}</option>
+                  <option value="per_shot">{locale === "th" ? "Overlay แยกทุก shot" : "Per-shot overlay only"}</option>
                   <option value="none">{locale === "th" ? "ไม่ใส่ข้อความ" : "No text"}</option>
                 </select>
               </label>
@@ -4974,6 +5891,10 @@ export default function StoryboardReviewPage() {
                       .filter(Boolean)
                       .slice(0, 8);
                     setHyperframesFinalSfxPresetIds(selected);
+                    setHyperframesFinalSfxDrafts(current => {
+                      const byPreset = new Map(current.map(draft => [draft.presetId, draft]));
+                      return selected.map((id, index) => byPreset.get(id) ?? buildDefaultHyperframesFinalSfxDraft(id, index));
+                    });
                   }}
                   className="min-h-[5.5rem] rounded-md border bg-white px-2 py-1 text-sm"
                 >
@@ -5027,19 +5948,446 @@ export default function StoryboardReviewPage() {
                 />
               </label>
             </div>
+            <div className="mt-3 rounded-lg border bg-white p-3 text-xs text-slate-700">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-slate-950">
+                    {locale === "th" ? "Shot text map" : "Shot text map"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {locale === "th"
+                      ? "Hook/Supporting เป็นข้อความรวม ส่วนแต่ละ shot ควรมี overlay/subtitle/style ของตัวเองให้สอดคล้องกับบทพูด"
+                      : "Hook/supporting copy is global. Each shot should have its own overlay, subtitle, and style aligned with its voiceover."}
+                  </p>
+                </div>
+                <Badge variant="outline" className="rounded-full">
+                  {locale === "th"
+                    ? `${hyperframesFinalSourceClips.length} shot`
+                    : `${hyperframesFinalSourceClips.length} shots`}
+                </Badge>
+              </div>
+              {hyperframesFinalSourceClips.length > 0 ? (
+                <>
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                    {hyperframesFinalSourceClips.map((clip, index) => {
+                      const overlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+                      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
+                      const isSelected = index === hyperframesFinalPreviewShotIndex;
+                      return (
+                        <button
+                          key={clip.id}
+                          type="button"
+                          onClick={() => setHyperframesFinalPreviewShotIndex(index)}
+                          className={cn(
+                            "min-w-[8.5rem] rounded-md border px-3 py-2 text-left transition-colors",
+                            isSelected
+                              ? "border-sky-400 bg-sky-50 text-sky-950"
+                              : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold">Shot {index + 1}</span>
+                            <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[10px]">
+                              {Math.round(clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
+                            </span>
+                          </div>
+                          <p className="mt-1 truncate text-[10px] opacity-80">
+                            {overlayText || firstThaiProductLine(subtitleText, 48) || (locale === "th" ? "ยังไม่มี overlay" : "No overlay")}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(() => {
+                    const selectedClip = hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ?? hyperframesFinalSourceClips[0]!;
+                    const selectedIndex = Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === selectedClip.id));
+                    const selectedOverlayPreset = hyperframesFinalShotOverlayPresetById[selectedClip.id] ?? hyperframesFinalOverlayPreset;
+                    const selectedAnimation = hyperframesFinalShotAnimationById[selectedClip.id] ?? (selectedIndex === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : selectedIndex === 0 ? "glow_feature" : "smooth_reveal");
+                    const selectedTransition = hyperframesFinalShotTransitionById[selectedClip.id] ?? "fade";
+                    return (
+                      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? "Style ของ shot" : "Shot style"}
+                            <select
+                              value={selectedOverlayPreset}
+                              onChange={event => setHyperframesFinalShotOverlayPresetById(current => ({
+                                ...current,
+                                [selectedClip.id]: event.target.value as HyperframesFinalOverlayPreset,
+                              }))}
+                              className="h-9 rounded-md border bg-white px-2 text-xs"
+                            >
+                              {HYPERFRAMES_FINAL_OVERLAY_PRESETS.map(preset => (
+                                <option key={preset.id} value={preset.id}>
+                                  {locale === "th" ? preset.labelTh : preset.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? "Animation" : "Animation"}
+                            <select
+                              value={selectedAnimation}
+                              onChange={event => setHyperframesFinalShotAnimationById(current => ({
+                                ...current,
+                                [selectedClip.id]: event.target.value as HyperframesFinalShotAnimationPreset,
+                              }))}
+                              className="h-9 rounded-md border bg-white px-2 text-xs"
+                            >
+                              {HYPERFRAMES_FINAL_SHOT_ANIMATION_PRESETS.map(preset => (
+                                <option key={preset.id} value={preset.id}>
+                                  {locale === "th" ? preset.labelTh : preset.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? "Transition" : "Transition"}
+                            <select
+                              value={selectedTransition}
+                              onChange={event => setHyperframesFinalShotTransitionById(current => ({
+                                ...current,
+                                [selectedClip.id]: event.target.value as HyperframesFinalShotTransition,
+                              }))}
+                              className="h-9 rounded-md border bg-white px-2 text-xs"
+                            >
+                              {HYPERFRAMES_FINAL_SHOT_TRANSITIONS.map(transition => (
+                                <option key={transition.id} value={transition.id}>
+                                  {locale === "th" ? transition.labelTh : transition.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? `Overlay text สำหรับ shot ${selectedIndex + 1}` : `Overlay text for shot ${selectedIndex + 1}`}
+                            <Textarea
+                              value={hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex)}
+                              onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
+                              className="min-h-[76px] bg-white text-xs"
+                              placeholder={locale === "th" ? "ข้อความบนจอเฉพาะ shot นี้" : "On-screen text for this shot"}
+                            />
+                          </label>
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? `Subtitle / Voiceover shot ${selectedIndex + 1}` : `Subtitle / voiceover shot ${selectedIndex + 1}`}
+                            <Textarea
+                              value={hyperframesFinalSubtitleById[selectedClip.id] ?? defaultHyperframesSubtitleText(selectedClip)}
+                              onChange={event => setHyperframesFinalSubtitleById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
+                              className="min-h-[76px] bg-white text-xs"
+                              placeholder={locale === "th" ? "ระบบเติมจากบทพูดของ shot ได้ หรือแก้เอง" : "Defaults from this shot voiceover; editable."}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : (
+                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+                  {locale === "th" ? "ยังไม่มีวิดีโอ shot ให้ config ราย shot" : "No video shots are available for per-shot configuration."}
+                </p>
+              )}
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                <span className="flex items-center gap-2">
+                  <Pencil className="h-3.5 w-3.5 text-sky-600" />
+                  {locale === "th" ? "HyperFrames full render prompt" : "HyperFrames full render prompt"}
+                </span>
+                <Textarea
+                  aria-label="HyperFrames full render prompt"
+                  value={hyperframesFinalStyleBrief}
+                  onChange={event => {
+                    setIsHyperframesFinalPromptEdited(true);
+                    setHyperframesFinalStyleBrief(event.target.value.slice(0, HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH));
+                  }}
+                  className="min-h-[260px] bg-white text-xs leading-relaxed"
+                  placeholder={generatedHyperframesFinalRenderPrompt || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex flex-wrap items-center gap-2 text-[10px] font-normal text-slate-500">
+                    <span>{hyperframesFinalStyleBrief.length}/{HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH}</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "rounded-full px-2 py-0 text-[10px] font-medium",
+                        isHyperframesFinalPromptStale
+                          ? "border-amber-200 bg-amber-50 text-amber-800"
+                          : isHyperframesFinalPromptEdited
+                          ? "border-amber-200 bg-amber-50 text-amber-800"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-800",
+                      )}
+                    >
+                      {isHyperframesFinalPromptStale
+                        ? locale === "th" ? "Option เปลี่ยนแล้ว: ต้อง Generate prompt ใหม่ก่อน render" : "Options changed: generate a fresh prompt before render"
+                        : isHyperframesFinalPromptEdited
+                        ? locale === "th" ? "Custom prompt: option จะไม่เขียนทับอัตโนมัติ" : "Custom prompt: options will not overwrite automatically"
+                        : locale === "th" ? "Prompt ตรงกับ option ล่าสุด" : "Prompt matches current options"}
+                    </Badge>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => void generateHyperframesFinalPromptWithSkill()}
+                    disabled={generateHyperframesFinalPromptSkillMutation.isPending}
+                  >
+                    {generateHyperframesFinalPromptSkillMutation.isPending ? (
+                      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                    ) : null}
+                    {locale === "th" ? "Generate prompt ด้วย skill" : "Generate prompt with skill"}
+                  </Button>
+                </div>
+                {isHyperframesFinalPromptStale ? (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-normal leading-relaxed text-amber-800">
+                    {locale === "th"
+                      ? "Preview และ option ด้านบนเปลี่ยนแล้ว แต่ full prompt ยังเป็นเวอร์ชันก่อนหน้า ปรับ option ให้ครบก่อน แล้วกด Generate prompt ด้วย skill เพื่อสร้าง prompt ใหม่ครั้งเดียวก่อน render ถ้า skill ล้มเหลว ระบบจะไม่ใช้ fallback และจะยังไม่อนุญาตให้ render เพื่อไม่ให้ prompt คุณภาพต่ำกลืนปัญหาจริง"
+                      : "Preview and options changed, but the full prompt is still from the previous version. Finish adjusting options, then generate one fresh skill prompt before rendering. If the skill fails, the system will not use a fallback and rendering will remain blocked so the real issue is visible."}
+                  </p>
+                ) : null}
+              </label>
+              <div className="rounded-lg border bg-slate-950 p-3 text-xs text-slate-100">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Film className="h-4 w-4 text-cyan-300" />
+                    {locale === "th" ? "Payload preview ก่อนส่ง HyperFrames" : "HyperFrames payload preview"}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
+                      onClick={() => setIsHyperframesFinalPayloadExpanded(current => !current)}
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "mr-2 h-3.5 w-3.5 transition-transform",
+                          isHyperframesFinalPayloadExpanded ? "rotate-180" : ""
+                        )}
+                      />
+                      {isHyperframesFinalPayloadExpanded
+                        ? locale === "th" ? "ยุบ" : "Collapse"
+                        : locale === "th" ? "เปิดดู payload" : "Show payload"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
+                      onClick={() => {
+                        if (!navigator.clipboard?.writeText) {
+                          toast.error(locale === "th" ? "เบราว์เซอร์นี้ยังไม่รองรับการ copy" : "Clipboard copy is not available");
+                          return;
+                        }
+                        void navigator.clipboard
+                          .writeText(hyperframesFinalPayloadPreview)
+                          .then(() => {
+                            toast.success(locale === "th" ? "คัดลอก payload preview แล้ว" : "Copied payload preview");
+                          })
+                          .catch(() => {
+                            toast.error(locale === "th" ? "คัดลอก payload preview ไม่สำเร็จ" : "Could not copy payload preview");
+                          });
+                      }}
+                    >
+                      <Clipboard className="mr-2 h-3.5 w-3.5" />
+                      {locale === "th" ? "Copy" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+                {isHyperframesFinalPayloadExpanded ? (
+                  <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/45 p-3 font-mono text-[10.5px] leading-relaxed text-slate-200">
+                    {hyperframesFinalPayloadPreview}
+                  </pre>
+                ) : (
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    {locale === "th"
+                      ? "ยุบไว้เพื่อลดพื้นที่ แต่ยัง copy payload ชุดเดียวกับที่จะส่งให้ HyperFrames ได้"
+                      : "Collapsed to save space. Copy still uses the exact payload that will be sent to HyperFrames."}
+                  </p>
+                )}
+              </div>
+            </div>
             <div className="mt-3 rounded-lg border bg-slate-50 p-3 text-xs text-slate-700">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 font-semibold text-slate-900">
                   <Music2 className="h-4 w-4 text-sky-600" />
-                  {locale === "th" ? "Audio event map preview" : "Audio event map preview"}
+                  {locale === "th" ? "SFX timeline / Audio event map" : "SFX timeline / audio event map"}
                 </div>
-                <Badge variant="outline" className="rounded-full">
-                  {hyperframesFinalPreserveNativeAudio
-                    ? locale === "th" ? "เก็บเสียงเดิม" : "native audio"
-                    : locale === "th" ? "ปิดเสียงเดิม" : "native muted"}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-full">
+                    {hyperframesFinalPreserveNativeAudio
+                      ? locale === "th" ? "เก็บเสียงเดิม" : "native audio"
+                      : locale === "th" ? "ปิดเสียงเดิม" : "native muted"}
+                  </Badge>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 bg-white"
+                    onClick={() => setIsHyperframesFinalAudioPreviewExpanded(current => !current)}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "mr-2 h-3.5 w-3.5 transition-transform",
+                        isHyperframesFinalAudioPreviewExpanded ? "rotate-180" : ""
+                      )}
+                    />
+                    {isHyperframesFinalAudioPreviewExpanded
+                      ? locale === "th" ? "ยุบ" : "Collapse"
+                      : locale === "th" ? "เปิดดู" : "Show"}
+                  </Button>
+                </div>
               </div>
-              {(() => {
+              <div className="mb-3 rounded-md border bg-white p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {locale === "th" ? "ตั้งค่า SFX แบบ timeline" : "Timeline SFX controls"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {locale === "th"
+                        ? "เลือกเสียง เอฟเฟกต์ผูกกับ shot/trigger/เวลาได้ ไม่ต้องเดาว่า multi-select จะใส่ช่วงไหน"
+                        : "Choose which sound plays on which shot, trigger, and offset instead of relying on an opaque multi-select."}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => {
+                      const presetId = HYPERFRAMES_FINAL_SFX_PRESETS[0]?.id ?? "whoosh_scene_transition";
+                      const draft = buildDefaultHyperframesFinalSfxDraft(presetId, hyperframesFinalSfxDrafts.length);
+                      setHyperframesFinalSfxDrafts(current => [...current, draft].slice(0, 12));
+                      setHyperframesFinalSfxPresetIds(current => Array.from(new Set([...current, presetId])).slice(0, 8));
+                    }}
+                  >
+                    {locale === "th" ? "เพิ่ม SFX" : "Add SFX"}
+                  </Button>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {hyperframesFinalSfxDrafts.length === 0 ? (
+                    <p className="rounded-md border border-dashed bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                      {locale === "th" ? "ยังไม่มี SFX event เพิ่มเสียงเพื่อกำหนดช่วงเวลา" : "No SFX events yet. Add one to configure timing."}
+                    </p>
+                  ) : null}
+                  {hyperframesFinalSfxDrafts.map((draft, index) => (
+                    <div key={draft.id} className="grid gap-2 rounded-md border bg-slate-50 p-2 lg:grid-cols-[1.2fr_0.9fr_0.9fr_0.55fr_0.55fr_0.55fr_auto]">
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        {locale === "th" ? "เสียง" : "Sound"}
+                        <select
+                          value={draft.presetId}
+                          onChange={event => {
+                            const presetId = event.target.value;
+                            setHyperframesFinalSfxDrafts(current => current.map(item =>
+                              item.id === draft.id ? { ...buildDefaultHyperframesFinalSfxDraft(presetId, index), id: item.id, target: item.target } : item
+                            ));
+                            setHyperframesFinalSfxPresetIds(current => Array.from(new Set([...current.filter(id => id !== draft.presetId), presetId])).slice(0, 8));
+                          }}
+                          className="h-8 rounded-md border bg-white px-2 text-xs"
+                        >
+                          {HYPERFRAMES_FINAL_SFX_PRESETS.map(preset => (
+                            <option key={preset.id} value={preset.id}>
+                              {getCreativePresetLabel(preset, locale)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        {locale === "th" ? "ใช้กับ" : "Target"}
+                        <select
+                          value={draft.target}
+                          onChange={event => setHyperframesFinalSfxDrafts(current => current.map(item =>
+                            item.id === draft.id ? { ...item, target: event.target.value } : item
+                          ))}
+                          className="h-8 rounded-md border bg-white px-2 text-xs"
+                        >
+                          <option value="all">{locale === "th" ? "ทุก shot" : "All shots"}</option>
+                          <option value="first">{locale === "th" ? "shot แรก" : "First shot"}</option>
+                          <option value="last">{locale === "th" ? "shot สุดท้าย" : "Last shot"}</option>
+                          {hyperframesFinalSourceClips.map((clip, shotIndex) => (
+                            <option key={clip.id} value={clip.id}>Shot {shotIndex + 1}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        Trigger
+                        <select
+                          value={draft.visualTrigger}
+                          onChange={event => setHyperframesFinalSfxDrafts(current => current.map(item =>
+                            item.id === draft.id ? { ...item, visualTrigger: event.target.value as HyperframesFinalSfxTrigger } : item
+                          ))}
+                          className="h-8 rounded-md border bg-white px-2 text-xs"
+                        >
+                          {HYPERFRAMES_FINAL_SFX_TRIGGER_OPTIONS.map(trigger => (
+                            <option key={trigger.id} value={trigger.id}>
+                              {locale === "th" ? trigger.labelTh : trigger.labelEn}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        Offset
+                        <Input
+                          type="number"
+                          min={0}
+                          max={30}
+                          step={0.1}
+                          value={draft.offsetSec}
+                          onChange={event => setHyperframesFinalSfxDrafts(current => current.map(item =>
+                            item.id === draft.id ? { ...item, offsetSec: Math.max(0, Math.min(30, Number(event.target.value) || 0)) } : item
+                          ))}
+                          className="h-8 bg-white px-2 text-xs"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        Dur
+                        <Input
+                          type="number"
+                          min={0.05}
+                          max={5}
+                          step={0.05}
+                          value={draft.durationSec}
+                          onChange={event => setHyperframesFinalSfxDrafts(current => current.map(item =>
+                            item.id === draft.id ? { ...item, durationSec: Math.max(0.05, Math.min(5, Number(event.target.value) || 0.1)) } : item
+                          ))}
+                          className="h-8 bg-white px-2 text-xs"
+                        />
+                      </label>
+                      <label className="grid gap-1 text-[10px] font-medium text-slate-600">
+                        Vol
+                        <Input
+                          type="number"
+                          min={0}
+                          max={1}
+                          step={0.05}
+                          value={draft.volume}
+                          onChange={event => setHyperframesFinalSfxDrafts(current => current.map(item =>
+                            item.id === draft.id ? { ...item, volume: Math.max(0, Math.min(1, Number(event.target.value) || 0)) } : item
+                          ))}
+                          className="h-8 bg-white px-2 text-xs"
+                        />
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 self-end text-red-600 hover:text-red-700"
+                        onClick={() => {
+                          setHyperframesFinalSfxDrafts(current => current.filter(item => item.id !== draft.id));
+                          setHyperframesFinalSfxPresetIds(current => current.filter(id => id !== draft.presetId));
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {isHyperframesFinalAudioPreviewExpanded ? (() => {
                 const previewShots = hyperframesFinalSourceClips.map((clip, index) => {
                   const startSec = hyperframesFinalSourceClips
                     .slice(0, index)
@@ -5057,6 +6405,7 @@ export default function StoryboardReviewPage() {
                     durationSec: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
                     onScreenText: [],
                     subtitleCues: [],
+                    overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
                     animationPreset: "smooth_reveal" as const,
                     transition: "fade" as const,
                   };
@@ -5066,6 +6415,7 @@ export default function StoryboardReviewPage() {
                   shots: previewShots,
                   musicPresetId: hyperframesFinalMusicPresetId || undefined,
                   sfxPresetIds: hyperframesFinalSfxPresetIds,
+                  sfxDrafts: hyperframesFinalSfxDrafts,
                 }).slice(0, 12);
                 if (events.length === 0) {
                   return (
@@ -5092,12 +6442,20 @@ export default function StoryboardReviewPage() {
                     ))}
                   </div>
                 );
-              })()}
-              <p className="mt-2 text-[11px] text-slate-500">
-                {locale === "th"
-                  ? "ถ้ายังไม่มี licensed staged asset ระบบจะบันทึก missing asset refs และใช้ fallback ตาม policy ที่เลือก"
-                  : "When licensed staged assets are not available, missing refs are recorded and the selected fallback policy is used."}
-              </p>
+              })() : (
+                <p className="text-[11px] text-slate-500">
+                  {locale === "th"
+                    ? "ยุบไว้เพื่อลดพื้นที่ เปิดดูเมื่อต้องตรวจ timing เพลง/SFX ก่อน render"
+                    : "Collapsed to save space. Expand when you need to inspect music/SFX timing before render."}
+                </p>
+              )}
+              {isHyperframesFinalAudioPreviewExpanded ? (
+                <p className="mt-2 text-[11px] text-slate-500">
+                  {locale === "th"
+                    ? "ถ้ายังไม่มี licensed staged asset ระบบจะบันทึก missing asset refs และใช้ fallback ตาม policy ที่เลือก"
+                    : "When licensed staged assets are not available, missing refs are recorded and the selected fallback policy is used."}
+                </p>
+              ) : null}
             </div>
             <div className="mt-3 rounded-lg border bg-slate-950 p-3 text-white">
               <style>{`
@@ -5165,29 +6523,60 @@ export default function StoryboardReviewPage() {
                     {locale === "th" ? "ใช้ข้อความชุดเดียวกับที่จะส่งเข้า renderer จริง" : "Uses the same copy that will be sent to the renderer."}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
-                  onClick={() => setHyperframesFinalShotTextById({})}
-                >
-                  {locale === "th" ? "เติมจาก preset อีกครั้ง" : "Refill from preset"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
+                    onClick={() => setIsHyperframesFinalTextPreviewExpanded(current => !current)}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "mr-2 h-3.5 w-3.5 transition-transform",
+                        isHyperframesFinalTextPreviewExpanded ? "rotate-180" : ""
+                      )}
+                    />
+                    {isHyperframesFinalTextPreviewExpanded
+                      ? locale === "th" ? "ยุบ preview" : "Collapse preview"
+                      : locale === "th" ? "เปิด preview" : "Show preview"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-white/20 bg-white/10 text-white hover:bg-white/20"
+                    onClick={() => setHyperframesFinalShotTextById({})}
+                  >
+                    {locale === "th" ? "เติมจาก preset อีกครั้ง" : "Refill from preset"}
+                  </Button>
+                </div>
               </div>
+              {isHyperframesFinalTextPreviewExpanded ? (
               <div className="mt-3 grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
                 {(() => {
-                  const previewPreset = hyperframesFinalOverlayPreset;
-                  const presetMeta = getHyperframesOverlayPresetMeta(hyperframesFinalOverlayPreset);
+                  const selectedPreviewClip = hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ?? hyperframesFinalSourceClips[0];
+                  const selectedPreviewIndex = selectedPreviewClip
+                    ? Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === selectedPreviewClip.id))
+                    : 0;
+                  const previewPreset = selectedPreviewClip
+                    ? hyperframesFinalShotOverlayPresetById[selectedPreviewClip.id] ?? hyperframesFinalOverlayPreset
+                    : hyperframesFinalOverlayPreset;
+                  const presetMeta = getHyperframesOverlayPresetMeta(previewPreset);
+                  const selectedShotOverlay = selectedPreviewClip
+                    ? hyperframesFinalShotTextById[selectedPreviewClip.id] ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex)
+                    : "";
+                  const selectedSubtitle = selectedPreviewClip
+                    ? hyperframesFinalSubtitleById[selectedPreviewClip.id] ?? defaultHyperframesSubtitleText(selectedPreviewClip)
+                    : "";
                   const previewLines = uniqueHyperframesOverlayLines([
-                    hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-                    hyperframesFinalHookText,
-                    ...(hyperframesFinalSourceClips[0]
-                      ? (hyperframesFinalShotTextById[hyperframesFinalSourceClips[0].id] ?? defaultHyperframesShotText(hyperframesFinalSourceClips[0], 0)).split(/\n+/)
-                      : []),
+                    selectedShotOverlay,
+                    selectedSubtitle,
+                    selectedPreviewIndex === 0 ? hyperframesFinalHookText : "",
+                    selectedPreviewIndex === 0 ? hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : "") : "",
                   ]).slice(0, 4);
-                  const title = previewLines[0] || (locale === "th" ? "ข้อความ Hook" : "Hook text");
-                  const hook = previewLines[1] || (locale === "th" ? "จุดขายหลักของสินค้า" : "Main selling point");
+                  const title = previewLines[0] || (locale === "th" ? `ข้อความ shot ${selectedPreviewIndex + 1}` : `Shot ${selectedPreviewIndex + 1} text`);
+                  const hook = previewLines[1] || firstThaiProductLine(selectedSubtitle, 90) || (locale === "th" ? "บทพูดของ shot นี้" : "This shot voiceover");
                   const chips = previewLines.slice(2);
                   const priceText = chips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? hook;
                   return (
@@ -5204,7 +6593,7 @@ export default function StoryboardReviewPage() {
                             "hf-preview-badge inline-block rounded-sm px-2 py-1 text-[11px] font-black uppercase",
                             presetMeta.kind === "price" ? "bg-yellow-300 text-slate-950" : "bg-cyan-300 text-slate-950",
                           )}>
-                            {locale === "th" ? presetMeta.labelTh : presetMeta.labelEn}
+                            Shot {selectedPreviewIndex + 1} · {locale === "th" ? presetMeta.labelTh : presetMeta.labelEn}
                           </div>
                           <div className={cn(
                             "hf-preview-title mt-3 max-w-[92%] font-black leading-tight",
@@ -5263,7 +6652,7 @@ export default function StoryboardReviewPage() {
                   <div className="absolute inset-x-4 bottom-5 flex justify-center text-center text-sm font-bold leading-relaxed">
                     {(() => {
                       const subtitleText = hyperframesFinalSourceClips[0]
-                        ? hyperframesFinalSubtitleById[hyperframesFinalSourceClips[0].id] ?? defaultHyperframesSubtitleText(hyperframesFinalSourceClips[0])
+                        ? hyperframesFinalSubtitleById[(hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ?? hyperframesFinalSourceClips[0]).id] ?? defaultHyperframesSubtitleText(hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ?? hyperframesFinalSourceClips[0])
                         : locale === "th" ? "ยังไม่มี shot ที่พร้อม" : "No ready shot";
                       const line = firstThaiProductLine(subtitleText, 74);
                       if (hyperframesFinalSubtitlePreset === "karaoke_word") {
@@ -5286,49 +6675,68 @@ export default function StoryboardReviewPage() {
                   </div>
                 </div>
               </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-slate-400">
+                  {locale === "th"
+                    ? "ยุบไว้เพื่อลดพื้นที่ เปิดดูเมื่อต้องตรวจ layout overlay/subtitle ก่อนส่ง render"
+                    : "Collapsed to save space. Expand when checking overlay/subtitle layout before render."}
+                </p>
+              )}
             </div>
-            <div className="mt-3 grid gap-2 lg:grid-cols-2">
-              {hyperframesFinalSourceClips.slice(0, 12).map((clip, index) => (
-                <div key={clip.id} className="rounded-lg border bg-slate-50 p-2">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-slate-900">
-                        Shot {index + 1} · {Math.round(clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
-                      </p>
-                      <p className="truncate text-[11px] text-slate-500">{clip.url}</p>
-                    </div>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setVideoPreview({ url: clip.url, title: `Shot ${index + 1}` })}>
-                      <Maximize2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                  <label className="grid gap-1 text-[11px] font-medium text-slate-600">
-                    {locale === "th" ? "Spec / Feature overlay" : "Spec / feature overlay"}
-                    <Textarea
-                      value={hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index)}
-                      onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [clip.id]: event.target.value }))}
-                      className="min-h-[64px] bg-white text-xs"
-                    />
-                  </label>
-                  <label className="mt-2 grid gap-1 text-[11px] font-medium text-slate-600">
-                    {locale === "th" ? "Subtitle / Voiceover" : "Subtitle / voiceover"}
-                    <span className="text-[10px] font-normal text-slate-500">
-                      {locale === "th"
-                        ? "หนึ่งบรรทัด = 1 subtitle cue ระบบแบ่งเวลาตาม shot ให้อัตโนมัติ หรือใส่ 0.0-2.0: ข้อความ เพื่อกำหนดเวลาเอง"
-                        : "One line = one subtitle cue. Timing is auto-split, or use 0.0-2.0: text for manual timing."}
-                    </span>
-                    <Textarea
-                      value={hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip)}
-                      onChange={event => setHyperframesFinalSubtitleById(current => ({ ...current, [clip.id]: event.target.value }))}
-                      className="min-h-[72px] bg-white text-xs"
-                      placeholder={locale === "th" ? "เช่น\n0.0-2.0: เปิดด้วยปัญหา\n2.0-5.0: เสนอสินค้า\nหรือพิมพ์ทีละบรรทัดให้ระบบแบ่งเวลาเอง" : "Example\n0.0-2.0: Hook line\n2.0-5.0: Product benefit\nOr type one line per cue for automatic timing"}
-                    />
-                  </label>
+            {hyperframesFinalSourceClips.length > 0 ? (
+              <div className="mt-3 rounded-lg border bg-slate-50 p-3 text-xs text-slate-700">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-950">
+                    {locale === "th" ? "Shot configuration summary" : "Shot configuration summary"}
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 bg-white"
+                    onClick={() => setVideoPreview({
+                      url: hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex]?.url ?? hyperframesFinalSourceClips[0]!.url,
+                      title: `Shot ${hyperframesFinalPreviewShotIndex + 1}`,
+                    })}
+                  >
+                    <Maximize2 className="mr-2 h-3.5 w-3.5" />
+                    {locale === "th" ? "ดูวิดีโอ shot ที่เลือก" : "Preview selected video"}
+                  </Button>
                 </div>
-              ))}
-            </div>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {hyperframesFinalSourceClips.slice(0, 12).map((clip, index) => {
+                    const overlay = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+                    const subtitle = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
+                    const style = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
+                    return (
+                      <button
+                        key={clip.id}
+                        type="button"
+                        onClick={() => setHyperframesFinalPreviewShotIndex(index)}
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-left",
+                          index === hyperframesFinalPreviewShotIndex
+                            ? "border-sky-300 bg-white text-sky-950"
+                            : "border-slate-200 bg-white/70 text-slate-700 hover:bg-white",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold">Shot {index + 1}</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">
+                            {style}
+                          </span>
+                        </div>
+                        <p className="mt-1 truncate text-[11px]">{overlay || firstThaiProductLine(subtitle, 80)}</p>
+                        <p className="mt-1 truncate text-[10px] text-slate-500">{clip.url}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             {hyperframesFinalSourceClips.length === 0 ? (
               <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {locale === "th" ? "ยังไม่มี MP4 ที่ completed ใน Storyboard Review ให้ render final composite" : "No completed MP4 shots are available for final composite rendering."}
+                {hyperframesFinalMissingVideoDetail || hyperframesFinalMissingVideoTitle}
               </p>
             ) : null}
               </div>

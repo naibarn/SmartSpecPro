@@ -69,8 +69,8 @@ preview.
 
 ### section-05-composition-builder-timeline-and-fallback
 
-Normalize timeline and generate deterministic composition HTML/CSS/GSAP plus
-explicit FFmpeg fallback capability reports.
+Normalize timeline and generate deterministic HyperFrames composition
+HTML/CSS/GSAP plus explicit diagnostic fallback capability reports.
 
 ### section-06-render-worker-and-output-projection
 

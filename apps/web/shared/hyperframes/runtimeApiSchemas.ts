@@ -207,6 +207,9 @@ export const HyperframesFinalCompositeShotInputSchema = z
       .array(HyperframesFinalCompositeSubtitleCueSchema)
       .max(12)
       .default([]),
+    overlayPreset: HyperframesFinalCompositeOverlayPresetSchema.optional().default(
+      "auto"
+    ),
     animationPreset: z
       .enum([
         "smooth_reveal",
@@ -265,7 +268,7 @@ export const HyperframesFinalCompositeConfigSchema = z
         validatedAssets: [],
       }),
     fontFamily: HyperframesThaiFontFamilySchema.optional().default("Prompt"),
-    styleBrief: z.string().trim().max(1200).optional().default(""),
+    styleBrief: z.string().trim().max(4000).optional().default(""),
     hookText: z.string().trim().max(160).optional().default(""),
     supportingText: z.string().trim().max(160).optional().default(""),
     subtitlePlacement: z
@@ -380,31 +383,51 @@ export const ListHyperframesCreativePresetsOutputSchema = z
       .object({
         canUseProducerPresets: z.boolean(),
         canUseFallbackPresets: z.boolean(),
+        canUseOfficialCliPresets: z.boolean().default(false),
         canUseAudioPacks: z.boolean(),
         canUseSfx: z.boolean(),
       })
       .strict()
       .default({
         canUseProducerPresets: false,
-        canUseFallbackPresets: true,
+        canUseFallbackPresets: false,
+        canUseOfficialCliPresets: false,
         canUseAudioPacks: false,
         canUseSfx: false,
       }),
     runtimeCapabilities: z
       .object({
+        diagnosticFallbackOnly: z.boolean().default(true),
+        hyperframesCli: z.boolean().default(false),
         ffmpegAssFallback: z.boolean(),
         smokeRenderer: z.boolean(),
         hyperframesProducer: z.boolean(),
+        runtimeMode: z
+          .enum([
+            "official_runtime_blocked",
+            "official_cli_ready",
+            "official_producer_ready",
+            "canary",
+            "rollback",
+          ])
+          .default("official_runtime_blocked"),
         minRuntimeProfile: z.string().min(1).max(180),
         testedRuntimeProfileHash: z.string().min(6).max(160),
+        minHyperframesVersion: z.string().min(1).max(80).default("0.6.95"),
+        testedHyperframesVersion: z.string().min(1).max(80).default("0.6.95"),
       })
       .strict()
       .default({
-        ffmpegAssFallback: true,
-        smokeRenderer: true,
+        diagnosticFallbackOnly: true,
+        hyperframesCli: false,
+        ffmpegAssFallback: false,
+        smokeRenderer: false,
         hyperframesProducer: false,
+        runtimeMode: "official_runtime_blocked",
         minRuntimeProfile: "feature_120_runtime_v1",
         testedRuntimeProfileHash: "hf_runtime_feature_120_v1",
+        minHyperframesVersion: "0.6.95",
+        testedHyperframesVersion: "0.6.95",
       }),
     presetAvailability: z
       .record(
@@ -412,7 +435,14 @@ export const ListHyperframesCreativePresetsOutputSchema = z
           .object({
             selectable: z.boolean(),
             reason: z.string().max(240).nullable(),
-            fallbackMode: z.enum(["producer", "ffmpeg_ass", "not_available"]),
+            fallbackMode: z.enum([
+              "official_producer",
+              "official_cli",
+              "diagnostic_only",
+              "not_available",
+              "producer",
+              "ffmpeg_ass",
+            ]),
           })
           .strict()
       )

@@ -14,7 +14,7 @@ accurate status, audio behavior, manifests, and user-visible actions.
   `templateContentHash`, `platformPresetId`, `platformPresetVersion`,
   `renderIntent`, `compositionMode`, and `runtimeProfileHash`;
 - Feature 120 optional outbox fields: `creativePlanHash`,
-  `presetManifestHash`, `audioEventMapHash`, and `fallbackQuality`;
+  `presetManifestHash`, `audioEventMapHash`, and `diagnosticFallbackQuality`;
 - preserve native audio by default when configured plus explicit mute/replace
   policies;
 - `preserveNativeAudio` remains an explicit render input, manifest field, and QA
@@ -25,7 +25,8 @@ accurate status, audio behavior, manifests, and user-visible actions.
 - SFX visual trigger, timing offset, volume, and ducking policy validation;
 - staged-manifest ownership, MIME, duration/size, and checksum validation;
 - runtime profile hash, `runtimeCapabilityHash`, and runtime version diagnostics;
-- FFmpeg fallback hardening and producer capability path;
+- diagnostic fallback reporting and official HyperFrames CLI/producer
+  capability path;
 - playable output probe before completion;
 - sanitized output refs for open/download actions;
 - refresh/resume status recovery.
@@ -78,8 +79,9 @@ Add failing tests for:
 ## Implementation Notes
 
 The current worker already has FFmpeg/ASS behavior. Preserve it as an explicit
-fallback path, but make rich creative output depend on the capability report from
-Section 05.
+diagnostic/break-glass fallback path only. Rich creative output, completion,
+Library save, and credit consumption depend on official HyperFrames CLI,
+`@hyperframes/producer`, or producer server evidence from Section 05.
 
 Do not mark a manifest-only job as completed.
 
@@ -98,6 +100,8 @@ Sidecars must stay compatible with current Feature 119 artifact/output kinds:
 - QA results and output artifacts are stored or referenced through existing
   Feature 119 artifacts.
 - Failed renders are diagnosable without exposing private internals.
+- Completed creative renders require official HyperFrames runtime evidence;
+  diagnostic fallback output cannot satisfy completion.
 
 ## Rollback Notes
 

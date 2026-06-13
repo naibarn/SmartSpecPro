@@ -97,6 +97,27 @@ function isHyperframesRuntimeReadyForProjection(): boolean {
   return truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY);
 }
 
+const DEFAULT_HYPERFRAMES_QUEUED_STALE_MS = 2 * 60 * 1000;
+
+function hyperframesQueuedStaleMs(): number {
+  const parsed = Number(process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS);
+  return Number.isFinite(parsed) && parsed >= 15_000
+    ? Math.min(parsed, 10 * 60 * 1000)
+    : DEFAULT_HYPERFRAMES_QUEUED_STALE_MS;
+}
+
+function dateAgeMs(value: unknown, nowMs = Date.now()): number | null {
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isFinite(ms) ? Math.max(0, nowMs - ms) : null;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const ms = new Date(value).getTime();
+    return Number.isFinite(ms) ? Math.max(0, nowMs - ms) : null;
+  }
+  return null;
+}
+
 const HYPERFRAMES_CANCELLABLE_OUTBOX_STATUSES = [
   "queued",
   "pending",
@@ -112,6 +133,16 @@ const HYPERFRAMES_USER_RETRYABLE_RENDER_STATUSES = new Set([
 const HYPERFRAMES_USER_RETRYABLE_OUTBOX_STATUSES = ["failed"] as const;
 
 const HYPERFRAMES_CANCELLABLE_RENDER_STATUSES = new Set<HyperframesRenderStatus>([
+  "queued",
+  "staging_assets",
+  "linting",
+  "snapshotting",
+  "inspecting",
+  "rendering",
+  "qa_checking",
+]);
+
+const HYPERFRAMES_ACTIVE_RENDER_STATUSES = new Set<HyperframesRenderStatus>([
   "queued",
   "staging_assets",
   "linting",
@@ -296,11 +327,17 @@ export function buildHyperframesRenderJobPayload(input: {
   traceId?: string;
   correlationId?: string;
 }): HyperframesRenderJobPayload {
-  const compositionHtmlHash = stableHash({
-    template: input.composition.template,
-    copy: input.composition.copy,
-    platform: input.composition.platformPreset.presetId,
-  });
+  const compositionHtmlHash = input.composition.compositionHtml
+    ? stableHash({
+        compositionHtml: input.composition.compositionHtml,
+        template: input.composition.template,
+        platform: input.composition.platformPreset.presetId,
+      })
+    : stableHash({
+        template: input.composition.template,
+        copy: input.composition.copy,
+        platform: input.composition.platformPreset.presetId,
+      });
   const finalCompositeConfig =
     input.composition.finalCompositeConfig &&
     typeof input.composition.finalCompositeConfig === "object"
@@ -582,6 +619,12 @@ function outputRefsFromPayload(input: {
   };
 }
 
+function hasCompletedHyperframesOutput(
+  outputRefs: HyperframesOutputRef[]
+): boolean {
+  return outputRefs.some(ref => Boolean(ref.url) && Boolean(ref.contentHash));
+}
+
 function hasMarketplaceProductMutationAccess(
   access: Awaited<ReturnType<typeof getMarketplaceProductWithAccess>>
 ): boolean {
@@ -738,6 +781,13 @@ export async function getHyperframesRenderProjection(input: {
         job.lastError,
         job.jobType
       );
+      const hasCompletedOutput = hasCompletedHyperframesOutput(
+        outputRefs.outputRefs
+      );
+      const effectiveRenderStatus =
+        hasCompletedOutput && HYPERFRAMES_ACTIVE_RENDER_STATUSES.has(renderStatus)
+          ? "completed"
+          : renderStatus;
       const hasSafeFinalVideoOutput = outputRefs.outputRefs.some(ref =>
         ref.kind === "final_video" &&
         Boolean(ref.url) &&
@@ -745,28 +795,45 @@ export async function getHyperframesRenderProjection(input: {
       );
       const finalProbePassed = payload.playableProbe?.passed === true;
       const completedFinalMissingPlayableOutput =
-        renderStatus === "completed" &&
+        effectiveRenderStatus === "completed" &&
         payload.renderIntent === "final" &&
         (!hasSafeFinalVideoOutput || !finalProbePassed);
+      const queuedAgeMs = dateAgeMs(job.updatedAt);
+      const queuedStale =
+        effectiveRenderStatus === "queued" &&
+        Number(job.attempts ?? 0) === 0 &&
+        !job.lockedBy &&
+        queuedAgeMs != null &&
+        queuedAgeMs >= hyperframesQueuedStaleMs();
       const runtimeDeferred =
-        renderStatus === "queued" &&
+        effectiveRenderStatus === "queued" &&
         Number(job.attempts ?? 0) === 0 &&
         !job.lockedBy &&
         !isHyperframesRuntimeReadyForProjection();
       const projectedStatus = completedFinalMissingPlayableOutput
         ? "failed_permanent"
-        : runtimeDeferred
+        : runtimeDeferred || queuedStale
         ? "blocked_needs_user"
-        : renderStatus;
+        : effectiveRenderStatus;
       const safeDiagnostics = [
         ...(completedFinalMissingPlayableOutput
           ? [
               "HyperFrames final render completed without a verified playable final video output.",
             ]
           : []),
+        ...(hasCompletedOutput && renderStatus !== "completed"
+          ? [
+              "HyperFrames output artifact exists even though the worker queue status is stale; projection is closed as completed.",
+            ]
+          : []),
         ...(runtimeDeferred
           ? [
               "HyperFrames runtime is not ready; this job is queued and has not started rendering.",
+            ]
+          : []),
+        ...(queuedStale
+          ? [
+              "HyperFrames render job has stayed queued longer than expected without a worker lock or attempt.",
             ]
           : []),
         ...(job.lastError ? [job.lastError.slice(0, 240)] : []),
@@ -780,6 +847,8 @@ export async function getHyperframesRenderProjection(input: {
         payload,
         safeMessage: runtimeDeferred
           ? "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render"
+          : queuedStale
+          ? "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก"
           : undefined,
         safeDiagnostics,
         outputRefs: outputRefs.outputRefs,

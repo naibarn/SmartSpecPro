@@ -145,6 +145,54 @@ describe("hyperframesRenderService", () => {
     );
   });
 
+  it("hashes the actual HyperFrames composition HTML for final composite provenance", () => {
+    const baseInput = {
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        overlayPreset: "spec_highlight" as const,
+        subtitlePreset: "classic_box" as const,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+            onScreenText: ["จอใหญ่"],
+          },
+        ],
+      },
+    };
+    const firstPayload = buildHyperframesRenderJobPayload({
+      composition: buildHyperframesFinalCompositeCompositionInput({
+        ...baseInput,
+        finalComposite: {
+          ...baseInput.finalComposite,
+          hookText: "จอใหญ่",
+        },
+      }),
+    });
+    const secondPayload = buildHyperframesRenderJobPayload({
+      composition: buildHyperframesFinalCompositeCompositionInput({
+        ...baseInput,
+        finalComposite: {
+          ...baseInput.finalComposite,
+          hookText: "ลดแรงวันนี้",
+        },
+      }),
+    });
+
+    expect(firstPayload.compositionHtmlHash).toMatch(/^hf_/);
+    expect(secondPayload.compositionHtmlHash).toMatch(/^hf_/);
+    expect(firstPayload.compositionHtmlHash).not.toBe(
+      secondPayload.compositionHtmlHash
+    );
+  });
+
   it("always returns explicit repairActions arrays", () => {
     const projection = buildHyperframesRenderProjection({
       tenantId: "tenant_1",
@@ -314,6 +362,144 @@ describe("hyperframesRenderService", () => {
         delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
       } else {
         process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
+      }
+    }
+  });
+
+  it("closes a stale queued render as completed when runtime output already exists", async () => {
+    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+    delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+    mockGetDb.mockResolvedValue(
+      createOutboxSelectDb({
+        id: "hf_render_stale_output",
+        tenantId: "tenant_1",
+        userId: 1,
+        runId: "mar_1",
+        status: "queued",
+        attempts: 0,
+        lockedBy: null,
+        lastError: null,
+        jobType: "hyperframes_render",
+        payloadJson: {
+          productId: "product_1",
+          compositionInputHash: "hf_input_output",
+          compositionHtmlHash: "hf_html_output",
+          templateId: "marketplace_storyboard_motion_9x9_v1",
+          templateVersion: "1.0.0",
+          platformPresetId: "generic_vertical_9_16",
+          platformPresetVersion: "1.0.0",
+          renderIntent: "preview",
+          compositionMode: "storyboard_motion_preview",
+          runtimeProfileHash: "hf_runtime",
+          outputUrl: "https://cdn.example.test/hyperframes-preview.mp4",
+          outputArtifactRef: {
+            artifactId: "hf_output_1",
+            kind: "hyperframes_render_mp4",
+            storageRef:
+              "marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_render_stale_output/output.mp4",
+            contentHash: "hf_output_hash",
+            mimeType: "video/mp4",
+            retentionClass: "review",
+            redacted: true,
+          },
+        },
+        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
+      })
+    );
+
+    try {
+      const projection = await getHyperframesRenderProjection({
+        auth: { userId: 1, tenantId: "tenant_1" },
+        renderJobId: "hf_render_stale_output",
+        productId: "product_1",
+        runId: "mar_1",
+      });
+
+      expect(projection).toMatchObject({
+        status: "completed",
+        progressPercent: 100,
+        renderIntent: "preview",
+      });
+      expect(projection.outputRefs[0]).toMatchObject({
+        kind: "preview_video",
+        url: "https://cdn.example.test/hyperframes-preview.mp4",
+        contentHash: "hf_output_hash",
+      });
+      expect(projection.safeDiagnostics[0]).toContain(
+        "output artifact exists"
+      );
+      expect(projection.safeDiagnostics.join(" ")).not.toContain(
+        "runtime is not ready"
+      );
+    } finally {
+      if (previousRuntimeReady === undefined) {
+        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+      } else {
+        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
+      }
+    }
+  });
+
+  it("stops projecting old queued render jobs as active forever", async () => {
+    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+    const previousQueuedStaleMs =
+      process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS;
+    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "1";
+    process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS = "15000";
+    mockGetDb.mockResolvedValue(
+      createOutboxSelectDb({
+        id: "hf_render_old_queued",
+        tenantId: "tenant_1",
+        userId: 1,
+        runId: "mar_1",
+        status: "queued",
+        attempts: 0,
+        lockedBy: null,
+        lastError: null,
+        jobType: "hyperframes_render",
+        payloadJson: {
+          productId: "product_1",
+          compositionInputHash: "hf_input_old_queue",
+          compositionHtmlHash: "hf_html_old_queue",
+          templateId: "marketplace_storyboard_motion_9x9_v1",
+          templateVersion: "1.0.0",
+          platformPresetId: "generic_vertical_9_16",
+          renderIntent: "preview",
+          compositionMode: "storyboard_motion_preview",
+        },
+        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
+      })
+    );
+
+    try {
+      const projection = await getHyperframesRenderProjection({
+        auth: { userId: 1, tenantId: "tenant_1" },
+        renderJobId: "hf_render_old_queued",
+        productId: "product_1",
+        runId: "mar_1",
+      });
+
+      expect(projection).toMatchObject({
+        status: "blocked_needs_user",
+        safeMessage:
+          "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก",
+        progressPercent: 0,
+      });
+      expect(projection.safeDiagnostics[0]).toContain(
+        "stayed queued longer than expected"
+      );
+      expect(projection.permissions.canCancel).toBe(false);
+    } finally {
+      if (previousRuntimeReady === undefined) {
+        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+      } else {
+        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
+      }
+      if (previousQueuedStaleMs === undefined) {
+        delete process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS;
+      } else {
+        process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS =
+          previousQueuedStaleMs;
       }
     }
   });

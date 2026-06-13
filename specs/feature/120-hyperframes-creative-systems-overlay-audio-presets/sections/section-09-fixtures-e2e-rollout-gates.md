@@ -95,8 +95,13 @@ preset does not depend on an unresolved decision row.
 - `npm --prefix apps/web run hyperframes:doctor` reports runtime, storage, temp
   workspace, and Thai font readiness before final render rollout.
 - `hyperframes:fixture-render` produces valid playable MP4 evidence.
-- `hyperframes:snapshot-test` proves preset visual differences.
-- `hyperframes:production-rollout-gate` rejects manifest-only completion.
+- `hyperframes:snapshot-test` derives golden evidence from the pinned official
+  HyperFrames fixture output, not from the diagnostic smoke renderer.
+- `hyperframes:rollback-drill` proves runtime-disable rollback keeps completed
+  artifacts readable and prevents diagnostic fallback from completing final
+  user-facing renders.
+- `hyperframes:production-rollout-gate` rejects manifest-only completion and
+  reads fresh evidence artifacts instead of trusting manual env bypass flags.
 - Existing Feature 119 Marketplace HyperFrames flows still pass with Feature 120
   creative flags disabled.
 - Mobile screenshots show no overflow or broken scroll.

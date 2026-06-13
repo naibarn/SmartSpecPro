@@ -2,9 +2,9 @@
 
 ## Goal
 
-Plan the dependency, runtime, rollout, documentation, and rollback work needed before HyperFrames can move from contract/service planning into production execution.
+Plan the dependency, runtime, rollout, documentation, maintenance, and rollback work needed before HyperFrames can move from contract/service planning into production execution.
 
-This section intentionally delays package installation until dependency and runtime checks are complete.
+This section intentionally delays package installation until dependency and runtime checks are complete. Once rendering is enabled, production output must use official HyperFrames CLI or producer/runtime APIs, not a SmartSpecPro-owned renderer that reimplements HyperFrames behavior.
 
 This section has two execution slices:
 
@@ -17,6 +17,7 @@ This section has two execution slices:
 ## In Scope
 
 - HyperFrames dependency audit.
+- HyperFrames upstream version detection and compatibility update pipeline.
 - Runtime doctor checks.
 - Worker/container runtime requirements.
 - Worker/browser isolation requirements.
@@ -62,17 +63,24 @@ Add failing tests/checks for:
 - worker disabled state preserves Standard Order;
 - rollback flags stop new jobs while existing Library items remain accessible.
 - docs/runbook include credit/cost/quota, storage paths, isolation boundaries, exact retention defaults, and template governance.
+- official runtime evidence is required before any render can be marked
+  production-complete.
+- upstream HyperFrames update detection opens a review artifact or PR and does
+  not mutate production runtime versions directly.
 
 Preflight checks before Section 05:
 
 - package names and exact versions are known or explicitly deferred;
 - no `@hyperframes/*` package is added to the main app bundle unless the audit
   approves that boundary;
-- local/dev CLI path and production `@hyperframes/producer` worker path are
-  documented as separate runtime modes;
+- local/dev CLI path, compatibility-first CLI worker path, and production
+  `@hyperframes/producer`/producer-server path are documented as official
+  runtime modes;
 - doctor can run without secrets and can report missing Chrome/FFmpeg/fonts;
 - worker/container decision records whether production rendering runs in a
   dedicated worker image, sidecar job, or disabled state.
+- any Playwright/FFmpeg smoke renderer is documented as diagnostic-only and
+  cannot unlock user-facing full render features.
 
 ## Preflight Deliverables
 
@@ -83,6 +91,8 @@ Before Section 05 runtime execution starts, this section must produce:
 - doctor result covering Node, HyperFrames CLI/runtime, Chrome/headless shell,
   FFmpeg/FFprobe, fonts, temp workspace, and storage access;
 - runtime mode decision for local/dev CLI and production worker/container;
+- version-maintenance decision covering pinned versions, update detection,
+  canary, rollback, and compatibility fixture suite;
 - pass/partial/fail gate result with the allowed Section 05 implementation scope;
 - Standard Order regression proof for dependency failed, worker off, and flags
   off states;
@@ -108,10 +118,31 @@ The preferred first implementation should keep HyperFrames runtime server/worker
 Preflight gate result:
 
 - `pass`: Section 05 may implement worker execution and fixture render hooks;
-- `partial`: Section 05 may implement contracts, queue state, and disabled-worker
-  projections, but must not execute HyperFrames runtime;
+- `partial`: Section 05 may implement contracts, queue state, diagnostic smoke
+  evidence, and disabled-worker projections, but must not mark user-facing
+  render output complete;
 - `fail`: keep HyperFrames UI hidden/disabled and continue only with shared
   contracts and Standard Order regression tests.
+
+## Version Maintenance Pipeline
+
+HyperFrames updates must be handled as a controlled maintenance workflow:
+
+- detect upstream GitHub/npm releases without changing production behavior;
+- compare latest versions with pinned runtime registry;
+- produce an update report with release/changelog links, dependency diff,
+  postinstall/native behavior, worker-image impact, and expected feature impact;
+- open a dependency/update PR or internal review artifact;
+- run dependency audit, doctor, official runtime fixture render, snapshot tests,
+  and seeded route E2E;
+- render old and candidate runtimes against the compatibility fixture suite;
+- promote candidate runtime only to canary until render quality, duration, error
+  rate, Thai text, captions, overlays, audio/SFX, and Library handoff evidence
+  pass;
+- verify rollback to the previous pinned runtime before default promotion.
+
+Production render jobs must record the pinned HyperFrames runtime version used
+for the output. Floating `latest` is prohibited for production render jobs.
 
 ## Runtime Doctor
 
@@ -159,6 +190,9 @@ Optional hardening flags:
 - `MARKETPLACE_HYPERFRAMES_TEMPLATE_ALLOWLIST`;
 - `MARKETPLACE_HYPERFRAMES_MAX_CONCURRENT_JOBS`;
 - `MARKETPLACE_HYPERFRAMES_PREVIEW_RETENTION_HOURS`;
+- `MARKETPLACE_HYPERFRAMES_RUNTIME_MODE`;
+- `MARKETPLACE_HYPERFRAMES_RUNTIME_CANARY_ALLOWLIST`;
+- `MARKETPLACE_HYPERFRAMES_RUNTIME_ROLLBACK_VERSION`;
 
 All flags default to the safest non-running state.
 
@@ -169,7 +203,12 @@ Implement these defaults unless a later product decision changes them:
 - one primary `Create Auto Storyboard Review` action on Product Detail;
 - backend auto plan queues HyperFrames preview when eligible;
 - render engine/template/platform controls are collapsed advanced overrides;
-- CLI in local/dev diagnostics, `@hyperframes/producer` in production worker after dependency gates pass;
+- official HyperFrames CLI in local/dev diagnostics and compatibility-first
+  worker execution;
+- `@hyperframes/producer` or producer server in production worker after
+  dependency, compatibility, canary, and rollback gates pass;
+- custom Playwright/FFmpeg renderer code is diagnostic/break-glass only and must
+  not satisfy completed production render gates;
 - built-in templates only in V1;
 - preview artifacts expire after 7 days unless saved to Library;
 - quota-first accounting, then credit billing after render cost metrics are known;
@@ -188,13 +227,14 @@ decision log, and affected tests before code implementation changes behavior.
 1. Contracts and tests with all flags off.
 2. Auto plan and UI hidden behind flags.
 3. Local/dev doctor and fixture render.
-4. Staging worker with fixture-only render.
-5. Internal tenant Auto Storyboard Review preview.
+4. Staging worker with official HyperFrames CLI fixture render.
+5. Internal tenant Auto Storyboard Review preview using official runtime.
 6. Internal tenant Library save.
 7. Limited tenant allowlist.
-8. 1:1 platform profile after e2e and snapshot evidence.
-9. Captioned final composite after generated clip, subtitle/audio, and final QA evidence.
-10. Broader rollout after observability and support review.
+8. Candidate HyperFrames version canary after compatibility suite passes.
+9. 1:1 platform profile after e2e and snapshot evidence.
+10. Captioned final composite after generated clip, subtitle/audio, and final QA evidence.
+11. Broader rollout after observability and support review.
 
 ## Documentation
 

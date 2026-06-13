@@ -13,14 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
 import {
-  buildHyperframesRenderLibrarySession,
-  getHyperframesRenderLibraryReadyOutput,
-  isHyperframesRenderQaPassed,
-  removeMediaStudioRenderLibrarySession,
-  upsertMediaStudioRenderLibrarySession,
-} from "@/lib/mediaStudioRenderLibrarySessions";
-import {
-  resolveHyperframesRenderRefetchInterval,
   resolveMarketplaceAutoReviewLaunchMode,
   shouldShowStandardOrderControls,
   shouldShowAutoStoryboardReviewSurface,
@@ -56,16 +48,13 @@ import { MarketplaceInsightsSection } from "@/components/marketplace/Marketplace
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
 import { AutoStoryboardAdvancedOverrides } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
-import { HyperframesRenderPanel } from "@/components/marketplaceCapture/HyperframesRenderPanel";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
 import type {
   HyperframesAutoPlanOverrideInput,
   HyperframesAutoStoryboardReviewPlan,
 } from "@shared/hyperframes/autoPlan";
 import {
-  buildHyperframesLibraryIdempotencyKey,
   type MarketplaceAutoReviewLaunchMode,
-  type HyperframesRenderStatusProjection,
 } from "@shared/hyperframes/contracts";
 import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
 
@@ -144,6 +133,9 @@ const AUTO_REVIEW_TERMINAL_STATUSES = new Set([
   "cancelled",
   "skipped",
 ]);
+const AUTO_REVIEW_RUN_ACTIVE_POLL_MS = 5_000;
+const AUTO_REVIEW_RUN_START_WAIT_POLL_MS = 3_000;
+const AUTO_REVIEW_RUN_STALE_MS = 5_000;
 const AUTO_REVIEW_PLANNED_STAGES = [
   "product_preflight",
   "production_project",
@@ -943,12 +935,6 @@ function hyperframesRenderRefFromAutoReviewRun(
     renderJobId,
     runId: firstCompactText(record.id, record.runId, autoPreview.runId, result.runId),
   };
-}
-
-function hyperframesRenderIsLibrarySessionCandidate(
-  render: HyperframesRenderStatusProjection | null | undefined
-): boolean {
-  return Boolean(buildHyperframesRenderLibrarySession(render));
 }
 
 function shortAuditRef(value: unknown, max = 28): string {
@@ -2116,12 +2102,6 @@ export default function MarketplaceCaptureProductDetail() {
     useState(false);
   const [autoStoryboardOverrides, setAutoStoryboardOverrides] =
     useState<HyperframesAutoPlanOverrideInput>({});
-  const [hyperframesRenderJobId, setHyperframesRenderJobId] = useState<
-    string | null
-  >(null);
-  const [hyperframesRenderRunId, setHyperframesRenderRunId] = useState<
-    string | null
-  >(null);
   const [pendingAutoReviewAction, setPendingAutoReviewAction] =
     useState<AutoReviewStartAction | null>(null);
   const [showAutoReviewRuns, setShowAutoReviewRuns] = useState(false);
@@ -2145,7 +2125,6 @@ export default function MarketplaceCaptureProductDetail() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const characterAnchorUploadInputRef = useRef<HTMLInputElement | null>(null);
   const environmentAnchorUploadInputRef = useRef<HTMLInputElement | null>(null);
-  const hyperframesRenderLibrarySessionKeyRef = useRef<string | null>(null);
   const [selectedProductImageId, setSelectedProductImageId] = useState<
     string | null
   >(null);
@@ -2231,40 +2210,35 @@ export default function MarketplaceCaptureProductDetail() {
       (!autoStoryboardPlanMatchesCurrentOverrides ||
         (autoStoryboardOverridesActive && autoStoryboardPlanQuery.isFetching))
   );
-  const hyperframesRenderJobQuery =
-    trpc.marketplaceCapture.getHyperframesRenderJob.useQuery(
-      {
-        renderJobId: hyperframesRenderJobId ?? "",
-        productId,
-        runId: hyperframesRenderRunId ?? undefined,
-      },
-      {
-        enabled: Boolean(productId && hyperframesRenderJobId),
-        refetchInterval: query => {
-          return resolveHyperframesRenderRefetchInterval(
-            (query.state.data as any)?.render
-          );
-        },
-        staleTime: 5_000,
-      }
-    );
   const shouldLoadAutoReviewRuns =
     Boolean(productId) &&
     (showAutoReviewRuns ||
       Boolean(pendingAutoReviewAction) ||
       optimisticAutoStoryboardStart ||
-      effectiveAutoReviewLaunchMode === "auto_storyboard_review" ||
-      Boolean(hyperframesRenderJobId));
+      effectiveAutoReviewLaunchMode === "auto_storyboard_review");
+  const autoReviewRunsQueryInput = useMemo(
+    () => ({ productId, limit: showAutoReviewHistory ? 8 : 3, summary: true }),
+    [productId, showAutoReviewHistory]
+  );
+  const shouldPollAutoReviewRunStart =
+    Boolean(pendingAutoReviewAction) || optimisticAutoStoryboardStart;
   const autoReviewRuns = trpc.marketplaceCapture.listAutoReviewRuns.useQuery(
-    { productId, limit: showAutoReviewHistory ? 8 : 3, summary: true },
+    autoReviewRunsQueryInput,
     {
       enabled: shouldLoadAutoReviewRuns,
       refetchInterval: query => {
         const runs = ((query.state.data as any[]) ?? []) as any[];
-        return runs.some(isAutoReviewRunBlockingStart) ? 15000 : false;
+        if (runs.some(isAutoReviewRunBlockingStart)) {
+          return AUTO_REVIEW_RUN_ACTIVE_POLL_MS;
+        }
+        return shouldPollAutoReviewRunStart
+          ? AUTO_REVIEW_RUN_START_WAIT_POLL_MS
+          : false;
       },
+      refetchOnMount: "always",
+      refetchOnReconnect: true,
       refetchOnWindowFocus: true,
-      staleTime: 30_000,
+      staleTime: shouldPollAutoReviewRunStart ? 0 : AUTO_REVIEW_RUN_STALE_MS,
     }
   );
   const mediaHistory = trpc.media.listTasks.useQuery(
@@ -2413,10 +2387,7 @@ export default function MarketplaceCaptureProductDetail() {
           });
         }
         await Promise.all([
-          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
-            productId,
-            limit: 8,
-          }),
+          utils.marketplaceCapture.listAutoReviewRuns.invalidate(),
           utils.marketplaceCapture.getProduct.invalidate({ productId }),
         ]);
         setShowAutoReviewRuns(true);
@@ -2430,17 +2401,11 @@ export default function MarketplaceCaptureProductDetail() {
         );
       },
       onError: error => toast.error(error.message),
+      onSettled: () => setPendingAutoReviewAction(null),
     });
   const startAutoStoryboardReviewMutation =
     trpc.marketplaceCapture.startAutoStoryboardReview.useMutation({
       onSuccess: async result => {
-        const renderJobId = result.render?.renderJobId;
-        if (renderJobId) {
-          setHyperframesRenderJobId(renderJobId);
-          setHyperframesRenderRunId(
-            compactText(result.render?.runId) || compactText(result.run?.id) || null
-          );
-        }
         const startedRunKeys = autoReviewRunIdentityKeys(result.run);
         if (startedRunKeys.length > 0) {
           setSuppressedAutoReviewRunIds(previous => {
@@ -2450,10 +2415,7 @@ export default function MarketplaceCaptureProductDetail() {
           });
         }
         await Promise.all([
-          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
-            productId,
-            limit: 8,
-          }),
+          utils.marketplaceCapture.listAutoReviewRuns.invalidate(),
           utils.marketplaceCapture.getProduct.invalidate({ productId }),
           utils.marketplaceCapture.getAutoStoryboardReviewPlan.invalidate({
             productId,
@@ -2473,10 +2435,7 @@ export default function MarketplaceCaptureProductDetail() {
     trpc.marketplaceCapture.selectAutoReviewImageAttemptForStoryboardReview.useMutation({
       onSuccess: async (result: any) => {
         await Promise.all([
-          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
-            productId,
-            limit: 8,
-          }),
+          utils.marketplaceCapture.listAutoReviewRuns.invalidate(),
           utils.marketplaceCapture.getProduct.invalidate({ productId }),
         ]);
         setShowAutoReviewRuns(true);
@@ -2486,54 +2445,6 @@ export default function MarketplaceCaptureProductDetail() {
           storyboardUrl
             ? "ใช้ภาพชุดที่เลือกสร้าง Storyboard Review แล้ว"
             : "เลือกภาพชุดนี้สำหรับ Storyboard Review แล้ว"
-        );
-      },
-      onError: error => toast.error(error.message),
-    });
-  const cancelHyperframesRenderMutation =
-    trpc.marketplaceCapture.cancelHyperframesRenderJob.useMutation({
-      onSuccess: async result => {
-        setHyperframesRenderJobId(result.render.renderJobId);
-        setHyperframesRenderRunId(result.render.runId ?? null);
-        await hyperframesRenderJobQuery.refetch();
-        toast.success("ขอยกเลิก HyperFrames render แล้ว");
-      },
-      onError: error => toast.error(error.message),
-    });
-  const repairHyperframesRenderMutation =
-    trpc.marketplaceCapture.repairHyperframesRenderJob.useMutation({
-      onSuccess: async result => {
-        setHyperframesRenderJobId(result.render.renderJobId);
-        setHyperframesRenderRunId(result.render.runId ?? null);
-        await Promise.all([
-          utils.marketplaceCapture.getHyperframesRenderJob.invalidate({
-            renderJobId: result.render.renderJobId,
-            productId: result.render.productId,
-            runId: result.render.runId,
-          }),
-          utils.marketplaceCapture.listAutoReviewRuns.invalidate({
-            productId,
-            limit: 8,
-          }),
-        ]);
-        toast.success("HyperFrames repair queued");
-      },
-      onError: error => toast.error(error.message),
-    });
-  const saveHyperframesRenderMutation =
-    trpc.marketplaceCapture.saveHyperframesRenderToLibrary.useMutation({
-      onSuccess: async result => {
-        setHyperframesRenderJobId(result.render.renderJobId);
-        setHyperframesRenderRunId(result.render.runId ?? null);
-        removeMediaStudioRenderLibrarySession(result.render.renderJobId);
-        await Promise.all([
-          hyperframesRenderJobQuery.refetch(),
-          libraryItems.refetch(),
-        ]);
-        toast.success(
-          result.created
-            ? "บันทึก HyperFrames video เข้า Library แล้ว"
-            : "รายการนี้มีอยู่ใน Library แล้ว"
         );
       },
       onError: error => toast.error(error.message),
@@ -2793,131 +2704,6 @@ export default function MarketplaceCaptureProductDetail() {
     0,
     autoReviewRunItems.length - defaultAutoReviewRunItems.length
   );
-  const hyperframesRenderProjection =
-    hyperframesRenderJobQuery.data?.render ??
-    startAutoStoryboardReviewMutation.data?.render ??
-    null;
-  const autoReviewRunHyperframesRef =
-    hyperframesRenderRefFromAutoReviewRun(statusAutoReviewRun);
-  const autoReviewRunHyperframesRenderJobId =
-    autoReviewRunHyperframesRef?.renderJobId ?? "";
-  const autoReviewRunHyperframesRunId =
-    autoReviewRunHyperframesRef?.runId ?? "";
-
-  useEffect(() => {
-    if (!autoReviewRunHyperframesRenderJobId) return;
-    if (
-      hyperframesRenderJobId === autoReviewRunHyperframesRenderJobId &&
-      (!autoReviewRunHyperframesRunId ||
-        hyperframesRenderRunId === autoReviewRunHyperframesRunId)
-    ) {
-      return;
-    }
-    setHyperframesRenderJobId(autoReviewRunHyperframesRenderJobId);
-    setHyperframesRenderRunId(autoReviewRunHyperframesRunId || null);
-  }, [
-    autoReviewRunHyperframesRenderJobId,
-    autoReviewRunHyperframesRunId,
-    hyperframesRenderJobId,
-    hyperframesRenderRunId,
-  ]);
-
-  useEffect(() => {
-    if (hyperframesRenderProjection?.status === "saved_to_library") {
-      removeMediaStudioRenderLibrarySession(
-        hyperframesRenderProjection.renderJobId
-      );
-      hyperframesRenderLibrarySessionKeyRef.current = null;
-      return;
-    }
-    if (!hyperframesRenderIsLibrarySessionCandidate(hyperframesRenderProjection))
-      return;
-    const session = buildHyperframesRenderLibrarySession(
-      hyperframesRenderProjection,
-      {
-        title:
-          firstCompactText(item.title, item.name, itemPlatformRaw.title) ||
-          "HyperFrames Marketplace Auto Review video",
-      }
-    );
-    const outputHash =
-      typeof session?.metadata?.outputHash === "string"
-        ? session.metadata.outputHash
-        : "";
-    const sessionKey = session
-      ? `${session.jobId}:${outputHash}:${session.title ?? ""}`
-      : "";
-    if (!session || hyperframesRenderLibrarySessionKeyRef.current === sessionKey)
-      return;
-    upsertMediaStudioRenderLibrarySession(session);
-    hyperframesRenderLibrarySessionKeyRef.current = sessionKey;
-  }, [hyperframesRenderProjection, item.name, item.title, itemPlatformRaw.title]);
-
-  const cancelHyperframesRender = useCallback(() => {
-    const renderJobId = hyperframesRenderProjection?.renderJobId;
-    if (!renderJobId) return;
-    cancelHyperframesRenderMutation.mutate({
-      renderJobId,
-      productId,
-      runId: hyperframesRenderProjection?.runId,
-    });
-  }, [cancelHyperframesRenderMutation, hyperframesRenderProjection, productId]);
-
-  const repairHyperframesRender = useCallback(() => {
-    const render = hyperframesRenderProjection;
-    const action = render?.permissions?.canRepair
-      ? render.repairActions?.find(
-          item => !item.requiresOperator && !item.disabledReason
-        )
-      : null;
-    if (!render?.renderJobId || !render.productId || !render.runId || !action) {
-      startAutoStoryboardReview();
-      return;
-    }
-    repairHyperframesRenderMutation.mutate({
-      productId: render.productId,
-      runId: render.runId,
-      renderJobId: render.renderJobId,
-      actionId: action.actionId,
-      actionType: action.actionType,
-      expectedCompositionInputHash: render.compositionInputHash,
-    });
-  }, [
-    hyperframesRenderProjection,
-    repairHyperframesRenderMutation,
-    startAutoStoryboardReview,
-  ]);
-
-  const saveHyperframesRenderToLibrary = useCallback(() => {
-    const render = hyperframesRenderProjection;
-    if (!render?.renderJobId || !render.runId) return;
-    if (render.renderIntent === "preview" || render.renderIntent === "snapshot") {
-      toast.error("Preview-only HyperFrames output ยังบันทึกเข้า Library ไม่ได้");
-      return;
-    }
-    if (!isHyperframesRenderQaPassed(render)) {
-      toast.error("HyperFrames output ต้องผ่าน QA ก่อนบันทึกเข้า Library");
-      return;
-    }
-    const output = getHyperframesRenderLibraryReadyOutput(render);
-    if (!render.renderIntent || !render.compositionInputHash || !output?.contentHash) {
-      toast.error("HyperFrames output ยังไม่มี artifact ที่พร้อมบันทึกเข้า Library");
-      return;
-    }
-    const idempotencyKey = buildHyperframesLibraryIdempotencyKey({
-      tenantId: render.tenantId,
-      runId: render.runId,
-      renderIntent: render.renderIntent,
-      compositionInputHash: render.compositionInputHash,
-      outputHash: output.contentHash,
-    });
-    saveHyperframesRenderMutation.mutate({
-      productId,
-      runId: render.runId,
-      renderJobId: render.renderJobId,
-      idempotencyKey,
-    });
-  }, [hyperframesRenderProjection, productId, saveHyperframesRenderMutation]);
 
   const toggleAutoReviewRunCollapsed = useCallback((runId: string) => {
     if (!runId) return;
@@ -3346,10 +3132,6 @@ export default function MarketplaceCaptureProductDetail() {
     {
       label: t("marketplaceCapture.productDiagnostics.autoReviewRuns"),
       value: String(autoReviewRunItems.length),
-    },
-    {
-      label: t("marketplaceCapture.productDiagnostics.latestRender"),
-      value: compactDisplayValue(hyperframesRenderProjection?.status) || "-",
     },
     {
       label: t("marketplaceCapture.productDiagnostics.lastChecked"),
@@ -4338,19 +4120,6 @@ export default function MarketplaceCaptureProductDetail() {
           />
         </>
       ) : null}
-      <HyperframesRenderPanel
-        render={hyperframesRenderProjection}
-        loading={
-          startAutoStoryboardReviewMutation.isPending ||
-          hyperframesRenderJobQuery.isLoading ||
-          repairHyperframesRenderMutation.isPending
-        }
-        cancelling={cancelHyperframesRenderMutation.isPending}
-        saving={saveHyperframesRenderMutation.isPending}
-        onCancel={cancelHyperframesRender}
-        onRetry={repairHyperframesRender}
-        onSaveToLibrary={saveHyperframesRenderToLibrary}
-      />
     </div>
   ) : null;
   const showStandardOrderControlPanel = shouldShowStandardOrderControls({

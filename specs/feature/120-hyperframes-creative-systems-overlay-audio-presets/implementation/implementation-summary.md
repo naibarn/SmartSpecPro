@@ -12,6 +12,9 @@ Date: 2026-06-12
 
 - Final composite render state is persisted under `reviewData.hyperframesFinalComposite` with exact product/run/storyboard identity checks.
 - Storyboard Review exposes editable audio pack, music bed, SFX triggers, preserve-native-audio, and synthetic-fallback controls; those choices persist with the project state and are sent in the final render config.
+- Storyboard Review now exposes an editable full HyperFrames render prompt rather than a short style brief. The generated prompt is built from product truth, product category, hook/supporting copy, extracted specs, price/trust text, storyboard clips, overlay/subtitle state, audio policy, and animation timing. The JSON payload preview embeds the same prompt string that final render sends in `styleBrief`, preventing preview/render drift.
+- Final Composite is collapsed by default, keeps payload JSON/audio event map/text preview as collapsible secondary sections, and remains disabled when there is no completed MP4/video shot. In that blocked state the visible summary explains that completed images/storyboard frames are not valid final-render source video, shows detected image/pending-video counts, and directs the user to create or import at least one MP4 shot before rendering.
+- Added the `hyperframes-render-prompt` skill under `apps/web/skills/` for LLM-assisted premium prompt authoring when deterministic extraction is not enough. After service restart, SkillRegistry finds 98 folders and loads the new skill into the Admin Skills database list as `video_prompt_generation`, `llm-only`, enabled by default.
 - Final composite shots are sorted by canonical `shot.index`, require unique shot ids, require contiguous indices from `0`, reject non-finite starts, zero/negative durations, missing source media refs, stale declared starts/final durations, subtitle cues with invalid timing, subtitle cues that leave their owning shot range, and overlapping subtitle cues inside the same shot.
 - Composition output includes audio event map hashes, `<audio>` metadata with trigger/timing/volume attributes, and managed-path audio asset refs for downstream QA.
 - Final composite creation fails closed when music/SFX events require staged licensed assets, the refs lack license/checksum/MIME/duration provenance, and explicit synthetic fallback is disabled.
@@ -22,7 +25,7 @@ Date: 2026-06-12
 - Final composite render idempotency now includes the runtime profile hash, and captioned final composite payloads include renderer policy version `ffmpeg_ass_final_composite_overlay_wrap_v2`, so renderer/ASS policy changes produce a new render job id instead of reusing an old MP4 artifact for unchanged composition input.
 - Storyboard Review no longer seeds default Hook/Supporting/per-shot overlay text with data-level ellipsis; legacy persisted ellipsis values such as `พร้อมส่ง...` are expanded from canonical product title/description before render and persisted back into the Final Composite state.
 - FFmpeg/ASS worker also expands legacy ellipsis overlay text from payload product truth before writing ASS, covering older clients or already-persisted projects that still submit `...` text.
-- FFmpeg fallback preserves native clip audio by default and can add deterministic fallback music/SFX tones when selected audio assets are not staged yet; the audio mix report records selected presets, generated event count, missing refs, validated refs, validated audio asset count, license names, and validation state.
+- Historical FFmpeg fallback preserves native clip audio by default and can add deterministic fallback music/SFX tones when selected audio assets are not staged yet; the audio mix report records selected presets, generated event count, missing refs, validated refs, validated audio asset count, license names, and validation state. Per the 2026-06-13 direction update, this path is diagnostic/break-glass only and cannot satisfy future production-complete render gates.
 - Media History ignores manifest-only or unprobed final outputs.
 - Library finalize metadata records creative plan hashes, preset ids/versions, audio event hash, fallback quality, output hash, playable probe, and audio mix report.
 - Production rollout gate rejects missing playable final fixture evidence, missing fixture hash/safe-area/exact-duration/audio-policy evidence, and enabled capabilities tied to unresolved open-question rows; it reports route, fixture, golden-snapshot, bundle, and runtime-prerequisite evidence separately.
@@ -47,10 +50,17 @@ Date: 2026-06-12
   - Latest focused result after SFX shot-boundary ownership and completed/probe projection gating pass: 2 files, 36 tests passed.
 - `npm --prefix apps/web run check`
   - Latest result after render-policy idempotency and legacy ellipsis expansion pass: passed.
+- `npm --prefix apps/web run test -- shared/hyperframes/__tests__/storyboardReviewState.test.ts shared/hyperframes/__tests__/creativePresets.test.ts scripts/__tests__/hyperframes-production-rollout-gate.test.ts`
+  - Latest result after full HyperFrames prompt schema expansion and Admin skill addition: 3 files, 30 tests passed.
+- `PLAYWRIGHT_USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm --prefix apps/web run e2e:marketplace-hyperframes`
+  - Latest result after production build/restart: 12 tests passed, including assertion that Storyboard Review exposes a full HyperFrames prompt with `Feature callouts`, `Animation`, and `Export` sections.
+- Database/Admin Skills verification:
+  - `skills.slug='hyperframes-render-prompt'` exists with `isEnabled=true`, `visibleByDefault=true`, `category='video_prompt_generation'`, `executionMode='llm-only'`, `folderPath='skills/hyperframes-render-prompt'`, and priority `62`.
 - `npm --prefix apps/web run hyperframes:dependency-audit`
   - Latest result: passed with `gate: partial`; production package install remains deferred.
 - `npm --prefix apps/web run hyperframes:doctor`
-  - Latest result: passed with `gate: mvp_smoke_ready`.
+  - Latest historical result: passed with diagnostic smoke readiness only; future
+    production completion requires official HyperFrames CLI/producer readiness.
 - `npm --prefix apps/web run hyperframes:fixture-render`
   - Latest result: passed; playable local fixture MP4 evidence produced.
 - `npm --prefix apps/web run hyperframes:snapshot-test`

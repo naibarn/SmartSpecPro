@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUserSafeHyperframesRepairAction } from "@/lib/marketplaceHyperframesUiState";
@@ -42,8 +42,11 @@ export function HyperframesStoryboardReviewPanel({
   locale,
 }: HyperframesStoryboardReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => Boolean(render));
   const repairAction = getUserSafeHyperframesRepairAction(render);
+  useEffect(() => {
+    if (render) setExpanded(true);
+  }, [render?.renderJobId]);
   const derivedSnapshots =
     snapshots && snapshots.length > 0
       ? snapshots

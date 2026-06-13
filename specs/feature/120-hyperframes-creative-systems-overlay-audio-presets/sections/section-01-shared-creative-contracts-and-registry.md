@@ -93,9 +93,10 @@ Add failing tests for:
 - the exact compatibility anchor
   `HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION = "hyperframes_marketplace_auto_review_v1"`
   is covered by tests and release notes.
-- runtime capability metadata uses the exact spec fields `ffmpegAssFallback`,
-  `smokeRenderer`, `hyperframesProducer`, `minRuntimeProfile`, and
-  `testedRuntimeProfileHash`.
+- runtime capability metadata uses the exact spec fields
+  `diagnosticFallbackOnly`, `hyperframesCli`, `hyperframesProducer`,
+  `minRuntimeProfile`, `testedRuntimeProfileHash`, `minHyperframesVersion`, and
+  `testedHyperframesVersion`.
 - exported schema/type tests cover the exact Feature 120 contract names:
   `HyperframesPresetVariable`, `HyperframesPresetTimingPolicy`,
   `HyperframesPresetSafeAreaPolicy`, `HyperframesAudioEvent`,

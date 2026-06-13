@@ -149,16 +149,19 @@ describe("marketplaceCapture HyperFrames runtime API contract", () => {
     expect(result.creativeCapabilities).toMatchObject({
       canUseProducerPresets: false,
       canUseFallbackPresets: false,
+      canUseOfficialCliPresets: false,
     });
     expect(result.runtimeCapabilities).toMatchObject({
-      ffmpegAssFallback: true,
+      diagnosticFallbackOnly: true,
+      hyperframesCli: false,
       hyperframesProducer: false,
+      runtimeMode: "official_runtime_blocked",
     });
     expect(result.presets.some(preset => preset.id === "hf_text_price_badge_pop_ecommerce_v1")).toBe(true);
     expect(result.presets.some(preset => preset.capabilityState === "producer_ready")).toBe(false);
     expect(result.presetAvailability.hf_text_price_badge_pop_ecommerce_v1).toMatchObject({
       selectable: false,
-      fallbackMode: "ffmpeg_ass",
+      fallbackMode: "diagnostic_only",
     });
   });
 

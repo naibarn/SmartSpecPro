@@ -1344,45 +1344,89 @@ export async function listHyperframesCreativePresetsForApi(
   }
 ) {
   const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
-  const hyperframesProducer = access.flags.workerEnabled && access.capabilities.canStartAuto;
+  const runtimeMode = String(process.env.HYPERFRAMES_RUNTIME_MODE ?? "").toLowerCase();
+  const officialRuntimeReady =
+    /^(1|true|yes|on)$/i.test(process.env.HYPERFRAMES_OFFICIAL_RUNTIME_READY ?? "") ||
+    /^(1|true|yes|on)$/i.test(process.env.HYPERFRAMES_PRODUCTION_RUNTIME_READY ?? "");
+  const officialCliReady =
+    access.flags.workerEnabled &&
+    access.capabilities.canStartAuto &&
+    officialRuntimeReady &&
+    (runtimeMode === "cli" || runtimeMode === "official_cli" || runtimeMode === "producer");
+  const hyperframesProducer =
+    officialCliReady && runtimeMode === "producer";
+  const officialRuntimeMode:
+    | "official_runtime_blocked"
+    | "official_cli_ready"
+    | "official_producer_ready" = officialCliReady
+      ? hyperframesProducer
+        ? "official_producer_ready"
+        : "official_cli_ready"
+      : "official_runtime_blocked";
   const runtimeCapabilities = {
-    ffmpegAssFallback: true,
-    smokeRenderer: true,
+    diagnosticFallbackOnly: true,
+    hyperframesCli: officialCliReady,
     hyperframesProducer,
+    runtimeMode: officialRuntimeMode,
     minRuntimeProfile: "feature_120_runtime_v1",
     testedRuntimeProfileHash: "hf_runtime_feature_120_v1",
+    minHyperframesVersion: "0.6.95",
+    testedHyperframesVersion: "0.6.95",
+    ffmpegAssFallback: false,
+    smokeRenderer: false,
   };
   const presets = listHyperframesCreativePresets({
     includeDisabled: input.includeDisabled,
     includeCandidate: input.includeCandidate,
     category: input.category,
   }).filter(preset => {
-    if (preset.capabilityState !== "producer_ready") return true;
-    return hyperframesProducer || input.includeDisabled;
+    const requiresOfficialRuntime =
+      preset.capabilityState === "producer_ready" ||
+      preset.capabilityState === "official_cli_ready" ||
+      preset.capabilityState === "official_producer_ready" ||
+      preset.runtimeSupport.hyperframesCli ||
+      preset.runtimeSupport.hyperframesProducer;
+    return !requiresOfficialRuntime || officialCliReady || input.includeDisabled;
   });
   const presetAvailability = presets.reduce<
-    Record<string, { selectable: boolean; reason: string | null; fallbackMode: "producer" | "ffmpeg_ass" | "not_available" }>
+    Record<string, { selectable: boolean; reason: string | null; fallbackMode: "official_producer" | "official_cli" | "diagnostic_only" | "not_available" }>
   >((availability, preset: HyperframesCreativePreset) => {
-    const producerOnly = preset.capabilityState === "producer_ready";
-    const fallbackReady =
-      preset.capabilityState === "fallback_only" || preset.runtimeSupport.ffmpegAssFallback;
+    const producerOnly =
+      preset.capabilityState === "producer_ready" ||
+      preset.capabilityState === "official_producer_ready" ||
+      preset.runtimeSupport.hyperframesProducer;
+    const officialRuntimeRequired =
+      producerOnly ||
+      preset.capabilityState === "official_cli_ready" ||
+      preset.runtimeSupport.hyperframesCli;
+    const diagnosticOnly =
+      preset.capabilityState === "fallback_only" ||
+      preset.capabilityState === "diagnostic_fallback_only" ||
+      preset.runtimeSupport.diagnosticFallbackOnly ||
+      preset.runtimeSupport.ffmpegAssFallback;
     const selectable =
       access.capabilities.canAccessAuto &&
-      (producerOnly ? hyperframesProducer : fallbackReady);
+      (producerOnly ? hyperframesProducer : officialRuntimeRequired ? officialCliReady : false);
     availability[preset.id] = {
       selectable,
       reason: selectable
         ? null
-        : producerOnly
-          ? "HyperFrames producer runtime is not ready for this tenant."
-          : "This preset is not available in the current runtime profile.",
+        : officialRuntimeRequired
+          ? "Official HyperFrames runtime is not ready for this tenant."
+          : diagnosticOnly
+            ? "Diagnostic fallback cannot complete user-facing renders."
+            : "This preset is not available in the current runtime profile.",
       fallbackMode: producerOnly
         ? hyperframesProducer
-          ? "producer"
+          ? "official_producer"
           : "not_available"
-        : fallbackReady
-          ? "ffmpeg_ass"
-          : "not_available",
+        : officialRuntimeRequired
+          ? officialCliReady
+            ? "official_cli"
+            : "not_available"
+          : diagnosticOnly
+            ? "diagnostic_only"
+            : "not_available",
     };
     return availability;
   }, {});
@@ -1394,9 +1438,10 @@ export async function listHyperframesCreativePresetsForApi(
     aliases: HYPERFRAMES_CREATIVE_PRESET_ALIASES,
     creativeCapabilities: {
       canUseProducerPresets: hyperframesProducer,
-      canUseFallbackPresets: access.capabilities.canAccessAuto,
-      canUseAudioPacks: hyperframesProducer,
-      canUseSfx: hyperframesProducer,
+      canUseFallbackPresets: false,
+      canUseOfficialCliPresets: officialCliReady,
+      canUseAudioPacks: officialCliReady,
+      canUseSfx: officialCliReady,
     },
     runtimeCapabilities,
     presetAvailability,

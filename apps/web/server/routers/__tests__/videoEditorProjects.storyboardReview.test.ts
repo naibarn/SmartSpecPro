@@ -3,6 +3,7 @@ import {
   getStoryboardReviewAutoReviewRunId,
   mergeStoryboardReviewMarketplaceContext,
   mergeFresherExistingReviewTasks,
+  repairStoryboardReviewMarketplacePromptLocks,
   sanitizeStoryboardReviewClientDebugPayload,
 } from "../videoEditorProjects";
 
@@ -124,6 +125,54 @@ describe("mergeStoryboardReviewMarketplaceContext", () => {
         productName: "New product",
       }),
     ).toBe(reviewData);
+  });
+});
+
+describe("repairStoryboardReviewMarketplacePromptLocks", () => {
+  it("repairs persisted Auto Review prompts that kept a generic female voice", () => {
+    const reviewData = {
+      version: 1,
+      tasks: [
+        {
+          id: "shot-1",
+          prompt:
+            'Create a 5-second cinematic video. Scene: Use @Image1 as start frame. Use @Image2 as stop frame. Characters: Use only the person or hands already visible in the frames. Audio: Native audio. Voice: young mother-style female voice, early 30s, soft warm voice, caring and comforting tone, slow natural delivery, central Thai accent. Dialogue must be spoken in natural Thai, central Thai accent. Dialogue: Presenter พูดเป็นภาษาไทยว่า "เมื่อไหร่ที่ทำกาแฟไม่สุด"',
+        },
+      ],
+    };
+    const repaired = repairStoryboardReviewMarketplacePromptLocks(reviewData, {
+      runId: "mar_1",
+      metadataJson: {
+        referenceAnchors: {
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทย ผู้ชาย, 30-39, role Reviewer, style ผู้เชี่ยวชาญ.",
+          characterPreset: {
+            mode: "described_character",
+            gender: "male",
+            genderLabel: "ผู้ชาย",
+            age: "adult_30_39",
+            ageLabel: "30-39",
+            appearance: "thai",
+            appearanceLabel: "คนไทย",
+            role: "reviewer",
+            roleLabel: "Reviewer",
+            style: "expert_practical",
+            styleLabel: "ผู้เชี่ยวชาญ",
+          },
+        },
+      },
+    }) as any;
+
+    expect(repaired.tasks[0].prompt).toContain("VIDEO CHARACTER LOCK");
+    expect(repaired.tasks[0].prompt).toContain(
+      "Thai, male presenter/man, 30-39 years old"
+    );
+    expect(repaired.tasks[0].prompt).toContain("Selected presenter voice lock");
+    expect(repaired.tasks[0].prompt).not.toContain(
+      "young mother-style female voice"
+    );
+    expect(repaired.tasks[0].prompt).not.toContain("early 30s");
   });
 });
 

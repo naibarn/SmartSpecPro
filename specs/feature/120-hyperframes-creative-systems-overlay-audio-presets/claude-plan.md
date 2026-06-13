@@ -35,8 +35,10 @@ Target flow:
 Storyboard Review
   -> load server-owned HyperFrames final composite state
   -> persist shot MP4 assignments and text edits with revision checks
+  -> derive or load a complete HyperFrames render prompt from product truth,
+     storyboard structure, overlay copy, subtitle/audio policy, and timing
   -> select overlay/subtitle/audio presets from backend registry projection
-  -> preview resolved text, CSS/GSAP layout, timeline, and audio events
+  -> preview resolved text, CSS/GSAP layout, prompt payload, timeline, and audio events
   -> create final render with creativePlanHash and timelineHash
   -> worker stages assets, renders, probes playable MP4, stores manifest
   -> status projection exposes final_video URL, download, Library action
@@ -48,6 +50,9 @@ Core boundaries:
 - shared contracts and preset registry under `apps/web/shared/hyperframes/`;
 - server state mutation and render API under existing routers/services;
 - Storyboard Review UI as the first creative editing surface;
+- `hyperframes-render-prompt` as the dedicated LLM skill for premium prompt
+  authoring when deterministic product/spec extraction cannot produce a strong
+  hook, complete feature callouts, and storytelling animation plan;
 - composition builder generates deterministic HTML/CSS/GSAP and fallback data;
 - worker owns render/probe/output status;
 - Library and Media History receive creative metadata through existing source.
@@ -64,6 +69,9 @@ Feature 120 must enforce these rules from the first implementation section:
 - render creation uses persisted state or explicitly saved draft state, not
   transient React arrays;
 - the system must not treat HyperFrames as a prompt-only renderer;
+- the user-visible prompt editor must show the complete prompt that final render
+  receives, not a short style brief or unrelated payload summary;
+- payload preview must embed the exact same prompt string shown in the editor;
 - fallbacks should be explicit adapter choices, not hidden data-guessing paths;
 - arbitrary tenant-authored HTML must not become executable production HTML;
 - presets are selected by id, version, and variables;
@@ -72,8 +80,8 @@ Feature 120 must enforce these rules from the first implementation section:
 - completed render status requires a playable `final_video` output URL and
   content hash;
 - Library save reuses `marketplace_auto_review_hyperframes_render`;
-- FFmpeg fallback must be capability-marked as partial when it cannot represent
-  a selected CSS/GSAP/audio preset.
+- Diagnostic fallback must be capability-marked as partial and cannot complete
+  production render when it cannot represent a selected CSS/GSAP/audio preset.
 - overlay, spec, price, review, CTA, subtitle, and voiceover copy must remain
   evidence-bound to product truth, Marketplace Capture fields, AI insight
   evidence, user edits, policy disclosure, or derived summaries;
@@ -125,6 +133,8 @@ Ship incrementally:
 2. persisted state and identity validation with no render behavior change;
 3. backend preset listing and scoped mutations;
 4. collapsed-by-default Storyboard Review controls and preview;
+   - when no completed MP4/video shot exists, Final Composite remains disabled
+     and minimized with an explicit source-readiness reason and next action;
 5. composition builder and fallback QA;
 6. worker output hardening and playable output links;
 7. Library/media handoff metadata;

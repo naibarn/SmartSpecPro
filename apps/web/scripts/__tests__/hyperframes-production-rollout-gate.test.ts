@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,17 +66,23 @@ const productDetailFirstViewport = {
 
 type RolloutGateOutput = {
   gate: string;
+  runtimeMode: string;
   blockers: string[];
-  mvpSmokeReady: boolean;
+  diagnosticOnlyReady: boolean;
+  officialRuntimeReady: boolean;
   productionRuntimePrerequisitesReady: boolean;
-  evidence: {
-    bundleExcludesHyperframesPackages: boolean;
-    seededRouteE2ePassed: boolean;
-    fixtureFinalOutputPassed: boolean;
-    goldenSnapshotsPassed: boolean;
-    productionRuntimePrerequisitesReady: boolean;
-  };
-};
+	  evidence: {
+	    dependencyAuditPassed: boolean;
+	    bundleExcludesHyperframesPackages: boolean;
+	    seededRouteE2ePassed: boolean;
+	    fixtureFinalOutputPassed: boolean;
+	    goldenSnapshotsPassed: boolean;
+	    productionRuntimePrerequisitesReady: boolean;
+	    officialCliReady: boolean;
+	    rollbackVerified: boolean;
+	    doctorOfficialRuntimeReady: boolean;
+	  };
+	};
 
 function buildCrcTable() {
   const table = new Uint32Array(256);
@@ -176,26 +182,30 @@ function writeRouteEvidence(
       2
     )
   );
-  writeFileSync(
-    resolve(evidenceDir, "fixture-render-manifest.json"),
+	  writeFileSync(
+	    resolve(evidenceDir, "fixture-render-manifest.json"),
     JSON.stringify(
       {
         gate: "fixture-render",
         status: "passed",
+        renderer: "hyperframes_cli_official",
+        officialRuntime: true,
         creativePlanHash: "hf_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         presetManifestHash: "hf_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         audioEventMapHash: "hf_cccccccccccccccccccccccccccccccc",
         fixtureMatrix: {
-          coveredCases: [
-            "ecommerce_toy_no_audio_silent_policy",
-            "electronics_spec_overlay",
-            "price_deal_overlay",
-            "ugc_review_subtitle_style",
-            "thai_long_text_safe_area",
-            "music_sfx_event_map",
-            "native_audio_policy",
-            "fallback_only_runtime",
-          ],
+	          coveredCases: [
+	            "ecommerce_toy_no_audio_silent_policy",
+	            "electronics_spec_overlay",
+	            "price_deal_overlay",
+	            "ugc_review_subtitle_style",
+	            "thai_long_text_safe_area",
+	            "music_sfx_event_map",
+	            "native_audio_policy",
+	            "generated_clip_source_preservation",
+	            "multi_scene_transition",
+	          ],
+	          pendingCases: [],
           policyCases: [
             "licensed_audio_asset_pending",
             "missing_license_source_blocks_without_fallback",
@@ -249,11 +259,130 @@ function writeRouteEvidence(
         },
       },
       null,
-      2
-    )
-  );
-  return evidenceDir;
-}
+	      2
+	    )
+	  );
+	  writeFileSync(
+	    resolve(evidenceDir, "dependency-audit-report.json"),
+	    JSON.stringify(
+	      {
+	        gate: "pass",
+	        status: "passed",
+	        generatedAt,
+	        packageInstallDeferred: false,
+	        pinnedVersionsKnown: true,
+	        licenseReviewed: true,
+	        nativePostinstallReviewed: true,
+	        provenanceReviewed: true,
+	        mainBundleExcluded: true,
+	        packages: [
+	          {
+	            name: "hyperframes",
+	            pinnedVersion: "0.6.95",
+	            lockVersion: "0.6.95",
+	            installedVersion: "0.6.95",
+	            integrity: "sha512-test",
+	            hasInstallScript: false,
+	          },
+	          {
+	            name: "@hyperframes/producer",
+	            pinnedVersion: "0.6.95",
+	            lockVersion: "0.6.95",
+	            installedVersion: "0.6.95",
+	            integrity: "sha512-test",
+	            hasInstallScript: false,
+	          },
+	        ],
+	      },
+	      null,
+	      2
+	    )
+	  );
+	  writeFileSync(
+	    resolve(evidenceDir, "doctor-report.json"),
+	    JSON.stringify(
+	      {
+	        generatedAt,
+	        gate: "official_runtime_ready",
+	        officialHyperframesNode: { ok: true },
+	        hyperframesRuntime: { ok: true },
+	        chrome: { ok: true },
+	        ffmpeg: { ok: true },
+	        ffprobe: { ok: true },
+	        fonts: { ok: true },
+	        tempWorkspace: { ok: true },
+	        storage: { ok: true },
+	        workerImage: { reviewed: true },
+	        officialCli: { ok: true },
+	      },
+	      null,
+	      2
+	    )
+	  );
+	  writeFileSync(
+	    resolve(evidenceDir, "snapshot-test-manifest.json"),
+	    JSON.stringify(
+	      {
+	        gate: "snapshot-test",
+	        status: "passed",
+	        officialRuntime: true,
+	        generatedAt,
+	        goldenSnapshotHash: "hf_dddddddddddddddddddddddddddddddd",
+	        checks: {
+	          officialRuntime: true,
+	          playableVideo: true,
+	          exactDuration: true,
+	          textSafeArea: true,
+	          subtitleSafeArea: true,
+	          outputHashPresent: true,
+	          requiredCasesCovered: true,
+	        },
+	      },
+	      null,
+	      2
+	    )
+	  );
+	  writeFileSync(
+	    resolve(evidenceDir, "official-compatibility-report.json"),
+	    JSON.stringify(
+	      {
+	        gate: "official-compatibility",
+	        generatedAt,
+	        node: { officialRuntimeReady: true },
+	        fixture: {
+	          commandRan: true,
+	          status: 0,
+	          manifestStatus: "passed",
+	          officialRuntime: true,
+	          renderer: "hyperframes_cli_official",
+	        },
+	      },
+	      null,
+	      2
+	    )
+	  );
+	  writeFileSync(
+	    resolve(evidenceDir, "rollback-evidence.json"),
+	    JSON.stringify(
+	      {
+	        gate: "rollback-drill",
+	        status: "passed",
+	        generatedAt,
+	        checks: {
+	          featureFlagRollbackPathDocumented: true,
+	          newJobsBlockedWhenRuntimeDisabled: true,
+	          diagnosticFallbackCannotCompleteUserFacingFinal: true,
+	          completedLibraryArtifactsRemainReadable: true,
+	          standardOrderFallbackPreserved: true,
+	          transientArtifactPurgeIsDryRunFirst: true,
+	        },
+	      },
+	      null,
+	      2
+	    )
+	  );
+	  return evidenceDir;
+	}
 
 function runGate(
   evidenceDir: string,
@@ -278,6 +407,8 @@ function runGate(
       MARKETPLACE_HYPERFRAMES_CHROME_READY: "true",
       MARKETPLACE_HYPERFRAMES_FFMPEG_READY: "true",
       MARKETPLACE_HYPERFRAMES_GOLDEN_SNAPSHOTS_PASSED: "true",
+      MARKETPLACE_HYPERFRAMES_OFFICIAL_CLI_READY: "true",
+      MARKETPLACE_HYPERFRAMES_RUNTIME_ROLLBACK_VERIFIED: "true",
       ...extraEnv,
     },
   });
@@ -287,6 +418,16 @@ function runGate(
   };
 }
 
+function updateEvidenceJson(
+  evidenceDir: string,
+  fileName: string,
+  updater: (current: Record<string, unknown>) => Record<string, unknown>
+) {
+  const path = resolve(evidenceDir, fileName);
+  const current = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+  writeFileSync(path, JSON.stringify(updater(current), null, 2));
+}
+
 describe("hyperframes-production-rollout-gate script", () => {
   it("accepts fresh seeded route evidence", () => {
     const evidenceDir = writeRouteEvidence(new Date().toISOString());
@@ -294,8 +435,10 @@ describe("hyperframes-production-rollout-gate script", () => {
       const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
 
       expect(gate.gate).toBe("pass");
+      expect(gate.runtimeMode).toBe("official_cli_ready");
       expect(gate.status).toBe(0);
-      expect(gate.mvpSmokeReady).toBe(true);
+      expect(gate.diagnosticOnlyReady).toBe(true);
+      expect(gate.officialRuntimeReady).toBe(true);
       expect(gate.productionRuntimePrerequisitesReady).toBe(true);
       expect(gate.blockers).not.toContain("seeded_route_e2e_missing");
     } finally {
@@ -347,16 +490,23 @@ describe("hyperframes-production-rollout-gate script", () => {
     }
   });
 
-  it("keeps MVP smoke readiness separate from production runtime prerequisites", () => {
-    const evidenceDir = writeRouteEvidence(new Date().toISOString());
-    try {
-      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000), {
-        MARKETPLACE_HYPERFRAMES_CHROME_READY: "false",
-        MARKETPLACE_HYPERFRAMES_FFMPEG_READY: "false",
-      });
+	  it("keeps diagnostic readiness separate from production runtime prerequisites", () => {
+	    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+	    try {
+	      updateEvidenceJson(evidenceDir, "doctor-report.json", current => ({
+	        ...current,
+	        gate: "diagnostic_ready",
+	        chrome: { ok: false },
+	        ffmpeg: { ok: false },
+	        workerImage: { reviewed: false },
+	        officialCli: { ok: false },
+	      }));
+	      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
 
       expect(gate.gate).toBe("blocked");
-      expect(gate.mvpSmokeReady).toBe(true);
+      expect(gate.runtimeMode).toBe("official_runtime_blocked");
+      expect(gate.diagnosticOnlyReady).toBe(true);
+      expect(gate.officialRuntimeReady).toBe(false);
       expect(gate.evidence.seededRouteE2ePassed).toBe(true);
       expect(gate.evidence.fixtureFinalOutputPassed).toBe(true);
       expect(gate.evidence.goldenSnapshotsPassed).toBe(true);
@@ -365,6 +515,74 @@ describe("hyperframes-production-rollout-gate script", () => {
       expect(gate.blockers).toContain("chrome_not_ready");
       expect(gate.blockers).toContain("ffmpeg_not_ready");
       expect(gate.blockers).not.toContain("seeded_route_e2e_missing");
+    } finally {
+      rmSync(evidenceDir, { recursive: true, force: true });
+    }
+  });
+
+	  it("blocks official runtime when CLI or rollback evidence is missing", () => {
+	    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+	    try {
+	      updateEvidenceJson(evidenceDir, "official-compatibility-report.json", current => ({
+	        ...current,
+	        fixture: {
+	          commandRan: true,
+	          status: 1,
+	          manifestStatus: "failed",
+	          officialRuntime: false,
+	          renderer: "diagnostic_ffmpeg_smoke",
+	        },
+	      }));
+	      updateEvidenceJson(evidenceDir, "rollback-evidence.json", current => ({
+	        ...current,
+	        status: "blocked",
+	        checks: {
+	          featureFlagRollbackPathDocumented: true,
+	          newJobsBlockedWhenRuntimeDisabled: false,
+	        },
+	      }));
+	      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
+
+      expect(gate.gate).toBe("blocked");
+      expect(gate.runtimeMode).toBe("official_runtime_blocked");
+      expect(gate.officialRuntimeReady).toBe(false);
+      expect(gate.blockers).toContain("official_cli_not_ready");
+      expect(gate.blockers).toContain("rollback_not_verified");
+    } finally {
+      rmSync(evidenceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects dependency evidence that omits a required official package", () => {
+    const evidenceDir = writeRouteEvidence(new Date().toISOString());
+    try {
+      updateEvidenceJson(evidenceDir, "dependency-audit-report.json", current => ({
+        ...current,
+        packages: [
+          {
+            name: "hyperframes",
+            pinnedVersion: "0.6.95",
+            lockVersion: "0.6.95",
+            installedVersion: "0.6.95",
+            integrity: "sha512-test",
+            hasInstallScript: false,
+          },
+          {
+            name: "hyperframes",
+            pinnedVersion: "0.6.95",
+            lockVersion: "0.6.95",
+            installedVersion: "0.6.95",
+            integrity: "sha512-test",
+            hasInstallScript: false,
+          },
+        ],
+      }));
+      const gate = runGate(evidenceDir, String(24 * 60 * 60 * 1000));
+
+      expect(gate.gate).toBe("blocked");
+      expect(gate.evidence.dependencyAuditPassed).toBe(false);
+      expect(gate.blockers).toContain("package_install_deferred");
+      expect(gate.blockers).toContain("pinned_versions_missing");
     } finally {
       rmSync(evidenceDir, { recursive: true, force: true });
     }
@@ -678,9 +896,6 @@ describe("hyperframes-production-rollout-gate script", () => {
               "price_deal_overlay",
               "ugc_review_subtitle_style",
               "thai_long_text_safe_area",
-              "music_sfx_event_map",
-              "native_audio_policy",
-              "fallback_only_runtime",
             ],
             policyCases: [
               "licensed_audio_asset_pending",

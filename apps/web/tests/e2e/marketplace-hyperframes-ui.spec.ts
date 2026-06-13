@@ -328,10 +328,10 @@ function autoPlanProjection(
         typeof overrides.overlayTextMode === "string"
           ? overrides.overlayTextMode
           : "no_text",
-      imageModel:
-        typeof overrides.imageModel === "string"
-          ? overrides.imageModel
-          : "google-nano-banana-pro",
+	      imageModel:
+	        typeof overrides.imageModel === "string"
+	          ? overrides.imageModel
+	          : "google-banana-2",
       qualityMode:
         typeof overrides.qualityMode === "string"
           ? overrides.qualityMode
@@ -1387,9 +1387,7 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await expect(page.getByLabel("นโยบายข้อความ")).toHaveValue("no_text");
     await expect(page.getByLabel("จำนวนช็อต")).toHaveValue("9");
     await expect(page.getByLabel("เฟรม")).toHaveValue("storyboard_3x3_split");
-    await expect(page.getByLabel("โมเดลภาพ")).toHaveValue(
-      "google-nano-banana-pro"
-    );
+	    await expect(page.getByLabel("โมเดลภาพ")).toHaveValue("google-banana-2");
 
     await page.getByLabel("คุณภาพ").selectOption("high");
     await expect(page.getByText(/กำลังอัปเดตแผนอัตโนมัติ/)).toBeVisible();
@@ -1427,16 +1425,19 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await page
       .getByRole("button", { name: /ตัวเลือก Auto ขั้นสูง/i })
       .click();
-    await page.getByLabel("คุณภาพ").selectOption("high");
-    await page.getByLabel("จำนวนช็อต").selectOption("7");
-    await page.getByLabel("รูปแบบ").selectOption("tiktok_reels_shorts_9_16");
-    await page.getByLabel("โมเดลภาพ").selectOption("google-banana-2");
-    await expect(
-      page.getByRole("button", { name: /สร้าง Auto Storyboard Review/i }).first()
-    ).toBeEnabled();
-    await page
-      .getByRole("button", { name: /สร้าง Auto Storyboard Review/i })
-      .click();
+	    await page.getByLabel("คุณภาพ").selectOption("high");
+	    await page.getByLabel("จำนวนช็อต").selectOption("7");
+	    await page.getByLabel("รูปแบบ").selectOption("tiktok_reels_shorts_9_16");
+	    await page.getByLabel("โมเดลภาพ").selectOption("google-nano-banana-pro");
+	    await expect(page.getByText(/กำลังอัปเดตแผนอัตโนมัติ/)).toHaveCount(0);
+	    await expect(
+	      page.getByRole("button", { name: /สร้าง Auto Storyboard Review/i }).first()
+	    ).toBeEnabled();
+	    page.once("dialog", dialog => void dialog.accept());
+	    await page
+	      .getByRole("button", { name: /สร้าง Auto Storyboard Review/i })
+	      .first()
+	      .click();
 
     await expect
       .poll(() => {
@@ -1453,21 +1454,21 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     expect(startCall?.requestBodySnippet ?? "").toContain(
       '"platformPresetId":"tiktok_reels_shorts_9_16"'
     );
-    expect(startCall?.requestBodySnippet ?? "").toContain(
-      '"imageModel":"google-banana-2"'
-    );
+	    expect(startCall?.requestBodySnippet ?? "").toContain(
+	      '"imageModel":"google-nano-banana-pro"'
+	    );
     const expectedPlanHash = routePlanHashFromOverrides({
       qualityMode: "high",
-      shotCount: 7,
-      platformPresetId: "tiktok_reels_shorts_9_16",
-      imageModel: "google-banana-2",
-    });
+	      shotCount: 7,
+	      platformPresetId: "tiktok_reels_shorts_9_16",
+	      imageModel: "google-nano-banana-pro",
+	    });
     expect(startCall?.requestBodySnippet ?? "").toContain(
       `"expectedPlanHash":"${expectedPlanHash}"`
     );
-    expect(startCall?.requestBodySnippet ?? "").toContain(
-      `"idempotencyKey":"hf-auto-start:${expectedPlanHash}"`
-    );
+	    expect(startCall?.requestBodySnippet ?? "").toContain(
+	      `"idempotencyKey":"hf-auto-start:${expectedPlanHash}:`
+	    );
   });
 
   test("authenticated Storyboard Review repair action calls the self-service repair API", async ({
@@ -1717,6 +1718,32 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await expect(page.getByLabel("HyperFrames storyboard review")).toBeVisible({
       timeout: 30_000,
     });
+    await expect(page.getByText(/ยังไม่มีวิดีโอ MP4 ที่ completed|No completed MP4 video shots/i)).toBeVisible();
+    await expect(page.getByText(/Final Composite ต้องใช้วิดีโอ MP4 อย่างน้อย 1 shot|Final Composite requires at least one completed MP4 video shot/i)).toBeVisible();
+    await page.getByRole("button", { name: /ตั้งค่า|Settings/i }).click();
+    await expect(page.getByText(/Shot text map/i)).toBeVisible();
+    await expect(page.getByText(/SFX timeline \/ Audio event map|SFX timeline \/ audio event map/i)).toBeVisible();
+    await expect(page.getByText(/Prompt ตรงกับ option ล่าสุด|Prompt matches current options/i)).toBeVisible();
+    const hyperframesPrompt = await page
+      .getByLabel(/HyperFrames full render prompt/i)
+      .inputValue();
+    expect(hyperframesPrompt).toContain("Create a 9:16 vertical product ad video using HyperFrames");
+    expect(hyperframesPrompt).toContain("Feature callouts:");
+    expect(hyperframesPrompt).toContain("Animation:");
+    expect(hyperframesPrompt).toContain("Export:");
+    expect(hyperframesPrompt.length).toBeGreaterThan(600);
+    await page
+      .locator("label", { hasText: "Overlay preset" })
+      .locator("select")
+      .selectOption("hook_sequence");
+    await expect(page.getByText(/ต้อง Generate prompt ใหม่ก่อน render|generate a fresh prompt before render/i)).toBeVisible();
+    await expect(page.getByText(/Preview และ option ด้านบนเปลี่ยนแล้ว|Preview and options changed/i)).toBeVisible();
+    await expect
+      .poll(async () => page.getByLabel(/HyperFrames full render prompt/i).inputValue())
+      .toBe(hyperframesPrompt);
+    await expect(page.getByText("Payload preview ก่อนส่ง HyperFrames")).toBeVisible();
+    await page.getByRole("button", { name: /เปิดดู payload|Show payload/i }).click();
+    await expect(page.getByText('"prompt":')).toBeVisible();
     const storyboardPanelDebug = await page
       .getByLabel("HyperFrames storyboard review")
       .evaluate(element => ({

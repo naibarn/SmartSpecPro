@@ -8,6 +8,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { storageCopyToPath, storagePutFromPath } from "../storage";
 import {
+  executeHyperframesCliRender,
   executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
 } from "../services/hyperframesRuntimeAdapter";
@@ -58,8 +59,10 @@ export function isHyperframesWorkerEnabled(): boolean {
 }
 
 export function isHyperframesRuntimeExecutionReady(): boolean {
-  return ["1", "true", "yes", "on"].includes(
-    (process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY ?? "").toLowerCase()
+  return (
+    ["1", "true", "yes", "on"].includes(
+      (process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY ?? "").toLowerCase()
+    ) && getHyperframesRuntimeMode() !== "diagnostic"
   );
 }
 
@@ -1058,7 +1061,18 @@ async function executeLocalHyperframesSmokeRender(input: {
             outputPath,
             payload: input.payload,
           })
+        : runtimeMode === "cli"
+          ? await executeHyperframesCliRender({
+              workspace,
+              outputPath,
+              payload: input.payload,
+            })
         : null;
+    if (!runtimeRender) {
+      throw new Error(
+        "Official HyperFrames runtime is not ready. Diagnostic fallback output cannot complete user-facing render jobs."
+      );
+    }
     const finalCompositeRender =
       runtimeRender ? null : await executeFinalCompositeFfmpegRender({
         workspace,
@@ -1125,10 +1139,18 @@ async function executeLocalHyperframesSmokeRender(input: {
         nativeInputWithAudioCount: 0,
         outputAudioPolicy: "silence_only",
       },
-      runtimeSmokeRender: {
-        renderer: runtimeRender?.renderer ?? finalCompositeRender?.renderer ?? "ffmpeg_color_smoke",
+      officialHyperframesRuntime: {
+        renderer: runtimeRender.renderer,
+        runtimeDiagnostics: runtimeRender.runtimeDiagnostics,
+        officialRuntime: true,
+        generatedAt: new Date().toISOString(),
+        noRawHtmlExposed: true,
+      },
+      runtimeDiagnosticRender: {
+        renderer: finalCompositeRender?.renderer ?? "not_used",
         shotCount: finalCompositeRender?.shotCount,
         generatedAt: new Date().toISOString(),
+        diagnosticOnly: true,
         noRawHtmlExposed: true,
       },
     };

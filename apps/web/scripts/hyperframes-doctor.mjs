@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const nodeRequirement = ">=20.20.0 <21 || >=22.22.0";
+const officialHyperframesNodeRequirement = ">=22.22.0";
+const here = dirname(fileURLToPath(import.meta.url));
+const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
+const outputPath = join(resultsDir, "doctor-report.json");
 
 function hasCommand(command) {
   try {
@@ -29,6 +35,15 @@ function readCommand(command) {
   }
 }
 
+function commandOutput(command) {
+  const output = readCommand(command).trim();
+  return output || null;
+}
+
+function hashValue(value) {
+  return `hf_${createHash("sha256").update(String(value)).digest("hex").slice(0, 48)}`;
+}
+
 function parseNodeVersion(version) {
   const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version);
   if (!match) return null;
@@ -45,10 +60,19 @@ function isSupportedNodeVersion(version = process.version) {
   if (parsed.major === 20) {
     return parsed.minor > 20 || (parsed.minor === 20 && parsed.patch >= 0);
   }
+  if (parsed.major > 22) {
+    return true;
+  }
   if (parsed.major === 22) {
     return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
   }
   return false;
+}
+
+function isSupportedOfficialHyperframesNodeVersion(version = process.version) {
+  const parsed = parseNodeVersion(version);
+  if (!parsed) return false;
+  return parsed.major > 22 || (parsed.major === 22 && parsed.minor >= 22);
 }
 
 function getFontStatus() {
@@ -104,14 +128,34 @@ const playwrightChromium = await getPlaywrightChromiumStatus();
 const ffmpegOk = hasCommand("ffmpeg");
 const ffprobeOk = hasCommand("ffprobe");
 const chromeOk = commandChromeOk || playwrightChromium.ok;
+const chromeVersion =
+  commandOutput("google-chrome --version") ||
+  commandOutput("chromium --version") ||
+  commandOutput("chromium-browser --version") ||
+  (playwrightChromium.ok ? "playwright.chromium bundled" : null);
 const nodeOk = isSupportedNodeVersion();
+const officialNodeOk = isSupportedOfficialHyperframesNodeVersion();
 const fonts = getFontStatus();
+const localHyperframesBinary = join(process.cwd(), "node_modules", ".bin", "hyperframes");
+const hyperframesCliAvailable = existsSync(localHyperframesBinary) || hasCommand("hyperframes");
+const producerPackageAvailable = existsSync(join(process.cwd(), "node_modules", "@hyperframes", "producer", "package.json"));
+const hyperframesPackageVersion = existsSync(join(process.cwd(), "node_modules", "hyperframes", "package.json"))
+  ? JSON.parse(readFileSync(join(process.cwd(), "node_modules", "hyperframes", "package.json"), "utf8")).version
+  : null;
+const producerPackageVersion = producerPackageAvailable
+  ? JSON.parse(readFileSync(join(process.cwd(), "node_modules", "@hyperframes", "producer", "package.json"), "utf8")).version
+  : null;
+const officialRuntimeReady =
+  officialNodeOk && hyperframesCliAvailable && producerPackageAvailable && chromeOk && ffmpegOk && ffprobeOk && fonts.ok;
 const gate =
-  nodeOk && chromeOk && ffmpegOk && ffprobeOk && fonts.ok
-    ? "mvp_smoke_ready"
+  officialRuntimeReady
+    ? "official_runtime_ready"
+    : nodeOk && chromeOk && ffmpegOk && ffprobeOk && fonts.ok
+      ? "diagnostic_ready"
     : "blocked";
 
 const result = {
+  generatedAt: new Date().toISOString(),
   node: {
     ok: nodeOk,
     version: process.version,
@@ -120,24 +164,38 @@ const result = {
       ? "Node runtime satisfies the SmartSpecPro engine requirement."
       : `Node runtime must satisfy ${nodeRequirement}.`,
   },
+  officialHyperframesNode: {
+    ok: officialNodeOk,
+    version: process.version,
+    requirement: officialHyperframesNodeRequirement,
+    message: officialNodeOk
+      ? "Node runtime satisfies the official HyperFrames runtime requirement."
+      : `Official HyperFrames runtime requires ${officialHyperframesNodeRequirement}.`,
+  },
   hyperframesRuntime: {
-    ok: false,
-    deferred: true,
-    productionReady: false,
-    message: "HyperFrames package installation is deferred by dependency audit.",
+    ok: officialRuntimeReady,
+    cliAvailable: hyperframesCliAvailable,
+    producerPackageAvailable,
+    cliPackage: hyperframesPackageVersion ? `hyperframes@${hyperframesPackageVersion}` : null,
+    producerPackage: producerPackageVersion ? `@hyperframes/producer@${producerPackageVersion}` : null,
+    productionReady: officialRuntimeReady,
+    message: officialRuntimeReady
+      ? "Official HyperFrames runtime prerequisites are visible in this environment."
+      : "Official HyperFrames runtime remains blocked until Node >=22.22 worker evidence and all runtime dependencies pass.",
   },
   chrome: {
     ok: chromeOk,
     commandAvailable: commandChromeOk,
+    version: chromeVersion,
     playwrightChromium,
   },
-  ffmpeg: { ok: ffmpegOk },
-  ffprobe: { ok: ffprobeOk },
+  ffmpeg: { ok: ffmpegOk, version: commandOutput("ffmpeg -version | head -n 1") },
+  ffprobe: { ok: ffprobeOk, version: commandOutput("ffprobe -version | head -n 1") },
   localSmokeRenderer: {
     ok: chromeOk && ffmpegOk,
-    renderer: "playwright_chromium_ffmpeg_smoke",
+    renderer: "diagnostic_ffmpeg_smoke",
     message:
-      "MVP smoke rendering can run without @hyperframes/*; production package execution remains separately gated.",
+      "Diagnostic smoke rendering can verify plumbing only; it cannot complete user-facing HyperFrames renders.",
   },
   fonts,
   tempWorkspace: { ok: true, policy: "tenant/run scoped temp dirs" },
@@ -145,10 +203,30 @@ const result = {
     ok: true,
     message: "Storage ownership is validated by hyperframesAssetStagingService.",
   },
+  workerImage: {
+    ok: officialRuntimeReady,
+    reviewed: officialRuntimeReady,
+    imageDigest: process.env.MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_DIGEST || hashValue([
+      process.platform,
+      process.arch,
+      process.version,
+      chromeVersion,
+      commandOutput("ffmpeg -version | head -n 1"),
+    ].filter(Boolean).join("|")),
+    note: "Local/CI worker evidence. Production should set MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_DIGEST to the deployed image digest.",
+  },
+  officialCli: {
+    ok: officialRuntimeReady,
+    packageVersion: hyperframesPackageVersion,
+    producerPackageVersion,
+    nodeRequirement: officialHyperframesNodeRequirement,
+  },
   secretsPrinted: false,
   gate,
 };
 
+mkdirSync(resultsDir, { recursive: true });
+writeFileSync(outputPath, JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result, null, 2));
 if (gate === "blocked") {
   process.exitCode = 1;

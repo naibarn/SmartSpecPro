@@ -428,12 +428,13 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
       endSec: cue.endSec,
       text: sanitizeHyperframesText(cue.text, 360),
     })),
+    overlayPreset: shot.overlayPreset,
     animationPreset: shot.animationPreset,
     transition: shot.transition,
   }));
   const finalCompositeBase = {
     ...finalCompositeInput,
-    styleBrief: sanitizeHyperframesText(finalCompositeInput.styleBrief, 1200),
+    styleBrief: sanitizeHyperframesText(finalCompositeInput.styleBrief, 4000),
     hookText: sanitizeHyperframesText(finalCompositeInput.hookText, 160),
     supportingText: sanitizeHyperframesText(finalCompositeInput.supportingText, 160),
     audioEvents: finalCompositeInput.audioEvents.map(event => ({
@@ -632,29 +633,32 @@ function buildHyperframesFinalCompositeHtml(input: {
       const lines = (config.includeShotText ? shot.onScreenText : []).filter(Boolean);
       const cues = config.burnInSubtitles ? shot.subtitleCues : [];
       const timelineEntry = timelineByShotId.get(shot.id);
+      const videoTrackIndex = shot.index * 2;
+      const overlayTrackIndex = videoTrackIndex + 1;
+      const shotOverlayPreset = shot.overlayPreset ?? config.overlayPreset;
       return `
-      <section class="shot shot-${escapeHtml(shot.animationPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${shot.index}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}">
-        <video class="source-video" src="${escapeHtml(shot.sourceVideoUrl)}" preload="auto" muted playsinline></video>
+      <video id="video-${escapeHtml(shot.id)}" class="clip source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" muted playsinline></video>
+      <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}">
         <div class="shade"></div>
         <div class="shot-copy">
           ${lines.map((line, lineIndex) => `<div class="shot-line line-${lineIndex + 1}">${escapeHtml(line)}</div>`).join("")}
         </div>
         <div class="subtitle-stack">
-          ${cues.map((cue, cueIndex) => `<div class="subtitle-cue cue-${cueIndex + 1}" data-start="${cue.startSec}" data-end="${cue.endSec}">${escapeHtml(cue.text)}</div>`).join("")}
+          ${cues.map((cue, cueIndex) => `<div class="subtitle-cue cue-${cueIndex + 1}" data-cue-start="${cue.startSec}" data-cue-end="${cue.endSec}">${escapeHtml(cue.text)}</div>`).join("")}
         </div>
       </section>`;
     })
     .join("\n");
   const hook = config.includeHookText
-    ? `<div class="hook-layer" data-start="0" data-duration="3">
+    ? `<div id="hook-layer" class="clip hook-layer" data-start="0" data-duration="3" data-track-index="${config.shots.length * 2 + 1}">
         <div class="hook-main">${escapeHtml(config.hookText || input.productTitle)}</div>
         ${config.supportingText ? `<div class="hook-sub">${escapeHtml(config.supportingText)}</div>` : ""}
       </div>`
     : "";
   const audioHtml = config.audioEvents
     .map(
-      event =>
-        `<audio class="audio-event" data-audio-role="${escapeHtml(event.role)}" data-visual-trigger="${escapeHtml(event.visualTrigger)}" data-start="${event.startSec}" data-duration="${event.durationSec ?? ""}" data-volume="${event.volume}" data-preset-id="${escapeHtml(event.presetId ?? "")}" src="${escapeHtml(event.assetRef)}" preload="metadata"></audio>`
+      (event, index) =>
+        `<audio id="audio-event-${index + 1}" class="clip audio-event" data-track-index="${config.shots.length * 2 + 2 + index}" data-audio-role="${escapeHtml(event.role)}" data-visual-trigger="${escapeHtml(event.visualTrigger)}" data-start="${event.startSec}" data-duration="${event.durationSec ?? ""}" data-volume="${event.volume}" data-preset-id="${escapeHtml(event.presetId ?? "")}" src="${escapeHtml(event.assetRef)}" preload="metadata"></audio>`
     )
     .join("\n");
   return `<!doctype html>
@@ -663,8 +667,33 @@ function buildHyperframesFinalCompositeHtml(input: {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
+      @font-face {
+        font-family: "SmartSpecThai";
+        src: url("./assets/fonts/smartspec-thai-runtime.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Prompt";
+        src: url("./assets/fonts/smartspec-thai-runtime.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Noto Sans Thai";
+        src: url("./assets/fonts/smartspec-thai-runtime.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Kanit";
+        src: url("./assets/fonts/smartspec-thai-runtime.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Sarabun";
+        src: url("./assets/fonts/smartspec-thai-runtime.ttf") format("truetype");
+        font-display: swap;
+      }
       html, body { margin: 0; width: 100%; height: 100%; background: #050505; }
-      body { font-family: ${fontStack}; }
+      body { font-family: "SmartSpecThai", ${fontStack}; }
       [data-composition-id] {
         position: relative;
         width: ${config.width}px;
@@ -674,7 +703,7 @@ function buildHyperframesFinalCompositeHtml(input: {
         color: #fff;
       }
       .shot { position: absolute; inset: 0; opacity: 0; overflow: hidden; background: #050505; }
-      .source-video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); }
+      .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); }
       .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.08) 48%, rgba(0,0,0,.62)); pointer-events: none; }
       .shot-copy { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 9%; display: grid; gap: 14px; text-shadow: 0 4px 18px rgba(0,0,0,.55); }
       .shot-line { display: inline-block; width: fit-content; max-width: 100%; border-radius: 20px; background: rgba(7, 12, 24, .74); padding: 18px 24px; font-size: 52px; font-weight: 800; line-height: 1.08; opacity: 0; transform: translateY(28px); }
@@ -734,7 +763,7 @@ function buildHyperframesFinalCompositeHtml(input: {
       @keyframes lineIn { from { opacity: 0; transform: translateY(28px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes floatProduct { 0%,100% { transform: scale(1.02) translateY(0); } 50% { transform: scale(1.055) translateY(-16px); } }
       .shot.is-active { opacity: 1; animation: shotIn .38s ease-out both; }
-      .shot.is-active .source-video { animation: floatProduct ${Math.max(shotDurationAverage(config), 4)}s ease-in-out infinite; }
+      .source-video.is-active { animation: floatProduct ${Math.max(shotDurationAverage(config), 4)}s ease-in-out infinite; }
       .shot.is-active .shot-line { animation: lineIn .52s cubic-bezier(.22,1,.36,1) both; }
       .shot.is-active .line-2 { animation-delay: .16s; }
       .shot.is-active .line-3 { animation-delay: .28s; }
@@ -750,46 +779,46 @@ function buildHyperframesFinalCompositeHtml(input: {
       ${shotHtml}
       ${hook}
       ${audioHtml}
-    </div>
-    <script>
-      window.__hyperframesFinalCompositeConfig = ${JSON.stringify({
-        ...config,
-        creativeTimeline: timeline,
-        compositionInputHash: input.composition.provenance.compositionInputHash,
-      })};
-      (function () {
-        var shots = Array.prototype.slice.call(document.querySelectorAll(".shot"));
-        function setTime(t) {
-          shots.forEach(function (shot) {
-            var start = Number(shot.dataset.start || 0);
-            var duration = Number(shot.dataset.duration || 0);
-            var local = t - start;
-            var active = local >= 0 && local < duration;
-            shot.classList.toggle("is-active", active);
-            var video = shot.querySelector("video");
-            if (video && active && Math.abs((video.currentTime || 0) - local) > 0.25) {
-              try { video.currentTime = Math.max(0, local); } catch (error) {}
-            }
-            Array.prototype.slice.call(shot.querySelectorAll(".subtitle-cue")).forEach(function (cue) {
-              var cueStart = Number(cue.dataset.start || 0);
-              var cueEnd = Number(cue.dataset.end || 0);
-              cue.classList.toggle("is-active", active && t >= cueStart && t < cueEnd);
+      <script>
+        window.__hyperframesFinalCompositeConfig = ${JSON.stringify({
+          ...config,
+          creativeTimeline: timeline,
+          compositionInputHash: input.composition.provenance.compositionInputHash,
+        })};
+        (function () {
+          var shots = Array.prototype.slice.call(document.querySelectorAll(".shot"));
+          function setTime(t) {
+            shots.forEach(function (shot) {
+              var start = Number(shot.dataset.start || 0);
+              var duration = Number(shot.dataset.duration || 0);
+              var local = t - start;
+              var active = local >= 0 && local < duration;
+              shot.classList.toggle("is-active", active);
+              var video = shot.querySelector("video");
+              if (video && active && Math.abs((video.currentTime || 0) - local) > 0.25) {
+                try { video.currentTime = Math.max(0, local); } catch (error) {}
+              }
+              Array.prototype.slice.call(shot.querySelectorAll(".subtitle-cue")).forEach(function (cue) {
+                var cueStart = Number(cue.dataset.cueStart || 0);
+                var cueEnd = Number(cue.dataset.cueEnd || 0);
+                cue.classList.toggle("is-active", active && t >= cueStart && t < cueEnd);
+              });
             });
-          });
-        }
-        window.__timelines = window.__timelines || {};
-        window.__timelines["ssp-marketplace-captioned-final-composite"] = {
-          timelineHash: ${JSON.stringify(timeline.timelineHash)},
-          entries: ${JSON.stringify(timeline.entries)},
-          duration: function () { return ${Number(config.finalVideoLengthSec)}; },
-          seek: function (seconds) { setTime(Number(seconds) || 0); return this; },
-          pause: function () { return this; }
-        };
-        setTime(0);
-        window.__playerReady = true;
-        window.__renderReady = true;
-      })();
-    </script>
+          }
+          window.__timelines = window.__timelines || {};
+          window.__timelines["ssp-marketplace-captioned-final-composite"] = {
+            timelineHash: ${JSON.stringify(timeline.timelineHash)},
+            entries: ${JSON.stringify(timeline.entries)},
+            duration: function () { return ${Number(config.finalVideoLengthSec)}; },
+            seek: function (seconds) { setTime(Number(seconds) || 0); return this; },
+            pause: function () { return this; }
+          };
+          setTime(0);
+          window.__playerReady = true;
+          window.__renderReady = true;
+        })();
+      </script>
+    </div>
   </body>
 </html>`;
 }

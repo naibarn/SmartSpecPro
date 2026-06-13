@@ -23,7 +23,9 @@
     "hyperframes:dependency-audit": "node scripts/hyperframes-dependency-audit.mjs",
     "hyperframes:doctor": "node scripts/hyperframes-doctor.mjs",
     "hyperframes:fixture-render": "node scripts/hyperframes-fixture-render.mjs",
+    "hyperframes:official-compatibility": "node scripts/hyperframes-official-compatibility.mjs",
     "hyperframes:snapshot-test": "node scripts/hyperframes-snapshot-test.mjs",
+    "hyperframes:rollback-drill": "node scripts/hyperframes-rollback-drill.mjs",
     "hyperframes:production-rollout-gate": "node scripts/hyperframes-production-rollout-gate.mjs",
     "test:coverage": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run --coverage",
     "test:workos-teams-regression": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run client/src/pages/__tests__/Teams.planVisibility.test.tsx client/src/pages/__tests__/AdminWorkOsDashboard.bridge.test.tsx client/src/pages/__tests__/WorkStatusBridge.chain.test.tsx server/services/__tests__/workStatusBridge.test.ts server/services/__tests__/workOsService.test.ts server/services/__tests__/monitoringService.test.ts",
@@ -73,6 +75,7 @@
     "@elevenlabs/react": "^1.4.0",
     "@google-cloud/tasks": "^6.2.2",
     "@hookform/resolvers": "^5.2.2",
+    "@hyperframes/producer": "0.6.95",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -163,6 +166,7 @@
     "framer-motion": "^12.23.22",
     "fuse.js": "^7.1.0",
     "html2canvas": "^1.4.1",
+    "hyperframes": "0.6.95",
     "i18next": "^25.10.8",
     "i18next-resources-to-backend": "^1.2.1",
     "input-otp": "^1.4.2",
@@ -237,7 +241,7 @@
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.31.4",
-    "esbuild": "^0.25.0",
+    "esbuild": "0.28.1",
     "happy-dom": "^20.6.1",
     "jsdom": "^28.0.0",
     "nodemon": "^3.1.11",
@@ -252,6 +256,9 @@
     "vite": "^7.3.3",
     "vite-plugin-manus-runtime": "^0.0.57",
     "vitest": "^2.1.4"
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
   "pnpm": {

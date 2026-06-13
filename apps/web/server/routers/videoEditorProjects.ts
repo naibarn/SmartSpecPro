@@ -77,6 +77,265 @@ function cleanString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+const STORYBOARD_REVIEW_CHARACTER_GENDER_PROMPT_LABELS: Record<string, string> = {
+  female: "female presenter/woman",
+  male: "male presenter/man",
+  gender_neutral: "gender-neutral adult presenter",
+};
+
+const STORYBOARD_REVIEW_CHARACTER_AGE_PROMPT_LABELS: Record<string, string> = {
+  young_adult_20_29: "20-29 years old",
+  adult_30_39: "30-39 years old",
+  middle_age_40_59: "40-59 years old",
+  teen_16_19: "16-19 years old",
+};
+
+const STORYBOARD_REVIEW_CHARACTER_APPEARANCE_PROMPT_LABELS: Record<string, string> = {
+  thai: "Thai",
+  southeast_asian: "Southeast Asian",
+  east_asian: "East Asian",
+  international: "international",
+};
+
+const STORYBOARD_REVIEW_CHARACTER_ROLE_PROMPT_LABELS: Record<string, string> = {
+  reviewer: "reviewer",
+  buyer: "real buyer",
+  mom_parent: "parent/guardian reviewer",
+  office_worker: "office worker reviewer",
+  technician: "practical expert/technician",
+  creator_host: "creator host",
+};
+
+const STORYBOARD_REVIEW_CHARACTER_STYLE_PROMPT_LABELS: Record<string, string> = {
+  casual_home: "casual home style",
+  clean_ugc: "clean UGC style",
+  premium_neat: "premium neat style",
+  friendly_everyday: "friendly everyday style",
+  expert_practical: "practical expert style",
+};
+
+function storyboardReviewPromptLabelFromChoice(
+  id: unknown,
+  label: unknown,
+  lookup: Record<string, string>,
+): string {
+  const mapped = lookup[cleanString(id).toLowerCase()];
+  if (mapped) return mapped;
+  const text = cleanString(label);
+  return /^auto$/i.test(text) ? "" : text;
+}
+
+function storyboardReviewPromptAgeLabel(id: unknown, label: unknown): string {
+  const mapped =
+    STORYBOARD_REVIEW_CHARACTER_AGE_PROMPT_LABELS[
+      cleanString(id).toLowerCase()
+    ];
+  if (mapped) return mapped;
+  const text = cleanString(label);
+  if (!text || /^auto$/i.test(text)) return "";
+  return /^\d{2}\s*[-–]\s*\d{2}$/.test(text) ? `${text} years old` : text;
+}
+
+function storyboardReviewCharacterPresetFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const metadata = isStoryboardReviewRecord(autoReviewContext?.metadataJson)
+    ? autoReviewContext.metadataJson
+    : {};
+  const anchors = isStoryboardReviewRecord(autoReviewContext?.referenceAnchors)
+    ? autoReviewContext.referenceAnchors
+    : isStoryboardReviewRecord(metadata.referenceAnchors)
+      ? metadata.referenceAnchors
+      : {};
+  return isStoryboardReviewRecord(anchors.characterPreset)
+    ? anchors.characterPreset
+    : {};
+}
+
+function storyboardReviewReferenceAnchorsFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const metadata = isStoryboardReviewRecord(autoReviewContext?.metadataJson)
+    ? autoReviewContext.metadataJson
+    : {};
+  return isStoryboardReviewRecord(autoReviewContext?.referenceAnchors)
+    ? autoReviewContext.referenceAnchors
+    : isStoryboardReviewRecord(metadata.referenceAnchors)
+      ? metadata.referenceAnchors
+      : {};
+}
+
+function storyboardReviewCharacterSubjectFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): string {
+  const preset = storyboardReviewCharacterPresetFromContext(autoReviewContext);
+  return [
+    storyboardReviewPromptLabelFromChoice(
+      preset.appearance,
+      preset.appearanceLabel,
+      STORYBOARD_REVIEW_CHARACTER_APPEARANCE_PROMPT_LABELS,
+    ),
+    storyboardReviewPromptLabelFromChoice(
+      preset.gender,
+      preset.genderLabel,
+      STORYBOARD_REVIEW_CHARACTER_GENDER_PROMPT_LABELS,
+    ),
+    storyboardReviewPromptAgeLabel(preset.age, preset.ageLabel),
+    storyboardReviewPromptLabelFromChoice(
+      preset.role,
+      preset.roleLabel,
+      STORYBOARD_REVIEW_CHARACTER_ROLE_PROMPT_LABELS,
+    ),
+    storyboardReviewPromptLabelFromChoice(
+      preset.style,
+      preset.styleLabel,
+      STORYBOARD_REVIEW_CHARACTER_STYLE_PROMPT_LABELS,
+    ),
+  ]
+    .map(cleanString)
+    .filter(Boolean)
+    .join(", ");
+}
+
+function buildStoryboardReviewCharacterVideoLockFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): string {
+  const anchors = storyboardReviewReferenceAnchorsFromContext(autoReviewContext);
+  const preset = storyboardReviewCharacterPresetFromContext(autoReviewContext);
+  const characterMode = cleanString(anchors.characterMode) || cleanString(preset.mode);
+  const hasCharacterImage = Boolean(
+    cleanString(anchors.characterImageUrl) ||
+      cleanString(anchors.characterImageRef) ||
+      cleanString(anchors.characterImageProvidedRef),
+  );
+  if (characterMode === "uploaded_reference" && hasCharacterImage) {
+    return [
+      "VIDEO CHARACTER LOCK:",
+      "The uploaded character reference image is the presenter source of truth.",
+      "For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
+      "The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
+    ].join(" ");
+  }
+  const subject = storyboardReviewCharacterSubjectFromContext(autoReviewContext);
+  if (!subject) return "";
+  return [
+    "VIDEO CHARACTER LOCK:",
+    "The selected character choices are the presenter source of truth.",
+    `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`,
+    "Keep the presenter's gender, age range, appearance, role, wardrobe family, and identity consistent with the selected image/frame references across shots.",
+    "Do not let a generic audio profile override the selected presenter demographics.",
+  ].join(" ");
+}
+
+function buildStoryboardReviewCharacterVoiceLockFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): string {
+  const anchors = storyboardReviewReferenceAnchorsFromContext(autoReviewContext);
+  const preset = storyboardReviewCharacterPresetFromContext(autoReviewContext);
+  const characterMode = cleanString(anchors.characterMode) || cleanString(preset.mode);
+  const hasCharacterImage = Boolean(
+    cleanString(anchors.characterImageUrl) ||
+      cleanString(anchors.characterImageRef) ||
+      cleanString(anchors.characterImageProvidedRef),
+  );
+  if (characterMode === "uploaded_reference" && hasCharacterImage) {
+    return [
+      "Uploaded character reference voice lock: infer the Thai spoken voice from the visible presenter in the uploaded character reference image and current frame references.",
+      "Match the presenter's apparent gender presentation, age range, maturity, and reviewer persona from that image.",
+      "Do not use any default demographic voice profile unless it matches the uploaded character reference.",
+      "Voice style: natural clear Thai delivery, central Thai accent, ecommerce review tone.",
+    ].join(" ");
+  }
+  const subject = storyboardReviewCharacterSubjectFromContext(autoReviewContext);
+  if (!subject) return "";
+  return [
+    `Selected presenter voice lock: ${subject}.`,
+    "Use a voice that matches the selected presenter gender and age range.",
+    "Voice style: natural clear Thai delivery, central Thai accent, ecommerce review tone.",
+  ].join(" ");
+}
+
+function storyboardReviewPromptHasGenericFemaleVoice(prompt: string): boolean {
+  return /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b|\bfemale voice\b/i.test(prompt);
+}
+
+function repairStoryboardReviewPromptCharacterLock(
+  prompt: string,
+  autoReviewContext: Record<string, unknown> | null,
+): string {
+  const videoLock = buildStoryboardReviewCharacterVideoLockFromContext(autoReviewContext);
+  const voiceLock = buildStoryboardReviewCharacterVoiceLockFromContext(autoReviewContext);
+  if (!videoLock && !voiceLock) return prompt;
+  let next = prompt;
+  if (videoLock && !/VIDEO CHARACTER LOCK:/i.test(next)) {
+    next = /Characters:\s*/i.test(next)
+      ? next.replace(/Characters:\s*/i, match => `${match}${videoLock} `)
+      : `${videoLock} ${next}`;
+  }
+  if (voiceLock && storyboardReviewPromptHasGenericFemaleVoice(next)) {
+    const voicePattern =
+      /Voice:\s*[\s\S]*?(?=\s+Dialogue must be spoken|\s+Lip-sync clearly|\s+Dialogue pacing:|\s+No subtitles|\s+Dialogue:|$)/i;
+    next = voicePattern.test(next)
+      ? next.replace(voicePattern, `Voice: ${voiceLock}`)
+      : `${next} Voice: ${voiceLock}`;
+  }
+  return next;
+}
+
+function repairStoryboardReviewPromptRecord(
+  value: unknown,
+  autoReviewContext: Record<string, unknown> | null,
+): unknown {
+  if (!isStoryboardReviewRecord(value)) return value;
+  const prompt = cleanString(value.prompt);
+  if (!prompt) return value;
+  const nextPrompt = repairStoryboardReviewPromptCharacterLock(
+    prompt,
+    autoReviewContext,
+  );
+  return nextPrompt === prompt ? value : { ...value, prompt: nextPrompt };
+}
+
+export function repairStoryboardReviewMarketplacePromptLocks(
+  reviewData: unknown,
+  autoReviewContext: Record<string, unknown> | null,
+): unknown {
+  if (!isStoryboardReviewRecord(reviewData)) return reviewData;
+  let changed = false;
+  const repairList = (value: unknown): unknown => {
+    if (!Array.isArray(value)) return value;
+    let listChanged = false;
+    const next = value.map(item => {
+      const repaired = repairStoryboardReviewPromptRecord(item, autoReviewContext);
+      if (repaired !== item) listChanged = true;
+      return repaired;
+    });
+    if (listChanged) changed = true;
+    return listChanged ? next : value;
+  };
+  const nextTasks = repairList(reviewData.tasks);
+  const nextClips = repairList(reviewData.clips);
+  const output = isStoryboardReviewRecord(reviewData.output)
+    ? reviewData.output
+    : null;
+  const nextOutputClips = output ? repairList(output.clips) : null;
+  if (!changed) return reviewData;
+  return {
+    ...reviewData,
+    tasks: nextTasks,
+    clips: nextClips,
+    output: output && nextOutputClips !== output.clips
+      ? { ...output, clips: nextOutputClips }
+      : reviewData.output,
+    marketplacePromptRepair: {
+      ...(isStoryboardReviewRecord(reviewData.marketplacePromptRepair)
+        ? reviewData.marketplacePromptRepair
+        : {}),
+      characterVoiceLock: "metadata_reference_anchors",
+    },
+  };
+}
+
 function getStoryboardReviewMarketplaceProductId(reviewData: unknown): string {
   if (!isStoryboardReviewRecord(reviewData)) return "";
   const contexts = [
@@ -187,6 +446,7 @@ async function getStoryboardReviewAutoReviewContext(params: {
     .select({
       runId: marketplaceAutoReviewRuns.id,
       currentStoryboardReviewId: marketplaceAutoReviewRuns.storyboardReviewId,
+      metadataJson: marketplaceAutoReviewRuns.metadataJson,
       productId: marketplaceProducts.id,
       platform: marketplaceProducts.platform,
       itemId: marketplaceProducts.externalProductId,
@@ -217,8 +477,15 @@ async function getStoryboardReviewAutoReviewContext(params: {
   const currentStoryboardReviewId = parseStoryboardReviewId(
     autoReviewProduct.currentStoryboardReviewId,
   );
+  const metadata = isStoryboardReviewRecord(autoReviewProduct.metadataJson)
+    ? autoReviewProduct.metadataJson
+    : {};
+  const referenceAnchors = isStoryboardReviewRecord(metadata.referenceAnchors)
+    ? metadata.referenceAnchors
+    : null;
   return {
     ...autoReviewProduct,
+    referenceAnchors,
     currentStoryboardReviewId,
     isSuperseded:
       currentStoryboardReviewId !== null &&
@@ -684,11 +951,23 @@ export const videoEditorProjectsRouter = router({
         reviewId: input.id,
         reviewData: review.reviewData,
       });
+      const marketplaceContext = autoReviewProduct
+        ? Object.fromEntries(
+            Object.entries(autoReviewProduct).filter(
+              ([key]) => key !== "metadataJson" && key !== "referenceAnchors",
+            ),
+          )
+        : null;
+      const reviewDataWithMarketplaceContext =
+        mergeStoryboardReviewMarketplaceContext(
+          review.reviewData,
+          marketplaceContext,
+        );
 
       return {
         ...review,
-        reviewData: mergeStoryboardReviewMarketplaceContext(
-          review.reviewData,
+        reviewData: repairStoryboardReviewMarketplacePromptLocks(
+          reviewDataWithMarketplaceContext,
           autoReviewProduct ?? null,
         ),
         autoReview: autoReviewProduct

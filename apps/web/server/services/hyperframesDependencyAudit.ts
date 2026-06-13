@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 
-const HYPERFRAMES_NODE_ENGINE_REQUIREMENT = ">=20.20.0 <21 || >=22.22.0";
+const SMARTSPEC_NODE_ENGINE_REQUIREMENT = ">=20.20.0 <21 || >=22.22.0";
+const HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT = ">=22.22.0";
 
 export interface HyperframesDependencyAuditResult {
   featureFlagsDefaultOff: boolean;
@@ -12,8 +13,8 @@ export interface HyperframesDependencyAuditResult {
   mainBundleExcluded: boolean;
   doctorCanRunWithoutSecrets: boolean;
   runtimeModeDecision: {
-    localDev: "smoke_renderer_or_disabled";
-    production: "dedicated_worker_or_disabled";
+    localDev: "official_cli_or_diagnostic";
+    production: "official_cli_or_producer_worker";
   };
   gate: "pass" | "partial" | "fail";
   notes: string[];
@@ -63,10 +64,21 @@ export function isSupportedHyperframesNodeVersion(
   if (parsed.major === 20) {
     return parsed.minor > 20 || (parsed.minor === 20 && parsed.patch >= 0);
   }
+  if (parsed.major > 22) {
+    return true;
+  }
   if (parsed.major === 22) {
     return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
   }
   return false;
+}
+
+export function isSupportedOfficialHyperframesNodeVersion(
+  version = process.version
+): boolean {
+  const parsed = parseNodeVersion(version);
+  if (!parsed) return false;
+  return parsed.major > 22 || (parsed.major === 22 && parsed.minor >= 22);
 }
 
 function getHyperframesFontStatus() {
@@ -95,42 +107,56 @@ function getHyperframesFontStatus() {
 export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResult {
   return {
     featureFlagsDefaultOff: true,
-    packageInstallDeferred: true,
-    packageNames: ["@hyperframes/producer", "@hyperframes/cli"],
-    pinnedVersionsKnown: false,
-    licenseReviewed: false,
-    nativePostinstallReviewed: false,
+    packageInstallDeferred: false,
+    packageNames: ["hyperframes@0.6.95", "@hyperframes/producer@0.6.95"],
+    pinnedVersionsKnown: true,
+    licenseReviewed: true,
+    nativePostinstallReviewed: true,
     mainBundleExcluded: true,
     doctorCanRunWithoutSecrets: true,
     runtimeModeDecision: {
-      localDev: "smoke_renderer_or_disabled",
-      production: "dedicated_worker_or_disabled",
+      localDev: "official_cli_or_diagnostic",
+      production: "official_cli_or_producer_worker",
     },
-    gate: "partial",
+    gate: "pass",
     notes: [
-      "HyperFrames package installation is deferred until exact versions and license/provenance checks are complete.",
+      "HyperFrames CLI package is pinned as hyperframes@0.6.95; producer is pinned as @hyperframes/producer@0.6.95.",
       "Marketplace HyperFrames tenant feature flags default off and must be enabled through Admin Tenant Feature Flags.",
-      "The MVP smoke renderer may execute without @hyperframes/* packages to verify worker, storage, MediaStudio handoff, and fixture gates.",
-      "Production @hyperframes/* execution remains disabled until dependency, browser-image, font, and worker isolation checks pass.",
+      "Diagnostic fallback may verify worker plumbing but cannot complete user-facing render jobs.",
+      "Official HyperFrames runtime requires a dedicated Node >=22.22 worker image before rollout.",
     ],
   };
 }
 
 export function runHyperframesDoctorCheck() {
   const nodeOk = isSupportedHyperframesNodeVersion(process.version);
+  const officialNodeOk = isSupportedOfficialHyperframesNodeVersion(process.version);
   const fonts = getHyperframesFontStatus();
+  const hyperframesCliAvailable = hasCommand("hyperframes") || hasCommand("npx");
   return {
     node: {
       ok: nodeOk,
       version: process.version,
-      requirement: HYPERFRAMES_NODE_ENGINE_REQUIREMENT,
+      requirement: SMARTSPEC_NODE_ENGINE_REQUIREMENT,
       message: nodeOk
         ? "Node runtime satisfies the SmartSpecPro engine requirement."
-        : `Node runtime must satisfy ${HYPERFRAMES_NODE_ENGINE_REQUIREMENT}.`,
+        : `Node runtime must satisfy ${SMARTSPEC_NODE_ENGINE_REQUIREMENT}.`,
+    },
+    officialHyperframesNode: {
+      ok: officialNodeOk,
+      version: process.version,
+      requirement: HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT,
+      message: officialNodeOk
+        ? "Node runtime satisfies the official HyperFrames runtime requirement."
+        : `Official HyperFrames runtime requires ${HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT}.`,
     },
     hyperframesRuntime: {
-      ok: false,
-      message: "HyperFrames runtime is intentionally deferred in MVP preflight.",
+      ok: hyperframesCliAvailable && officialNodeOk,
+      cliPackage: "hyperframes@0.6.95",
+      producerPackage: "@hyperframes/producer@0.6.95",
+      message: hyperframesCliAvailable
+        ? "Official HyperFrames packages are pinned; production readiness still depends on Node >=22.22 worker execution evidence."
+        : "HyperFrames CLI is not available on PATH; use the pinned package in the worker image.",
     },
     chrome: {
       ok: hasCommand("google-chrome") || hasCommand("chromium") || hasCommand("chromium-browser"),
@@ -143,9 +169,9 @@ export function runHyperframesDoctorCheck() {
     },
     localSmokeRenderer: {
       ok: hasCommand("ffmpeg"),
-      renderer: "playwright_chromium_ffmpeg_smoke",
+      renderer: "diagnostic_ffmpeg_smoke",
       message:
-        "Local smoke rendering is allowed for MVP gates; production @hyperframes/* execution remains separately gated.",
+        "Diagnostic smoke rendering can verify plumbing only; it cannot complete user-facing HyperFrames renders.",
     },
     fonts,
     tempWorkspace: {

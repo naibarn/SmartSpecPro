@@ -129,6 +129,7 @@ describe("HyperFrames runtime API schemas", () => {
             sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
             startSec: 0,
             durationSec: 8,
+            overlayPreset: "price_impact",
             onScreenText: ["Xiaomi Pad 8", "จอใหญ่ ลื่นแรง แบตอึด"],
             subtitleCues: [
               {
@@ -146,6 +147,7 @@ describe("HyperFrames runtime API schemas", () => {
     expect(input.compositionMode).toBe("captioned_final_composite");
     expect(input.config.fontFamily).toBe("Noto Sans Thai");
     expect(input.config.overlayPreset).toBe("spec_highlight");
+    expect(input.config.shots[0]?.overlayPreset).toBe("price_impact");
     expect(input.config.subtitlePreset).toBe("karaoke_word");
     expect(input.config.shots[0]?.subtitleCues[0]?.endSec).toBe(2);
   });

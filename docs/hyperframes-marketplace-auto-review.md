@@ -28,6 +28,25 @@ Order, Storyboard Review, Video Editor, Media Library, credits, or audit.
   `hyperframesRenderJobId`, `productId`, and `runId` when a HyperFrames preview
   is queued, so the review page opens with the automatic preview status instead
   of requiring manual render setup.
+- Storyboard Review final composite opens with the HyperFrames settings panel
+  collapsed by default so unavailable or secondary tools do not interrupt the
+  review workflow. If no completed MP4/video shot exists, render stays disabled
+  and the visible status explains that images/storyboard frames are not valid
+  final-render source video, shows detected image/pending-video counts, and
+  tells the user to create or import at least one MP4 shot.
+- When expanded, the user can inspect and edit the full HyperFrames render
+  prompt, hook copy, per-shot overlays, subtitles, audio choices, and a JSON
+  payload preview before creating the final official HyperFrames render job.
+  Payload JSON, audio event map, and text layout preview are collapsible
+  secondary sections. The prompt is a complete product-video instruction, not a
+  short style brief: it includes product context, headline/subheadline,
+  evidence-backed feature callouts, price/trust text when available,
+  storytelling beats, animation timing, subtitle/audio policy, and MP4 export
+  requirements.
+- Auto Storyboard Review may use the `hyperframes-render-prompt` skill when
+  deterministic product/spec extraction is not enough. The skill rewrites raw
+  product facts into concise, premium Thai overlay copy and a complete
+  HyperFrames render prompt while preserving product-truth constraints.
 
 ## Runtime APIs
 
@@ -83,39 +102,76 @@ infra-level template restriction.
 
 ## Dependency Status
 
-Package installation is intentionally deferred in this implementation slice.
-The audit gate records `partial` until exact package names, pinned versions,
+Production render output must use the official HyperFrames CLI,
+`@hyperframes/producer`, or producer server in a dedicated worker. SmartSpecPro
+must not expand the previous local Playwright/FFmpeg smoke renderer into a
+production-equivalent renderer.
+
+Package installation remains gated until exact package names, pinned versions,
 license/provenance, native/postinstall behavior, Chrome, FFmpeg, fonts, and
 worker-image compatibility are approved.
 
-The MVP smoke renderer uses the existing Playwright Chromium and FFmpeg runtime
-to verify worker execution, fixtures, snapshots, browser evidence, and
-MediaStudio-to-Library handoff without importing `@hyperframes/*`.
-`hyperframes:doctor` must still prove the local runtime satisfies the
-SmartSpecPro Node engine range, browser/FFmpeg/FFprobe availability, temp
-workspace cleanup, and Thai-capable render fonts before it reports
-`mvp_smoke_ready`.
+Diagnostic smoke rendering may verify worker plumbing, fixtures, browser
+evidence, and MediaStudio-to-Library handoff, but it cannot mark a user-facing
+HyperFrames render complete, reserve/consume credits, or unlock producer-only
+creative features.
+`hyperframes:doctor` must prove the runtime satisfies the SmartSpecPro Node
+engine range, HyperFrames CLI/producer availability, browser/FFmpeg/FFprobe
+availability, temp workspace cleanup, storage access, and Thai-capable render
+fonts before reporting official runtime readiness.
+`hyperframes:fixture-render` renders a compatibility fixture with the pinned
+official HyperFrames CLI and writes `officialRuntime: true` evidence; diagnostic
+Playwright/FFmpeg manifests are no longer accepted as final fixture proof.
+`hyperframes:official-compatibility` compares pinned `hyperframes` and
+`@hyperframes/producer` versions with npm latest, runs the official fixture when
+Node >=22.22 is available, and writes the maintenance report used before canary
+promotion.
 
 The web bundle must not import `@hyperframes/*`.
 
-The production rollout gate reports two distinct readiness modes:
+The production rollout gate reports official runtime readiness modes:
 
-- `runtimeMode: "smoke_only"` means the MVP smoke renderer is allowed, but
-  `@hyperframes/*` producer execution remains blocked.
-- `runtimeMode: "producer_ready"` means package, supply-chain, worker-image,
-  Chrome, FFmpeg, seeded-route E2E, and golden snapshot evidence all passed.
+- `runtimeMode: "official_runtime_blocked"` means only contracts, queue state,
+  disabled UI, and diagnostics are allowed.
+- `runtimeMode: "official_cli_ready"` means a dedicated worker can render with
+  the HyperFrames CLI.
+- `runtimeMode: "official_producer_ready"` means package, supply-chain,
+  worker-image, Chrome, FFmpeg, seeded-route E2E, and golden snapshot evidence
+  all passed for `@hyperframes/producer` or producer server.
+- `runtimeMode: "canary"` means a candidate pinned HyperFrames version is
+  limited to selected tenants/jobs.
+- `runtimeMode: "rollback"` means new jobs use the previous pinned official
+  runtime while existing artifacts remain readable.
 
 `installCommandAllowed` must be `true` before running any package install command
-for `@hyperframes/producer` or `@hyperframes/cli`. When the gate is blocked,
+for `@hyperframes/producer` or `hyperframes`. When the gate is blocked,
 `requiredEvidence` lists the exact missing approvals or runtime checks.
-`mvpSmokeReady` is true only when the web bundle excludes `@hyperframes/*` and
-fresh seeded route E2E evidence proves the smoke flow, including Product Detail
-Auto-first first-viewport ordering. `productionRuntimePrerequisitesReady`
-reports the separate Chrome and FFmpeg readiness proof required before producer
-execution.
-Producer execution is separately gated by `HYPERFRAMES_RUNTIME_MODE=producer`
-and `HYPERFRAMES_PRODUCTION_RUNTIME_READY=1`; do not set those until the
-production rollout gate has passed.
+`officialRuntimeReady` is true only when the web bundle excludes
+`@hyperframes/*`, the worker image owns the runtime dependency, and fresh seeded
+route E2E evidence proves Product Detail Auto-first first-viewport ordering plus
+Storyboard Review, MediaStudio, Library, Media History, and Video Editor
+handoffs.
+
+## Version Maintenance
+
+HyperFrames package and CLI versions are pinned in the runtime registry. A
+read-only update detector may check GitHub/npm for newer releases, but it must
+open an update report or PR instead of changing production behavior directly.
+
+Every candidate update must run:
+
+- dependency audit and doctor;
+- official runtime fixture render;
+- snapshot/golden comparison;
+- compatibility suite for overlays, Thai captions, CTA/disclosures,
+  evidence-bound price/spec/rating copy, transitions, generated-clip
+  composites, music/SFX, source-audio preservation, and overflow inspection;
+- seeded route E2E and Library/Media History handoff checks;
+- canary rollout and rollback proof.
+
+Every render job records the HyperFrames CLI/package versions, Node,
+Chrome/headless-shell, FFmpeg/FFprobe, font profile, worker image digest,
+template hash, composition hash, and runtime mode used to create the output.
 
 ## Ledger Strategy
 
@@ -161,14 +217,23 @@ npm --prefix apps/web run hyperframes:dependency-audit
 npm --prefix apps/web run hyperframes:doctor
 npm --prefix apps/web run hyperframes:fixture-render
 npm --prefix apps/web run hyperframes:snapshot-test
+npm --prefix apps/web run hyperframes:official-compatibility
+npm --prefix apps/web run hyperframes:rollback-drill
 npm --prefix apps/web run hyperframes:production-rollout-gate
 ```
 
-`hyperframes:doctor` exits non-zero when Node, browser, FFmpeg/FFprobe, fonts,
-or temp workspace evidence is missing. `hyperframes:production-rollout-gate`
-also exits non-zero while producer rollout is blocked; in MVP smoke-only
-environments this is the expected safe result until external dependency,
-worker-image, font, Chrome, FFmpeg, and golden-snapshot proof is approved.
+`hyperframes:doctor` exits non-zero when Node, HyperFrames CLI/producer,
+browser, FFmpeg/FFprobe, fonts, storage, or temp workspace evidence is missing.
+`hyperframes:dependency-audit`, `hyperframes:doctor`,
+`hyperframes:fixture-render`, `hyperframes:snapshot-test`,
+`hyperframes:official-compatibility`, `hyperframes:rollback-drill`, and the
+browser E2E write dated evidence under
+`apps/web/test-results/marketplace-hyperframes`. `hyperframes:production-rollout-gate`
+reads those artifacts and exits non-zero while official runtime rollout is
+blocked. Diagnostic-only environments remain blocked for user-facing completion
+until dependency, worker-image, font, Chrome, FFmpeg, seeded-route,
+official-fixture, golden-baseline, compatibility, and rollback proof are fresh
+and hash-consistent.
 
 Browser evidence gate:
 
@@ -190,6 +255,9 @@ action, Auto CTA, and Standard Order entry remain inside the first viewport,
 with the Auto first action appearing before Product Summary. This keeps the
 Marketplace capture UX genuinely auto-first while preserving the standard
 ordering path.
+The official fixture render gate also requires source-video preservation,
+multi-scene transitions, native-audio policy, and music/SFX event-map coverage
+from assets consumed by the pinned HyperFrames CLI.
 The rollout gate only accepts seeded route evidence generated within the
 freshness window. The default window is 24 hours and can be overridden with
 `MARKETPLACE_HYPERFRAMES_ROUTE_EVIDENCE_MAX_AGE_MS`. The CLI gate does not let
@@ -200,12 +268,13 @@ does not stop port 3000. To test an existing server, set
 `PLAYWRIGHT_SKIP_WEB_SERVER=1` with `PLAYWRIGHT_BASE_URL`.
 
 A seeded authenticated route journey remains a production-rollout gate before
-enabling `@hyperframes/*` execution. The `hyperframes:production-rollout-gate`
-command is expected to stay `blocked` until exact package versions, license,
-provenance, native postinstall scripts, worker image, fonts, Chrome, FFmpeg,
-and golden snapshots are approved. Fresh seeded route E2E evidence satisfies the
-seeded-route gate only when it runs before `hyperframes:production-rollout-gate`
-and remains inside the configured freshness window.
+enabling official HyperFrames execution. The
+`hyperframes:production-rollout-gate` command is expected to stay `blocked`
+until exact package versions, license, provenance, native postinstall scripts,
+worker image, fonts, Chrome, FFmpeg, and golden snapshots are approved. Fresh
+seeded route E2E evidence satisfies the seeded-route gate only when it runs
+before `hyperframes:production-rollout-gate` and remains inside the configured
+freshness window.
 FFmpeg readiness must be provided explicitly with
 `MARKETPLACE_HYPERFRAMES_FFMPEG_READY=true`; missing evidence is treated as
 `ffmpeg_not_ready`, keeps `productionRuntimePrerequisitesReady` false, and keeps

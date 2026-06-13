@@ -36,9 +36,11 @@ The goal is to support rich, inspectable, and editable:
 - sound effects
 - audio event maps
 - user review before final render
+- editable full HyperFrames render prompts generated from product truth,
+  storyboard structure, overlay copy, subtitle/audio policy, and render timing
 - deterministic preview and final MP4 output
 
-The system must not treat HyperFrames as a prompt-only renderer. HyperFrames is strongest when an agent or template author uses English prompts to create deterministic HTML/CSS/GSAP compositions, and the render engine then renders those structured compositions. Therefore SmartSpecPro should store prompt intent, preset identity, variables, generated composition input, staged assets, QA results, and output artifacts separately.
+The system must not treat HyperFrames as a prompt-only renderer. HyperFrames is strongest when an agent or template author uses complete prompts to create deterministic HTML/CSS/GSAP compositions, and the render engine then renders those structured compositions. Therefore SmartSpecPro should store prompt intent, preset identity, variables, generated composition input, staged assets, QA results, and output artifacts separately. User-facing render prompts must be complete product-video instructions, not short style briefs: they include product context, headline/subheadline, feature callouts, price/trust text when available, storytelling beats, animation timing, subtitle/audio policy, and export requirements.
 
 Target workflow:
 
@@ -46,7 +48,7 @@ Target workflow:
 Captured marketplace product
   -> product truth, approved storyboard, generated clips, subtitles, audio intent
   -> creative preset selection and auto plan
-  -> editable overlay/subtitle/audio variables
+  -> editable overlay/subtitle/audio variables and full HyperFrames render prompt
   -> browser preview / snapshot preview
   -> HyperFrames render through producer or approved fallback
   -> playable MP4, download link, media history entry, provenance manifest
@@ -65,6 +67,8 @@ Recent Storyboard Review iterations showed these product gaps:
 - subtitle styling needs independent presets from overlay styling;
 - audio may disappear or be mixed incorrectly if final composition does not preserve native clip audio or separate audio tracks;
 - users need to inspect and edit text before paid or long-running final render;
+- users need to inspect and edit the exact full HyperFrames prompt before final render, and the JSON payload preview must embed the same prompt string;
+- deterministic hook/spec extraction may be insufficient for premium ecommerce storytelling, so the system needs a dedicated `hyperframes-render-prompt` skill for LLM-assisted prompt authoring when a product requires deeper analysis;
 - SFX and music need timing rules rather than random attachment;
 - current fallback FFmpeg ASS rendering can handle basic text, but cannot represent the full CSS/GSAP capabilities that users expect from HyperFrames;
 - preset options should be governed and versioned instead of scattered across UI dropdowns, worker conditionals, schema enums, and CSS snippets.
@@ -560,14 +564,27 @@ type HyperframesCreativeVariables = {
   }>;
   perShotText?: Array<{
     shotId: string;
+    overlayPresetId?: string;
+    animationPreset?: "smooth_reveal" | "slide_pop" | "bounce_price" | "floating_product" | "glow_feature" | "fade_clean";
+    transition?: "fade" | "slide" | "zoom" | "whip" | "none";
     overlayText?: string;
     subtitleText?: string;
     voiceoverText?: string;
   }>;
+  sfxTimelineDrafts?: Array<{
+    id: string;
+    presetId: string;
+    target: "all" | "first" | "last" | string;
+    visualTrigger: string;
+    offsetSec: number;
+    durationSec: number;
+    volume: number;
+    role: string;
+  }>;
 };
 ```
 
-All user-editable fields must be persisted before render and included in idempotency/hash inputs.
+All user-editable fields must be persisted before render and included in idempotency/hash inputs. Global hook/supporting copy is only the first-shot/default copy layer; final composite editing must keep per-shot overlay/subtitle/style available so the rendered video can follow each shot's voiceover/storytelling instead of repeating the same two text strings.
 
 ### 10.3 Render Manifest
 
@@ -827,7 +844,9 @@ Rules:
 - Storyboard Review must consume the backend-derived HyperFrames feature access projection before enabling preview, final render, Library save, or operator actions;
 - creative preset availability must be filtered by the same tenant/user flags, worker readiness, template allowlist, and Library-save permission used by Feature 119;
 - global kill switches and tenant feature flags remain authoritative for all Feature 120 controls;
-- producer-only presets require worker/producer readiness; FFmpeg fallback may expose them only as disabled/limited with explicit warning;
+- official-runtime-required presets require worker CLI/producer readiness;
+  diagnostic fallback may expose them only as disabled/limited with explicit
+  warning and cannot complete final render;
 - credit estimate and quota checks must happen before paid final render, variant export, snapshot QA batches, or producer render;
 - use the existing HyperFrames credit idempotency shape from Feature 119:
   `hyperframes-credit:{tenantId}:{runId}:{renderIntent}:{compositionInputHash}:{templateVersion}:{platformPresetId}`;
@@ -914,22 +933,32 @@ Feature 120 presets must be capability-gated by the same dependency and rollout 
 
 Each creative preset must declare runtime support:
 
-- `ffmpegAssFallback`: whether the preset can degrade to the current worker fallback;
-- `smokeRenderer`: whether the preset can be previewed or smoke-rendered without the full HyperFrames producer;
-- `hyperframesProducer`: whether the preset requires `@hyperframes/producer` or the HyperFrames CLI path;
+- `diagnosticFallbackOnly`: whether the preset has a limited smoke/diagnostic
+  representation that must not be treated as production-complete output;
+- `hyperframesCli`: whether the preset is supported by the official
+  HyperFrames CLI worker path;
+- `hyperframesProducer`: whether the preset requires `@hyperframes/producer` or
+  producer server;
 - `minRuntimeProfile` and `testedRuntimeProfileHash`;
+- `minHyperframesVersion` and `testedHyperframesVersion`;
 - supported platform profiles and output dimensions;
 - unsupported feature list, such as audio-reactive text, word-level karaoke, 3D transforms, or complex masking.
 
 Compatibility rules:
 
 - web/client code must not import `@hyperframes/*`; runtime packages remain worker-only or build-time tooling only;
-- producer-only presets remain hidden, disabled, or candidate-only when Feature 119 rollout gates report `smoke_only`;
-- producer-only presets can become active only after dependency audit, doctor, production rollout gate, fixture snapshots, Thai font diagnostics, and audio QA pass for the target worker image;
+- presets that require official runtime support remain hidden, disabled, or
+  candidate-only when Feature 119 rollout gates report
+  `official_runtime_blocked`;
+- producer-only presets can become active only after dependency audit, doctor,
+  production rollout gate, fixture snapshots, Thai font diagnostics, audio QA,
+  canary, and rollback proof pass for the target worker image;
 - registry metadata must record the tested Chrome/Playwright, FFmpeg/FFprobe, libass/fontconfig, Node, and HyperFrames package versions;
 - upstream HyperFrames updates require re-running dependency audit, doctor, production rollout gate, fixture snapshots, and preset manifest hash approval before active promotion;
 - capability projection returned to the UI must be authoritative and include the disabled reason, next action, and safe fallback mode when available;
 - a render request using a preset unsupported by the current runtime capability must fail before credit reservation or worker queueing.
+- diagnostic fallback output cannot satisfy final-composite completion, Library
+  save, credit charging, or "rendered with HyperFrames" user claims.
 
 ### 10.13 Contract Versioning And Schema Compatibility
 
@@ -962,6 +991,21 @@ Default state:
 - collapsed settings;
 - compact status summary;
 - visible primary CTA when ready;
+- if no completed MP4/video shot exists, the Final Composite controls remain
+  minimized by default and the visible status must explain that still images or
+  storyboard frames are not valid final-render source video;
+- blocked status must show the missing source type, detected completed image
+  count, pending/incomplete video count when available, and the next action to
+  create or import at least one MP4 shot before rendering;
+- changing render-facing options updates local preview state but must mark the
+  HyperFrames full render prompt stale instead of rewriting it immediately;
+- users should adjust all options first, then explicitly run
+  `hyperframes-render-prompt` once to generate a fresh prompt before final
+  render;
+- if `hyperframes-render-prompt` fails or returns no prompt, the UI must keep
+  render blocked and show the skill error. It must not silently fall back to a
+  deterministic prompt because that hides skill/config failures and can lower
+  prompt quality;
 - no large configuration block unless the user expands it.
 
 ### 11.2 Required Controls
@@ -992,6 +1036,11 @@ Preview modes:
 1. Text preview: shows resolved overlay/subtitle copy and truncation warnings.
 2. CSS/GSAP preview: browser preview with actual animation approximation.
 3. Audio event preview: timeline list with event triggers, timing, volume, and asset status.
+
+Large secondary previews such as payload JSON, audio event maps, and CSS/GSAP
+text preview should be collapsible. They must default to collapsed when the
+feature is not render-ready so incomplete functionality does not interrupt the
+main Storyboard Review workflow.
 4. Snapshot preview: captures key frames before final MP4 when render worker supports it.
 
 Preview must use the same preset ids and variables as final render.
@@ -1030,7 +1079,7 @@ Feature 120 UI must follow the Feature 119 centralized status/copy model instead
 Copy rules:
 
 - all new status, blocker, preset lifecycle, feature-access, credit, conflict, cleanup, output, and download messages must have Thai and English copy coverage;
-- UI should render copy IDs or centralized copy projections, not raw values such as `producer_ready`, `smoke_only`, `candidate`, or `fallback_quality`;
+- UI should render copy IDs or centralized copy projections, not raw values such as `official_producer_ready`, `official_runtime_blocked`, legacy `smoke_only`, `candidate`, or `fallback_quality`;
 - preset labels can be registry-provided, but operational statuses and errors must use shared status copy helpers;
 - output actions must use the same safe labels across Storyboard Review, Media History, Library, and Video Editor.
 
@@ -1091,7 +1140,9 @@ The UI should warn if the selected preset cannot be fully represented by the fal
 
 ### 12.2 Timeline And Cue Normalization
 
-Feature 120 needs one canonical timeline shared by preview, composition HTML, FFmpeg fallback, producer render, audio mix, QA, and Library metadata.
+Feature 120 needs one canonical timeline shared by preview, composition HTML,
+diagnostic fallback reports, official HyperFrames render, audio mix, QA, and
+Library metadata.
 
 Current legacy behavior:
 
@@ -1342,7 +1393,8 @@ Add tests for:
 - aliases resolve explicitly;
 - active presets have English prompt packs;
 - Thai font list is enforced;
-- runtime capability metadata is present for every preset and blocks producer-only presets under `smoke_only`;
+- runtime capability metadata is present for every preset and blocks
+  official-runtime-required presets under `official_runtime_blocked`;
 - invalid audio event timing is rejected;
 - missing output URL cannot mark job completed;
 - completed projection requires `outputRefs.final_video.url` and `contentHash`;
@@ -1368,7 +1420,7 @@ Add tests for:
 - unsupported raw enum values do not leak into Storyboard Review, Media History, Library, or Video Editor UI snapshots;
 - observability metadata includes creative plan, preset manifest, audio event map, runtime capability, font, fallback quality, and selected shot assignment hashes;
 - normalized creative timeline validates shot order, shot starts/durations, overlay events, subtitle cues, audio events, transitions, and final duration;
-- preview, FFmpeg fallback, producer render, QA, and Library metadata use the same `timelineHash`;
+- preview, diagnostic fallback reports, official HyperFrames render, QA, and Library metadata use the same `timelineHash`;
 - copy plan validation rejects unsupported claims, stale volatile facts, and user edits that are not backed by evidence refs;
 - marketplace evidence instruction firewall decisions are respected before any Feature 120 LLM-assisted copy, QA, repair, or render-facing metadata generation;
 - retention dry-run classifies preview-only creative artifacts separately from Library-owned outputs;
@@ -1396,7 +1448,8 @@ Add or extend Playwright coverage for:
 - Storyboard Review Final Composite collapsed by default;
 - expanded settings with overlay, subtitle, audio, and text controls;
 - keyboard-only edit, preview, render, open/download, and Library-save path;
-- runtime capability state where producer-only presets are disabled under `smoke_only`;
+- runtime capability state where official-runtime-required presets are disabled
+  under `official_runtime_blocked`;
 - mobile and tablet layouts without horizontal overflow;
 - reduced-motion preview state;
 - completed render recovery after browser refresh or direct route reopen.
@@ -1457,7 +1510,8 @@ Additional Feature 120 restrictions:
 - Add schemas for creative plan, variables, audio event map, manifest, and QA result.
 - Add evidence-bound copy plan schema fields for copy source, evidence refs, freshness, claim category, edit actor, omitted claims, and claim evidence hashes.
 - Add tests for registry, schema, and alias behavior.
-- Add capability projection so producer-only presets are hidden or clearly marked when only FFmpeg fallback is available.
+- Add capability projection so official-runtime-required presets are hidden or
+  clearly marked when only diagnostic fallback is available.
 - Add platform-profile resolution so width, height, fps, safe area, and subtitle limits come from Feature 119 platform presets by default.
 - Add provenance binding validation for product/run/storyboard IDs before render creation.
 - Add shot media assignment contract for persisted source video choices.
@@ -1465,7 +1519,9 @@ Additional Feature 120 restrictions:
 - If a companion table is chosen, add the migration sub-plan, dry-run report, dual-read/write gates, rollback SQL, and drift tests before implementation code relies on it.
 - Add creative feature-access projection and credit metadata extensions that reuse Feature 119 gates.
 - Add runtime API schemas for creative preset listing, scoped HyperFrames state updates, conflict responses, and final composite revision/hash guards.
-- Add runtime capability matrix and preset lifecycle projection that differentiate `smoke_only`, FFmpeg fallback, and producer-ready execution.
+- Add runtime capability matrix and preset lifecycle projection that
+  differentiate diagnostic fallback, `official_cli_ready`,
+  `official_producer_ready`, canary, and rollback execution.
 - Add Thai/English copy IDs for new statuses, blockers, actions, preset lifecycle states, and output states.
 - Add feature-access schema tests that prove current Feature 119 capability fields remain backward compatible while Feature 120 creative details are additive.
 - Add contract-version compatibility tests that prove `hyperframes_marketplace_auto_review_v1` projections and Library metadata remain readable with Feature 120 additive schemas.
@@ -1506,9 +1562,11 @@ Additional Feature 120 restrictions:
 
 ### Phase 5: Producer Render Path
 
-- Enable `@hyperframes/producer` or CLI render path in dedicated worker after Feature 119 production gates.
+- Enable official HyperFrames CLI, `@hyperframes/producer`, or producer server
+  render path in a dedicated worker after Feature 119 production gates.
 - Keep HyperFrames runtime dependencies out of web/client bundles and verify this in dependency audit.
-- Keep FFmpeg fallback explicit and limited.
+- Keep any FFmpeg/Playwright fallback explicit, diagnostic-only, and unable to
+  satisfy completed production render gates.
 - Preserve audio from source clips or approved voiceover/music tracks.
 - Save playable MP4 with download link and media history item.
 - Require output URL, output hash, and playable media probe before a render can be marked completed.
@@ -1547,7 +1605,7 @@ Implementation should be split into test-first work packages so Feature 120 can 
 4. Preview and editable UX
    - collapsed-by-default panel, overlay/subtitle/audio controls, editable text, CSS/GSAP preview, audio event preview, keyboard/reduced-motion/responsive evidence.
 5. Composition builder and fallback adapter
-   - creative plan to deterministic HTML, GSAP timelines, Thai font metadata, audio elements, FFmpeg fallback limits, manifest hashes, and fallback QA.
+   - creative plan to deterministic HyperFrames HTML, GSAP timelines, Thai font metadata, audio elements, diagnostic fallback limits, manifest hashes, and fallback QA.
 6. Render worker and output projection
    - final MP4 render path, audio preservation/mix, playable output URL, output hash, browser probe, completed projection, and refresh/resume.
 7. Library, Media History, and Video Editor handoff
@@ -1616,7 +1674,9 @@ Feature 120 is complete when:
 15. Library metadata reuses `marketplace_auto_review_hyperframes_render` and adds creative preset/audio metadata without creating a parallel media source.
 16. Dimensions, fps, safe area, subtitle limits, and disclosure placement resolve from a versioned platform profile unless an explicit override reason is stored.
 17. Music, SFX, ambience, and generated voiceover assets validate source, license, MIME type, duration, checksum, and tenant ownership before final render.
-18. UI and API capability projection prevent unsupported producer-only presets from being treated as fully renderable through FFmpeg fallback.
+18. UI and API capability projection prevent unsupported
+official-runtime-required presets from being treated as fully renderable through
+diagnostic fallback.
 19. Feature 119 outbox/artifact/idempotency fields remain backward compatible, with creative hashes added as extensions.
 20. Completed status projection includes a safe playable `final_video` output URL and content hash; manifest-only completion is rejected.
 21. Product/run/storyboard IDs are verified end-to-end, and mismatched or corrupted projects fail fast instead of falling back to another project.
@@ -1629,7 +1689,9 @@ Feature 120 is complete when:
 28. Credit estimates, reservations, charges, refunds, and no-charge reasons are preserved in manifests/projections without double-charging duplicate renders or finalizes.
 29. Legacy/corrupted Storyboard Review rows can be audited, repaired when provable, or deleted/archived safely without deleting finalized Library media.
 30. Runtime APIs expose creative presets, scoped Storyboard Review HyperFrames state updates, conflict states, and final composite render creation without relying on UI-local arrays or full-document saves.
-31. Runtime capability projection prevents producer-only presets from being selected, charged, or queued when the current environment is only `smoke_only` or FFmpeg fallback.
+31. Runtime capability projection prevents official-runtime-required presets
+from being selected, charged, queued, or saved when the current environment is
+only diagnostic fallback or `official_runtime_blocked`.
 32. All new UI copy has Thai/English coverage and no raw enum/status/lifecycle values leak into user-facing screens.
 33. Storyboard Review Final Composite passes keyboard, reduced-motion, and responsive browser evidence for collapsed, expanded, running, completed, conflict, and blocked states.
 34. Metrics, sanitized diagnostics, and operator inspect output include creative plan, preset, audio, font, runtime capability, fallback quality, output, and Library provenance without leaking private storage or raw HTML.
@@ -1653,7 +1715,9 @@ Feature 120 is complete when:
 1. Should SmartSpecPro bundle a small licensed SFX starter pack, or require tenant-uploaded/Library-selected audio assets first?
 2. Should music generation be integrated through existing media providers, or remain asset-library based in V1?
 3. Should word-level karaoke timing depend on transcript generation, TTS output, or manual cue editing?
-4. Should the first producer path use HyperFrames CLI or `@hyperframes/producer` directly in the worker image?
+4. When should the default official runtime promote from HyperFrames CLI worker
+to `@hyperframes/producer` or producer server for all tenants after canary
+metrics are stable?
 5. Should HyperFrames Studio/player become the long-term preview surface instead of custom React preview?
 
 ---
@@ -1725,7 +1789,7 @@ The current code is useful but still below the Feature 120 target:
 
 12. Capability flags are not yet tied to creative presets.
    - Feature 119 exposes HyperFrames and Library save capability gates.
-   - Feature 120 should add preset availability/capability projection so UI does not show producer-only presets as fully available when only FFmpeg fallback is enabled.
+   - Feature 120 should add preset availability/capability projection so UI does not show official-runtime-required presets as fully available when only diagnostic fallback is enabled.
 
 13. Observability and operator metadata are not yet creative-aware.
    - Feature 119 can inspect, replay, cancel, retain, and finalize HyperFrames jobs.
@@ -1781,6 +1845,11 @@ Current request:
     hookText
     supportingText
     shots[]
+      overlayPreset
+      animationPreset
+      transition
+      onScreenText
+      subtitleCues
 
 Bridge:
   resolveHyperframesCreativePlanFromFinalCompositeConfig(config)
@@ -1792,6 +1861,8 @@ Target request:
     audioPackPresetId
     presetVersions
     variables
+      perShotText[]
+      sfxTimelineDrafts[]
     audioEvents
     sourceRefs
 ```
@@ -1804,6 +1875,11 @@ Bridge rules:
 - platform profile settings win over ad hoc width/height/fps unless the request stores an explicit override reason;
 - the bridge writes a deterministic `creativePlanHash`;
 - final render idempotency includes both the legacy config hash and the creative plan hash during migration;
+- per-shot overlay preset, animation preset, transition, overlay copy, and
+  subtitle/voiceover copy must survive the bridge and be visible in prompt,
+  payload preview, HTML composition, and Library metadata;
+- SFX timeline drafts must resolve into deterministic `audioEvents` with target
+  shot, trigger, offset, duration, volume, and role preserved before render;
 - UI can keep showing the current compact panel while backend stores the richer plan.
 
 ### 19.4 Files Expected To Change During Implementation
@@ -1850,7 +1926,7 @@ Likely new tests:
 - runtime API schema and app-router shape tests for creative preset/state/final render procedures
 - Library metadata includes creative preset and audio metadata without changing the existing HyperFrames source
 - fallback quality warning behavior
-- preset capability projection hides or warns for producer-only presets when only FFmpeg fallback is available
+- preset capability projection hides or warns for official-runtime-required presets when only diagnostic fallback is available
 - operator diagnostics, replay, cancel, repair, and preset disable/enable honor creative plan/runtime hashes and permission gates
 - retention dry-run and purge preserve Library outputs while expiring preview-only creative artifacts
 - metrics/log projections include creative preset, runtime capability, fallback quality, Thai font, audio, output probe, and Library finalize dimensions

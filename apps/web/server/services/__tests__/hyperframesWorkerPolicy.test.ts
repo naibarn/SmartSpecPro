@@ -12,6 +12,7 @@ import {
 describe("hyperframesWorkerPolicy", () => {
   const previous = process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
   const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+  const previousRuntimeMode = process.env.HYPERFRAMES_RUNTIME_MODE;
   const previousEnabled = process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
   const previousDisabled = process.env.MARKETPLACE_HYPERFRAMES_DISABLED;
 
@@ -25,6 +26,11 @@ describe("hyperframesWorkerPolicy", () => {
       delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
     } else {
       process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
+    }
+    if (previousRuntimeMode == null) {
+      delete process.env.HYPERFRAMES_RUNTIME_MODE;
+    } else {
+      process.env.HYPERFRAMES_RUNTIME_MODE = previousRuntimeMode;
     }
     if (previousEnabled == null) {
       delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
@@ -69,10 +75,15 @@ describe("hyperframesWorkerPolicy", () => {
 
   it("keeps runtime execution gated separately from worker enablement", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
+    process.env.HYPERFRAMES_RUNTIME_MODE = "cli";
     expect(isHyperframesRuntimeExecutionReady()).toBe(false);
 
     process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "yes";
+    process.env.HYPERFRAMES_RUNTIME_MODE = "cli";
     expect(isHyperframesRuntimeExecutionReady()).toBe(true);
+
+    process.env.HYPERFRAMES_RUNTIME_MODE = "diagnostic";
+    expect(isHyperframesRuntimeExecutionReady()).toBe(false);
   });
 
   it("defers jobs when worker is enabled but runtime execution is not ready", async () => {
