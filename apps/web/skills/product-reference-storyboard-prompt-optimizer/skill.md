@@ -76,7 +76,8 @@ The final prompt must be complete and must not end mid-field or mid-frame.
 
 If the source prompt is a 3x3 storyboard, preserve:
 
-- one single 9:16 image / strict 3x3 grid / exactly 9 frames;
+- one single 9:16 image / strict 3x3 grid / exactly 9 frames / exactly 9 vertical frames / exactly 3 equal-width columns / exactly 3 equal-height rows / no collage/masonry layout / no separator lines;
+- the exact first `SHOT-BY-SHOT STORYBOARD PROMPT:` contract line when present; never paraphrase it shorter;
 - `Frame 1` through `Frame 9`;
 - non-empty visual-only prose in every frame;
 - `CINEMATIC REALISM LOCK`;

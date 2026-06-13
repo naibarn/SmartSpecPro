@@ -7,6 +7,7 @@ Do not return JSON, YAML, Markdown fences, metadata, review notes, or wrapper fi
 Required storyboard behavior:
 
 - Respect `storyboard_layout_preset`.
+- `storyboard_layout_preset` is the single source of truth for final canvas ratio, grid columns, grid rows, frame count, and per-frame shape. If another input conflicts with it, follow the preset.
 - Align `storyboard_guide` + `voiceover_script` as the primary shot-by-shot content contract when provided; do not invent a different story.
 - Use `production_concept_details` as Product Detail / Product Facts and put the canonical product facts in one shared `PRODUCT VERIFY:` block.
 - Use `product_category` to apply exactly one product-category rule file, but current product references and Product Detail always override category defaults.
@@ -27,9 +28,10 @@ Required storyboard behavior:
 - From the product-introduction frame onward, product solution, proof, use, result, expectation-check, reconfirming-value, overview, confirmation, and CTA frames must visibly include the exact locked product. Frame 8 / reconfirming-value frames are product-critical and must show the same canonical product large enough to verify full silhouette, countable parts, material, colorway, scale, and no wrong nightstand/drawer/table substitution.
 - Include one shared `PRODUCT VERIFY:` block that starts with a clear product visual lock from `@Image1` / first attached product reference image, then repeats the actual current product facts needed to prevent substitution. For a Greenforst 3-tier open bedside shelf, the block should say: product visual lock from @Image1 / first attached product reference image; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts; light wood finish; compact bedside scale; no drawers; no doors; no alternate nightstand.
 - Do not show a second competing product or similar background object from environment references; environment references may provide room mood and architecture only.
-- Include `TEXT RENDERING POLICY`. In non-infographic no-text mode, suppress readable non-product prop/background text: blank mugs/cups, blank or unreadable book covers and spines, unreadable screens, no visible prop logos, no wall-art words, no signage, no UI, and no readable numbers unless they are exact product markings to preserve. Explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any instruction text from being rendered in the image.
+- Include `TEXT RENDERING POLICY`. In non-infographic no-text mode, suppress readable non-product prop/background text: blank mugs/cups, blank or unreadable book covers and spines, unreadable screens, no visible prop logos, no wall-art words, no signage, no UI, and no readable numbers unless they are exact product markings to preserve. Explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any instruction text from being rendered in the image. Also forbid added visible camera-shot abbreviations or technical labels such as `ECU`, `CU`, `MCU`, `MS`, `WS`, `ELS`, `LS`, `OS`, `HA`, `LA`, `storyboard_grid`, panel names, corner labels, captions, subtitles, or random glyphs. Camera/shot shorthand may guide backend planning only; never ask for those codes to appear in a panel.
 - If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, require readable infographic composition with one large headline plus 2-4 short key points using the attached product reference image.
-- For `canvas_9_16_grid_3x3_frame_9_16_exact`, describe a 9:16 final canvas with a 3x3 grid and exactly 9 distinct vertical frames storyboard panel, equal-sized panels, borderless edge-to-edge grid, zero white divider lines, zero black lines, zero gutters, zero margins, zero frame outlines, and zero separator lines.
+- For `canvas_9_16_grid_3x3_frame_9_16_exact`, include these exact quality anchors in the final prompt: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
+- Copy the first `SHOT-BY-SHOT STORYBOARD PROMPT:` line from the decoded preset verbatim for `canvas_9_16_grid_3x3_frame_9_16_exact`; do not paraphrase the quality anchors and never change it to 5x2, 2x5, collage, masonry, contact sheet, film strip, mixed-size panels, or any non-3x3 layout.
 
 Allowed plain-text shape:
 
@@ -58,7 +60,7 @@ PRODUCT VERIFY:
 Product visual lock from @Image1 / first attached product reference image; then one concise canonical product fact list, e.g. product name/category, exact levels/posts/parts/material/color/scale, and no wrong substitutions.
 
 SHOT-BY-SHOT STORYBOARD PROMPT:
-9:16 final canvas, 3x3 grid, exactly 9 equal vertical frames storyboard panel.
+Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
 Frame 1: Visual-only description of the first panel and the matched story meaning as visible action, with no rendered text.
 Frame 2: Visual-only description of the second panel and the matched story meaning as visible action, with no rendered text.
 Frame 3: Visual-only description of the third panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.

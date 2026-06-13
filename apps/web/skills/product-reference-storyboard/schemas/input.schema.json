@@ -165,7 +165,7 @@
     },
     "image_text_mode": {
       "title": "Visible Text In Image",
-      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, measurement text, or comparison notes. Default is no added text for non-infographic styles. Info Graphics Realistic and Info Graphics override this default and require concise large visible infographic text. Physical product markings such as sewn labels, engraved logos, care tags, SKU stickers, printed dimensions, and decorative product text are preserved separately and do not count as added text.",
+      "description": "Controls whether the generated image may include added visible text such as captions, callouts, infographic labels, headlines, frame numbers, measurement text, or comparison notes. Default is no added text for non-infographic styles. In no_text mode, do not render any added camera-shot abbreviations, technical labels, frame labels, panel labels, corner labels, storyboard_grid text, captions, subtitles, random glyphs, or shorthand such as ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, or LA. Info Graphics Realistic and Info Graphics override this default and require concise large visible infographic text. Physical product markings such as sewn labels, engraved logos, care tags, SKU stickers, printed dimensions, and decorative product text are preserved separately and do not count as added text.",
       "type": "string",
       "enum": [
         "no_text",
@@ -223,7 +223,7 @@
     },
     "storyboard_layout_preset": {
       "title": "Storyboard Layout Preset",
-      "description": "Choose a storyboard grid that matches the main image aspect ratio. Exact presets keep every frame at 1:1, 16:9, or 9:16. Crop-safe presets reserve extra margin so each frame can be cropped later without cutting off the product or subject.",
+      "description": "Single source of truth for the final storyboard canvas, grid columns, grid rows, frame count, and per-frame shape. The skill must decode this preset into the exact SHOT-BY-SHOT STORYBOARD PROMPT layout line. Do not let aspect_ratio, required_frame_count, storyboard_guide, voiceover_script, or prose instructions override this preset. For canvas_9_16_grid_3x3_frame_9_16_exact, the final prompt must say one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers. Exact presets keep every frame at 1:1, 16:9, or 9:16. Crop-safe presets reserve extra margin so each frame can be cropped later without cutting off the product or subject.",
       "type": "string",
       "enum": [
         "auto",
@@ -386,6 +386,31 @@
     "production_concept_details": {
       "title": "Product Detail / Product Facts",
       "description": "Product Detail / Product Facts and concept context. Use as the real product truth lock for product type, model, dimensions, countable parts, material, color, style, intended use, claim safety, audience, problem, hook, and selling points. Storyboard Guide + Voiceover Script control the shot story; Product Detail controls exact product truth. Do not add prices, ratings, sold counts, promotions, certifications, or claims that were not supplied.",
+      "type": "string",
+      "default": ""
+    },
+    "image_attempt_number": {
+      "title": "Image Attempt Number",
+      "description": "Marketplace Auto Review image attempt number. Use this together with Image Attempt Story Lens so every retry is a fresh skill call with a distinct customer-journey perspective instead of copying the previous storyboard prompt.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "image_attempt_story_lens_id": {
+      "title": "Image Attempt Story Lens ID",
+      "description": "Stable identifier for the customer-journey lens selected for this image attempt. Keep it as planning metadata only; do not render it as visible text.",
+      "type": "string",
+      "default": ""
+    },
+    "image_attempt_story_lens_title": {
+      "title": "Image Attempt Story Lens Title",
+      "description": "Short title of the customer-journey perspective for this attempt. Use it to vary the hook/proof/usage emphasis while preserving product truth.",
+      "type": "string",
+      "default": ""
+    },
+    "image_attempt_story_lens": {
+      "title": "Image Attempt Story Lens",
+      "description": "Attempt-specific customer-journey direction for fresh prompt generation. The skill must use this as the active story lens for the prompt, preserving the same product truth and shot order while making frame composition, hook situation, proof emphasis, scene rhythm, camera palette, and human presence meaningfully different from prior image attempts.",
       "type": "string",
       "default": ""
     },

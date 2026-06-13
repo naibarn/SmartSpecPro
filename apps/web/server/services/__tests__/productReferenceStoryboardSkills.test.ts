@@ -9,6 +9,7 @@ import {
   normalizeProductReferenceStoryboardReferenceUrlsForTest,
   normalizeProductReferenceStoryboardUserInputsReferenceUrlsForTest,
   resolveProductReferenceStoryboardLlmMaxTokensForTest,
+  resolveStoryboardLayoutPresetContractForTest,
   sanitizeProductReferenceStoryboardUserInputsForTest,
   shouldOptimizeProductReferenceStoryboardPromptForTest,
   stripRenderableStoryboardFrameLabelsForTest,
@@ -156,8 +157,14 @@ describe("unified product reference storyboard skill", () => {
     expect(inputSchema.properties.reference_product_images.description).toContain("immutable product evidence");
     expect(inputSchema.properties.reference_character_images.description).toContain("Avoid back-of-head");
     expect(inputSchema.properties.cinematic_style.description).toContain("cinematic photorealistic product-film quality");
+    expect(inputSchema.properties.storyboard_layout_preset.description).toContain("Single source of truth");
+    expect(inputSchema.properties.storyboard_layout_preset.description).toContain("strict 3x3 grid");
+    expect(inputSchema.properties.storyboard_layout_preset.description).toContain("no visible dividers");
+    expect(inputSchema.properties.image_attempt_story_lens.description).toContain("fresh prompt");
+    expect(inputSchema.properties.image_attempt_story_lens.description).toContain("prior image attempts");
 
     expect(uiSchema["ui:order"]).toContain("product_category");
+    expect(uiSchema["ui:order"]).toContain("image_attempt_story_lens");
     expect(uiSchema["ui:order"].indexOf("product_category")).toBeGreaterThan(
       uiSchema["ui:order"].indexOf("generation_mode"),
     );
@@ -232,10 +239,15 @@ describe("unified product reference storyboard skill", () => {
     expect(inputContract).toContain("reference_product_images");
     expect(outputContract).toContain("plain prompt text only");
     expect(outputContract).toContain("canvas_9_16_grid_3x3_frame_9_16_exact");
+    expect(inputContract).toContain("single source of truth");
+    expect(inputContract).toContain("strict 3x3 grid");
     expect(outputContract).toContain("source shot title/timing");
     expect(outputContract).toContain("CINEMATIC REALISM LOCK");
     expect(outputContract).toContain("CHARACTER FACE AND 95 PERCENT IDENTITY LOCK");
-    expect(outputContract).toContain("exactly 9 equal vertical frames storyboard panel");
+    expect(outputContract).toContain("one single 9:16 image");
+    expect(outputContract).toContain("exactly 9 vertical frames");
+    expect(outputContract).toContain("exactly 3 equal-width columns");
+    expect(outputContract).toContain("exactly 3 equal-height rows");
     expect(outputContract).toContain("Completeness is mandatory");
     expect(outputContract).toContain("Never stop mid-frame");
     expect(outputContract).toContain("A single source storyboard bullet");
@@ -260,13 +272,15 @@ describe("unified product reference storyboard skill", () => {
     expect(outputContract).toContain("product visual lock from @Image1 / first attached product reference image");
     expect(outputContract).toContain("suppress readable non-product prop/background text");
     expect(outputContract).toContain("blank or unreadable book covers and spines");
-    expect(outputContract).toContain("zero white divider lines");
+    expect(outputContract).toContain("no collage/masonry layout");
+    expect(outputContract).toContain("no separator lines");
+    expect(outputContract).toContain("never change it to 5x2");
     expect(outputContract).toContain("A single generic `SCENE DESCRIPTION:` block");
     expect(skillContent).not.toContain("contract anchors needed for runtime validation");
     expect(outputContract).not.toContain("validation anchors in the plain prompt text");
   });
 
-  it("rejects truncated storyboard skill output before returning a partial prompt", () => {
+  it("reports truncated storyboard skill output as warnings before returning the prompt", () => {
     const truncatedPrompt = [
       "CAMERA/LIGHT/DEPTH: compact cinematic light.",
       "PRODUCT VERIFY: exact product.",
@@ -289,6 +303,134 @@ describe("unified product reference storyboard skill", () => {
         "output_ended_mid_field",
       ])
     );
+  });
+
+  it("reports storyboard skill output that has nine frames but omits exact 3x3 layout anchors", () => {
+    const incompleteLayoutPrompt = [
+      "CAMERA/LIGHT/DEPTH: compact cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create a vertical storyboard board with nine panels for the product story.",
+      ...Array.from(
+        { length: 9 },
+        (_, index) =>
+          `Frame ${index + 1}: Complete visual-only product storyboard panel with the same referenced product clearly visible in a cozy bedroom.`
+      ),
+    ].join("\n");
+
+    expect(
+      validateProductReferenceStoryboardOutputCompletenessForTest(
+        incompleteLayoutPrompt
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        "output_single_image_missing",
+        "exact_frame_count_missing",
+        "vertical_frame_count_missing",
+        "equal_columns_missing",
+        "equal_rows_missing",
+        "no_collage_lock_missing",
+        "no_separator_lock_missing",
+      ])
+    );
+  });
+
+  it("decodes storyboard_layout_preset into one deterministic output line", () => {
+    const contract = resolveStoryboardLayoutPresetContractForTest(
+      "canvas_9_16_grid_3x3_frame_9_16_exact"
+    );
+
+    expect(contract).toMatchObject({
+      canvasAspectRatio: "9:16",
+      gridColumns: 3,
+      gridRows: 3,
+      expectedFrameCount: 9,
+      frameAspectRatio: "9:16",
+      mode: "exact",
+    });
+    expect(contract?.requiredPromptLine).toBe(
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers."
+    );
+  });
+
+  it("flags a 5x2 storyboard prompt as violating the 3x3 layout preset", () => {
+    const fiveByTwoPrompt = [
+      "CAMERA/LIGHT/DEPTH: compact cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 5x2 grid with exactly 10 frames, exactly 10 vertical frames, exactly 5 equal-width columns, exactly 2 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      ...Array.from(
+        { length: 10 },
+        (_, index) =>
+          `Frame ${index + 1}: Complete visual-only product storyboard panel with the same referenced product clearly visible.`
+      ),
+    ].join("\n");
+
+    const warnings = validateProductReferenceStoryboardOutputCompletenessForTest(
+      fiveByTwoPrompt,
+      "canvas_9_16_grid_3x3_frame_9_16_exact"
+    );
+
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        "exact_frame_count_missing",
+        "vertical_frame_count_missing",
+        "equal_columns_missing",
+        "equal_rows_missing",
+      ])
+    );
+  });
+
+  it("flags renderable camera abbreviations and storyboard_grid text in no-text mode", () => {
+    const promptWithTextLeaks = [
+      "CAMERA/LIGHT/DEPTH: compact cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      ...Array.from(
+        { length: 9 },
+        (_, index) =>
+          `Frame ${index + 1}: Complete visual-only product storyboard panel labeled ${index === 0 ? "ECU" : "MS"} with the same referenced product clearly visible.`
+      ),
+      "Add storyboard_grid text at the bottom.",
+    ].join("\n");
+
+    const warnings = validateProductReferenceStoryboardOutputCompletenessForTest(
+      promptWithTextLeaks,
+      "canvas_9_16_grid_3x3_frame_9_16_exact",
+      "no_text"
+    );
+
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        "renderable_camera_abbreviation_label_leak",
+        "renderable_storyboard_grid_label_leak",
+      ])
+    );
+  });
+
+  it("allows no-text policy to name forbidden camera labels as negative instructions", () => {
+    const prompt = [
+      "CAMERA/LIGHT/DEPTH: compact cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "TEXT RENDERING POLICY: No added visible text, do not render ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as image text.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      ...Array.from(
+        { length: 9 },
+        (_, index) =>
+          `Frame ${index + 1}: Complete visual-only product storyboard panel with the same referenced product clearly visible.`
+      ),
+    ].join("\n");
+
+    const warnings = validateProductReferenceStoryboardOutputCompletenessForTest(
+      prompt,
+      "canvas_9_16_grid_3x3_frame_9_16_exact",
+      "no_text"
+    );
+
+    expect(warnings).not.toContain("renderable_camera_abbreviation_label_leak");
+    expect(warnings).not.toContain("renderable_storyboard_grid_label_leak");
   });
 
   it("requires an explicit exact product visual lock from the product reference image", () => {
@@ -389,8 +531,14 @@ describe("unified product reference storyboard skill", () => {
     const inputSchema = JSON.parse(
       readSkillFile(promptOptimizerSkillId, path.join("schemas", "input.schema.json"))
     );
+    const uiSchema = JSON.parse(
+      readSkillFile(promptOptimizerSkillId, path.join("schemas", "ui.schema.json"))
+    );
     const outputSchema = JSON.parse(
       readSkillFile(promptOptimizerSkillId, path.join("schemas", "output.schema.json"))
+    );
+    const skillLock = JSON.parse(
+      readSkillFile(promptOptimizerSkillId, "skill.lock.json")
     );
     const outputContract = readSkillFile(
       promptOptimizerSkillId,
@@ -414,6 +562,22 @@ describe("unified product reference storyboard skill", () => {
     expect(inputSchema.properties.target_max_chars.default).toBe(4500);
     expect(inputSchema.properties.target_max_chars.maximum).toBe(4500);
     expect(inputSchema.properties.preferred_target_chars.default).toBe(4300);
+    expect(uiSchema["ui:order"]).toEqual([
+      "source_prompt",
+      "target_max_chars",
+      "preferred_target_chars",
+      "preserve_storyboard_contract",
+      "optimization_strength",
+    ]);
+    expect(skillLock.outputs).toEqual(
+      expect.arrayContaining([
+        "SKILL.md",
+        "skill.md",
+        "schemas/input.schema.json",
+        "schemas/ui.schema.json",
+        "schemas/output.schema.json",
+      ])
+    );
     expect(outputSchema.maxLength).toBe(4500);
     expect(outputContract).toContain("Return plain prompt text only");
     expect(outputContract).toContain("must not end mid-frame or at a bare label");
@@ -459,6 +623,24 @@ describe("unified product reference storyboard skill", () => {
     expect(skillsRouterSource).toContain(
       "product-reference-storyboard output exceeded limit; optimizing before use"
     );
+  });
+
+  it("routes marketplace post-processing compaction through the optimizer skill instead of direct truncation", () => {
+    const marketplaceSource = fs.readFileSync(
+      path.join(__dirname, "..", "marketplaceAutoReviewService.ts"),
+      "utf-8"
+    );
+
+    expect(marketplaceSource).toContain(
+      "optimizeMinorSafetyLockPostProcessPrompt"
+    );
+    expect(marketplaceSource).toContain(
+      "optimizeProductReferenceStoryboardPrompt"
+    );
+    expect(marketplaceSource).toContain(
+      "minor_safety_lock_required_after_storyboard_skill"
+    );
+    expect(marketplaceSource).toContain("promptSafetyOptimizer");
   });
 
   it("keeps empty optional reference arrays for schema validation", () => {

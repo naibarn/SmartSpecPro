@@ -39,6 +39,7 @@ import {
   isMarketplaceAutoReviewCompletedStageStatusForTest,
   isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest,
   marketplaceAutoReviewOperationalCleanupCutoffForTest,
+  marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest,
   marketplaceAutoReviewStageAttemptKeyForStatusForTest,
   shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest,
   applyMarketplaceAutoReviewVoiceoverLinesToPlanForTest,
@@ -61,7 +62,7 @@ import {
   describedCharacterAnchorDirectiveForTest,
   evaluateMarketplaceAutoReviewInputChangeImpactForTest,
   ensureMinorSafetyClothingLockInImagePromptForTest,
-  ensureStoryboardGridContractLockInImagePromptForTest,
+  ensureStoryboardGridLayoutContractInImagePromptForTest,
   filterMarketplaceAutoReviewImageRepairUnitsForTest,
   inferProductReferenceStoryboardCategoryForTest,
   isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest,
@@ -1664,6 +1665,24 @@ describe("marketplace auto review audio/video planning", () => {
     expect((error as any).expectedMinimumConceptCount).toBe(3);
   });
 
+  it("treats too-few creative concepts as a retryable planner validation error", () => {
+    expect(
+      marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest({
+        code: "creative_planner_concept_count_mismatch",
+      })
+    ).toBe(true);
+    expect(
+      marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest({
+        code: "creative_planner_shot_count_mismatch",
+      })
+    ).toBe(true);
+    expect(
+      marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest({
+        code: "unsupported_product_claim",
+      })
+    ).toBe(false);
+  });
+
   it("normalizes a 3-5 creative concept set without fallback expansion", () => {
     const set = buildMarketplaceAutoReviewCreativeConceptSetForTest({
       parsed: {
@@ -2509,6 +2528,111 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).not.toContain("ไม่ปล่อยท้ายช็อตเงียบ");
   });
 
+  it("locks Veo prompts and native voice profile to selected male character age range", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productDetail: [
+          basePlan.productDetail,
+          [
+            "USER-SELECTED DESCRIBED CHARACTER LOCK:",
+            "The approved presenter/reviewer/persona is Thai male reviewer, 20-29.",
+            "Character preset: mode: described_character, gender: male, genderLabel: ผู้ชาย, age: young_adult_20_29, ageLabel: 20-29, appearance: thai, appearanceLabel: คนไทย, role: reviewer, roleLabel: Reviewer, style: friendly_everyday, styleLabel: เป็นกันเอง.",
+          ].join(" "),
+        ].join("\n\n"),
+      } as any,
+      shot: baseShot as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+    });
+
+    expect(prompt).toContain("VIDEO CHARACTER LOCK");
+    expect(prompt).toContain("Thai, male presenter/man, 20-29 years old");
+    expect(prompt).toContain("Selected presenter voice lock");
+    expect(prompt).not.toMatch(/\bfemale\b/i);
+    expect(prompt).not.toMatch(
+      /\b(?:22-30|25-35|28-38|30-40) years old\b|early 30s/i
+    );
+  });
+
+  it("matches native voice to uploaded character reference instead of hidden default choices", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productDetail: [
+          basePlan.productDetail,
+          [
+            "USER-SELECTED REFERENCE ANCHOR LOCK:",
+            "Product anchor product-image-sha256:producthash: strict product source.",
+            "VIDEO CHARACTER LOCK: The uploaded character reference image is the presenter source of truth. For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames. The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
+            "Character anchor character-upload:char_123: preserve the same identity, face structure, hair, body proportions, and styling from the supplied user reference across every shot.",
+          ].join(" "),
+        ].join("\n\n"),
+      } as any,
+      shot: baseShot as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+    });
+
+    expect(prompt).toContain("Uploaded character reference voice lock");
+    expect(prompt).toContain(
+      "Match the presenter's apparent gender presentation, age range"
+    );
+    expect(prompt).toContain("uploaded character reference");
+    expect(prompt).not.toMatch(
+      /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b/i
+    );
+    expect(prompt).not.toMatch(
+      /\b(?:22-30|25-35|28-38|30-40) years old\b|early 30s/i
+    );
+  });
+
+  it("uses run metadata character preset when storyboard review plan lacks character lock", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productDetail:
+          "PRODUCT FACTS LOCK: BENO PRO-FLEX coffee machine. Preserve exact product evidence.",
+      } as any,
+      shot: {
+        ...baseShot,
+        durationSeconds: 5,
+        title: "Hook: Coffee Challenges",
+        voiceover:
+          "เมื่อไหร่ที่ทำกาแฟไม่สุด ทั้งไม่หอมเข้ม หรือฟองน้ำนมไม่สวยแบบที่อยากได้",
+      } as any,
+      audioStrategy: "native_video_audio",
+      metadata: {
+        referenceAnchors: {
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทย ผู้ชาย, 30-39, role Reviewer, style ผู้เชี่ยวชาญ.",
+          characterPreset: {
+            mode: "described_character",
+            gender: "male",
+            genderLabel: "ผู้ชาย",
+            age: "adult_30_39",
+            ageLabel: "30-39",
+            appearance: "thai",
+            appearanceLabel: "คนไทย",
+            role: "reviewer",
+            roleLabel: "Reviewer",
+            style: "expert_practical",
+            styleLabel: "ผู้เชี่ยวชาญ",
+          },
+        },
+      } as any,
+    });
+
+    expect(prompt).toContain("VIDEO CHARACTER LOCK");
+    expect(prompt).toContain("Thai, male presenter/man, 30-39 years old");
+    expect(prompt).toContain("Selected presenter voice lock");
+    expect(prompt).not.toMatch(
+      /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b|\bfemale voice\b/i
+    );
+    expect(prompt).not.toMatch(/\bearly 30s\b/i);
+  });
+
   it("keeps Marketplace Auto Review video prompts focused on scene action camera audio and dialogue", () => {
     const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
       plan: {
@@ -2968,6 +3092,11 @@ describe("marketplace auto review audio/video planning", () => {
       generation_mode: "multi_frame_storyboard",
       storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
       aspect_ratio: "9:16",
+      required_frame_count: 9,
+      image_attempt_number: 1,
+      image_attempt_story_lens_id: expect.stringContaining(
+        "image-attempt-story-lens:1:"
+      ),
       product_category: "furniture",
       image_text_mode: "no_text",
       cinematic_style: "cinematic_realism",
@@ -2994,7 +3123,28 @@ describe("marketplace auto review audio/video planning", () => {
       environment: 1,
       total: 3,
     });
+    expect(String(inputs.product_reference_exact_recreation_lock)).toContain(
+      "primary visual source of truth"
+    );
+    expect(String(inputs.product_reference_exact_recreation_lock)).toContain(
+      "recreate and match the exact same actual reference image product"
+    );
+    expect(String(inputs.product_reference_exact_recreation_lock)).toContain(
+      "must never override the attached product image"
+    );
+    expect(String(inputs.storyboard_guide)).toContain(
+      "Product reference exact recreation lock"
+    );
+    expect(String(inputs.storyboard_guide)).toContain(
+      "IMAGE ATTEMPT 1 STORY LENS"
+    );
     expect(String(inputs.storyboard_guide)).toContain("Product drift guard");
+    expect(String(inputs.production_concept_details)).toContain(
+      "Product reference exact recreation lock"
+    );
+    expect(String(inputs.production_concept_details)).toContain(
+      "IMAGE ATTEMPT 1 STORY LENS"
+    );
     expect(String(inputs.production_concept_details)).toContain(
       "Do not show any alternate bedside table"
     );
@@ -3003,6 +3153,186 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(String(inputs.production_concept_details)).toContain(
       "Marketplace category path: บ้านและไลฟ์สไตล์ > เฟอร์นิเจอร์"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "Product reference exact recreation lock"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "written description must never override the attached product image"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "fresh skill call for image attempt 1"
+    );
+  });
+
+  it("varies product-reference-storyboard skill inputs across three image attempts", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const metadata = {
+      ...readyFeature117Metadata(),
+      creativeConceptSet: {
+        selectedConceptId: "concept_problem",
+        alternatives: [
+          {
+            conceptId: "concept_problem",
+            title: "Problem to proof",
+            angle:
+              "Open with morning coffee frustration, then prove the machine solves it.",
+            selected: true,
+          },
+          {
+            conceptId: "concept_routine",
+            title: "Daily routine confidence",
+            angle:
+              "Open with an everyday routine and show smoother use step by step.",
+            selected: false,
+          },
+          {
+            conceptId: "concept_detail",
+            title: "Detail proof tour",
+            angle:
+              "Open with product detail evidence and move toward taste/result confidence.",
+            selected: false,
+          },
+        ],
+      },
+    };
+    const referenceImageGroups =
+      productReferenceStoryboardReferenceImageGroupsForTest({
+        metadata: metadata as any,
+        plan,
+        max: 5,
+      });
+    const unit = {
+      unitId: "storyboard-grid-image",
+      role: "storyboard_grid",
+    } as any;
+    const attempts = [1, 2, 3].map(directImageAttempt =>
+      buildProductReferenceStoryboardSkillInputsForTest({
+        plan,
+        unit,
+        overlayTextMode: "no_text",
+        referenceImageGroups,
+        metadata: metadata as any,
+        directImageAttempt,
+        promptSkillAttempt: 1,
+      })
+    );
+    const snapshots = attempts.map(input =>
+      buildProductReferenceStoryboardSkillInputSnapshotForTest(input)
+    ) as any[];
+
+    expect(attempts.map(input => input.image_attempt_number)).toEqual([
+      1, 2, 3,
+    ]);
+    expect(new Set(attempts.map(input => input.image_attempt_story_lens_id)).size)
+      .toBe(3);
+    expect(new Set(snapshots.map(snapshot => snapshot.userInputHash)).size)
+      .toBe(3);
+    expect(new Set(snapshots.map(snapshot => snapshot.imageAttemptStoryLensHash)).size)
+      .toBe(3);
+    expect(String(attempts[1].image_attempt_story_lens)).toContain(
+      "Daily routine confidence"
+    );
+    expect(String(attempts[2].image_attempt_story_lens)).toContain(
+      "Detail proof tour"
+    );
+  });
+
+  it("passes exact product reference recreation preflight when the skill prompt follows the input lock", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
+      "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images"],
+      },
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.blockers).not.toContain(
+      "product_reference_primary_visual_lock_missing"
+    );
+  });
+
+  it("blocks no-text storyboard prompts that leak camera labels or storyboard_grid text", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
+      "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) =>
+          `Frame ${index + 1}: visual-only product story panel with ${index === 0 ? "ECU" : "MS"} text in the corner.`
+      ),
+      "Render storyboard_grid as a bottom label.",
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images"],
+      },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.blockers).toEqual(
+      expect.arrayContaining([
+        "renderable_camera_abbreviation_label_leak",
+        "renderable_storyboard_grid_label_leak",
+      ])
     );
   });
 
@@ -3359,6 +3689,42 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt).not.toContain("PROMPT PREFLIGHT REPAIR PATCH");
   });
 
+  it("does not truncate storyboard frames when adding minor safety lock to a near-limit prompt", () => {
+    const nearLimitPrompt = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "VIDEO IDENTITY SAFETY LOCK: No back-facing identity frames.",
+      "CINEMATIC REALISM LOCK: Professional product film style with realistic kitchen lighting and grounded shadows.",
+      "PRODUCT REFERENCE LOCK: Use @Image1 / the first attached product reference image as the primary visual source of truth; the written product description is secondary and must never override the attached product image. Match the actual reference image exactly.",
+      "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) =>
+          `Frame ${index + 1}: visual-only product story panel with the same referenced product clearly visible, natural kitchen light, exact appliance continuity, and complete action beat ${index + 1}.`
+      ),
+      "Additional compact product fidelity note repeated to push length near the provider budget while keeping all storyboard frame lines intact.",
+    ].join("\n");
+    const paddedPrompt = `${nearLimitPrompt}\n${"Product texture and product fidelity. ".repeat(34)}`;
+    const plan = {
+      ...basePlan,
+      productDetail: `${basePlan.productDetail} baby toddler child diaper`,
+    } as any;
+
+    const next = ensureMinorSafetyClothingLockInImagePromptForTest({
+      prompt: paddedPrompt,
+      plan,
+    });
+
+    expect(next).toContain("MINOR SAFETY CLOTHING LOCK:");
+    expect(next).toContain("Frame 1:");
+    expect(next).toContain("Frame 9:");
+    expect(next.match(/\bFrame\s+\d+\s*:/g)).toHaveLength(9);
+    expect(next.length).toBeLessThanOrEqual(4500);
+  });
+
   it("rejects malformed storyboard prompts before credits or provider calls", () => {
     const plan = {
       ...basePlan,
@@ -3448,7 +3814,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.blockers).not.toContain("storyboard_guide_field_missing");
   });
 
-  it("blocks skill-generated storyboard prompts that do not make product reference image primary", () => {
+  it("warns on skill-generated storyboard prompts that do not make product reference image primary", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -3485,8 +3851,11 @@ describe("marketplace auto review audio/video planning", () => {
       },
     });
 
-    expect(result.status).toBe("failed");
-    expect(result.blockers).toContain(
+    expect(result.status).toBe("passed");
+    expect(result.blockers).not.toContain(
+      "product_reference_primary_visual_lock_missing"
+    );
+    expect(result.warnings).toContain(
       "product_reference_primary_visual_lock_missing"
     );
   });
@@ -3534,7 +3903,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.blockers).toContain("character_reference_age_role_mismatch");
   });
 
-  it("blocks skill-generated storyboard prompts that drop hard 3x3 layout instructions", () => {
+  it("warns on skill-generated storyboard prompts that drop exact 3x3 layout instructions", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -3586,12 +3955,14 @@ describe("marketplace auto review audio/video planning", () => {
       },
     });
 
-    expect(result.status).toBe("failed");
-    expect(result.blockers).toContain("equal_rows_missing");
-    expect(result.blockers).toContain("no_separator_lock_missing");
+    expect(result.status).toBe("passed");
+    expect(result.blockers).not.toContain("equal_rows_missing");
+    expect(result.blockers).not.toContain("no_separator_lock_missing");
+    expect(result.warnings).toContain("equal_rows_missing");
+    expect(result.warnings).toContain("no_separator_lock_missing");
   });
 
-  it("warns but does not block skill-generated storyboard prompts with incomplete frame coverage", () => {
+  it("warns on skill-generated storyboard prompts with incomplete frame coverage", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -3634,7 +4005,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.warnings).toContain("frame_6_missing");
   });
 
-  it("adds a deterministic storyboard contract lock when skill prompt wording omits exact grid phrases", () => {
+  it("keeps missing exact storyboard-grid phrases visible as warnings with skill runtime audit", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -3653,7 +4024,7 @@ describe("marketplace auto review audio/video planning", () => {
       ),
     ].join("\n");
 
-    const rawPreflight = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+    const preflight = validateMarketplaceAutoReviewImagePromptPreflightForTest({
       plan,
       unit,
       overlayTextMode: "no_text",
@@ -3670,37 +4041,19 @@ describe("marketplace auto review audio/video planning", () => {
         inputKeys: ["reference_product_images"],
       },
     });
-    expect(rawPreflight.status).toBe("failed");
-    expect(rawPreflight.blockers).toContain("output_single_image_missing");
-
-    const locked = ensureStoryboardGridContractLockInImagePromptForTest({
-      prompt: skillPrompt,
-      overlayTextMode: "no_text",
-    });
-    const lockedPreflight =
-      validateMarketplaceAutoReviewImagePromptPreflightForTest({
-        plan,
-        unit,
-        overlayTextMode: "no_text",
-        prompt: locked.prompt,
-        skillRuntime: {
-          selectedSkill: "product-reference-storyboard",
-          fallbackUsed: false,
-          generationMode: "multi_frame_storyboard",
-          layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
-          aspectRatio: "9:16",
-          productCategory: "furniture",
-          referenceProductImageCount: 1,
-          schemaAudit: { status: "passed" },
-          inputKeys: ["reference_product_images"],
-        },
-      });
-
-    expect(locked.applied).toBe(true);
-    expect(locked.addedFragments).toContain("one single 9:16 image");
-    expect(locked.prompt).toContain("STORYBOARD GRID CONTRACT LOCK");
-    expect(lockedPreflight.status).toBe("passed");
-    expect(lockedPreflight.blockers).not.toContain("output_single_image_missing");
+    expect(preflight.status).toBe("passed");
+    expect(preflight.blockers).toEqual([]);
+    expect(preflight.warnings).toEqual(
+      expect.arrayContaining([
+        "output_single_image_missing",
+        "exact_frame_count_missing",
+        "vertical_frame_count_missing",
+        "equal_columns_missing",
+        "equal_rows_missing",
+        "no_collage_lock_missing",
+        "no_separator_lock_missing",
+      ])
+    );
   });
 
   it("warns but does not stop repair attempts when a skill prompt omits the exact no-text phrase", () => {
@@ -3829,6 +4182,68 @@ describe("marketplace auto review audio/video planning", () => {
     ]);
     expect(output.clips[1].startFrameUrl).toBe(output.clips[0].stopFrameUrl);
     expect(output.clips[2].startFrameUrl).toBe(output.clips[1].stopFrameUrl);
+  });
+
+  it("persists Storyboard Review prompts with metadata-based character voice lock", () => {
+    const plan = {
+      ...basePlan,
+      productDetail:
+        "PRODUCT FACTS LOCK: BENO PRO-FLEX coffee machine. Preserve exact product evidence.",
+      shots: [{ ...baseShot, id: "shot-1", order: 1, durationSeconds: 5 }],
+    } as any;
+    const metadata = {
+      startFrameUrls: ["https://cdn.example.test/coffee-start.png"],
+      stopFrameUrls: ["https://cdn.example.test/coffee-stop.png"],
+      resolvedAudioStrategy: "native_video_audio",
+      referenceAnchors: {
+        characterMode: "described_character",
+        characterBrief:
+          "คนไทย ผู้ชาย, 30-39, role Reviewer, style ผู้เชี่ยวชาญ.",
+        characterPreset: {
+          mode: "described_character",
+          gender: "male",
+          genderLabel: "ผู้ชาย",
+          age: "adult_30_39",
+          ageLabel: "30-39",
+          appearance: "thai",
+          appearanceLabel: "คนไทย",
+          role: "reviewer",
+          roleLabel: "Reviewer",
+          style: "expert_practical",
+          styleLabel: "ผู้เชี่ยวชาญ",
+        },
+      },
+    } as any;
+    const output = buildMarketplaceAutoReviewStoryboardReviewOutputForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "video_shot_start_stop",
+      } as any,
+      plan,
+      metadata,
+    });
+    const tasks = buildMarketplaceAutoReviewStoryboardReviewTasksForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "video_shot_start_stop",
+      } as any,
+      plan,
+      metadata,
+    });
+
+    expect(output.clips[0].prompt).toContain("VIDEO CHARACTER LOCK");
+    expect(output.clips[0].prompt).toContain(
+      "Thai, male presenter/man, 30-39 years old"
+    );
+    expect(output.clips[0].prompt).toContain("Selected presenter voice lock");
+    expect(output.clips[0].prompt).not.toMatch(
+      /\byoung mother-style female voice\b|\bfemale voice\b/i
+    );
+    expect(tasks[0]?.prompt).toBe(output.clips[0].prompt);
   });
 
   it("creates Storyboard Review video placeholders without copying start frames into result URLs", () => {
@@ -4354,6 +4769,102 @@ describe("marketplace auto review audio/video planning", () => {
         } as any,
       })
     ).toBe(true);
+  });
+
+  it("does not count prompt preflight failures as completed image attempts", () => {
+    expect(
+      hasMarketplaceAutoReviewMinimumImageAttemptsForTest({
+        metadata: {
+          imageAttemptReviews: [
+            { attempt: 1, status: "repair_required" },
+            { attempt: 2, status: "repair_required" },
+            {
+              attempt: 3,
+              status: "failed",
+              taskRefs: [
+                {
+                  taskId: "prompt-preflight-failed:storyboard-grid-image:3",
+                  providerSubmitIntentStatus: "blocked_before_provider_submit",
+                },
+              ],
+            },
+          ],
+        } as any,
+      })
+    ).toBe(false);
+  });
+
+  it("does not exhaust image repair budget when the last ref never reached provider", () => {
+    const repairUnit =
+      buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest({
+        reasonCodes: ["productMismatch"],
+        repairInstruction: "Regenerate with the exact product reference.",
+      });
+    const refs = [
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 1,
+        taskId: "provider-task-1",
+        status: "completed",
+        resultUrl: "https://cdn.example.test/grid-1.png",
+      },
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 2,
+        taskId: "provider-task-2",
+        status: "completed",
+        resultUrl: "https://cdn.example.test/grid-2.png",
+      },
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 3,
+        taskId: "prompt-preflight-failed:storyboard-grid-image:3",
+        status: "failed",
+        providerSubmitIntentStatus: "blocked_before_provider_submit",
+      },
+    ];
+
+    expect(
+      isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest({
+        repairUnits: [repairUnit],
+        refs: refs as any,
+      })
+    ).toBe(false);
+  });
+
+  it("restores the exact 3x3 layout contract when skill output has all frames but misses anchors", () => {
+    const weakPrompt = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic light.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) =>
+          `Frame ${index + 1}: visual-only product story panel with the same referenced product clearly visible.`
+      ),
+    ].join("\n");
+
+    const restored =
+      ensureStoryboardGridLayoutContractInImagePromptForTest(weakPrompt);
+
+    expect(restored.applied).toBe(true);
+    expect(restored.prompt).toContain("one single 9:16 image");
+    expect(restored.prompt).toContain("strict 3x3 grid");
+    expect(restored.prompt).toContain("exactly 9 vertical frames");
+    expect(restored.prompt).toContain("exactly 3 equal-width columns");
+    expect(restored.prompt).toContain("exactly 3 equal-height rows");
+    expect(restored.prompt).toContain("no separator lines");
   });
 
   it("treats unavailable vision QA as a repair signal, not a clean pass", () => {

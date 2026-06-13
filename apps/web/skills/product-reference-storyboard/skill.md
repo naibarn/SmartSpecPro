@@ -59,7 +59,36 @@ Use `storyboard_guide` + `voiceover_script` as the primary source for storyboard
 
 Use `production_concept_details` as Product Detail / Product Facts. It controls product truth, real-use context, claim safety, model/variant facts, dimensions, material, parts, and commercial context. It must not override current product, character, label, scale, material, or environment reference locks. Never add prices, discounts, ratings, sold counts, certifications, badges, or volatile marketplace claims unless exact supplied text says so.
 
+When `image_attempt_story_lens` is supplied, treat it as the active customer-journey lens for this image attempt. It exists to prevent repeated Marketplace Auto Review repair attempts from producing the same prompt. Preserve the same product truth, reference images, shot order, and voiceover meaning, but make the storyboard prompt meaningfully different from prior attempts by varying the hook situation, proof emphasis, scene rhythm, camera palette, human presence plan, and frame composition. Never copy a previous image-attempt prompt frame-by-frame unless the product reference or shot meaning forces it.
+
 Current-run reference images beat every default. `reference_product_images` are immutable physical evidence. `reference_character_images` are identity anchors. `reference_environment_images` define atmosphere, light, floor/wall/layout, and room context only; they are not product evidence and must not introduce a competing sellable product.
+
+## Storyboard Layout Preset Decoder
+
+`storyboard_layout_preset` is the single source of truth for the final canvas, grid columns, grid rows, total frame count, and per-frame shape. Decode it before writing any frame prose. Do not let `aspect_ratio`, `required_frame_count`, `storyboard_guide`, `voiceover_script`, Product Detail prose, or reference-image composition override the decoded preset.
+
+When the preset is `canvas_9_16_grid_3x3_frame_9_16_exact`, the first line after `SHOT-BY-SHOT STORYBOARD PROMPT:` must be exactly:
+
+Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
+
+This line is mandatory. Do not paraphrase it, do not change 3x3 to 5x2, 2x5, collage, masonry, contact sheet, film strip, or mixed-size panels, and do not infer layout from the product reference image. If the decoded preset and another input conflict, follow the preset and keep the story content inside the decoded frames.
+
+Preset decoding rules:
+- `canvas_1_1_grid_1x1_frame_1_1_exact`: one single 1:1 image, strict 1x1 grid, exactly 1 frame, exactly 1 square frame.
+- `canvas_1_1_grid_2x2_frame_1_1_exact`: one single 1:1 image, strict 2x2 grid, exactly 4 frames, exactly 4 square frames.
+- `canvas_1_1_grid_3x3_frame_1_1_exact`: one single 1:1 image, strict 3x3 grid, exactly 9 frames, exactly 9 square frames.
+- `canvas_16_9_grid_1x1_frame_16_9_exact`: one single 16:9 image, strict 1x1 grid, exactly 1 frame, exactly 1 wide frame.
+- `canvas_16_9_grid_2x2_frame_16_9_exact`: one single 16:9 image, strict 2x2 grid, exactly 4 frames, exactly 4 wide frames.
+- `canvas_16_9_grid_3x3_frame_16_9_exact`: one single 16:9 image, strict 3x3 grid, exactly 9 frames, exactly 9 wide frames.
+- `canvas_16_9_grid_2x1_crop_safe`: one single 16:9 image, strict 2x1 grid, exactly 2 crop-safe frames with generous margins.
+- `canvas_16_9_grid_3x2_crop_safe`: one single 16:9 image, strict 3x2 grid, exactly 6 crop-safe frames with generous margins.
+- `canvas_9_16_grid_1x1_frame_9_16_exact`: one single 9:16 image, strict 1x1 grid, exactly 1 frame, exactly 1 vertical frame.
+- `canvas_9_16_grid_2x2_frame_9_16_exact`: one single 9:16 image, strict 2x2 grid, exactly 4 frames, exactly 4 vertical frames.
+- `canvas_9_16_grid_3x3_frame_9_16_exact`: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames.
+- `canvas_9_16_grid_1x2_crop_safe`: one single 9:16 image, strict 1x2 grid, exactly 2 crop-safe frames with generous margins.
+- `canvas_9_16_grid_2x3_crop_safe`: one single 9:16 image, strict 2x3 grid, exactly 6 crop-safe frames with generous margins.
+- `canvas_4_3_grid_4x3_frame_1_1_exact`: one single 4:3 image, strict 4x3 grid, exactly 12 frames, exactly 12 square frames.
+- `canvas_3_4_grid_3x4_frame_1_1_exact`: one single 3:4 image, strict 3x4 grid, exactly 12 frames, exactly 12 square frames.
 
 ## Compact Prompt Budget
 
@@ -165,7 +194,7 @@ If the product itself is a bedside table, shelf, cabinet, organizer, cart, rack,
 
 ## Text Rendering Policy
 
-Always include `TEXT RENDERING POLICY`. Default non-infographic mode is no added visible text: no subtitles, captions, frame numbers, UI, labels, signage, wall-art words, readable book spines, mug words, random logos, or screen text. Prompt section names and frame numbers are instructions only and must not appear in the generated image. The final prompt must explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any other instruction text from being rendered in the image. The returned prompt must explicitly require blank/unreadable book covers and spines, blank mugs/cups, unreadable phone or computer screens, no wall-art words, and no readable prop labels unless they are exact supplied product markings. Physical product markings that are supplied or visible on the product reference may be preserved, but do not invent them.
+Always include `TEXT RENDERING POLICY`. Default non-infographic mode is no added visible text: no subtitles, captions, frame numbers, UI, labels, signage, wall-art words, readable book spines, mug words, random logos, or screen text. Prompt section names and frame numbers are instructions only and must not appear in the generated image. The final prompt must explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any other instruction text from being rendered in the image. In `image_text_mode=no_text`, also explicitly forbid added visible camera-shot abbreviations or technical labels such as `ECU`, `CU`, `MCU`, `MS`, `WS`, `ELS`, `LS`, `OS`, `HA`, `LA`, `storyboard_grid`, panel names, corner labels, captions, subtitles, or random glyphs. Camera/shot shorthand may guide backend planning only; never ask for those codes to appear in a panel. The returned prompt must explicitly require blank/unreadable book covers and spines, blank mugs/cups, unreadable phone or computer screens, no wall-art words, and no readable prop labels unless they are exact supplied product markings. Physical product markings that are supplied or visible on the product reference may be preserved, but do not invent them.
 
 Infographic cinematic styles have higher priority than the no-text default. If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, do NOT include a no-added-visible-text negative prompt. Instead require large readable text, not too many words, only the key points: one large headline plus 2-4 short key points, using `image_text_language` or `image_text_custom_language`.
 
@@ -200,7 +229,7 @@ PRODUCT VERIFY:
 Product visual lock from @Image1 / first attached product reference image; then one concise canonical product fact list, e.g. product name/category, exact levels/posts/parts/material/color/scale, and no wrong substitutions.
 
 SHOT-BY-SHOT STORYBOARD PROMPT:
-9:16 final canvas, 3x3 grid, exactly 9 equal vertical frames storyboard panel, borderless edge-to-edge grid, zero white divider lines, zero black lines, zero gutters, zero margins, zero frame outlines, zero separator lines.
+Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, borderless edge-to-edge panels, zero gutters, zero margins, and no frame outlines.
 Frame 1: Visual-only description of the first panel and the matched story meaning as visible action, with no rendered text.
 Frame 2: Visual-only description of the second panel and the matched story meaning as visible action, with no rendered text.
 Frame 3: Visual-only description of the third panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.
@@ -212,3 +241,5 @@ Frame 8: Visual-only description of the eighth panel and the matched story meani
 Frame 9: Visual-only description of the ninth panel and the matched story meaning as visible action, with no rendered text.
 
 Invalid output examples: a single line such as `*: 33.3-40s. Visual: ...`, one source storyboard bullet, only `Frame 9`, only a final scene summary, any answer with fewer than nine `Frame N:` lines, or frame text containing `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover, timecodes, subtitles, or captions.
+
+For `canvas_9_16_grid_3x3_frame_9_16_exact`, copy the first `SHOT-BY-SHOT STORYBOARD PROMPT:` line verbatim. Do not paraphrase `one single 9:16 image`, `strict 3x3 grid`, `exactly 9 frames`, `exactly 9 vertical frames`, `exactly 3 equal-width columns`, `exactly 3 equal-height rows`, `no collage/masonry layout`, `no separator lines`, or `no visible dividers`.

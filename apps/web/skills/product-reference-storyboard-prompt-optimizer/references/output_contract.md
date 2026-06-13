@@ -6,7 +6,8 @@ Do not return JSON, Markdown fences, wrapper keys, analysis, diff notes, charact
 
 For product-reference storyboard prompts, preserve:
 
-- one 9:16 strict 3x3 image contract when present;
+- one single 9:16 image / strict 3x3 grid / exactly 9 frames / exactly 9 vertical frames / exactly 3 equal-width columns / exactly 3 equal-height rows / no collage/masonry layout / no separator lines when present;
+- the exact first `SHOT-BY-SHOT STORYBOARD PROMPT:` contract line when present; do not paraphrase it shorter;
 - `Frame 1` through `Frame 9`;
 - non-empty visual-only prose per frame;
 - no `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover lines, timecodes, subtitles, or captions inside frame text;

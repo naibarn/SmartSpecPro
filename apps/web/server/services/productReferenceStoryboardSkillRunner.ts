@@ -43,6 +43,23 @@ const PRODUCT_REFERENCE_STORYBOARD_REFERENCE_IMAGE_ARRAY_FIELDS = new Set([
   "reference_character_images",
   "reference_environment_images",
 ]);
+const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_FATAL_CODES = new Set([
+  "storyboard_layout_preset_contract_missing",
+  "output_single_image_missing",
+  "exact_frame_count_missing",
+  "vertical_frame_count_missing",
+  "wide_frame_count_missing",
+  "square_frame_count_missing",
+  "frame_aspect_ratio_missing",
+  "crop_safe_frame_margin_missing",
+  "equal_columns_missing",
+  "equal_rows_missing",
+  "no_collage_lock_missing",
+  "no_separator_lock_missing",
+  "product_reference_image_exact_recreation_missing",
+  "renderable_camera_abbreviation_label_leak",
+  "renderable_storyboard_grid_label_leak",
+]);
 
 type LoadedSkillInputSchema = {
   schemaPath: string;
@@ -67,7 +84,20 @@ type ProductReferenceStoryboardSkillInputSchemaAudit = {
     environment: number;
     total: number;
   };
+  layoutContract: ProductReferenceStoryboardLayoutContract | null;
   fieldTypes: Record<string, string>;
+};
+
+type ProductReferenceStoryboardLayoutContract = {
+  preset: string;
+  canvasAspectRatio: string;
+  gridColumns: number;
+  gridRows: number;
+  expectedFrameCount: number;
+  frameAspectRatio: string | null;
+  mode: "exact" | "crop_safe";
+  requiredPromptLine: string;
+  requiredFragments: Array<readonly [string, readonly string[]]>;
 };
 
 type ProductReferenceStoryboardFullOutputLogEntry = {
@@ -538,6 +568,268 @@ function schemaRequiredFields(schema: Record<string, unknown>): string[] {
     : [];
 }
 
+const PRODUCT_REFERENCE_STORYBOARD_LAYOUT_CONTRACTS: Record<
+  string,
+  ProductReferenceStoryboardLayoutContract
+> = {
+  canvas_1_1_grid_1x1_frame_1_1_exact: buildStoryboardLayoutContract({
+    preset: "canvas_1_1_grid_1x1_frame_1_1_exact",
+    canvasAspectRatio: "1:1",
+    gridColumns: 1,
+    gridRows: 1,
+    frameAspectRatio: "1:1",
+    mode: "exact",
+  }),
+  canvas_1_1_grid_2x2_frame_1_1_exact: buildStoryboardLayoutContract({
+    preset: "canvas_1_1_grid_2x2_frame_1_1_exact",
+    canvasAspectRatio: "1:1",
+    gridColumns: 2,
+    gridRows: 2,
+    frameAspectRatio: "1:1",
+    mode: "exact",
+  }),
+  canvas_1_1_grid_3x3_frame_1_1_exact: buildStoryboardLayoutContract({
+    preset: "canvas_1_1_grid_3x3_frame_1_1_exact",
+    canvasAspectRatio: "1:1",
+    gridColumns: 3,
+    gridRows: 3,
+    frameAspectRatio: "1:1",
+    mode: "exact",
+  }),
+  canvas_16_9_grid_1x1_frame_16_9_exact: buildStoryboardLayoutContract({
+    preset: "canvas_16_9_grid_1x1_frame_16_9_exact",
+    canvasAspectRatio: "16:9",
+    gridColumns: 1,
+    gridRows: 1,
+    frameAspectRatio: "16:9",
+    mode: "exact",
+  }),
+  canvas_16_9_grid_2x2_frame_16_9_exact: buildStoryboardLayoutContract({
+    preset: "canvas_16_9_grid_2x2_frame_16_9_exact",
+    canvasAspectRatio: "16:9",
+    gridColumns: 2,
+    gridRows: 2,
+    frameAspectRatio: "16:9",
+    mode: "exact",
+  }),
+  canvas_16_9_grid_3x3_frame_16_9_exact: buildStoryboardLayoutContract({
+    preset: "canvas_16_9_grid_3x3_frame_16_9_exact",
+    canvasAspectRatio: "16:9",
+    gridColumns: 3,
+    gridRows: 3,
+    frameAspectRatio: "16:9",
+    mode: "exact",
+  }),
+  canvas_16_9_grid_2x1_crop_safe: buildStoryboardLayoutContract({
+    preset: "canvas_16_9_grid_2x1_crop_safe",
+    canvasAspectRatio: "16:9",
+    gridColumns: 2,
+    gridRows: 1,
+    frameAspectRatio: null,
+    mode: "crop_safe",
+  }),
+  canvas_16_9_grid_3x2_crop_safe: buildStoryboardLayoutContract({
+    preset: "canvas_16_9_grid_3x2_crop_safe",
+    canvasAspectRatio: "16:9",
+    gridColumns: 3,
+    gridRows: 2,
+    frameAspectRatio: null,
+    mode: "crop_safe",
+  }),
+  canvas_9_16_grid_1x1_frame_9_16_exact: buildStoryboardLayoutContract({
+    preset: "canvas_9_16_grid_1x1_frame_9_16_exact",
+    canvasAspectRatio: "9:16",
+    gridColumns: 1,
+    gridRows: 1,
+    frameAspectRatio: "9:16",
+    mode: "exact",
+  }),
+  canvas_9_16_grid_2x2_frame_9_16_exact: buildStoryboardLayoutContract({
+    preset: "canvas_9_16_grid_2x2_frame_9_16_exact",
+    canvasAspectRatio: "9:16",
+    gridColumns: 2,
+    gridRows: 2,
+    frameAspectRatio: "9:16",
+    mode: "exact",
+  }),
+  canvas_9_16_grid_3x3_frame_9_16_exact: buildStoryboardLayoutContract({
+    preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+    canvasAspectRatio: "9:16",
+    gridColumns: 3,
+    gridRows: 3,
+    frameAspectRatio: "9:16",
+    mode: "exact",
+  }),
+  canvas_9_16_grid_1x2_crop_safe: buildStoryboardLayoutContract({
+    preset: "canvas_9_16_grid_1x2_crop_safe",
+    canvasAspectRatio: "9:16",
+    gridColumns: 1,
+    gridRows: 2,
+    frameAspectRatio: null,
+    mode: "crop_safe",
+  }),
+  canvas_9_16_grid_2x3_crop_safe: buildStoryboardLayoutContract({
+    preset: "canvas_9_16_grid_2x3_crop_safe",
+    canvasAspectRatio: "9:16",
+    gridColumns: 2,
+    gridRows: 3,
+    frameAspectRatio: null,
+    mode: "crop_safe",
+  }),
+  canvas_4_3_grid_4x3_frame_1_1_exact: buildStoryboardLayoutContract({
+    preset: "canvas_4_3_grid_4x3_frame_1_1_exact",
+    canvasAspectRatio: "4:3",
+    gridColumns: 4,
+    gridRows: 3,
+    frameAspectRatio: "1:1",
+    mode: "exact",
+  }),
+  canvas_3_4_grid_3x4_frame_1_1_exact: buildStoryboardLayoutContract({
+    preset: "canvas_3_4_grid_3x4_frame_1_1_exact",
+    canvasAspectRatio: "3:4",
+    gridColumns: 3,
+    gridRows: 4,
+    frameAspectRatio: "1:1",
+    mode: "exact",
+  }),
+};
+
+function buildStoryboardLayoutContract(input: {
+  preset: string;
+  canvasAspectRatio: string;
+  gridColumns: number;
+  gridRows: number;
+  frameAspectRatio: string | null;
+  mode: "exact" | "crop_safe";
+}): ProductReferenceStoryboardLayoutContract {
+  const expectedFrameCount = input.gridColumns * input.gridRows;
+  const exactFrameDescriptor =
+    input.frameAspectRatio === "9:16"
+      ? `${expectedFrameCount} vertical frames`
+      : input.frameAspectRatio === "16:9"
+        ? `${expectedFrameCount} wide frames`
+        : input.frameAspectRatio === "1:1"
+          ? `${expectedFrameCount} square frames`
+          : `${expectedFrameCount} ${input.frameAspectRatio ?? ""} frames`;
+  const exactFrameCode =
+    input.frameAspectRatio === "9:16"
+      ? "vertical_frame_count_missing"
+      : input.frameAspectRatio === "16:9"
+        ? "wide_frame_count_missing"
+        : input.frameAspectRatio === "1:1"
+          ? "square_frame_count_missing"
+          : "frame_aspect_ratio_missing";
+  const frameShape =
+    input.mode === "exact" && input.frameAspectRatio
+      ? `, exactly ${exactFrameDescriptor}`
+      : `, ${expectedFrameCount} crop-safe frames with generous margins`;
+  const requiredPromptLine = [
+    `Create one single ${input.canvasAspectRatio} image as a strict ${input.gridColumns}x${input.gridRows} grid with exactly ${expectedFrameCount} frames${frameShape}`,
+    `exactly ${input.gridColumns} equal-width columns`,
+    `exactly ${input.gridRows} equal-height rows`,
+    "no collage/masonry layout",
+    "no separator lines",
+    "and no visible dividers.",
+  ].join(", ");
+  return {
+    ...input,
+    expectedFrameCount,
+    requiredPromptLine,
+    requiredFragments: [
+      [
+        "output_single_image_missing",
+        [
+          `one single ${input.canvasAspectRatio} image`,
+          `single ${input.canvasAspectRatio} image`,
+        ],
+      ],
+      [
+        "exact_frame_count_missing",
+        [`exactly ${expectedFrameCount} frames`, `${expectedFrameCount} total frames`],
+      ],
+      ...(input.mode === "exact" && input.frameAspectRatio
+        ? ([
+            [
+              exactFrameCode,
+              [
+                `exactly ${exactFrameDescriptor}`,
+                exactFrameDescriptor,
+                `${input.frameAspectRatio} frames`,
+              ],
+            ],
+          ] as Array<readonly [string, readonly string[]]>)
+        : ([
+            [
+              "crop_safe_frame_margin_missing",
+              ["crop-safe frames", "crop safe frames", "generous margins"],
+            ],
+          ] as Array<readonly [string, readonly string[]]>)),
+      [
+        "equal_columns_missing",
+        [
+          `exactly ${input.gridColumns} equal-width columns`,
+          `${input.gridColumns} equal-width columns`,
+        ],
+      ],
+      [
+        "equal_rows_missing",
+        [
+          `exactly ${input.gridRows} equal-height rows`,
+          `${input.gridRows} equal-height rows`,
+        ],
+      ],
+      ["no_collage_lock_missing", ["no collage/masonry layout", "no collage"]],
+      ["no_separator_lock_missing", ["no separator lines", "no visible dividers"]],
+    ],
+  };
+}
+
+function resolveStoryboardLayoutPresetContract(
+  preset: unknown
+): ProductReferenceStoryboardLayoutContract | null {
+  const value = cleanInputString(preset);
+  if (!value || value === "auto") return null;
+  return PRODUCT_REFERENCE_STORYBOARD_LAYOUT_CONTRACTS[value] ?? null;
+}
+
+function normalizeProductReferenceStoryboardSkillInputs(
+  defaults: Record<string, unknown>,
+  userInputs: Record<string, unknown>,
+  maxOutputChars: number
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = {
+    ...defaults,
+    ...userInputs,
+    maxPromptLength: maxOutputChars,
+    prompt_budget_chars: maxOutputChars,
+    max_output_chars: maxOutputChars,
+  };
+  if (cleanInputString(merged.generation_mode) === "auto") {
+    merged.generation_mode = "multi_frame_storyboard";
+  }
+  if (!cleanInputString(merged.generation_mode)) {
+    merged.generation_mode = "multi_frame_storyboard";
+  }
+  if (!cleanInputString(merged.storyboard_layout_preset)) {
+    merged.storyboard_layout_preset =
+      "canvas_9_16_grid_3x3_frame_9_16_exact";
+  }
+  const layoutContract = resolveStoryboardLayoutPresetContract(
+    merged.storyboard_layout_preset
+  );
+  if (
+    layoutContract &&
+    (!cleanInputString(merged.aspect_ratio) ||
+      cleanInputString(merged.aspect_ratio) === "auto")
+  ) {
+    merged.aspect_ratio = layoutContract.canvasAspectRatio;
+  }
+  if (layoutContract && !Number(merged.required_frame_count ?? 0)) {
+    merged.required_frame_count = layoutContract.expectedFrameCount;
+  }
+  return merged;
+}
+
 const PRODUCT_REFERENCE_STORYBOARD_SCHEMA_AUDIT_FIELD_NAMES = [
   "generation_mode",
   "product_category",
@@ -606,17 +898,31 @@ function buildSkillInputSchemaAudit(params: {
   const generationMode = cleanInputString(params.userInputs.generation_mode);
   const layoutPreset = cleanInputString(params.userInputs.storyboard_layout_preset);
   const aspectRatio = cleanInputString(params.userInputs.aspect_ratio);
+  const requiredFrameCount = Number(params.userInputs.required_frame_count ?? 0);
   const productCategory = cleanInputString(params.userInputs.product_category);
   const marketplacePlatform = cleanInputString(params.userInputs.marketplace_platform);
+  const layoutContract = resolveStoryboardLayoutPresetContract(layoutPreset);
 
   if (generationMode !== "multi_frame_storyboard") {
     blockers.push("generation_mode_must_be_multi_frame_storyboard");
   }
-  if (layoutPreset !== "canvas_9_16_grid_3x3_frame_9_16_exact") {
-    blockers.push("storyboard_layout_preset_must_be_9_16_3x3_exact");
+  if (!layoutContract) {
+    blockers.push(`storyboard_layout_preset_contract_missing:${layoutPreset || "empty"}`);
   }
-  if (aspectRatio !== "9:16") {
-    blockers.push("aspect_ratio_must_be_9_16");
+  if (layoutContract && aspectRatio !== layoutContract.canvasAspectRatio) {
+    blockers.push(
+      `aspect_ratio_must_match_layout_preset:${layoutContract.canvasAspectRatio}`
+    );
+  }
+  if (
+    layoutContract &&
+    Number.isFinite(requiredFrameCount) &&
+    requiredFrameCount > 0 &&
+    requiredFrameCount !== layoutContract.expectedFrameCount
+  ) {
+    blockers.push(
+      `required_frame_count_must_match_layout_preset:${layoutContract.expectedFrameCount}`
+    );
   }
   if (!productCategory || productCategory === "auto") {
     blockers.push("product_category_must_be_detected_before_skill_call");
@@ -680,6 +986,7 @@ function buildSkillInputSchemaAudit(params: {
     productCategory,
     marketplacePlatform,
     referenceImageRoleCounts: roleCounts,
+    layoutContract,
     fieldTypes,
   };
 }
@@ -751,19 +1058,40 @@ function buildSkillRuntimeSystemPrompt(input: {
     input.maxOutputChars,
     resolvePromptLanguageHintFromInputs(input.userInputs)
   );
+  const layoutContract = resolveStoryboardLayoutPresetContract(
+    input.userInputs.storyboard_layout_preset
+  );
+  const layoutContractLine =
+    layoutContract?.requiredPromptLine ??
+    PRODUCT_REFERENCE_STORYBOARD_LAYOUT_CONTRACTS
+      .canvas_9_16_grid_3x3_frame_9_16_exact.requiredPromptLine;
+  const expectedFrameCount = layoutContract?.expectedFrameCount ?? 9;
   return {
     systemPrompt: [
       basePrompt,
       promptLengthPlan?.directive,
+      "## Storyboard Layout Preset Contract",
+      `storyboard_layout_preset: ${cleanInputString(input.userInputs.storyboard_layout_preset) || "canvas_9_16_grid_3x3_frame_9_16_exact"}`,
+      layoutContract
+        ? [
+            `Decoded canvas aspect ratio: ${layoutContract.canvasAspectRatio}.`,
+            `Decoded grid: ${layoutContract.gridColumns} columns x ${layoutContract.gridRows} rows.`,
+            `Decoded frame count: ${layoutContract.expectedFrameCount}.`,
+            `Decoded frame mode: ${layoutContract.mode}${layoutContract.frameAspectRatio ? `, frame aspect ratio ${layoutContract.frameAspectRatio}` : ""}.`,
+          ].join(" ")
+        : "The supplied storyboard_layout_preset is unsupported. Return only: ERROR: product-reference-storyboard contract cannot be satisfied.",
+      "The storyboard_layout_preset is the single source of truth for canvas ratio, grid columns, grid rows, frame count, and frame shape. Do not let aspect_ratio, required_frame_count, storyboard_guide, voiceover_script, or prose instructions override it.",
+      `The first line after SHOT-BY-SHOT STORYBOARD PROMPT: must be copied exactly as: ${layoutContractLine}`,
       "## Marketplace Auto Review Runtime Contract",
       `Return only the final image-generation prompt text. The output must be <= ${input.maxOutputChars} characters.`,
       "Do not return JSON, Markdown fences, QA notes, explanations, alternatives, or implementation notes.",
-      "The final prompt must explicitly include these image-generation contract phrases: one single 9:16 image; strict 3x3 grid; exactly 9 frames; exactly 9 vertical frames; exactly 3 equal-width columns; exactly 3 equal-height rows; no collage/masonry layout; no separator lines; no visible dividers; CINEMATIC REALISM LOCK; PRODUCT REFERENCE LOCK; TEXT RENDERING POLICY.",
+      `The final prompt must explicitly include the decoded layout line and these image-generation contract phrases from the preset: ${layoutContractLine}; CINEMATIC REALISM LOCK; PRODUCT REFERENCE LOCK; TEXT RENDERING POLICY.`,
       "The PRODUCT REFERENCE LOCK and PRODUCT VERIFY blocks must explicitly say that @Image1 / the first attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, and character/environment images must not change or replace the product shape.",
       "If reference_character_images are supplied, @Image2 is the uploaded presenter/reviewer identity reference by default. Never call @Image2 a child, toddler, kid, or baby unless the user explicitly supplied a child reference. Do not age-transform the uploaded presenter to fit a child product story.",
-      "The final prompt must include complete Frame 1 through Frame 9 before ending. Frame lines must be visual-only prose: do not use VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, or captions. Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block outside the frame list. Do not repeat CAMERA/LIGHT/DEPTH: or PRODUCT VERIFY: in every frame.",
-      "Completeness beats polish: never stop at a partial Frame line or a bare label. If the prompt is near the limit, shorten global locks first, then shorten each frame to one compact visual sentence while still returning all 9 frames.",
+      `The final prompt must include complete Frame 1 through Frame ${expectedFrameCount} before ending. Frame lines must be visual-only prose: do not use VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, or captions. Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block outside the frame list. Do not repeat CAMERA/LIGHT/DEPTH: or PRODUCT VERIFY: in every frame.`,
+      `Completeness beats polish: never stop at a partial Frame line or a bare label. If the prompt is near the limit, shorten global locks first, then shorten each frame to one compact visual sentence while still returning all ${expectedFrameCount} frames.`,
       "The final prompt must include the text policy phrases no text, dimension text, timecodes, and marketplace/mobile app screenshots when image_text_mode is no_text.",
+      "When image_text_mode is no_text, the final prompt must also explicitly forbid added visible camera-shot abbreviations or technical labels such as ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, storyboard_grid, panel names, corner labels, captions, subtitles, or random glyphs. Camera/shot shorthand may be used only as backend planning prose, never as rendered text in the image.",
       "Do not echo runtime/schema field names such as storyboard_guide, voiceover_script, product_detail, production_concept_details, or reference_product_images as validation metadata in the final prompt; use their values to write visual instructions.",
       "If the full answer would be longer, compress wording before returning while preserving the image-generation contract and every exact phrase above.",
       "Do not use fallback content. If the required skill contract cannot be satisfied, say only: ERROR: product-reference-storyboard contract cannot be satisfied.",
@@ -816,14 +1144,35 @@ function countMatches(text: string, pattern: RegExp): number {
   return text.match(pattern)?.length ?? 0;
 }
 
-function validateProductReferenceStoryboardOutputCompleteness(prompt: string): string[] {
-  const blockers: string[] = [];
-  for (let index = 1; index <= 9; index += 1) {
-    if (!new RegExp(`\\bFrame\\s+${index}\\b`, "i").test(prompt)) {
-      blockers.push(`frame_${index}_missing`);
+function validateProductReferenceStoryboardOutputCompleteness(
+  prompt: string,
+  layoutPreset: unknown = "canvas_9_16_grid_3x3_frame_9_16_exact",
+  imageTextMode: unknown = "no_text"
+): string[] {
+  const warnings: string[] = [];
+  const lower = prompt.toLowerCase();
+  const layoutContract = resolveStoryboardLayoutPresetContract(layoutPreset);
+  if (!layoutContract) {
+    warnings.push(
+      `storyboard_layout_preset_contract_missing:${cleanInputString(layoutPreset) || "empty"}`
+    );
+  }
+  const requiredLayoutFragments =
+    layoutContract?.requiredFragments ??
+    PRODUCT_REFERENCE_STORYBOARD_LAYOUT_CONTRACTS
+      .canvas_9_16_grid_3x3_frame_9_16_exact.requiredFragments;
+  for (const [code, fragments] of requiredLayoutFragments) {
+    if (!fragments.some(fragment => lower.includes(fragment.toLowerCase()))) {
+      warnings.push(code);
     }
   }
-  for (let index = 1; index <= 9; index += 1) {
+  const expectedFrameCount = layoutContract?.expectedFrameCount ?? 9;
+  for (let index = 1; index <= expectedFrameCount; index += 1) {
+    if (!new RegExp(`\\bFrame\\s+${index}\\b`, "i").test(prompt)) {
+      warnings.push(`frame_${index}_missing`);
+    }
+  }
+  for (let index = 1; index <= expectedFrameCount; index += 1) {
     const match = prompt.match(
       new RegExp(
         `\\bFrame\\s+${index}\\s*:\\s*([\\s\\S]*?)(?=\\bFrame\\s+${index + 1}\\s*:|$)`,
@@ -831,17 +1180,20 @@ function validateProductReferenceStoryboardOutputCompleteness(prompt: string): s
       )
     );
     if (!match || match[1].trim().length < 24) {
-      blockers.push(`frame_${index}_content_incomplete`);
+      warnings.push(`frame_${index}_content_incomplete`);
     }
   }
   if (/(?:VISUAL|STORY MATCH|HUMAN REALISM)\s*:/i.test(prompt)) {
-    blockers.push("renderable_frame_label_leak");
+    warnings.push("renderable_frame_label_leak");
+  }
+  if (productReferenceStoryboardNoAddedTextModeIsActive(imageTextMode)) {
+    warnings.push(...detectProductReferenceStoryboardNoTextPromptLeaks(prompt));
   }
   if (!/CAMERA\/LIGHT\/DEPTH:/i.test(prompt)) {
-    blockers.push("camera_light_depth_global_missing");
+    warnings.push("camera_light_depth_global_missing");
   }
   if (!/PRODUCT VERIFY:/i.test(prompt)) {
-    blockers.push("product_verify_global_missing");
+    warnings.push("product_verify_global_missing");
   }
   if (
     !/(?:@Image1|product reference image|attached product image)/i.test(
@@ -857,16 +1209,74 @@ function validateProductReferenceStoryboardOutputCompleteness(prompt: string): s
       prompt
     )
   ) {
-    blockers.push("product_reference_image_exact_recreation_missing");
+    warnings.push("product_reference_image_exact_recreation_missing");
   }
   if (
     /(?:^|\n)\s*(?:Frame\s+\d+\s*:?\s*|(?:VISUAL|STORY MATCH|HUMAN REALISM|CAMERA\/LIGHT\/DEPTH|PRODUCT VERIFY)\s*:?\s*)$/i.test(
       prompt.trim()
     )
   ) {
-    blockers.push("output_ended_mid_field");
+    warnings.push("output_ended_mid_field");
   }
-  return blockers;
+  return warnings;
+}
+
+function productReferenceStoryboardOutputCodeIsFatal(code: string): boolean {
+  const normalized = code.split(":")[0] ?? code;
+  if (PRODUCT_REFERENCE_STORYBOARD_OUTPUT_FATAL_CODES.has(normalized)) {
+    return true;
+  }
+  return /^frame_\d+_(?:missing|content_incomplete)$/.test(normalized);
+}
+
+function productReferenceStoryboardNoAddedTextModeIsActive(
+  imageTextMode: unknown
+): boolean {
+  return cleanInputString(imageTextMode).toLowerCase() !== "with_text";
+}
+
+export function detectProductReferenceStoryboardNoTextPromptLeaks(
+  prompt: string
+): string[] {
+  const warnings: string[] = [];
+  if (
+    productReferenceStoryboardPromptHasRenderableTextLeak(
+      prompt,
+      /\b(?:ECU|CU|MCU|MS|WS|ELS|LS|OS|HA|LA)\b/
+    )
+  ) {
+    warnings.push("renderable_camera_abbreviation_label_leak");
+  }
+  if (
+    productReferenceStoryboardPromptHasRenderableTextLeak(
+      prompt,
+      /\bstoryboard[\s_-]?grid\b/i
+    )
+  ) {
+    warnings.push("renderable_storyboard_grid_label_leak");
+  }
+  return warnings;
+}
+
+function productReferenceStoryboardPromptHasRenderableTextLeak(
+  prompt: string,
+  tokenPattern: RegExp
+): boolean {
+  const lines = prompt.split(/\n+/);
+  return lines.some(line => {
+    if (!tokenPattern.test(line)) return false;
+    tokenPattern.lastIndex = 0;
+    if (
+      /\b(?:no|not|never|forbid|forbidden|without|do not|don't|avoid|suppress)\b|(?:ห้าม|ไม่มี|ไม่ให้|ไม่ต้อง)/i.test(
+        line
+      )
+    ) {
+      return false;
+    }
+    return /(?:render|show|display|add|include|label|labeled|text|corner|top[-\s]?left|bottom|caption|visible|write|put|appear|วาง|แสดง|ข้อความ|มุม|ป้าย)/i.test(
+      line
+    );
+  });
 }
 
 function stripRenderableStoryboardFrameLabels(prompt: string): string {
@@ -880,9 +1290,21 @@ function stripRenderableStoryboardFrameLabels(prompt: string): string {
 }
 
 export function validateProductReferenceStoryboardOutputCompletenessForTest(
-  prompt: string
+  prompt: string,
+  layoutPreset?: string | null,
+  imageTextMode?: string | null
 ): string[] {
-  return validateProductReferenceStoryboardOutputCompleteness(prompt);
+  return validateProductReferenceStoryboardOutputCompleteness(
+    prompt,
+    layoutPreset ?? "canvas_9_16_grid_3x3_frame_9_16_exact",
+    imageTextMode ?? "no_text"
+  );
+}
+
+export function resolveStoryboardLayoutPresetContractForTest(
+  preset: string
+): ProductReferenceStoryboardLayoutContract | null {
+  return resolveStoryboardLayoutPresetContract(preset);
 }
 
 export function stripRenderableStoryboardFrameLabelsForTest(
@@ -1241,16 +1663,11 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
 
   const mergedUserInputs = sanitizeUserInputs(
     normalizeProductReferenceStoryboardInputReferenceUrls(
-      {
-        ...loadSkillInputDefaults(skill),
-        ...input.userInputs,
-        generation_mode: "multi_frame_storyboard",
-        storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
-        aspect_ratio: "9:16",
-        maxPromptLength: maxOutputChars,
-        prompt_budget_chars: maxOutputChars,
-        max_output_chars: maxOutputChars,
-      },
+      normalizeProductReferenceStoryboardSkillInputs(
+        loadSkillInputDefaults(skill),
+        input.userInputs,
+        maxOutputChars
+      ),
       input.publicUrl
     )
   );
@@ -1792,33 +2209,42 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
   if (/^ERROR:/i.test(rawOutput)) {
     throw new Error(rawOutput);
   }
-  const completenessBlockers =
-    validateProductReferenceStoryboardOutputCompleteness(rawOutput);
-  if (completenessBlockers.length > 0) {
-    console.error("[productReferenceStoryboardSkillRunner] incomplete_output_blocked", {
+  const completenessWarnings =
+    validateProductReferenceStoryboardOutputCompleteness(
+      rawOutput,
+      mergedUserInputs.storyboard_layout_preset,
+      mergedUserInputs.image_text_mode
+    );
+  if (completenessWarnings.length > 0) {
+    console.warn("[productReferenceStoryboardSkillRunner] output_contract_warning", {
       skillId: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
       runId: input.runId ?? null,
       unitId: input.unitId ?? null,
       attempt: input.attempt ?? null,
       promptAttempt: input.promptAttempt ?? null,
-      blockers: completenessBlockers,
+      warnings: completenessWarnings,
       outputLengthChars: rawOutput.length,
       fullOutputLogPath,
     });
-    throw new ProductReferenceStoryboardSkillIncompleteOutputError({
-      runId: input.runId ?? null,
-      unitId: input.unitId ?? null,
-      attempt: input.attempt ?? null,
-      promptAttempt: input.promptAttempt ?? null,
-      maxOutputChars,
-      rawOutput,
-      fullOutputLogPath,
-      promptLengthPlan,
-      modelId: finalModelId,
-      providerName: finalProviderName,
-      finishReason,
-      blockers: completenessBlockers,
-    });
+    const fatalWarnings = completenessWarnings.filter(
+      productReferenceStoryboardOutputCodeIsFatal
+    );
+    if (fatalWarnings.length > 0) {
+      throw new ProductReferenceStoryboardSkillIncompleteOutputError({
+        runId: input.runId ?? null,
+        unitId: input.unitId ?? null,
+        attempt: input.attempt ?? null,
+        promptAttempt: input.promptAttempt ?? null,
+        maxOutputChars,
+        rawOutput,
+        fullOutputLogPath,
+        promptLengthPlan,
+        modelId: finalModelId,
+        providerName: finalProviderName,
+        finishReason,
+        blockers: fatalWarnings,
+      });
+    }
   }
 
   const skillAudit = {
@@ -1869,9 +2295,10 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     categoryRuleAudit: systemPromptBuild.categoryRuleAudit,
     promptAttempt: input.promptAttempt ?? null,
     schemaAudit,
-    completenessWarnings: completenessBlockers,
+    completenessWarnings,
     completenessStatus:
-      completenessBlockers.length === 0 ? "passed" : "warning",
+      completenessWarnings.length === 0 ? "passed" : "warning",
+    layoutContract: schemaAudit.layoutContract,
     promptOptimizer: promptOptimizerAudit,
     inputKeys: Object.keys(mergedUserInputs).sort(),
   };
@@ -1893,7 +2320,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     promptOptimizer: promptOptimizerAudit,
     categoryRuleAudit: systemPromptBuild.categoryRuleAudit,
     schemaAudit,
-    completenessWarnings: completenessBlockers,
+    completenessWarnings,
   });
 
   return {

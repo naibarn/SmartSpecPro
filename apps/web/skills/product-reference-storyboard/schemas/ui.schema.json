@@ -16,7 +16,11 @@
     "cinematic_style",
     "storyboard_guide",
     "voiceover_script",
-    "production_concept_details"
+    "production_concept_details",
+    "image_attempt_number",
+    "image_attempt_story_lens_id",
+    "image_attempt_story_lens_title",
+    "image_attempt_story_lens"
   ],
   "generation_mode": {
     "ui:widget": "select",
@@ -44,7 +48,7 @@
   },
   "image_text_mode": {
     "ui:widget": "select",
-    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ มาร์กกิ้ง/แท็ก/โลโก้/ข้อความจริงบนสินค้าไม่ถือเป็นข้อความเพิ่ม ยกเว้นเมื่อเลือก Cinematic Style เป็น Info Graphics Realistic / Info Graphics ระบบต้องสร้างข้อความอินโฟกราฟิกขนาดใหญ่"
+    "ui:help": "ค่าเริ่มต้นคือไม่มีข้อความเพิ่มในภาพ ห้ามมี label/คำย่อมุมกล้อง/ชื่อเฟรม เช่น ECU, CU, MCU, MS, storyboard_grid เว้นแต่เลือกให้มีข้อความเพิ่มหรือเป็นอินโฟกราฟิก มาร์กกิ้ง/แท็ก/โลโก้/ข้อความจริงบนสินค้าไม่ถือเป็นข้อความเพิ่ม"
   },
   "image_text_language": {
     "ui:widget": "select",
@@ -77,6 +81,22 @@
   "production_concept_details": {
     "ui:widget": "textarea",
     "ui:help": "รายละเอียดสินค้า / PRODUCT FACTS LOCK ใช้ล็อกชนิดสินค้า รุ่น ขนาด จำนวนชิ้นส่วน วัสดุ สี สเกล การใช้งานจริง และ claim safety; ใช้ร่วมกับ Storyboard Guide/Voiceover โดยห้ามใส่ราคา rating ยอดขาย หรือโปรโมชันที่ไม่ได้ให้มา"
+  },
+  "image_attempt_number": {
+    "ui:widget": "updown",
+    "ui:help": "เลขรอบการสร้างภาพจาก Marketplace Auto Review ใช้คู่กับ Story Lens เพื่อให้รอบซ่อมสร้าง prompt ใหม่ ไม่ซ้ำรอบก่อน"
+  },
+  "image_attempt_story_lens_id": {
+    "ui:widget": "text",
+    "ui:help": "รหัส story lens ของรอบนี้ ใช้เป็น metadata ไม่ใช่ข้อความในภาพ"
+  },
+  "image_attempt_story_lens_title": {
+    "ui:widget": "text",
+    "ui:help": "ชื่อมุม customer journey ของรอบนี้ เพื่อช่วยให้ prompt เปลี่ยนมุมเล่าเรื่อง"
+  },
+  "image_attempt_story_lens": {
+    "ui:widget": "textarea",
+    "ui:help": "คำสั่งมุมเล่าเรื่องเฉพาะรอบนี้ ใช้บังคับให้ skill สร้าง prompt ใหม่ที่ต่างจากรอบก่อน แต่ยังล็อกสินค้าและ shot order เดิม"
   },
   "voiceover_script": {
     "ui:widget": "textarea",

@@ -77,8 +77,10 @@ import {
 } from "./agentRuntime/client";
 import { buildAgentRuntimeRequest } from "./agentRuntime/requestBuilder";
 import {
+  detectProductReferenceStoryboardNoTextPromptLeaks,
   ProductReferenceStoryboardSkillIncompleteOutputError,
   ProductReferenceStoryboardSkillOutputLimitError,
+  optimizeProductReferenceStoryboardPrompt,
   PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS,
   PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
   runProductReferenceStoryboardPromptSkill,
@@ -954,6 +956,15 @@ function buildMinorSafetyClothingLock(plan: AutoReviewPlan): string {
   ].join(" ");
 }
 
+function buildCompactMinorSafetyClothingLock(plan: AutoReviewPlan): string {
+  if (!marketplaceAutoReviewPlanNeedsMinorSafetyLock(plan)) return "";
+  return [
+    "MINOR SAFETY CLOTHING LOCK:",
+    "If any baby, toddler, child, kid, or minor appears, show only age-appropriate clothing covering chest, torso, and underwear areas.",
+    "No shirtless, bare torso, underwear-only, diaper-only, bath/changing/nude/semi-nude, suggestive, or close underwear/diaper framing.",
+  ].join(" ");
+}
+
 function ensureMinorSafetyClothingLockInImagePrompt(
   prompt: string,
   plan: AutoReviewPlan
@@ -965,6 +976,14 @@ function ensureMinorSafetyClothingLockInImagePrompt(
   if (appended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
     return appended;
   }
+  const compactLock = buildCompactMinorSafetyClothingLock(plan);
+  const compactAppended = `${base}\n\n${compactLock}`;
+  if (compactAppended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+    return compactAppended;
+  }
+  if (countPromptMatches(base, /\bFrame\s+\d+\s*:/gi) >= MAX_SHOT_COUNT) {
+    return base;
+  }
   const baseBudget =
     MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS - lock.length - 2;
   if (baseBudget > 1200) {
@@ -973,18 +992,98 @@ function ensureMinorSafetyClothingLockInImagePrompt(
   return appended;
 }
 
-function ensureStoryboardGridContractLockInImagePrompt(input: {
+function shouldOptimizeMinorSafetyLockPostProcessPrompt(input: {
+  sourcePrompt: string;
+  plan: AutoReviewPlan;
+}): boolean {
+  const base = cleanText(input.sourcePrompt);
+  if (!base || /MINOR SAFETY CLOTHING LOCK/i.test(base)) return false;
+  if (!marketplaceAutoReviewPlanNeedsMinorSafetyLock(input.plan)) return false;
+  return countPromptMatches(base, /\bFrame\s+\d+\s*:/gi) >= MAX_SHOT_COUNT;
+}
+
+async function optimizeMinorSafetyLockPostProcessPrompt(input: {
+  tenantId: string;
+  userId: number;
+  runId: string;
+  unitId: string;
+  attempt: number;
+  promptAttempt: number;
+  sourcePrompt: string;
+  plan: AutoReviewPlan;
+}): Promise<{
   prompt: string;
-  overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
-}): {
+  audit: Record<string, unknown> | null;
+}> {
+  if (
+    !shouldOptimizeMinorSafetyLockPostProcessPrompt({
+      sourcePrompt: input.sourcePrompt,
+      plan: input.plan,
+    })
+  ) {
+    return { prompt: input.sourcePrompt, audit: null };
+  }
+  const compactLock = buildCompactMinorSafetyClothingLock(input.plan);
+  if (!compactLock) return { prompt: input.sourcePrompt, audit: null };
+
+  const desiredPrompt = ensureStoryboardGridLayoutContractInImagePrompt(
+    `${cleanText(input.sourcePrompt)}\n\n${compactLock}`
+  ).prompt;
+  if (desiredPrompt.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+    return {
+      prompt: desiredPrompt,
+      audit: {
+        used: false,
+        reason: "compact_minor_safety_lock_fit_without_optimizer",
+        sourcePromptLengthChars: input.sourcePrompt.length,
+        outputPromptLengthChars: desiredPrompt.length,
+      },
+    };
+  }
+
+  const optimizerResult = await optimizeProductReferenceStoryboardPrompt({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourcePrompt: desiredPrompt,
+    originSurface: "marketplace_capture",
+    runId: input.runId,
+    unitId: input.unitId,
+    attempt: input.attempt,
+    promptAttempt: input.promptAttempt,
+    maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+  });
+  const optimizedPrompt = cleanText(optimizerResult.value.rawContent);
+  return {
+    prompt: optimizedPrompt,
+    audit: {
+      used: true,
+      reason: "minor_safety_lock_required_after_storyboard_skill",
+      sourcePromptLengthChars: input.sourcePrompt.length,
+      desiredPromptLengthChars: desiredPrompt.length,
+      optimizedPromptLengthChars: optimizedPrompt.length,
+      maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+      preferredTargetChars: optimizerResult.preferredTargetChars,
+      runtimeStatus: optimizerResult.execution.runtime.status,
+      runtimeEngine: optimizerResult.execution.runtime.selection.engine,
+      runtimeMode: optimizerResult.execution.runtime.selection.mode,
+      requestId: optimizerResult.execution.runtime.requestId,
+      traceId: optimizerResult.execution.runtime.traceId,
+      promptLengthPlan: optimizerResult.promptLengthPlan,
+      llmMaxTokens: optimizerResult.llmMaxTokens,
+      modelId: optimizerResult.value.modelId,
+      providerName: optimizerResult.value.providerName,
+    },
+  };
+}
+
+function ensureStoryboardGridLayoutContractInImagePrompt(
+  prompt: string
+): {
   prompt: string;
   applied: boolean;
-  addedFragments: string[];
 } {
-  const base = cleanText(input.prompt);
-  if (!base) {
-    return { prompt: base, applied: false, addedFragments: [] };
-  }
+  const base = cleanText(prompt);
+  if (!base) return { prompt: base, applied: false };
   const lower = base.toLowerCase();
   const requiredFragments = [
     "one single 9:16 image",
@@ -995,75 +1094,28 @@ function ensureStoryboardGridContractLockInImagePrompt(input: {
     "exactly 3 equal-height rows",
     "no collage/masonry layout",
     "no separator lines",
-    "cinematic realism lock",
-    "product reference lock",
-    "text rendering policy",
+    "no visible dividers",
   ];
-  const addedFragments = requiredFragments.filter(
-    fragment => !lower.includes(fragment.toLowerCase())
-  );
-  const needsProductVerify =
-    !/PRODUCT VERIFY:/i.test(base) ||
-    !/(?:@Image1|first attached product reference image|supplied product reference image)/i.test(
-      base
-    ) ||
-    !/(?:primary visual source of truth|strict product visual lock|strict visual source of truth|immutable product reference|product visual source lock)/i.test(
-      base
-    );
-  const needsCameraLightDepth = !/CAMERA\/LIGHT\/DEPTH:/i.test(base);
-  const needsTextPolicy =
-    input.overlayTextMode === "no_text" &&
-    !/no text/i.test(base);
-
-  if (
-    addedFragments.length === 0 &&
-    !needsProductVerify &&
-    !needsCameraLightDepth &&
-    !needsTextPolicy
-  ) {
-    return { prompt: base, applied: false, addedFragments: [] };
+  if (requiredFragments.every(fragment => lower.includes(fragment))) {
+    return { prompt: base, applied: false };
   }
-
-  const textPolicy =
-    input.overlayTextMode === "allow_text"
-      ? "TEXT RENDERING POLICY: allow only short truthful on-image text when required; never include video seconds, timecodes, marketplace/mobile app screenshots, prices, ratings, review widgets, or platform logos."
-      : "TEXT RENDERING POLICY: no text, no captions, no labels, no dimension text, no timecodes, and no marketplace/mobile app screenshots.";
-  const lock = [
-    "STORYBOARD GRID CONTRACT LOCK:",
-    "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, and text rendering policy.",
-    textPolicy,
-    "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, natural realistic material textures, controlled depth of field, grounded shadows, and no abstract/vector/UI mockup treatment.",
-    "PRODUCT VERIFY: use @Image1 / the first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; match and recreate the exact same actual reference image product, not a generic substitute.",
-  ].join("\n");
-  const next = `${lock}\n\n${base}`;
+  const frameCount = countPromptMatches(base, /\bFrame\s+\d+\s*:/gi);
+  if (frameCount < MAX_SHOT_COUNT) {
+    return { prompt: base, applied: false };
+  }
+  const layoutLine =
+    "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.";
+  const hasStoryboardHeader = /SHOT-BY-SHOT STORYBOARD PROMPT:/i.test(base);
+  const next = hasStoryboardHeader
+    ? base.replace(
+        /SHOT-BY-SHOT STORYBOARD PROMPT:\s*/i,
+        `SHOT-BY-SHOT STORYBOARD PROMPT:\n${layoutLine}\n`
+      )
+    : `SHOT-BY-SHOT STORYBOARD PROMPT:\n${layoutLine}\n${base}`;
   if (next.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
-    return {
-      prompt: next,
-      applied: true,
-      addedFragments: [
-        ...addedFragments,
-        ...(needsProductVerify ? ["product_verify_contract_lock"] : []),
-        ...(needsCameraLightDepth ? ["camera_light_depth_contract_lock"] : []),
-        ...(needsTextPolicy ? ["no_text_contract_lock"] : []),
-      ],
-    };
+    return { prompt: next, applied: true };
   }
-  const baseBudget =
-    MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS - lock.length - 2;
-  if (baseBudget > 1200) {
-    return {
-      prompt: `${lock}\n\n${compactImagePromptText(base, baseBudget)}`,
-      applied: true,
-      addedFragments: [
-        ...addedFragments,
-        ...(needsProductVerify ? ["product_verify_contract_lock"] : []),
-        ...(needsCameraLightDepth ? ["camera_light_depth_contract_lock"] : []),
-        ...(needsTextPolicy ? ["no_text_contract_lock"] : []),
-        "prompt_compacted_for_contract_lock",
-      ],
-    };
-  }
-  return { prompt: base, applied: false, addedFragments: [] };
+  return { prompt: base, applied: false };
 }
 
 function imageReasonCodeBlocksPublishSafety(code: unknown): boolean {
@@ -3107,6 +3159,369 @@ function characterPresetContinuityDescriptors(value: unknown): string[] {
       .map(([key, raw]) => `${key}: ${cleanText(raw)}`)
       .join(", ")}`,
   ];
+}
+
+const MARKETPLACE_AUTO_REVIEW_CHARACTER_GENDER_PROMPT_LABELS: Record<
+  string,
+  string
+> = {
+  female: "female presenter/woman",
+  male: "male presenter/man",
+  gender_neutral: "gender-neutral adult presenter",
+};
+
+const MARKETPLACE_AUTO_REVIEW_CHARACTER_AGE_PROMPT_LABELS: Record<
+  string,
+  string
+> = {
+  young_adult_20_29: "20-29 years old",
+  adult_30_39: "30-39 years old",
+  middle_age_40_59: "40-59 years old",
+  teen_16_19: "16-19 years old",
+};
+
+const MARKETPLACE_AUTO_REVIEW_CHARACTER_APPEARANCE_PROMPT_LABELS: Record<
+  string,
+  string
+> = {
+  thai: "Thai",
+  southeast_asian: "Southeast Asian",
+  east_asian: "East Asian",
+  international: "international",
+};
+
+const MARKETPLACE_AUTO_REVIEW_CHARACTER_ROLE_PROMPT_LABELS: Record<
+  string,
+  string
+> = {
+  reviewer: "reviewer",
+  buyer: "real buyer",
+  mom_parent: "parent/guardian reviewer",
+  office_worker: "office worker reviewer",
+  technician: "practical expert/technician",
+  creator_host: "creator host",
+};
+
+const MARKETPLACE_AUTO_REVIEW_CHARACTER_STYLE_PROMPT_LABELS: Record<
+  string,
+  string
+> = {
+  casual_home: "casual home style",
+  clean_ugc: "clean UGC style",
+  premium_neat: "premium neat style",
+  friendly_everyday: "friendly everyday style",
+  expert_practical: "practical expert style",
+};
+
+function characterPresetRecordFromUnknown(
+  value: unknown
+): Record<string, string> {
+  const record = asRecord(value);
+  return Object.fromEntries(
+    Object.entries(record)
+      .map(([key, raw]) => [key, cleanText(raw)] as const)
+      .filter(([_key, raw]) => raw)
+  );
+}
+
+function characterPresetRecordFromText(text: string): Record<string, string> {
+  const source = cleanText(text);
+  const keys = [
+    "mode",
+    "gender",
+    "genderLabel",
+    "age",
+    "ageLabel",
+    "appearance",
+    "appearanceLabel",
+    "role",
+    "roleLabel",
+    "style",
+    "styleLabel",
+  ];
+  return Object.fromEntries(
+    keys
+      .map(key => {
+        const match = new RegExp(`\\b${key}\\s*:\\s*([^,;\\n]+)`, "i").exec(
+          source
+        );
+        return [
+          key,
+          cleanText(match?.[1] ?? "").replace(/[.。]+$/, ""),
+        ] as const;
+      })
+      .filter(([_key, raw]) => raw)
+  );
+}
+
+function promptLabelFromChoice(
+  id: unknown,
+  label: unknown,
+  lookup: Record<string, string>
+): string {
+  const mapped = lookup[cleanText(id).toLowerCase()];
+  if (mapped) return mapped;
+  const text = cleanText(label);
+  return /^auto$/i.test(text) ? "" : text;
+}
+
+function promptAgeLabelFromChoice(id: unknown, label: unknown): string {
+  const mapped =
+    MARKETPLACE_AUTO_REVIEW_CHARACTER_AGE_PROMPT_LABELS[
+      cleanText(id).toLowerCase()
+    ];
+  if (mapped) return mapped;
+  const text = cleanText(label);
+  if (!text || /^auto$/i.test(text)) return "";
+  return /^\d{2}\s*[-–]\s*\d{2}$/.test(text) ? `${text} years old` : text;
+}
+
+function characterSubjectFromPresetRecord(
+  record: Record<string, string>
+): string {
+  return [
+    promptLabelFromChoice(
+      record.appearance,
+      record.appearanceLabel,
+      MARKETPLACE_AUTO_REVIEW_CHARACTER_APPEARANCE_PROMPT_LABELS
+    ),
+    promptLabelFromChoice(
+      record.gender,
+      record.genderLabel,
+      MARKETPLACE_AUTO_REVIEW_CHARACTER_GENDER_PROMPT_LABELS
+    ),
+    promptAgeLabelFromChoice(record.age, record.ageLabel),
+    promptLabelFromChoice(
+      record.role,
+      record.roleLabel,
+      MARKETPLACE_AUTO_REVIEW_CHARACTER_ROLE_PROMPT_LABELS
+    ),
+    promptLabelFromChoice(
+      record.style,
+      record.styleLabel,
+      MARKETPLACE_AUTO_REVIEW_CHARACTER_STYLE_PROMPT_LABELS
+    ),
+  ]
+    .map(item => cleanText(item))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function buildMarketplaceAutoReviewCharacterVideoLock(input: {
+  characterMode?: string | null;
+  characterBrief?: string | null;
+  characterPreset?: unknown;
+  hasCharacterImage?: boolean;
+}): string {
+  const preset = characterPresetRecordFromUnknown(input.characterPreset);
+  const characterMode = cleanText(input.characterMode) || preset.mode;
+  if (characterMode === "product_only") {
+    return "VIDEO CHARACTER LOCK: Product-only mode is selected. Do not generate a visible presenter, face, full body, narrator, or recurring person; keep product-only framing.";
+  }
+  if (characterMode === "hands_only") {
+    return "VIDEO CHARACTER LOCK: Hands-only mode is selected. Use only hands or face-hidden partial body; do not generate a visible presenter face or recurring person identity.";
+  }
+  if (characterMode === "uploaded_reference" && input.hasCharacterImage) {
+    return [
+      "VIDEO CHARACTER LOCK:",
+      "The uploaded character reference image is the presenter source of truth.",
+      "For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
+      "The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
+      "Keep the presenter's voice, wardrobe family, identity, and demographics consistent with the selected image/frame references across shots.",
+    ].join(" ");
+  }
+
+  const subject = characterSubjectFromPresetRecord(preset);
+  const characterBrief = cleanText(input.characterBrief);
+  if (!subject && !characterBrief && !input.hasCharacterImage) return "";
+
+  const source = input.hasCharacterImage
+    ? "the uploaded character reference image and selected character choices"
+    : "the selected character choices";
+  return [
+    "VIDEO CHARACTER LOCK:",
+    `${source} are the presenter source of truth.`,
+    subject
+      ? `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`
+      : "",
+    characterBrief ? `User-selected character brief: ${characterBrief}` : "",
+    "Keep the presenter's gender, age range, appearance, role, wardrobe family, and identity consistent with the selected image/frame references across shots.",
+    "Do not let a generic audio profile override the selected presenter demographics.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function marketplaceAutoReviewReferenceAnchorsFromMetadata(
+  metadata?: RunMetadata | null
+): Record<string, unknown> {
+  const anchors = asRecord(metadata?.referenceAnchors);
+  return Object.keys(anchors).length > 0 ? anchors : {};
+}
+
+function buildMarketplaceAutoReviewCharacterVideoLockFromReferenceAnchors(
+  value: unknown
+): string {
+  const anchors = asRecord(value);
+  if (Object.keys(anchors).length === 0) return "";
+  const hasCharacterImage = Boolean(
+    cleanText(anchors.characterImageUrl) ||
+      cleanText(anchors.characterImageRef) ||
+      cleanText(anchors.characterImageProvidedRef)
+  );
+  return buildMarketplaceAutoReviewCharacterVideoLock({
+    characterMode: normalizeMarketplaceAutoReviewCharacterMode(
+      anchors.characterMode
+    ),
+    characterBrief: normalizeMarketplaceAutoReviewCharacterBrief(
+      anchors.characterBrief
+    ),
+    characterPreset: normalizeMarketplaceAutoReviewCharacterPreset(
+      anchors.characterPreset
+    ),
+    hasCharacterImage,
+  });
+}
+
+function characterPresetRecordFromPlanOrMetadata(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): Record<string, string> {
+  const fromPlan = characterPresetRecordFromText(plan.productDetail);
+  if (Object.keys(fromPlan).length > 0) return fromPlan;
+  return characterPresetRecordFromUnknown(
+    marketplaceAutoReviewReferenceAnchorsFromMetadata(metadata).characterPreset
+  );
+}
+
+function extractMarkedPromptLine(text: string, marker: string): string {
+  const source = cleanText(text);
+  const start = source.indexOf(marker);
+  if (start < 0) return "";
+  const tail = source.slice(start);
+  const boundaryIndex = [
+    " Character anchor ",
+    " No character/person reference ",
+    " Environment anchor ",
+    " No environment reference ",
+    " Product anchor ",
+    " USER-SELECTED REFERENCE ANCHOR LOCK:",
+    " PRODUCT DETAIL / PRODUCT FACTS LOCK:",
+  ]
+    .map(needle => tail.indexOf(needle, marker.length))
+    .filter(index => index >= 0)
+    .sort((a, b) => a - b)[0];
+  const scopedTail =
+    typeof boundaryIndex === "number" ? tail.slice(0, boundaryIndex) : tail;
+  const nextMarker = /\s[A-Z][A-Z /-]{3,}:/g;
+  nextMarker.lastIndex = marker.length;
+  const next = nextMarker.exec(scopedTail);
+  return cleanText(next ? scopedTail.slice(0, next.index) : scopedTail);
+}
+
+function extractApprovedCharacterBriefFromDirective(text: string): string {
+  const match =
+    /approved presenter\/reviewer\/persona is\s+(.+?)(?:\.| This described character| Character preset:|$)/i.exec(
+      text
+    );
+  return cleanText(match?.[1] ?? "");
+}
+
+function buildMarketplaceAutoReviewVideoCharacterLockFromPlan(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): string {
+  const detail = cleanText(plan.productDetail);
+  const explicitLock = extractMarkedPromptLine(detail, "VIDEO CHARACTER LOCK:");
+  if (explicitLock) return explicitLock;
+
+  const describedDirective = extractMarkedPromptLine(
+    detail,
+    "USER-SELECTED DESCRIBED CHARACTER LOCK:"
+  );
+  if (describedDirective) {
+    const preset = characterPresetRecordFromText(describedDirective);
+    const lock = buildMarketplaceAutoReviewCharacterVideoLock({
+      characterMode: preset.mode || "described_character",
+      characterBrief: extractApprovedCharacterBriefFromDirective(
+        describedDirective
+      ),
+      characterPreset: preset,
+    });
+    return lock || describedDirective;
+  }
+
+  if (
+    /Character anchor\b/i.test(detail) &&
+    !/No character\/person reference was supplied/i.test(detail)
+  ) {
+    return "VIDEO CHARACTER LOCK: The uploaded character reference image is the presenter identity source of truth. Infer the presenter's apparent gender presentation, age range, maturity, styling, reviewer persona, and matching Thai voice from the uploaded character image and visible reference frames. Preserve the same person identity, face structure, hair, body proportions, styling, and apparent demographics from the selected reference/frame images across shots.";
+  }
+
+  return buildMarketplaceAutoReviewCharacterVideoLockFromReferenceAnchors(
+    marketplaceAutoReviewReferenceAnchorsFromMetadata(metadata)
+  );
+}
+
+function sanitizeMarketplaceAutoReviewAudioProfileVoiceBrief(
+  voiceBrief: string
+): string {
+  const value = cleanText(voiceBrief);
+  const sentenceEnd = value.indexOf(".");
+  if (sentenceEnd > 0) {
+    const firstSentence = value.slice(0, sentenceEnd);
+    const remaining = cleanText(value.slice(sentenceEnd + 1));
+    const clauses = firstSentence.split(",").map(cleanText).filter(Boolean);
+    if (
+      clauses.length >= 3 &&
+      /(?:female|male|presenter|host|reviewer|mother|expert|voice)/i.test(
+        clauses[0]
+      ) &&
+      /(?:\d{2}\s*-\s*\d{2}|early|late|years old|20s|30s|40s|50s)/i.test(
+        clauses[1]
+      )
+    ) {
+      return [clauses.slice(2).join(", "), remaining]
+        .filter(Boolean)
+        .join(". ");
+    }
+  }
+  return value
+    .replace(/\byoung mother-style female voice\b/gi, "selected presenter voice")
+    .replace(/\byoung female host\b/gi, "selected presenter host")
+    .replace(/\bfemale (presenter|reviewer|practical expert)\b/gi, "selected $1")
+    .replace(/\b\d{2}\s*-\s*\d{2}\s*years old\b/gi, "selected age range")
+    .replace(/\bearly 30s\b/gi, "selected age range");
+}
+
+function buildMarketplaceAutoReviewCharacterVoiceBrief(
+  plan: AutoReviewPlan,
+  audioProfile: MarketplaceAutoReviewVideoAudioProfile,
+  metadata?: RunMetadata | null
+): string {
+  const videoCharacterLock =
+    buildMarketplaceAutoReviewVideoCharacterLockFromPlan(plan, metadata);
+  if (/uploaded character reference image/i.test(videoCharacterLock)) {
+    return [
+      "Uploaded character reference voice lock: infer the Thai spoken voice from the visible presenter in the uploaded character reference image and current frame references.",
+      "Match the presenter's apparent gender presentation, age range, maturity, and reviewer persona from that image.",
+      "Do not use any default demographic voice profile unless it matches the uploaded character reference.",
+      `Voice style: ${sanitizeMarketplaceAutoReviewAudioProfileVoiceBrief(
+        audioProfile.voiceBrief
+      )}`,
+    ].join(" ");
+  }
+
+  const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
+  const subject = characterSubjectFromPresetRecord(preset);
+  if (!subject) return audioProfile.voiceBrief;
+  return [
+    `Selected presenter voice lock: ${subject}.`,
+    "Use a voice that matches the selected presenter gender and age range.",
+    `Voice style: ${sanitizeMarketplaceAutoReviewAudioProfileVoiceBrief(
+      audioProfile.voiceBrief
+    )}`,
+  ].join(" ");
 }
 
 function marketplaceAutoReviewCharacterBriefText(
@@ -5328,6 +5743,7 @@ function appendImageAttemptReview(params: {
   expectedFrameCount?: number | null;
 }): Record<string, unknown>[] {
   const attempts = params.refs
+    .filter(directMediaRefReachedProvider)
     .map(ref => toNumber(ref.attempt))
     .filter(value => Number.isFinite(value) && value > 0);
   const attempt = attempts.length > 0 ? Math.max(...attempts) : 1;
@@ -5752,8 +6168,10 @@ async function persistDirectMediaSubmitProgress(params: {
 function latestTaskRefsByUnit(
   refs: DirectMediaTaskRef[]
 ): DirectMediaTaskRef[] {
+  const providerRefs = refs.filter(directMediaRefReachedProvider);
+  const sourceRefs = providerRefs.length > 0 ? providerRefs : refs;
   const latest = new Map<string, DirectMediaTaskRef>();
-  for (const ref of refs) {
+  for (const ref of sourceRefs) {
     const current = latest.get(ref.unitId);
     if (!current || toNumber(ref.attempt) >= toNumber(current.attempt)) {
       latest.set(ref.unitId, ref);
@@ -5768,8 +6186,19 @@ function nextDirectAttempt(refs: DirectMediaTaskRef[], unitId: string): number {
   return (
     refs
       .filter(ref => ref.unitId === unitId)
+      .filter(directMediaRefReachedProvider)
       .reduce((max, ref) => Math.max(max, toNumber(ref.attempt)), 0) + 1
   );
+}
+
+function directMediaRefReachedProvider(ref: DirectMediaTaskRef): boolean {
+  if (cleanText(ref.providerSubmitIntentStatus) === "blocked_before_provider_submit") {
+    return false;
+  }
+  if (/^prompt-preflight-failed:/i.test(cleanText(ref.taskId))) {
+    return false;
+  }
+  return true;
 }
 
 function upsertCreditTransaction(
@@ -6596,7 +7025,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
     };
     if (runtimeContract.hasRuntime) {
       if (!runtimeContract.hasRequiredSkill) {
-        blockers.push("runtime_skill_contract_missing");
+        warnings.push("runtime_skill_contract_missing");
       }
       if (!runtimeContract.hasGenerationMode) {
         warnings.push("runtime_generation_mode_mismatch");
@@ -6611,7 +7040,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         warnings.push("runtime_product_category_missing_or_auto");
       }
       if (!runtimeContract.hasReferenceProductImages) {
-        blockers.push("runtime_reference_product_images_missing");
+        warnings.push("runtime_reference_product_images_missing");
       }
       if (!runtimeContract.hasSchemaAuditPassed) {
         warnings.push("runtime_skill_input_schema_audit_failed");
@@ -6627,7 +7056,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
           "product_reference_image_exact_recreation_missing"
         )
       ) {
-        blockers.push("product_reference_image_exact_recreation_missing");
+        warnings.push("product_reference_image_exact_recreation_missing");
       }
     }
 
@@ -6709,7 +7138,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
     }
     for (const [code, fragments, hardPromptRequirement] of requiredFragmentGroups) {
       if (!fragments.some(fragment => lower.includes(fragment.toLowerCase()))) {
-        if (hardPromptRequirement === true) {
+        if (hardPromptRequirement === true && !hasSkillRuntime) {
           addContractIssue(code, true);
         } else {
           addContractIssue(code);
@@ -6747,7 +7176,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         prompt
       );
     if (!hasExactProductReferenceLock) {
-      addContractIssue("product_reference_primary_visual_lock_missing", true);
+      addContractIssue("product_reference_primary_visual_lock_missing");
     }
     if (
       runtimeContract.referenceCharacterImageCount > 0 &&
@@ -6794,6 +7223,7 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         else blockers.push(code);
       }
     }
+    blockers.push(...detectProductReferenceStoryboardNoTextPromptLeaks(prompt));
   } else if (!/never include video seconds/i.test(prompt)) {
     blockers.push("allow_text_timecode_guard_missing");
   }
@@ -6929,7 +7359,7 @@ function buildProductReferenceStoryboardPromptPreflightFeedback(params: {
       `Previous product-reference-storyboard output failed prompt preflight on skill attempt ${params.promptSkillAttempt}.`,
       `Fix blockers: ${blockerText}.`,
       "Regenerate the final prompt through the same skill contract. Do not patch or summarize the previous output.",
-      "The returned prompt should explicitly include one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, or HUMAN REALISM labels inside frame text.",
+      "The returned prompt should explicitly include one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, HUMAN REALISM, ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as renderable frame text.",
     ].join(" "),
   };
 }
@@ -6952,6 +7382,8 @@ function buildProductReferenceStoryboardIncompleteOutputFeedback(params: {
       `Fix blockers: ${blockerText}.`,
       "Regenerate a complete final prompt through the same skill contract. Do not patch, summarize, reuse, or fallback to the previous output.",
       "The returned prompt must include OUTPUT FORMAT LOCK, CINEMATIC REALISM LOCK, PRODUCT REFERENCE LOCK, TEXT RENDERING POLICY, CAMERA/LIGHT/DEPTH, PRODUCT VERIFY, SHOT-BY-SHOT STORYBOARD PROMPT, and complete Frame 1 through Frame 9 with non-empty visual-only prose.",
+      "For the storyboard grid, include the exact quality anchors: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      "In no-text mode, do not include renderable camera labels or technical text such as ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, storyboard_grid, panel names, corner labels, captions, subtitles, or random glyphs.",
     ].join(" "),
   };
 }
@@ -7025,6 +7457,8 @@ function buildProductReferenceStoryboardSkillInputs(input: {
   overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
   referenceImageGroups: ProductReferenceStoryboardReferenceImageGroups;
   publicUrl?: string | null;
+  metadata?: RunMetadata | null;
+  directImageAttempt?: number | null;
   promptSkillAttempt?: number | null;
   preflightFeedback?: ProductReferenceStoryboardPreflightFeedback | null;
 }): Record<string, unknown> {
@@ -7045,7 +7479,7 @@ function buildProductReferenceStoryboardSkillInputs(input: {
   const textPolicy =
     input.overlayTextMode === "allow_text"
       ? "Allow only short truthful on-image text if it helps the story. Never include video seconds, time ranges, timecodes, frame labels, subtitles, marketplace UI, prices, ratings, review widgets, or platform logos."
-      : "No added visible text. No captions, labels, subtitles, video seconds, timecodes, frame labels, dimension text, marketplace UI, prices, ratings, review widgets, platform logos, random glyphs, or readable prop text.";
+      : "No added visible text. No captions, labels, subtitles, video seconds, timecodes, frame labels, camera-shot abbreviations, technical labels, panel names, corner labels, dimension text, marketplace UI, prices, ratings, review widgets, platform logos, random glyphs, or readable prop text. Do not render ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as visible image text.";
   const preflightFeedback = input.preflightFeedback;
   const productCategory = inferProductReferenceStoryboardCategory(input.plan);
   const referenceImageGroups =
@@ -7055,9 +7489,20 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     );
   const productDriftGuard =
     "Product drift guard: before the product appears, show clutter on the bed/floor only. Do not show any alternate bedside table, nightstand, cabinet, shelf, storage unit, drawer unit, or similar furniture that can be mistaken for the sellable product.";
+  const productReferenceExactRecreationLock =
+    "Product reference exact recreation lock: Use @Image1 / the first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product. Written product description is secondary and must never override the attached product image or generic product description.";
   const characterIdentityDirective =
     characterReferencePresenterDirective(referenceImageGroups, input.plan);
   const minorSafetyClothingLock = buildMinorSafetyClothingLock(input.plan);
+  const imageAttemptStoryLens =
+    buildProductReferenceStoryboardImageAttemptStoryLens({
+      plan: input.plan,
+      metadata: input.metadata,
+      attempt: input.directImageAttempt,
+    });
+  const imageAttemptStoryLensText = cleanText(
+    imageAttemptStoryLens.directive
+  );
 
   return {
     generation_mode: "multi_frame_storyboard",
@@ -7074,6 +7519,8 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     cinematic_style: "cinematic_realism",
     storyboard_guide: [
       `Marketplace Auto Review 3x3 cut route. Create one storyboard image for ${activeShotCount} active shots and ${MAX_SHOT_COUNT} total vertical frames.`,
+      productReferenceExactRecreationLock,
+      imageAttemptStoryLensText,
       productDriftGuard,
       characterIdentityDirective,
       minorSafetyClothingLock,
@@ -7102,11 +7549,13 @@ function buildProductReferenceStoryboardSkillInputs(input: {
         ? `Marketplace category path: ${input.plan.productTruth.categoryPath.join(" > ")}`
         : "",
       `Overlay text policy: ${textPolicy}`,
+      imageAttemptStoryLensText,
       characterIdentityDirective,
       minorSafetyClothingLock,
       repairInstruction
         ? `Repair instruction for this attempt: ${repairInstruction}`
         : "",
+      productReferenceExactRecreationLock,
       productDriftGuard,
       `Product category rule: ${productCategory}`,
       input.plan.productTruth.price ? `Price signal for context only: ${input.plan.productTruth.price}` : "",
@@ -7135,6 +7584,12 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     product_title: input.plan.productTruth.productName,
     product_source_url: input.plan.productTruth.sourceUrl,
     product_shop_name: input.plan.productTruth.shopName ?? "",
+    product_reference_exact_recreation_lock: productReferenceExactRecreationLock,
+    image_attempt_number: Math.max(1, Math.floor(toNumber(input.directImageAttempt, 1))),
+    image_attempt_story_lens_id: cleanText(imageAttemptStoryLens.lensId),
+    image_attempt_story_lens_title: cleanText(imageAttemptStoryLens.title),
+    image_attempt_story_lens: imageAttemptStoryLensText,
+    image_attempt_story_lens_json: imageAttemptStoryLens,
     prompt_budget_chars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
     max_output_chars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
     maxPromptLength: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
@@ -7149,7 +7604,7 @@ function buildProductReferenceStoryboardSkillInputs(input: {
       total: referenceImageGroups.all.length,
     },
     runtime_contract:
-      `Call the product-reference-storyboard skill and return only the final image prompt. Do not use backend fallback prompt text. The final prompt must explicitly satisfy the 9:16 strict 3x3 / 9 vertical frames contract before image provider submission. ${characterIdentityDirective} ${minorSafetyClothingLock}`,
+      `Call the product-reference-storyboard skill and return only the final image prompt. Do not use backend fallback prompt text. This is a fresh skill call for image attempt ${Math.max(1, Math.floor(toNumber(input.directImageAttempt, 1)))} and must follow the image_attempt_story_lens instead of copying prior image-attempt prompt wording. The final prompt must explicitly satisfy the 9:16 strict 3x3 / 9 vertical frames contract before image provider submission. The final prompt must include the Product reference exact recreation lock using @Image1 as the primary visual source of truth and saying the written description must never override the attached product image. ${productReferenceExactRecreationLock} ${imageAttemptStoryLensText} ${characterIdentityDirective} ${minorSafetyClothingLock}`,
   };
 }
 
@@ -7180,6 +7635,13 @@ function buildProductReferenceStoryboardSkillInputSnapshot(
     aspectRatio: cleanText(userInputs.aspect_ratio),
     productCategory: cleanText(userInputs.product_category),
     marketplacePlatform: cleanText(userInputs.marketplace_platform),
+    imageAttemptNumber: toNumber(userInputs.image_attempt_number),
+    imageAttemptStoryLensId: cleanText(userInputs.image_attempt_story_lens_id),
+    imageAttemptStoryLensHash: cleanText(userInputs.image_attempt_story_lens)
+      ? buildProductionStableHash({
+          imageAttemptStoryLens: userInputs.image_attempt_story_lens,
+        }).slice(0, 16)
+      : "",
     promptSkillAttempt: toNumber(userInputs.prompt_skill_attempt),
     hasRepairInstruction: Boolean(repairInstruction),
     repairInstructionHash: repairInstruction
@@ -7219,6 +7681,7 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
   overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
   referenceImageGroups: ProductReferenceStoryboardReferenceImageGroups;
   publicUrl?: string | null;
+  metadata?: RunMetadata | null;
 }): Promise<{
   prompt: string;
   preflight: MarketplaceAutoReviewPromptPreflightResult;
@@ -7255,6 +7718,8 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
     const userInputs = buildProductReferenceStoryboardSkillInputs({
       ...input,
       referenceImageGroups,
+      metadata: input.metadata,
+      directImageAttempt: input.attempt,
       promptSkillAttempt,
       preflightFeedback: feedback,
     });
@@ -7325,29 +7790,77 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
       }
       throw error;
     }
-    const contractLocked = ensureStoryboardGridContractLockInImagePrompt({
-      prompt: skillRun.prompt,
-      overlayTextMode: input.overlayTextMode,
-    });
-    const prompt = ensureMinorSafetyClothingLockInImagePrompt(
-      contractLocked.prompt,
+    const safetyPrompt = ensureMinorSafetyClothingLockInImagePrompt(
+      skillRun.prompt,
       input.plan
     );
-    const promptSafetyPatchApplied = prompt !== cleanText(contractLocked.prompt);
+    const optimizedSafetyPrompt = await optimizeMinorSafetyLockPostProcessPrompt(
+      {
+        tenantId: input.tenantId,
+        userId: input.auth.userId,
+        runId: input.runId,
+        unitId: input.unit.unitId,
+        attempt: input.attempt,
+        promptAttempt: promptSkillAttempt,
+        sourcePrompt: safetyPrompt,
+        plan: input.plan,
+      }
+    );
+    const layoutContractPrompt = ensureStoryboardGridLayoutContractInImagePrompt(
+      optimizedSafetyPrompt.prompt
+    );
+    const rawSkillFrameCount = countPromptMatches(
+      skillRun.prompt,
+      /\bFrame\s+\d+\s*:/gi
+    );
+    const processedFrameCount = countPromptMatches(
+      layoutContractPrompt.prompt,
+      /\bFrame\s+\d+\s*:/gi
+    );
+    const prompt =
+      rawSkillFrameCount >= MAX_SHOT_COUNT &&
+      processedFrameCount < rawSkillFrameCount
+        ? cleanText(skillRun.prompt)
+        : layoutContractPrompt.prompt;
+    const promptSafetyPatchApplied = safetyPrompt !== cleanText(skillRun.prompt);
+    const promptSafetyOptimizerApplied =
+      Boolean(optimizedSafetyPrompt.audit?.used);
+    const promptPostProcessPreservedRawFrames =
+      rawSkillFrameCount >= MAX_SHOT_COUNT &&
+      processedFrameCount < rawSkillFrameCount;
     const skillAuditForPreflight = {
       ...skillRun.skillAudit,
-      ...(contractLocked.applied
-        ? {
-            storyboardContractLockApplied: true,
-            storyboardContractLockAddedFragments:
-              contractLocked.addedFragments,
-            fallbackUsed: false,
-          }
-        : {}),
       ...(promptSafetyPatchApplied
         ? {
             promptSafetyPatchApplied: true,
             backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
+          }
+        : {}),
+      ...(optimizedSafetyPrompt.audit
+        ? {
+            promptSafetyOptimizer: optimizedSafetyPrompt.audit,
+          }
+        : {}),
+      ...(promptSafetyOptimizerApplied
+        ? {
+            backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
+          }
+        : {}),
+      ...(layoutContractPrompt.applied
+        ? {
+            promptLayoutContractApplied: true,
+            backendEnforcedLayoutLocks: [
+              "storyboard_layout_preset_contract_line",
+            ],
+          }
+        : {}),
+      ...(promptPostProcessPreservedRawFrames
+        ? {
+            promptPostProcessPreservedRawFrames: true,
+            promptPostProcessFrameCounts: {
+              rawSkillFrameCount,
+              processedFrameCount,
+            },
           }
         : {}),
     };
@@ -7462,22 +7975,6 @@ export function ensureMinorSafetyClothingLockInImagePromptForTest(input: {
   plan: AutoReviewPlan;
 }): string {
   return ensureMinorSafetyClothingLockInImagePrompt(input.prompt, input.plan);
-}
-
-export function ensureStoryboardGridContractLockInImagePromptForTest(input: {
-  prompt: string;
-  overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
-}): {
-  prompt: string;
-  applied: boolean;
-  addedFragments: string[];
-} {
-  return ensureStoryboardGridContractLockInImagePrompt({
-    prompt: input.prompt,
-    overlayTextMode: normalizeMarketplaceAutoReviewOverlayTextMode(
-      input.overlayTextMode
-    ),
-  });
 }
 
 export function prepareMarketplaceAutoReviewImagePromptForTest(input: {
@@ -8037,9 +8534,23 @@ function completedImageAttemptReviewCount(metadata: RunMetadata): number {
         .map(item => asRecord(item))
         .filter(review => {
           const attempt = toNumber(review.attempt);
-          return attempt > 0 && Boolean(cleanText(review.status));
+          return (
+            attempt > 0 &&
+            Boolean(cleanText(review.status)) &&
+            imageAttemptReviewReachedProvider(review)
+          );
         }).length
     : 0;
+}
+
+function imageAttemptReviewReachedProvider(
+  review: Record<string, unknown>
+): boolean {
+  const taskRefs = Array.isArray(review.taskRefs)
+    ? review.taskRefs.map(item => asRecord(item) as DirectMediaTaskRef)
+    : [];
+  if (taskRefs.length === 0) return true;
+  return taskRefs.some(directMediaRefReachedProvider);
 }
 
 export function buildMarketplaceAutoReviewShotFrameRepairUnitsForTest(input: {
@@ -8121,6 +8632,15 @@ export function hasMarketplaceAutoReviewMinimumImageAttemptsForTest(input: {
     completedImageAttemptReviewCount(input.metadata as RunMetadata) >=
     MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW
   );
+}
+
+export function ensureStoryboardGridLayoutContractInImagePromptForTest(
+  prompt: string
+): {
+  prompt: string;
+  applied: boolean;
+} {
+  return ensureStoryboardGridLayoutContractInImagePrompt(prompt);
 }
 
 export function shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(
@@ -8439,11 +8959,18 @@ function buildReferenceAnchorDetailText(
 ): string {
   const describedCharacterDirective =
     buildMarketplaceAutoReviewDescribedCharacterDirective(anchors);
+  const characterVideoLock = buildMarketplaceAutoReviewCharacterVideoLock({
+    characterMode: anchors.characterMode,
+    characterBrief: anchors.characterBrief,
+    characterPreset: anchors.characterPreset,
+    hasCharacterImage: Boolean(anchors.characterImageUrl),
+  });
   return [
     "USER-SELECTED REFERENCE ANCHOR LOCK:",
     `Product anchor ${anchors.productImageRef}: this is the only product image allowed as the strict visual identity source for color, shape, size, material, label/logo placement, and visible product parts.`,
     "If any anchor image is a single-file multi-view/reference sheet, treat all panels inside that one image as views of the same subject. Use them to preserve identity, shape, proportions, and continuity; do not treat panels as separate variants or additional products.",
     "Other product gallery images are not allowed to override the selected product anchor because they may show a different color, variant, bundle, or shape.",
+    characterVideoLock,
     anchors.characterImageUrl && anchors.characterImageRef
       ? `Character anchor ${anchors.characterImageRef}: if a presenter/person appears, preserve the same identity, face structure, hair, body proportions, and styling from the supplied user reference across every shot. Do not morph the face between shots. In this run, include this character's clear face in at least 1, ideally 2-3 active frames as a hard identity anchor.`
       : describedCharacterDirective ||
@@ -10042,6 +10569,114 @@ function buildMarketplaceAutoReviewCreativeVariationSeed(params: {
   });
 }
 
+function marketplaceAutoReviewCreativeConceptCandidates(
+  metadata?: RunMetadata | null
+): Record<string, unknown>[] {
+  const creativeConceptSet = asRecord(metadata?.creativeConceptSet);
+  const concepts = Array.isArray(creativeConceptSet.concepts)
+    ? (creativeConceptSet.concepts as unknown[]).map(item => asRecord(item))
+    : Array.isArray(creativeConceptSet.alternatives)
+      ? (creativeConceptSet.alternatives as unknown[]).map(item =>
+          asRecord(item)
+        )
+      : [];
+  const selectedConceptId = cleanText(creativeConceptSet.selectedConceptId);
+  const selected = selectedConceptId
+    ? concepts.find(
+        concept => cleanText(concept.conceptId) === selectedConceptId
+      )
+    : concepts.find(concept => concept.selected === true);
+  return [
+    ...(selected ? [selected] : []),
+    ...concepts.filter(concept => concept !== selected),
+  ].filter(concept =>
+    Boolean(
+      cleanText(concept.conceptId) ||
+        cleanText(concept.title) ||
+        cleanText(concept.angle) ||
+        cleanText(concept.rationale)
+    )
+  );
+}
+
+function buildProductReferenceStoryboardImageAttemptStoryLens(params: {
+  plan: AutoReviewPlan;
+  metadata?: RunMetadata | null;
+  attempt?: number | null;
+}): Record<string, unknown> {
+  const attempt = Math.max(1, Math.floor(toNumber(params.attempt, 1)));
+  const concepts = marketplaceAutoReviewCreativeConceptCandidates(
+    params.metadata
+  );
+  const concept = concepts.length > 0
+    ? concepts[(attempt - 1) % concepts.length]
+    : null;
+  const fallbackHash = creativeFingerprint({
+    productId: params.plan.productTruth.productId,
+    conceptId: params.plan.conceptId,
+    attempt,
+  });
+  const journeyTemplate = concept
+    ? null
+    : pickCreativeSeedValue(
+        MARKETPLACE_AUTO_REVIEW_JOURNEY_TEMPLATES,
+        fallbackHash,
+        0
+      );
+  const cameraPalette = pickCreativeSeedValue(
+    MARKETPLACE_AUTO_REVIEW_CAMERA_PALETTES,
+    fallbackHash,
+    4
+  );
+  const humanPresencePlan = pickCreativeSeedValue(
+    MARKETPLACE_AUTO_REVIEW_HUMAN_PRESENCE_PLANS,
+    fallbackHash,
+    8
+  );
+  const sceneRhythm = pickCreativeSeedValue(
+    MARKETPLACE_AUTO_REVIEW_SCENE_RHYTHMS,
+    fallbackHash,
+    12
+  );
+  const conceptId =
+    cleanText(concept?.conceptId) ||
+    cleanText(concept?.id) ||
+    `attempt-lens-${attempt}-${fallbackHash.slice(0, 8)}`;
+  const title =
+    cleanText(concept?.title) ||
+    cleanText(concept?.conceptTitle) ||
+    journeyTemplate?.label ||
+    params.plan.title;
+  const angle =
+    cleanText(concept?.angle) ||
+    cleanText(concept?.conceptAngle) ||
+    cleanText(concept?.rationale) ||
+    cleanText(concept?.selectedRationale) ||
+    journeyTemplate?.hookPattern ||
+    params.plan.storyboardGuide;
+  return compactRecord({
+    attempt,
+    lensId: `image-attempt-story-lens:${attempt}:${conceptId}`,
+    conceptId,
+    title,
+    angle,
+    journeyTemplateId: journeyTemplate?.id ?? cleanText(concept?.hookType),
+    journeyTemplate: journeyTemplate?.label ?? title,
+    hookPattern: journeyTemplate?.hookPattern ?? angle,
+    proofEmphasis: journeyTemplate?.proofEmphasis ?? cleanText(concept?.rationale),
+    sceneRhythm,
+    cameraPalette,
+    humanPresencePlan,
+    directive: [
+      `IMAGE ATTEMPT ${attempt} STORY LENS: call product-reference-storyboard as a fresh prompt generation for this image attempt.`,
+      `Customer-journey angle: ${title}. ${angle}`,
+      "Preserve the same product truth, reference images, shot order, voiceover meaning, and 3x3 layout contract.",
+      "Make this storyboard visually and narratively distinct from prior image attempts: vary the opening situation, proof emphasis, scene rhythm, camera palette, human presence plan, and frame composition.",
+      "Do not copy the previous attempt's frame-by-frame scene wording unless the product reference or shot meaning requires it.",
+    ].join(" "),
+  });
+}
+
 export function buildMarketplaceAutoReviewCreativeVariationSeedForTest(input: {
   runId: string;
   productId: string;
@@ -10313,6 +10948,16 @@ function normalizeCreativeConceptSetWithRetryMemory(params: {
   }
 }
 
+function marketplaceAutoReviewCreativePlannerErrorIsRetryable(
+  error: unknown
+): boolean {
+  return [
+    "creative_planner_concept_count_mismatch",
+    "creative_planner_shot_count_mismatch",
+    "creative_planner_shot_contract_mismatch",
+  ].includes(cleanText((error as any)?.code));
+}
+
 function buildCreativePlannerFallbackConceptSet(params: {
   fallbackPlan: AutoReviewPlan;
   reason: string;
@@ -10444,6 +11089,12 @@ export function buildMarketplaceAutoReviewCreativePlannerFallbackConceptSetForTe
     reason: cleanText(input.reason) || "agent_runtime_adapter_error",
     noveltyMemory: input.noveltyMemory,
   });
+}
+
+export function marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest(
+  error: unknown
+): boolean {
+  return marketplaceAutoReviewCreativePlannerErrorIsRetryable(error);
 }
 
 function specEvidenceRefs(productTruth: ProductTruth): string[] {
@@ -10719,6 +11370,8 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
     shotNumber?: number;
     missingFields?: string[];
     errorMessage?: string;
+    actualConceptCount?: number;
+    expectedMinimumConceptCount?: number;
   }) =>
     [
       "You are a Production Director for Thai marketplace product review videos.",
@@ -10732,6 +11385,9 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
         ? [
             `CORRECTION REQUIRED: Previous attempt failed validation (${correction.errorCode || "creative_planner_validation_failed"}).`,
             `Previous shot count was ${correction.actualShotCount}; this retry must return exactly ${requestedShotCount} shots in the shots array, with one object for each required shot order ${JSON.stringify(requiredShotOrders)}.`,
+            correction.errorCode === "creative_planner_concept_count_mismatch"
+              ? `Previous creativeConceptSet had ${correction.actualConceptCount ?? 0} usable alternatives; this retry must return creativeConceptSet.alternatives with 3-5 distinct usable concept objects. Each alternative must include non-empty title and angle.`
+              : "",
             correction.shotNumber && correction.missingFields?.length
               ? `Shot ${correction.shotNumber} was missing required fields: ${correction.missingFields.join(", ")}. Every shot must include title, storyboardGuide, voiceover, camera, visual, movement, and productRole as non-empty strings.`
               : "",
@@ -10786,6 +11442,8 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
           shotNumber?: number;
           missingFields?: string[];
           errorMessage?: string;
+          actualConceptCount?: number;
+          expectedMinimumConceptCount?: number;
         }
       | undefined;
     let lastPlannerError: unknown;
@@ -10889,17 +11547,92 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
             .map(item => cleanText(item))
             .filter(Boolean)
         : [];
-      const {
-        creativeConceptSet,
-        reusedPreviousConceptSet,
-        reuseReason,
-      } = normalizeCreativeConceptSetWithRetryMemory({
-        parsed,
-        fallbackPlan: params.fallbackPlan,
-        finalOutput: cleanText(response.finalOutput),
-        priorFingerprints,
-        previousConceptSet: lastValidCreativeConceptSet,
-      });
+      let creativeConceptSet: Record<string, unknown>;
+      let reusedPreviousConceptSet = false;
+      let reuseReason: string | undefined;
+      try {
+        const conceptSetResult = normalizeCreativeConceptSetWithRetryMemory({
+          parsed,
+          fallbackPlan: params.fallbackPlan,
+          finalOutput: cleanText(response.finalOutput),
+          priorFingerprints,
+          previousConceptSet: lastValidCreativeConceptSet,
+        });
+        creativeConceptSet = conceptSetResult.creativeConceptSet;
+        reusedPreviousConceptSet = conceptSetResult.reusedPreviousConceptSet;
+        reuseReason = conceptSetResult.reuseReason;
+      } catch (error) {
+        lastPlannerError = error;
+        const plannerErrorCode = cleanText((error as any)?.code);
+        if (
+          marketplaceAutoReviewCreativePlannerErrorIsRetryable(error) &&
+          attempt < MAX_CREATIVE_PLANNER_SHOT_COUNT_ATTEMPTS
+        ) {
+          logMarketplaceAutoReviewPlannerDebug("warn", "validation_retry", {
+            runId: params.runId,
+            productionRunId: params.productionRunId,
+            productId: productTruth.productId,
+            requestedShotCount,
+            actualShotCount: Array.isArray(parsed.shots)
+              ? parsed.shots.length
+              : 0,
+            attempt,
+            nextAttempt: attempt + 1,
+            traceSuffix,
+            errorCode: plannerErrorCode,
+            actualConceptCount: toNumber(
+              (error as any).actualConceptCount,
+              0
+            ),
+            expectedMinimumConceptCount: toNumber(
+              (error as any).expectedMinimumConceptCount,
+              3
+            ),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+            finalOutputHash: buildProductionStableHash({
+              finalOutput: response.finalOutput,
+            }).slice(0, 16),
+          });
+          correction = {
+            actualShotCount: Array.isArray(parsed.shots)
+              ? parsed.shots.length
+              : 0,
+            attempt: attempt + 1,
+            errorCode: plannerErrorCode,
+            actualConceptCount: toNumber(
+              (error as any).actualConceptCount,
+              0
+            ),
+            expectedMinimumConceptCount: toNumber(
+              (error as any).expectedMinimumConceptCount,
+              3
+            ),
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+          };
+          continue;
+        }
+        logMarketplaceAutoReviewPlannerDebug("error", "validation_terminal", {
+          runId: params.runId,
+          productionRunId: params.productionRunId,
+          productId: productTruth.productId,
+          requestedShotCount,
+          actualShotCount: Array.isArray(parsed.shots)
+            ? parsed.shots.length
+            : 0,
+          attempt,
+          traceSuffix,
+          errorCode: plannerErrorCode,
+          actualConceptCount: toNumber((error as any).actualConceptCount, 0),
+          expectedMinimumConceptCount: toNumber(
+            (error as any).expectedMinimumConceptCount,
+            3
+          ),
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
       if (reusedPreviousConceptSet) {
         logMarketplaceAutoReviewPlannerDebug(
           "warn",
@@ -10951,10 +11684,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
         lastPlannerError = error;
         const plannerErrorCode = cleanText((error as any)?.code);
         if (
-          [
-            "creative_planner_shot_count_mismatch",
-            "creative_planner_shot_contract_mismatch",
-          ].includes(plannerErrorCode) &&
+          marketplaceAutoReviewCreativePlannerErrorIsRetryable(error) &&
           attempt < MAX_CREATIVE_PLANNER_SHOT_COUNT_ATTEMPTS
         ) {
           logMarketplaceAutoReviewPlannerDebug("warn", "validation_retry", {
@@ -12349,12 +13079,15 @@ export function buildMarketplaceAutoReview3x3StoryboardPromptForTest(input: {
 function buildVideoVisualPrompt(
   plan: AutoReviewPlan,
   shot: AutoReviewShot,
-  referenceMode: MarketplaceAutoReviewVideoReferenceMode
+  referenceMode: MarketplaceAutoReviewVideoReferenceMode,
+  metadata?: RunMetadata | null
 ): string {
   const scene =
     referenceMode === "single_storyboard_frame"
       ? "Use @Image1 as the storyboard frame."
       : "Use @Image1 as start frame. Use @Image2 as stop frame.";
+  const characterVideoLock =
+    buildMarketplaceAutoReviewVideoCharacterLockFromPlan(plan, metadata);
   const characterDirection =
     "Use only the person or hands already visible in the frames. Do not add new people. If a face is visible, keep it consistent with the frame.";
   return [
@@ -12365,6 +13098,7 @@ function buildVideoVisualPrompt(
     "",
     "Characters:",
     characterDirection,
+    characterVideoLock,
     buildMinorSafetyClothingLock(plan),
     "",
     "Action:",
@@ -12390,11 +13124,13 @@ export function buildMarketplaceAutoReviewVideoPromptForTest(input: {
   audioStrategy?: MarketplaceAutoReviewResolvedAudioStrategy;
   isLastShot?: boolean;
   referenceMode?: MarketplaceAutoReviewVideoReferenceMode;
+  metadata?: RunMetadata | null;
 }): string {
   return buildVideoPrompt(input.plan, input.shot, {
     audioStrategy: input.audioStrategy,
     isLastShot: input.isLastShot,
     referenceMode: input.referenceMode,
+    metadata: input.metadata,
   });
 }
 
@@ -12405,6 +13141,7 @@ function buildVideoPrompt(
     audioStrategy?: MarketplaceAutoReviewResolvedAudioStrategy;
     isLastShot?: boolean;
     referenceMode?: MarketplaceAutoReviewVideoReferenceMode;
+    metadata?: RunMetadata | null;
   } = {}
 ): string {
   const audioStrategy = options.audioStrategy ?? "native_video_audio";
@@ -12414,7 +13151,7 @@ function buildVideoPrompt(
       ? ["single_storyboard"]
       : ["start", "stop"];
   const visualPrompt = [
-    buildVideoVisualPrompt(plan, shot, referenceMode),
+    buildVideoVisualPrompt(plan, shot, referenceMode, options.metadata),
   ].join("\n");
   if (audioStrategy === "native_video_audio") {
     const audioProfile = selectMarketplaceAutoReviewVideoAudioProfile(plan);
@@ -12434,7 +13171,11 @@ function buildVideoPrompt(
       speechMode: "th",
       speechLanguage: "thai",
       voiceoverScript: timedSpeech,
-      voiceBrief: audioProfile.voiceBrief,
+      voiceBrief: buildMarketplaceAutoReviewCharacterVoiceBrief(
+        plan,
+        audioProfile,
+        options.metadata
+      ),
       includeSound: true,
       soundBrief: [
         audioProfile.soundBrief,
@@ -15200,6 +15941,7 @@ async function scheduleImageAttempt(params: {
         overlayTextMode,
         referenceImageGroups,
         publicUrl,
+        metadata: params.metadata,
       });
     } catch (error) {
       if (error instanceof MarketplaceAutoReviewImagePromptPreflightError) {
@@ -15247,6 +15989,22 @@ async function scheduleImageAttempt(params: {
             dispatchDecision: promptAudit.dispatchDecision,
           }
         );
+        const metadataAfterPreflightFailure = withUpdatedCreditSummary({
+          ...nextMetadata,
+          generatedMediaAcceptanceEnvelope: {
+            ...asRecord(nextMetadata.generatedMediaAcceptanceEnvelope),
+            status: "pending",
+            stageKey: "image_generation",
+            updatedAt: nowIso(),
+          },
+        });
+        Object.assign(params.metadata, metadataAfterPreflightFailure);
+        await updateRun({
+          db: params.db,
+          runId: params.run.id,
+          metadataJson: metadataAfterPreflightFailure,
+          errorMessage: error.message,
+        });
       }
       if (unit.role === "storyboard_grid") {
         console.error(
@@ -17642,6 +18400,7 @@ function buildStoryboardReviewOutput(params: {
           audioStrategy: resolvedAudioStrategy,
           isLastShot: index === params.plan.shots.length - 1,
           referenceMode,
+          metadata: params.metadata,
         }),
         storyboardGuide: shot.storyboardGuide,
         voiceover: shot.voiceover,
@@ -19250,6 +20009,8 @@ export function buildProductReferenceStoryboardSkillInputsForTest(input: {
   overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
   referenceImageGroups: ProductReferenceStoryboardReferenceImageGroups;
   publicUrl?: string | null;
+  metadata?: RunMetadata | null;
+  directImageAttempt?: number | null;
   promptSkillAttempt?: number | null;
   preflightFeedback?: ProductReferenceStoryboardPreflightFeedback | null;
 }): Record<string, unknown> {
@@ -19261,6 +20022,8 @@ export function buildProductReferenceStoryboardSkillInputsForTest(input: {
     ),
     referenceImageGroups: input.referenceImageGroups,
     publicUrl: input.publicUrl,
+    metadata: input.metadata,
+    directImageAttempt: input.directImageAttempt,
     promptSkillAttempt: input.promptSkillAttempt,
     preflightFeedback: input.preflightFeedback,
   });
