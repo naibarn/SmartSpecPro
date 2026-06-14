@@ -630,6 +630,31 @@ export const marketplaceCaptureRouter = router({
                 z.array(z.unknown()),
               ])
               .optional(),
+            reviewTone: z
+              .enum([
+                "warm_honest",
+                "funny_light",
+                "irritated_problem",
+                "energetic_excited",
+                "empathetic_soft",
+                "expert_confident",
+                "straight_serious",
+              ])
+              .optional()
+              .nullable(),
+            storytellingStructure: z
+              .enum([
+                "hook_problem_emotion_insight_solution_result_cta",
+                "hook_problem_insight_proof_cta",
+                "product_review_situation_problem_try_result_fit",
+                "before_after_bridge",
+                "pas",
+                "aida",
+                "relatable_story",
+                "problem_struggle_solution_transformation",
+              ])
+              .optional()
+              .nullable(),
             requiredRoles: z
               .array(z.enum(["product", "character", "environment"]))
               .optional(),

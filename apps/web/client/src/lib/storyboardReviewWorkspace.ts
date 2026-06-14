@@ -916,3 +916,81 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
       };
     });
 }
+
+function storyboardReviewRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function cleanStoryboardReviewId(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function firstStoryboardReviewId(
+  record: Record<string, unknown> | null,
+  keys: string[],
+): string {
+  if (!record) return "";
+  for (const key of keys) {
+    const value = cleanStoryboardReviewId(record[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+export function getStoryboardReviewProductIdFromDraft(draft: StoryboardReviewDraft | null): string {
+  if (!draft) return "";
+  const draftRecord = storyboardReviewRecord(draft);
+  const contexts: Array<{ record: Record<string, unknown> | null; allowGenericId?: boolean }> = [
+    { record: storyboardReviewRecord(draft.marketplaceContext), allowGenericId: true },
+    { record: storyboardReviewRecord(draftRecord?.marketplaceProduct), allowGenericId: true },
+    { record: draftRecord, allowGenericId: false },
+  ];
+  for (const task of draft.tasks) {
+    contexts.push(
+      { record: storyboardReviewRecord(task.marketplaceProduct), allowGenericId: true },
+      { record: storyboardReviewRecord(task.storyboardContext?.extraParams?.marketplaceContext), allowGenericId: true },
+      { record: storyboardReviewRecord(task.storyboardContext?.extraParams), allowGenericId: false },
+    );
+  }
+
+  for (const context of contexts) {
+    const keys = context.allowGenericId
+      ? ["productId", "marketplaceProductId", "product_id", "id"]
+      : ["productId", "marketplaceProductId", "product_id"];
+    const productId = firstStoryboardReviewId(context.record, keys);
+    if (productId) return productId;
+  }
+  return "";
+}
+
+export function getStoryboardReviewAutoReviewRunIdFromDraft(draft: StoryboardReviewDraft | null): string {
+  if (!draft) return "";
+  const draftRecord = storyboardReviewRecord(draft);
+  const topLevelRunId = firstStoryboardReviewId(draftRecord, ["autoReviewRunId", "marketplaceAutoReviewRunId"]);
+  if (topLevelRunId) return topLevelRunId;
+
+  const directRunId = firstStoryboardReviewId(
+    storyboardReviewRecord(draft.marketplaceContext),
+    ["autoReviewRunId", "marketplaceAutoReviewRunId"],
+  );
+  if (directRunId) return directRunId;
+
+  const runIds = new Set<string>();
+  for (const task of draft.tasks) {
+    const contexts = [
+      storyboardReviewRecord(task.marketplaceProduct),
+      storyboardReviewRecord(task.storyboardContext?.extraParams?.marketplaceContext),
+      storyboardReviewRecord(task.storyboardContext?.extraParams),
+    ];
+    for (const context of contexts) {
+      const runId = firstStoryboardReviewId(context, ["autoReviewRunId", "marketplaceAutoReviewRunId"]);
+      if (runId) runIds.add(runId);
+    }
+  }
+
+  return runIds.size === 1 ? [...runIds][0]! : "";
+}

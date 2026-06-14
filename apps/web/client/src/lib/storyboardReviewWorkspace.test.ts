@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFirstLastFrameStoryboardTasks,
+  getStoryboardReviewAutoReviewRunIdFromDraft,
+  getStoryboardReviewProductIdFromDraft,
   mergeFresherStoryboardReviewTasks,
   readStoryboardReviewDraft,
   replaceStoryboardVideoSlot,
@@ -822,5 +824,73 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       voiceoverFullScript: "Edited full narration",
       useVoiceoverScriptAsConcept: true,
     });
+  });
+});
+
+describe("Storyboard Review HyperFrames context helpers", () => {
+  const baseDraft: StoryboardReviewDraft = {
+    version: 1,
+    updatedAt: 12345,
+    taskIds: ["shot-1"],
+    selectedTaskIds: ["shot-1"],
+    companionAudio: [],
+    compoundStatus: null,
+    projectLink: null,
+    renderJobId: null,
+    tasks: [
+      {
+        id: "shot-1",
+        index: 0,
+        status: "completed",
+        type: "video",
+        prompt: "Shot 1",
+        model: "veo",
+        createdAt: 12345,
+        updatedAt: 12345,
+        url: "/api/storage/files/videos/generated/1/shot-1.mp4",
+        storyboardContext: {
+          aspectRatio: "9:16",
+          referenceImages: [],
+          referenceVideos: [],
+          extraParams: {
+            marketplaceProductId: "mp_123",
+            autoReviewRunId: "mar_123",
+          },
+        },
+      },
+    ],
+  };
+
+  it("resolves product and Auto Review run context from task extra params", () => {
+    expect(getStoryboardReviewProductIdFromDraft(baseDraft)).toBe("mp_123");
+    expect(getStoryboardReviewAutoReviewRunIdFromDraft(baseDraft)).toBe("mar_123");
+  });
+
+  it("does not guess the Auto Review run when completed shots come from mixed runs", () => {
+    const mixedDraft: StoryboardReviewDraft = {
+      ...baseDraft,
+      taskIds: ["shot-1", "shot-2"],
+      selectedTaskIds: ["shot-1", "shot-2"],
+      tasks: [
+        baseDraft.tasks[0]!,
+        {
+          ...baseDraft.tasks[0]!,
+          id: "shot-2",
+          index: 1,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            referenceImages: [],
+            referenceVideos: [],
+            extraParams: {
+              marketplaceProductId: "mp_123",
+              autoReviewRunId: "mar_other",
+            },
+          },
+        },
+      ],
+    };
+
+    expect(getStoryboardReviewProductIdFromDraft(mixedDraft)).toBe("mp_123");
+    expect(getStoryboardReviewAutoReviewRunIdFromDraft(mixedDraft)).toBe("");
   });
 });

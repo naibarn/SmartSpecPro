@@ -25,7 +25,7 @@ describe("hyperframesDependencyAudit", () => {
     const doctor = runHyperframesDoctorCheck();
 
     expect(doctor.node.version).toBe(process.version);
-    expect(doctor.node.requirement).toBe(">=20.20.0 <21 || >=22.22.0");
+    expect(doctor.node.requirement).toBe(">=22.22.0 <23");
     expect(doctor.node.ok).toBe(isSupportedHyperframesNodeVersion(process.version));
     expect(doctor.officialHyperframesNode.ok).toBe(
       isSupportedOfficialHyperframesNodeVersion(process.version)
@@ -42,9 +42,10 @@ describe("hyperframesDependencyAudit", () => {
 
   it("uses the SmartSpecPro engine range for HyperFrames runtime checks", () => {
     expect(isSupportedHyperframesNodeVersion("v20.19.2")).toBe(false);
-    expect(isSupportedHyperframesNodeVersion("v20.20.0")).toBe(true);
+    expect(isSupportedHyperframesNodeVersion("v20.20.0")).toBe(false);
     expect(isSupportedHyperframesNodeVersion("v22.21.9")).toBe(false);
     expect(isSupportedHyperframesNodeVersion("v22.22.0")).toBe(true);
-    expect(isSupportedHyperframesNodeVersion("v24.13.0")).toBe(true);
+    expect(isSupportedHyperframesNodeVersion("v22.22.3")).toBe(true);
+    expect(isSupportedHyperframesNodeVersion("v24.13.0")).toBe(false);
   });
 });

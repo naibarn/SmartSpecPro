@@ -36,6 +36,8 @@ type ManualMarketplaceProductInput = MarketplaceProductEditableFields & {
   affiliateUrl?: string | null;
 };
 
+type MarketplaceProductRow = typeof marketplaceProducts.$inferSelect;
+
 function money(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
 }
@@ -975,6 +977,34 @@ async function snapshotsForProductIds(productIds: string[]) {
   return grouped;
 }
 
+async function primaryImagesForProducts(products: MarketplaceProductRow[]) {
+  if (products.length === 0) return new Map<string, { imageUrl: string; imageUrls: string[] }>();
+  const db = getDb();
+  const productIds = products.map((product) => product.id);
+  const rows = await db.select().from(marketplaceProductImages)
+    .where(inArray(marketplaceProductImages.productId, productIds))
+    .orderBy(marketplaceProductImages.sortOrder, marketplaceProductImages.createdAt);
+  const grouped = new Map<string, typeof marketplaceProductImages.$inferSelect[]>();
+  for (const row of rows) {
+    grouped.set(row.productId, [...(grouped.get(row.productId) ?? []), row]);
+  }
+  const output = new Map<string, { imageUrl: string; imageUrls: string[] }>();
+  for (const product of products) {
+    const productRaw = (product.platformRawJson as Record<string, unknown> | null) ?? {};
+    const heroProductImageId = typeof productRaw.heroProductImageId === "string" ? productRaw.heroProductImageId : "";
+    const orderedImages = [...(grouped.get(product.id) ?? [])].sort((left, right) => {
+      const leftIsCover = (heroProductImageId && left.id === heroProductImageId) || (product.coverImageAssetId && left.captureAssetId === product.coverImageAssetId) ? 0 : 1;
+      const rightIsCover = (heroProductImageId && right.id === heroProductImageId) || (product.coverImageAssetId && right.captureAssetId === product.coverImageAssetId) ? 0 : 1;
+      return leftIsCover - rightIsCover || (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+    });
+    const imageUrls = orderedImages.map((image) => image.url).filter(Boolean);
+    if (imageUrls.length > 0) {
+      output.set(product.id, { imageUrl: imageUrls[0], imageUrls });
+    }
+  }
+  return output;
+}
+
 export async function listMarketplaceProductsWithAccess(
   auth: { userId: number; tenantId?: string },
   options: {
@@ -1037,10 +1067,15 @@ export async function listMarketplaceProductsWithAccess(
   }
 
   const trimmed = results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, limit);
-  const snapshots = await snapshotsForProductIds(trimmed.map((product) => product.id));
+  const [snapshots, productImages] = await Promise.all([
+    snapshotsForProductIds(trimmed.map((product) => product.id)),
+    primaryImagesForProducts(trimmed),
+  ]);
   const supportingInsights = await supportingInsightsForProducts(trimmed, auth);
   return trimmed.map((product) => ({
     ...product,
+    imageUrl: productImages.get(product.id)?.imageUrl ?? null,
+    imageUrls: productImages.get(product.id)?.imageUrls ?? [],
     health: buildProductHealth(product, snapshots.get(product.id) ?? []),
     latestSnapshot: snapshots.get(product.id)?.[0] ?? null,
     supportingInsights: supportingInsights.get(product.id) ?? null,

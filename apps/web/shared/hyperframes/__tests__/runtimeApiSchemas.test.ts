@@ -16,6 +16,7 @@ import {
   HYPERFRAMES_CREATIVE_PRESET_ALIASES,
   listHyperframesCreativePresets,
 } from "../creativePresets";
+import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "../limits";
 
 describe("HyperFrames runtime API schemas", () => {
   it("parses page-load plan input without mutation fields", () => {
@@ -150,6 +151,41 @@ describe("HyperFrames runtime API schemas", () => {
     expect(input.config.shots[0]?.overlayPreset).toBe("price_impact");
     expect(input.config.subtitlePreset).toBe("karaoke_word");
     expect(input.config.shots[0]?.subtitleCues[0]?.endSec).toBe(2);
+  });
+
+  it("uses the shared final render prompt limit for styleBrief", () => {
+    const validPrompt = "x".repeat(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS);
+    const oversizedPrompt = `${validPrompt}x`;
+    const baseInput = {
+      productId: "product_1",
+      runId: "mar_1",
+      config: {
+        finalVideoLengthSec: 8,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+            onScreenText: ["BENO"],
+          },
+        ],
+      },
+    };
+
+    expect(
+      CreateHyperframesFinalCompositeInputSchema.parse({
+        ...baseInput,
+        config: { ...baseInput.config, styleBrief: validPrompt },
+      }).config.styleBrief
+    ).toHaveLength(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS);
+    expect(() =>
+      CreateHyperframesFinalCompositeInputSchema.parse({
+        ...baseInput,
+        config: { ...baseInput.config, styleBrief: oversizedPrompt },
+      })
+    ).toThrow();
   });
 
   it("accepts richer overlay presets for pre-render visual templates", () => {

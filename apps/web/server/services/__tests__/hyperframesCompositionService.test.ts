@@ -359,12 +359,18 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain('data-volume="0.18"');
     expect(composition.compositionHtml).toContain("data-audio-event-map-hash=");
     expect(composition.compositionHtml).toContain("window.__timelines");
+    expect(composition.compositionHtml).toContain(".source-video.is-active");
+    expect(composition.compositionHtml).toContain("document.querySelectorAll(\".source-video\")");
+    expect(composition.compositionHtml).toContain("video.classList.toggle(\"is-active\", active)");
     expect(composition.compositionHtml).not.toContain("fetch(");
     expect(composition.finalCompositeConfig.audioEventMapHash).toMatch(/^hf_/);
     expect(composition.assets.some(asset => asset.kind === "audio")).toBe(true);
     expect(getHyperframesFinalCompositeFallbackCapability(composition.finalCompositeConfig)).toMatchObject({
-      ffmpegAssFallback: true,
-      fallbackQuality: "partial",
+      ffmpegAssFallback: false,
+      fallbackQuality: "not_supported",
+      unsupportedFeatures: expect.arrayContaining([
+        "official_html_css_browser_runtime_required",
+      ]),
     });
   });
 });

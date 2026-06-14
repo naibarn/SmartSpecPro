@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   appendNativeSpeechDirectiveToStoryboardPrompt,
+  buildCompactStoryboardReviewVideoPrompt,
   buildVeo31StoryboardVideoPrompt,
   extractStoryboardNativeSpeechText,
   formatStoryboardNativeSpeechDirective,
+  splitStoryboardVoiceoverScriptByShot,
   storyboardPromptHasVeo31Sections,
 } from "./storyboardPromptAudio";
 
@@ -29,6 +31,32 @@ describe("storyboard prompt audio helpers", () => {
       .toBe("Keep essentials within reach.");
     expect(extractStoryboardNativeSpeechText('Woman says in Thai, quietly: "วันนี้ฝนตกหนักเหมือนใจฉันเลย"'))
       .toBe("วันนี้ฝนตกหนักเหมือนใจฉันเลย");
+  });
+
+  it("splits numbered combined voiceover scripts into ordered shot dialogue", () => {
+    const segments = splitStoryboardVoiceoverScriptByShot(
+      "VOICEOVER SCRIPT BY SHOT:1. 0-6.7s เปิดปัญหา: เคยไหม ของใช้เล็ก ๆ ข้างเตียงไม่มีที่อยู่ประจำ 2. 6.7-13.3s ขยาย pain point: พอเจอทุกวัน มุมนั้นก็ใช้งานไม่ค่อยสบาย 3. 13.3-20s สินค้าเข้ามาแก้: พอเอาชั้นวางเข้ามา มุมนี้ก็เริ่มมีตำแหน่งชัดขึ้น",
+      3,
+    );
+
+    expect(segments).toEqual([
+      "เคยไหม ของใช้เล็ก ๆ ข้างเตียงไม่มีที่อยู่ประจำ",
+      "พอเจอทุกวัน มุมนั้นก็ใช้งานไม่ค่อยสบาย",
+      "พอเอาชั้นวางเข้ามา มุมนี้ก็เริ่มมีตำแหน่งชัดขึ้น",
+    ]);
+  });
+
+  it("splits Thai paragraph voiceover scripts across storyboard shots", () => {
+    const segments = splitStoryboardVoiceoverScriptByShot(
+      "เลือกชุดให้เด็กทารกนี่คิดยากเลยค่ะ เพราะต้องใส่สบายและสมกับตัวจริง ๆ วันนี้เราลองบอดี้สูทแขนยาวสีขาว เนื้อนุ่มมาก ใส่ง่ายกว่าเยอะค่ะ ผ้าค่อนข้างยืดหยุ่น น้องขยับตัวได้สบาย ถ้ากำลังหาชุดแรกเกิดที่ใส่ง่าย รุ่นนี้เป็นตัวเลือกที่น่ารักมากค่ะ",
+      4,
+    );
+
+    expect(segments).toHaveLength(4);
+    expect(segments[0]).toContain("เลือกชุดให้เด็กทารก");
+    expect(segments[1]).toContain("วันนี้เราลองบอดี้สูท");
+    expect(segments[2]).toContain("ผ้าค่อนข้างยืดหยุ่น");
+    expect(segments[3]).toContain("ตัวเลือกที่น่ารัก");
   });
 
   it("builds a complete Veo 3.1 storyboard prompt with Thai dialogue and sound", () => {
@@ -218,5 +246,83 @@ describe("storyboard prompt audio helpers", () => {
     expect(prompt).toContain("Do not add background music, sound effects, foley, room tone, or ambient/environment audio.");
     expect(prompt).not.toContain("ambient nursery sounds");
     expect(prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "เปลี่ยนห้องนอนเด็กให้เป็นโลกแห่งจินตนาการ"');
+  });
+
+  it("builds compact Storyboard Review video prompts from start/stop frames without long static details", () => {
+    const longPropDetails = "Prop details: An adorable fluffy kitten with extra soft fur, big innocent eyes, tiny paws, sitting in a cozy sunlit room, warm golden light, soft pastel background, cute playful expression, detailed realistic fur, cinematic close-up, heartwarming mood, high resolution, beautiful depth of field.";
+    const prompt = buildCompactStoryboardReviewVideoPrompt({
+      visualPrompt: [
+        "Create a 5-second cinematic video.",
+        "",
+        "Scene:",
+        "Use @Image1 as start frame. Use @Image2 as stop frame. USER-SELECTED CREATIVE DIRECTION LOCK: Storytelling structure: Hook -> Problem -> Insight -> Proof -> CTA. PRODUCT FACTS LOCK: BENO PRO-FLEX espresso machine. Price signal: 22850 THB. Rating signal: 4.90.",
+        "",
+        "Characters:",
+        `Use only the presenter visible in the frames. User-selected visual details: ${longPropDetails} User-selected character brief: คนไทย ผู้ชาย, 30-39, role คนทำงาน, style เป็นกันเอง.`,
+        "",
+        "Action:",
+        "The presenter reaches toward the BENO PRO-FLEX, starts the brew, and the cup fills as the shot moves from the problem reaction to the clean product endpoint.",
+        "",
+        "Camera:",
+        "Begin as a medium start-frame hold, then push toward the espresso machine and finish exactly on the stop-frame product angle.",
+        "",
+        "Audio:",
+        "Native audio with room tone.",
+        "",
+        "Dialogue:",
+        'Presenter พูดเป็นภาษาไทยว่า "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย"',
+      ].join("\n"),
+      durationSeconds: 5,
+      aspectRatio: "9:16",
+      frameRoles: ["start", "stop"],
+      includeVoiceover: true,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      voiceoverScript: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย",
+      includeSound: false,
+      soundBrief: longPropDetails,
+    });
+
+    expect(prompt.length).toBeLessThanOrEqual(2000);
+    expect(storyboardPromptHasVeo31Sections(prompt)).toBe(true);
+    expect(prompt).toContain("Use @Image1 as start frame. Use @Image2 as stop/end frame.");
+    expect(prompt).toContain("Frames define the product, people, props, location, lighting, and final look");
+    expect(prompt).toContain("The presenter reaches toward the BENO PRO-FLEX");
+    expect(prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย"');
+    expect(prompt).not.toContain("USER-SELECTED CREATIVE DIRECTION LOCK");
+    expect(prompt).not.toContain("PRODUCT FACTS LOCK");
+    expect(prompt).not.toContain("Prop details");
+    expect(prompt).not.toContain("big innocent eyes");
+    expect(prompt).not.toContain("Price signal");
+  });
+
+  it("keeps requested Thai dialogue when speech mode is selected even if the legacy boolean is false", () => {
+    const prompt = buildCompactStoryboardReviewVideoPrompt({
+      visualPrompt: [
+        "Create an 8-second cinematic video.",
+        "",
+        "Scene:",
+        "Use @Image1 as start frame. Use @Image2 as stop/end frame.",
+        "",
+        "Action:",
+        "A hand starts the espresso machine, the cup fills, and the product moment lands on the clean endpoint frame.",
+        "",
+        "Camera:",
+        "Slow push-in from the presenter's hand to the espresso stream, then settle on the machine.",
+      ].join("\n"),
+      durationSeconds: 8,
+      aspectRatio: "9:16",
+      frameRoles: ["start", "stop"],
+      includeVoiceover: false,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      voiceoverScript: "ใช้เครื่องเดียว บด ชง และตีฟองนมได้ครบในทุกเช้า",
+      includeSound: false,
+    });
+
+    expect(prompt).toContain("Native dialogue audio only.");
+    expect(prompt).toContain("Dialogue must be spoken in natural Thai, central Thai accent.");
+    expect(prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "ใช้เครื่องเดียว บด ชง และตีฟองนมได้ครบในทุกเช้า"');
+    expect(prompt).not.toContain("No spoken dialogue.");
   });
 });

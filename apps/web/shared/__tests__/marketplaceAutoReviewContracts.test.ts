@@ -141,6 +141,51 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
     expect(imageStage?.progressPercent).toBe(80);
   });
 
+  it("marks downstream queued stages as skipped after terminal failure", () => {
+    const projection = buildMarketplaceAutoReviewTimelineProjection(
+      {
+        id: "mar_failed_layout",
+        productId: "product_1",
+        outputMode: "storyboard_images",
+        status: "failed",
+        currentStage: "image_generation",
+        stageIndex: 5,
+        metadataJson: {},
+      },
+      [
+        {
+          stageKey: "image_generation",
+          stageOrder: 5,
+          status: "failed",
+          outputJson: {
+            statusDetail: {
+              state: "failed_terminal",
+              severity: "error",
+              stageKey: "image_generation",
+              reasonCodes: ["publish_safety_hard_blocker"],
+              safeMessage: "หยุดก่อนส่งต่อ",
+            },
+          },
+        },
+        {
+          stageKey: "storyboard_review",
+          stageOrder: 6,
+          status: "queued",
+          outputJson: {},
+        },
+      ]
+    );
+
+    const storyboardStage = projection.items.find(
+      item => item.stageKey === "storyboard_review"
+    );
+    expect(storyboardStage?.status).toBe("skipped");
+    expect(storyboardStage?.detail).toMatchObject({
+      state: "skipped",
+      reasonCodes: ["run_failed_before_stage"],
+    });
+  });
+
   it("surfaces evidence instruction blockers without exposing raw injected evidence", () => {
     const projection = buildMarketplaceAutoReviewTimelineProjection(
       {
@@ -907,6 +952,8 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
       characterImageRef: "character-reference:hash",
       environmentImageUrl: "https://cdn.example.test/place.png",
       environmentImageRef: "environment-reference:hash",
+      reviewTone: "funny_light",
+      storytellingStructure: "hook_problem_insight_proof_cta",
       requiredRoles: ["product", "character", "environment"],
       status: "ready",
       createdAt: "2026-05-31T00:00:00.000Z",
@@ -940,6 +987,8 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
       characterImageRef: "character-reference:hash",
       environmentImageUrl: "https://cdn.example.test/place.png",
       environmentImageRef: "environment-reference:hash",
+      reviewTone: "funny_light",
+      storytellingStructure: "hook_problem_insight_proof_cta",
       requiredRoles: ["product", "character", "environment"],
       status: "ready",
       createdAt: "2026-05-31T00:00:00.000Z",
@@ -995,6 +1044,10 @@ describe("Marketplace Auto Review Feature 117 contracts", () => {
       "product-image:2:hash"
     );
     expect(metadata.productReferenceAssetPack?.supportingRefs).toEqual([]);
+    expect(metadata.referenceAnchors?.reviewTone).toBe("funny_light");
+    expect(metadata.referenceAnchors?.storytellingStructure).toBe(
+      "hook_problem_insight_proof_cta"
+    );
     expect(metadata.characterIdentityAssetPack?.allowedFaceUsage).toBe(
       "recurring"
     );

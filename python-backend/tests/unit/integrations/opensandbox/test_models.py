@@ -27,7 +27,7 @@ class TestSandboxModels:
         from app.integrations.opensandbox.models import SandboxConfig
 
         config = SandboxConfig(
-            image="node:20-slim",
+            image="node:22-slim",
             timeout_seconds=600,
             cpu_limit="2000m",
             memory_limit_mb=4096,
@@ -36,7 +36,7 @@ class TestSandboxModels:
             env_vars={"NODE_ENV": "production"},
             metadata={"job_id": "abc123"},
         )
-        assert config.image == "node:20-slim"
+        assert config.image == "node:22-slim"
         assert config.timeout_seconds == 600
         assert config.env_vars == {"NODE_ENV": "production"}
 

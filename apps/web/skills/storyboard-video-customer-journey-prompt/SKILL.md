@@ -63,7 +63,8 @@ Then inspect every slot's start/end image pair with vision. For each slot, ident
 Each slot prompt must:
 - explicitly mention the exact start/end frame anchors
 - start with the unique visible action or camera direction for that shot, not with repeated alias boilerplate
-- include concrete visible details from that slot's own start frame and stop/end frame
+- treat that slot's start/end frames as the visual truth for product, people, props, room, lighting, and composition
+- avoid re-describing static product/prop/person/background details at length, because the video provider already receives the start/stop frames
 - describe a plausible camera move or product/user motion
 - make the motion/camera choice fit the actual visual change between the two frames
 - state what to preserve from both frames
@@ -75,26 +76,28 @@ Each slot prompt must:
 
 ## Prompt Length and Deduplication Requirements
 
-- Keep each `video_prompt` concise, normally under 1,500 characters.
-- Do not paste product metadata, product facts lock, production concept, storyboard guide, planner options, or JSON verbatim into a slot prompt.
-- Use product/concept facts as a short lock once when needed, then focus the rest of the prompt on this slot's visible start/end frames and motion.
+- Hard limit: every `video_prompt` MUST be 2,000 characters or less. Target 1,200-1,500 characters.
+- For start/stop-frame video prompts, keep the prompt focused on motion, action, camera, continuity, audio, and dialogue only.
+- Do not paste product metadata, product facts lock, production concept, storyboard guide, planner options, prop details, price/rating/sales metadata, or JSON verbatim into a slot prompt.
+- Do not output labels such as `USER-SELECTED CREATIVE DIRECTION LOCK`, `PRODUCT FACTS LOCK`, `Storyboard guide`, `Prop details`, `Price signal`, `Rating signal`, or `Sold signal` inside `video_prompt`.
+- Use product/concept facts only as implicit context for the movement and spoken line, then focus the rest of the prompt on this slot's start/end-frame transition.
 - Never repeat the same product facts in Scene, Action, Camera, and Storyboard guide wording inside the same prompt.
 - Do not include a separate "Storyboard guide" paragraph inside `video_prompt`; convert the guide into concrete shot direction instead.
 
-Good slot prompts name the visible subject, product placement, hand/action, room/prop context, and endpoint state when those details are present. If the two frames are nearly identical, use subtle push-in, parallax, lighting shift, hand micro-movement, or product-settling motion instead of inventing new objects or actions.
+Good slot prompts briefly anchor `@Image1`/`@Image2`, then describe the motion: hand action, product movement, camera drift, transition, continuity, audio, and dialogue. If the two frames are nearly identical, use subtle push-in, parallax, lighting shift, hand micro-movement, or product-settling motion instead of inventing new objects or actions.
 
 Every `video_prompt` must use this Veo 3.1 structure:
 
 Create an [duration]-second cinematic video.
 
 Scene:
-[location, time, atmosphere, visual truth from the attached frames]
+[exact frame anchors and one short sentence that frames are visual truth]
 
 Characters:
 [visible person/hands/presenter only, no invented characters]
 
 Action:
-[what happens in this shot and what must be preserved]
+[movement/action only, plus what continuity to preserve]
 
 Camera:
 [shot size, movement, start/end frame roles, aspect ratio]

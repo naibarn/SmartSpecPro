@@ -96,6 +96,51 @@ describe("Storyboard Review HyperFrames final composite state", () => {
     ]);
   });
 
+  it("accepts the Storyboard Review final composite UI variables used before render", () => {
+    const result = mergeStoryboardReviewHyperframesFinalCompositeState({
+      reviewData: {},
+      input: {
+        ...baseInput,
+        patch: {
+          ...baseInput.patch,
+          textVariables: {
+            ...baseInput.patch.textVariables,
+            sfxDrafts: [
+              {
+                id: "sfx_draft_1",
+                presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+                target: "all",
+                visualTrigger: "scene_cut",
+                role: "transition_sfx",
+                offsetSec: 0.2,
+                durationSec: 0.22,
+                volume: 0.22,
+              },
+            ],
+            perShotText: { shot_1: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น" },
+            perShotSubtitles: { shot_1: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+            perShotOverlayPreset: { shot_1: "hook_sequence" },
+            perShotAnimationPreset: { shot_1: "glow_feature" },
+            perShotTransition: { shot_1: "fade" },
+          },
+        },
+      },
+      nowIso: "2026-06-12T00:00:00.000Z",
+    });
+
+    expect(result.state.textVariables).toMatchObject({
+      sfxDrafts: [
+        expect.objectContaining({
+          presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+          visualTrigger: "scene_cut",
+        }),
+      ],
+      perShotOverlayPreset: { shot_1: "hook_sequence" },
+      perShotAnimationPreset: { shot_1: "glow_feature" },
+      perShotTransition: { shot_1: "fade" },
+    });
+  });
+
   it("rejects stale revisions, mismatched products, and raw remote URLs", () => {
     const first = mergeStoryboardReviewHyperframesFinalCompositeState({
       reviewData: {},

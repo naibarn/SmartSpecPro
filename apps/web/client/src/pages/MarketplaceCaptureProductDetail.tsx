@@ -99,6 +99,25 @@ type AutoReviewCharacterMode =
   | "hands_only"
   | "described_character"
   | "uploaded_reference";
+type AutoReviewReviewTone =
+  | ""
+  | "warm_honest"
+  | "funny_light"
+  | "irritated_problem"
+  | "energetic_excited"
+  | "empathetic_soft"
+  | "expert_confident"
+  | "straight_serious";
+type AutoReviewStorytellingStructure =
+  | ""
+  | "hook_problem_emotion_insight_solution_result_cta"
+  | "hook_problem_insight_proof_cta"
+  | "product_review_situation_problem_try_result_fit"
+  | "before_after_bridge"
+  | "pas"
+  | "aida"
+  | "relatable_story"
+  | "problem_struggle_solution_transformation";
 type AutoReviewCharacterChoice = {
   id: string;
   label: string;
@@ -243,6 +262,43 @@ const AUTO_REVIEW_CHARACTER_STYLES: AutoReviewCharacterChoice[] = [
   { id: "premium_neat", label: "Premium neat" },
   { id: "friendly_everyday", label: "เป็นกันเอง" },
   { id: "expert_practical", label: "ผู้เชี่ยวชาญ" },
+];
+const AUTO_REVIEW_REVIEW_TONES: Array<
+  AutoReviewCharacterChoice & { id: AutoReviewReviewTone }
+> = [
+  { id: "", label: "Auto" },
+  { id: "warm_honest", label: "จริงใจเป็นกันเอง" },
+  { id: "funny_light", label: "ตลกขำเบา ๆ" },
+  { id: "irritated_problem", label: "หงุดหงิดกับปัญหา" },
+  { id: "energetic_excited", label: "ตื่นเต้นพลังสูง" },
+  { id: "empathetic_soft", label: "อบอุ่นเห็นใจ" },
+  { id: "expert_confident", label: "ผู้เชี่ยวชาญมั่นใจ" },
+  { id: "straight_serious", label: "ตรงไปตรงมา จริงจัง" },
+];
+const AUTO_REVIEW_STORYTELLING_STRUCTURES: Array<
+  AutoReviewCharacterChoice & { id: AutoReviewStorytellingStructure }
+> = [
+  { id: "", label: "Auto" },
+  {
+    id: "hook_problem_emotion_insight_solution_result_cta",
+    label: "Hook → Problem → Emotion → Insight → Solution → Result → CTA",
+  },
+  {
+    id: "hook_problem_insight_proof_cta",
+    label: "Hook → Problem → Insight → Proof → CTA",
+  },
+  {
+    id: "product_review_situation_problem_try_result_fit",
+    label: "Situation → Problem → Try → Result → Fit",
+  },
+  { id: "before_after_bridge", label: "Before → After → Bridge" },
+  { id: "pas", label: "PAS" },
+  { id: "aida", label: "AIDA" },
+  { id: "relatable_story", label: "Relatable Story" },
+  {
+    id: "problem_struggle_solution_transformation",
+    label: "Problem → Struggle → Solution → Transformation",
+  },
 ];
 const PRODUCT_REFERENCE_CATEGORY_LABELS: Record<string, string> = {
   auto: "Auto / ให้ระบบเดาหมวดสินค้า",
@@ -1563,17 +1619,38 @@ function buildAutoReviewTimelineFallback(run: any, items: any[]): any[] {
 
   return stageKeys.map((stageKey, index) => {
     const existing = byStage.get(stageKey);
+    const order = index + 1;
     if (existing) {
+      if (
+        isTerminal &&
+        runStatus !== "completed" &&
+        order > currentOrder &&
+        compactText(existing.status) === "queued"
+      ) {
+        return {
+          ...existing,
+          order,
+          status: "skipped",
+          detail: {
+            state: "skipped",
+            severity: "info",
+            reasonCodes: [`run_${runStatus}_before_stage`],
+            safeMessage: "ข้ามขั้นตอนนี้ เพราะงานหยุดก่อนถึงขั้นตอนนี้",
+            nextAction: "ตรวจขั้นตอนที่ล้มเหลวหรือถูกยกเลิกก่อนหน้า",
+          },
+        };
+      }
       return {
         ...existing,
-        order: index + 1,
+        order,
       };
     }
-    const order = index + 1;
     let status = "queued";
     if (isTerminal && runStatus === "completed") status = "completed";
     else if (isTerminal && runStatus !== "completed" && order < currentOrder)
       status = "completed";
+    else if (isTerminal && runStatus !== "completed" && order > currentOrder)
+      status = "skipped";
     else if (order < currentOrder) status = "completed";
     else if (order === currentOrder || stageKey === currentStage)
       status = runStatus;
@@ -1585,6 +1662,14 @@ function buildAutoReviewTimelineFallback(run: any, items: any[]): any[] {
       detail:
         status === "queued"
           ? { safeMessage: "รอทำขั้นตอนนี้" }
+          : status === "skipped"
+            ? {
+                state: "skipped",
+                severity: "info",
+                reasonCodes: [`run_${runStatus}_before_stage`],
+                safeMessage: "ข้ามขั้นตอนนี้ เพราะงานหยุดก่อนถึงขั้นตอนนี้",
+                nextAction: "ตรวจขั้นตอนที่ล้มเหลวหรือถูกยกเลิกก่อนหน้า",
+              }
           : status === "completed"
             ? { safeMessage: "ทำขั้นตอนนี้แล้ว" }
             : (run?.statusDetail ?? null),
@@ -2152,6 +2237,19 @@ export default function MarketplaceCaptureProductDetail() {
     useState("reviewer");
   const [autoReviewCharacterStyle, setAutoReviewCharacterStyle] =
     useState("friendly_everyday");
+  const [autoReviewTone, setAutoReviewTone] =
+    useState<AutoReviewReviewTone>("");
+  const [autoReviewStorytellingStructure, setAutoReviewStorytellingStructure] =
+    useState<AutoReviewStorytellingStructure>("");
+  const [
+    autoReviewPrimaryCharacterDetails,
+    setAutoReviewPrimaryCharacterDetails,
+  ] = useState("");
+  const [
+    autoReviewSecondaryCharacterDetails,
+    setAutoReviewSecondaryCharacterDetails,
+  ] = useState("");
+  const [autoReviewPropDetails, setAutoReviewPropDetails] = useState("");
   const suppressAddImageToastRef = useRef(false);
   const requestedLibraryPageRef = useRef(0);
   const utils = trpc.useUtils();
@@ -3147,37 +3245,78 @@ export default function MarketplaceCaptureProductDetail() {
   const selectedCharacterMode = AUTO_REVIEW_CHARACTER_MODES.find(
     option => option.id === autoReviewCharacterMode
   );
+  const selectedReviewTone = AUTO_REVIEW_REVIEW_TONES.find(
+    option => option.id === autoReviewTone
+  );
+  const selectedStorytellingStructure =
+    AUTO_REVIEW_STORYTELLING_STRUCTURES.find(
+      option => option.id === autoReviewStorytellingStructure
+    );
   const autoReviewCharacterBrief = useMemo(
-    () => ({
-      mode: autoReviewCharacterMode,
-      gender: autoReviewCharacterGender,
-      genderLabel: optionLabel(
+    () => {
+      const genderLabel = optionLabel(
         AUTO_REVIEW_CHARACTER_GENDERS,
         autoReviewCharacterGender
-      ),
-      age: autoReviewCharacterAge,
-      ageLabel: optionLabel(AUTO_REVIEW_CHARACTER_AGES, autoReviewCharacterAge),
-      appearance: autoReviewCharacterAppearance,
-      appearanceLabel: optionLabel(
+      );
+      const ageLabel = optionLabel(
+        AUTO_REVIEW_CHARACTER_AGES,
+        autoReviewCharacterAge
+      );
+      const appearanceLabel = optionLabel(
         AUTO_REVIEW_CHARACTER_APPEARANCES,
         autoReviewCharacterAppearance
-      ),
-      role: autoReviewCharacterRole,
-      roleLabel: optionLabel(AUTO_REVIEW_CHARACTER_ROLES, autoReviewCharacterRole),
-      style: autoReviewCharacterStyle,
-      styleLabel: optionLabel(
+      );
+      const roleLabel = optionLabel(
+        AUTO_REVIEW_CHARACTER_ROLES,
+        autoReviewCharacterRole
+      );
+      const styleLabel = optionLabel(
         AUTO_REVIEW_CHARACTER_STYLES,
         autoReviewCharacterStyle
-      ),
-      summary:
-        autoReviewCharacterMode === "product_only"
-          ? "Product-only review. Do not generate a visible person."
-          : autoReviewCharacterMode === "hands_only"
-            ? "Hands-only product review. Use hands or non-face body framing only; do not generate a recurring face."
-            : autoReviewCharacterMode === "uploaded_reference"
-              ? "Use the uploaded character reference as the identity source of truth."
-              : `${optionLabel(AUTO_REVIEW_CHARACTER_APPEARANCES, autoReviewCharacterAppearance)} ${optionLabel(AUTO_REVIEW_CHARACTER_GENDERS, autoReviewCharacterGender)}, ${optionLabel(AUTO_REVIEW_CHARACTER_AGES, autoReviewCharacterAge)}, role ${optionLabel(AUTO_REVIEW_CHARACTER_ROLES, autoReviewCharacterRole)}, style ${optionLabel(AUTO_REVIEW_CHARACTER_STYLES, autoReviewCharacterStyle)}.`,
-    }),
+      );
+      const primaryCharacterDetails = compactText(
+        autoReviewPrimaryCharacterDetails
+      );
+      const secondaryCharacterDetails = compactText(
+        autoReviewSecondaryCharacterDetails
+      );
+      const propDetails = compactText(autoReviewPropDetails);
+      const describedSummary = compactStringList([
+        `${appearanceLabel} ${genderLabel}, ${ageLabel}, role ${roleLabel}, style ${styleLabel}.`,
+        primaryCharacterDetails
+          ? `Character 1 additional details: ${primaryCharacterDetails}.`
+          : null,
+        secondaryCharacterDetails
+          ? `Character 2 details: ${secondaryCharacterDetails}.`
+          : null,
+        propDetails ? `Prop details: ${propDetails}.` : null,
+      ]).join(" ");
+
+      return {
+        mode: autoReviewCharacterMode,
+        gender: autoReviewCharacterGender,
+        genderLabel,
+        age: autoReviewCharacterAge,
+        ageLabel,
+        appearance: autoReviewCharacterAppearance,
+        appearanceLabel,
+        role: autoReviewCharacterRole,
+        roleLabel,
+        style: autoReviewCharacterStyle,
+        styleLabel,
+        ...(primaryCharacterDetails ? { primaryCharacterDetails } : {}),
+        ...(secondaryCharacterDetails ? { secondaryCharacterDetails } : {}),
+        ...(propDetails ? { propDetails } : {}),
+        summary:
+          autoReviewCharacterMode === "product_only"
+            ? "Product-only review. Do not generate a visible person."
+            : autoReviewCharacterMode === "hands_only"
+              ? "Hands-only product review. Use hands or non-face body framing only; do not generate a recurring face."
+              : autoReviewCharacterMode === "uploaded_reference"
+                ? "Use the uploaded character reference as the identity source of truth."
+                : describedSummary,
+      };
+    },
     [
       autoReviewCharacterAge,
       autoReviewCharacterAppearance,
@@ -3185,6 +3324,9 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewCharacterMode,
       autoReviewCharacterRole,
       autoReviewCharacterStyle,
+      autoReviewPrimaryCharacterDetails,
+      autoReviewPropDetails,
+      autoReviewSecondaryCharacterDetails,
     ]
   );
   const canStartAutoReview = Boolean(
@@ -3453,6 +3595,10 @@ export default function MarketplaceCaptureProductDetail() {
         schemaVersion: 2,
         creationIntent,
         requiredRoles,
+        ...(autoReviewTone ? { reviewTone: autoReviewTone } : {}),
+        ...(autoReviewStorytellingStructure
+          ? { storytellingStructure: autoReviewStorytellingStructure }
+          : {}),
         characterMode: autoReviewCharacterMode,
         characterBrief: autoReviewCharacterBrief.summary,
         characterPreset: autoReviewCharacterBrief,
@@ -3600,6 +3746,8 @@ export default function MarketplaceCaptureProductDetail() {
     [
       autoReviewCharacterBrief,
       autoReviewCharacterMode,
+      autoReviewStorytellingStructure,
+      autoReviewTone,
       characterAnchor,
       characterAnchorUrl,
       environmentAnchor,
@@ -3839,7 +3987,7 @@ export default function MarketplaceCaptureProductDetail() {
       <div className="mt-2 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {options.map(option => (
           <button
-            key={option.id}
+            key={option.id || "auto"}
             type="button"
             aria-pressed={value === option.id}
             onClick={() => onChange(option.id)}
@@ -3854,6 +4002,25 @@ export default function MarketplaceCaptureProductDetail() {
         ))}
       </div>
     </div>
+  );
+  const renderCharacterDetailField = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    placeholder: string
+  ) => (
+    <label className="block">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
+      <textarea
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="mt-2 min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+      />
+    </label>
   );
 
   const characterChoicePanel = (
@@ -3931,6 +4098,26 @@ export default function MarketplaceCaptureProductDetail() {
             autoReviewCharacterStyle,
             setAutoReviewCharacterStyle
           )}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {renderCharacterDetailField(
+              "Character แรกเพิ่มเติม",
+              autoReviewPrimaryCharacterDetails,
+              setAutoReviewPrimaryCharacterDetails,
+              "เช่น ใบหน้ารูปไข่ ผมบ๊อบสีน้ำตาล ตาสีน้ำตาล ใส่เสื้อเชิ้ตขาว"
+            )}
+            {renderCharacterDetailField(
+              "ตัวละครที่ 2",
+              autoReviewSecondaryCharacterDetails,
+              setAutoReviewSecondaryCharacterDetails,
+              "เช่น เด็กผู้ชายวัย 6 ขวบ ใส่เสื้อสีฟ้า ยืนข้างแม่"
+            )}
+            {renderCharacterDetailField(
+              "Prop เพิ่มเติม",
+              autoReviewPropDetails,
+              setAutoReviewPropDetails,
+              "เช่น มีหมา มีแมว มีสิงโต มีช้าง หรือมีอุปกรณ์เสริมในฉาก"
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -4009,6 +4196,60 @@ export default function MarketplaceCaptureProductDetail() {
               : autoReviewCharacterBrief.summary}
         </p>
       )}
+    </section>
+  );
+
+  const creativeDirectionPanel = (
+    <section
+      className="mt-4 rounded-lg border border-slate-200 bg-white p-4"
+      aria-label="Auto Review creative direction choices"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            อารมณ์และโครงเรื่อง
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            เลือก tone การพูดและ storytelling structure ให้ระบบสร้างรีวิวตรงเจตนา
+          </p>
+        </div>
+        <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+          {selectedReviewTone?.label || "Auto"} /{" "}
+          {selectedStorytellingStructure?.label || "Auto"}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-4">
+        {renderCharacterChoiceGroup(
+          "อารมณ์ / โทนการพูด",
+          AUTO_REVIEW_REVIEW_TONES,
+          autoReviewTone,
+          value => setAutoReviewTone(value as AutoReviewReviewTone)
+        )}
+        {renderCharacterChoiceGroup(
+          "โครงสร้างการเล่าเรื่อง",
+          AUTO_REVIEW_STORYTELLING_STRUCTURES,
+          autoReviewStorytellingStructure,
+          value =>
+            setAutoReviewStorytellingStructure(
+              value as AutoReviewStorytellingStructure
+            )
+        )}
+      </div>
+      <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+        {autoReviewTone || autoReviewStorytellingStructure
+          ? compactStringList([
+              autoReviewTone
+                ? `Tone: ${selectedReviewTone?.label ?? autoReviewTone}`
+                : null,
+              autoReviewStorytellingStructure
+                ? `Storytelling: ${
+                    selectedStorytellingStructure?.label ??
+                    autoReviewStorytellingStructure
+                  }`
+                : null,
+            ]).join(" · ")
+          : "Auto: ไม่ส่ง directive เพิ่ม ระบบใช้ creative planner ปัจจุบัน"}
+      </p>
     </section>
   );
 
@@ -4107,6 +4348,7 @@ export default function MarketplaceCaptureProductDetail() {
             }}
           />
           {characterChoicePanel}
+          {creativeDirectionPanel}
           <AutoStoryboardAdvancedOverrides
             plan={autoStoryboardPlan}
             open={showAutoStoryboardAdvanced}

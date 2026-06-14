@@ -22,6 +22,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
@@ -93,7 +100,7 @@ jobs:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
         run: |
           cd apps/web
-          npm install
+          npm ci --legacy-peer-deps
           npm run db:migrate
 
       - name: Deploy node-api to Cloud Run (10% canary)

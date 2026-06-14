@@ -3,7 +3,7 @@
 # Node.js + Vite + tRPC application with Docker socket access
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:22.22.3-alpine AS deps
 WORKDIR /app
 
 # Install pnpm
@@ -23,7 +23,7 @@ RUN if [ -f pnpm-lock.yaml ]; then \
     fi
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:22.22.3-alpine AS builder
 WORKDIR /app
 
 # Install pnpm
@@ -37,7 +37,7 @@ COPY . .
 RUN pnpm run build || npm run build
 
 # Stage 3: Production
-FROM node:20-alpine AS runner
+FROM node:22.22.3-alpine AS runner
 WORKDIR /app
 
 # Set environment

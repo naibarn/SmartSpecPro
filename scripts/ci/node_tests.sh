@@ -20,7 +20,11 @@ else
 fi
 
 if [ -f package-lock.json ]; then
-  npm ci
+  if [ "$PKG" = "apps/web" ]; then
+    npm ci --legacy-peer-deps
+  else
+    npm ci
+  fi
 elif [ -f pnpm-lock.yaml ]; then
   corepack enable >/dev/null 2>&1 || true
   if [ "$PM" = "corepack pnpm" ]; then

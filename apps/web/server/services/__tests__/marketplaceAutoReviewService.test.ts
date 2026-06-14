@@ -36,6 +36,7 @@ import {
   acceptMarketplaceAutoReviewImageQaWithWarningsForTest,
   hasMarketplaceAutoReviewMinimumImageAttemptsForTest,
   hydrateMarketplaceAutoReviewPlanForStoryboardReviewForTest,
+  imageReasonCodesContainStoryboardGridLayoutBlockerForTest,
   isMarketplaceAutoReviewCompletedStageStatusForTest,
   isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest,
   marketplaceAutoReviewOperationalCleanupCutoffForTest,
@@ -51,6 +52,7 @@ import {
   buildMarketplaceAutoReviewNativeSpeechText,
   normalizeMarketplaceAutoReviewCreativeShotsForTest,
   normalizeMarketplaceAutoReviewImageModelForTest,
+  normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest,
   normalizeMarketplaceAutoReviewStageCompletionEvidenceForTest,
   buildMarketplaceAutoReviewVideoPromptForTest,
   buildFeature117ContractMetadataForTest,
@@ -60,6 +62,8 @@ import {
   buildMarketplaceAutoReviewWarningOverlayVerificationForTest,
   collectPaidStageAuthorityFreshnessForTest,
   describedCharacterAnchorDirectiveForTest,
+  creativeDirectionDirectiveForTest,
+  directMediaRefReachedProviderForTest,
   evaluateMarketplaceAutoReviewInputChangeImpactForTest,
   ensureMinorSafetyClothingLockInImagePromptForTest,
   ensureStoryboardGridLayoutContractInImagePromptForTest,
@@ -1049,6 +1053,11 @@ describe("marketplace auto review audio/video planning", () => {
         characterPreset: {
           style: "casual",
           voice: "warm",
+          primaryCharacterDetails:
+            "ใบหน้ารูปไข่ ผมบ๊อบสีน้ำตาล ตาสีน้ำตาล ใส่เสื้อเชิ้ตขาว",
+          secondaryCharacterDetails:
+            "เด็กผู้ชายวัย 6 ขวบ ใส่เสื้อสีฟ้า ยืนข้างแม่",
+          propDetails: "มีหมาและกระเป๋าผ้าอยู่ข้างสินค้า",
         },
         productImageUrl: "https://cdn.example.test/product-hero.png",
         productImageRef: "marketplace-product-image:hero_1",
@@ -1064,6 +1073,11 @@ describe("marketplace auto review audio/video planning", () => {
     expect(anchors.characterPreset).toEqual({
       style: "casual",
       voice: "warm",
+      primaryCharacterDetails:
+        "ใบหน้ารูปไข่ ผมบ๊อบสีน้ำตาล ตาสีน้ำตาล ใส่เสื้อเชิ้ตขาว",
+      secondaryCharacterDetails:
+        "เด็กผู้ชายวัย 6 ขวบ ใส่เสื้อสีฟ้า ยืนข้างแม่",
+      propDetails: "มีหมาและกระเป๋าผ้าอยู่ข้างสินค้า",
     });
     const directive = describedCharacterAnchorDirectiveForTest({
       characterMode: anchors.characterMode,
@@ -1072,7 +1086,56 @@ describe("marketplace auto review audio/video planning", () => {
     });
     expect(directive).toContain("USER-SELECTED DESCRIBED CHARACTER LOCK");
     expect(directive).toContain("ผู้หญิงใส่ชุดแฟชั่นบ้าน");
+    expect(directive).toContain("ใบหน้ารูปไข่");
+    expect(directive).toContain("เด็กผู้ชายวัย 6 ขวบ");
+    expect(directive).toContain("มีหมาและกระเป๋าผ้า");
     expect(directive).toContain("must not become the recurring hero");
+  });
+
+  it("normalizes selected review tone and storytelling structure into an explicit creative direction lock", () => {
+    const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
+      productTruth: {
+        imageUrls: ["https://cdn.example.test/product-hero.png"],
+      },
+      referenceAnchors: {
+        schemaVersion: 1,
+        creationIntent: "auto_review_video",
+        requiredRoles: ["product"],
+        characterMode: "hands_only",
+        reviewTone: "funny_light",
+        storytellingStructure:
+          "hook_problem_emotion_insight_solution_result_cta",
+        productImageUrl: "https://cdn.example.test/product-hero.png",
+        productImageRef: "marketplace-product-image:hero_1",
+        productImageId: "hero_1",
+      },
+    });
+
+    expect(anchors.reviewTone).toBe("funny_light");
+    expect(anchors.storytellingStructure).toBe(
+      "hook_problem_emotion_insight_solution_result_cta"
+    );
+
+    const directive = creativeDirectionDirectiveForTest({
+      reviewTone: anchors.reviewTone,
+      storytellingStructure: anchors.storytellingStructure,
+    });
+    expect(directive).toContain("USER-SELECTED CREATIVE DIRECTION LOCK");
+    expect(directive).toContain("ตลกขำเบา ๆ");
+    expect(directive).toContain("Light comedic review");
+    expect(directive).toContain(
+      "Hook → Problem → Emotion → Insight → Solution → Result → CTA"
+    );
+    expect(directive).toContain("override the automatic creative variation seed");
+  });
+
+  it("does not convert unknown creative direction values into prompt directives", () => {
+    const directive = creativeDirectionDirectiveForTest({
+      reviewTone: "angry_unbounded",
+      storytellingStructure: "raw_user_template",
+    });
+
+    expect(directive).toBe("");
   });
 
   it.each(["product_only", "hands_only"])(
@@ -2506,7 +2569,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(speech).not.toContain("ไม่ปล่อยท้ายช็อตเงียบ");
   });
 
-  it("adds Thai native dialogue pacing to Veo prompts", () => {
+  it("keeps Thai native video prompts compact with dialogue and audio only", () => {
     const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
       plan: basePlan as any,
       shot: baseShot as any,
@@ -2515,17 +2578,19 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(prompt).toContain("Audio:");
-    expect(prompt).toContain("Dialogue pacing");
-    expect(prompt).toContain("9.5 วินาที");
     expect(prompt).toContain("พูดเป็นภาษาไทยว่า");
     expect(prompt).toContain("Voice:");
-    expect(prompt).toContain("central Thai accent");
-    expect(prompt).toMatch(/SFX|ASMR|foley|room tone/i);
-    expect(prompt).toContain("No background music");
-    expect(prompt).toContain("no copyrighted melody");
+    expect(prompt).toMatch(/natural central Thai/i);
+    expect(prompt).toMatch(/foley|room tone/i);
+    expect(prompt).toContain("No music");
+    expect(prompt).toContain("copyrighted melody");
+    expect(prompt).not.toContain("Dialogue pacing");
+    expect(prompt).not.toContain("USER-SELECTED CREATIVE DIRECTION LOCK");
+    expect(prompt).not.toContain("Storytelling structure");
     expect(prompt).not.toContain("No audio.");
     expect(prompt).not.toContain("โดยดูจากภาพจริง");
     expect(prompt).not.toContain("ไม่ปล่อยท้ายช็อตเงียบ");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
   });
 
   it("locks Veo prompts and native voice profile to selected male character age range", () => {
@@ -2546,9 +2611,9 @@ describe("marketplace auto review audio/video planning", () => {
       isLastShot: false,
     });
 
-    expect(prompt).toContain("VIDEO CHARACTER LOCK");
     expect(prompt).toContain("Thai, male presenter/man, 20-29 years old");
-    expect(prompt).toContain("Selected presenter voice lock");
+    expect(prompt).toContain("Voice matches Thai, male presenter/man");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
     expect(prompt).not.toMatch(/\bfemale\b/i);
     expect(prompt).not.toMatch(
       /\b(?:22-30|25-35|28-38|30-40) years old\b|early 30s/i
@@ -2574,11 +2639,9 @@ describe("marketplace auto review audio/video planning", () => {
       isLastShot: false,
     });
 
-    expect(prompt).toContain("Uploaded character reference voice lock");
-    expect(prompt).toContain(
-      "Match the presenter's apparent gender presentation, age range"
-    );
-    expect(prompt).toContain("uploaded character reference");
+    expect(prompt).toContain("visible/uploaded presenter identity");
+    expect(prompt).toContain("Voice matches the visible/uploaded presenter");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
     expect(prompt).not.toMatch(
       /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b/i
     );
@@ -2624,9 +2687,9 @@ describe("marketplace auto review audio/video planning", () => {
       } as any,
     });
 
-    expect(prompt).toContain("VIDEO CHARACTER LOCK");
     expect(prompt).toContain("Thai, male presenter/man, 30-39 years old");
-    expect(prompt).toContain("Selected presenter voice lock");
+    expect(prompt).toContain("Voice matches Thai, male presenter/man");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
     expect(prompt).not.toMatch(
       /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b|\bfemale voice\b/i
     );
@@ -2669,7 +2732,10 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).toContain("Camera:");
     expect(prompt).toContain("Audio:");
     expect(prompt).toContain("Dialogue:");
-    expect(prompt).toContain("Use @Image1 as start frame. Use @Image2 as stop frame.");
+    expect(prompt).toContain(
+      "Use @Image1 as start frame. Use @Image2 as stop frame."
+    );
+    expect(prompt.length).toBeLessThanOrEqual(2000);
     for (const forbidden of [
       "PRODUCT FACTS",
       "Marketplace Data",
@@ -2691,6 +2757,61 @@ describe("marketplace auto review audio/video planning", () => {
     ]) {
       expect(prompt).not.toContain(forbidden);
     }
+  });
+
+  it("does not repeat long character or prop descriptions in start-stop video prompts", () => {
+    const longPropDetails =
+      "An adorable fluffy kitten with extra soft fur, big innocent eyes, tiny paws, sitting in a cozy sunlit room, warm golden light, soft pastel background, cute playful expression, detailed realistic fur, cinematic close-up, heartwarming mood, high resolution, beautiful depth of field.";
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productDetail:
+          "PRODUCT FACTS LOCK: BENO PRO-FLEX coffee machine. Preserve exact product evidence.",
+      } as any,
+      shot: {
+        ...baseShot,
+        durationSeconds: 5,
+        title: "แนะนำ BENO PRO-FLEX",
+        movement: "steady close-up from presenter to product controls",
+        visual: `เครื่อง BENO PRO-FLEX พร้อมแมวขนปุยนั่งข้าง ๆ. Prop details: ${longPropDetails}`,
+        voiceover:
+          "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย",
+      } as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+      referenceMode: "start_stop",
+      metadata: {
+        referenceAnchors: {
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทย ผู้ชาย, 30-39, role คนทำงาน, style เป็นกันเอง.",
+          characterPreset: {
+            mode: "described_character",
+            gender: "male",
+            genderLabel: "ผู้ชาย",
+            age: "adult_30_39",
+            ageLabel: "30-39",
+            appearance: "thai",
+            appearanceLabel: "คนไทย",
+            role: "worker",
+            roleLabel: "คนทำงาน",
+            style: "friendly_everyday",
+            styleLabel: "เป็นกันเอง",
+            propDetails: longPropDetails,
+          },
+        },
+      } as any,
+    });
+
+    expect(prompt.length).toBeLessThanOrEqual(2000);
+    expect(prompt).toContain(
+      "Use @Image1 as start frame. Use @Image2 as stop frame."
+    );
+    expect(prompt).toContain("Action:");
+    expect(prompt).toContain("พอใช้ BENO PRO-FLEX");
+    expect(prompt).not.toContain("Prop details");
+    expect(prompt).not.toContain("adorable fluffy kitten");
+    expect(prompt).not.toContain("beautiful depth of field");
   });
 
   it("keeps native video audio enabled even when the shot voiceover is empty", () => {
@@ -2737,9 +2858,10 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(prompt).toContain("External audio workflow");
-    expect(prompt).toContain("No audio.");
+    expect(prompt).toContain("No audio");
     expect(prompt).toContain("No spoken dialogue.");
     expect(prompt).not.toContain("พูดเป็นภาษาไทยว่า");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
   });
 
   it("fails video assembly when any expected shot clip is missing", () => {
@@ -3467,6 +3589,12 @@ describe("marketplace auto review audio/video planning", () => {
     const describedDirective = describedCharacterAnchorDirectiveForTest({
       characterMode: "described_character",
       characterBrief: "คนไทย ผู้หญิง, 20-29, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+      characterPreset: {
+        primaryCharacterDetails:
+          "ผมยาวสีดำ ตาสีน้ำตาล ใส่เสื้อคาร์ดิแกนสีครีม",
+        secondaryCharacterDetails: "เด็กหญิงวัยประถมยืนข้างโต๊ะ",
+        propDetails: "มีแมวสีส้มและกล่องของเล่นในห้องนั่งเล่น",
+      },
     });
     const plan = {
       ...basePlan,
@@ -3499,6 +3627,9 @@ describe("marketplace auto review audio/video planning", () => {
       "USER-SELECTED DESCRIBED CHARACTER LOCK"
     );
     expect(String(inputs.storyboard_guide)).toContain("คนไทย ผู้หญิง, 20-29");
+    expect(String(inputs.storyboard_guide)).toContain("ผมยาวสีดำ");
+    expect(String(inputs.storyboard_guide)).toContain("เด็กหญิงวัยประถม");
+    expect(String(inputs.storyboard_guide)).toContain("แมวสีส้ม");
     expect(String(inputs.storyboard_guide)).not.toContain(
       "No character reference image is supplied"
     );
@@ -3641,6 +3772,91 @@ describe("marketplace auto review audio/video planning", () => {
     );
   });
 
+  it("does not enable minor safety lock from internal adult presenter guard text", () => {
+    const plan = {
+      ...basePlan,
+      productTruth: {
+        ...basePlan.productTruth,
+        productName: "BENO Coffee Machine PRO-FLEX",
+        productCategory: "electrical_appliance",
+        categoryText: "เครื่องชงกาแฟและอุปกรณ์",
+        categoryPath: [
+          "เครื่องใช้ไฟฟ้าภายในบ้าน",
+          "เครื่องใช้ไฟฟ้าในครัวขนาดเล็ก",
+          "เครื่องชงกาแฟและอุปกรณ์",
+        ],
+        description:
+          "เครื่องชงกาแฟเอสเพรสโซ่พร้อมบด ชง และตีฟองในเครื่องเดียว",
+      },
+      productDetail: [
+        "PRODUCT FACTS LOCK: BENO Coffee Machine PRO-FLEX for home coffee making.",
+        "USER-SELECTED DESCRIBED CHARACTER LOCK: The approved presenter/reviewer/persona is Thai male, 30-39, reviewer, friendly everyday style. Do not replace this selected presenter with a child, toddler, baby, generic foreign family, or different demographic just because the product is for children. For child-focused products, a child may appear only as secondary product-use context when needed.",
+      ].join("\n\n"),
+      storyboardGuide:
+        "Adult presenter reviews a coffee machine in a kitchen. No child appears.",
+      voiceoverScript: "พูดถึงเครื่องชงกาแฟและการใช้งานในครัว",
+      shots: [
+        {
+          ...baseShot,
+          visual:
+            "Adult Thai male presenter holding a cup of coffee in a kitchen",
+          storyboardGuide:
+            "Show an adult presenter with a disappointing cup of coffee.",
+          voiceover: "กาแฟแก้วนี้ยังไม่ลงตัว",
+        },
+      ],
+    } as any;
+
+    const prompt = buildMarketplaceAutoReview3x3StoryboardPromptForTest({
+      plan,
+      overlayTextMode: "no_text",
+    });
+    const backendEnforcedPrompt =
+      ensureMinorSafetyClothingLockInImagePromptForTest({
+        prompt,
+        plan,
+      });
+
+    expect(inferProductReferenceStoryboardCategoryForTest(plan)).toBe(
+      "electrical_appliance"
+    );
+    expect(prompt).not.toContain("MINOR SAFETY CLOTHING LOCK");
+    expect(backendEnforcedPrompt).not.toContain("MINOR SAFETY CLOTHING LOCK");
+  });
+
+  it("still enables minor safety lock when the actual storyboard scene contains a minor", () => {
+    const plan = {
+      ...basePlan,
+      productTruth: {
+        ...basePlan.productTruth,
+        productName: "Kitchen learning cup",
+        productCategory: "electrical_appliance",
+        categoryText: "เครื่องใช้ไฟฟ้าในครัว",
+        categoryPath: ["เครื่องใช้ไฟฟ้าภายในบ้าน"],
+      },
+      productDetail:
+        "PRODUCT FACTS LOCK: Kitchen product shown in a family morning routine.",
+      storyboardGuide:
+        "Show an adult caregiver and a fully clothed child in a safe family kitchen scene.",
+      shots: [
+        {
+          ...baseShot,
+          visual:
+            "Adult caregiver beside a fully clothed child helping set the breakfast table",
+          storyboardGuide:
+            "The child is secondary context and remains fully clothed.",
+        },
+      ],
+    } as any;
+
+    const prompt = buildMarketplaceAutoReview3x3StoryboardPromptForTest({
+      plan,
+      overlayTextMode: "no_text",
+    });
+
+    expect(prompt).toContain("MINOR SAFETY CLOTHING LOCK");
+  });
+
   it("keeps a full 9-shot product-reference storyboard prompt under the image provider limit without fallback rewriting", () => {
     const longShots = Array.from({ length: 9 }, (_item, index) => ({
       ...baseShot,
@@ -3710,7 +3926,12 @@ describe("marketplace auto review audio/video planning", () => {
     const paddedPrompt = `${nearLimitPrompt}\n${"Product texture and product fidelity. ".repeat(34)}`;
     const plan = {
       ...basePlan,
-      productDetail: `${basePlan.productDetail} baby toddler child diaper`,
+      productTruth: {
+        ...basePlan.productTruth,
+        productCategory: "mother_baby",
+        categoryText: "สินค้าแม่และเด็ก",
+        categoryPath: ["แม่และเด็ก", "ผ้าอ้อม"],
+      },
     } as any;
 
     const next = ensureMinorSafetyClothingLockInImagePromptForTest({
@@ -4235,11 +4456,11 @@ describe("marketplace auto review audio/video planning", () => {
       metadata,
     });
 
-    expect(output.clips[0].prompt).toContain("VIDEO CHARACTER LOCK");
     expect(output.clips[0].prompt).toContain(
       "Thai, male presenter/man, 30-39 years old"
     );
-    expect(output.clips[0].prompt).toContain("Selected presenter voice lock");
+    expect(output.clips[0].prompt).toContain("Voice matches Thai, male presenter/man");
+    expect(output.clips[0].prompt.length).toBeLessThanOrEqual(2000);
     expect(output.clips[0].prompt).not.toMatch(
       /\byoung mother-style female voice\b|\bfemale voice\b/i
     );
@@ -4528,6 +4749,102 @@ describe("marketplace auto review audio/video planning", () => {
       ],
     });
     expect(unit.repairInstruction).toContain("without Shopee UI");
+  });
+
+  it("does not convert missing child evidence into a child clothing blocker", () => {
+    const result =
+      normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest({
+        plan: basePlan as any,
+        parsed: {
+          verdict: "repair",
+          minorSafetyClothingSafe: false,
+        },
+        reasonCodes: ["vision_qa_non_json_response"],
+      });
+
+    expect(result.minorSafetyClothingSafe).toBe(true);
+    expect(result.reasonCodes).toEqual(["vision_qa_non_json_response"]);
+    expect(result.reasonCodes).not.toContain(
+      "minor_safety_child_clothing_issue"
+    );
+  });
+
+  it("drops child clothing QA reasons when the frame has no visible minor", () => {
+    const result =
+      normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest({
+        plan: basePlan as any,
+        parsed: {
+          verdict: "repair",
+          minorPresent: false,
+          minorSafetyClothingSafe: false,
+        },
+        reasonCodes: [
+          "minor_safety_child_clothing_issue",
+          "product_visual_discrepancy",
+        ],
+      });
+
+    expect(result.minorSafetyClothingSafe).toBe(true);
+    expect(result.minorPresent).toBe(false);
+    expect(result.reasonCodes).toEqual(["product_visual_discrepancy"]);
+  });
+
+  it("keeps storyboard grid layout failures selectable with warning evidence", () => {
+    expect(
+      imageReasonCodesContainStoryboardGridLayoutBlockerForTest([
+        "storyboard_grid_frame_count_mismatch",
+      ])
+    ).toBe(true);
+    const reviews = buildMarketplaceAutoReviewImageAttemptReviewsForTest({
+      metadata: {
+        storyboardGridUrl: "https://cdn.example.test/grid-2x5.png",
+        storyboardFrameUrls: Array.from(
+          { length: 9 },
+          (_, index) => `https://cdn.example.test/grid-2x5-shot-${index + 1}.png`
+        ),
+      } as any,
+      refs: [
+        {
+          unitId: "storyboard-grid-image",
+          mediaType: "image",
+          stageKey: "image_generation",
+          role: "storyboard_grid",
+          attempt: 1,
+          taskId: "task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.test/grid-2x5.png",
+        },
+      ] as any,
+      qaEnvelopes: [
+        {
+          qaEnvelopeId: "storyboard-grid-qa:mar_test:1",
+          mediaUnit: "storyboard_grid",
+          verdict: "repair",
+          reasonCodes: ["storyboard_grid_frame_count_mismatch"],
+        },
+      ],
+      repairUnits: [
+        buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest({
+          reasonCodes: ["storyboard_grid_frame_count_mismatch"],
+          repairInstruction: "Regenerate as a strict 3x3 grid.",
+        }),
+      ],
+      status: "repair_required",
+      expectedFrameCount: 9,
+    });
+
+    expect(reviews[0].selectionEligible).toBe(true);
+    expect(reviews[0].selectionBlockers).toContain(
+      "storyboard_grid_frame_count_mismatch"
+    );
+    const selected = selectMarketplaceAutoReviewBestImageAttemptForTest({
+      metadata: { imageAttemptReviews: reviews } as any,
+    });
+    expect(selected.selectedImageAttempt).toBe(1);
+    expect(selected.selectedImageAttemptReview).toMatchObject({
+      selectionEligible: true,
+      selectionBlockers: ["storyboard_grid_frame_count_mismatch"],
+    });
   });
 
   it("accepts image QA with warnings after the repair budget is exhausted", () => {
@@ -5280,6 +5597,52 @@ describe("marketplace auto review audio/video planning", () => {
     ).toBe("repair_required");
   });
 
+  it("accepts terminal failure stage evidence only when credit reconciliation refs are present", () => {
+    expect(() =>
+      MarketplaceAutoReviewStageCompletionEvidenceSchema.parse({
+        evidenceId: "stage-evidence:mar_failed:image_generation:missing-credit",
+        runId: "mar_failed",
+        stageKey: "image_generation",
+        status: "terminal_failure",
+        requiredRefs: ["failureReason", "missingRefs", "creditRefs"],
+        artifactRefs: ["run:mar_failed"],
+        qaVerdictRefs: ["storyboard-grid-qa:mar_failed:1"],
+        creditRefs: [],
+        lineageRefs: [],
+        policyRefs: ["storyboard-grid-layout-hard-blocker"],
+        acceptanceRefs: [],
+        missingRefs: ["stageCompletionSuccess"],
+        warningApprovalRefs: [],
+        createdAt: "2026-06-02T00:00:00.000Z",
+      })
+    ).toThrow(/credit reconciliation evidence/);
+
+    expect(
+      MarketplaceAutoReviewStageCompletionEvidenceSchema.parse({
+        evidenceId: "stage-evidence:mar_failed:image_generation:hard-block",
+        runId: "mar_failed",
+        stageKey: "image_generation",
+        status: "terminal_failure",
+        requiredRefs: ["failureReason", "missingRefs", "creditRefs"],
+        artifactRefs: ["run:mar_failed"],
+        qaVerdictRefs: ["storyboard-grid-qa:mar_failed:1"],
+        creditRefs: [
+          "credit:media-reservation-1",
+          "credit-reconciliation:image-generation-hard-blocker-checked",
+        ],
+        lineageRefs: [],
+        policyRefs: ["storyboard-grid-layout-hard-blocker"],
+        acceptanceRefs: [],
+        missingRefs: [
+          "stageCompletionSuccess",
+          "storyboardGridLayoutAccepted",
+        ],
+        warningApprovalRefs: [],
+        createdAt: "2026-06-02T00:00:00.000Z",
+      }).status
+    ).toBe("terminal_failure");
+  });
+
   it("normalizes completed image stage evidence from output buckets", () => {
     const evidence =
       normalizeMarketplaceAutoReviewStageCompletionEvidenceForTest({
@@ -5467,6 +5830,38 @@ describe("marketplace auto review audio/video planning", () => {
         status: "submitted_to_provider",
       }
     );
+  });
+
+  it("does not treat recorded-only submit intents as provider-reached media refs", () => {
+    expect(
+      directMediaRefReachedProviderForTest({
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 3,
+        taskId: "submit-intent:storyboard-grid-image:3",
+        model: "image-model",
+        status: "submit_intent_recorded",
+        providerSubmitIntentId:
+          "provider-submit-intent:mar_1:image:storyboard-grid-image:3",
+        providerSubmitIntentStatus: "recorded_before_provider_submit",
+      } as any)
+    ).toBe(false);
+    expect(
+      directMediaRefReachedProviderForTest({
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 3,
+        taskId: "img_task_3",
+        providerTaskId: "provider_img_task_3",
+        model: "image-model",
+        status: "processing",
+        providerSubmitIntentStatus: "submitted_to_provider",
+      } as any)
+    ).toBe(true);
   });
 
   it("keeps partial video submit refs durable for cancellation and refund reconciliation", () => {
@@ -6380,6 +6775,9 @@ describe("marketplace auto review audio/video planning", () => {
             role: "reviewer",
             style: "friendly_everyday",
           },
+          reviewTone: "warm_honest",
+          storytellingStructure:
+            "product_review_situation_problem_try_result_fit",
           characterImageUrl: null,
           characterImageRef: null,
         }),
@@ -6409,6 +6807,10 @@ describe("marketplace auto review audio/video planning", () => {
       gender: "female",
       appearance: "thai",
     });
+    expect(persistedAnchors.reviewTone).toBe("warm_honest");
+    expect(persistedAnchors.storytellingStructure).toBe(
+      "product_review_situation_problem_try_result_fit"
+    );
 
     const impact = evaluateMarketplaceAutoReviewInputChangeImpactForTest({
       runId: "mar_1",
@@ -6424,6 +6826,103 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(impact.status).toBe("no_recheck_required");
     expect(impact.staleRefs).not.toContain("inputChangeImpact.snapshotHash");
+  });
+
+  it("does not block on legacy opaque input snapshot hash drift without structured input evidence", () => {
+    const metadata = readyFeature117Metadata() as any;
+    metadata.inputChangeImpact = {
+      ...metadata.inputChangeImpact,
+      snapshotHash: "legacy_opaque_hash_before_structured_snapshot_input",
+    };
+    delete metadata.inputChangeImpact.snapshotInput;
+
+    const impact = evaluateMarketplaceAutoReviewInputChangeImpactForTest({
+      runId: "mar_1",
+      metadata,
+      productTruth: basePlan.productTruth as any,
+      productUpdatedAt: "2026-05-31T00:00:00.000Z",
+      selectedVariantHash: null,
+      outputMode: "full_video",
+      frameStrategy: "video_shot_start_stop",
+      audioStrategy: "auto",
+      resolvedAudioStrategy: "native_video_audio",
+    }) as any;
+
+    expect(impact.status).toBe("no_recheck_required");
+    expect(impact.staleRefs).toEqual([]);
+    expect(impact.snapshotInput).toMatchObject({
+      outputMode: "full_video",
+      frameStrategy: "video_shot_start_stop",
+    });
+    expect(impact.legacyOpaqueHashDrift).toMatchObject({
+      status: "ignored_without_structured_snapshot_input",
+    });
+  });
+
+  it("requires recheck when structured input snapshot fields change", () => {
+    const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
+      productTruth: basePlan.productTruth,
+      referenceAnchors: {
+        ...trustedAnchorInput({
+          requiredRoles: ["product", "character"],
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทยวัยทำงาน ผู้หญิง ลุคเป็นกันเอง สำหรับรีวิวสินค้า",
+          characterPreset: {
+            gender: "female",
+            age: "adult_30_39",
+            appearance: "thai",
+            role: "reviewer",
+            style: "friendly_everyday",
+          },
+          reviewTone: "warm_honest",
+          storytellingStructure:
+            "product_review_situation_problem_try_result_fit",
+          characterImageUrl: null,
+          characterImageRef: null,
+        }),
+      },
+    });
+    const metadata = buildFeature117ContractMetadataForTest({
+      runId: "mar_1",
+      tenantId: "tenant_1",
+      auth: { userId: 42, tenantId: "tenant_1" } as any,
+      bundle: productAccessBundle() as any,
+      insights: [] as any,
+      plan: basePlan as any,
+      outputMode: "full_video",
+      frameStrategy: "video_shot_start_stop",
+      audioStrategy: "auto",
+      resolvedAudioStrategy: "native_video_audio",
+      referenceAnchors: anchors,
+      externalOperationalRecoveryEvidence: readyOperationalRecoveryEvidence,
+    }) as any;
+    const changedMetadata = {
+      ...metadata,
+      referenceAnchors: {
+        ...metadata.referenceAnchors,
+        reviewTone: "funny_light",
+      },
+    };
+
+    const impact = evaluateMarketplaceAutoReviewInputChangeImpactForTest({
+      runId: "mar_1",
+      metadata: changedMetadata,
+      productTruth: basePlan.productTruth as any,
+      productUpdatedAt: "2026-05-31T00:00:00.000Z",
+      selectedVariantHash: null,
+      outputMode: "full_video",
+      frameStrategy: "video_shot_start_stop",
+      audioStrategy: "auto",
+      resolvedAudioStrategy: "native_video_audio",
+    }) as any;
+
+    expect(impact.status).toBe("recheck_required");
+    expect(impact.staleRefs).toContain("inputChangeImpact.snapshotInput");
+    expect(impact.snapshotHash).toBe(metadata.inputChangeImpact.snapshotHash);
+    expect(impact.currentSnapshotHash).not.toBe(
+      metadata.inputChangeImpact.snapshotHash
+    );
   });
 
   it("recomputes input-change impact and requires recheck when product truth becomes stale", () => {

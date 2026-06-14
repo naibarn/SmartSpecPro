@@ -1,11 +1,38 @@
 {
   "gate": "fixture-render",
   "status": "passed",
-  "renderer": "playwright_chromium_ffmpeg_smoke",
-  "generatedAt": "2026-06-12T12:35:16.188Z",
-  "creativePlanHash": "hf_8aef3664839c14bf8830fca6c7d3f8f0b5bb972f9f5cc3b9",
-  "presetManifestHash": "hf_77a70590932c3c474e9b03dc569a3697cfaf66c30a05e0ae",
-  "audioEventMapHash": "hf_3717599fb555fd1f88d1ca46ad1bdb94bb1f2b3d352f9744",
+  "renderer": "hyperframes_cli_official",
+  "officialRuntime": true,
+  "generatedAt": "2026-06-14T17:13:43.100Z",
+  "runtimeDiagnostics": {
+    "nodeVersion": "v22.22.3",
+    "hyperframesCliVersion": "0.6.95",
+    "hyperframesProducerVersion": "0.6.95",
+    "fontAssetStaged": true,
+    "fixtureMediaAssets": {
+      "videoSceneOne": {
+        "path": "/tmp/ssp-hyperframes-official-fixture-5A4MYu/assets/video/scene-1.mp4",
+        "ok": true,
+        "sizeBytes": 12923,
+        "contentHash": "hf_70863b3e5e6cb357e013310239c6b173920eed8f779f1d6f"
+      },
+      "videoSceneTwo": {
+        "path": "/tmp/ssp-hyperframes-official-fixture-5A4MYu/assets/video/scene-2.mp4",
+        "ok": true,
+        "sizeBytes": 12944,
+        "contentHash": "hf_63e7470aae83e1c8058cf89244c66af792ad24f78999c19e"
+      },
+      "musicBed": {
+        "path": "/tmp/ssp-hyperframes-official-fixture-5A4MYu/assets/audio/music-bed.wav",
+        "ok": true,
+        "sizeBytes": 384078,
+        "contentHash": "hf_40c170e93640ae94a01809bd6c2dbc3a2bb91a429555526b"
+      }
+    }
+  },
+  "creativePlanHash": "hf_0e763855b490c865f3c07d21e18b4c79c6afeff6b4a99227",
+  "presetManifestHash": "hf_f763d017611aec66195caf8ba2504d1f97400735e07d85ca",
+  "audioEventMapHash": "hf_71810da9679b8b121b5490f69a9dfe7cc5919c0341d7ffa4",
   "fixtureMatrix": {
     "coveredCases": [
       "ecommerce_toy_no_audio_silent_policy",
@@ -15,8 +42,10 @@
       "thai_long_text_safe_area",
       "music_sfx_event_map",
       "native_audio_policy",
-      "fallback_only_runtime"
+      "generated_clip_source_preservation",
+      "multi_scene_transition"
     ],
+    "pendingCases": [],
     "policyCases": [
       "licensed_audio_asset_pending",
       "missing_license_source_blocks_without_fallback",
@@ -25,69 +54,44 @@
       "product_truth_hash_mismatch_blocks_render"
     ]
   },
-  "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture.html",
-  "frameCount": 5,
-  "frames": [
-    {
-      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00000.png",
-      "sizeBytes": 278754,
-      "ok": true
-    },
-    {
-      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00015.png",
-      "sizeBytes": 279065,
-      "ok": true
-    },
-    {
-      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00030.png",
-      "sizeBytes": 278551,
-      "ok": true
-    },
-    {
-      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00045.png",
-      "sizeBytes": 280232,
-      "ok": true
-    },
-    {
-      "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/fixture-render-frames/frame_00060.png",
-      "sizeBytes": 279561,
-      "ok": true
-    }
-  ],
+  "htmlPath": "/tmp/ssp-hyperframes-official-fixture-5A4MYu/index.html",
+  "frameCount": 48,
+  "frames": [],
   "output": {
     "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/marketplace-hyperframes-fixture.mp4",
-    "sizeBytes": 87774,
-    "ok": true
+    "ok": true,
+    "sizeBytes": 140589,
+    "contentHash": "hf_e5da0950c1f96a4e379c4d6f75ca2d1d690157a4b9da35c8"
   },
   "outputRef": {
     "kind": "final_video",
     "url": "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_fixture/output.mp4",
-    "contentHash": "hf_383774411f6d544889dd5b6f8e40c98f169cd0135c7ecadc"
+    "contentHash": "hf_e5da0950c1f96a4e379c4d6f75ca2d1d690157a4b9da35c8"
   },
   "playableProbe": {
     "passed": true,
-    "durationSec": 5,
+    "durationSec": 2.020996,
     "hasVideo": true,
-    "hasAudio": false
+    "hasAudio": true
   },
   "exactDuration": {
-    "expectedDurationSec": 5,
-    "actualDurationSec": 5,
+    "expectedDurationSec": 2,
+    "actualDurationSec": 2.020996,
     "toleranceSec": 0.25,
     "passed": true
   },
   "safeArea": {
-    "safeInsetPx": 48,
+    "safeInsetPx": 56,
     "textSafe": true,
     "subtitleSafe": true,
     "overflowElementCount": 0
   },
   "audioMixReport": {
-    "preserveNativeAudio": false,
-    "nativeInputWithAudioCount": 0,
-    "outputAudioPolicy": "no_audio_explicit_silent_policy",
-    "explicitSilentPolicy": true,
-    "audioEventMapHash": "hf_3717599fb555fd1f88d1ca46ad1bdb94bb1f2b3d352f9744"
+    "preserveNativeAudio": true,
+    "nativeInputWithAudioCount": 2,
+    "outputAudioPolicy": "fixture_audio_present",
+    "explicitSilentPolicy": false,
+    "audioEventMapHash": "hf_71810da9679b8b121b5490f69a9dfe7cc5919c0341d7ffa4"
   },
   "mediaHistory": {
     "source": "marketplace_auto_review_hyperframes_render",
@@ -97,15 +101,21 @@
     "openAction": true,
     "downloadAction": true
   },
+  "cli": {
+    "status": 0,
+    "stderr": "[hyperframes] browserGpuMode auto → software (WebGL unavailable)\n[FrameCapture] Sub-composition timelines not registered after 5000ms: ssp-official-fixture. Compositions that load data asynchronously (e.g. fetch) must register window.__timelines[id] after setup completes.\n"
+  },
   "expectedArtifacts": [
-    "input envelope HTML",
-    "composition HTML hash proxy via generated fixture",
-    "snapshot refs",
-    "manifest",
-    "cleanup proof"
+    "official HyperFrames composition HTML",
+    "staged Thai font asset",
+    "staged source MP4 fixtures",
+    "staged audio fixture",
+    "official CLI MP4 output",
+    "manifest"
   ],
   "notes": [
-    "This gate proves local browser+FFmpeg rendering is operational for SmartSpecPro fixtures.",
-    "Production HyperFrames producer rollout still requires pinned @hyperframes packages, Chrome image, fonts, and dependency audit approval."
+    "This fixture is rendered by the pinned HyperFrames CLI, not by SmartSpecPro's diagnostic renderer.",
+    "Fixture source video and audio assets are generated before render, then consumed by the official HyperFrames CLI.",
+    "Production rollout still requires worker-image, route, golden snapshot, canary, and rollback evidence."
   ]
 }

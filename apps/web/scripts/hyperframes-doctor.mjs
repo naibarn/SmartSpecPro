@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const nodeRequirement = ">=20.20.0 <21 || >=22.22.0";
+const nodeRequirement = ">=22.22.0 <23";
 const officialHyperframesNodeRequirement = ">=22.22.0";
 const here = dirname(fileURLToPath(import.meta.url));
 const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
@@ -57,12 +57,6 @@ function parseNodeVersion(version) {
 function isSupportedNodeVersion(version = process.version) {
   const parsed = parseNodeVersion(version);
   if (!parsed) return false;
-  if (parsed.major === 20) {
-    return parsed.minor > 20 || (parsed.minor === 20 && parsed.patch >= 0);
-  }
-  if (parsed.major > 22) {
-    return true;
-  }
   if (parsed.major === 22) {
     return parsed.minor > 22 || (parsed.minor === 22 && parsed.patch >= 0);
   }
@@ -146,7 +140,7 @@ const producerPackageVersion = producerPackageAvailable
   ? JSON.parse(readFileSync(join(process.cwd(), "node_modules", "@hyperframes", "producer", "package.json"), "utf8")).version
   : null;
 const officialRuntimeReady =
-  officialNodeOk && hyperframesCliAvailable && producerPackageAvailable && chromeOk && ffmpegOk && ffprobeOk && fonts.ok;
+  nodeOk && officialNodeOk && hyperframesCliAvailable && producerPackageAvailable && chromeOk && ffmpegOk && ffprobeOk && fonts.ok;
 const gate =
   officialRuntimeReady
     ? "official_runtime_ready"
@@ -181,7 +175,7 @@ const result = {
     productionReady: officialRuntimeReady,
     message: officialRuntimeReady
       ? "Official HyperFrames runtime prerequisites are visible in this environment."
-      : "Official HyperFrames runtime remains blocked until Node >=22.22 worker evidence and all runtime dependencies pass.",
+      : "Official HyperFrames runtime remains blocked until Node 22.22.x worker evidence and all runtime dependencies pass.",
   },
   chrome: {
     ok: chromeOk,

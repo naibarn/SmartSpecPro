@@ -136,7 +136,7 @@ describe("repairStoryboardReviewMarketplacePromptLocks", () => {
         {
           id: "shot-1",
           prompt:
-            'Create a 5-second cinematic video. Scene: Use @Image1 as start frame. Use @Image2 as stop frame. Characters: Use only the person or hands already visible in the frames. Audio: Native audio. Voice: young mother-style female voice, early 30s, soft warm voice, caring and comforting tone, slow natural delivery, central Thai accent. Dialogue must be spoken in natural Thai, central Thai accent. Dialogue: Presenter พูดเป็นภาษาไทยว่า "เมื่อไหร่ที่ทำกาแฟไม่สุด"',
+            'USER-SELECTED CREATIVE DIRECTION LOCK: Review tone: problem-frustrated review. Storytelling structure: Before -> After -> Bridge. Preserve this tone and story arc in rewritten video prompts unless it conflicts with product truth, policy, shot timing, or reference anchors. Create a 5-second cinematic video. Scene: Use @Image1 as start frame. Use @Image2 as stop frame. Characters: Use only the person or hands already visible in the frames. Audio: Native audio. Voice: young mother-style female voice, early 30s, soft warm voice, caring and comforting tone, slow natural delivery, central Thai accent. Dialogue must be spoken in natural Thai, central Thai accent. Dialogue: Presenter พูดเป็นภาษาไทยว่า "เมื่อไหร่ที่ทำกาแฟไม่สุด"',
         },
       ],
     };
@@ -147,6 +147,8 @@ describe("repairStoryboardReviewMarketplacePromptLocks", () => {
           characterMode: "described_character",
           characterBrief:
             "คนไทย ผู้ชาย, 30-39, role Reviewer, style ผู้เชี่ยวชาญ.",
+          reviewTone: "irritated_problem",
+          storytellingStructure: "before_after_bridge",
           characterPreset: {
             mode: "described_character",
             gender: "male",
@@ -159,15 +161,28 @@ describe("repairStoryboardReviewMarketplacePromptLocks", () => {
             roleLabel: "Reviewer",
             style: "expert_practical",
             styleLabel: "ผู้เชี่ยวชาญ",
+            primaryCharacterDetails:
+              "ใบหน้าคม ผมสั้นสีดำ ตาสีน้ำตาล ใส่เสื้อเชิ้ตกรมท่า",
+            secondaryCharacterDetails:
+              "ผู้ช่วยผู้ชายวัยทำงานถือกล่องสินค้า",
+            propDetails: "มีแมวสีขาวและแก้วกาแฟอยู่บนโต๊ะ",
           },
         },
       },
     }) as any;
 
     expect(repaired.tasks[0].prompt).toContain("VIDEO CHARACTER LOCK");
+    expect(repaired.tasks[0].prompt).not.toContain(
+      "USER-SELECTED CREATIVE DIRECTION LOCK",
+    );
+    expect(repaired.tasks[0].prompt).not.toContain("Storytelling structure");
+    expect(repaired.tasks[0].prompt).not.toContain("Before -> After -> Bridge");
     expect(repaired.tasks[0].prompt).toContain(
       "Thai, male presenter/man, 30-39 years old"
     );
+    expect(repaired.tasks[0].prompt).toContain("ใบหน้าคม");
+    expect(repaired.tasks[0].prompt).toContain("ผู้ช่วยผู้ชายวัยทำงาน");
+    expect(repaired.tasks[0].prompt).toContain("แมวสีขาว");
     expect(repaired.tasks[0].prompt).toContain("Selected presenter voice lock");
     expect(repaired.tasks[0].prompt).not.toContain(
       "young mother-style female voice"
@@ -365,6 +380,66 @@ describe("mergeFresherExistingReviewTasks", () => {
     };
 
     expect(mergeFresherExistingReviewTasks(existing, incoming)).toEqual(incoming);
+  });
+
+  it("preserves server-owned HyperFrames final state during normal review saves", () => {
+    const existing = {
+      version: 1,
+      tasks: [{ id: "shot-1", updatedAt: 1000, url: "/files/coffee.mp4" }],
+      hyperframesFinalComposite: {
+        schemaVersion: 1,
+        storyboardReviewProjectId: 66,
+        canonicalProductId: "coffee-product",
+        autoReviewRunId: "coffee-run",
+        revision: 3,
+        textVariables: {
+          hookText: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น",
+        },
+      },
+    };
+    const incoming = {
+      version: 1,
+      updatedAt: 7000,
+      tasks: [{ id: "shot-1", updatedAt: 7000, url: "/files/coffee-v2.mp4" }],
+      hyperframesFinalComposite: {
+        schemaVersion: 1,
+        storyboardReviewProjectId: 12,
+        canonicalProductId: "baby-clothing-product",
+        autoReviewRunId: "baby-run",
+        revision: 9,
+        textVariables: {
+          hookText: "ชุดเด็กแรกเกิด",
+        },
+      },
+    };
+
+    expect(mergeFresherExistingReviewTasks(existing, incoming)).toMatchObject({
+      updatedAt: 7000,
+      tasks: [{ id: "shot-1", updatedAt: 7000, url: "/files/coffee-v2.mp4" }],
+      hyperframesFinalComposite: existing.hyperframesFinalComposite,
+    });
+  });
+
+  it("strips client-provided HyperFrames final state when no server-owned state exists", () => {
+    const existing = {
+      version: 1,
+      tasks: [{ id: "shot-1", updatedAt: 1000, url: "/files/coffee.mp4" }],
+    };
+    const incoming = {
+      version: 1,
+      tasks: [{ id: "shot-1", updatedAt: 1000, url: "/files/coffee.mp4" }],
+      hyperframesFinalComposite: {
+        schemaVersion: 1,
+        storyboardReviewProjectId: 12,
+        canonicalProductId: "baby-clothing-product",
+        autoReviewRunId: "baby-run",
+        revision: 9,
+      },
+    };
+
+    expect(mergeFresherExistingReviewTasks(existing, incoming)).not.toHaveProperty(
+      "hyperframesFinalComposite",
+    );
   });
 
   it("preserves stored companion audio when an older refreshed draft would drop it", () => {

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
-import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, Loader2, Plus, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, ImageIcon, Loader2, Plus, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -48,6 +48,17 @@ function formatCompactCount(raw: string | number | null | undefined, fallback?: 
 function productCategory(product: any) {
   const raw = product.platformRawJson ?? {};
   return raw.categoryText || raw.category || raw.latestProductDraft?.categoryText || "Uncategorized";
+}
+
+function primaryProductImageUrl(product: any): string {
+  const direct = typeof product.imageUrl === "string" ? product.imageUrl.trim() : "";
+  if (direct) return direct;
+  const imageUrls = Array.isArray(product.imageUrls) ? product.imageUrls : [];
+  for (const value of imageUrls) {
+    const url = typeof value === "string" ? value.trim() : "";
+    if (url) return url;
+  }
+  return "";
 }
 
 function isStale(product: any) {
@@ -344,6 +355,7 @@ export default function MarketplaceCaptureProducts() {
 
   function productCard(product: any) {
     const score = interestScore(product);
+    const imageUrl = primaryProductImageUrl(product);
     return (
       <article
         key={product.id}
@@ -352,12 +364,28 @@ export default function MarketplaceCaptureProducts() {
         }`}
         onClick={() => setSelectedProductId(product.id)}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="line-clamp-2 font-semibold text-slate-950">{product.productName}</div>
-            <div className="mt-1 text-xs text-slate-500">{productCategory(product)}</div>
+        <div className="flex items-start gap-3">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={product.productName ? `${product.productName} product image` : "Product image"}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <ImageIcon className="h-7 w-7 text-slate-300" aria-hidden="true" />
+            )}
           </div>
-          <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{score}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="line-clamp-2 font-semibold text-slate-950">{product.productName}</div>
+                <div className="mt-1 truncate text-xs text-slate-500">{productCategory(product)}</div>
+              </div>
+              <span className="shrink-0 rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{score}</span>
+            </div>
+          </div>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div><div className="text-xs text-slate-500">Price</div><div className="font-medium">{product.priceCurrent ?? "-"} {product.currency ?? "THB"}</div></div>

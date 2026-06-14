@@ -3,14 +3,16 @@ import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { storageCopyToPath, storagePutFromPath } from "../storage";
+import { storagePutFromPath } from "../storage";
 import {
   executeHyperframesCliRender,
   executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
+  isHyperframesCliRuntimeAllowed,
+  isHyperframesProducerRuntimeAllowed,
 } from "../services/hyperframesRuntimeAdapter";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
@@ -59,11 +61,14 @@ export function isHyperframesWorkerEnabled(): boolean {
 }
 
 export function isHyperframesRuntimeExecutionReady(): boolean {
-  return (
-    ["1", "true", "yes", "on"].includes(
-      (process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY ?? "").toLowerCase()
-    ) && getHyperframesRuntimeMode() !== "diagnostic"
+  const marketplaceRuntimeReady = ["1", "true", "yes", "on"].includes(
+    (process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY ?? "").toLowerCase()
   );
+  if (!marketplaceRuntimeReady) return false;
+  const runtimeMode = getHyperframesRuntimeMode();
+  if (runtimeMode === "producer") return isHyperframesProducerRuntimeAllowed();
+  if (runtimeMode === "cli") return isHyperframesCliRuntimeAllowed();
+  return false;
 }
 
 function sha256Hash(buffer: Buffer): string {
@@ -101,26 +106,6 @@ function resolveHyperframesFfprobeBinary(): string {
   return "ffprobe";
 }
 
-function storageKeyFromManagedUrl(value: unknown): string {
-  const text = String(value ?? "").trim();
-  if (!text) return "";
-  try {
-    const parsed = text.startsWith("http://") || text.startsWith("https://")
-      ? new URL(text)
-      : null;
-    const pathname = parsed?.pathname ?? text;
-    if (pathname.startsWith("/api/storage/files/")) {
-      return decodeURIComponent(pathname.slice("/api/storage/files/".length));
-    }
-    if (pathname.startsWith("api/storage/files/")) {
-      return decodeURIComponent(pathname.slice("api/storage/files/".length));
-    }
-  } catch {
-    return "";
-  }
-  return "";
-}
-
 type HyperframesShotPayload = {
   index?: number;
   durationSec?: number;
@@ -128,6 +113,7 @@ type HyperframesShotPayload = {
   sourceVideoRef?: string;
   onScreenText?: string[];
   subtitleCues?: Array<{ startSec?: number; endSec?: number; text?: string }>;
+  overlayPreset?: string;
   animationPreset?: string;
 };
 
@@ -176,8 +162,65 @@ function getFinalCompositeConfig(payload: Record<string, unknown>): Record<strin
   return config && typeof config === "object" ? config as Record<string, unknown> : payload;
 }
 
+function isFinalCompositeRenderPayload(payload: Record<string, unknown>): boolean {
+  return (
+    String(payload.renderIntent ?? "").trim() === "final" &&
+    String(payload.compositionMode ?? "").trim() === "captioned_final_composite"
+  );
+}
+
+function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): Record<string, unknown> {
+  const finalConfig = getFinalCompositeConfig(payload);
+  const audioEvents = getFinalCompositeAudioEvents(payload);
+  const audioValidation =
+    finalConfig.audioAssetValidation &&
+    typeof finalConfig.audioAssetValidation === "object" &&
+    !Array.isArray(finalConfig.audioAssetValidation)
+      ? finalConfig.audioAssetValidation as Record<string, unknown>
+      : {};
+  const missingAssetRefs = Array.isArray(audioValidation.missingAssetRefs)
+    ? audioValidation.missingAssetRefs.map(ref => String(ref ?? "").trim()).filter(Boolean)
+    : [];
+  const validatedAssetRefs = Array.isArray(audioValidation.validatedAssetRefs)
+    ? audioValidation.validatedAssetRefs.map(ref => String(ref ?? "").trim()).filter(Boolean)
+    : [];
+  const validatedAssets = Array.isArray(audioValidation.validatedAssets)
+    ? audioValidation.validatedAssets.filter(Boolean)
+    : [];
+  return {
+    preserveNativeAudio: finalConfig.preserveNativeAudio !== false,
+    nativeInputWithAudioCount: 0,
+    outputAudioPolicy: isFinalCompositeRenderPayload(payload)
+      ? "official_html_css_browser_runtime"
+      : "official_hyperframes_runtime",
+    audioPackPresetId: String(finalConfig.audioPackPresetId ?? "").trim() || undefined,
+    musicPresetId: String(finalConfig.musicPresetId ?? "").trim() || undefined,
+    sfxPresetIds: Array.isArray(finalConfig.sfxPresetIds)
+      ? finalConfig.sfxPresetIds.map(id => String(id ?? "").trim()).filter(Boolean)
+      : [],
+    audioEventCount: audioEvents.length,
+    generatedSyntheticEventCount: 0,
+    syntheticFallbackAudio: false,
+    missingAssetRefs,
+    validatedAssetRefs,
+    validatedAudioAssetCount: validatedAssets.length,
+    stagedAssetValidationPassed: missingAssetRefs.length === 0,
+  };
+}
+
+function isNonRetryableHyperframesRuntimeError(message: string): boolean {
+  return /HTML\/CSS\/browser runtime is required|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass/i.test(message);
+}
+
 function getFinalCompositeOverlayPreset(payload: Record<string, unknown>): HyperframesFinalOverlayPreset {
-  const preset = String(getFinalCompositeConfig(payload).overlayPreset ?? "auto");
+  return coerceFinalCompositeOverlayPreset(getFinalCompositeConfig(payload).overlayPreset);
+}
+
+function coerceFinalCompositeOverlayPreset(
+  value: unknown,
+  fallback: HyperframesFinalOverlayPreset = "auto"
+): HyperframesFinalOverlayPreset {
+  const preset = String(value ?? fallback);
   if (
     preset === "auto" ||
     preset === "hook_sequence" ||
@@ -196,7 +239,7 @@ function getFinalCompositeOverlayPreset(payload: Record<string, unknown>): Hyper
   ) {
     return preset;
   }
-  return "auto";
+  return fallback;
 }
 
 function getFinalCompositeSubtitlePreset(payload: Record<string, unknown>): HyperframesFinalSubtitlePreset {
@@ -241,86 +284,6 @@ function getFinalCompositeAudioEvents(payload: Record<string, unknown>): Array<R
         Boolean(event && typeof event === "object" && !Array.isArray(event))
       )
     : [];
-}
-
-function getFinalCompositeStringArray(
-  payload: Record<string, unknown>,
-  key: string
-): string[] {
-  const value = getFinalCompositeConfig(payload)[key];
-  return Array.isArray(value)
-    ? value.map(item => String(item ?? "").trim()).filter(Boolean)
-    : [];
-}
-
-function buildSyntheticAudioFilters(input: {
-  payload: Record<string, unknown>;
-  totalDurationSec: number;
-  inputAudioLabel: string;
-}): {
-  filters: string[];
-  outputLabel: string;
-  generatedEventCount: number;
-  musicEnabled: boolean;
-  sfxEnabled: boolean;
-} {
-  const config = getFinalCompositeConfig(input.payload);
-  const validation =
-    config.audioAssetValidation &&
-    typeof config.audioAssetValidation === "object" &&
-    !Array.isArray(config.audioAssetValidation)
-      ? (config.audioAssetValidation as Record<string, unknown>)
-      : {};
-  const allowSyntheticFallback = validation.allowSyntheticFallback !== false;
-  const events = allowSyntheticFallback ? getFinalCompositeAudioEvents(input.payload) : [];
-  const filters: string[] = [];
-  const mixLabels = [input.inputAudioLabel];
-  const musicEvent = events.find(event => event.role === "music");
-  if (musicEvent) {
-    const volume = Math.max(0.02, Math.min(0.28, Number(musicEvent.volume ?? 0.16) || 0.16));
-    filters.push(
-      `sine=frequency=196:sample_rate=48000:duration=${Math.max(1, input.totalDurationSec)},volume=${volume}[hfmusic0]`
-    );
-    mixLabels.push("[hfmusic0]");
-  }
-  const sfxEvents = events
-    .filter(event => event.role !== "music")
-    .slice(0, 24);
-  sfxEvents.forEach((event, index) => {
-    const role = String(event.role ?? "");
-    const trigger = String(event.visualTrigger ?? "");
-    const frequency = /price|sales|cash|accent/.test(`${role} ${trigger}`)
-      ? 1046
-      : /product|reveal|riser/.test(`${role} ${trigger}`)
-        ? 740
-        : 620;
-    const startMs = Math.max(0, Math.round((Number(event.startSec ?? 0) || 0) * 1000));
-    const duration = Math.max(0.08, Math.min(0.6, Number(event.durationSec ?? 0.18) || 0.18));
-    const volume = Math.max(0.04, Math.min(0.38, Number(event.volume ?? 0.22) || 0.22));
-    filters.push(
-      `sine=frequency=${frequency}:sample_rate=48000:duration=${duration},adelay=${startMs}|${startMs},volume=${volume}[hfsfx${index}]`
-    );
-    mixLabels.push(`[hfsfx${index}]`);
-  });
-  if (mixLabels.length === 1) {
-    return {
-      filters,
-      outputLabel: input.inputAudioLabel,
-      generatedEventCount: 0,
-      musicEnabled: false,
-      sfxEnabled: false,
-    };
-  }
-  filters.push(
-    `${mixLabels.join("")}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0,volume=1[hfaout]`
-  );
-  return {
-    filters,
-    outputLabel: "[hfaout]",
-    generatedEventCount: mixLabels.length - 1,
-    musicEnabled: Boolean(musicEvent),
-    sfxEnabled: sfxEvents.length > 0,
-  };
 }
 
 function assTime(seconds: number): string {
@@ -403,6 +366,22 @@ function expandLegacyEllipsizedAssText(
   return clean;
 }
 
+function splitAssGraphemes(value: string): string[] {
+  const SegmenterCtor = (Intl as unknown as {
+    Segmenter?: new (
+      locales?: string | string[],
+      options?: Record<string, string>
+    ) => { segment(input: string): Iterable<{ segment: string }> };
+  }).Segmenter;
+  if (SegmenterCtor) {
+    return Array.from(
+      new SegmenterCtor("th", { granularity: "grapheme" }).segment(value),
+      item => item.segment
+    );
+  }
+  return Array.from(value);
+}
+
 function wrapAssText(value: unknown, options: {
   maxChars: number;
   maxLines: number;
@@ -410,22 +389,41 @@ function wrapAssText(value: unknown, options: {
 }): string {
   const text = cleanOverlayAssText(value).replace(/\s+/g, " ");
   if (!text) return "";
-  const words = text.includes(" ")
+  const hasWordSeparators = text.includes(" ");
+  const words = hasWordSeparators
     ? text.split(/\s+/).filter(Boolean)
-    : Array.from(text);
+    : splitAssGraphemes(text);
+  const chunkLongWord = (word: string): string[] => {
+    const chars = splitAssGraphemes(word);
+    if (chars.length <= options.maxChars) return [word];
+    const chunkCount = Math.ceil(chars.length / options.maxChars);
+    const remainder = chars.length % options.maxChars;
+    const chunkSize = remainder > 0 && remainder < 4
+      ? Math.ceil(chars.length / chunkCount)
+      : options.maxChars;
+    const chunks: string[] = [];
+    for (let index = 0; index < chars.length; index += chunkSize) {
+      chunks.push(chars.slice(index, index + chunkSize).join(""));
+    }
+    return chunks;
+  };
+  const tokens = words.flatMap(word =>
+    chunkLongWord(word).map((chunk, index) => ({
+      text: chunk,
+      separated: hasWordSeparators && index === 0,
+    }))
+  );
   const lines: string[] = [];
   let current = "";
-  for (const word of words) {
-    const separator = current && text.includes(" ") ? " " : "";
-    const candidate = `${current}${separator}${word}`;
+  for (const token of tokens) {
+    const separator = current && token.separated ? " " : "";
+    const candidate = `${current}${separator}${token.text}`;
     if (candidate.length <= options.maxChars) {
       current = candidate;
       continue;
     }
     if (current) lines.push(current);
-    current = word.length > options.maxChars
-      ? word.slice(0, options.maxChars)
-      : word;
+    current = token.text;
     if (lines.length >= options.maxLines) break;
   }
   if (current && lines.length < options.maxLines) lines.push(current);
@@ -495,26 +493,77 @@ function buildOverlayAssText(input: {
 }): string {
   if (input.isPrice) {
     return wrapAssText(input.line, {
-      maxChars: input.style === "PriceMain" ? 18 : 30,
+      maxChars: input.style === "PriceMain" ? 14 : 22,
       maxLines: input.style === "PriceMain" ? 1 : 2,
       ellipsis: false,
     });
   }
   if (isSpecOverlayPreset(input.preset)) {
     return wrapAssText(input.line, {
-      maxChars: input.style === "HookMain" || input.style === "NeonMain" ? 34 : 28,
+      maxChars: input.style === "HookMain" || input.style === "NeonMain" ? 20 : 22,
       maxLines: input.index < 2 ? 3 : 2,
       ellipsis: false,
     });
   }
   if (isCardOverlayPreset(input.preset)) {
-    return wrapAssText(input.line, { maxChars: 34, maxLines: 2, ellipsis: false });
+    return wrapAssText(input.line, { maxChars: 24, maxLines: 2, ellipsis: false });
   }
   return wrapAssText(input.line, {
-    maxChars: input.style === "HookMain" ? 34 : 32,
+    maxChars: input.style === "HookMain" ? 20 : 24,
     maxLines: input.index === 0 ? 3 : 2,
     ellipsis: false,
   });
+}
+
+function buildKineticBoldHookOverlayEvents(input: {
+  lines: string[];
+  shotStart: number;
+  windowEnd: number;
+}): string[] {
+  const [titleLine, hookLine, ...chipLines] = input.lines;
+  const events: string[] = [];
+  const start = input.shotStart;
+  const end = input.windowEnd;
+  const title = wrapAssText(titleLine ?? "", {
+    maxChars: 13,
+    maxLines: 5,
+    ellipsis: true,
+  });
+  const hook = wrapAssText(hookLine ?? "", {
+    maxChars: 22,
+    maxLines: 4,
+    ellipsis: true,
+  });
+  const chips = chipLines
+    .map(line => wrapAssText(line, { maxChars: 18, maxLines: 2, ellipsis: true }))
+    .filter(Boolean)
+    .slice(0, 2);
+  if (!title && !hook && chips.length === 0) return [];
+
+  const panelStart = Math.min(end - 0.2, start + 0.05);
+  const textStart = Math.min(end - 0.2, start + 0.16);
+  const hookStart = Math.min(end - 0.2, start + 0.58);
+  const chipStart = Math.min(end - 0.2, start + 1.05);
+  const hookLineCount = Math.max(1, hook.split("\\N").filter(Boolean).length);
+  const hookBoxHeight = Math.min(340, Math.max(148, 56 + hookLineCount * 58));
+  if (panelStart < end) {
+    events.push(`Dialogue: 0,${assTime(panelStart)},${assTime(end)},KineticPanel,,0,0,0,,{\\an7\\pos(44,124)\\fad(90,150)\\p1}m 0 0 l 580 0 l 580 1660 l 0 1660`);
+    events.push(`Dialogue: 0,${assTime(panelStart)},${assTime(end)},KineticAccent,,0,0,0,,{\\an7\\pos(44,124)\\fad(130,150)\\p1}m 0 1250 l 580 700 l 580 1660 l 0 1660`);
+  }
+  if (title && textStart < end) {
+    events.push(`Dialogue: 2,${assTime(textStart)},${assTime(end)},KineticTitle,,0,0,0,,{\\an7\\pos(74,218)\\fad(80,140)\\t(0,240,\\fscx106\\fscy106)}${title}`);
+  }
+  if (hook && hookStart < end) {
+    events.push(`Dialogue: 1,${assTime(hookStart)},${assTime(end)},KineticHookBg,,0,0,0,,{\\an7\\pos(72,690)\\fad(100,150)\\frz-2\\p1}m 0 0 l 500 0 l 500 ${hookBoxHeight} l 0 ${hookBoxHeight}`);
+    events.push(`Dialogue: 2,${assTime(hookStart)},${assTime(end)},KineticHookBox,,0,0,0,,{\\an7\\pos(96,722)\\fad(100,150)\\frz-2}${hook}`);
+  }
+  chips.forEach((chip, index) => {
+    const y = 1450 + index * 126;
+    const itemStart = Math.min(end - 0.2, chipStart + index * 0.2);
+    if (itemStart >= end) return;
+    events.push(`Dialogue: 2,${assTime(itemStart)},${assTime(end)},KineticChip,,0,0,0,,{\\an7\\pos(86,${y})\\fad(120,150)\\frz-1}${chip}`);
+  });
+  return events;
 }
 
 function subtitleStyleForPreset(preset: HyperframesFinalSubtitlePreset): string {
@@ -578,6 +627,13 @@ function buildTimedOverlayEvents(input: {
   const isPrice = isPriceOverlayPreset(preset) ||
     input.animationPreset === "bounce_price" ||
     lines.some(isPriceOverlayText);
+  if (preset === "kinetic_bold_hook" && !isPrice) {
+    return buildKineticBoldHookOverlayEvents({
+      lines,
+      shotStart: input.shotStart,
+      windowEnd,
+    });
+  }
   const styles = isPrice
     ? ["FeatureSmall", "PriceMain", "FeatureSmall", "FeatureSmall"]
     : isSpecOverlayPreset(preset)
@@ -648,11 +704,15 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
         .filter(Boolean)
         .slice(0, 4)
       : [];
+    const shotOverlayPreset = coerceFinalCompositeOverlayPreset(
+      shot.overlayPreset,
+      overlayPreset
+    );
     events.push(...buildTimedOverlayEvents({
       lines: onScreen.length > 0 ? onScreen : firstShotHook,
       shotStart,
       shotEnd,
-      preset: overlayPreset,
+      preset: shotOverlayPreset,
       animationPreset: String(shot.animationPreset ?? ""),
     }));
     for (const cue of shot.subtitleCues ?? []) {
@@ -688,64 +748,26 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
     "Style: SubCinematic,Noto Sans Thai,54,&H00F8FAFC,&H000000FF,&H7A000000,&HA0000000,0,0,0,0,100,100,0,0,3,2,0,2,64,64,126,1",
     "Style: SubNeon,Kanit,56,&H00FEE2A8,&H000000FF,&H00FF2ABF,&HB0000000,1,0,0,0,100,100,0,0,3,2,1,2,84,84,170,1",
     "Style: SubBubble,Noto Sans Thai,54,&H00111111,&H000000FF,&H00FFFFFF,&HEAFFFFFF,1,0,0,0,100,100,0,0,3,1,0,2,96,96,170,1",
-    "Style: HookMain,Prompt,88,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,4,0,8,80,80,160,1",
-    "Style: HookSub,Prompt,64,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,3,0,8,90,90,285,1",
-    "Style: SpecChip,Noto Sans Thai,50,&H00111111,&H000000FF,&H00FFFFFF,&HDFFFFFFF,1,0,0,0,100,100,0,0,3,1.5,0,6,70,70,0,1",
-    "Style: FeatureSmall,Noto Sans Thai,50,&H00FFFFFF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,3,2,0,7,96,96,0,1",
-    "Style: PriceMain,Prompt,132,&H0028D7FF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,1,5,2,2,60,60,390,1",
-    "Style: NeonMain,Kanit,82,&H00FEE2A8,&H000000FF,&H00FF2ABF,&H70000000,1,0,0,0,100,100,0,0,1,4,2,8,80,80,160,1",
-    "Style: NeonSub,Kanit,58,&H00FFFFFF,&H000000FF,&H00FF2ABF,&H70000000,1,0,0,0,100,100,0,0,1,3,1,8,90,90,285,1",
-    "Style: NeonChip,Noto Sans Thai,46,&H00FFFFFF,&H000000FF,&H00FEE2A8,&H90000000,1,0,0,0,100,100,0,0,3,2,0,6,70,70,0,1",
+    "Style: HookMain,Prompt,64,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,4,0,8,96,96,150,1",
+    "Style: HookSub,Prompt,50,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,3,0,8,104,104,275,1",
+    "Style: SpecChip,Noto Sans Thai,40,&H00111111,&H000000FF,&H00FFFFFF,&HDFFFFFFF,1,0,0,0,100,100,0,0,3,1.5,0,6,96,96,0,1",
+    "Style: FeatureSmall,Noto Sans Thai,42,&H00FFFFFF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,3,2,0,7,112,112,0,1",
+    "Style: KineticPanel,Noto Sans Thai,1,&H00170602,&H000000FF,&H00170602,&H00170602,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+    "Style: KineticAccent,Noto Sans Thai,1,&H0015CCFA,&H000000FF,&H0015CCFA,&H0015CCFA,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+    "Style: KineticTitle,Prompt,84,&H00FFFFFF,&H000000FF,&H8A000000,&H00000000,1,0,0,0,100,100,0,0,1,4,3,7,80,80,0,1",
+    "Style: KineticHookBg,Noto Sans Thai,1,&H0015CCFA,&H000000FF,&H0015CCFA,&H0015CCFA,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
+    "Style: KineticHookBox,Noto Sans Thai,52,&H00020617,&H000000FF,&H00020617,&H00000000,1,0,0,0,100,100,0,0,1,0,0,7,80,80,0,1",
+    "Style: KineticChip,Noto Sans Thai,38,&H00020617,&H000000FF,&H00FFFFFF,&H00FFFFFF,1,0,0,0,100,100,0,0,3,10,0,7,80,80,0,1",
+    "Style: PriceMain,Prompt,108,&H0028D7FF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,1,5,2,2,84,84,390,1",
+    "Style: NeonMain,Kanit,64,&H00FEE2A8,&H000000FF,&H00FF2ABF,&H70000000,1,0,0,0,100,100,0,0,1,4,2,8,96,96,150,1",
+    "Style: NeonSub,Kanit,48,&H00FFFFFF,&H000000FF,&H00FF2ABF,&H70000000,1,0,0,0,100,100,0,0,1,3,1,8,104,104,275,1",
+    "Style: NeonChip,Noto Sans Thai,40,&H00FFFFFF,&H000000FF,&H00FEE2A8,&H90000000,1,0,0,0,100,100,0,0,3,2,0,6,96,96,0,1",
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ...events,
     "",
   ].join("\n");
-}
-
-function escapeFfmpegFilterPath(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
-}
-
-function resolveManagedStorageHttpUrl(value: unknown): string {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return "";
-  if (/^https?:\/\//i.test(text)) return text;
-  if (text.startsWith("/api/storage/files/")) return `http://localhost:3000${text}`;
-  return "";
-}
-
-async function downloadManagedStorageUrlToPath(url: string, targetPath: string): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Unable to download staged media: HTTP ${response.status}`);
-  }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  writeFileSync(targetPath, bytes);
-}
-
-function inputHasAudioStream(path: string): boolean {
-  try {
-    const output = execFileSync(
-      resolveHyperframesFfprobeBinary(),
-      [
-        "-v",
-        "error",
-        "-select_streams",
-        "a:0",
-        "-show_entries",
-        "stream=index",
-        "-of",
-        "csv=p=0",
-        path,
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
-    );
-    return output.trim().length > 0;
-  } catch {
-    return false;
-  }
 }
 
 function probeRenderedMp4(path: string): {
@@ -797,195 +819,6 @@ function probeRenderedMp4(path: string): {
         error instanceof Error ? error.message.slice(0, 240) : "ffprobe failed",
     };
   }
-}
-
-async function executeFinalCompositeFfmpegRender(input: {
-  workspace: string;
-  outputPath: string;
-  payload: Record<string, unknown>;
-}): Promise<{
-  renderer: "ffmpeg_final_composite";
-  shotCount: number;
-  noRawHtmlExposed: true;
-  audioMixReport: {
-    preserveNativeAudio: boolean;
-    nativeInputWithAudioCount: number;
-    outputAudioPolicy:
-      | "preserve_native_or_silence"
-      | "silence_only"
-      | "preserve_native_plus_synthetic_fallback"
-      | "synthetic_fallback_only";
-    audioPackPresetId?: string;
-    musicPresetId?: string;
-    sfxPresetIds: string[];
-    audioEventCount: number;
-    generatedSyntheticEventCount: number;
-    syntheticFallbackAudio: boolean;
-    missingAssetRefs: string[];
-    validatedAssetRefs: string[];
-    validatedAudioAssetCount: number;
-    validatedAudioAssetLicenseNames: string[];
-    stagedAssetValidationPassed: boolean;
-  };
-} | null> {
-  const shots = getFinalCompositeShots(input.payload);
-  if (shots.length === 0) return null;
-  const stagedInputs: string[] = [];
-  for (const [index, shot] of shots.entries()) {
-    const key =
-      storageKeyFromManagedUrl(shot.sourceVideoUrl) ||
-      storageKeyFromManagedUrl(shot.sourceVideoRef);
-    if (!key) return null;
-    const stagedPath = join(input.workspace, `shot-${String(index + 1).padStart(2, "0")}.mp4`);
-    try {
-      await storageCopyToPath(key, stagedPath);
-    } catch (error) {
-      const sourceUrl =
-        resolveManagedStorageHttpUrl(shot.sourceVideoUrl) ||
-        resolveManagedStorageHttpUrl(shot.sourceVideoRef);
-      if (!sourceUrl) throw error;
-      await downloadManagedStorageUrlToPath(sourceUrl, stagedPath);
-    }
-    stagedInputs.push(stagedPath);
-  }
-  const assPath = join(input.workspace, "subtitles.ass");
-  writeFileSync(assPath, buildFinalCompositeAss(shots, input.payload), "utf8");
-  const finalConfig = getFinalCompositeConfig(input.payload);
-  const width = Number(finalConfig.width ?? input.payload.width) || 1080;
-  const height = Number(finalConfig.height ?? input.payload.height) || 1920;
-  const totalDurationSec = shots.reduce(
-    (sum, shot) => sum + Math.max(1, Number(shot.durationSec ?? 8) || 8),
-    0
-  );
-  const preserveNativeAudio = finalConfig.preserveNativeAudio !== false;
-  const audioEvents = getFinalCompositeAudioEvents(input.payload);
-  const audioValidation =
-    finalConfig.audioAssetValidation &&
-    typeof finalConfig.audioAssetValidation === "object" &&
-    !Array.isArray(finalConfig.audioAssetValidation)
-      ? finalConfig.audioAssetValidation as Record<string, unknown>
-      : {};
-  const missingAssetRefs = Array.isArray(audioValidation.missingAssetRefs)
-    ? audioValidation.missingAssetRefs.map(ref => String(ref ?? "").trim()).filter(Boolean)
-    : [];
-  const validatedAssetRefs = Array.isArray(audioValidation.validatedAssetRefs)
-    ? audioValidation.validatedAssetRefs.map(ref => String(ref ?? "").trim()).filter(Boolean)
-    : [];
-  const validatedAssets = Array.isArray(audioValidation.validatedAssets)
-    ? audioValidation.validatedAssets
-        .filter(asset => asset && typeof asset === "object" && !Array.isArray(asset))
-        .map(asset => {
-          const item = asset as Record<string, unknown>;
-          return {
-            assetRef: String(item.assetRef ?? "").trim(),
-            source: String(item.source ?? "").trim(),
-            licenseName: String(item.licenseName ?? "").trim(),
-            mimeType: String(item.mimeType ?? "").trim(),
-            durationSec: Number(item.durationSec ?? 0) || 0,
-            checksumAlgorithm:
-              item.checksum && typeof item.checksum === "object" && !Array.isArray(item.checksum)
-                ? String((item.checksum as Record<string, unknown>).algorithm ?? "").trim()
-                : "",
-          };
-        })
-        .filter(asset => asset.assetRef)
-    : [];
-  const inputAudio = stagedInputs.map(inputHasAudioStream);
-  const videoFilters = stagedInputs.map((_, index) => {
-    const duration = Math.max(1, Number(shots[index]?.durationSec ?? 8) || 8);
-    return `[${index}:v]trim=duration=${duration},setpts=PTS-STARTPTS,scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v${index}]`;
-  });
-  const audioFilters = stagedInputs.map((_, index) => {
-    const duration = Math.max(1, Number(shots[index]?.durationSec ?? 8) || 8);
-    if (preserveNativeAudio && inputAudio[index]) {
-      return `[${index}:a]atrim=duration=${duration},asetpts=PTS-STARTPTS,aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a${index}]`;
-    }
-    return `anullsrc=channel_layout=stereo:sample_rate=48000,atrim=duration=${duration},asetpts=PTS-STARTPTS[a${index}]`;
-  });
-  const concatInputs = stagedInputs.map((_, index) => `[v${index}][a${index}]`).join("");
-  const syntheticAudio = buildSyntheticAudioFilters({
-    payload: input.payload,
-    totalDurationSec,
-    inputAudioLabel: "[outa]",
-  });
-  const filterComplex = [
-    ...videoFilters,
-    ...audioFilters,
-    `${concatInputs}concat=n=${stagedInputs.length}:v=1:a=1[vcat][outa]`,
-    ...syntheticAudio.filters,
-    `[vcat]format=yuv420p,subtitles='${escapeFfmpegFilterPath(assPath)}'[outv]`,
-  ].join(";");
-  execFileSync(
-    resolveHyperframesFfmpegBinary(),
-    [
-      "-y",
-      ...stagedInputs.flatMap(path => ["-i", path]),
-      "-filter_complex",
-      filterComplex,
-      "-map",
-      "[outv]",
-      "-map",
-      syntheticAudio.outputLabel,
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "23",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "160k",
-      "-ar",
-      "48000",
-      "-movflags",
-      "+faststart",
-      input.outputPath,
-    ],
-    { stdio: "pipe" }
-  );
-  return {
-    renderer: "ffmpeg_final_composite",
-    shotCount: stagedInputs.length,
-    noRawHtmlExposed: true,
-    audioMixReport: {
-      preserveNativeAudio,
-      nativeInputWithAudioCount: inputAudio.filter(Boolean).length,
-      outputAudioPolicy:
-        syntheticAudio.generatedEventCount > 0 && preserveNativeAudio
-          ? "preserve_native_plus_synthetic_fallback"
-          : syntheticAudio.generatedEventCount > 0
-            ? "synthetic_fallback_only"
-            : preserveNativeAudio
-              ? "preserve_native_or_silence"
-              : "silence_only",
-      audioPackPresetId:
-        typeof finalConfig.audioPackPresetId === "string"
-          ? finalConfig.audioPackPresetId
-          : undefined,
-      musicPresetId:
-        typeof finalConfig.musicPresetId === "string"
-          ? finalConfig.musicPresetId
-          : undefined,
-      sfxPresetIds: getFinalCompositeStringArray(input.payload, "sfxPresetIds"),
-      audioEventCount: audioEvents.length,
-      generatedSyntheticEventCount: syntheticAudio.generatedEventCount,
-      syntheticFallbackAudio: syntheticAudio.generatedEventCount > 0,
-      missingAssetRefs,
-      validatedAssetRefs,
-      validatedAudioAssetCount: validatedAssets.length,
-      validatedAudioAssetLicenseNames: Array.from(
-        new Set(validatedAssets.map(asset => asset.licenseName).filter(Boolean))
-      ),
-      stagedAssetValidationPassed:
-        audioEvents.length === 0 ||
-        missingAssetRefs.length === 0 ||
-        validatedAssets.length > 0 ||
-        validatedAssetRefs.length > 0,
-    },
-  };
 }
 
 async function isHyperframesWorkerEnabledForTenant(
@@ -1042,7 +875,7 @@ export function buildCompletedHyperframesStagePayload(input: {
   }
 }
 
-async function executeLocalHyperframesSmokeRender(input: {
+export async function executeLocalHyperframesSmokeRender(input: {
   tenantId?: string | null;
   runId: string;
   renderJobId: string;
@@ -1069,34 +902,13 @@ async function executeLocalHyperframesSmokeRender(input: {
             })
         : null;
     if (!runtimeRender) {
+      if (isFinalCompositeRenderPayload(input.payload)) {
+        throw new Error(
+          "Official HyperFrames HTML/CSS/browser runtime is required for final composite renders; FFmpeg/ASS fallback is disabled to prevent preview/render mismatch."
+        );
+      }
       throw new Error(
         "Official HyperFrames runtime is not ready. Diagnostic fallback output cannot complete user-facing render jobs."
-      );
-    }
-    const finalCompositeRender =
-      runtimeRender ? null : await executeFinalCompositeFfmpegRender({
-        workspace,
-        outputPath,
-        payload: input.payload,
-      });
-    if (!runtimeRender && !finalCompositeRender) {
-      execFileSync(
-        resolveHyperframesFfmpegBinary(),
-        [
-          "-y",
-          "-f",
-          "lavfi",
-          "-i",
-          "color=c=0x0ea5e9:s=720x1280:d=1",
-          "-c:v",
-          "libx264",
-          "-pix_fmt",
-          "yuv420p",
-          "-movflags",
-          "+faststart",
-          outputPath,
-        ],
-        { stdio: "pipe" }
       );
     }
     const playableProbe = probeRenderedMp4(outputPath);
@@ -1134,11 +946,7 @@ async function executeLocalHyperframesSmokeRender(input: {
       thumbnailUrl: null,
       qaStatus: "passed",
       playableProbe,
-      audioMixReport: finalCompositeRender?.audioMixReport ?? {
-        preserveNativeAudio: false,
-        nativeInputWithAudioCount: 0,
-        outputAudioPolicy: "silence_only",
-      },
+      audioMixReport: buildOfficialRuntimeAudioMixReport(input.payload),
       officialHyperframesRuntime: {
         renderer: runtimeRender.renderer,
         runtimeDiagnostics: runtimeRender.runtimeDiagnostics,
@@ -1147,10 +955,10 @@ async function executeLocalHyperframesSmokeRender(input: {
         noRawHtmlExposed: true,
       },
       runtimeDiagnosticRender: {
-        renderer: finalCompositeRender?.renderer ?? "not_used",
-        shotCount: finalCompositeRender?.shotCount,
+        renderer: "not_used",
         generatedAt: new Date().toISOString(),
         diagnosticOnly: true,
+        fallbackDisabled: isFinalCompositeRenderPayload(input.payload),
         noRawHtmlExposed: true,
       },
     };
@@ -1190,10 +998,15 @@ export async function runHyperframesRenderWorkerOnce(
   }
   const runtimeReady =
     options.runtimeReady ?? isHyperframesRuntimeExecutionReady();
-  if (!runtimeReady) {
-    return { processed: 0, disabled: false, runtimeDeferred: true };
+  let db: Awaited<ReturnType<typeof getDb>>;
+  try {
+    db = await getDb();
+  } catch (error) {
+    if (!runtimeReady) {
+      return { processed: 0, disabled: false, runtimeDeferred: true };
+    }
+    throw error;
   }
-  const db = await getDb();
   if (!db) return { processed: 0, disabled: false, runtimeDeferred: false };
   const workerId = options.workerId ?? `hyperframes-worker-${process.pid}`;
   const now = options.now ?? new Date();
@@ -1217,9 +1030,29 @@ export async function runHyperframesRenderWorkerOnce(
     .limit(options.limit ?? 5);
 
   let processed = 0;
+  let runtimeDeferred = false;
   for (const job of jobs) {
     if (!(await isHyperframesWorkerEnabledForTenant(job.tenantId))) continue;
     const payload = (job.payloadJson ?? {}) as Record<string, unknown>;
+    if (!runtimeReady && !isFinalCompositeRenderPayload(payload)) {
+      runtimeDeferred = true;
+      continue;
+    }
+    const lockedUntil = new Date(now.getTime() + 15 * 60_000);
+    await db
+      .update(marketplaceAutoReviewOutboxJobs)
+      .set({
+        status: "running",
+        lockedBy: workerId,
+        lockedUntil,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+          eq(marketplaceAutoReviewOutboxJobs.status, job.status)
+        )
+      );
     try {
       const nextPayload = await executeHyperframesWorkerJob({
         jobType: job.jobType,
@@ -1243,16 +1076,19 @@ export async function runHyperframesRenderWorkerOnce(
         .where(
           and(
             eq(marketplaceAutoReviewOutboxJobs.id, job.id),
-            eq(marketplaceAutoReviewOutboxJobs.status, job.status)
+            eq(marketplaceAutoReviewOutboxJobs.status, "running")
           )
         );
       processed += 1;
       continue;
     } catch (error) {
       const attempts = Number(job.attempts ?? 0) + 1;
-      const exhausted = attempts >= Number(job.maxAttempts ?? 3);
       const message =
         error instanceof Error ? error.message : "HyperFrames runtime failed.";
+      const nonRetryableRuntimeError = isNonRetryableHyperframesRuntimeError(message);
+      const exhausted =
+        attempts >= Number(job.maxAttempts ?? 3) ||
+        nonRetryableRuntimeError;
       await db
         .update(marketplaceAutoReviewOutboxJobs)
         .set({
@@ -1260,7 +1096,7 @@ export async function runHyperframesRenderWorkerOnce(
           lockedBy: exhausted ? workerId : null,
           lockedUntil: null,
           attempts,
-          lastError: `HyperFrames runtime transient failure: ${message.slice(
+          lastError: `${nonRetryableRuntimeError ? "HyperFrames runtime configuration failure" : "HyperFrames runtime transient failure"}: ${message.slice(
             0,
             220
           )}`,
@@ -1273,12 +1109,12 @@ export async function runHyperframesRenderWorkerOnce(
         .where(
           and(
             eq(marketplaceAutoReviewOutboxJobs.id, job.id),
-            eq(marketplaceAutoReviewOutboxJobs.status, job.status)
+            eq(marketplaceAutoReviewOutboxJobs.status, "running")
           )
         );
       processed += 1;
       continue;
     }
   }
-  return { processed, disabled: false, runtimeDeferred: false };
+  return { processed, disabled: false, runtimeDeferred };
 }

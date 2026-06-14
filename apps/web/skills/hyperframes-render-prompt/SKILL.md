@@ -39,7 +39,7 @@ config:
       require_product_truth: true
       require_storytelling_structure: true
       require_safe_area_rules: true
-      max_prompt_chars: 4000
+      max_prompt_chars: 12000
   media_studio:
     auto_learning:
       enabled: false
@@ -87,7 +87,7 @@ The caller should provide:
 
 Return only one plain text prompt. Do not return JSON or Markdown fences.
 
-The prompt must fit within 4000 characters and include these sections:
+The prompt must fit within 12000 characters and include these sections:
 
 1. Opening instruction: create a 9:16 vertical product ad using HyperFrames.
 2. Style: premium, modern, product-specific design direction.

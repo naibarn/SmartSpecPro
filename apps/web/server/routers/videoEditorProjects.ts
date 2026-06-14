@@ -52,6 +52,38 @@ function isStoryboardReviewRecord(value: unknown): value is Record<string, unkno
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function getStoryboardReviewServerOwnedHyperframesFinalComposite(
+  reviewData: unknown,
+): Record<string, unknown> | null {
+  if (!isStoryboardReviewRecord(reviewData)) return null;
+  const state = reviewData.hyperframesFinalComposite;
+  return isStoryboardReviewRecord(state) ? state : null;
+}
+
+function stripClientOwnedHyperframesFinalComposite(reviewData: unknown): unknown {
+  if (!isStoryboardReviewRecord(reviewData) || !("hyperframesFinalComposite" in reviewData)) {
+    return reviewData;
+  }
+  const safeReviewData = { ...reviewData };
+  delete safeReviewData.hyperframesFinalComposite;
+  return safeReviewData;
+}
+
+function applyServerOwnedHyperframesFinalComposite(
+  existingReviewData: unknown,
+  incomingReviewData: unknown,
+): unknown {
+  const safeIncomingReviewData = stripClientOwnedHyperframesFinalComposite(incomingReviewData);
+  const serverOwnedState = getStoryboardReviewServerOwnedHyperframesFinalComposite(existingReviewData);
+  if (!serverOwnedState || !isStoryboardReviewRecord(safeIncomingReviewData)) {
+    return safeIncomingReviewData;
+  }
+  return {
+    ...safeIncomingReviewData,
+    hyperframesFinalComposite: serverOwnedState,
+  };
+}
+
 function hasStoryboardMarketplaceContext(value: unknown): value is Record<string, unknown> {
   if (!isStoryboardReviewRecord(value)) return false;
   return [
@@ -197,6 +229,26 @@ function storyboardReviewCharacterSubjectFromContext(
     .join(", ");
 }
 
+function storyboardReviewCharacterVisualDetailsFromContext(
+  autoReviewContext: Record<string, unknown> | null,
+): string {
+  const preset = storyboardReviewCharacterPresetFromContext(autoReviewContext);
+  return [
+    cleanString(preset.primaryCharacterDetails)
+      ? `Character 1 additional details: ${cleanString(preset.primaryCharacterDetails)}`
+      : "",
+    cleanString(preset.secondaryCharacterDetails)
+      ? `Character 2 details: ${cleanString(preset.secondaryCharacterDetails)}`
+      : "",
+    cleanString(preset.propDetails)
+      ? `Prop details: ${cleanString(preset.propDetails)}`
+      : "",
+  ]
+    .map(cleanString)
+    .filter(Boolean)
+    .join("; ");
+}
+
 function buildStoryboardReviewCharacterVideoLockFromContext(
   autoReviewContext: Record<string, unknown> | null,
 ): string {
@@ -217,14 +269,21 @@ function buildStoryboardReviewCharacterVideoLockFromContext(
     ].join(" ");
   }
   const subject = storyboardReviewCharacterSubjectFromContext(autoReviewContext);
-  if (!subject) return "";
+  const characterBrief = cleanString(anchors.characterBrief);
+  const visualDetails =
+    storyboardReviewCharacterVisualDetailsFromContext(autoReviewContext);
+  if (!subject && !characterBrief && !visualDetails) return "";
   return [
     "VIDEO CHARACTER LOCK:",
     "The selected character choices are the presenter source of truth.",
-    `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`,
+    subject
+      ? `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`
+      : "",
+    visualDetails ? `User-selected visual details: ${visualDetails}.` : "",
+    characterBrief ? `User-selected character brief: ${characterBrief}` : "",
     "Keep the presenter's gender, age range, appearance, role, wardrobe family, and identity consistent with the selected image/frame references across shots.",
     "Do not let a generic audio profile override the selected presenter demographics.",
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 }
 
 function buildStoryboardReviewCharacterVoiceLockFromContext(
@@ -259,14 +318,28 @@ function storyboardReviewPromptHasGenericFemaleVoice(prompt: string): boolean {
   return /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b|\bfemale voice\b/i.test(prompt);
 }
 
+function removeStoryboardReviewPerShotCreativeDirectionLock(prompt: string): string {
+  return prompt
+    .replace(
+      /\s*USER-SELECTED CREATIVE DIRECTION LOCK:\s*(?:Review tone:\s*.*?\.\s*)?(?:Storytelling structure:\s*.*?\.\s*)?Preserve this tone and story arc in rewritten video prompts unless it conflicts with product truth, policy, shot timing, or reference anchors\.\s*/gi,
+      " ",
+    )
+    .replace(
+      /\s*USER-SELECTED CREATIVE DIRECTION LOCK:\s*(?:Review tone:\s*.*?\.\s*)?Storytelling structure:\s*.*?(?=\s+(?:VIDEO CHARACTER LOCK:|Uploaded character reference voice lock:|Selected presenter voice lock:|Create an?\s+\d|Scene:|Characters:|Action:|Camera:|Lighting\s*\/\s*Style:|Audio:|Dialogue:)|$)/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function repairStoryboardReviewPromptCharacterLock(
   prompt: string,
   autoReviewContext: Record<string, unknown> | null,
 ): string {
+  let next = removeStoryboardReviewPerShotCreativeDirectionLock(prompt);
   const videoLock = buildStoryboardReviewCharacterVideoLockFromContext(autoReviewContext);
   const voiceLock = buildStoryboardReviewCharacterVoiceLockFromContext(autoReviewContext);
-  if (!videoLock && !voiceLock) return prompt;
-  let next = prompt;
+  if (!videoLock && !voiceLock) return next;
   if (videoLock && !/VIDEO CHARACTER LOCK:/i.test(next)) {
     next = /Characters:\s*/i.test(next)
       ? next.replace(/Characters:\s*/i, match => `${match}${videoLock} `)
@@ -770,14 +843,19 @@ export function mergeFresherExistingReviewTasks(
   existingReviewData: unknown,
   incomingReviewData: unknown,
 ): unknown {
-  if (!existingReviewData || typeof existingReviewData !== "object") return incomingReviewData;
+  if (!existingReviewData || typeof existingReviewData !== "object") {
+    return stripClientOwnedHyperframesFinalComposite(incomingReviewData);
+  }
   if (!incomingReviewData || typeof incomingReviewData !== "object") return incomingReviewData;
 
+  const safeIncomingReviewData = stripClientOwnedHyperframesFinalComposite(incomingReviewData);
   const existingTasks = (existingReviewData as { tasks?: unknown }).tasks;
-  const incomingTasks = (incomingReviewData as { tasks?: unknown }).tasks;
-  if (!Array.isArray(existingTasks) || !Array.isArray(incomingTasks)) return incomingReviewData;
+  const incomingTasks = (safeIncomingReviewData as { tasks?: unknown }).tasks;
+  if (!Array.isArray(existingTasks) || !Array.isArray(incomingTasks)) {
+    return applyServerOwnedHyperframesFinalComposite(existingReviewData, safeIncomingReviewData);
+  }
   const existingCompanionAudioUpdatedAt = getCompanionAudioUpdatedAt(existingReviewData);
-  const incomingCompanionAudioUpdatedAt = getCompanionAudioUpdatedAt(incomingReviewData);
+  const incomingCompanionAudioUpdatedAt = getCompanionAudioUpdatedAt(safeIncomingReviewData);
 
   const existingTaskById = new Map<string, unknown>();
   for (const task of existingTasks) {
@@ -805,7 +883,7 @@ export function mergeFresherExistingReviewTasks(
   });
 
   const existingCompanionAudio = (existingReviewData as { companionAudio?: unknown }).companionAudio;
-  const incomingCompanionAudio = (incomingReviewData as { companionAudio?: unknown }).companionAudio;
+  const incomingCompanionAudio = (safeIncomingReviewData as { companionAudio?: unknown }).companionAudio;
   const existingAudioItems = Array.isArray(existingCompanionAudio) ? existingCompanionAudio : [];
   const incomingAudioItems = Array.isArray(incomingCompanionAudio) ? incomingCompanionAudio : [];
   const shouldUseExistingCompanionAudio = existingCompanionAudioUpdatedAt > incomingCompanionAudioUpdatedAt;
@@ -813,9 +891,9 @@ export function mergeFresherExistingReviewTasks(
     changed = true;
   }
 
-  return changed
+  const mergedReviewData = changed
     ? {
-        ...(incomingReviewData as Record<string, unknown>),
+        ...(safeIncomingReviewData as Record<string, unknown>),
         tasks: mergedTasks,
         ...(Array.isArray(incomingCompanionAudio)
           ? {
@@ -824,7 +902,8 @@ export function mergeFresherExistingReviewTasks(
             }
           : {}),
       }
-    : incomingReviewData;
+    : safeIncomingReviewData;
+  return applyServerOwnedHyperframesFinalComposite(existingReviewData, mergedReviewData);
 }
 
 function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | undefined): string | undefined {
@@ -1130,7 +1209,7 @@ export const videoEditorProjectsRouter = router({
       const reviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
-        reviewData: input.reviewData,
+        reviewData: stripClientOwnedHyperframesFinalComposite(input.reviewData),
       });
       const [inserted] = await db
         .insert(mediaStudioStoryboardReviews)

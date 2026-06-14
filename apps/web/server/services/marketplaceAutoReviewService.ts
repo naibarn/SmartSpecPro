@@ -32,7 +32,6 @@ import {
   buildProductionOutputProjectionIdentity,
   buildProductionStableHash,
 } from "../../shared/mediaProduction";
-import { buildVeo31StoryboardVideoPrompt } from "../../shared/storyboardPromptAudio";
 import type { VideoEditorProject } from "../../client/src/types/videoEditor";
 import {
   libraryItems,
@@ -144,6 +143,8 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
     | "uploaded_reference";
   characterBrief?: string | null;
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
+  reviewTone?: string | null;
+  storytellingStructure?: string | null;
   requiredRoles?: string[] | null;
   lockPolicy?: Record<string, unknown> | null;
   productImageUrl?: string | null;
@@ -182,6 +183,8 @@ type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   characterMode?: string | null;
   characterBrief?: string | null;
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
+  reviewTone?: string | null;
+  storytellingStructure?: string | null;
   requiredRoles: string[];
   lockPolicy?: Record<string, unknown>;
   productImageUrl: string;
@@ -459,6 +462,7 @@ type RunMetadata = Record<string, any> & {
   imagePromptPreflightAudits?: Record<string, unknown>[];
   pendingImageRepairUnits?: DirectImageUnit[];
   pendingVideoRepairUnits?: DirectVideoUnit[];
+  storyboardGridVisionQaEnvelopes?: Record<string, unknown>[];
   shotFrameVisionQaEnvelopes?: Record<string, unknown>[];
   targetedRepairPlans?: Record<string, unknown>[];
   generatedMediaAcceptanceEnvelope?: Record<string, unknown>;
@@ -917,10 +921,67 @@ function categoryPathPartsFromUnknown(value: unknown): string[] {
     .filter(Boolean);
 }
 
+const MARKETPLACE_AUTO_REVIEW_MINOR_SAFETY_SIGNAL_RE =
+  /แม่และเด็ก|เด็กอ่อน|ทารก|ผ้าอ้อม|แพมเพิร์ส|คอกกั้นเด็ก|ของเล่นเด็ก|รถเข็นเด็ก|\b(?:baby|babies|infant|toddler|child|children|kid|kids|diaper|nappy|nursery|stroller|maternity)\b/i;
+
+function stripInternalMinorSafetyDirectiveText(value: unknown): string {
+  let text = cleanText(value);
+  if (!text) return "";
+  const directiveMarkers = [
+    "MINOR SAFETY CLOTHING LOCK",
+    "VIDEO CHARACTER LOCK",
+    "USER-SELECTED DESCRIBED CHARACTER LOCK",
+    "Character/presenter reference directive",
+    "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK",
+  ];
+  for (const marker of directiveMarkers) {
+    const pattern = new RegExp(
+      `${marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*[\\s\\S]*?(?=\\n\\n[A-Z0-9][A-Z0-9 /&-]{2,}:|$)`,
+      "gi"
+    );
+    text = text.replace(pattern, " ");
+  }
+  return cleanText(text);
+}
+
+function stripNegatedMinorSafetyMentions(value: unknown): string {
+  let text = cleanText(value);
+  if (!text) return "";
+  const patterns = [
+    /\bno\s+(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\s+(?:appears?|present|visible|shown|included)\b/gi,
+    /\bwithout\s+(?:a\s+|any\s+)?(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\b/gi,
+    /\bdo\s+not\s+(?:show|include|add|replace[^.]*?\s+with)\s+(?:a\s+|any\s+)?(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\b/gi,
+    /ไม่มี(?:เด็ก|ทารก|เด็กอ่อน)[^.!?\n\r]*/gi,
+  ];
+  for (const pattern of patterns) {
+    text = text.replace(pattern, " ");
+  }
+  return cleanText(text);
+}
+
+function textHasMinorSafetySignal(value: unknown): boolean {
+  return MARKETPLACE_AUTO_REVIEW_MINOR_SAFETY_SIGNAL_RE.test(
+    stripNegatedMinorSafetyMentions(value)
+  );
+}
+
 function marketplaceAutoReviewPlanNeedsMinorSafetyLock(
   plan: AutoReviewPlan
 ): boolean {
-  if (inferProductReferenceStoryboardCategory(plan) === "mother_baby") {
+  if (
+    normalizeConcreteProductReferenceStoryboardCategory(
+      plan.productTruth.productCategory
+    ) === "mother_baby"
+  ) {
+    return true;
+  }
+  if (
+    !plan.productTruth.productCategory &&
+    inferProductReferenceStoryboardCategory({
+      ...plan,
+      productDetail: stripInternalMinorSafetyDirectiveText(plan.productDetail),
+    }) === "mother_baby"
+  ) {
     return true;
   }
   const source = [
@@ -929,7 +990,7 @@ function marketplaceAutoReviewPlanNeedsMinorSafetyLock(
     ...plan.productTruth.categoryPath,
     plan.productTruth.productName,
     plan.productTruth.description,
-    plan.productDetail,
+    stripInternalMinorSafetyDirectiveText(plan.productDetail),
     plan.storyboardGuide,
     plan.voiceoverScript,
     ...plan.shots.flatMap(shot => [
@@ -939,11 +1000,8 @@ function marketplaceAutoReviewPlanNeedsMinorSafetyLock(
       shot.voiceover,
     ]),
   ]
-    .join(" ")
-    .toLowerCase();
-  return /แม่และเด็ก|เด็กอ่อน|ทารก|ผ้าอ้อม|แพมเพิร์ส|คอกกั้นเด็ก|ของเล่นเด็ก|รถเข็นเด็ก|baby|babies|infant|toddler|child|children|kid|kids|diaper|nappy|nursery/.test(
-    source
-  );
+    .join(" ");
+  return textHasMinorSafetySignal(source);
 }
 
 function buildMinorSafetyClothingLock(plan: AutoReviewPlan): string {
@@ -1129,6 +1187,103 @@ function imageReasonCodesContainPublishSafetyBlocker(
   reasonCodes: unknown[]
 ): boolean {
   return reasonCodes.some(imageReasonCodeBlocksPublishSafety);
+}
+
+function imageReasonCodeBlocksStoryboardGridLayout(code: unknown): boolean {
+  const normalized = cleanText(code).toLowerCase();
+  return /storyboard[_-]?grid.*(?:layout|frame.*count|column|row|visible.*label|label.*text|text|qa.*unavailable|qa.*non.*json|qa.*contract)|(?:not|non)[_-]?(?:strict[_-]?)?3x3|2x5|5x2|10.*(?:panel|frame)|single.*image|one.*image|grid.*missing|missing.*grid|layout.*mismatch|collage|masonry|merged.*panel|variable.*panel|visible.*storyboard[_-]?grid/.test(
+    normalized
+  );
+}
+
+function imageReasonCodesContainStoryboardGridLayoutBlocker(
+  reasonCodes: unknown[]
+): boolean {
+  return reasonCodes.some(imageReasonCodeBlocksStoryboardGridLayout);
+}
+
+function visionQaMinorPresenceState(parsed: Record<string, unknown>): {
+  known: boolean;
+  present: boolean;
+} {
+  const keys = [
+    "minorPresent",
+    "childPresent",
+    "visibleMinor",
+    "visibleChild",
+    "hasMinor",
+    "hasChild",
+    "containsMinor",
+    "containsChild",
+  ];
+  let known = false;
+  let present = false;
+  for (const key of keys) {
+    if (typeof parsed[key] !== "boolean") continue;
+    known = true;
+    present = present || parsed[key] === true;
+  }
+  return { known, present };
+}
+
+function normalizeVisionQaMinorSafetyResult(input: {
+  parsed: Record<string, unknown>;
+  plan: AutoReviewPlan;
+  reasonCodes: string[];
+}): {
+  reasonCodes: string[];
+  minorPresent: boolean | null;
+  minorSafetyClothingSafe: boolean;
+} {
+  const minorSafetyLockRequired = marketplaceAutoReviewPlanNeedsMinorSafetyLock(
+    input.plan
+  );
+  const presence = visionQaMinorPresenceState(input.parsed);
+  const minorSafetyReasonCodes = input.reasonCodes.filter(
+    imageReasonCodeBlocksPublishSafety
+  );
+  const nonMinorReasonCodes = input.reasonCodes.filter(
+    code => !imageReasonCodeBlocksPublishSafety(code)
+  );
+  const keepMinorSafetyReasons =
+    minorSafetyReasonCodes.length > 0 &&
+    (presence.present || (minorSafetyLockRequired && !presence.known));
+  const missingMinorEvidence =
+    minorSafetyLockRequired &&
+    input.parsed.minorSafetyClothingSafe === false &&
+    minorSafetyReasonCodes.length === 0;
+  const reasonCodes = uniqueCleanTexts([
+    ...nonMinorReasonCodes,
+    ...(keepMinorSafetyReasons ? minorSafetyReasonCodes : []),
+    ...(missingMinorEvidence
+      ? ["vision_qa_minor_presence_evidence_missing"]
+      : []),
+  ]);
+  return {
+    reasonCodes,
+    minorPresent: presence.known ? presence.present : null,
+    minorSafetyClothingSafe: !keepMinorSafetyReasons && !missingMinorEvidence,
+  };
+}
+
+function normalizeCachedShotFrameVisionQaEnvelopeForPlan(
+  qa: Record<string, unknown>,
+  plan: AutoReviewPlan
+): Record<string, unknown> {
+  const reasonCodes = Array.isArray(qa.reasonCodes)
+    ? qa.reasonCodes.map(item => cleanText(item)).filter(Boolean)
+    : [];
+  const normalized = normalizeVisionQaMinorSafetyResult({
+    parsed: qa,
+    plan,
+    reasonCodes,
+  });
+  return {
+    ...qa,
+    reasonCodes: normalized.reasonCodes,
+    minorPresent: normalized.minorPresent,
+    minorSafetyClothingSafe: normalized.minorSafetyClothingSafe,
+  };
 }
 
 function buildMarketplaceAutoReviewSkillRuntimeContractChecks(
@@ -1476,6 +1631,15 @@ function providerStaleTimeoutMs(): number {
   return Number.isFinite(parsed) && parsed >= 30 * 60 * 1000
     ? parsed
     : DEFAULT_PROVIDER_STALE_TIMEOUT_MS;
+}
+
+function visionQaRuntimeTimeoutMs(): number {
+  const parsed = Number(
+    process.env.MARKETPLACE_AUTO_REVIEW_VISION_QA_TIMEOUT_MS
+  );
+  return Number.isFinite(parsed) && parsed >= 5_000 && parsed <= 180_000
+    ? parsed
+    : 45_000;
 }
 
 function configuredPositiveInt(
@@ -3161,6 +3325,23 @@ function characterPresetContinuityDescriptors(value: unknown): string[] {
   ];
 }
 
+function characterPresetVisualDetailsFromRecord(
+  record: Record<string, string>
+): string {
+  return [
+    record.primaryCharacterDetails
+      ? `Character 1 additional details: ${record.primaryCharacterDetails}`
+      : "",
+    record.secondaryCharacterDetails
+      ? `Character 2 details: ${record.secondaryCharacterDetails}`
+      : "",
+    record.propDetails ? `Prop details: ${record.propDetails}` : "",
+  ]
+    .map(item => cleanText(item))
+    .filter(Boolean)
+    .join("; ");
+}
+
 const MARKETPLACE_AUTO_REVIEW_CHARACTER_GENDER_PROMPT_LABELS: Record<
   string,
   string
@@ -3213,6 +3394,146 @@ const MARKETPLACE_AUTO_REVIEW_CHARACTER_STYLE_PROMPT_LABELS: Record<
   expert_practical: "practical expert style",
 };
 
+const MARKETPLACE_AUTO_REVIEW_TONE_DIRECTIVES: Record<
+  string,
+  { label: string; directive: string }
+> = {
+  warm_honest: {
+    label: "จริงใจเป็นกันเอง",
+    directive:
+      "Warm honest everyday review: natural Thai, sincere, friendly, specific, not over-selling.",
+  },
+  funny_light: {
+    label: "ตลกขำเบา ๆ",
+    directive:
+      "Light comedic review: use gentle relatable humor about the situation, never mock people, never use slapstick that distracts from product proof.",
+  },
+  irritated_problem: {
+    label: "หงุดหงิดกับปัญหา",
+    directive:
+      "Problem-frustrated review: the presenter sounds annoyed by the real problem at first, then relieved when the product helps; do not sound aggressive, abusive, or angry at the viewer.",
+  },
+  energetic_excited: {
+    label: "ตื่นเต้นพลังสูง",
+    directive:
+      "Energetic excited review: quick, upbeat, high-energy delivery while keeping claims evidence-safe and easy to follow.",
+  },
+  empathetic_soft: {
+    label: "อบอุ่นเห็นใจ",
+    directive:
+      "Soft empathetic review: acknowledge the viewer's pain gently, reduce anxiety, and make the solution feel practical and caring.",
+  },
+  expert_confident: {
+    label: "ผู้เชี่ยวชาญมั่นใจ",
+    directive:
+      "Confident expert review: practical, precise, evidence-led explanation with calm authority and no unsupported superiority claims.",
+  },
+  straight_serious: {
+    label: "ตรงไปตรงมา จริงจัง",
+    directive:
+      "Straight serious review: concise, direct, no jokes, focus on observable problem, proof, limitation, and fit.",
+  },
+};
+
+const MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES: Record<
+  string,
+  { label: string; directive: string }
+> = {
+  hook_problem_emotion_insight_solution_result_cta: {
+    label: "Hook → Problem → Emotion → Insight → Solution → Result → CTA",
+    directive:
+      "Use this arc: hook fast, show the viewer's problem, deepen the relatable emotion, give one useful insight, introduce the product as the solution, show the result, then close with CTA/takeaway.",
+  },
+  hook_problem_insight_proof_cta: {
+    label: "Hook → Problem → Insight → Proof → CTA",
+    directive:
+      "Use this short-video arc: hook, problem, insight, product proof, CTA. Keep proof visual and evidence-safe.",
+  },
+  product_review_situation_problem_try_result_fit: {
+    label: "Situation → Problem → Try → Result → Fit",
+    directive:
+      "Use this product-review arc: real situation, problem found, try the product, visible result, who it fits and any honest limitation.",
+  },
+  before_after_bridge: {
+    label: "Before → After → Bridge",
+    directive:
+      "Use this arc: clearly show before state, after state, and the product bridge that caused the change.",
+  },
+  pas: {
+    label: "PAS",
+    directive:
+      "Use PAS: problem, agitate only enough to feel real, then solution. Avoid fearmongering or exaggerated pain.",
+  },
+  aida: {
+    label: "AIDA",
+    directive:
+      "Use AIDA: attention, interest, desire, action. Keep desire grounded in observable product use, not unsupported claims.",
+  },
+  relatable_story: {
+    label: "Relatable Story",
+    directive:
+      "Use a relatable-story arc: familiar behavior, unspoken truth, feeling, new angle, shareable ending.",
+  },
+  problem_struggle_solution_transformation: {
+    label: "Problem → Struggle → Solution → Transformation",
+    directive:
+      "Use this transformation arc: problem, struggle, solution, changed result. Make before/after visually clear.",
+  },
+};
+
+function normalizeMarketplaceAutoReviewReviewTone(value: unknown): string | null {
+  const key = cleanText(value).toLowerCase();
+  return MARKETPLACE_AUTO_REVIEW_TONE_DIRECTIVES[key] ? key : null;
+}
+
+function normalizeMarketplaceAutoReviewStorytellingStructure(
+  value: unknown
+): string | null {
+  const key = cleanText(value).toLowerCase();
+  return MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES[key] ? key : null;
+}
+
+function buildMarketplaceAutoReviewCreativeDirectionDirective(
+  anchors: Pick<
+    ResolvedMarketplaceAutoReviewReferenceAnchors,
+    "reviewTone" | "storytellingStructure"
+  >
+): string {
+  const tone =
+    anchors.reviewTone &&
+    MARKETPLACE_AUTO_REVIEW_TONE_DIRECTIVES[anchors.reviewTone];
+  const structure =
+    anchors.storytellingStructure &&
+    MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES[
+      anchors.storytellingStructure
+    ];
+  if (!tone && !structure) return "";
+  return [
+    "USER-SELECTED CREATIVE DIRECTION LOCK:",
+    tone
+      ? `Review tone: ${tone.label}. ${tone.directive}`
+      : "",
+    structure
+      ? `Storytelling structure: ${structure.label}. ${structure.directive}`
+      : "",
+    "These selected creative direction fields override the automatic creative variation seed wherever they conflict, while product truth, policy, shot count, and reference anchors remain higher priority.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function creativeDirectionDirectiveForTest(input: {
+  reviewTone?: string | null;
+  storytellingStructure?: string | null;
+}): string {
+  return buildMarketplaceAutoReviewCreativeDirectionDirective({
+    reviewTone: normalizeMarketplaceAutoReviewReviewTone(input.reviewTone),
+    storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
+      input.storytellingStructure
+    ),
+  });
+}
+
 function characterPresetRecordFromUnknown(
   value: unknown
 ): Record<string, string> {
@@ -3238,6 +3559,9 @@ function characterPresetRecordFromText(text: string): Record<string, string> {
     "roleLabel",
     "style",
     "styleLabel",
+    "primaryCharacterDetails",
+    "secondaryCharacterDetails",
+    "propDetails",
   ];
   return Object.fromEntries(
     keys
@@ -3332,8 +3656,11 @@ function buildMarketplaceAutoReviewCharacterVideoLock(input: {
   }
 
   const subject = characterSubjectFromPresetRecord(preset);
+  const visualDetails = characterPresetVisualDetailsFromRecord(preset);
   const characterBrief = cleanText(input.characterBrief);
-  if (!subject && !characterBrief && !input.hasCharacterImage) return "";
+  if (!subject && !visualDetails && !characterBrief && !input.hasCharacterImage) {
+    return "";
+  }
 
   const source = input.hasCharacterImage
     ? "the uploaded character reference image and selected character choices"
@@ -3344,6 +3671,7 @@ function buildMarketplaceAutoReviewCharacterVideoLock(input: {
     subject
       ? `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`
       : "",
+    visualDetails ? `User-selected visual details: ${visualDetails}.` : "",
     characterBrief ? `User-selected character brief: ${characterBrief}` : "",
     "Keep the presenter's gender, age range, appearance, role, wardrobe family, and identity consistent with the selected image/frame references across shots.",
     "Do not let a generic audio profile override the selected presenter demographics.",
@@ -3625,6 +3953,13 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     normalizeMarketplaceAutoReviewCharacterPreset(
       params.referenceAnchors?.characterPreset
     );
+  const reviewTone = normalizeMarketplaceAutoReviewReviewTone(
+    params.referenceAnchors?.reviewTone
+  );
+  const storytellingStructure =
+    normalizeMarketplaceAutoReviewStorytellingStructure(
+      params.referenceAnchors?.storytellingStructure
+    );
   const characterImageUrl =
     cleanText(params.referenceAnchors?.characterImageUrl) || null;
   const environmentImageUrl =
@@ -3761,6 +4096,8 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     characterMode,
     characterBrief,
     characterPreset,
+    reviewTone,
+    storytellingStructure,
     requiredRoles,
     lockPolicy: asRecord(params.referenceAnchors?.lockPolicy),
     productImageUrl,
@@ -4827,6 +5164,10 @@ function referenceAnchorsInputSnapshot(
       : Object.keys(asRecord(anchors.characterPreset)).length > 0
         ? asRecord(anchors.characterPreset)
         : cleanText(anchors.characterPreset),
+    reviewTone: normalizeMarketplaceAutoReviewReviewTone(anchors.reviewTone),
+    storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
+      anchors.storytellingStructure
+    ),
     requiredRoles,
     productImageUrl: cleanText(anchors.productImageUrl) || null,
     productImageRef: cleanText(anchors.productImageRef) || null,
@@ -4860,7 +5201,7 @@ function referenceAnchorsInputSnapshot(
   });
 }
 
-function buildMarketplaceAutoReviewInputSnapshotHash(params: {
+function buildMarketplaceAutoReviewInputSnapshot(params: {
   productTruthHash: string;
   productUpdatedAt?: string | null;
   selectedVariantHash?: string | null;
@@ -4871,8 +5212,9 @@ function buildMarketplaceAutoReviewInputSnapshotHash(params: {
   audioStrategy: unknown;
   resolvedAudioStrategy: unknown;
   requestedShotCount: unknown;
-}): string {
+}): Record<string, unknown> {
   const seed: Record<string, unknown> = {
+    schemaVersion: 2,
     productTruthHash: params.productTruthHash,
     productUpdatedAt: cleanText(params.productUpdatedAt),
     selectedVariantHash: cleanText(params.selectedVariantHash),
@@ -4888,7 +5230,26 @@ function buildMarketplaceAutoReviewInputSnapshotHash(params: {
       params.requestedShotCount
     );
   }
-  return buildProductionStableHash(seed);
+  return seed;
+}
+
+function inputSnapshotHash(value: Record<string, unknown>): string {
+  return buildProductionStableHash(value);
+}
+
+function buildMarketplaceAutoReviewInputSnapshotHash(params: {
+  productTruthHash: string;
+  productUpdatedAt?: string | null;
+  selectedVariantHash?: string | null;
+  referenceAnchors: unknown;
+  rulePack: unknown;
+  outputMode: unknown;
+  frameStrategy: unknown;
+  audioStrategy: unknown;
+  resolvedAudioStrategy: unknown;
+  requestedShotCount: unknown;
+}): string {
+  return inputSnapshotHash(buildMarketplaceAutoReviewInputSnapshot(params));
 }
 
 function evaluateMarketplaceAutoReviewInputChangeImpact(params: {
@@ -4915,7 +5276,7 @@ function evaluateMarketplaceAutoReviewInputChangeImpact(params: {
     ? params.requestedShotCount
     : params.metadata.requestedShotCount;
   const expectedSnapshotHash = cleanText(existing.snapshotHash);
-  const currentSnapshotHash = buildMarketplaceAutoReviewInputSnapshotHash({
+  const currentSnapshotInput = buildMarketplaceAutoReviewInputSnapshot({
     productTruthHash: currentProductTruthHash,
     productUpdatedAt: params.productUpdatedAt,
     selectedVariantHash: params.selectedVariantHash,
@@ -4927,6 +5288,20 @@ function evaluateMarketplaceAutoReviewInputChangeImpact(params: {
     resolvedAudioStrategy: params.resolvedAudioStrategy,
     requestedShotCount,
   });
+  const currentSnapshotHash = inputSnapshotHash(currentSnapshotInput);
+  const existingSnapshotInput = asRecord(existing.snapshotInput);
+  const hasExistingSnapshotInput =
+    Object.keys(existingSnapshotInput).length > 0;
+  const existingSnapshotInputHash = hasExistingSnapshotInput
+    ? inputSnapshotHash(existingSnapshotInput)
+    : "";
+  const structuredSnapshotChanged =
+    hasExistingSnapshotInput &&
+    existingSnapshotInputHash !== currentSnapshotHash;
+  const legacyOpaqueHashDrift =
+    !hasExistingSnapshotInput &&
+    Boolean(expectedSnapshotHash) &&
+    expectedSnapshotHash !== currentSnapshotHash;
   const staleRefs = [
     cleanText(existingProductLock.truthHash) &&
     cleanText(existingProductLock.truthHash) !== currentProductTruthHash
@@ -4941,9 +5316,7 @@ function evaluateMarketplaceAutoReviewInputChangeImpact(params: {
     cleanText(params.selectedVariantHash)
       ? "productVariantSnapshot.selectedVariantHash"
       : "",
-    expectedSnapshotHash && expectedSnapshotHash !== currentSnapshotHash
-      ? "inputChangeImpact.snapshotHash"
-      : "",
+    structuredSnapshotChanged ? "inputChangeImpact.snapshotInput" : "",
   ].filter(Boolean);
   const changed = staleRefs.length > 0;
   return {
@@ -4951,12 +5324,29 @@ function evaluateMarketplaceAutoReviewInputChangeImpact(params: {
     impactId: cleanText(existing.impactId) || `input-impact:${params.runId}`,
     status: changed ? "recheck_required" : "no_recheck_required",
     snapshotHash: changed
-      ? currentSnapshotHash
-      : expectedSnapshotHash || currentSnapshotHash,
+      ? expectedSnapshotHash || existingSnapshotInputHash || currentSnapshotHash
+      : currentSnapshotHash,
     previousSnapshotHash:
-      changed && expectedSnapshotHash
+      changed && expectedSnapshotHash && expectedSnapshotHash !== currentSnapshotHash
         ? expectedSnapshotHash
         : existing.previousSnapshotHash,
+    currentSnapshotHash,
+    snapshotInput:
+      changed && hasExistingSnapshotInput
+        ? existingSnapshotInput
+        : currentSnapshotInput,
+    ...(changed ? { currentSnapshotInput } : {}),
+    ...(legacyOpaqueHashDrift
+      ? {
+          legacyOpaqueHashDrift: {
+          previousSnapshotHash: expectedSnapshotHash,
+          currentSnapshotHash,
+          status: "ignored_without_structured_snapshot_input",
+          reason:
+            "Opaque snapshot hash drift alone is not treated as input change without structured snapshotInput evidence.",
+          },
+        }
+      : {}),
     currentProductTruthHash,
     productUpdatedAt: cleanText(params.productUpdatedAt),
     staleRefs,
@@ -5491,6 +5881,9 @@ function buildImageAttemptScoreBreakdown(params: {
   const publishSafetyBlockers = uniqueCleanTexts(
     params.reasonCodes.filter(imageReasonCodeBlocksPublishSafety)
   );
+  const storyboardGridLayoutBlockers = uniqueCleanTexts(
+    params.reasonCodes.filter(imageReasonCodeBlocksStoryboardGridLayout)
+  );
   const productFidelityFailedFrames = productFidelityFailedFrameCount(
     params.qaEnvelopes
   );
@@ -5518,6 +5911,7 @@ function buildImageAttemptScoreBreakdown(params: {
     repairUnitCount: params.repairUnits.length,
     productFidelityBlockers,
     publishSafetyBlockers,
+    storyboardGridLayoutBlockers,
     productFidelityFailedFrames,
     productFidelityWholeStoryboardFailure,
   };
@@ -5529,7 +5923,6 @@ function cleanStringList(value: unknown): string[] {
 }
 
 function attemptReviewIsSelectable(review: Record<string, unknown>): boolean {
-  if (review.selectionEligible === false) return false;
   if (
     imageReasonCodesContainProductFidelityBlocker(
       cleanStringList(review.reasonCodes)
@@ -5806,6 +6199,12 @@ function appendImageAttemptReview(params: {
     imageReasonCodesContainPublishSafetyBlocker(reasonCodes)
       ? uniqueCleanTexts(reasonCodes.filter(imageReasonCodeBlocksPublishSafety))
       : [];
+  const storyboardGridLayoutBlockers =
+    imageReasonCodesContainStoryboardGridLayoutBlocker(reasonCodes)
+      ? uniqueCleanTexts(
+          reasonCodes.filter(imageReasonCodeBlocksStoryboardGridLayout)
+        )
+      : [];
   const hasSelectableResult =
     resultUrls.length > 0 ||
     storyboardFrameUrls.length > 0 ||
@@ -5837,6 +6236,7 @@ function appendImageAttemptReview(params: {
     selectionBlockers: uniqueCleanTexts([
       ...productFidelityBlockers,
       ...publishSafetyBlockers,
+      ...storyboardGridLayoutBlockers,
     ]),
     qualityScore: scoreBreakdown.qualityScore,
     negativeScore: scoreBreakdown.negativeScore,
@@ -5892,6 +6292,29 @@ function directImageUnits(value: unknown): DirectImageUnit[] {
     );
 }
 
+function imageUnitsFromProviderUnreachedSubmitIntents(
+  refs: DirectMediaTaskRef[]
+): DirectImageUnit[] {
+  return latestTaskRefsByUnit(refs)
+    .filter(
+      ref =>
+        ref.mediaType === "image" &&
+        !directMediaRefReachedProvider(ref) &&
+        cleanText(ref.status) === "submit_intent_recorded"
+    )
+    .map(ref => ({
+      unitId: ref.unitId,
+      role: ref.role as DirectImageUnit["role"],
+      shotId: ref.shotId,
+      shotOrder: ref.shotOrder,
+      repairReasonCodes: ref.repairReasonCodes,
+      repairInstruction:
+        cleanText(asRecord(ref).repairInstruction) ||
+        cleanText(asRecord(ref.providerSubmitEvidence).repairInstruction),
+    }))
+    .filter(unit => cleanText(unit.unitId) && cleanText(unit.role));
+}
+
 function directVideoUnits(value: unknown): DirectVideoUnit[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -5899,6 +6322,31 @@ function directVideoUnits(value: unknown): DirectVideoUnit[] {
     .filter(
       item => Boolean(cleanText(item.unitId)) && Boolean(cleanText(item.shotId))
     );
+}
+
+function videoUnitsFromProviderUnreachedSubmitIntents(
+  refs: DirectMediaTaskRef[]
+): DirectVideoUnit[] {
+  return latestTaskRefsByUnit(refs)
+    .filter(
+      ref =>
+        ref.mediaType === "video" &&
+        !directMediaRefReachedProvider(ref) &&
+        cleanText(ref.status) === "submit_intent_recorded"
+    )
+    .map(
+      (ref): DirectVideoUnit => ({
+      unitId: ref.unitId,
+      role: "video_clip",
+      shotId: cleanText(ref.shotId),
+      shotOrder: toNumber(ref.shotOrder),
+      repairReasonCodes: ref.repairReasonCodes,
+      repairInstruction:
+        cleanText(asRecord(ref).repairInstruction) ||
+        cleanText(asRecord(ref.providerSubmitEvidence).repairInstruction),
+      })
+    )
+    .filter(unit => cleanText(unit.unitId) && cleanText(unit.shotId));
 }
 
 function directMediaStageKey(mediaType: "image" | "video"): StageKey {
@@ -6192,13 +6640,42 @@ function nextDirectAttempt(refs: DirectMediaTaskRef[], unitId: string): number {
 }
 
 function directMediaRefReachedProvider(ref: DirectMediaTaskRef): boolean {
-  if (cleanText(ref.providerSubmitIntentStatus) === "blocked_before_provider_submit") {
+  const submitIntentStatus = cleanText(ref.providerSubmitIntentStatus);
+  if (
+    [
+      "blocked_before_provider_submit",
+      "recorded_before_provider_submit",
+      "provider_submit_failed_before_intent",
+      "provider_submit_failed_after_intent",
+    ].includes(submitIntentStatus)
+  ) {
     return false;
   }
+  if (cleanText(ref.status) === "submit_intent_recorded") return false;
   if (/^prompt-preflight-failed:/i.test(cleanText(ref.taskId))) {
     return false;
   }
   return true;
+}
+
+function metadataHasProviderUnreachedSubmitIntent(
+  metadata: RunMetadata
+): boolean {
+  const refs = [
+    ...latestTaskRefsByUnit(directTaskRefs(metadata.directImageTasks)),
+    ...latestTaskRefsByUnit(directTaskRefs(metadata.directVideoTasks)),
+  ];
+  return refs.some(
+    ref =>
+      !directMediaRefReachedProvider(ref) &&
+      cleanText(ref.status) === "submit_intent_recorded"
+  );
+}
+
+export function directMediaRefReachedProviderForTest(
+  ref: DirectMediaTaskRef
+): boolean {
+  return directMediaRefReachedProvider(ref);
 }
 
 function upsertCreditTransaction(
@@ -7330,7 +7807,10 @@ function inferProductReferenceStoryboardCategory(
     ["shoes", /รองเท้า|shoe|sneaker|sandal|boot/i],
     ["watch_eyewear", /นาฬิกา|แว่น|watch|eyewear|glasses|sunglasses/i],
     ["jewelry", /เครื่องประดับ|สร้อย|แหวน|ต่างหู|jewelry|ring|necklace|earring/i],
-    ["mother_baby", /แม่และเด็ก|เด็กอ่อน|baby|mother|stroller/i],
+    [
+      "mother_baby",
+      /แม่และเด็ก|เด็กอ่อน|ทารก|ผ้าอ้อม|แพมเพิร์ส|คอกกั้นเด็ก|ของเล่นเด็ก|รถเข็นเด็ก|\b(?:baby|babies|infant|toddler|stroller|maternity|diaper|nappy|nursery)\b|mother\s*(?:and|&|-)?\s*baby/i,
+    ],
     ["pet_supplies", /สัตว์เลี้ยง|หมา|แมว|pet|dog|cat/i],
     ["sports_equipment", /กีฬา|ฟิตเนส|sport|fitness|exercise/i],
     ["camera_photography", /กล้อง|เลนส์|camera|photography|lens/i],
@@ -8225,6 +8705,8 @@ function buildStoryboardGridRepairUnit(params: {
   return {
     unitId: "storyboard-grid-image",
     role: "storyboard_grid",
+    shotId: "storyboard-grid",
+    shotOrder: 0,
     repairReasonCodes: params.reasonCodes,
     repairInstruction: instruction,
   };
@@ -8329,6 +8811,25 @@ function buildVisionQaRuntimeUnavailableEnvelope(params: {
   };
 }
 
+function imageVisionQaEnvelopesFromMetadata(
+  metadata: RunMetadata
+): Record<string, unknown>[] {
+  return [
+    ...(Array.isArray(metadata.storyboardGridVisionQaEnvelopes)
+      ? metadata.storyboardGridVisionQaEnvelopes
+      : []),
+    ...(Array.isArray(metadata.shotFrameVisionQaEnvelopes)
+      ? metadata.shotFrameVisionQaEnvelopes
+      : []),
+  ].map(item => asRecord(item));
+}
+
+function imageVisionQaEnvelopeRefsFromMetadata(metadata: RunMetadata): string[] {
+  return imageVisionQaEnvelopesFromMetadata(metadata)
+    .map(qa => cleanText(qa.qaEnvelopeId))
+    .filter(Boolean);
+}
+
 function imageRepairBudgetExhaustedForUnits(params: {
   repairUnits: DirectImageUnit[];
   refs: DirectMediaTaskRef[];
@@ -8362,12 +8863,7 @@ function acceptImageQaWithWarningsAfterRepairBudgetExhausted(params: {
         .filter(Boolean)
     )
   );
-  const latestQaRefs = (Array.isArray(params.metadata.shotFrameVisionQaEnvelopes)
-    ? params.metadata.shotFrameVisionQaEnvelopes
-    : []
-  )
-    .map(qa => cleanText(asRecord(qa).qaEnvelopeId))
-    .filter(Boolean);
+  const latestQaRefs = imageVisionQaEnvelopeRefsFromMetadata(params.metadata);
 
   const metadata = applyBestImageAttemptSelection({
     ...params.metadata,
@@ -8455,14 +8951,7 @@ function acceptBestImageAttemptAfterStoryboardFramesReady(params: {
     cleanText(existingAcceptance.acceptanceEnvelopeId) ||
     cleanText(existingAcceptance.acceptanceId) ||
     `acceptance:image:${params.run.id}:${nanoid(8)}`;
-  const latestQaRefs = (Array.isArray(
-    selected.shotFrameVisionQaEnvelopes
-  )
-    ? selected.shotFrameVisionQaEnvelopes
-    : []
-  )
-    .map(qa => cleanText(asRecord(qa).qaEnvelopeId))
-    .filter(Boolean);
+  const latestQaRefs = imageVisionQaEnvelopeRefsFromMetadata(selected);
   return withUpdatedCreditSummary({
     ...selected,
     pendingImageRepairUnits: [],
@@ -8614,8 +9103,22 @@ export function buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForT
         code: "adapter_request_failed",
         message: "Agent runtime adapter request failed with status 500.",
         status: 500,
-      }),
+    }),
   });
+}
+
+export function normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest(input: {
+  parsed: Record<string, unknown>;
+  plan: AutoReviewPlan;
+  reasonCodes: string[];
+}): ReturnType<typeof normalizeVisionQaMinorSafetyResult> {
+  return normalizeVisionQaMinorSafetyResult(input);
+}
+
+export function imageReasonCodesContainStoryboardGridLayoutBlockerForTest(
+  reasonCodes: unknown[]
+): boolean {
+  return imageReasonCodesContainStoryboardGridLayoutBlocker(reasonCodes);
 }
 
 export function isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest(input: {
@@ -10264,7 +10767,11 @@ async function runMarketplaceMediaProductionAgent(params: {
         gatewayOnly: true,
       },
     });
-    const client = new AgentRuntimeClient();
+    const client = new AgentRuntimeClient(
+      params.creditCategory === "vision_qa"
+        ? { requestTimeoutMs: visionQaRuntimeTimeoutMs() }
+        : {}
+    );
     const response = await client.run(request);
     if (response.status !== "completed") {
       throw new Error(
@@ -11363,6 +11870,10 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
     buildMarketplaceAutoReviewDescribedCharacterDirective(
       params.referenceAnchors
     );
+  const creativeDirectionDirective =
+    buildMarketplaceAutoReviewCreativeDirectionDirective(
+      params.referenceAnchors
+    );
   const buildRuntimeInput = (correction?: {
     actualShotCount: number;
     attempt: number;
@@ -11380,6 +11891,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       "Follow Thailand and global advertising safety: honest wording, no absolute/miracle claims, and include warning/disclaimer text when needed.",
       describedCharacterDirective ||
         "Avoid human faces unless an approved character identity asset pack allows them; default to product-only or hands-only visuals.",
+      creativeDirectionDirective,
       "Return JSON only.",
       correction
         ? [
@@ -11422,6 +11934,9 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
         ? "Because the user selected a described character, design shots so the described adult presenter/persona is the reviewer/parent/presenter whenever a person is important. Children may demonstrate product use only as secondary context and must not replace the selected presenter/persona as the recurring hero."
         : "If character/environment anchors are present, design shots that preserve those references consistently; if absent, avoid recurring recognizable faces and keep locations simple.",
       "Use the Creative variation seed as the active run's story lens. Keep the required customer journey, but vary hook pattern, proof emphasis, scene rhythm, camera palette, and human presence plan according to the seed. Avoid prior angles listed in the seed unless product truth requires them.",
+      creativeDirectionDirective
+        ? "Apply the USER-SELECTED CREATIVE DIRECTION LOCK when choosing the selected creativeConceptSet alternative, writing storyboardGuide, and writing every shot.voiceover. If it conflicts with the automatic seed, follow the user-selected tone/storytelling structure and keep the seed only for compatible camera or novelty variation."
+        : "",
       `Create 3-5 distinct CreativeConceptSet alternatives with novelty fingerprints, selected/rejected rationale, then create exactly ${requestedShotCount} shots, ${DEFAULT_SHOT_DURATION_SECONDS} seconds each, strong hook, coherent story arc, and detailed visual/camera/movement/productRole per shot for the selected concept.`,
       "voiceoverScript must be the complete continuous Thai narration script assembled from all shot.voiceover lines in order. Each shot.voiceover should be a natural segment of that same script, about 9-10 seconds when spoken in Thai, continuing from the previous shot and setting up the next shot.",
       "voiceoverScript and every shot.voiceover must contain only the exact Thai words a viewer should hear. Do not include camera notes, visual descriptions, reference-image instructions, product-lock instructions, marketplace metadata, or phrases like 'โดยดูจากภาพจริง', 'รายละเอียดของสินค้า', 'ในช็อตนี้เป็นหลัก', or 'ให้จังหวะการพูด'. Put those details only in storyboardGuide, visual, camera, movement, or productRole.",
@@ -12041,6 +12556,23 @@ function buildFeature117ContractMetadata(input: {
   };
   const manifestHash = buildProductionStableHash(capabilityManifestSeed);
   const shotCount = shotCountForPlan(input.plan);
+  const inputSnapshot = buildMarketplaceAutoReviewInputSnapshot({
+    productTruthHash,
+    productUpdatedAt,
+    selectedVariantHash,
+    referenceAnchors: anchors,
+    rulePack: {
+      rulePackId: MARKETPLACE_AUTO_REVIEW_RULE_PACK_REF,
+      version: "1.0.0",
+      status: "approved",
+      fixtureReplayStatus: "passed",
+    },
+    outputMode: input.outputMode,
+    frameStrategy: input.frameStrategy,
+    audioStrategy: input.audioStrategy,
+    resolvedAudioStrategy: input.resolvedAudioStrategy,
+    requestedShotCount: shotCount,
+  });
   const creditEstimate =
     input.outputMode === "full_video"
       ? 30 +
@@ -12128,6 +12660,8 @@ function buildFeature117ContractMetadata(input: {
       characterMode: anchors.characterMode ?? null,
       characterBrief: anchors.characterBrief ?? null,
       characterPreset: anchors.characterPreset ?? null,
+      reviewTone: anchors.reviewTone ?? null,
+      storytellingStructure: anchors.storytellingStructure ?? null,
       productImageUrl: selectedProductImageUrl,
       productImageRef: selectedProductImageRef,
       productImageProvidedRef: anchors.productImageProvidedRef,
@@ -12710,23 +13244,9 @@ function buildFeature117ContractMetadata(input: {
     inputChangeImpact: {
       impactId: `input-impact:${input.runId}`,
       status: "no_recheck_required",
-      snapshotHash: buildMarketplaceAutoReviewInputSnapshotHash({
-        productTruthHash,
-        productUpdatedAt,
-        selectedVariantHash,
-        referenceAnchors: anchors,
-        rulePack: {
-          rulePackId: MARKETPLACE_AUTO_REVIEW_RULE_PACK_REF,
-          version: "1.0.0",
-          status: "approved",
-          fixtureReplayStatus: "passed",
-        },
-        outputMode: input.outputMode,
-        frameStrategy: input.frameStrategy,
-        audioStrategy: input.audioStrategy,
-        resolvedAudioStrategy: input.resolvedAudioStrategy,
-        requestedShotCount: input.plan.shots.length,
-      }),
+      snapshotHash: inputSnapshotHash(inputSnapshot),
+      currentSnapshotHash: inputSnapshotHash(inputSnapshot),
+      snapshotInput: inputSnapshot,
       staleRefs: [],
       invalidatedRefs: [],
       checkedAt: now,
@@ -12914,6 +13434,7 @@ function stripVideoTimingTextForImagePrompt(text: string): string {
 
 const MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS =
   PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS;
+const MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
 
 function compactImagePromptText(text: string, maxLength: number): string {
   const value = stripVideoTimingTextForImagePrompt(text)
@@ -13076,46 +13597,145 @@ export function buildMarketplaceAutoReview3x3StoryboardPromptForTest(input: {
   );
 }
 
-function buildVideoVisualPrompt(
+function buildCompactMarketplaceAutoReviewVideoCharacterLine(
   plan: AutoReviewPlan,
-  shot: AutoReviewShot,
-  referenceMode: MarketplaceAutoReviewVideoReferenceMode,
   metadata?: RunMetadata | null
 ): string {
+  const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
+  const subject = characterSubjectFromPresetRecord(preset);
+  const mode =
+    preset.mode ||
+    cleanText(
+      asRecord(marketplaceAutoReviewReferenceAnchorsFromMetadata(metadata))
+        .characterMode
+    );
+  if (mode === "product_only") return "Product-only; do not add people.";
+  if (mode === "hands_only")
+    return "Hands-only; keep faces hidden and do not add a presenter.";
+  if (
+    /uploaded character reference image|Character anchor\b/i.test(
+      plan.productDetail
+    )
+  ) {
+    return "Use the visible/uploaded presenter identity; no new people.";
+  }
+  return subject
+    ? `Keep visible presenter as ${subject}; no new people.`
+    : "Use only people or hands already visible in the frames; no new people.";
+}
+
+function buildCompactMarketplaceAutoReviewVideoVoiceLine(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): string {
+  const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
+  const subject = characterSubjectFromPresetRecord(preset);
+  if (
+    /uploaded character reference image|Character anchor\b/i.test(
+      plan.productDetail
+    )
+  ) {
+    return "Voice matches the visible/uploaded presenter; natural central Thai.";
+  }
+  return subject
+    ? `Voice matches ${subject}; natural central Thai.`
+    : "Natural central Thai presenter voice.";
+}
+
+function buildCompactMarketplaceAutoReviewVideoActionLine(input: {
+  shot: AutoReviewShot;
+  referenceMode: MarketplaceAutoReviewVideoReferenceMode;
+}): string {
+  const parts =
+    input.referenceMode === "start_stop"
+      ? [input.shot.title, input.shot.movement, input.shot.voiceover]
+      : [
+          input.shot.title,
+          input.shot.visual,
+          input.shot.movement,
+          input.shot.voiceover,
+        ];
+  return compactImagePromptText(
+    [
+      parts.map(cleanText).filter(Boolean).join(". "),
+      input.referenceMode === "start_stop"
+        ? "Animate only the visible transition/action from start frame to stop frame; do not re-describe or redesign static props, product, people, or background."
+        : "Animate with a subtle product-focused motion while preserving the storyboard frame.",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    input.referenceMode === "start_stop" ? 430 : 520
+  );
+}
+
+function buildCompactMarketplaceAutoReviewVideoPrompt(input: {
+  plan: AutoReviewPlan;
+  shot: AutoReviewShot;
+  audioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
+  isLastShot: boolean;
+  referenceMode: MarketplaceAutoReviewVideoReferenceMode;
+  metadata?: RunMetadata | null;
+}): string {
   const scene =
-    referenceMode === "single_storyboard_frame"
-      ? "Use @Image1 as the storyboard frame."
-      : "Use @Image1 as start frame. Use @Image2 as stop frame.";
-  const characterVideoLock =
-    buildMarketplaceAutoReviewVideoCharacterLockFromPlan(plan, metadata);
-  const characterDirection =
-    "Use only the person or hands already visible in the frames. Do not add new people. If a face is visible, keep it consistent with the frame.";
-  return [
-    `Create a ${shot.durationSeconds}-second cinematic video.`,
-    "",
-    "Scene:",
-    scene,
-    "",
-    "Characters:",
-    characterDirection,
-    characterVideoLock,
-    buildMinorSafetyClothingLock(plan),
-    "",
-    "Action:",
-    compactImagePromptText(`${shot.title}. ${shot.visual}. ${shot.voiceover}`, 520),
-    "",
-    "Camera:",
-    compactImagePromptText(`${shot.movement}; ${shot.camera}.`, 260),
-    "",
-    "Lighting / Style:",
-    "Realistic ecommerce cinematic style, natural warm light, clean product fidelity, consistent colors, no on-screen text.",
-    "",
-    "Audio:",
-    "Native audio.",
-    "",
-    "Dialogue:",
-    "No spoken dialogue.",
+    input.referenceMode === "single_storyboard_frame"
+      ? "Use @Image1 as the storyboard frame. Frame defines product, people, props, location, lighting."
+      : "Use @Image1 as start frame. Use @Image2 as stop frame. Frames define product, people, props, location, lighting.";
+  const action = buildCompactMarketplaceAutoReviewVideoActionLine({
+    shot: input.shot,
+    referenceMode: input.referenceMode,
+  });
+  const camera = compactImagePromptText(
+    [
+      input.shot.camera,
+      input.shot.movement,
+      input.referenceMode === "start_stop"
+        ? "Preserve exact endpoint continuity."
+        : "Preserve frame composition.",
+    ]
+      .map(cleanText)
+      .filter(Boolean)
+      .join("; "),
+    220
+  );
+  const timedSpeech =
+    buildMarketplaceAutoReviewNativeSpeechText({
+      plan: input.plan,
+      shot: input.shot,
+      isLastShot: input.isLastShot,
+    }) ||
+    `${input.plan.productTruth.productName} ช่วยให้เห็นปัญหาและทางออกของสินค้านี้ชัดขึ้น`;
+  const hasNativeSpeech = input.audioStrategy === "native_video_audio";
+  const noAudioLine =
+    input.audioStrategy === "separate_tts_voiceover"
+      ? "External audio workflow: visual-only footage. No audio, speech, music, subtitles, captions, or text."
+      : "Silent visual-only footage. No audio, speech, music, sound, subtitles, captions, or text.";
+  const dialogue = hasNativeSpeech
+    ? `Presenter พูดเป็นภาษาไทยว่า "${cleanText(timedSpeech).replace(/"/g, "'")}"`
+    : "No spoken dialogue.";
+  const audio = hasNativeSpeech
+    ? [
+        "Native audio.",
+        `Voice: ${buildCompactMarketplaceAutoReviewVideoVoiceLine(
+          input.plan,
+          input.metadata
+        )}`,
+        "Only visible-action foley/quiet room tone. No music, jingle, copyrighted melody, background chatter, subtitles, or extra dialogue.",
+      ].join(" ")
+    : noAudioLine;
+  const prompt = [
+    `Create a ${input.shot.durationSeconds}-second cinematic video.`,
+    `Scene: ${scene}`,
+    `Characters: ${buildCompactMarketplaceAutoReviewVideoCharacterLine(input.plan, input.metadata)}`,
+    `Action: ${action}`,
+    `Camera: ${camera}`,
+    "Lighting / Style: Match the reference frames; realistic ecommerce cinematic look; no on-screen text.",
+    `Audio: ${audio}`,
+    `Dialogue: ${dialogue}`,
   ].join("\n");
+  return compactImagePromptText(
+    prompt,
+    MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS
+  );
 }
 
 export function buildMarketplaceAutoReviewVideoPromptForTest(input: {
@@ -13146,62 +13766,13 @@ function buildVideoPrompt(
 ): string {
   const audioStrategy = options.audioStrategy ?? "native_video_audio";
   const referenceMode = options.referenceMode ?? "start_stop";
-  const frameRoles =
-    referenceMode === "single_storyboard_frame"
-      ? ["single_storyboard"]
-      : ["start", "stop"];
-  const visualPrompt = [
-    buildVideoVisualPrompt(plan, shot, referenceMode, options.metadata),
-  ].join("\n");
-  if (audioStrategy === "native_video_audio") {
-    const audioProfile = selectMarketplaceAutoReviewVideoAudioProfile(plan);
-    const timedSpeech = buildMarketplaceAutoReviewNativeSpeechText({
-      plan,
-      shot,
-      isLastShot: Boolean(options.isLastShot),
-    }) || `${plan.productTruth.productName} ช่วยให้เห็นปัญหาและทางออกของสินค้านี้ชัดขึ้น`;
-    return buildVeo31StoryboardVideoPrompt({
-      visualPrompt,
-      durationSeconds: shot.durationSeconds,
-      aspectRatio: "9:16",
-      frameRoles,
-      conceptDetails: "",
-      storyboardGuide: "",
-      includeVoiceover: true,
-      speechMode: "th",
-      speechLanguage: "thai",
-      voiceoverScript: timedSpeech,
-      voiceBrief: buildMarketplaceAutoReviewCharacterVoiceBrief(
-        plan,
-        audioProfile,
-        options.metadata
-      ),
-      includeSound: true,
-      soundBrief: [
-        audioProfile.soundBrief,
-        "Use only SFX, foley, room tone, or ASMR that matches visible actions.",
-        "No background music, no jingle, no copyrighted melody, no song-like bed, no background chatter.",
-      ].join(" "),
-    });
-  }
-
-  const noAudioPrompt = [
-    visualPrompt,
-    audioStrategy === "separate_tts_voiceover"
-      ? "External audio workflow: create visual-only footage. Do not generate speech, dialogue, narration, lip-sync audio, background music, sound effects, ambient audio, subtitles, captions, lower-thirds, readable text, logos with letters, or random glyphs. The final Thai voiceover will be added later in the video editor."
-      : "Silent video workflow: do not generate speech, dialogue, narration, music, sound effects, ambient audio, subtitles, captions, lower-thirds, readable text, logos with letters, or random glyphs.",
-  ].join("\n");
-  return buildVeo31StoryboardVideoPrompt({
-    visualPrompt: noAudioPrompt,
-    durationSeconds: shot.durationSeconds,
-    aspectRatio: "9:16",
-    frameRoles,
-    conceptDetails: "",
-    storyboardGuide: "",
-    includeVoiceover: false,
-    speechMode: "none",
-    speechLanguage: "thai",
-    includeSound: false,
+  return buildCompactMarketplaceAutoReviewVideoPrompt({
+    plan,
+    shot,
+    audioStrategy,
+    isLastShot: Boolean(options.isLastShot),
+    referenceMode,
+    metadata: options.metadata,
   });
 }
 
@@ -14217,6 +14788,12 @@ async function claimMarketplaceAutoReviewAdvanceLease(params: {
   ].join(":");
   const metadata = asRecord(params.run.metadataJson) as RunMetadata;
   const existingControl = asRecord(metadata.automationControlPlane);
+  const existingLease = asRecord(existingControl.lease);
+  const existingLeaseHeartbeatMs = parseIsoMs(existingLease.heartbeatAt);
+  const canRecoverProviderUnreachedSubmitIntentLease =
+    metadataHasProviderUnreachedSubmitIntent(metadata) &&
+    existingLeaseHeartbeatMs !== null &&
+    Date.now() - existingLeaseHeartbeatMs > 60_000;
   const advanceAttempt = toNumber(existingControl.advanceAttempt) + 1;
   const leaseId = `advance-lease:${params.run.id}:${buildProductionStableHash({
     ownerToken,
@@ -14254,10 +14831,28 @@ async function claimMarketplaceAutoReviewAdvanceLease(params: {
           expiresAt: new Date(now.getTime() + leaseTtlMs).toISOString(),
           ttlMs: leaseTtlMs,
         },
+        ...(canRecoverProviderUnreachedSubmitIntentLease
+          ? {
+              leaseRecovery: {
+                reason: "provider_unreached_submit_intent",
+                previousOwnerToken: cleanText(existingLease.ownerToken),
+                previousHeartbeatAt: cleanText(existingLease.heartbeatAt),
+                recoveredAt: claimedAt,
+              },
+            }
+          : {}),
       },
     } as RunMetadata,
     runtime: params.runtime,
   });
+  const leaseClaimClauses = [
+    sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'expiresAt' IS NULL`,
+    sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'expiresAt' <= ${claimedAt}`,
+    sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'ownerToken' = ${ownerToken}`,
+  ];
+  if (canRecoverProviderUnreachedSubmitIntentLease) {
+    leaseClaimClauses.push(sql`true`);
+  }
   const [claimed] = await params.db
     .update(marketplaceAutoReviewRuns)
     .set({
@@ -14268,11 +14863,7 @@ async function claimMarketplaceAutoReviewAdvanceLease(params: {
       and(
         eq(marketplaceAutoReviewRuns.id, params.run.id),
         inArray(marketplaceAutoReviewRuns.status, ACTIVE_RUN_STATUSES),
-        or(
-          sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'expiresAt' IS NULL`,
-          sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'expiresAt' <= ${claimedAt}`,
-          sql`${marketplaceAutoReviewRuns.metadataJson}->'automationControlPlane'->'lease'->>'ownerToken' = ${ownerToken}`
-        )
+        or(...leaseClaimClauses)
       )
     )
     .returning();
@@ -15844,7 +16435,10 @@ async function scheduleImageAttempt(params: {
   );
   const existingRefs = directTaskRefs(params.metadata.directImageTasks);
   const activeRefs = latestTaskRefsByUnit(existingRefs).filter(
-    ref => ref.status !== "completed" && ref.status !== "failed"
+    ref =>
+      directMediaRefReachedProvider(ref) &&
+      ref.status !== "completed" &&
+      ref.status !== "failed"
   );
   if (activeRefs.length > 0)
     return (
@@ -15855,9 +16449,13 @@ async function scheduleImageAttempt(params: {
   const pendingRepairUnits = directImageUnits(
     params.metadata.pendingImageRepairUnits
   );
+  const providerUnreachedIntentUnits =
+    imageUnitsFromProviderUnreachedSubmitIntents(existingRefs);
   const repairUnits = imageRepairUnitsForFrameStrategy(
     frameStrategy,
-    pendingRepairUnits
+    pendingRepairUnits.length > 0
+      ? pendingRepairUnits
+      : providerUnreachedIntentUnits
   );
   const units =
     repairUnits.length > 0
@@ -15899,10 +16497,7 @@ async function scheduleImageAttempt(params: {
             errorMessage: cleanText(ref.errorMessage),
             hasResultUrl: Boolean(cleanText(ref.resultUrl)),
           })),
-        latestQa: (Array.isArray(params.metadata.shotFrameVisionQaEnvelopes)
-          ? params.metadata.shotFrameVisionQaEnvelopes
-          : []
-        )
+        latestQa: imageVisionQaEnvelopesFromMetadata(params.metadata)
           .slice(-3)
           .map(qa => {
             const record = asRecord(qa);
@@ -16331,6 +16926,7 @@ async function pollDirectTask(params: {
   if (params.ref.status === "completed" && params.ref.resultUrl)
     return params.ref;
   if (params.ref.status === "failed") return params.ref;
+  if (!directMediaRefReachedProvider(params.ref)) return params.ref;
   const task = await mediaGenerationService.getTask(
     params.ref.taskId,
     params.userToken,
@@ -16392,6 +16988,284 @@ function imageUrlsFromDirectRefs(params: {
   };
 }
 
+function buildStoryboardGridLayoutQaRuntimeUnavailableEnvelope(params: {
+  runId: string;
+  gridUrl: string;
+  model: string;
+  imagePromptHashes: string[];
+  qaCacheKey?: string;
+  error: unknown;
+}): Record<string, unknown> {
+  const errorRecord = asRecord(params.error);
+  const adapterStatus =
+    params.error instanceof AgentRuntimeClientError
+      ? params.error.status
+      : toNumber(errorRecord.status);
+  const adapterCode =
+    params.error instanceof AgentRuntimeClientError
+      ? params.error.code
+      : cleanText(errorRecord.code);
+  const errorMessage =
+    cleanText(errorRecord.message) ||
+    "Storyboard grid layout QA runtime adapter unavailable.";
+  return {
+    qaEnvelopeId: `storyboard-grid-qa:${params.runId}:${nanoid(8)}`,
+    runId: params.runId,
+    shotId: "storyboard-grid",
+    stageKey: "image_generation",
+    mediaUnit: "storyboard_grid",
+    status: "qa_unavailable_warning",
+    checkedAt: nowIso(),
+    model: params.model,
+    provider: "agent-runtime",
+    frameUrls: [params.gridUrl],
+    frameRoles: ["storyboard_grid"],
+    failedFrameRoles: ["storyboard_grid"],
+    imagePromptHashes: params.imagePromptHashes,
+    verdict: "repair",
+    score: 0,
+    reasonCodes: [
+      "storyboard_grid_layout_qa_unavailable",
+      adapterCode || "agent_runtime_adapter_error",
+    ].filter(Boolean),
+    repairInstruction:
+      "Storyboard grid layout QA runtime was unavailable, so the provider image cannot be treated as a verified 3x3 grid. Regenerate one complete 9:16 storyboard canvas as exactly 3 columns x 3 rows with 9 equal panels and no visible labels.",
+    qaCacheKey: cleanText(params.qaCacheKey),
+    qaCacheHit: false,
+    qaUnavailable: true,
+    isStrict3x3: false,
+    gridColumns: 0,
+    gridRows: 0,
+    frameCount: 0,
+    visibleAddedText: false,
+    errorMessage,
+    adapterStatus: adapterStatus || undefined,
+    adapterCode: adapterCode || undefined,
+  };
+}
+
+async function runStoryboardGridLayoutVisionQa(params: {
+  db: Db;
+  tenantId: string;
+  auth: AuthContext;
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+  gridUrl: string;
+  runtime: RuntimeContext;
+}): Promise<Record<string, unknown>> {
+  const model =
+    cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
+    DEFAULT_VISION_QA_MODEL;
+  const imagePromptHashes = directImagePromptFingerprints(params.metadata);
+  const absoluteGridUrl = absoluteVisionUrl(
+    params.gridUrl,
+    params.runtime.publicUrl
+  );
+  const qaCacheKey = marketplaceAutoReviewQaCacheKey({
+    kind: "storyboard_grid_layout_vision_qa",
+    model,
+    runId: params.run.id,
+    urls: [absoluteGridUrl],
+    refs: ["storyboard_grid"],
+    promptHashPayload: {
+      productName: params.plan.productTruth.productName,
+      storyboardGridUrl: params.gridUrl,
+      imagePromptHashes,
+      expectedGridRows: 3,
+      expectedGridColumns: 3,
+      expectedFrameCount: MAX_SHOT_COUNT,
+      layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+    },
+  });
+  const cached = findMarketplaceAutoReviewQaCacheEntry({
+    metadata: params.metadata,
+    kind: "storyboard_grid_layout_vision_qa",
+    cacheKey: qaCacheKey,
+  });
+  if (cached) {
+    return {
+      ...cached,
+      qaCacheKey,
+      qaCacheHit: true,
+      cacheEvidenceRef: qaCacheKey,
+    };
+  }
+
+  const textInstruction = [
+    "ตรวจ QA เฉพาะ layout ของภาพ storyboard grid ต้นฉบับก่อนตัดเฟรม โดยตอบ JSON เท่านั้น",
+    "ภาพที่แนบคือผลลัพธ์ provider หนึ่งภาพเต็ม ไม่ใช่ภาพ crop รายเฟรม",
+    "ต้องเป็นภาพเดียวอัตราส่วน 9:16 ที่มี strict 3x3 grid เท่านั้น: 3 columns x 3 rows, exactly 9 panels, every panel equal size. ห้าม 2x5, 5x2, 10 panels, collage/masonry, merged cells, variable panel sizes, standalone product/lifestyle image, หรือภาพที่มี label/text เช่น storyboard_grid/frame numbers/captions",
+    "ให้ตรวจด้วยสายตาจากภาพจริงเท่านั้น ถ้าไม่แน่ใจให้ verdict=repair และระบุ reasonCodes ที่ตรงที่สุด",
+    'JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"isStrict3x3":boolean,"gridColumns":number,"gridRows":number,"frameCount":number,"visibleAddedText":boolean,"visibleTextExamples":[string],"repairInstruction":string}',
+  ].join("\n");
+  const runtimeInput = [
+    {
+      role: "user",
+      content: [
+        { type: "input_text", text: textInstruction },
+        {
+          type: "input_image",
+          image_url: absoluteGridUrl,
+          detail: "high",
+        },
+      ],
+    },
+  ];
+
+  let agentResult: Awaited<
+    ReturnType<typeof runMarketplaceMediaProductionAgent>
+  >;
+  try {
+    agentResult = await runMarketplaceMediaProductionAgent({
+      db: params.db,
+      tenantId: params.tenantId,
+      auth: params.auth,
+      run: params.run,
+      runId: params.run.id,
+      productionRunId: params.run.productionRunId,
+      stageKey: "image_generation",
+      model,
+      objective:
+        "Verify the original provider storyboard grid is exactly one strict 3x3 9:16 canvas before splitting. Return compact JSON only.",
+      runtimeInput,
+      metadata: params.metadata,
+      productTruth: params.plan.productTruth,
+      traceSuffix: buildProductionStableHash({
+        kind: "storyboard_grid_layout",
+        gridUrl: absoluteGridUrl,
+      }).slice(0, 16),
+      estimatedCreditReserve: 5,
+      creditCategory: "vision_qa",
+    });
+  } catch (error) {
+    if (error instanceof AgentRuntimeClientError) {
+      console.warn(
+        "[marketplaceAutoReview] storyboard_grid_layout_qa_runtime_unavailable_warning",
+        {
+          runId: params.run.id,
+          productionRunId: params.run.productionRunId,
+          status: error.status,
+          code: error.code,
+          message: error.message,
+        }
+      );
+      return buildStoryboardGridLayoutQaRuntimeUnavailableEnvelope({
+        runId: params.run.id,
+        gridUrl: params.gridUrl,
+        model,
+        imagePromptHashes,
+        qaCacheKey,
+        error,
+      });
+    }
+    throw error;
+  }
+
+  const { response, creditReservation } = agentResult;
+  const inputTokens = estimateTokenCount({
+    textInstruction,
+    imageUrls: [absoluteGridUrl],
+  });
+  const outputTokens = estimateTokenCount(response.finalOutput);
+  const credit = await reconcileMarketplaceLlmCredits({
+    auth: params.auth,
+    reservation: creditReservation,
+    inputTokens,
+    outputTokens,
+    reason: "storyboard_grid_layout_vision_qa_actual_usage_reconciled",
+    metadata: {
+      runId: params.run.id,
+      productionRunId: params.run.productionRunId,
+      imageCount: 1,
+      gatewayRouteId: response.gatewayRouteId,
+      adapterVersion: response.adapterVersion,
+      sdkVersion: response.sdkVersion,
+    },
+  });
+  let parsed = parseAgentRuntimeJsonOutput(response);
+  if (Object.keys(parsed).length === 0) {
+    parsed = {
+      verdict: "repair",
+      score: 0,
+      reasonCodes: ["storyboard_grid_layout_qa_non_json_response"],
+      repairInstruction:
+        "Regenerate one complete 9:16 storyboard canvas as a strict 3x3 grid with exactly 9 equal panels and no visible labels.",
+    };
+  }
+
+  const gridColumns = Math.floor(toNumber(parsed.gridColumns));
+  const gridRows = Math.floor(toNumber(parsed.gridRows));
+  const frameCount = Math.floor(toNumber(parsed.frameCount));
+  const visibleTextExamples = Array.isArray(parsed.visibleTextExamples)
+    ? parsed.visibleTextExamples.map(item => cleanText(item)).filter(Boolean)
+    : [];
+  const visibleAddedText =
+    parsed.visibleAddedText === true || visibleTextExamples.length > 0;
+  const reasonCodes = uniqueCleanTexts([
+    ...(Array.isArray(parsed.reasonCodes)
+      ? parsed.reasonCodes.map(item => cleanText(item))
+      : []),
+    ...(parsed.isStrict3x3 === true ? [] : ["storyboard_grid_layout_mismatch"]),
+    ...(gridColumns === 3 ? [] : ["storyboard_grid_columns_mismatch"]),
+    ...(gridRows === 3 ? [] : ["storyboard_grid_rows_mismatch"]),
+    ...(frameCount === MAX_SHOT_COUNT
+      ? []
+      : ["storyboard_grid_frame_count_mismatch"]),
+    ...(visibleAddedText ? ["storyboard_grid_visible_label_text"] : []),
+    ...(cleanText(parsed.verdict) === "pass" &&
+    (gridColumns <= 0 || gridRows <= 0 || frameCount <= 0)
+      ? ["storyboard_grid_layout_qa_contract_invalid"]
+      : []),
+  ]);
+  const verdict =
+    cleanText(parsed.verdict) === "pass" &&
+    parsed.isStrict3x3 === true &&
+    gridColumns === 3 &&
+    gridRows === 3 &&
+    frameCount === MAX_SHOT_COUNT &&
+    !visibleAddedText
+      ? "pass"
+      : "repair";
+  return {
+    qaEnvelopeId: `storyboard-grid-qa:${params.run.id}:${nanoid(8)}`,
+    runId: params.run.id,
+    shotId: "storyboard-grid",
+    stageKey: "image_generation",
+    mediaUnit: "storyboard_grid",
+    status: verdict === "pass" ? "passed" : "needs_targeted_repair",
+    checkedAt: nowIso(),
+    model,
+    provider: response.providerId ?? "llm-gateway",
+    llmGatewayRouteRef: response.gatewayRouteId ?? "llm-gateway",
+    creditsRef: `credit:${credit.idempotencyKey}`,
+    creditTransactionId: credit.transactionId,
+    reservedCredits: credit.amount,
+    actualCredits: credit.actualCredits,
+    creditsUsed: credit.creditsUsed,
+    refundCredits: credit.refundAmount,
+    refundTransactionId: credit.refundTransactionId,
+    frameUrls: [params.gridUrl],
+    frameRoles: ["storyboard_grid"],
+    failedFrameRoles: verdict === "pass" ? [] : ["storyboard_grid"],
+    imagePromptHashes,
+    verdict,
+    score: toNumber(parsed.score),
+    reasonCodes,
+    repairInstruction:
+      cleanText(parsed.repairInstruction) ||
+      "Regenerate one complete 9:16 storyboard canvas as exactly 3 equal columns x 3 equal rows with 9 panels, no 2x5/5x2/10-panel layout, no collage/masonry layout, and no visible text labels.",
+    qaCacheKey,
+    qaCacheHit: false,
+    isStrict3x3: parsed.isStrict3x3 === true,
+    gridColumns,
+    gridRows,
+    frameCount,
+    visibleAddedText,
+    visibleTextExamples,
+  };
+}
+
 async function runShotFrameVisionQa(params: {
   db: Db;
   tenantId: string;
@@ -16442,7 +17316,7 @@ async function runShotFrameVisionQa(params: {
   });
   if (cached) {
     return {
-      ...cached,
+      ...normalizeCachedShotFrameVisionQaEnvelopeForPlan(cached, params.plan),
       qaCacheKey,
       qaCacheHit: true,
       cacheEvidenceRef: qaCacheKey,
@@ -16457,13 +17331,13 @@ async function runShotFrameVisionQa(params: {
     `Generated frame role order: ${params.frameRoles.join(", ")}`,
     "ตรวจว่าภาพสินค้าไม่ผิดจาก product anchor, ไม่เพิ่มรายละเอียดสินค้าเอง, continuity ของ start/stop หรือ storyboard frame สอดคล้อง, ถ้ามี character anchor ต้องหน้า/ตัวตนไม่เปลี่ยนระหว่าง shot, ถ้ามี environment anchor ฉากต้องต่อเนื่อง และข้อความคำเตือนในภาพไม่บังสินค้า",
     marketplaceAutoReviewPlanNeedsMinorSafetyLock(params.plan)
-      ? "กฎ publish safety สำหรับเด็ก: ถ้ามีเด็ก/ทารก/ toddler/minor ปรากฏ ต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear เสมอ ห้ามเด็กไม่ใส่เสื้อ ห้าม bare chest/bare torso ห้ามใส่แค่ผ้าอ้อมหรือ underwear-only ห้าม bath/changing/nude/semi-nude framing หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
+      ? "กฎ publish safety สำหรับเด็ก: ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
       : "",
     params.frameRoles.length === 1 && params.frameRoles[0] === "storyboard_frame"
       ? "โหมดนี้เป็น 3x3 cut storyboard_frame เท่านั้น: ห้ามประเมิน start_frame หรือ stop_frame และห้ามใส่ start_frame/stop_frame ใน failedFrameRoles หรือ frameVerdicts."
       : "โหมดนี้มี start/stop frame ให้ตรวจบทบาทตาม Generated frame role order เท่านั้น.",
     "ถ้า start หรือ stop frame ไม่ผ่าน ให้ระบุ failedFrameRoles แบบ structured เป็น start_frame/stop_frame/storyboard_frame และซ่อมเฉพาะ frame นั้น ห้ามสั่ง regenerate ทั้ง run",
-    'JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"failedFrameRoles":["start_frame|stop_frame|storyboard_frame"],"frameVerdicts":[{"role":"start_frame|stop_frame|storyboard_frame","verdict":"pass|repair","reasonCodes":[string],"repairInstruction":string}],"repairInstruction":string,"productMatchesReference":boolean,"continuityMatchesShot":boolean,"characterConsistencySafe":boolean,"adWarningTextSafe":boolean,"minorSafetyClothingSafe":boolean}',
+    'JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"failedFrameRoles":["start_frame|stop_frame|storyboard_frame"],"frameVerdicts":[{"role":"start_frame|stop_frame|storyboard_frame","verdict":"pass|repair","reasonCodes":[string],"repairInstruction":string}],"repairInstruction":string,"productMatchesReference":boolean,"continuityMatchesShot":boolean,"characterConsistencySafe":boolean,"adWarningTextSafe":boolean,"minorPresent":boolean,"minorSafetyClothingSafe":boolean}',
   ]
     .filter(Boolean)
     .join("\n");
@@ -16565,11 +17439,13 @@ async function runShotFrameVisionQa(params: {
   const parsedReasonCodes = Array.isArray(parsed.reasonCodes)
     ? parsed.reasonCodes.map(item => cleanText(item)).filter(Boolean)
     : [];
+  const normalizedMinorSafety = normalizeVisionQaMinorSafetyResult({
+    parsed,
+    plan: params.plan,
+    reasonCodes: parsedReasonCodes,
+  });
   const minorSafetyClothingSafe =
-    marketplaceAutoReviewPlanNeedsMinorSafetyLock(params.plan)
-      ? parsed.minorSafetyClothingSafe === true &&
-        !imageReasonCodesContainPublishSafetyBlocker(parsedReasonCodes)
-      : parsed.minorSafetyClothingSafe !== false;
+    normalizedMinorSafety.minorSafetyClothingSafe;
   const verdict =
     cleanText(parsed.verdict) === "pass" && minorSafetyClothingSafe
       ? "pass"
@@ -16618,21 +17494,19 @@ async function runShotFrameVisionQa(params: {
     ].filter(Boolean),
     verdict,
     score: toNumber(parsed.score),
-    reasonCodes: uniqueCleanTexts([
-      ...parsedReasonCodes,
-      ...(minorSafetyClothingSafe ? [] : ["minor_safety_child_clothing_issue"]),
-    ]),
+    reasonCodes: normalizedMinorSafety.reasonCodes,
     repairInstruction:
       cleanText(parsed.repairInstruction) ||
       (minorSafetyClothingSafe
         ? ""
-        : "Regenerate with every visible baby, toddler, child, kid, or minor fully clothed; no shirtless child, no bare torso, and no diaper-only/underwear-only scene."),
+        : "Vision QA could not verify the minor-safety evidence cleanly. Regenerate with clear publish-safe framing and do not add children unless the approved storyboard explicitly requires them."),
     qaCacheKey,
     qaCacheHit: false,
     productMatchesReference: parsed.productMatchesReference === true,
     continuityMatchesShot: parsed.continuityMatchesShot === true,
     characterConsistencySafe: parsed.characterConsistencySafe !== false,
     adWarningTextSafe: parsed.adWarningTextSafe !== false,
+    minorPresent: normalizedMinorSafety.minorPresent,
     minorSafetyClothingSafe,
   };
 }
@@ -16664,6 +17538,7 @@ async function ensureImageVisionQa(params: {
   ) {
     return { metadata: params.metadata, accepted: true, repairUnits: [] };
   }
+  const storyboardGridQaEnvelopes: Record<string, unknown>[] = [];
   const qaEnvelopes: Record<string, unknown>[] = [];
   const repairUnits: DirectImageUnit[] = [];
   const addStoryboardGridRepairUnit = (
@@ -16675,6 +17550,42 @@ async function ensureImageVisionQa(params: {
       buildStoryboardGridRepairUnit({ reasonCodes, repairInstruction })
     );
   };
+  let skipShotQaBecauseGridInvalid = false;
+  if (isStoryboardGridSplit) {
+    const storyboardGridUrl =
+      cleanText(params.metadata.storyboardGridUrl) ||
+      directTaskResultUrl(params.refs, "storyboard-grid-image");
+    if (!storyboardGridUrl) {
+      skipShotQaBecauseGridInvalid = true;
+      addStoryboardGridRepairUnit(
+        ["missing_storyboard_grid_source_url"],
+        "Regenerate the complete 3x3 storyboard grid because the provider result URL is missing before layout QA and split-frame validation."
+      );
+    } else {
+      const gridQa = await runStoryboardGridLayoutVisionQa({
+        db: params.db,
+        tenantId: params.tenantId,
+        auth: params.auth,
+        run: params.run,
+        plan: params.plan,
+        metadata: params.metadata,
+        gridUrl: storyboardGridUrl,
+        runtime: params.runtime,
+      });
+      storyboardGridQaEnvelopes.push(gridQa);
+      if (cleanText(gridQa.verdict) !== "pass") {
+        skipShotQaBecauseGridInvalid = true;
+        const gridRepairUnit = buildStoryboardGridQaRepairUnit(gridQa);
+        addStoryboardGridRepairUnit(
+          gridRepairUnit.repairReasonCodes ?? [
+            "storyboard_grid_layout_mismatch",
+          ],
+          gridRepairUnit.repairInstruction ||
+            "Regenerate the original provider output as one strict 3x3 storyboard grid before any split-frame QA."
+        );
+      }
+    }
+  }
   for (const shot of params.plan.shots) {
     const index = shot.order - 1;
     const usesStartStopFrames =
@@ -16702,7 +17613,9 @@ async function ensureImageVisionQa(params: {
         ];
     const presentFrames = frameCandidates.filter(frame => Boolean(frame.url));
     let qa: Record<string, unknown> | null = null;
-    if (presentFrames.length > 0) {
+    if (skipShotQaBecauseGridInvalid && isStoryboardGridSplit) {
+      qa = null;
+    } else if (presentFrames.length > 0) {
       qa = await runShotFrameVisionQa({
         db: params.db,
         tenantId: params.tenantId,
@@ -16743,7 +17656,8 @@ async function ensureImageVisionQa(params: {
     }
   }
   const accepted = repairUnits.length === 0;
-  const qaHasWarnings = qaEnvelopes.some(
+  const allQaEnvelopes = [...storyboardGridQaEnvelopes, ...qaEnvelopes];
+  const qaHasWarnings = allQaEnvelopes.some(
     qa => cleanText(qa.verdict) !== "pass" || cleanText(qa.status) === "failed"
   );
   const repairPlanEntries = repairUnits.map(unit => {
@@ -16801,9 +17715,14 @@ async function ensureImageVisionQa(params: {
       createdAt: nowIso(),
     };
   });
-  const qaContractEnvelopes = qaEnvelopes.map(qa => {
+  const qaContractEnvelopes = allQaEnvelopes.map(qa => {
     const shotId = cleanText(qa.shotId);
-    const repairPlan = repairPlanEntries.find(item => item.shotId === shotId);
+    const repairPlan = repairPlanEntries.find(
+      item =>
+        item.shotId === shotId ||
+        (cleanText(qa.mediaUnit) === "storyboard_grid" &&
+          cleanText(item.mediaUnit) === "storyboard_grid")
+    );
     return {
       qaEnvelopeId: cleanText(qa.qaEnvelopeId),
       shotId,
@@ -16838,13 +17757,14 @@ async function ensureImageVisionQa(params: {
   const acceptanceId = `acceptance:image:${params.run.id}:${nanoid(8)}`;
   const baseMetadata = {
     ...params.metadata,
+    storyboardGridVisionQaEnvelopes: storyboardGridQaEnvelopes,
     shotFrameVisionQaEnvelopes: qaEnvelopes,
     shotFrameVisionQa: qaContractEnvelopes,
     llmQaCreditTransactions: [
       ...(Array.isArray(params.metadata.llmQaCreditTransactions)
         ? params.metadata.llmQaCreditTransactions
         : []),
-      ...qaEnvelopes.map(qa => ({
+      ...allQaEnvelopes.map(qa => ({
         qaEnvelopeId: qa.qaEnvelopeId,
         shotId: qa.shotId,
         creditsUsed: qa.creditsUsed,
@@ -16886,7 +17806,7 @@ async function ensureImageVisionQa(params: {
             ? "accepted_with_warnings"
             : "accepted"
           : "quarantined_failed_qa",
-        qaVerdictRefs: qaEnvelopes
+        qaVerdictRefs: allQaEnvelopes
           .map(qa => cleanText(qa.qaEnvelopeId))
           .filter(Boolean),
         warningApprovalRefs: [],
@@ -16897,7 +17817,7 @@ async function ensureImageVisionQa(params: {
       metadata: params.metadata,
       run: params.run,
       refs: params.refs,
-      qaEnvelopes,
+      qaEnvelopes: allQaEnvelopes,
       repairUnits,
       status: accepted
         ? qaHasWarnings && isStoryboardGridSplit
@@ -16917,14 +17837,14 @@ async function ensureImageVisionQa(params: {
           : "accepted"
         : "repair_required",
       checkedAt: nowIso(),
-      qaEnvelopeRefs: qaEnvelopes
+      qaEnvelopeRefs: allQaEnvelopes
         .map(qa => cleanText(qa.qaEnvelopeId))
         .filter(Boolean),
       repairUnitCount: repairUnits.length,
       repairPolicy: isStoryboardGridSplit
         ? "grid_split_no_per_shot_regeneration"
         : "targeted_frame_repair",
-      warningCount: qaHasWarnings ? qaEnvelopes.length : 0,
+      warningCount: qaHasWarnings ? allQaEnvelopes.length : 0,
       productReferenceLocked: true,
       characterConsistencyChecked: true,
       adComplianceWarningChecked: true,
@@ -16937,7 +17857,7 @@ async function ensureImageVisionQa(params: {
     ...imageSelectionMetadata,
     qaCacheEntries: mergeMarketplaceAutoReviewQaCacheEntries({
       metadata: params.metadata,
-      entries: qaEnvelopes
+      entries: allQaEnvelopes
         .map(qa => ({
           qa,
           cacheKey: cleanText(qa.qaCacheKey),
@@ -16945,7 +17865,10 @@ async function ensureImageVisionQa(params: {
         .filter(item => item.cacheKey)
         .map(item =>
           buildMarketplaceAutoReviewQaCacheEntry({
-            kind: "shot_frame_vision_qa",
+            kind:
+              cleanText(item.qa.mediaUnit) === "storyboard_grid"
+                ? "storyboard_grid_layout_vision_qa"
+                : "shot_frame_vision_qa",
             cacheKey: item.cacheKey,
             envelope: item.qa,
             sourceRefs: [
@@ -17204,12 +18127,12 @@ async function reconcileDirectImageAttempt(params: {
     );
     const publishSafetyBlocked =
       imageReasonCodesContainPublishSafetyBlocker(repairReasonCodes);
+    const storyboardGridLayoutBlocked =
+      imageReasonCodesContainStoryboardGridLayoutBlocker(repairReasonCodes);
     const wholeStoryboardProductFidelityFailure =
       productFidelityFailureIsWholeStoryboard({
         reasonCodes: repairReasonCodes,
-        qaEnvelopes: Array.isArray(qa.metadata.shotFrameVisionQaEnvelopes)
-          ? qa.metadata.shotFrameVisionQaEnvelopes.map(item => asRecord(item))
-          : [],
+        qaEnvelopes: imageVisionQaEnvelopesFromMetadata(qa.metadata),
         expectedFrameCount: shotCountForPlan(params.plan),
       });
     const storyboardFramesReady =
@@ -17254,6 +18177,7 @@ async function reconcileDirectImageAttempt(params: {
           repairUnitIds: qa.repairUnits.map(unit => cleanText(unit.unitId)),
           reasonCodes: repairReasonCodes,
           wholeStoryboardProductFidelityFailure,
+          storyboardGridLayoutBlocked,
         }
       );
       await updateRun({
@@ -17289,14 +18213,8 @@ async function reconcileDirectImageAttempt(params: {
             0,
             shotCountForPlan(params.plan)
           ),
-          qaVerdictRefs: (Array.isArray(
-            acceptedMetadata.shotFrameVisionQaEnvelopes
-          )
-            ? acceptedMetadata.shotFrameVisionQaEnvelopes
-            : []
-          )
-            .map(item => cleanText(asRecord(item).qaEnvelopeId))
-            .filter(Boolean),
+          qaVerdictRefs:
+            imageVisionQaEnvelopeRefsFromMetadata(acceptedMetadata),
           repairRefs: qa.repairUnits
             .map(unit => cleanText(unit.unitId))
             .filter(Boolean),
@@ -17323,6 +18241,122 @@ async function reconcileDirectImageAttempt(params: {
         ),
       };
     }
+    if (repairBudgetExhausted && publishSafetyBlocked) {
+      const hardBlockReason =
+        "publish_safety_hard_blocker_after_repair_budget_exhausted";
+      const blockedMetadata = withUpdatedCreditSummary({
+        ...qa.metadata,
+        pendingImageRepairUnits: qa.repairUnits,
+        generatedMediaAcceptanceEnvelope: compactRecord({
+          ...asRecord(qa.metadata.generatedMediaAcceptanceEnvelope),
+          runId: params.run.id,
+          stageKey: "image_generation",
+          status: "repair_required",
+          checkedAt: nowIso(),
+          hardBlocked: true,
+          userReviewRequired: true,
+          overrideReason: hardBlockReason,
+          qaEnvelopeRefs: imageVisionQaEnvelopeRefsFromMetadata(qa.metadata),
+          repairUnitCount: qa.repairUnits.length,
+          reasonCodes:
+            repairReasonCodes.length > 0
+              ? repairReasonCodes
+              : [hardBlockReason],
+        }),
+        imageQaReviewOverride: {
+          status: "repair_required",
+          reason: hardBlockReason,
+          repairUnitIds: qa.repairUnits
+            .map(unit => cleanText(unit.unitId))
+            .filter(Boolean),
+          reasonCodes: repairReasonCodes,
+          createdAt: nowIso(),
+        },
+      });
+      const hardBlockQaRefs =
+        imageVisionQaEnvelopeRefsFromMetadata(blockedMetadata);
+      const hardBlockCreditRefs = uniqRefs([
+        ...creditRefsFromMetadata(blockedMetadata),
+        "credit-reconciliation:image-generation-hard-blocker-checked",
+      ]);
+      const hardBlockMissingRefs = uniqRefs([
+        "stageCompletionSuccess",
+        "publishSafetyAccepted",
+        ...repairReasonCodes.map(code => `reason:${code}`),
+      ]);
+      const hardBlockPolicyRefs = uniqRefs([
+        "fail-closed",
+        "publish-safety-hard-blocker",
+      ]);
+      await updateRun({
+        db: params.db,
+        runId: params.run.id,
+        status: "failed",
+        currentStage: "image_generation",
+        stageIndex: stageIndex("image_generation", stages),
+        stageCount: stages.length,
+        metadataJson: blockedMetadata,
+        errorMessage: hardBlockReason,
+      });
+      await upsertRunStage({
+        db: params.db,
+        runId: params.run.id,
+        stageKey: "image_generation",
+        stageOrder: stageIndex("image_generation", stages),
+        status: "failed",
+        providerTaskIds: blockedMetadata.imageProviderTaskIds,
+        output: {
+          attemptId: params.attemptId,
+          status: "repair_required",
+          activeSubstep: "หยุดส่งต่อ: พบ hard blocker ด้าน publish safety",
+          progressPercent: 100,
+          qaVerdictRefs: hardBlockQaRefs,
+          creditRefs: hardBlockCreditRefs,
+          missingRefs: hardBlockMissingRefs,
+          policyRefs: hardBlockPolicyRefs,
+          repairRefs: qa.repairUnits
+            .map(unit => cleanText(unit.unitId))
+            .filter(Boolean),
+          statusDetail: {
+            state: "image_generation_hard_blocked",
+            severity: "error",
+            stageKey: "image_generation",
+            reasonCodes:
+              repairReasonCodes.length > 0
+                ? repairReasonCodes
+                : [hardBlockReason],
+            safeMessage:
+              "ระบบหยุดส่งต่อเพราะผล QA พบ hard blocker ด้าน publish safety หลังซ่อมครบจำนวนครั้งแล้ว",
+            nextAction:
+              "ตรวจ prompt/reference แล้วเริ่ม Auto Review รอบใหม่หลังแก้เงื่อนไขที่ทำให้ provider สร้างภาพไม่ผ่าน",
+            userActionRequired: true,
+            retryable: false,
+          },
+        },
+        stageCompletionEvidence: {
+          status: "terminal_failure",
+          requiredRefs: [
+            "failureReason",
+            "missingRefs",
+            "creditRefs",
+            "qaVerdictRefs",
+          ],
+          artifactRefs: [`run:${params.run.id}`],
+          qaVerdictRefs: hardBlockQaRefs,
+          creditRefs: hardBlockCreditRefs,
+          missingRefs: hardBlockMissingRefs,
+          policyRefs: hardBlockPolicyRefs,
+        },
+      });
+      return {
+        attempt: {
+          attemptId: params.attemptId,
+          status: "failed",
+          errorMessage: hardBlockReason,
+        },
+        refs: latestTaskRefsByUnit(directTaskRefs(blockedMetadata.directImageTasks)),
+      };
+    }
     const updatedRun = {
       ...params.run,
       metadataJson: qa.metadata,
@@ -17339,12 +18373,7 @@ async function reconcileDirectImageAttempt(params: {
         status: "vision_qa_repair",
         activeSubstep: "ซ่อมภาพจากผลตรวจ QA",
         progressPercent: 70,
-        qaVerdictRefs: (Array.isArray(qa.metadata.shotFrameVisionQaEnvelopes)
-          ? qa.metadata.shotFrameVisionQaEnvelopes
-          : []
-        )
-          .map(item => cleanText(asRecord(item).qaEnvelopeId))
-          .filter(Boolean),
+        qaVerdictRefs: imageVisionQaEnvelopeRefsFromMetadata(qa.metadata),
         repairRefs: qa.repairUnits
           .map(unit => cleanText(unit.unitId))
           .filter(Boolean),
@@ -18708,14 +19737,25 @@ async function scheduleVideoAttempt(params: {
   }
   const existingRefs = directTaskRefs(params.metadata.directVideoTasks);
   const activeRefs = latestTaskRefsByUnit(existingRefs).filter(
-    ref => ref.status !== "completed" && ref.status !== "failed"
+    ref =>
+      directMediaRefReachedProvider(ref) &&
+      ref.status !== "completed" &&
+      ref.status !== "failed"
   );
   if (activeRefs.length > 0)
     return (
       cleanText(params.metadata.videoAttemptId) ||
       `direct-video-${params.run.id}`
     );
-  const repairUnits = directVideoUnits(params.metadata.pendingVideoRepairUnits);
+  const pendingVideoRepairUnits = directVideoUnits(
+    params.metadata.pendingVideoRepairUnits
+  );
+  const providerUnreachedIntentUnits =
+    videoUnitsFromProviderUnreachedSubmitIntents(existingRefs);
+  const repairUnits =
+    pendingVideoRepairUnits.length > 0
+      ? pendingVideoRepairUnits
+      : providerUnreachedIntentUnits;
   const units =
     repairUnits.length > 0
       ? repairUnits
@@ -22136,6 +23176,104 @@ async function reloadRun(db: Db, runId: string, auth: AuthContext) {
   return run;
 }
 
+async function clearResolvedMarketplaceAutoReviewInputChangeBlock(params: {
+  db: Db;
+  run: MarketplaceAutoReviewRun;
+  auth: AuthContext;
+  blockedStage: MarketplaceAutoReviewStage;
+}): Promise<MarketplaceAutoReviewRun | null> {
+  const statusDetail = asRecord(
+    asRecord(params.blockedStage.outputJson).statusDetail
+  );
+  if (cleanText(statusDetail.state) !== "input_change_recheck_required") {
+    return null;
+  }
+  const metadata = asRecord(params.run.metadataJson) as RunMetadata;
+  const bundle = await getMarketplaceProductWithAccess(
+    params.run.productId,
+    params.auth
+  );
+  const currentInputChangeImpact =
+    evaluateMarketplaceAutoReviewInputChangeImpact({
+      runId: params.run.id,
+      metadata,
+      productTruth: buildProductTruth(bundle),
+      productUpdatedAt: productUpdatedAtFromBundle(bundle),
+      selectedVariantHash: selectedVariantHashFromBundle(bundle),
+      outputMode: params.run.outputMode,
+      frameStrategy: params.run.frameStrategy,
+      audioStrategy: metadata.audioStrategy,
+      resolvedAudioStrategy: metadata.resolvedAudioStrategy,
+      requestedShotCount: metadata.requestedShotCount,
+    });
+  if (cleanText(currentInputChangeImpact.status) !== "no_recheck_required") {
+    return null;
+  }
+  const stages = stageKeysForMode(
+    params.run.outputMode as MarketplaceAutoReviewOutputMode
+  );
+  const previousStage = cleanText(
+    asRecord(metadata.paidStageAuthorityFreshness).stageKey
+  );
+  const resumeStage: StageKey =
+    previousStage &&
+    previousStage !== "product_preflight" &&
+    stages.includes(previousStage as StageKey)
+      ? (previousStage as StageKey)
+      : "image_generation";
+  const nextMetadata = withUpdatedCreditSummary({
+    ...metadata,
+    inputChangeImpact: currentInputChangeImpact,
+    paidStageAuthorityFreshness: {
+      status: "no_recheck_required",
+      reason: "advance_resume_input_change_cleared",
+      checkedAt: nowIso(),
+      stageKey: resumeStage,
+      clearedBlockedStage: params.blockedStage.stageKey,
+    },
+  });
+  await upsertRunStage({
+    db: params.db,
+    runId: params.run.id,
+    stageKey: "product_preflight",
+    stageOrder: stageIndex("product_preflight", stages),
+    status: "completed",
+    output: {
+      statusDetail: {
+        state: "input_change_recheck_cleared",
+        severity: "info",
+        stageKey: "product_preflight",
+        reasonCodes: [],
+        safeMessage:
+          "ตรวจ input change ซ้ำแล้วไม่พบ stale refs จริง ระบบจึงกลับไปทำงาน stage เดิมต่อ",
+        nextAction: "ดำเนินการต่อจาก stage ล่าสุด",
+        userActionRequired: false,
+        retryable: false,
+      },
+    },
+    stageCompletionEvidence: {
+      status: "complete",
+      requiredRefs: ["inputChangeImpact", "currentProductTruth"],
+      artifactRefs: [`run:${params.run.id}`],
+      qaVerdictRefs: [
+        cleanText(currentInputChangeImpact.impactId) ||
+          `input-impact:${params.run.id}`,
+      ],
+      policyRefs: ["structured-input-change-recheck"],
+    },
+  });
+  return updateRun({
+    db: params.db,
+    runId: params.run.id,
+    status: "running",
+    currentStage: resumeStage,
+    stageIndex: stageIndex(resumeStage, stages),
+    stageCount: stages.length,
+    metadataJson: nextMetadata,
+    errorMessage: null,
+  });
+}
+
 export async function advanceMarketplaceAutoReviewRun(
   runId: string,
   auth: AuthContext,
@@ -22170,7 +23308,16 @@ export async function advanceMarketplaceAutoReviewRun(
     )
     .limit(1);
   if (blockedStage) {
-    return getMarketplaceAutoReviewRun(runId, auth);
+    const clearedRun = await clearResolvedMarketplaceAutoReviewInputChangeBlock({
+      db,
+      run,
+      auth,
+      blockedStage,
+    });
+    if (!clearedRun) {
+      return getMarketplaceAutoReviewRun(runId, auth);
+    }
+    run = clearedRun;
   }
   const lease = await claimMarketplaceAutoReviewAdvanceLease({
     db,

@@ -65,6 +65,7 @@ export const MARKETPLACE_AUTO_REVIEW_DETAIL_STATES = [
   "capability_manifest_blocked",
   "creative_brief_needs_review",
   "cancelled",
+  "skipped",
   "failed_terminal",
   "completed_with_warnings",
   "completed",
@@ -228,6 +229,31 @@ export const MarketplaceAutoReviewReferenceAnchorsSchema = z
     characterImageRef: NullableStringSchema,
     environmentImageUrl: NullableStringSchema,
     environmentImageRef: NullableStringSchema,
+    reviewTone: z
+      .enum([
+        "warm_honest",
+        "funny_light",
+        "irritated_problem",
+        "energetic_excited",
+        "empathetic_soft",
+        "expert_confident",
+        "straight_serious",
+      ])
+      .nullable()
+      .optional(),
+    storytellingStructure: z
+      .enum([
+        "hook_problem_emotion_insight_solution_result_cta",
+        "hook_problem_insight_proof_cta",
+        "product_review_situation_problem_try_result_fit",
+        "before_after_bridge",
+        "pas",
+        "aida",
+        "relatable_story",
+        "problem_struggle_solution_transformation",
+      ])
+      .nullable()
+      .optional(),
     requiredRoles: z
       .array(ReferenceAnchorRoleSchema)
       .default(["product", "character", "environment"]),
@@ -2496,6 +2522,19 @@ function normalizeStageStatus(
   return "queued";
 }
 
+function shouldSkipQueuedStageAfterTerminalRun(input: {
+  runStatus: string;
+  stageOrder: number;
+  currentStageOrder: number;
+  status: z.infer<typeof MarketplaceAutoReviewStageStatusSchema>;
+}): boolean {
+  return (
+    (input.runStatus === "failed" || input.runStatus === "cancelled") &&
+    input.status === "queued" &&
+    input.stageOrder > input.currentStageOrder
+  );
+}
+
 function detailFor(input: {
   state: z.infer<typeof MarketplaceAutoReviewDetailStateSchema>;
   stageKey?: MarketplaceAutoReviewStageKey | null;
@@ -2883,19 +2922,43 @@ export function buildMarketplaceAutoReviewTimelineProjection(
   const currentStage = currentStageKey
     ? stageByKey.get(currentStageKey)
     : undefined;
+  const currentStageOrder =
+    Number(run.stageIndex) ||
+    currentStage?.stageOrder ||
+    (currentStageKey ? keys.indexOf(currentStageKey) + 1 : 1) ||
+    1;
   const items = keys.map((stageKey, index) => {
     const stage = stageByKey.get(stageKey);
     const output = asRecord(stage?.outputJson);
-    const detail = detailFromStage(stage, stageKey);
+    let detail = detailFromStage(stage, stageKey);
     const rawStatus = normalizeStageStatus(
       String(stage?.status ?? (index === 0 ? "queued" : "queued"))
     );
     const evidence = completionEvidenceByStage.get(stageKey);
-    const status = statusFromCompletionEvidence(evidence, rawStatus);
+    let status = statusFromCompletionEvidence(evidence, rawStatus);
+    const order = stage?.stageOrder || index + 1;
+    if (
+      shouldSkipQueuedStageAfterTerminalRun({
+        runStatus: run.status,
+        stageOrder: order,
+        currentStageOrder,
+        status,
+      })
+    ) {
+      status = "skipped";
+      detail = detailFor({
+        state: "skipped",
+        stageKey,
+        severity: "info",
+        reasonCodes: [`run_${run.status}_before_stage`],
+        safeMessage: "ข้ามขั้นตอนนี้ เพราะงานหยุดก่อนถึงขั้นตอนนี้",
+        nextAction: "ตรวจขั้นตอนที่ล้มเหลวหรือถูกยกเลิกก่อนหน้า",
+      });
+    }
     return MarketplaceAutoReviewTimelineItemSchema.parse({
       stageKey,
       label: STAGE_LABELS[stageKey],
-      order: stage?.stageOrder || index + 1,
+      order,
       status,
       detail,
       startedAt: toIso(stage?.startedAt),

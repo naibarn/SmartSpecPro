@@ -2,7 +2,7 @@
 # Multi-stage build for optimized image size
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:22.22.3-alpine AS deps
 WORKDIR /app
 
 # Copy package files
@@ -16,7 +16,7 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:22.22.3-alpine AS builder
 WORKDIR /app
 
 # Install OpenSSL for Prisma
@@ -33,7 +33,7 @@ RUN if [ -f prisma/schema.prisma ]; then npx prisma generate; fi
 RUN npm run build || echo "Build failed, will use src in production"
 
 # Stage 3: Runtime
-FROM node:20-alpine AS runner
+FROM node:22.22.3-alpine AS runner
 WORKDIR /app
 
 # Set environment

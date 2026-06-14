@@ -1,0 +1,30 @@
+{
+  "gate": "rollback-drill",
+  "status": "passed",
+  "generatedAt": "2026-06-13T03:11:52.373Z",
+  "checks": {
+    "featureFlagRollbackPathDocumented": true,
+    "newJobsBlockedWhenRuntimeDisabled": true,
+    "diagnosticFallbackCannotCompleteUserFacingFinal": true,
+    "completedLibraryArtifactsRemainReadable": true,
+    "standardOrderFallbackPreserved": true,
+    "transientArtifactPurgeIsDryRunFirst": true
+  },
+  "fixtureOutputRef": {
+    "kind": "final_video",
+    "url": "/api/storage/files/marketplace-auto-review/tenant_1/mar_1/hyperframes/hf_fixture/output.mp4",
+    "contentHash": "hf_e5da0950c1f96a4e379c4d6f75ca2d1d690157a4b9da35c8"
+  },
+  "rollbackSteps": [
+    "Disable marketplaceHyperframesWorkerEnabled for the tenant.",
+    "Stop creating new official runtime jobs.",
+    "Keep completed Library-owned artifacts readable.",
+    "Do not allow diagnostic fallback to complete final/user-facing renders.",
+    "Keep Standard Order available while Auto is blocked.",
+    "Run retention purge in dry-run mode before deleting transient preview artifacts."
+  ],
+  "notes": [
+    "This drill is evidence-backed by the latest official HyperFrames fixture output.",
+    "Production rollback evidence should be regenerated in the deployed worker environment before promotion."
+  ]
+}

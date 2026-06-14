@@ -145,6 +145,33 @@ describe("AgentRuntimeClient", () => {
     });
   });
 
+  it("aborts adapter mutations that exceed the configured request timeout", async () => {
+    const fetchImpl = vi.fn(
+      (_url: string | URL | Request, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        }),
+    );
+    const client = new AgentRuntimeClient({
+      fetchImpl: fetchImpl as typeof fetch,
+      requestTimeoutMs: 5,
+      runtimeConfigLoader: async () =>
+        ({
+          pythonBackendUrl: "http://python-backend.test",
+        } as any),
+      internalTokenLoader: async () => "internal-token-1",
+    });
+
+    await expect(client.run(makeRequest())).rejects.toMatchObject({
+      code: "adapter_timeout",
+      status: 504,
+    } satisfies Partial<AgentRuntimeClientError>);
+  });
+
   it("preserves media-production cancel authority identity for the Python adapter", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(

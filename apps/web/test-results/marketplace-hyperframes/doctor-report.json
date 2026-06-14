@@ -1,0 +1,81 @@
+{
+  "generatedAt": "2026-06-14T17:13:34.079Z",
+  "node": {
+    "ok": true,
+    "version": "v22.22.3",
+    "requirement": ">=22.22.0 <23",
+    "message": "Node runtime satisfies the SmartSpecPro engine requirement."
+  },
+  "officialHyperframesNode": {
+    "ok": true,
+    "version": "v22.22.3",
+    "requirement": ">=22.22.0",
+    "message": "Node runtime satisfies the official HyperFrames runtime requirement."
+  },
+  "hyperframesRuntime": {
+    "ok": true,
+    "cliAvailable": true,
+    "producerPackageAvailable": true,
+    "cliPackage": "hyperframes@0.6.95",
+    "producerPackage": "@hyperframes/producer@0.6.95",
+    "productionReady": true,
+    "message": "Official HyperFrames runtime prerequisites are visible in this environment."
+  },
+  "chrome": {
+    "ok": true,
+    "commandAvailable": false,
+    "version": "playwright.chromium bundled",
+    "playwrightChromium": {
+      "ok": true,
+      "source": "playwright.chromium",
+      "executablePath": "/home/dev/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome"
+    }
+  },
+  "ffmpeg": {
+    "ok": true,
+    "version": "ffmpeg version 7.0.2-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2000-2024 the FFmpeg developers"
+  },
+  "ffprobe": {
+    "ok": true,
+    "version": "ffprobe version 7.0.2-static https://johnvansickle.com/ffmpeg/  Copyright (c) 2007-2024 the FFmpeg developers"
+  },
+  "localSmokeRenderer": {
+    "ok": true,
+    "renderer": "diagnostic_ffmpeg_smoke",
+    "message": "Diagnostic smoke rendering can verify plumbing only; it cannot complete user-facing HyperFrames renders."
+  },
+  "fonts": {
+    "ok": true,
+    "fontconfigAvailable": true,
+    "thaiFontFamilies": [
+      "Loma",
+      "Unifont-JP",
+      "FreeSerif",
+      "Unifont Sample",
+      "Unifont"
+    ],
+    "message": "Thai-capable render fonts are visible to fontconfig."
+  },
+  "tempWorkspace": {
+    "ok": true,
+    "policy": "tenant/run scoped temp dirs"
+  },
+  "storage": {
+    "ok": true,
+    "message": "Storage ownership is validated by hyperframesAssetStagingService."
+  },
+  "workerImage": {
+    "ok": true,
+    "reviewed": true,
+    "imageDigest": "hf_c2c7bbdbf5be3962501f4159c80019449b2cdc95110150e7",
+    "note": "Local/CI worker evidence. Production should set MARKETPLACE_HYPERFRAMES_WORKER_IMAGE_DIGEST to the deployed image digest."
+  },
+  "officialCli": {
+    "ok": true,
+    "packageVersion": "0.6.95",
+    "producerPackageVersion": "0.6.95",
+    "nodeRequirement": ">=22.22.0"
+  },
+  "secretsPrinted": false,
+  "gate": "official_runtime_ready"
+}

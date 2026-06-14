@@ -25,3 +25,19 @@
 [2026-06-07T14:45:00Z] DECISION: Allow parallel Marketplace Auto Review runs per product.
   Context: The Auto UI was blocked even with no run rows for the product because compliance risk was a hard blocker, and the database still enforced a same-user/same-product active unique index.
   Alternatives considered: keeping active-run resume as the primary action, rejected because the product requirement is to start a new Auto run even while an older run is active; idempotency keys remain the duplicate request guard.
+
+[2026-06-13T02:27:06Z] DECISION: Continue the existing Orchestra session for the recurring intermittent preflight failure.
+  Context: Existing `orchestra/` artifacts contain prior RCA/fixes for the same Marketplace Auto Review storyboard-grid prompt failure, including prompt hardening and repair/status fixes.
+  Alternatives considered: archiving and starting fresh, rejected because it would hide the exact prior-fix trail needed to identify why the issue still escapes.
+
+[2026-06-13T02:35:26Z] DECISION: Remove the backend storyboard-grid contract-lock patch and fail fast on incomplete skill output.
+  Context: The recurring production failure showed the underlying skill/runtime output still intermittently omitted exact 9:16/3x3 anchors. The old service-level contract lock could make invalid skill output look valid, while some runtime-backed issues were downgraded to warnings.
+  Alternatives considered: adding another post-skill patch or retry fallback, rejected because it would keep hiding the source defect and make failures appear random.
+
+[2026-06-13T02:48:54Z] DECISION: Treat storyboard-grid prompt quality gaps as warnings, not permanent pre-provider blockers.
+  Context: User clarified the product goal: the workflow should still generate multiple image attempts so users can choose or manually repair in Storyboard Review, while skill output quality is improved at the source.
+  Alternatives considered: keeping hard blockers for exact 3x3/frame/product-lock prompt gaps, rejected because it stops the job before any selectable image exists.
+
+[2026-06-13T03:29:15Z] DECISION: Fix Product Detail status freshness at the React Query boundary instead of adding another backend fallback.
+  Context: The stale-until-F5 symptom matched a frontend cache/polling race: `listAutoReviewRuns` was invalidated with `{ productId, limit: 8 }` while the visible query often used `{ productId, limit: 3, summary: true }`, and polling stopped when the current cache had no active run.
+  Alternatives considered: increasing backend status fallbacks or requiring manual refresh, rejected because the backend already had newer state and the UI cache was not reliably asking for it.

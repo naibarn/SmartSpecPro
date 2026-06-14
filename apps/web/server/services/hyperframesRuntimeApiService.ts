@@ -50,7 +50,14 @@ import {
   redactHyperframesRenderProjectionForUser,
   retryHyperframesRenderJob,
 } from "./hyperframesRenderService";
+import {
+  assertHyperframesCliRuntimeAllowed,
+  assertHyperframesProducerRuntimeAllowed,
+  getHyperframesRuntimeMode,
+  type HyperframesRuntimeAdapterEnv,
+} from "./hyperframesRuntimeAdapter";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
+import { runHyperframesRenderWorkerOnce } from "../workers/hyperframesRenderWorker";
 
 const INVALIDATES = [
   "marketplaceCapture.listAutoReviewRuns",
@@ -68,6 +75,48 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function scheduleHyperframesFinalCompositeWorkerKick(): void {
+  if (
+    ["1", "true", "yes", "on"].includes(
+      (process.env.MARKETPLACE_HYPERFRAMES_INLINE_WORKER_KICK_DISABLED ?? "").toLowerCase()
+    )
+  ) {
+    return;
+  }
+  const timer = setTimeout(() => {
+    void runHyperframesRenderWorkerOnce({ limit: 1 }).catch(error => {
+      console.warn(
+        "HyperFrames final composite worker kick failed.",
+        error instanceof Error ? error.message : error,
+      );
+    });
+  }, 250);
+  if (typeof timer === "object" && timer && "unref" in timer) {
+    timer.unref();
+  }
+}
+
+export function getHyperframesFinalCompositeRuntimeBlockReason(
+  env: HyperframesRuntimeAdapterEnv = process.env
+): string | null {
+  const runtimeMode = getHyperframesRuntimeMode(env);
+  try {
+    if (runtimeMode === "producer") {
+      assertHyperframesProducerRuntimeAllowed(env);
+      return null;
+    }
+    if (runtimeMode === "cli") {
+      assertHyperframesCliRuntimeAllowed(env);
+      return null;
+    }
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : "HyperFrames official runtime is not ready.";
+  }
+  return "HyperFrames official runtime mode is not configured. Set HYPERFRAMES_RUNTIME_MODE=producer or cli, enable HYPERFRAMES_OFFICIAL_RUNTIME_READY, and run the worker with the official HyperFrames runtime package.";
 }
 
 function stringList(value: unknown): string[] {
@@ -1185,12 +1234,48 @@ export async function createHyperframesFinalCompositeForApi(
       invalidates: [],
     };
   }
+  const runtimeBlockReason = getHyperframesFinalCompositeRuntimeBlockReason();
+  if (runtimeBlockReason) {
+    const payload = buildHyperframesRenderJobPayload({ composition });
+    const render = buildHyperframesRenderProjection({
+      tenantId: input.auth.tenantId ?? "default",
+      productId: input.productId,
+      runId: input.runId,
+      renderJobId: `hf_final_runtime_blocked_${input.runId}`,
+      status: "blocked_needs_user",
+      payload,
+      safeMessage:
+        "HyperFrames Final Composite ยังไม่พร้อม render เพราะ official HTML/CSS/browser runtime ยังไม่พร้อม",
+      safeDiagnostics: [
+        runtimeBlockReason,
+        "No render job was queued and no credits were reserved. Configure the official HyperFrames runtime, then render again.",
+      ],
+      permissions: {
+        canCancel: false,
+        canRepair: false,
+      },
+      canMutate: false,
+    });
+    return {
+      contractVersion:
+        HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+      render,
+      chargeSummary: {
+        chargeRequired: false,
+        quotaDecision: "no_charge" as const,
+        noChargeReason: "not_applicable" as const,
+      },
+      polling: render.polling,
+      invalidates: [],
+    };
+  }
   const render = await queueHyperframesRenderJob({
     auth: input.auth,
     composition,
     priority: 82,
     maxAttempts: 3,
   });
+  scheduleHyperframesFinalCompositeWorkerKick();
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,

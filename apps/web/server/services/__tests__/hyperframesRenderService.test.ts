@@ -141,7 +141,7 @@ describe("hyperframesRenderService", () => {
     expect(payload.musicPresetId).toBe("hf_audio_music_upbeat_ecommerce_social_v1");
     expect(payload.sfxPresetIds).toEqual(["hf_audio_sfx_whoosh_scene_transition_v1"]);
     expect(payload.rendererPolicyVersion).toBe(
-      "ffmpeg_ass_final_composite_overlay_wrap_v2"
+      "official_html_css_browser_final_composite_v1"
     );
   });
 
@@ -991,6 +991,12 @@ describe("hyperframesRenderService", () => {
   });
 
   it("keeps runtime-deferred worker failures transient while QA failures stay permanent", () => {
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime configuration failure: Official HyperFrames HTML/CSS/browser runtime is required for final composite renders."
+      )
+    ).toBe("blocked_needs_user");
     expect(
       mapOutboxStatusToRenderStatus(
         "failed",

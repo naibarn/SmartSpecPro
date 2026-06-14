@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 15,
+                      "duration": 13,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:09.504Z",
+                      "startTime": "2026-06-13T06:19:57.412Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -126,12 +126,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 9,
+                      "duration": 6,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:09.550Z",
+                      "startTime": "2026-06-13T06:19:57.453Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -165,7 +165,7 @@
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:09.574Z",
+                      "startTime": "2026-06-13T06:19:57.470Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -194,12 +194,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4,
+                      "duration": 2,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:09.588Z",
+                      "startTime": "2026-06-13T06:19:57.482Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -228,12 +228,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 4671,
+                      "duration": 4444,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:09.607Z",
+                      "startTime": "2026-06-13T06:19:57.493Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -262,12 +262,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1842,
+                      "duration": 1608,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:14.387Z",
+                      "startTime": "2026-06-13T06:20:02.010Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -296,12 +296,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 8363,
+                      "duration": 8317,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:16.235Z",
+                      "startTime": "2026-06-13T06:20:03.627Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -330,12 +330,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1684,
+                      "duration": 1496,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:24.608Z",
+                      "startTime": "2026-06-13T06:20:11.956Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -364,12 +364,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 1429,
+                      "duration": 1503,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:26.301Z",
+                      "startTime": "2026-06-13T06:20:13.458Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -384,7 +384,7 @@
             },
             {
               "title": "authenticated Product Detail supports Advanced Auto overrides, reset, and start payload",
-              "ok": false,
+              "ok": true,
               "tags": [],
               "tests": [
                 {
@@ -397,48 +397,18 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "failed",
-                      "duration": 10113,
-                      "error": {
-                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n    at /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts:1448:8",
-                        "location": {
-                          "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
-                          "column": 8,
-                          "line": 1448
-                        },
-                        "snippet": "  1446 |         return startCall?.requestBodySnippet ?? \"\";\n  1447 |       })\n> 1448 |       .toContain('\"qualityMode\":\"high\"');\n       |        ^\n  1449 |     const startCall = routeLog.find(entry =>\n  1450 |       entry.procedures.includes(\"marketplaceCapture.startAutoStoryboardReview\")\n  1451 |     );"
-                      },
-                      "errors": [
-                        {
-                          "location": {
-                            "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
-                            "column": 8,
-                            "line": 1448
-                          },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoContain\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // indexOf\u001b[22m\n\nExpected substring: \u001b[32m\"\\\"qualityMode\\\":\\\"high\\\"\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  1446 |         return startCall?.requestBodySnippet ?? \"\";\n  1447 |       })\n> 1448 |       .toContain('\"qualityMode\":\"high\"');\n       |        ^\n  1449 |     const startCall = routeLog.find(entry =>\n  1450 |       entry.procedures.includes(\"marketplaceCapture.startAutoStoryboardReview\")\n  1451 |     );\n    at /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts:1448:8"
-                        }
-                      ],
+                      "status": "passed",
+                      "duration": 5830,
+                      "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:27.740Z",
+                      "startTime": "2026-06-13T06:20:14.968Z",
                       "annotations": [],
-                      "attachments": [
-                        {
-                          "name": "error-context",
-                          "contentType": "text/markdown",
-                          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/production-director/marketplace-hyperframes-ui-aa39e-des-reset-and-start-payload-chromium/error-context.md"
-                        }
-                      ],
-                      "errorLocation": {
-                        "file": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e/marketplace-hyperframes-ui.spec.ts",
-                        "column": 8,
-                        "line": 1448
-                      }
+                      "attachments": []
                     }
                   ],
-                  "status": "unexpected"
+                  "status": "expected"
                 }
               ],
               "id": "5a050f4a632e5693260d-fbb91314520b9a6f9e35",
@@ -459,15 +429,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2186,
+                      "duration": 2074,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:38.430Z",
+                      "startTime": "2026-06-13T06:20:20.805Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -477,7 +447,7 @@
               ],
               "id": "5a050f4a632e5693260d-e6f57ab8dea7403de6d9",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1473,
+              "line": 1474,
               "column": 3
             },
             {
@@ -493,15 +463,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
+                      "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 11820,
+                      "duration": 11886,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-07T03:23:40.694Z",
+                      "startTime": "2026-06-13T06:20:22.886Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -511,7 +481,7 @@
               ],
               "id": "5a050f4a632e5693260d-c22cc173462da1003201",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1508,
+              "line": 1509,
               "column": 3
             }
           ]
@@ -521,11 +491,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-06-07T03:22:52.665Z",
-    "duration": 59976.887,
-    "expected": 11,
+    "startTime": "2026-06-13T06:19:52.721Z",
+    "duration": 42175.390999999996,
+    "expected": 12,
     "skipped": 0,
-    "unexpected": 1,
+    "unexpected": 0,
     "flaky": 0
   }
 }

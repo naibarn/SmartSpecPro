@@ -6,6 +6,7 @@ import {
 } from "@shared/hyperframes/contracts";
 import {
   buildHyperframesFinalizeInputFromCompletedRender,
+  getHyperframesFinalCompositeRuntimeBlockReason,
   buildHyperframesLibrarySaveChargeSummary,
   isHyperframesRunEligibleForPreview,
   validateHyperframesFinalCompositeAudioAssets,
@@ -81,6 +82,17 @@ describe("hyperframesRuntimeApiService", () => {
         idempotencyKey: "caller_supplied",
       })
     ).toThrow();
+  });
+
+  it("blocks final composite queueing when the official runtime mode is not configured", () => {
+    expect(getHyperframesFinalCompositeRuntimeBlockReason({})).toMatch(
+      /official runtime mode is not configured/i
+    );
+    expect(
+      getHyperframesFinalCompositeRuntimeBlockReason({
+        HYPERFRAMES_RUNTIME_MODE: "producer",
+      })
+    ).toMatch(/blocked until production rollout gates pass/i);
   });
 
   it("blocks final composite music/SFX when staged licensed assets are missing and fallback is disabled", () => {

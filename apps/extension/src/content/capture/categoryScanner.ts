@@ -6,10 +6,17 @@ const AFFILIATE_COMMISSION_PATTERN = /อัตรา\s*ค่า?\s*คอม|�
 const AFFILIATE_SOLD_PATTERN = /(ขายได้|sold|ขายแล้ว)/i;
 const AFFILIATE_PRICE_PATTERN = /฿\s?[\d,.]+/;
 const AFFILIATE_PRODUCT_OFFER_PATH_PATTERN = /^\/offer\/product_offer(?:\/(\d+))?\/?$/i;
+const AFFILIATE_LINK_TEXT_PATTERN = /เอา\s*ลิงก์|get\s*link|copy\s*link/i;
+const AFFILIATE_LINK_ACTION_SELECTOR = "button, a[href], [role='button'], [tabindex], [data-url], [data-link], [data-href], [data-clipboard-text], [data-copy-text], [data-affiliate-link], [data-tracking-link]";
+const AFFILIATE_LINK_CLICK_DELAY_MS = 1500;
 let lastShopeeAffiliateScanDiagnostics: Record<string, unknown> = {};
 
 export interface ShopeeAffiliateLinkRequest {
   affiliateCardKey?: string | null;
+  productUrl?: string | null;
+  commissionCheckUrl?: string | null;
+  externalProductId?: string | null;
+  externalShopId?: string | null;
   title?: string | null;
   imageUrl?: string | null;
   priceText?: string | null;
@@ -345,15 +352,47 @@ function isAffiliateLinkButton(element: HTMLElement) {
   const text = elementSearchText(element);
   const aria = compactText(element.getAttribute("aria-label") || "");
   const title = compactText(element.getAttribute("title") || "");
-  return /เอา\s*ลิงก์|get\s*link|copy\s*link/i.test(`${text} ${aria} ${title}`);
+  return AFFILIATE_LINK_TEXT_PATTERN.test(`${text} ${aria} ${title}`);
+}
+
+function closestActionableAffiliateElement(element: HTMLElement, card: HTMLElement): HTMLElement | null {
+  const candidates = Array.from(new Set<HTMLElement>([
+    element.matches(AFFILIATE_LINK_ACTION_SELECTOR) ? element : null,
+    element.closest<HTMLElement>(AFFILIATE_LINK_ACTION_SELECTOR),
+    element,
+  ].filter((candidate): candidate is HTMLElement => Boolean(candidate && candidate !== card && card.contains(candidate)))));
+
+  for (const candidate of candidates) {
+    const rect = candidate.getBoundingClientRect();
+    if (!isVisibleRect(rect) || rect.width < 8 || rect.height < 8) continue;
+    const text = elementSearchText(candidate);
+    if (!AFFILIATE_LINK_TEXT_PATTERN.test(text)) continue;
+    const strongAction = candidate.matches("button, a[href], [role='button'], [data-url], [data-link], [data-href], [data-clipboard-text], [data-copy-text], [data-affiliate-link], [data-tracking-link]");
+    const compactLength = compactText(text).length;
+    const looksLikeButtonSize = rect.width <= 260 && rect.height <= 96;
+    const strongActionSize = rect.width <= 420 && rect.height <= 140;
+    if ((strongAction && strongActionSize && compactLength <= 240) || (looksLikeButtonSize && compactLength <= 180)) return candidate;
+  }
+  return null;
+}
+
+function affiliateLinkButtonRank(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  const text = compactText(elementSearchText(element));
+  const directAction = element.matches(AFFILIATE_LINK_ACTION_SELECTOR) ? 0 : 1000;
+  const exactText = /^(เอา\s*ลิงก์|get\s*link|copy\s*link)$/i.test(text) ? 0 : 120;
+  const sizePenalty = Math.max(0, rect.width - 260) + Math.max(0, rect.height - 96) * 3;
+  const textPenalty = Math.max(0, text.length - 80);
+  return directAction + exactText + sizePenalty + textPenalty + rect.top / 10000;
 }
 
 function findAffiliateLinkButton(card: HTMLElement): HTMLElement | null {
-  const elements = [
-    card,
-    ...Array.from(card.querySelectorAll<HTMLElement>("a[href], button, [role='button'], [data-url], [data-link], [data-href], [data-clipboard-text], [data-copy-text], [data-affiliate-link], [data-tracking-link], span, div")),
-  ];
-  return elements.find(isAffiliateLinkButton) ?? null;
+  const seeds = Array.from(card.querySelectorAll<HTMLElement>(`${AFFILIATE_LINK_ACTION_SELECTOR}, span, div`));
+  const elements = Array.from(new Set(seeds
+    .filter(isAffiliateLinkButton)
+    .map((element) => closestActionableAffiliateElement(element, card))
+    .filter((element): element is HTMLElement => Boolean(element))));
+  return elements.sort((left, right) => affiliateLinkButtonRank(left) - affiliateLinkButtonRank(right))[0] ?? null;
 }
 
 function findAffiliateUrl(card: HTMLElement, productUrl: string | null): string | null {
@@ -479,10 +518,15 @@ function closestAffiliateCard(seed: HTMLElement): HTMLElement | null {
 
 function affiliateCardKey(card: HTMLElement) {
   const rect = card.getBoundingClientRect();
+  const text = elementText(card);
   const imageUrl = bestCardImage(card) ?? "";
-  const title = extractAffiliateTitle(card, textLines(elementText(card)));
-  const soldCountText = extractAffiliateSoldText(elementText(card), textLines(elementText(card))) ?? "";
-  const basis = `${imageUrl}|${title}|${soldCountText}|${Math.round(rect.left)}:${Math.round(rect.top)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
+  const title = extractAffiliateTitle(card, textLines(text));
+  const productUrl = findShopeeProductUrl(card) ?? "";
+  const offerUrl = findShopeeAffiliateOfferUrl(card) ?? "";
+  const priceText = extractAffiliatePriceText(text) ?? "";
+  const soldCountText = extractAffiliateSoldText(text, textLines(text)) ?? "";
+  const positionFallback = `${Math.round(rect.left + window.scrollX)}:${Math.round(rect.top + window.scrollY)}:${Math.round(rect.width)}:${Math.round(rect.height)}`;
+  const basis = [productUrl, offerUrl, imageUrl, title, priceText, soldCountText].filter(Boolean).join("|") || positionFallback;
   let hash = 0;
   for (let index = 0; index < basis.length; index += 1) {
     hash = ((hash << 5) - hash + basis.charCodeAt(index)) | 0;
@@ -536,12 +580,37 @@ function findAffiliateOfferCards(limit: number) {
   return sortedCards;
 }
 
+function requestProductMatch(input: ShopeeAffiliateLinkRequest) {
+  const urls = [input.productUrl, input.commissionCheckUrl].map((value) => absoluteUrl(value)).filter(Boolean) as string[];
+  const shopeeProducts = urls.map((url) => parseShopeeProductUrl(url)).filter((parsed) => Boolean(parsed.itemId));
+  const offerProductIds = urls.map(affiliateOfferProductId).filter(Boolean) as string[];
+  const externalProductId = compactText(input.externalProductId || "");
+  const externalShopId = compactText(input.externalShopId || "");
+  return { shopeeProducts, offerProductIds, externalProductId, externalShopId };
+}
+
+function cardMatchesRequestedProduct(card: HTMLElement, input: ShopeeAffiliateLinkRequest) {
+  const match = requestProductMatch(input);
+  const cardProduct = parseShopeeProductUrl(findShopeeProductUrl(card) ?? "");
+  const cardOfferIds = affiliateOfferProductIds(card);
+  if (match.externalProductId) {
+    if (cardProduct.itemId === match.externalProductId && (!match.externalShopId || cardProduct.shopId === match.externalShopId)) return true;
+    if (cardOfferIds.includes(match.externalProductId)) return true;
+  }
+  if (match.shopeeProducts.some((requested) => requested.itemId === cardProduct.itemId && (!requested.shopId || !cardProduct.shopId || requested.shopId === cardProduct.shopId))) {
+    return true;
+  }
+  return match.offerProductIds.some((requestedId) => cardOfferIds.includes(requestedId));
+}
+
 function findAffiliateCardByRequest(input: ShopeeAffiliateLinkRequest): HTMLElement | null {
   const cards = findAffiliateOfferCards(160);
   if (input.affiliateCardKey) {
     const exact = cards.find((card) => affiliateCardKey(card) === input.affiliateCardKey);
     if (exact) return exact;
   }
+  const byProduct = cards.find((card) => cardMatchesRequestedProduct(card, input));
+  if (byProduct) return byProduct;
   const imageUrl = input.imageUrl?.trim();
   if (imageUrl) {
     const byImage = cards.find((card) => bestCardImage(card) === imageUrl);
@@ -558,6 +627,26 @@ function findAffiliateCardByRequest(input: ShopeeAffiliateLinkRequest): HTMLElem
   }) ?? null;
 }
 
+async function findAffiliateCardByRequestWithScroll(input: ShopeeAffiliateLinkRequest): Promise<{ card: HTMLElement | null; scrollAttempts: number; scrolled: boolean }> {
+  const initial = findAffiliateCardByRequest(input);
+  if (initial) return { card: initial, scrollAttempts: 0, scrolled: false };
+
+  const startY = window.scrollY;
+  let previousY = window.scrollY;
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    window.scrollBy({ top: Math.max(480, Math.floor(window.innerHeight * 0.75)), behavior: "smooth" });
+    await sleep(650);
+    const card = findAffiliateCardByRequest(input);
+    if (card) return { card, scrollAttempts: attempt, scrolled: true };
+    if (Math.abs(window.scrollY - previousY) < 8) break;
+    previousY = window.scrollY;
+  }
+  if (Math.abs(window.scrollY - startY) > 8) {
+    window.scrollTo({ top: startY, behavior: "smooth" });
+  }
+  return { card: null, scrollAttempts: 12, scrolled: Math.abs(window.scrollY - startY) > 8 };
+}
+
 function allAffiliateUrls(productUrl: string | null) {
   return Array.from(document.querySelectorAll<HTMLElement>("a[href], button, [role='button'], input, textarea, [data-url], [data-link], [data-href], [data-clipboard-text], [data-copy-text], [data-affiliate-link], [data-tracking-link]"))
     .flatMap(urlsFromElement)
@@ -569,52 +658,122 @@ function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function clickAffiliateButton(button: HTMLElement) {
+async function clickAffiliateButton(button: HTMLElement) {
   button.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+  await sleep(AFFILIATE_LINK_CLICK_DELAY_MS);
   const rect = button.getBoundingClientRect();
-  const init = {
+  button.focus?.({ preventScroll: true });
+  const init: MouseEventInit = {
     bubbles: true,
     cancelable: true,
     composed: true,
     view: window,
     clientX: Math.round(rect.left + rect.width / 2),
     clientY: Math.round(rect.top + rect.height / 2),
+    button: 0,
+    buttons: 1,
   };
-  button.dispatchEvent(new MouseEvent("pointerdown", init));
+  if (typeof PointerEvent !== "undefined") {
+    button.dispatchEvent(new PointerEvent("pointerdown", { ...init, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    button.dispatchEvent(new PointerEvent("pointerup", { ...init, pointerId: 1, pointerType: "mouse", isPrimary: true, buttons: 0 }));
+  }
   button.dispatchEvent(new MouseEvent("mousedown", init));
-  button.dispatchEvent(new MouseEvent("mouseup", init));
-  button.dispatchEvent(new MouseEvent("click", init));
+  button.dispatchEvent(new MouseEvent("mouseup", { ...init, buttons: 0 }));
+  button.dispatchEvent(new MouseEvent("click", { ...init, buttons: 0 }));
   button.click();
+}
+
+function affiliateDetailElementCount() {
+  return Array.from(document.querySelectorAll<HTMLElement>("[role='dialog'], [role='alertdialog'], [class*='modal'], [class*='dialog'], [class*='popover'], [class*='drawer'], [class*='tooltip']"))
+    .filter((element) => {
+      const rect = element.getBoundingClientRect();
+      if (!isVisibleRect(rect)) return false;
+      const text = elementSearchText(element);
+      return /รายละเอียด|คอมมิชชัน|คอมมิชชั่น|commission|affiliate|เอา\s*ลิงก์|get\s*link|copy\s*link/i.test(text)
+        && (/\bmodal\b|\bdialog\b|\bpopover\b|\bdrawer\b|ant-modal|shopee/i.test(elementClassName(element)) || element.getAttribute("role") === "dialog");
+    })
+    .length;
+}
+
+async function waitForAffiliateUrl(productUrl: string | null, card: HTMLElement, before: Set<string>) {
+  const startedAt = Date.now();
+  let attempts = 0;
+  let lastSeenCount = 0;
+  let modalSignalCount = 0;
+  while (Date.now() - startedAt < 12000) {
+    attempts += 1;
+    await sleep(attempts < 5 ? 180 : 350);
+    modalSignalCount = Math.max(modalSignalCount, affiliateDetailElementCount());
+    const after = allAffiliateUrls(productUrl);
+    lastSeenCount = after.length;
+    const next = after.find((url) => !before.has(url)) ?? findAffiliateUrl(card, productUrl) ?? after[0];
+    if (next) {
+      return {
+        affiliateUrl: next,
+        diagnostics: {
+          attempts,
+          waitedMs: Date.now() - startedAt,
+          seenAffiliateUrlCount: lastSeenCount,
+          modalSignalCount,
+        },
+      };
+    }
+  }
+  return {
+    affiliateUrl: null,
+    diagnostics: {
+      attempts,
+      waitedMs: Date.now() - startedAt,
+      seenAffiliateUrlCount: lastSeenCount,
+      modalSignalCount,
+    },
+  };
 }
 
 export async function resolveShopeeAffiliateLink(input: ShopeeAffiliateLinkRequest): Promise<{ affiliateUrl: string | null; diagnostics: Record<string, unknown> }> {
   if (!isShopeeAffiliateProductOfferPage()) {
     return { affiliateUrl: null, diagnostics: { reason: "not_affiliate_product_offer_page" } };
   }
-  const card = findAffiliateCardByRequest(input);
+  const found = await findAffiliateCardByRequestWithScroll(input);
+  const card = found.card;
   if (!card) {
-    return { affiliateUrl: null, diagnostics: { reason: "card_not_found", requestedKey: input.affiliateCardKey ?? null } };
+    return { affiliateUrl: null, diagnostics: { reason: "card_not_found", requestedKey: input.affiliateCardKey ?? null, scrollAttempts: found.scrollAttempts } };
   }
   const productUrl = findShopeeProductUrl(card);
   const existing = findAffiliateUrl(card, productUrl);
   if (existing) {
-    return { affiliateUrl: existing, diagnostics: { reason: "link_already_available", requestedKey: input.affiliateCardKey ?? null } };
+    return { affiliateUrl: existing, diagnostics: { reason: "link_already_available", requestedKey: input.affiliateCardKey ?? null, cardKey: affiliateCardKey(card), scrollAttempts: found.scrollAttempts, scrolled: found.scrolled } };
   }
   const button = findAffiliateLinkButton(card);
   if (!button) {
-    return { affiliateUrl: null, diagnostics: { reason: "link_button_not_found", cardKey: affiliateCardKey(card) } };
+    return { affiliateUrl: null, diagnostics: { reason: "link_button_not_found", cardKey: affiliateCardKey(card), scrollAttempts: found.scrollAttempts, scrolled: found.scrolled } };
   }
   const before = new Set(allAffiliateUrls(productUrl));
-  clickAffiliateButton(button);
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    await sleep(attempt < 4 ? 150 : 250);
-    const after = allAffiliateUrls(productUrl);
-    const next = after.find((url) => !before.has(url)) ?? after[0] ?? findAffiliateUrl(card, productUrl);
-    if (next) {
-      return { affiliateUrl: next, diagnostics: { reason: "link_resolved_after_click", cardKey: affiliateCardKey(card), attempts: attempt + 1 } };
-    }
+  await clickAffiliateButton(button);
+  const resolved = await waitForAffiliateUrl(productUrl, card, before);
+  if (resolved.affiliateUrl) {
+    return {
+      affiliateUrl: resolved.affiliateUrl,
+      diagnostics: {
+        reason: "link_resolved_after_click",
+        cardKey: affiliateCardKey(card),
+        scrollAttempts: found.scrollAttempts,
+        scrolled: found.scrolled,
+        ...resolved.diagnostics,
+      },
+    };
   }
-  return { affiliateUrl: null, diagnostics: { reason: "link_not_exposed_after_click", cardKey: affiliateCardKey(card), buttonText: compactText(elementText(button)).slice(0, 80) } };
+  return {
+    affiliateUrl: null,
+    diagnostics: {
+      reason: "link_not_exposed_after_click",
+      cardKey: affiliateCardKey(card),
+      scrollAttempts: found.scrollAttempts,
+      scrolled: found.scrolled,
+      buttonText: compactText(elementText(button)).slice(0, 80),
+      ...resolved.diagnostics,
+    },
+  };
 }
 
 function scanShopeeAffiliateOfferPage(limit = 60): CategoryProductCandidate[] {

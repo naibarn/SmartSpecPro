@@ -199,6 +199,10 @@ chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: 
       (async () => {
         const result = await resolveShopeeAffiliateLink({
           affiliateCardKey: typeof message.affiliateCardKey === "string" ? message.affiliateCardKey : null,
+          productUrl: typeof message.productUrl === "string" ? message.productUrl : null,
+          commissionCheckUrl: typeof message.commissionCheckUrl === "string" ? message.commissionCheckUrl : null,
+          externalProductId: typeof message.externalProductId === "string" ? message.externalProductId : null,
+          externalShopId: typeof message.externalShopId === "string" ? message.externalShopId : null,
           title: typeof message.title === "string" ? message.title : null,
           imageUrl: typeof message.imageUrl === "string" ? message.imageUrl : null,
           priceText: typeof message.priceText === "string" ? message.priceText : null,

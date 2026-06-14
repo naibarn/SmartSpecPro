@@ -50,4 +50,4 @@ Send the latest diagnostic entry if Flow still does not accept the file.
 
 - The bridge intentionally sends synthetic drag events first so Flow can show its native hover/drop UI.
 - It then sets the nearest compatible file input as a fallback because Flow may render a valid hover state without committing synthetic drop files.
-- Node must be `20.20.0` or compatible with the root `engines.node` range before running install/package commands.
+- Node must be `22.22.3` or compatible with the root `engines.node` range before running install/package commands.

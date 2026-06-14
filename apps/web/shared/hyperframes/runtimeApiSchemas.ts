@@ -21,6 +21,7 @@ import {
 } from "./autoPlan";
 import { HyperframesFeatureAccessProjectionSchema } from "./featureAccess";
 import { HyperframesTemplateDescriptorSchema } from "./contracts";
+import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
 
 const ProductIdInputSchema = z.object({
   productId: z.string().min(1).max(64),
@@ -86,6 +87,31 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
           z.array(z.unknown()),
         ])
         .optional(),
+      reviewTone: z
+        .enum([
+          "warm_honest",
+          "funny_light",
+          "irritated_problem",
+          "energetic_excited",
+          "empathetic_soft",
+          "expert_confident",
+          "straight_serious",
+        ])
+        .optional()
+        .nullable(),
+      storytellingStructure: z
+        .enum([
+          "hook_problem_emotion_insight_solution_result_cta",
+          "hook_problem_insight_proof_cta",
+          "product_review_situation_problem_try_result_fit",
+          "before_after_bridge",
+          "pas",
+          "aida",
+          "relatable_story",
+          "problem_struggle_solution_transformation",
+        ])
+        .optional()
+        .nullable(),
       requiredRoles: z
         .array(z.enum(["product", "character", "environment"]))
         .optional(),
@@ -268,7 +294,7 @@ export const HyperframesFinalCompositeConfigSchema = z
         validatedAssets: [],
       }),
     fontFamily: HyperframesThaiFontFamilySchema.optional().default("Prompt"),
-    styleBrief: z.string().trim().max(4000).optional().default(""),
+    styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional().default(""),
     hookText: z.string().trim().max(160).optional().default(""),
     supportingText: z.string().trim().max(160).optional().default(""),
     subtitlePlacement: z

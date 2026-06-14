@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=20.20.0 <21 || >=22.22.0"
+    "node": ">=22.22.0 <23"
   },
   "scripts": {
     "dev": "NODE_ENV=development NODE_OPTIONS='--max-old-space-size=4096' tsx watch server/_core/index.ts",
@@ -13,8 +13,8 @@
     "build": "vite build && npm run build:widget",
     "build:widget": "vite build --config vite.config.widget.ts",
     "start": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=8192' tsx server/_core/index.ts",
-    "check": "tsc --noEmit",
-    "typecheck": "tsc --noEmit",
+    "check": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
+    "typecheck": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
     "format": "prettier --write .",
     "test": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run",
     "e2e:production-director": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run client/src/features/media-production/production-director.e2e.test.tsx",

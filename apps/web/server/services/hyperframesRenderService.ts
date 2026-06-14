@@ -33,7 +33,7 @@ export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
 export type HyperframesOutboxJobType = (typeof HYPERFRAMES_OUTBOX_JOB_TYPES)[number];
 
 const HYPERFRAMES_FINAL_COMPOSITE_RENDERER_POLICY_VERSION =
-  "ffmpeg_ass_final_composite_overlay_wrap_v2";
+  "official_html_css_browser_final_composite_v1";
 
 export interface HyperframesRenderJobPayload {
   productId: string;
@@ -181,6 +181,13 @@ export function mapOutboxStatusToRenderStatus(
   if (status === "dead_lettered") return "dead_lettered";
   if (status === "failed") {
     const error = lastError ?? "";
+    if (
+      /runtime configuration failure|HTML\/CSS\/browser runtime is required|requires Node >=22\.22|blocked until production rollout gates pass|official runtime mode is not configured/i.test(
+        error
+      )
+    ) {
+      return "blocked_needs_user";
+    }
     if (
       /runtime execution is not implemented|runtime.*not ready|dependency\/runtime|dependency.*deferred|runtime rollout/i.test(
         error
@@ -848,7 +855,9 @@ export async function getHyperframesRenderProjection(input: {
         safeMessage: runtimeDeferred
           ? "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render"
           : queuedStale
-          ? "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก"
+          ? payload.renderIntent === "final"
+            ? "HyperFrames Final Composite ยังไม่เริ่มหลังรอนานกว่าปกติ ตรวจสอบ worker queue หรือกด render ใหม่เพื่อสร้างงานล่าสุด"
+            : "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก"
           : undefined,
         safeDiagnostics,
         outputRefs: outputRefs.outputRefs,

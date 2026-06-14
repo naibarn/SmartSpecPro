@@ -9,6 +9,7 @@ import {
   HyperframesRenderIntentSchema,
   MarketplaceAutoReviewCompositionModeSchema,
 } from "./contracts";
+import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
 
 const SafeIdSchema = z.string().trim().min(1).max(180);
 const SafeHashSchema = z.string().trim().min(6).max(160);
@@ -340,7 +341,7 @@ export const HyperframesCreativeVariablesSchema = z
     specLines: z.array(z.string().trim().max(160)).max(20).optional(),
     benefitLines: z.array(z.string().trim().max(160)).max(20).optional(),
     reviewQuote: z.string().trim().max(360).optional(),
-    styleBrief: z.string().trim().max(4000).optional(),
+    styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional(),
     subtitleCues: z
       .array(
         z

@@ -7,12 +7,23 @@
 [COMPLETE] wave-7-status-ledger-fix - Patched stage completion timestamps for `completed_with_warnings`, stabilized non-terminal stage-attempt keys to `stage:active`, and cleaned the completed production run's stale attempt ledger/status read-model.
 [COMPLETE] wave-8-retention-cleanup - Added best-effort operational runtime cleanup on new run start for terminal runs older than 3 days, limited to leases, stage attempts, provider events, and outbox jobs.
 [COMPLETE] wave-9-parallel-auto-unblock - Changed compliance review from hard blocker to warning, kept active run metadata without forcing resume, removed same-product active-run dedupe in start, and added migration 0200 to drop the active unique index so parallel Marketplace Auto Review runs can coexist.
+[COMPLETE] wave-10-intermittent-preflight-rca - Removed the backend storyboard-grid contract-lock patch fallback, made skill/runtime grid contract gaps hard blockers, strengthened the product-reference-storyboard runner completeness validator, and synced skill/optimizer contracts to the exact 9:16/3x3 anchors.
+[COMPLETE] wave-11-soft-quality-preflight - Product decision update: storyboard-grid prompt quality issues now continue as warnings so image generation can produce selectable/editable attempts; skill and optimizer contracts were strengthened to reduce warnings at source.
+[COMPLETE] wave-12-product-detail-status-freshness - Fixed stale Product Detail Auto Review status by polling active runs every 5s, polling newly-started run materialization every 3s, reducing stale list cache to 5s, invalidating all `listAutoReviewRuns` query variants after state changes, and clearing the transient start action when the start mutation settles.
 
 ## Verification
 - PASS: `npm --prefix apps/web run test -- server/services/__tests__/marketplaceAutoReviewService.test.ts`
 - PASS: `npm --prefix apps/web run check`
 - PASS: `npm --prefix apps/web run test -- server/services/__tests__/hyperframesFeatureAccessService.test.ts server/services/__tests__/hyperframesAutoPlanService.test.ts server/services/__tests__/hyperframesAutoPlanServiceProjection.test.ts server/services/__tests__/hyperframesRuntimeApiResume.test.ts server/services/__tests__/marketplaceAutoReviewService.test.ts shared/__tests__/marketplaceAutoReviewContracts.test.ts`
 - PASS: `NODE_OPTIONS=--max-old-space-size=8192 npm --prefix apps/web run check`
+- PASS: `npm --prefix apps/web run test -- server/services/__tests__/marketplaceAutoReviewService.test.ts server/services/__tests__/productReferenceStoryboardSkills.test.ts`
+- PASS: `npm --prefix apps/web run check`
+- PASS: `npm --prefix apps/web run test -- server/services/__tests__/marketplaceAutoReviewService.test.ts server/services/__tests__/productReferenceStoryboardSkills.test.ts`
+- PASS: `npm --prefix apps/web run check`
+- FAIL-THEN-PASS: `npm --prefix apps/web run test -- client/src/pages/__tests__/MarketplaceCaptureProductDetail.autoReviewPolling.test.ts`
+- PASS: `npm --prefix apps/web run check`
+- PASS: `npm --prefix apps/web run e2e:marketplace-hyperframes -- --grep "authenticated Product Detail resumes the active Auto run without starting a duplicate"`
+- PASS: `git diff --check -- apps/web/client/src/pages/MarketplaceCaptureProductDetail.tsx apps/web/client/src/pages/__tests__/MarketplaceCaptureProductDetail.autoReviewPolling.test.ts`
 
 ## Feature 120 Deep Plan Progress
 

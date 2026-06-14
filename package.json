@@ -18,9 +18,9 @@
     "typecheck": "turbo run typecheck"
   },
   "engines": {
-    "node": ">=20.20.0 <21 || >=22.22.0"
+    "node": ">=22.22.0 <23"
   },
-  "packageManager": "npm@10.8.2",
+  "packageManager": "npm@10.9.8",
   "devDependencies": {
     "turbo": "^2.5.0",
     "typescript": "^5.5.4"

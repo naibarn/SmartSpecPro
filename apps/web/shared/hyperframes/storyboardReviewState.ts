@@ -5,11 +5,24 @@ import {
   HyperframesShotMediaAssignmentSchema,
   HyperframesThaiFontFamilySchema,
 } from "./creativePresets";
+import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
 
 const SafeIdSchema = z.string().trim().min(1).max(180);
 const SafeHashSchema = z.string().trim().min(6).max(160);
 const SafeTextSchema = z.string().trim().max(4000);
 const StoryboardReviewProjectIdSchema = z.union([z.string(), z.number()]);
+const HyperframesFinalCompositeSfxDraftSchema = z
+  .object({
+    id: SafeIdSchema,
+    presetId: SafeIdSchema,
+    target: SafeIdSchema,
+    visualTrigger: SafeIdSchema,
+    role: SafeIdSchema,
+    offsetSec: z.number().min(0).max(30),
+    durationSec: z.number().min(0.05).max(5),
+    volume: z.number().min(0).max(1),
+  })
+  .strict();
 
 export const HyperframesFinalCompositeTextVariablesSchema = z
   .object({
@@ -19,13 +32,17 @@ export const HyperframesFinalCompositeTextVariablesSchema = z
     audioPackPresetId: SafeIdSchema.optional(),
     musicPresetId: SafeIdSchema.optional(),
     sfxPresetIds: z.array(SafeIdSchema).default([]),
+    sfxDrafts: z.array(HyperframesFinalCompositeSfxDraftSchema).max(12).optional(),
     preserveNativeAudio: z.boolean().default(true),
     syntheticAudioFallback: z.boolean().default(true),
-    styleBrief: z.string().trim().max(4000).optional(),
+    styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional(),
     hookText: z.string().trim().max(240).optional(),
     supportingText: z.string().trim().max(240).optional(),
     perShotText: z.record(SafeTextSchema).default({}),
     perShotSubtitles: z.record(SafeTextSchema).default({}),
+    perShotOverlayPreset: z.record(SafeIdSchema).default({}),
+    perShotAnimationPreset: z.record(SafeIdSchema).default({}),
+    perShotTransition: z.record(SafeIdSchema).default({}),
     creativeVariables: HyperframesCreativeVariablesSchema.optional(),
   })
   .strict();

@@ -270,8 +270,9 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.87";
+const EXTENSION_VERSION = "0.1.93";
 const EXTENSION_BUILD_LABEL = "2026-05-29 21:19 +07";
+const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
 const SMARTAIHUB_DRAG_MEDIA_PREFIX = "smartaihubDragMedia:";
@@ -1991,6 +1992,7 @@ export default function App() {
   const candidateListSourceUrlRef = useRef("");
   const autoProductListScanUrlRef = useRef("");
   const focusCaptureReviewProductIdRef = useRef<string | null>(null);
+  const forceCaptureReviewUntilRef = useRef(0);
   const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
@@ -2272,8 +2274,10 @@ export default function App() {
 
   function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean; updateCandidates?: boolean } = {}) {
     const pageChanged = Boolean(pageUrlRef.current && pageUrlRef.current !== snapshot.page.url);
+    const shouldForceCaptureReview = forceCaptureReviewUntilRef.current > Date.now();
     pageUrlRef.current = snapshot.page.url;
     setPage(snapshot.page);
+    if (shouldForceCaptureReview) setActiveTab("capture");
 
     const incomingListSignature = candidateListSignature(snapshot.candidates);
     const hasIncomingList = snapshot.candidates.length > 0;
@@ -2317,6 +2321,10 @@ export default function App() {
         window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
         setStatus(`Loaded product ${snapshot.product.externalProductId}. Review capture before upload.`);
       }
+      if (shouldForceCaptureReview) {
+        setActiveTab("capture");
+        window.setTimeout(() => setActiveTab("capture"), 100);
+      }
     } else if (pageChanged && snapshot.page.pageType !== "product") {
       setProduct(null);
       setLiveProduct(null);
@@ -2325,10 +2333,10 @@ export default function App() {
     }
     setLastObservedAt(snapshot.observedAt);
     setLastObserveReason(snapshot.reason);
-    const candidateText = snapshot.candidates.length > 0
-      ? "product list page; Product List unchanged"
-      : snapshot.product
-        ? `${snapshot.product.imageCandidates.length} product images`
+    const candidateText = snapshot.product
+      ? `${snapshot.product.imageCandidates.length} product images`
+      : snapshot.candidates.length > 0
+        ? shouldForceCaptureReview ? "product page; Capture Review is ready" : "product list page; Product List unchanged"
         : candidateListSignatureRef.current
           ? "no new product cards; keeping Product List"
           : "no product cards";
@@ -2418,6 +2426,7 @@ export default function App() {
 
   useEffect(() => {
     if (activeTab !== "products" || candidates.length > 0 || !isScannableListPage(page) || !page?.url) return;
+    if (forceCaptureReviewUntilRef.current > Date.now()) return;
     if (autoProductListScanUrlRef.current === page.url) return;
     autoProductListScanUrlRef.current = page.url;
     const timer = window.setTimeout(() => {
@@ -2425,6 +2434,14 @@ export default function App() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [activeTab, candidates.length, page?.pageType, page?.url]);
+
+  useEffect(() => {
+    if (!product || forceCaptureReviewUntilRef.current <= Date.now()) return;
+    if (activeTab !== "capture") {
+      setActiveTab("capture");
+      window.setTimeout(() => setActiveTab("capture"), 150);
+    }
+  }, [activeTab, product?.sourceUrl, product?.externalProductId]);
 
   const selectedImageCount = useMemo(() => (
     product
@@ -2840,13 +2857,46 @@ export default function App() {
     }
   }
 
+  function keepCaptureReviewFocused() {
+    forceCaptureReviewUntilRef.current = Date.now() + CAPTURE_REVIEW_FOCUS_WINDOW_MS;
+    setActiveTab("capture");
+  }
+
+  function scheduleCaptureReviewFocus(candidate?: CategoryProductCandidate | null) {
+    focusCaptureReviewProductIdRef.current = candidate?.externalProductId || null;
+    keepCaptureReviewFocused();
+    window.setTimeout(keepCaptureReviewFocused, 150);
+    window.setTimeout(keepCaptureReviewFocused, 900);
+    window.setTimeout(keepCaptureReviewFocused, 2500);
+    window.setTimeout(keepCaptureReviewFocused, 5000);
+  }
+
+  async function openAffiliateUrlForReview(candidate: CategoryProductCandidate, rawAffiliateUrl: string, source: "request" | "saved-link") {
+    const affiliateUrl = normalizedAffiliateUrl(rawAffiliateUrl);
+    if (!affiliateUrl) throw new Error("Affiliate link ต้องเป็น URL แบบ http(s)");
+    scheduleCaptureReviewFocus(candidate);
+    await chrome.tabs.create({ url: affiliateUrl });
+    scheduleCaptureReviewFocus(candidate);
+    await appendDiagnosticLog("affiliate_link_open_focus_capture_review", {
+      source,
+      url: affiliateUrl,
+      externalProductId: candidate.externalProductId ?? null,
+      title: candidate.title,
+    }).catch(() => undefined);
+  }
+
   async function requestShopeeAffiliateLink(candidate: CategoryProductCandidate) {
     const key = candidateIdentity(candidate);
     setAffiliateLinkBusy((current) => ({ ...current, [key]: true }));
+    setError("");
     setStatus("Getting Shopee affiliate link");
     try {
       const response = await sendToContent<{ affiliateUrl: string | null; diagnostics?: Record<string, unknown> }>("GET_SHOPEE_AFFILIATE_LINK", {
         affiliateCardKey: candidate.affiliateCardKey,
+        productUrl: candidate.canonicalUrl || candidate.cleanUrl || candidate.originalUrl || candidate.url,
+        commissionCheckUrl: candidate.commissionCheckUrl,
+        externalProductId: candidate.externalProductId,
+        externalShopId: candidate.externalShopId,
         title: candidate.title,
         imageUrl: candidate.imageUrl,
         priceText: candidate.priceText,
@@ -2858,7 +2908,8 @@ export default function App() {
         title: candidate.title,
         diagnostics: response.diagnostics ?? null,
       }).catch(() => undefined);
-      if (!response.affiliateUrl) {
+      const affiliateUrl = normalizedAffiliateUrl(response.affiliateUrl);
+      if (!affiliateUrl) {
         setStatus("Shopee did not expose an affiliate URL after click");
         setError("กดปุ่มเอา ลิงก์แล้ว แต่หน้า Shopee ยังไม่เปิดเผย URL ใน DOM/ช่องข้อความให้ extension อ่านได้");
         return;
@@ -2866,7 +2917,7 @@ export default function App() {
       const updateCandidate = (item: CategoryProductCandidate) => candidateStableKey(item) === key
         ? {
           ...item,
-          affiliateUrl: response.affiliateUrl,
+          affiliateUrl,
           badges: Array.from(new Set([...item.badges, "affiliate_url"])),
           scoreReasons: Array.from(new Set([...item.scoreReasons, "พบ affiliate URL"])),
         }
@@ -2880,11 +2931,31 @@ export default function App() {
       const enrichedCandidate = updateCandidate(candidate);
       setProduct((current) => current ? enrichProductWithMatchedCandidate(current, [enrichedCandidate]) : current);
       setLiveProduct((current) => current ? enrichProductWithMatchedCandidate(current, [enrichedCandidate]) : current);
-      setEditable((current) => current.affiliateUrl ? current : { ...current, affiliateUrl: response.affiliateUrl || "" });
-      setStatus("Shopee affiliate link ready");
+      setEditable((current) => current.affiliateUrl ? current : { ...current, affiliateUrl });
+      await openAffiliateUrlForReview(enrichedCandidate, affiliateUrl, "request");
+      setStatus("Shopee affiliate link ready; opened in a new tab; Capture Review is ready");
     } finally {
       setAffiliateLinkBusy((current) => ({ ...current, [key]: false }));
     }
+  }
+
+  async function openCandidateProductForReview(candidate: CategoryProductCandidate, mode: "current" | "new-tab" = "current") {
+    const url = candidate.url?.trim();
+    if (!url) throw new Error("ไม่พบ URL สินค้า");
+    setError("");
+    scheduleCaptureReviewFocus(candidate);
+    setStatus("Opening product page; Capture Review is ready");
+    if (mode === "new-tab") {
+      await chrome.tabs.create({ url });
+    } else {
+      await chrome.tabs.update({ url });
+    }
+    await appendDiagnosticLog("product_open_focus_capture_review", {
+      mode,
+      url,
+      externalProductId: candidate.externalProductId ?? null,
+      title: candidate.title,
+    }).catch(() => undefined);
   }
 
   async function refreshLiveSnapshot() {
@@ -4363,7 +4434,7 @@ export default function App() {
                     rel="noreferrer"
                     onClick={(event) => {
                       event.preventDefault();
-                      chrome.tabs.create({ url: candidate.url });
+                      run(() => openCandidateProductForReview(candidate, "new-tab"));
                     }}
                   >
                     {candidate.url}
@@ -4379,7 +4450,7 @@ export default function App() {
                       rel="noreferrer"
                       onClick={(event) => {
                         event.preventDefault();
-                        chrome.tabs.create({ url: affiliateUrl });
+                        run(() => openAffiliateUrlForReview(candidate, affiliateUrl, "saved-link"));
                       }}
                     >
                       {affiliateUrl}
@@ -4387,11 +4458,11 @@ export default function App() {
                   );
                 })() : null}
                 <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-                  <button className="button" onClick={() => chrome.tabs.update({ url: candidate.url })}>Open</button>
-                  <button className="button" onClick={() => chrome.tabs.create({ url: candidate.url })}>New tab</button>
+                  <button className="button" onClick={() => run(() => openCandidateProductForReview(candidate))}>Open</button>
+                  <button className="button" onClick={() => run(() => openCandidateProductForReview(candidate, "new-tab"))}>New tab</button>
                   {candidate.affiliateLinkAvailable && !candidate.affiliateUrl ? (
                     <button className="button" disabled={affiliateLinkBusy[candidateIdentity(candidate)]} onClick={() => run(() => requestShopeeAffiliateLink(candidate))}>
-                      {affiliateLinkBusy[candidateIdentity(candidate)] ? "Getting link..." : "เอา ลิงก์"}
+                      {affiliateLinkBusy[candidateIdentity(candidate)] ? "Getting link..." : "เอา ลิงก์ + เปิด"}
                     </button>
                   ) : null}
                   {candidate.affiliateUrl ? (
@@ -4417,7 +4488,7 @@ export default function App() {
             {queue.map((item) => (
               <div className="row candidate" key={candidateStableKey(item)}>
                 <span className="muted" style={{ flex: 1 }}>{item.title}</span>
-                <button className="button" onClick={() => chrome.tabs.create({ url: item.url })}>Open</button>
+                <button className="button" onClick={() => run(() => openCandidateProductForReview(item, "new-tab"))}>Open</button>
                 <button className="button" onClick={() => removeQueue(candidateStableKey(item))}>Remove</button>
               </div>
             ))}

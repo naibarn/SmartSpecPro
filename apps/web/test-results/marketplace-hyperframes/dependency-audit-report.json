@@ -1,0 +1,73 @@
+{
+  "gate": "pass",
+  "status": "passed",
+  "generatedAt": "2026-06-14T17:13:32.203Z",
+  "featureFlagsDefaultOff": true,
+  "packageInstallDeferred": false,
+  "packageNames": [
+    "hyperframes@0.6.95",
+    "@hyperframes/producer@0.6.95"
+  ],
+  "pinnedVersionsKnown": true,
+  "licenseReviewed": true,
+  "nativePostinstallReviewed": true,
+  "provenanceReviewed": true,
+  "mainBundleExcluded": true,
+  "diagnosticFallbackOnly": true,
+  "officialRuntimeNodeRequirement": ">=22.22.0",
+  "packageLockHash": "hf_6c5d4bd2fe615aa3f3bf609ad93788a9a8422b458faea6d4",
+  "packageJsonHash": "hf_b60620f6d82fbc8b47a377e32759e7a4946e66b6304f965f",
+  "packages": [
+    {
+      "name": "hyperframes",
+      "pinnedVersion": "0.6.95",
+      "lockVersion": "0.6.95",
+      "installedVersion": "0.6.95",
+      "license": "UNKNOWN",
+      "resolved": "https://registry.npmjs.org/hyperframes/-/hyperframes-0.6.95.tgz",
+      "integrity": "sha512-Tz5oj9fH9olFJZxLnhr9GNPfwQaDMAR7N5NzFFmgtBSuRvt946onUOkn9efYi0rUdWLS1CnKsfWz5sTy0CU5SA==",
+      "hasInstallScript": false,
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/heygen-com/hyperframes",
+        "directory": "packages/cli"
+      }
+    },
+    {
+      "name": "@hyperframes/producer",
+      "pinnedVersion": "0.6.95",
+      "lockVersion": "0.6.95",
+      "installedVersion": "0.6.95",
+      "license": "UNKNOWN",
+      "resolved": "https://registry.npmjs.org/@hyperframes/producer/-/producer-0.6.95.tgz",
+      "integrity": "sha512-dgyxUc7sqUZBkIpbJNl17wC32ijEG3g+4uWy2jB7FUjHV3XXRvtFw28ej+uH7VSX2ianpBctwQUgoZFZf0rIYw==",
+      "hasInstallScript": false,
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/heygen-com/hyperframes",
+        "directory": "packages/producer"
+      }
+    }
+  ],
+  "licenseReview": [
+    {
+      "name": "hyperframes",
+      "declaredLicense": "UNKNOWN",
+      "reviewed": true,
+      "status": "no_declared_license_reviewed_with_pinned_upstream_repository"
+    },
+    {
+      "name": "@hyperframes/producer",
+      "declaredLicense": "UNKNOWN",
+      "reviewed": true,
+      "status": "no_declared_license_reviewed_with_pinned_upstream_repository"
+    }
+  ],
+  "notes": [
+    "HyperFrames runtime packages are pinned in package.json and package-lock.json.",
+    "Marketplace HyperFrames tenant feature flags default off and must be enabled through Admin Tenant Feature Flags.",
+    "Diagnostic fallback can verify worker plumbing only and cannot complete user-facing render jobs.",
+    "The web bundle must not import HyperFrames runtime packages; execution belongs in the dedicated worker image.",
+    "Official runtime execution requires Node >=22.22, Chrome, FFmpeg, fonts, route evidence, compatibility fixtures, canary, and rollback proof."
+  ]
+}

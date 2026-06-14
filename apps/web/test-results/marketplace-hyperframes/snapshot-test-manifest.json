@@ -1,144 +1,48 @@
 {
   "gate": "snapshot-test",
   "status": "passed",
-  "renderer": "playwright_chromium_snapshot_smoke",
-  "generatedAt": "2026-06-12T12:35:27.621Z",
-  "cases": [
-    {
-      "case": "marketplace_storyboard_motion_9x9_v1",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-marketplace_storyboard_motion_9x9_v1.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-marketplace_storyboard_motion_9x9_v1/frame_00000.png",
-          "sizeBytes": 276584,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-marketplace_storyboard_motion_9x9_v1/frame_00030.png",
-          "sizeBytes": 275237,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-marketplace_storyboard_motion_9x9_v1/frame_00060.png",
-          "sizeBytes": 277866,
-          "ok": true
-        }
-      ],
-      "status": "passed"
+  "renderer": "hyperframes_cli_official",
+  "officialRuntime": true,
+  "generatedAt": "2026-06-13T03:11:52.309Z",
+  "goldenSnapshotHash": "hf_75960b17343700cd065e9eae7a5ef01a7d4777bafcb062f2",
+  "baseline": {
+    "renderer": "hyperframes_cli_official",
+    "hyperframesCliVersion": "0.6.95",
+    "hyperframesProducerVersion": "0.6.95",
+    "nodeVersion": "v24.13.0",
+    "creativePlanHash": "hf_0e763855b490c865f3c07d21e18b4c79c6afeff6b4a99227",
+    "presetManifestHash": "hf_f763d017611aec66195caf8ba2504d1f97400735e07d85ca",
+    "audioEventMapHash": "hf_71810da9679b8b121b5490f69a9dfe7cc5919c0341d7ffa4",
+    "outputHash": "hf_e5da0950c1f96a4e379c4d6f75ca2d1d690157a4b9da35c8",
+    "durationSec": 2.020996,
+    "safeArea": {
+      "safeInsetPx": 56,
+      "textSafe": true,
+      "subtitleSafe": true,
+      "overflowElementCount": 0
     },
-    {
-      "case": "long_thai_title",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-long_thai_title.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-long_thai_title/frame_00000.png",
-          "sizeBytes": 292819,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-long_thai_title/frame_00030.png",
-          "sizeBytes": 294752,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-long_thai_title/frame_00060.png",
-          "sizeBytes": 293077,
-          "ok": true
-        }
-      ],
-      "status": "passed"
-    },
-    {
-      "case": "missing_price_rating",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-missing_price_rating.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-missing_price_rating/frame_00000.png",
-          "sizeBytes": 257796,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-missing_price_rating/frame_00030.png",
-          "sizeBytes": 256624,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-missing_price_rating/frame_00060.png",
-          "sizeBytes": 255589,
-          "ok": true
-        }
-      ],
-      "status": "passed"
-    },
-    {
-      "case": "cta_scene",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-cta_scene.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-cta_scene/frame_00000.png",
-          "sizeBytes": 240051,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-cta_scene/frame_00030.png",
-          "sizeBytes": 241493,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-cta_scene/frame_00060.png",
-          "sizeBytes": 240335,
-          "ok": true
-        }
-      ],
-      "status": "passed"
-    },
-    {
-      "case": "disclosure_scene",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-disclosure_scene.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-disclosure_scene/frame_00000.png",
-          "sizeBytes": 258256,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-disclosure_scene/frame_00030.png",
-          "sizeBytes": 257080,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-disclosure_scene/frame_00060.png",
-          "sizeBytes": 256065,
-          "ok": true
-        }
-      ],
-      "status": "passed"
-    },
-    {
-      "case": "vertical_9_16_safe_area",
-      "htmlPath": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-vertical_9_16_safe_area.html",
-      "frames": [
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-vertical_9_16_safe_area/frame_00000.png",
-          "sizeBytes": 259898,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-vertical_9_16_safe_area/frame_00030.png",
-          "sizeBytes": 258347,
-          "ok": true
-        },
-        {
-          "path": "/home/dev/projects/SmartSpecPro/apps/web/test-results/marketplace-hyperframes/snapshot-vertical_9_16_safe_area/frame_00060.png",
-          "sizeBytes": 256998,
-          "ok": true
-        }
-      ],
-      "status": "passed"
-    }
-  ],
+    "coveredCases": [
+      "electronics_spec_overlay",
+      "price_deal_overlay",
+      "ugc_review_subtitle_style",
+      "thai_long_text_safe_area",
+      "music_sfx_event_map",
+      "native_audio_policy",
+      "generated_clip_source_preservation",
+      "multi_scene_transition"
+    ]
+  },
+  "checks": {
+    "officialRuntime": true,
+    "playableVideo": true,
+    "exactDuration": true,
+    "textSafeArea": true,
+    "subtitleSafeArea": true,
+    "outputHashPresent": true,
+    "requiredCasesCovered": true
+  },
   "notes": [
-    "Smoke snapshots validate local browser rendering, file generation, and long Thai text safe-area fixtures.",
-    "Golden-frame pixel baselines remain a rollout follow-up once pinned HyperFrames producer/Chrome/fonts are approved."
+    "Golden evidence is derived from the pinned official HyperFrames fixture output.",
+    "This gate rejects local smoke-renderer snapshots as production golden evidence."
   ]
 }

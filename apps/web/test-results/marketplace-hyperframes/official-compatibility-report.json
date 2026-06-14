@@ -1,0 +1,28 @@
+{
+  "gate": "official-compatibility",
+  "generatedAt": "2026-06-14T17:13:43.109Z",
+  "node": {
+    "version": "v22.22.3",
+    "officialRuntimeReady": true,
+    "requirement": ">=22.22.0"
+  },
+  "packages": {
+    "pinned": {
+      "hyperframes": "0.6.95",
+      "producer": "0.6.95"
+    },
+    "latest": {
+      "hyperframes": "0.6.97",
+      "producer": "0.6.97"
+    },
+    "updateAvailable": true
+  },
+  "fixture": {
+    "commandRan": true,
+    "status": 0,
+    "manifestStatus": "passed",
+    "renderer": "hyperframes_cli_official",
+    "officialRuntime": true
+  },
+  "recommendation": "Open a HyperFrames runtime update PR, render old/new compatibility fixtures, compare golden snapshots, then promote through canary and rollback gates."
+}

@@ -140,6 +140,7 @@ export interface AgentRuntimeClientOptions {
   fetchImpl?: typeof fetch;
   runtimeConfigLoader?: () => Promise<RuntimeConfig>;
   internalTokenLoader?: () => Promise<string>;
+  requestTimeoutMs?: number;
 }
 
 export class AgentRuntimeClientError extends Error {
@@ -544,6 +545,7 @@ export class AgentRuntimeClient {
   private readonly fetchImpl: typeof fetch;
   private readonly runtimeConfigLoader: () => Promise<RuntimeConfig>;
   private readonly internalTokenLoader: () => Promise<string>;
+  private readonly requestTimeoutMs: number;
 
   constructor(options: AgentRuntimeClientOptions = {}) {
     this.fetchImpl = resolveFetch(options.fetchImpl);
@@ -551,6 +553,11 @@ export class AgentRuntimeClient {
       options.runtimeConfigLoader ?? getAppRuntimeConfig;
     this.internalTokenLoader =
       options.internalTokenLoader ?? getPreferredInternalToken;
+    this.requestTimeoutMs =
+      Number.isFinite(options.requestTimeoutMs) &&
+      Number(options.requestTimeoutMs) > 0
+        ? Number(options.requestTimeoutMs)
+        : 180_000;
   }
 
   async run(payload: AgentRuntimeRequest): Promise<AgentRuntimeResponse> {
@@ -616,14 +623,34 @@ export class AgentRuntimeClient {
         : null,
       this.internalTokenLoader
     );
-    const response = await this.fetchImpl(
-      buildAgentRuntimeAdapterUrl(runtime.pythonBackendUrl, operation),
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(
+        buildAgentRuntimeAdapterUrl(runtime.pythonBackendUrl, operation),
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        }
+      );
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        (error instanceof Error && error.name === "AbortError")
+      ) {
+        throw new AgentRuntimeClientError({
+          code: "adapter_timeout",
+          message: `Agent runtime adapter request timed out after ${this.requestTimeoutMs}ms.`,
+          status: 504,
+        });
       }
-    );
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
     const rawPayload = await parseJsonResponse(response);
     if (!response.ok) {
       throw mapAdapterErrorToRuntimeError(rawPayload, response.status);

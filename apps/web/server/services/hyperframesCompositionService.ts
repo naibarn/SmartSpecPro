@@ -19,6 +19,7 @@ import {
   HyperframesFinalCompositeConfigSchema,
   type HyperframesFinalCompositeConfig,
 } from "@shared/hyperframes/runtimeApiSchemas";
+import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -248,9 +249,12 @@ export function getHyperframesFinalCompositeFallbackCapability(
     unsupportedFeatures.push("word_level_karaoke_timing");
   }
   return {
-    ffmpegAssFallback: true,
-    fallbackQuality: unsupportedFeatures.length > 0 ? "partial" : "full",
-    unsupportedFeatures,
+    ffmpegAssFallback: false,
+    fallbackQuality: "not_supported",
+    unsupportedFeatures: [
+      ...unsupportedFeatures,
+      "official_html_css_browser_runtime_required",
+    ],
   };
 }
 
@@ -434,7 +438,10 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
   }));
   const finalCompositeBase = {
     ...finalCompositeInput,
-    styleBrief: sanitizeHyperframesText(finalCompositeInput.styleBrief, 4000),
+    styleBrief: sanitizeHyperframesText(
+      finalCompositeInput.styleBrief,
+      HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS
+    ),
     hookText: sanitizeHyperframesText(finalCompositeInput.hookText, 160),
     supportingText: sanitizeHyperframesText(finalCompositeInput.supportingText, 160),
     audioEvents: finalCompositeInput.audioEvents.map(event => ({
@@ -703,7 +710,8 @@ function buildHyperframesFinalCompositeHtml(input: {
         color: #fff;
       }
       .shot { position: absolute; inset: 0; opacity: 0; overflow: hidden; background: #050505; }
-      .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.02); }
+      .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.02); }
+      .source-video.is-active { opacity: 1; }
       .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.08) 48%, rgba(0,0,0,.62)); pointer-events: none; }
       .shot-copy { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 9%; display: grid; gap: 14px; text-shadow: 0 4px 18px rgba(0,0,0,.55); }
       .shot-line { display: inline-block; width: fit-content; max-width: 100%; border-radius: 20px; background: rgba(7, 12, 24, .74); padding: 18px 24px; font-size: 52px; font-weight: 800; line-height: 1.08; opacity: 0; transform: translateY(28px); }
@@ -787,17 +795,25 @@ function buildHyperframesFinalCompositeHtml(input: {
         })};
         (function () {
           var shots = Array.prototype.slice.call(document.querySelectorAll(".shot"));
+          var sourceVideos = Array.prototype.slice.call(document.querySelectorAll(".source-video"));
           function setTime(t) {
+            sourceVideos.forEach(function (video) {
+              var start = Number(video.dataset.start || 0);
+              var duration = Number(video.dataset.duration || 0);
+              var mediaStart = Number(video.dataset.mediaStart || 0);
+              var local = t - start;
+              var active = local >= 0 && local < duration;
+              video.classList.toggle("is-active", active);
+              if (active && Math.abs((video.currentTime || 0) - (mediaStart + local)) > 0.25) {
+                try { video.currentTime = Math.max(0, mediaStart + local); } catch (error) {}
+              }
+            });
             shots.forEach(function (shot) {
               var start = Number(shot.dataset.start || 0);
               var duration = Number(shot.dataset.duration || 0);
               var local = t - start;
               var active = local >= 0 && local < duration;
               shot.classList.toggle("is-active", active);
-              var video = shot.querySelector("video");
-              if (video && active && Math.abs((video.currentTime || 0) - local) > 0.25) {
-                try { video.currentTime = Math.max(0, local); } catch (error) {}
-              }
               Array.prototype.slice.call(shot.querySelectorAll(".subtitle-cue")).forEach(function (cue) {
                 var cueStart = Number(cue.dataset.cueStart || 0);
                 var cueEnd = Number(cue.dataset.cueEnd || 0);
