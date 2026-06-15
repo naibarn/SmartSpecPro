@@ -183,7 +183,7 @@ export function mapOutboxStatusToRenderStatus(
   if (status === "failed") {
     const error = lastError ?? "";
     if (
-      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured|FFmpeg not found|FFprobe not found/i.test(
+      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i.test(
         error
       )
     ) {

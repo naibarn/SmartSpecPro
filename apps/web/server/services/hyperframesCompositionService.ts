@@ -22,7 +22,7 @@ import {
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
-  "hyperframes_final_composite_builder_v7";
+  "hyperframes_final_composite_builder_v8";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -660,8 +660,8 @@ function buildHyperframesFinalCompositeHtml(input: {
   const safeInset = `${Math.round(config.safeZonePercent * 10) / 10}%`;
   const preserveNativeAudio = config.preserveNativeAudio !== false;
   const sourceVideoAudioAttributes = preserveNativeAudio
-    ? 'data-native-audio="true" data-audio-role="native_source"'
-    : "muted";
+    ? 'data-has-audio="true" data-native-audio="true" data-audio-role="native_source"'
+    : 'muted data-has-audio="false"';
   const shotHtml = config.shots
     .map((shot, index) => {
       const shouldUseHookAsFirstShotCopy =

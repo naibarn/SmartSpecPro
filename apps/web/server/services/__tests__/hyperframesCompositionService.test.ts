@@ -354,7 +354,7 @@ describe("hyperframesCompositionService", () => {
       timelineVersion: 1,
     });
     expect(composition.provenance.builderVersion).toBe(
-      "hyperframes_final_composite_builder_v7"
+      "hyperframes_final_composite_builder_v8"
     );
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
     expect(composition.compositionHtml).toContain(
@@ -368,6 +368,7 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain('data-overlay-preset="price_impact"');
     expect(composition.compositionHtml).toContain('data-media-start="0"');
     expect(composition.compositionHtml).toContain('data-hf-auto-start="true"');
+    expect(composition.compositionHtml).toContain('data-has-audio="true"');
     expect(composition.compositionHtml).toContain('data-native-audio="true"');
     expect(composition.compositionHtml).not.toMatch(/<video[^>]+muted/);
     expect(composition.compositionHtml).toContain('data-track-index="0"');
@@ -479,6 +480,8 @@ describe("hyperframesCompositionService", () => {
     });
 
     expect(composition.compositionHtml).toMatch(/<video[^>]+muted/);
+    expect(composition.compositionHtml).toContain('data-has-audio="false"');
+    expect(composition.compositionHtml).not.toContain('data-has-audio="true"');
     expect(composition.compositionHtml).not.toContain('data-native-audio="true"');
   });
 

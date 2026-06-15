@@ -7,6 +7,7 @@ import {
   executeLocalHyperframesSmokeRender,
   isHyperframesRuntimeExecutionReady,
   isHyperframesWorkerEnabled,
+  isNonRetryableHyperframesRuntimeError,
   resolveHyperframesFfmpegBinary,
   runHyperframesRenderWorkerOnce,
   shouldRequireHyperframesOutputAudio,
@@ -164,6 +165,14 @@ describe("hyperframesWorkerPolicy", () => {
         },
       })
     ).rejects.toThrow(/HTML\/CSS\/browser runtime is required/);
+  });
+
+  it("treats HyperFrames media audio contract violations as non-retryable runtime configuration failures", () => {
+    expect(
+      isNonRetryableHyperframesRuntimeError(
+        'video_missing_muted [video-shot-1]: has data-start but is not muted. Mark audible videos with data-has-audio="true"; otherwise keep video muted.'
+      )
+    ).toBe(true);
   });
 
   it("requires an audio stream when final composite preserves native source audio", () => {

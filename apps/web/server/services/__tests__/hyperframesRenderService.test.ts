@@ -1111,6 +1111,12 @@ describe("hyperframesRenderService", () => {
       )
     ).toBe("blocked_needs_user");
     expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        'HyperFrames runtime transient failure: Command failed: hyperframes render /tmp/work --strict | stdout tail: video_missing_muted [video-shot-1]: has data-start but is not muted. Mark audible videos with data-has-audio="true"; otherwise keep video muted.'
+      )
+    ).toBe("blocked_needs_user");
+    expect(
       mapOutboxStatusToRenderStatus("failed", "QA rejected unsafe output")
     ).toBe("failed_permanent");
   });
