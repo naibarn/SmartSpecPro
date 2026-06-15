@@ -8,10 +8,12 @@ WORKDIR /app
 
 # Copy root workspace files
 COPY package.json package-lock.json* pnpm-lock.yaml* ./
+COPY scripts/check-node-version.mjs ./scripts/check-node-version.mjs
 
 # Copy package.json for workspace packages
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/db/package.json ./packages/db/
+COPY packages/local-ai-core/package.json ./packages/local-ai-core/
 COPY packages/skills/package.json ./packages/skills/
 COPY packages/ui/package.json ./packages/ui/
 COPY apps/web/package.json ./apps/web/
@@ -30,6 +32,8 @@ WORKDIR /app
 
 # Copy deps from stage 1
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 
 # Copy source
 COPY packages/ ./packages/
@@ -50,22 +54,41 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV CHROME_BIN=/usr/bin/chromium-browser
 
-# Install tini for proper signal handling
-RUN apk add --no-cache tini
+# Install production runtime dependencies for official HTML/CSS/browser renders.
+RUN apk add --no-cache \
+    tini \
+    chromium \
+    ffmpeg \
+    fontconfig \
+    font-noto \
+    font-noto-thai \
+    ttf-freefont
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 smartspec
 
-# Copy built app + workspace packages (needed at runtime for @smartspec/* imports)
-COPY --from=builder --chown=smartspec:nodejs /app/apps/web/dist ./dist
-COPY --from=builder --chown=smartspec:nodejs /app/apps/web/package.json ./package.json
-COPY --from=builder --chown=smartspec:nodejs /app/apps/web/drizzle ./drizzle
+# Copy built app, runtime server source, and workspace packages.
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/dist ./apps/web/dist
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/package.json ./apps/web/package.json
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/server ./apps/web/server
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/shared ./apps/web/shared
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/scripts ./apps/web/scripts
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/skills ./apps/web/skills
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/drizzle ./apps/web/drizzle
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/vite.config.ts ./apps/web/vite.config.ts
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/tsconfig.json ./apps/web/tsconfig.json
+COPY --from=builder --chown=smartspec:nodejs /app/tsconfig.base.json ./tsconfig.base.json
 COPY --from=builder --chown=smartspec:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=smartspec:nodejs /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=builder --chown=smartspec:nodejs /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=builder --chown=smartspec:nodejs /app/packages ./packages
 
 USER smartspec
+WORKDIR /app/apps/web
 
 # Docker health check (Cloud Run ignores this, but useful for local testing)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
@@ -75,4 +98,4 @@ EXPOSE 3000
 
 # Use tini as init process for proper signal handling
 ENTRYPOINT ["tini", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["npm", "run", "start"]

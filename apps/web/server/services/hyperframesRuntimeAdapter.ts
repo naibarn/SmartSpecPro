@@ -125,6 +125,7 @@ function isHyperframesCliBinaryAvailable(
   const candidates = [
     join(process.cwd(), "node_modules", ".bin", "hyperframes"),
     join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
+    join(process.cwd(), "..", "..", "node_modules", ".bin", "hyperframes"),
   ];
   return candidates.some(candidate => existsSync(candidate)) ||
     isHyperframesPackageAvailable("hyperframes");
@@ -335,6 +336,7 @@ function readPackageVersion(packageName: string): string | null {
     const candidates = [
       join(process.cwd(), "node_modules", ...packagePath, "package.json"),
       join(process.cwd(), "apps", "web", "node_modules", ...packagePath, "package.json"),
+      join(process.cwd(), "..", "..", "node_modules", ...packagePath, "package.json"),
     ];
     for (const candidate of candidates) {
       if (!existsSync(candidate)) continue;
@@ -376,6 +378,7 @@ function resolveHyperframesCliBinary(env?: HyperframesRuntimeAdapterEnv): string
   const candidates = [
     join(process.cwd(), "node_modules", ".bin", "hyperframes"),
     join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
+    join(process.cwd(), "..", "..", "node_modules", ".bin", "hyperframes"),
   ];
   const localBinary = candidates.find(candidate => existsSync(candidate));
   return localBinary ?? "hyperframes";

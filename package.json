@@ -22,8 +22,11 @@
   },
   "packageManager": "npm@10.9.8",
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@vitejs/plugin-react": "^5.1.2",
     "turbo": "^2.5.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vite-plugin-manus-runtime": "^0.0.57"
   },
   "dependencies": {
     "@xyflow/react": "^12.10.0",

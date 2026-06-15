@@ -11,6 +11,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,7 @@ const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
 const outputPath = join(resultsDir, "marketplace-hyperframes-fixture.mp4");
 const manifestPath = join(resultsDir, "fixture-render-manifest.json");
 const officialNodeRequirement = ">=22.22.0";
+const requireFromFixture = createRequire(import.meta.url);
 
 function stableFixtureHash(value) {
   return `hf_${createHash("sha256")
@@ -55,13 +57,37 @@ function nodeSupportsOfficialRuntime() {
 
 function readPackageVersion(packageName) {
   try {
-    const packageJson = JSON.parse(
-      readFileSync(resolve(here, "../node_modules", packageName, "package.json"), "utf8")
-    );
-    return String(packageJson.version ?? "");
+    return String(requireFromFixture(`${packageName}/package.json`).version ?? "");
   } catch {
-    return null;
+    // Continue through explicit workspace-layout candidates below.
   }
+  const packageParts = packageName.split("/");
+  const candidates = [
+    resolve(here, "../node_modules", ...packageParts, "package.json"),
+    resolve(here, "../../../node_modules", ...packageParts, "package.json"),
+    join(process.cwd(), "node_modules", ...packageParts, "package.json"),
+    join(process.cwd(), "apps", "web", "node_modules", ...packageParts, "package.json"),
+  ];
+  for (const candidate of candidates) {
+    if (!existsSync(candidate)) continue;
+    try {
+      const packageJson = JSON.parse(readFileSync(candidate, "utf8"));
+      return typeof packageJson.version === "string" ? packageJson.version : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function resolveHyperframesCliBinary() {
+  const candidates = [
+    resolve(here, "../node_modules/.bin/hyperframes"),
+    resolve(here, "../../../node_modules/.bin/hyperframes"),
+    join(process.cwd(), "node_modules", ".bin", "hyperframes"),
+    join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
+  ];
+  return candidates.find(candidate => existsSync(candidate)) ?? "hyperframes";
 }
 
 function resolveThaiFontPath() {
@@ -276,7 +302,7 @@ if (!nodeSupportsOfficialRuntime()) {
 	    const mediaAssets = createFixtureMediaAssets(workspace);
 	    writeFileSync(join(workspace, "index.html"), buildFixtureHtml(), "utf8");
     const render = spawnSync(
-      resolve(here, "../node_modules/.bin/hyperframes"),
+      resolveHyperframesCliBinary(),
       [
         "render",
         workspace,

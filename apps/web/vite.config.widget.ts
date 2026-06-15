@@ -16,6 +16,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 
+const configDir = import.meta.dirname;
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -25,8 +27,8 @@ export default defineConfig({
     cssCodeSplit: false,
     rollupOptions: {
       input: {
-        widget: resolve(__dirname, "client/widget/main.tsx"),
-        embed: resolve(__dirname, "client/widget/embed.ts"),
+        widget: resolve(configDir, "client/widget/main.tsx"),
+        embed: resolve(configDir, "client/widget/embed.ts"),
       },
       output: {
         // Single file per entry, no chunks
@@ -44,7 +46,7 @@ export default defineConfig({
   resolve: {
     extensions: [".ts", ".tsx", ".mjs", ".js", ".jsx", ".json"],
     alias: {
-      "@": resolve(__dirname, "client/src"),
+      "@": resolve(configDir, "client/src"),
     },
   },
   // Prevent Vite from referencing server-side modules

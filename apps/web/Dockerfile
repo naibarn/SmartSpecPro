@@ -8,11 +8,14 @@ WORKDIR /app
 
 # Copy root workspace files
 COPY package.json package-lock.json* ./
+COPY scripts/check-node-version.mjs ./scripts/check-node-version.mjs
 
 # Copy package.json for workspace packages
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/db/package.json ./packages/db/
+COPY packages/local-ai-core/package.json ./packages/local-ai-core/
 COPY packages/skills/package.json ./packages/skills/
+COPY packages/ui/package.json ./packages/ui/
 COPY apps/web/package.json ./apps/web/
 
 # Install dependencies
@@ -24,6 +27,8 @@ WORKDIR /app
 
 # Copy deps
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 
 # Copy source
 COPY packages/ ./packages/
@@ -41,9 +46,12 @@ ENV NODE_ENV=development
 ENV PORT=3000
 
 COPY package.json package-lock.json* ./
+COPY scripts/check-node-version.mjs ./scripts/check-node-version.mjs
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/db/package.json ./packages/db/
+COPY packages/local-ai-core/package.json ./packages/local-ai-core/
 COPY packages/skills/package.json ./packages/skills/
+COPY packages/ui/package.json ./packages/ui/
 COPY apps/web/package.json ./apps/web/
 
 RUN npm ci
@@ -62,6 +70,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV CHROME_BIN=/usr/bin/chromium-browser
+
+RUN apk add --no-cache \
+    chromium \
+    ffmpeg \
+    fontconfig \
+    font-noto \
+    font-noto-thai \
+    ttf-freefont
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 smartspec
@@ -72,11 +90,15 @@ COPY --from=builder /app/apps/web/dist ./dist
 COPY --from=builder /app/apps/web/package.json ./package.json
 COPY --from=builder /app/apps/web/server ./server
 COPY --from=builder /app/apps/web/shared ./shared
+COPY --from=builder /app/apps/web/scripts ./scripts
 COPY --from=builder /app/apps/web/skills ./skills
 COPY --from=builder /app/apps/web/drizzle ./drizzle
 COPY --from=builder /app/apps/web/vite.config.ts ./vite.config.ts
 COPY --from=builder /app/apps/web/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/tsconfig.base.json /tsconfig.base.json
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/web/node_modules ./node_modules
+COPY --from=builder /app/packages/ui/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 
 RUN chown -R smartspec:nodejs /app

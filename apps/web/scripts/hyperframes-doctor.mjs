@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,10 +13,11 @@ const officialHyperframesNodeRequirement = ">=22.22.0";
 const here = dirname(fileURLToPath(import.meta.url));
 const resultsDir = resolve(here, "../test-results/marketplace-hyperframes");
 const outputPath = join(resultsDir, "doctor-report.json");
+const requireFromDoctor = createRequire(import.meta.url);
 
 function hasCommand(command) {
   try {
-    execFileSync("bash", ["-lc", `command -v ${command}`], {
+    execFileSync("sh", ["-lc", `command -v ${command}`], {
       stdio: "ignore",
     });
     return true;
@@ -26,7 +28,7 @@ function hasCommand(command) {
 
 function readCommand(command) {
   try {
-    return execFileSync("bash", ["-lc", command], {
+    return execFileSync("sh", ["-lc", command], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
@@ -42,6 +44,33 @@ function commandOutput(command) {
 
 function hashValue(value) {
   return `hf_${createHash("sha256").update(String(value)).digest("hex").slice(0, 48)}`;
+}
+
+function packageJsonCandidates(packageName) {
+  const packageParts = packageName.split("/");
+  return [
+    join(process.cwd(), "node_modules", ...packageParts, "package.json"),
+    join(process.cwd(), "apps", "web", "node_modules", ...packageParts, "package.json"),
+    resolve(here, "../node_modules", ...packageParts, "package.json"),
+    resolve(here, "../../../node_modules", ...packageParts, "package.json"),
+  ];
+}
+
+function readPackageVersion(packageName) {
+  try {
+    return String(requireFromDoctor(`${packageName}/package.json`).version ?? "");
+  } catch {
+    for (const candidate of packageJsonCandidates(packageName)) {
+      if (!existsSync(candidate)) continue;
+      try {
+        const packageJson = JSON.parse(readFileSync(candidate, "utf8"));
+        return typeof packageJson.version === "string" ? packageJson.version : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
 }
 
 function parseNodeVersion(version) {
@@ -130,15 +159,19 @@ const chromeVersion =
 const nodeOk = isSupportedNodeVersion();
 const officialNodeOk = isSupportedOfficialHyperframesNodeVersion();
 const fonts = getFontStatus();
-const localHyperframesBinary = join(process.cwd(), "node_modules", ".bin", "hyperframes");
-const hyperframesCliAvailable = existsSync(localHyperframesBinary) || hasCommand("hyperframes");
-const producerPackageAvailable = existsSync(join(process.cwd(), "node_modules", "@hyperframes", "producer", "package.json"));
-const hyperframesPackageVersion = existsSync(join(process.cwd(), "node_modules", "hyperframes", "package.json"))
-  ? JSON.parse(readFileSync(join(process.cwd(), "node_modules", "hyperframes", "package.json"), "utf8")).version
-  : null;
-const producerPackageVersion = producerPackageAvailable
-  ? JSON.parse(readFileSync(join(process.cwd(), "node_modules", "@hyperframes", "producer", "package.json"), "utf8")).version
-  : null;
+const hyperframesPackageVersion = readPackageVersion("hyperframes");
+const producerPackageVersion = readPackageVersion("@hyperframes/producer");
+const hyperframesCliCandidates = [
+  join(process.cwd(), "node_modules", ".bin", "hyperframes"),
+  join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
+  resolve(here, "../node_modules/.bin/hyperframes"),
+  resolve(here, "../../../node_modules/.bin/hyperframes"),
+];
+const hyperframesCliAvailable =
+  hyperframesCliCandidates.some(candidate => existsSync(candidate)) ||
+  hasCommand("hyperframes") ||
+  hyperframesPackageVersion != null;
+const producerPackageAvailable = producerPackageVersion != null;
 const officialRuntimeReady =
   nodeOk && officialNodeOk && hyperframesCliAvailable && producerPackageAvailable && chromeOk && ffmpegOk && ffprobeOk && fonts.ok;
 const gate =

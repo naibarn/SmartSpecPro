@@ -1,3 +1,14 @@
+# Local runtime data (must be excluded before Docker walks unreadable mounts)
+data
+data/
+data/**
+/data
+/data/
+/data/**
+**/data
+**/data/
+**/data/**
+
 # Dependencies (will be installed inside container)
 **/node_modules
 **/__pycache__
@@ -18,6 +29,7 @@
 
 # Build artifacts and caches
 .turbo
+.cache
 **/dist
 **/.next
 **/coverage
@@ -45,6 +57,23 @@ CHANGELOG.md
 LICENSE
 
 # Temporary and test files
+artifacts
+deep_plan
+apps/web/uploads
+apps/web/uploads/**
+apps/web/logs
+apps/web/logs/**
+apps/web/.data
+apps/web/.data/**
+apps/web/.db-backups
+apps/web/.db-backups/**
+apps/web/.manus
+apps/web/.manus/**
+apps/web/test-results
+apps/web/test-results/**
+apps/web/tmp-workspace-*
+apps/**/target
+apps/**/target/**
 tmp-workspace
 **/tmp
 **/*.test.ts
