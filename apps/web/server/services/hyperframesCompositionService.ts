@@ -21,6 +21,9 @@ import {
 } from "@shared/hyperframes/runtimeApiSchemas";
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
+const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
+  "hyperframes_final_composite_builder_v6";
+
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
   shotIndex: number;
@@ -493,6 +496,7 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
     audioEventMapHash,
   };
   const compositionSeed = {
+    builderVersion: HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION,
     productId: input.productId,
     runId: input.runId,
     productTruth,
@@ -607,7 +611,7 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
       platformPresetId: platformPreset.presetId,
       platformPresetVersion: platformPreset.platformPresetVersion,
       compositionInputHash,
-      builderVersion: "hyperframes_final_composite_builder_v1",
+      builderVersion: HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION,
       createdAt: (input.now ?? new Date()).toISOString(),
     },
   });
@@ -663,7 +667,7 @@ function buildHyperframesFinalCompositeHtml(input: {
       const overlayTrackIndex = videoTrackIndex + 1;
       const shotOverlayPreset = shot.overlayPreset ?? config.overlayPreset;
       return `
-      <video id="video-${escapeHtml(shot.id)}" class="clip source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" muted playsinline></video>
+      <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" muted playsinline></video>
       <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}">
         <div class="shade"></div>
         <div class="shot-copy">
@@ -728,12 +732,11 @@ function buildHyperframesFinalCompositeHtml(input: {
         background: #050505;
         color: #fff;
       }
-      .shot { position: absolute; inset: 0; opacity: 0; overflow: hidden; background: #050505; }
-      .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.02); }
-      .source-video.is-active { opacity: 1; }
-      .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.08) 48%, rgba(0,0,0,.62)); pointer-events: none; }
-      .shot-copy { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 9%; display: grid; gap: 14px; text-shadow: 0 4px 18px rgba(0,0,0,.55); }
-      .shot-line { display: inline-block; width: fit-content; max-width: 100%; border-radius: 20px; background: rgba(7, 12, 24, .74); padding: 18px 24px; font-size: 52px; font-weight: 800; line-height: 1.08; opacity: 0; transform: translateY(28px); }
+      .shot { position: absolute; inset: 0; opacity: 1; overflow: hidden; background: transparent; pointer-events: none; z-index: 2; }
+      .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transform: scale(1.02); z-index: 0; }
+      .shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.08) 48%, rgba(0,0,0,.62)); pointer-events: none; }
+      .shot-copy { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 9%; z-index: 2; display: grid; gap: 14px; text-shadow: 0 4px 18px rgba(0,0,0,.55); }
+      .shot-line { display: inline-block; width: fit-content; max-width: 100%; border-radius: 20px; background: rgba(7, 12, 24, .74); padding: 18px 24px; font-size: 52px; font-weight: 800; line-height: 1.08; opacity: 1; transform: translateY(0); }
       .shot-line + .shot-line { font-size: 40px; font-weight: 700; background: rgba(255, 255, 255, .88); color: #0f172a; }
       [data-overlay-preset="auto"] .shot-copy { top: 8%; max-width: 78%; }
       [data-overlay-preset="auto"] .shot-line:first-child { background: rgba(255,255,255,.9); color: #0f172a; font-size: 58px; }
@@ -771,8 +774,8 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="hero_price_billboard"] .shot-line:nth-child(2) { font-size: 104px; background: transparent; color: #facc15; text-shadow: 0 10px 0 rgba(120,53,15,.48), 0 14px 36px rgba(0,0,0,.55); }
       [data-overlay-preset="clean_subtitle"] .shot-copy,
       [data-overlay-preset="none"] .shot-copy { display: none; }
-      .subtitle-stack { position: absolute; left: ${safeInset}; right: ${safeInset}; bottom: ${config.subtitlePlacement === "lower_third" ? "20%" : "7%"}; display: grid; gap: 10px; justify-items: center; }
-      .subtitle-cue { max-width: 88%; border-radius: 16px; background: rgba(0,0,0,.76); padding: 12px 18px; font-size: 34px; font-weight: 700; line-height: 1.18; text-align: center; opacity: 0; box-shadow: 0 8px 26px rgba(0,0,0,.28); }
+      .subtitle-stack { position: absolute; left: ${safeInset}; right: ${safeInset}; bottom: ${config.subtitlePlacement === "lower_third" ? "20%" : "7%"}; z-index: 3; display: grid; gap: 10px; justify-items: center; }
+      .subtitle-cue { max-width: 88%; border-radius: 16px; background: rgba(0,0,0,.76); padding: 12px 18px; font-size: 34px; font-weight: 700; line-height: 1.18; text-align: center; opacity: 1; box-shadow: 0 8px 26px rgba(0,0,0,.28); }
       [data-subtitle-preset="minimal_shadow"] .subtitle-cue { background: transparent; box-shadow: none; text-shadow: 0 4px 12px rgba(0,0,0,.9); }
       [data-subtitle-preset="creator_pop"] .subtitle-cue { border-radius: 999px; background: rgba(255,255,255,.92); color: #020617; transform: scale(.94); }
       [data-subtitle-preset="karaoke_word"] .subtitle-cue { background: rgba(0,0,0,.7); color: #facc15; }
@@ -815,6 +818,15 @@ function buildHyperframesFinalCompositeHtml(input: {
         (function () {
           var shots = Array.prototype.slice.call(document.querySelectorAll(".shot"));
           var sourceVideos = Array.prototype.slice.call(document.querySelectorAll(".source-video"));
+          var shotWindowById = ${JSON.stringify(Object.fromEntries(
+            timeline.entries.map(entry => [
+              entry.shotId,
+              {
+                start: entry.absoluteStartSec,
+                duration: entry.durationSec,
+              },
+            ])
+          ))};
           function setTime(t) {
             sourceVideos.forEach(function (video) {
               var start = Number(video.dataset.start || 0);
@@ -828,8 +840,9 @@ function buildHyperframesFinalCompositeHtml(input: {
               }
             });
             shots.forEach(function (shot) {
-              var start = Number(shot.dataset.start || 0);
-              var duration = Number(shot.dataset.duration || 0);
+              var shotWindow = shotWindowById[shot.dataset.shotId] || { start: 0, duration: 0 };
+              var start = Number(shotWindow.start || 0);
+              var duration = Number(shotWindow.duration || 0);
               var local = t - start;
               var active = local >= 0 && local < duration;
               shot.classList.toggle("is-active", active);

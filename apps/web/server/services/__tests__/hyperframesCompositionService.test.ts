@@ -353,9 +353,21 @@ describe("hyperframesCompositionService", () => {
       durationSec: 8,
       timelineVersion: 1,
     });
+    expect(composition.provenance.builderVersion).toBe(
+      "hyperframes_final_composite_builder_v6"
+    );
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
+    expect(composition.compositionHtml).toContain(
+      'class="clip scene source-video"'
+    );
+    expect(composition.compositionHtml).toContain(
+      'class="clip shot shot-glow_feature"'
+    );
+    expect(composition.compositionHtml).not.toContain('data-shot-start=');
+    expect(composition.compositionHtml).not.toContain('data-shot-duration=');
     expect(composition.compositionHtml).toContain('data-overlay-preset="price_impact"');
     expect(composition.compositionHtml).toContain('data-media-start="0"');
+    expect(composition.compositionHtml).toContain('data-hf-auto-start="true"');
     expect(composition.compositionHtml).toContain('data-track-index="0"');
     expect(composition.compositionHtml).toContain('class="clip audio-event"');
     expect(composition.compositionHtml).not.toMatch(
@@ -368,8 +380,27 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain("data-audio-event-map-hash=");
     expect(composition.compositionHtml).toContain("window.__timelines");
     expect(composition.compositionHtml).toContain(".source-video.is-active");
+    expect(composition.compositionHtml).toContain(
+      ".shot { position: absolute; inset: 0; opacity: 1; overflow: hidden; background: transparent; pointer-events: none; z-index: 2; }"
+    );
+    expect(composition.compositionHtml).toContain(
+      ".source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transform: scale(1.02); z-index: 0; }"
+    );
+    expect(composition.compositionHtml).not.toContain(
+      ".shot { position: absolute; inset: 0; opacity: 0; overflow: hidden; background: #050505;"
+    );
+    expect(composition.compositionHtml).not.toContain(
+      ".source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0;"
+    );
     expect(composition.compositionHtml).toContain("document.querySelectorAll(\".source-video\")");
     expect(composition.compositionHtml).toContain("video.classList.toggle(\"is-active\", active)");
+    expect(composition.compositionHtml).toContain("var shotWindowById =");
+    expect(composition.compositionHtml).toContain("shotWindowById[shot.dataset.shotId]");
+    expect(composition.compositionHtml).toContain("Number(shotWindow.start || 0)");
+    expect(composition.compositionHtml).toContain("Number(shotWindow.duration || 0)");
+    expect(composition.compositionHtml).not.toContain(
+      'class="clip scene shot'
+    );
     expect(composition.compositionHtml).not.toContain("fetch(");
     expect(composition.finalCompositeConfig.audioEventMapHash).toMatch(/^hf_/);
     expect(composition.assets.some(asset => asset.kind === "audio")).toBe(true);
