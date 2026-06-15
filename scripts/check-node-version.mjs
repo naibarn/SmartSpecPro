@@ -22,15 +22,10 @@ function isAllowed(version) {
   ));
 }
 
-if (process.env.SMARTSPEC_SKIP_NODE_VERSION_CHECK === "1") {
-  process.exit(0);
-}
-
 const version = parseVersion(process.version);
 if (!version || !isAllowed(version)) {
   console.error(`SmartSpecPro requires Node ${allowedRanges.map((range) => range.label).join(" or ")}.`);
   console.error(`Current Node is ${process.version}.`);
   console.error("Use the repo version file: nvm use, fnm use, mise install, asdf install, or install Node 22.22.3.");
-  console.error("For emergency-only installs, set SMARTSPEC_SKIP_NODE_VERSION_CHECK=1.");
   process.exit(1);
 }

@@ -1486,6 +1486,15 @@ function isHyperframesFinalCompositeRender(
   );
 }
 
+function isSyntheticHyperframesRuntimeBlockedJobId(renderJobId?: string | null): boolean {
+  return /^hf_final_runtime_blocked_/.test(String(renderJobId ?? "").trim());
+}
+
+function isTrackableHyperframesRenderJobId(renderJobId?: string | null): boolean {
+  const normalized = String(renderJobId ?? "").trim();
+  return Boolean(normalized) && !isSyntheticHyperframesRuntimeBlockedJobId(normalized);
+}
+
 function formatHyperframesFinalCompositeStatus(
   render: HyperframesRenderStatusProjection | null,
   locale: string,
@@ -2193,6 +2202,9 @@ export default function StoryboardReviewPage() {
   const hyperframesRenderJobId = hyperframesSearchParams.get("hyperframesRenderJobId");
   const hyperframesProductId = hyperframesSearchParams.get("productId") ?? undefined;
   const hyperframesRunId = hyperframesSearchParams.get("runId") ?? undefined;
+  const trackableHyperframesRenderJobId = isTrackableHyperframesRenderJobId(hyperframesRenderJobId)
+    ? hyperframesRenderJobId
+    : null;
 
   const { data: review, isLoading: isReviewLoading } = trpc.videoEditorProjects.getStoryboardReview.useQuery(
     { id: canonicalReviewId ?? 0 },
@@ -2234,7 +2246,7 @@ export default function StoryboardReviewPage() {
     (!canonicalReviewId || Boolean(reviewRecord)) &&
     (!reviewHyperframesProductId ||
       (Boolean(hyperframesProductId) && hyperframesProductId === reviewHyperframesProductId));
-  const effectiveHyperframesRenderJobId = canUseHyperframesQueryContext ? hyperframesRenderJobId : null;
+  const effectiveHyperframesRenderJobId = canUseHyperframesQueryContext ? trackableHyperframesRenderJobId : null;
   const effectiveHyperframesProductId =
     reviewHyperframesProductId ??
     draftHyperframesProductId ??
@@ -2278,7 +2290,7 @@ export default function StoryboardReviewPage() {
     trpc.marketplaceCapture.createHyperframesPreview.useMutation({
       onSuccess: result => {
         const nextRenderJobId = result.render?.renderJobId;
-        if (nextRenderJobId && typeof window !== "undefined") {
+        if (isTrackableHyperframesRenderJobId(nextRenderJobId) && typeof window !== "undefined") {
           const params = new URLSearchParams(search);
           params.set("hyperframesRenderJobId", nextRenderJobId);
           if (result.render.productId) params.set("productId", result.render.productId);
@@ -2298,7 +2310,7 @@ export default function StoryboardReviewPage() {
     trpc.marketplaceCapture.createHyperframesFinalComposite.useMutation({
       onSuccess: result => {
         const nextRenderJobId = result.render?.renderJobId;
-        if (nextRenderJobId && typeof window !== "undefined") {
+        if (isTrackableHyperframesRenderJobId(nextRenderJobId) && typeof window !== "undefined") {
           const params = new URLSearchParams(search);
           params.set("hyperframesRenderJobId", nextRenderJobId);
           if (result.render.productId) params.set("productId", result.render.productId);
@@ -5864,7 +5876,7 @@ export default function StoryboardReviewPage() {
             render={hyperframesRenderProjection}
             snapshots={hyperframesSnapshots}
             onCreatePreview={
-              !hyperframesRenderJobId && !hyperframesRenderProjection
+              !effectiveHyperframesRenderJobId && !hyperframesRenderProjection
                 ? createHyperframesPreview
                 : undefined
             }

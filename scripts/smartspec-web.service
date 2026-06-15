@@ -27,7 +27,8 @@ ExecStartPre=/bin/bash -lc 'pids=$(ss -H -ltnp "sport = :3000" 2>/dev/null | sed
 ExecStartPre=/bin/bash -lc 'for i in $(seq 1 20); do ss -H -ltn "sport = :3000" 2>/dev/null | grep -q . || exit 0; sleep 0.5; done; echo "FATAL: port 3000 still in use after 10s"; exit 1'
 
 # Start directly via tsx (not npm run start — avoids extra parent process)
-ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/npx tsx server/_core/index.ts
+ExecStartPre=/home/dev/.nvm/versions/node/v22.22.3/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs
+ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/node --import tsx server/_core/index.ts
 
 # Verify server is actually responding after startup (wait up to 45s for cold start)
 ExecStartPost=/bin/bash -c 'for i in $(seq 1 45); do curl -sf http://localhost:3000/healthz >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: healthz check failed after 45s"; exit 1'

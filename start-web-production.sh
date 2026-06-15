@@ -5,9 +5,13 @@ export PORT=3000
 
 # Ensure nvm is loaded
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+    source "$NVM_DIR/nvm.sh"
+    nvm use 22.22.3 >/dev/null
+fi
 
 cd "$(dirname "$0")/apps/web"
+node ../../scripts/check-node-version.mjs
 
 echo "========================================="
 echo "Starting SmartSpec Web in PRODUCTION mode"
@@ -20,4 +24,4 @@ echo "========================================="
 lsof -ti:3000 | xargs kill -9 2>/dev/null
 
 # Run production server
-npm run start
+exec node --import tsx server/_core/index.ts

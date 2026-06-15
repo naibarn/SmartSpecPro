@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./nodeVersionGuard";
 import { initSentry, Sentry } from "../services/sentry";
 
 // Initialize Sentry BEFORE Express app creation (captures startup errors)
