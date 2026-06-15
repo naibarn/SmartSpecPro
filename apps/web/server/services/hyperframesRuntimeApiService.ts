@@ -54,6 +54,8 @@ import {
   assertHyperframesCliRuntimeAllowed,
   assertHyperframesProducerRuntimeAllowed,
   getHyperframesRuntimeMode,
+  isHyperframesCliRuntimeAllowed,
+  isHyperframesProducerRuntimeAllowed,
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
@@ -78,13 +80,6 @@ function cleanText(value: unknown): string {
 }
 
 function scheduleHyperframesFinalCompositeWorkerKick(): void {
-  if (
-    ["1", "true", "yes", "on"].includes(
-      (process.env.MARKETPLACE_HYPERFRAMES_INLINE_WORKER_KICK_DISABLED ?? "").toLowerCase()
-    )
-  ) {
-    return;
-  }
   const timer = setTimeout(() => {
     void runHyperframesRenderWorkerOnce({ limit: 1 }).catch(error => {
       console.warn(
@@ -99,7 +94,7 @@ function scheduleHyperframesFinalCompositeWorkerKick(): void {
 }
 
 export function getHyperframesFinalCompositeRuntimeBlockReason(
-  env: HyperframesRuntimeAdapterEnv = process.env
+  env?: HyperframesRuntimeAdapterEnv
 ): string | null {
   const runtimeMode = getHyperframesRuntimeMode(env);
   try {
@@ -116,7 +111,7 @@ export function getHyperframesFinalCompositeRuntimeBlockReason(
       ? error.message
       : "HyperFrames official runtime is not ready.";
   }
-  return "HyperFrames official runtime mode is not configured. Set HYPERFRAMES_RUNTIME_MODE=producer or cli, enable HYPERFRAMES_OFFICIAL_RUNTIME_READY, and run the worker with the official HyperFrames runtime package.";
+  return "HyperFrames official HTML/CSS/browser runtime is not ready. Enable the tenant HyperFrames worker in Admin Tenant Feature Flags and verify the official HyperFrames runtime package.";
 }
 
 function stringList(value: unknown): string[] {
@@ -1429,17 +1424,13 @@ export async function listHyperframesCreativePresetsForApi(
   }
 ) {
   const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
-  const runtimeMode = String(process.env.HYPERFRAMES_RUNTIME_MODE ?? "").toLowerCase();
-  const officialRuntimeReady =
-    /^(1|true|yes|on)$/i.test(process.env.HYPERFRAMES_OFFICIAL_RUNTIME_READY ?? "") ||
-    /^(1|true|yes|on)$/i.test(process.env.HYPERFRAMES_PRODUCTION_RUNTIME_READY ?? "");
+  const producerRuntimeReady = isHyperframesProducerRuntimeAllowed();
+  const cliRuntimeReady = isHyperframesCliRuntimeAllowed();
   const officialCliReady =
     access.flags.workerEnabled &&
     access.capabilities.canStartAuto &&
-    officialRuntimeReady &&
-    (runtimeMode === "cli" || runtimeMode === "official_cli" || runtimeMode === "producer");
-  const hyperframesProducer =
-    officialCliReady && runtimeMode === "producer";
+    (cliRuntimeReady || producerRuntimeReady);
+  const hyperframesProducer = officialCliReady && producerRuntimeReady;
   const officialRuntimeMode:
     | "official_runtime_blocked"
     | "official_cli_ready"
@@ -1449,7 +1440,7 @@ export async function listHyperframesCreativePresetsForApi(
         : "official_cli_ready"
       : "official_runtime_blocked";
   const runtimeCapabilities = {
-    diagnosticFallbackOnly: true,
+    diagnosticFallbackOnly: !officialCliReady,
     hyperframesCli: officialCliReady,
     hyperframesProducer,
     runtimeMode: officialRuntimeMode,

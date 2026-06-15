@@ -84,10 +84,19 @@ describe("hyperframesRuntimeApiService", () => {
     ).toThrow();
   });
 
-  it("blocks final composite queueing when the official runtime mode is not configured", () => {
-    expect(getHyperframesFinalCompositeRuntimeBlockReason({})).toMatch(
-      /official runtime mode is not configured/i
-    );
+  it("allows final composite queueing with the detected official CLI runtime", () => {
+    expect(
+      getHyperframesFinalCompositeRuntimeBlockReason({
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toBeNull();
+    expect(
+      getHyperframesFinalCompositeRuntimeBlockReason({
+        HYPERFRAMES_RUNTIME_MODE: "cli",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "0",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toMatch(/blocked by explicit runtime readiness env/i);
     expect(
       getHyperframesFinalCompositeRuntimeBlockReason({
         HYPERFRAMES_RUNTIME_MODE: "producer",

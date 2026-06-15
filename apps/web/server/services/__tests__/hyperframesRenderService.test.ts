@@ -95,6 +95,16 @@ describe("hyperframesRenderService", () => {
     expect(payload.runtimeProfileHash).toMatch(/^hf_/);
   });
 
+  it("maps missing official runtime packages to a blocked configuration status", () => {
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames CLI runtime package/binary is not available.",
+        "hyperframes_render"
+      )
+    ).toBe("blocked_needs_user");
+  });
+
   it("projects final composite creative and audio metadata into outbox payload", () => {
     const composition = buildHyperframesFinalCompositeCompositionInput({
       tenantId: "tenant_1",
@@ -313,9 +323,8 @@ describe("hyperframesRenderService", () => {
     });
   });
 
-  it("makes queued render jobs explicit when runtime execution is not ready", async () => {
-    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-    delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
+  it("does not treat queued render jobs as runtime blocked from legacy env config", async () => {
+    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
     mockGetDb.mockResolvedValue(
       createOutboxSelectDb({
         id: "hf_render_queued",
@@ -337,38 +346,30 @@ describe("hyperframesRenderService", () => {
           renderIntent: "preview",
           compositionMode: "storyboard_motion_preview",
         },
-        updatedAt: new Date("2026-06-04T00:00:00.000Z"),
+        updatedAt: new Date(),
       })
     );
 
-    try {
-      const projection = await getHyperframesRenderProjection({
-        auth: { userId: 1, tenantId: "tenant_1" },
-        renderJobId: "hf_render_queued",
-        productId: "product_1",
-        runId: "mar_1",
-      });
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "hf_render_queued",
+      productId: "product_1",
+      runId: "mar_1",
+    });
 
-      expect(projection).toMatchObject({
-        status: "blocked_needs_user",
-        safeMessage: "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render",
-        templateId: "marketplace_storyboard_motion_9x9_v1",
-        renderIntent: "preview",
-        compositionInputHash: "hf_input_queued",
-      });
-      expect(projection.safeDiagnostics[0]).toContain("runtime is not ready");
-    } finally {
-      if (previousRuntimeReady === undefined) {
-        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-      } else {
-        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
-      }
-    }
+    expect(projection).toMatchObject({
+      status: "queued",
+      templateId: "marketplace_storyboard_motion_9x9_v1",
+      renderIntent: "preview",
+      compositionInputHash: "hf_input_queued",
+    });
+    expect(projection.safeDiagnostics.join(" ")).not.toContain(
+      "runtime is not ready"
+    );
+    delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
   });
 
   it("closes a stale queued render as completed when runtime output already exists", async () => {
-    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-    delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
     mockGetDb.mockResolvedValue(
       createOutboxSelectDb({
         id: "hf_render_stale_output",
@@ -407,45 +408,30 @@ describe("hyperframesRenderService", () => {
       })
     );
 
-    try {
-      const projection = await getHyperframesRenderProjection({
-        auth: { userId: 1, tenantId: "tenant_1" },
-        renderJobId: "hf_render_stale_output",
-        productId: "product_1",
-        runId: "mar_1",
-      });
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "hf_render_stale_output",
+      productId: "product_1",
+      runId: "mar_1",
+    });
 
-      expect(projection).toMatchObject({
-        status: "completed",
-        progressPercent: 100,
-        renderIntent: "preview",
-      });
-      expect(projection.outputRefs[0]).toMatchObject({
-        kind: "preview_video",
-        url: "https://cdn.example.test/hyperframes-preview.mp4",
-        contentHash: "hf_output_hash",
-      });
-      expect(projection.safeDiagnostics[0]).toContain(
-        "output artifact exists"
-      );
-      expect(projection.safeDiagnostics.join(" ")).not.toContain(
-        "runtime is not ready"
-      );
-    } finally {
-      if (previousRuntimeReady === undefined) {
-        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-      } else {
-        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
-      }
-    }
+    expect(projection).toMatchObject({
+      status: "completed",
+      progressPercent: 100,
+      renderIntent: "preview",
+    });
+    expect(projection.outputRefs[0]).toMatchObject({
+      kind: "preview_video",
+      url: "https://cdn.example.test/hyperframes-preview.mp4",
+      contentHash: "hf_output_hash",
+    });
+    expect(projection.safeDiagnostics[0]).toContain("output artifact exists");
+    expect(projection.safeDiagnostics.join(" ")).not.toContain(
+      "runtime is not ready"
+    );
   });
 
   it("stops projecting old queued render jobs as active forever", async () => {
-    const previousRuntimeReady = process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-    const previousQueuedStaleMs =
-      process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS;
-    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "1";
-    process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS = "15000";
     mockGetDb.mockResolvedValue(
       createOutboxSelectDb({
         id: "hf_render_old_queued",
@@ -471,37 +457,23 @@ describe("hyperframesRenderService", () => {
       })
     );
 
-    try {
-      const projection = await getHyperframesRenderProjection({
-        auth: { userId: 1, tenantId: "tenant_1" },
-        renderJobId: "hf_render_old_queued",
-        productId: "product_1",
-        runId: "mar_1",
-      });
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "hf_render_old_queued",
+      productId: "product_1",
+      runId: "mar_1",
+    });
 
-      expect(projection).toMatchObject({
-        status: "blocked_needs_user",
-        safeMessage:
-          "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก",
-        progressPercent: 0,
-      });
-      expect(projection.safeDiagnostics[0]).toContain(
-        "stayed queued longer than expected"
-      );
-      expect(projection.permissions.canCancel).toBe(false);
-    } finally {
-      if (previousRuntimeReady === undefined) {
-        delete process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY;
-      } else {
-        process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = previousRuntimeReady;
-      }
-      if (previousQueuedStaleMs === undefined) {
-        delete process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS;
-      } else {
-        process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS =
-          previousQueuedStaleMs;
-      }
-    }
+    expect(projection).toMatchObject({
+      status: "blocked_needs_user",
+      safeMessage:
+        "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก",
+      progressPercent: 0,
+    });
+    expect(projection.safeDiagnostics[0]).toContain(
+      "stayed queued longer than expected"
+    );
+    expect(projection.permissions.canCancel).toBe(false);
   });
 
   it("throws conflict when retry update loses the optimistic race", async () => {
@@ -727,7 +699,6 @@ describe("hyperframesRenderService", () => {
   });
 
   it("does not report completed final renders without playable probe and final video output", async () => {
-    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "1";
     mockGetDb.mockResolvedValue(
       createOutboxSelectDb({
         id: "hf_final_missing_output",

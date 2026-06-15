@@ -100,12 +100,16 @@ Notes:
   already-running server, pass `PLAYWRIGHT_SKIP_WEB_SERVER=1` and
   `PLAYWRIGHT_BASE_URL`.
 - Tenant rollout is controlled through the existing Admin Tenant Feature Flags
-  UI, not by editing environment files. Enable the tenant flags
-  `marketplaceHyperframesEnabled`, `marketplaceHyperframesWorkerEnabled`,
-  `marketplaceHyperframesLibrarySaveEnabled`, and
-  `marketplaceHyperframesOperatorEnabled` from `Admin -> Tenants -> Edit Tenant
-  -> Feature Flags -> Media Production & HyperFrames`. Environment values remain
-  global safety/runtime guards only.
+  UI, not by editing environment files. Enable the tenant flags from
+  `Admin -> Tenants -> Edit Tenant -> Feature Flags -> Media Production &
+  HyperFrames`. The UI shows friendly labels plus the internal key beneath each
+  row: `Marketplace HyperFrames` -> `marketplaceHyperframesEnabled`,
+  `HyperFrames Worker Queue` -> `marketplaceHyperframesWorkerEnabled`,
+  `HyperFrames Library Save` -> `marketplaceHyperframesLibrarySaveEnabled`, and
+  `HyperFrames Operator Controls` ->
+  `marketplaceHyperframesOperatorEnabled`. Legacy HyperFrames environment
+  values are ignored by the app runtime; readiness is derived from installed
+  official runtime evidence.
 - Auto remains one-click by default, while Advanced Auto overrides now provide
   optional user controls for platform format, quality, image model, audio
   policy, text policy, shot count, and frame evidence strategy. The advanced

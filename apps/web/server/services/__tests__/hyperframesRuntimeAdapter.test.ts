@@ -31,8 +31,8 @@ describe("hyperframesRuntimeAdapter", () => {
     return dir;
   }
 
-  it("keeps producer runtime blocked unless the production rollout gate is explicit", () => {
-    expect(getHyperframesRuntimeMode({})).toBe("diagnostic");
+  it("defaults final renders to the official CLI while keeping explicit rollout gates", () => {
+    expect(getHyperframesRuntimeMode({})).toBe("cli");
     expect(getHyperframesRuntimeMode({ HYPERFRAMES_RUNTIME_MODE: "cli" })).toBe(
       "cli"
     );
@@ -47,6 +47,11 @@ describe("hyperframesRuntimeAdapter", () => {
     ).toThrow(/blocked/);
     expect(
       isHyperframesCliRuntimeAllowed({
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toBe(true);
+    expect(
+      isHyperframesCliRuntimeAllowed({
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
@@ -58,7 +63,13 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "0",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
       })
-    ).toThrow(/blocked/);
+    ).toThrow(/blocked by explicit runtime readiness env/);
+    expect(
+      isHyperframesCliRuntimeAllowed({
+        HYPERFRAMES_RUNTIME_MODE: "diagnostic",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toBe(false);
   });
 
   it("builds a valid minimal HyperFrames composition without exposing raw product HTML", () => {

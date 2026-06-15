@@ -57,4 +57,19 @@ describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
     expect(screen.getByText(/hermes runtime has its own group near the top of the list/i)).toBeInTheDocument();
     expect(screen.getByRole("switch", { name: /toggle hermes profile experience/i })).toBeInTheDocument();
   });
+
+  it("surfaces Marketplace HyperFrames labels with their internal keys", () => {
+    render(<TenantFeatureFlagsPanel tenantId="tenant-1" canEdit={false} />);
+
+    expect(screen.getByRole("button", { name: /media production & hyperframes/i })).toBeInTheDocument();
+    expect(screen.getByText("Key: marketplaceHyperframesEnabled")).toBeInTheDocument();
+    expect(screen.getByText("Key: marketplaceHyperframesWorkerEnabled")).toBeInTheDocument();
+    expect(screen.getByText("Key: marketplaceHyperframesLibrarySaveEnabled")).toBeInTheDocument();
+    expect(screen.getByText("Key: marketplaceHyperframesOperatorEnabled")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", {
+        name: /toggle marketplace hyperframes \(marketplaceHyperframesEnabled\)/i,
+      }),
+    ).toBeInTheDocument();
+  });
 });

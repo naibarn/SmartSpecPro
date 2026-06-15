@@ -62,22 +62,22 @@ describe("hyperframesWorkerPolicy", () => {
     expect(isHyperframesWorkerEnabled()).toBe(true);
   });
 
-  it("allows explicit env false values to kill worker execution globally", () => {
+  it("ignores legacy env false values so tenant flags control worker rollout", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "false";
-    expect(isHyperframesWorkerEnabled()).toBe(false);
+    expect(isHyperframesWorkerEnabled()).toBe(true);
   });
 
-  it("respects the global HyperFrames kill switches before tenant rollout", () => {
+  it("ignores legacy global HyperFrames env switches before tenant rollout", () => {
     process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "true";
     process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "true";
-    expect(isHyperframesWorkerEnabled()).toBe(false);
+    expect(isHyperframesWorkerEnabled()).toBe(true);
 
     process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "false";
     process.env.MARKETPLACE_HYPERFRAMES_ENABLED = "false";
-    expect(isHyperframesWorkerEnabled()).toBe(false);
+    expect(isHyperframesWorkerEnabled()).toBe(true);
   });
 
-  it("keeps explicit on values compatible with existing deployments", () => {
+  it("keeps legacy explicit on values harmless for existing deployments", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "true";
     expect(isHyperframesWorkerEnabled()).toBe(true);
   });
@@ -88,24 +88,14 @@ describe("hyperframesWorkerPolicy", () => {
 
   it("keeps runtime execution gated separately from worker enablement", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
-    process.env.HYPERFRAMES_RUNTIME_MODE = "cli";
-    expect(isHyperframesRuntimeExecutionReady()).toBe(false);
-
-    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "yes";
-    process.env.HYPERFRAMES_RUNTIME_MODE = "cli";
-    process.env.HYPERFRAMES_OFFICIAL_RUNTIME_READY = "1";
+    process.env.HYPERFRAMES_RUNTIME_MODE = "diagnostic";
+    process.env.HYPERFRAMES_OFFICIAL_RUNTIME_READY = "0";
     process.env.HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME = "1";
     expect(isHyperframesRuntimeExecutionReady()).toBe(true);
-
-    process.env.HYPERFRAMES_RUNTIME_MODE = "diagnostic";
-    expect(isHyperframesRuntimeExecutionReady()).toBe(false);
   });
 
   it("defers jobs when worker is enabled but runtime execution is not ready", async () => {
-    process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "true";
-    process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
-
-    await expect(runHyperframesRenderWorkerOnce()).resolves.toEqual({
+    await expect(runHyperframesRenderWorkerOnce({ runtimeReady: false })).resolves.toEqual({
       processed: 0,
       disabled: false,
       runtimeDeferred: true,
@@ -147,11 +137,13 @@ describe("hyperframesWorkerPolicy", () => {
   });
 
   it("does not fall back to FFmpeg/ASS for final composite renders when official runtime is unavailable", async () => {
-    process.env.HYPERFRAMES_RUNTIME_MODE = "diagnostic";
     await expect(
       executeLocalHyperframesSmokeRender({
         runId: "mar_1",
         renderJobId: "hf_final_1",
+        runtimeEnv: {
+          HYPERFRAMES_RUNTIME_MODE: "diagnostic",
+        },
         payload: {
           renderIntent: "final",
           compositionMode: "captioned_final_composite",

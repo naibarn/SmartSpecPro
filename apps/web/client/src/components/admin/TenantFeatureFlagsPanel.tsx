@@ -107,7 +107,9 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
     <div className="space-y-3">
       <div className="sticky top-0 z-10 space-y-3 bg-white/95 pb-3 backdrop-blur">
         <div className="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
-          Hermes Runtime and Marketplace HyperFrames have dedicated groups in this list.
+          Hermes Runtime has its own group near the top of the list. Marketplace HyperFrames
+          flags are under Media Production & HyperFrames, with their internal keys shown
+          under each label.
           Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
           <span className="font-semibold"> HyperFrames Worker Queue</span>,
           <span className="font-semibold"> HyperFrames Library Save</span>,
@@ -200,6 +202,9 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
                         <div className="flex-1 min-w-0 pr-3">
                           <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
                           <p className="text-[11px] text-gray-400 truncate">{description}</p>
+                          <p className="mt-0.5 truncate font-mono text-[10px] text-gray-500">
+                            Key: {key}
+                          </p>
                           {key === "documentOcrExternalProcessing" ? (
                             <p className="text-[11px] text-amber-700">
                               Enables outbound document OCR to external providers. Keep off unless tenant is approved.
@@ -210,7 +215,7 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
                           type="button"
                           role="switch"
                           aria-checked={enabled}
-                          aria-label={`Toggle ${label}`}
+                          aria-label={`Toggle ${label} (${key})`}
                           disabled={!canEdit || isPending}
                           onClick={() => handleToggle(key, enabled)}
                           className={[

@@ -11,6 +11,7 @@ import {
   executeHyperframesCliRender,
   executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
+  type HyperframesRuntimeAdapterEnv,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
 } from "../services/hyperframesRuntimeAdapter";
@@ -40,31 +41,11 @@ export interface HyperframesWorkerRunResult {
   runtimeDeferred: boolean;
 }
 
-function falseyEnv(value: string | undefined): boolean {
-  return ["0", "false", "no", "off", "disabled"].includes(
-    (value ?? "").toLowerCase()
-  );
-}
-
-function truthyEnv(value: string | undefined): boolean {
-  return ["1", "true", "yes", "on"].includes(
-    (value ?? "").toLowerCase()
-  );
-}
-
 export function isHyperframesWorkerEnabled(): boolean {
-  return (
-    !truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_DISABLED) &&
-    !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ENABLED) &&
-    !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED)
-  );
+  return true;
 }
 
 export function isHyperframesRuntimeExecutionReady(): boolean {
-  const marketplaceRuntimeReady = ["1", "true", "yes", "on"].includes(
-    (process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY ?? "").toLowerCase()
-  );
-  if (!marketplaceRuntimeReady) return false;
   const runtimeMode = getHyperframesRuntimeMode();
   if (runtimeMode === "producer") return isHyperframesProducerRuntimeAllowed();
   if (runtimeMode === "cli") return isHyperframesCliRuntimeAllowed();
@@ -209,7 +190,7 @@ function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): R
 }
 
 function isNonRetryableHyperframesRuntimeError(message: string): boolean {
-  return /HTML\/CSS\/browser runtime is required|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass/i.test(message);
+  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed/i.test(message);
 }
 
 function getFinalCompositeOverlayPreset(payload: Record<string, unknown>): HyperframesFinalOverlayPreset {
@@ -880,25 +861,28 @@ export async function executeLocalHyperframesSmokeRender(input: {
   runId: string;
   renderJobId: string;
   payload: Record<string, unknown>;
+  runtimeEnv?: HyperframesRuntimeAdapterEnv;
 }): Promise<Record<string, unknown>> {
   const workspace = mkdtempSync(
     join(tmpdir(), `smartspec-hyperframes-${input.renderJobId}-`)
   );
   try {
     const outputPath = join(workspace, "output.mp4");
-    const runtimeMode = getHyperframesRuntimeMode();
+    const runtimeMode = getHyperframesRuntimeMode(input.runtimeEnv);
     const runtimeRender =
       runtimeMode === "producer"
         ? await executeHyperframesProducerRender({
             workspace,
             outputPath,
             payload: input.payload,
+            env: input.runtimeEnv,
           })
         : runtimeMode === "cli"
           ? await executeHyperframesCliRender({
               workspace,
               outputPath,
               payload: input.payload,
+              env: input.runtimeEnv,
             })
         : null;
     if (!runtimeRender) {

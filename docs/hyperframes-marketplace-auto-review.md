@@ -90,15 +90,19 @@ HyperFrames`. Admins should not edit environment files to enable a tenant.
 
 All Marketplace HyperFrames tenant flags default off:
 
-- `marketplaceHyperframesEnabled`
-- `marketplaceHyperframesWorkerEnabled`
-- `marketplaceHyperframesLibrarySaveEnabled`
-- `marketplaceHyperframesOperatorEnabled`
+- `Marketplace HyperFrames` -> `marketplaceHyperframesEnabled`
+- `HyperFrames Worker Queue` -> `marketplaceHyperframesWorkerEnabled`
+- `HyperFrames Library Save` -> `marketplaceHyperframesLibrarySaveEnabled`
+- `HyperFrames Operator Controls` -> `marketplaceHyperframesOperatorEnabled`
 
-Environment variables are reserved for global safety/runtime readiness, not
-normal tenant rollout. Explicit false values for legacy HyperFrames env flags
-act as kill switches; `MARKETPLACE_HYPERFRAMES_TEMPLATE_ALLOWLIST` remains an
-infra-level template restriction.
+The Admin Tenant UI shows the friendly label first and the internal `Key: ...`
+line underneath each flag. Searching by either label or key should find the same
+tenant toggle.
+
+HyperFrames rollout and user-visible behavior are controlled from Admin Tenant
+Feature Flags only, not by editing environment variables. The runtime verifies
+the installed official CLI/browser package directly; legacy HyperFrames env
+flags are ignored by the app runtime.
 
 ## Dependency Status
 

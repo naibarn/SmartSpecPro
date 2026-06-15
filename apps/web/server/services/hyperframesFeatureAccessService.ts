@@ -40,56 +40,19 @@ export interface HyperframesAccessInput {
   now?: Date;
 }
 
-function truthyEnv(value: string | undefined): boolean {
-  return ["1", "true", "yes", "on"].includes((value ?? "").toLowerCase());
-}
-
-function falseyEnv(value: string | undefined): boolean {
-  return ["0", "false", "no", "off", "disabled"].includes(
-    (value ?? "").toLowerCase()
-  );
-}
-
-function csvEnv(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map(item => item.trim())
-    .filter(Boolean);
-}
-
-function hyperframesGloballyDisabled(): boolean {
-  return (
-    truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_DISABLED) ||
-    falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ENABLED)
-  );
-}
-
 export function readHyperframesFeatureFlags(
-  auth: HyperframesAuthContext,
+  _auth: HyperframesAuthContext,
   overrides: Partial<HyperframesFeatureFlagState> = {}
 ): HyperframesFeatureFlagState {
-  const allowlist = csvEnv(process.env.MARKETPLACE_HYPERFRAMES_TENANT_ALLOWLIST);
-  const tenantId = auth.tenantId ?? "default";
-  const envFlags: HyperframesFeatureFlagState = {
-    enabled: truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_ENABLED),
-    tenantAllowed:
-      allowlist.length === 0
-        ? false
-        : allowlist.includes("*") || allowlist.includes(tenantId),
-    workerEnabled: truthyEnv(
-      process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED
-    ),
-    librarySaveEnabled: truthyEnv(
-      process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE
-    ),
-    operatorEnabled: truthyEnv(
-      process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED
-    ),
-    templateAllowlist: csvEnv(
-      process.env.MARKETPLACE_HYPERFRAMES_TEMPLATE_ALLOWLIST
-    ),
+  const defaultFlags: HyperframesFeatureFlagState = {
+    enabled: false,
+    tenantAllowed: false,
+    workerEnabled: false,
+    librarySaveEnabled: false,
+    operatorEnabled: false,
+    templateAllowlist: [],
   };
-  return { ...envFlags, ...overrides };
+  return { ...defaultFlags, ...overrides };
 }
 
 export function readHyperframesFeatureFlagsFromTenantConfig(
@@ -103,27 +66,20 @@ export function readHyperframesFeatureFlagsFromTenantConfig(
   >,
   overrides: Partial<HyperframesFeatureFlagState> = {}
 ): HyperframesFeatureFlagState {
-  const globalDisabled = hyperframesGloballyDisabled();
-  const tenantEnabled =
-    tenantFlags.marketplaceHyperframesEnabled === true && !globalDisabled;
+  const tenantEnabled = tenantFlags.marketplaceHyperframesEnabled === true;
   const baseFlags: HyperframesFeatureFlagState = {
     enabled: tenantEnabled,
     tenantAllowed: tenantEnabled,
     workerEnabled:
       tenantEnabled &&
-      tenantFlags.marketplaceHyperframesWorkerEnabled === true &&
-      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED),
+      tenantFlags.marketplaceHyperframesWorkerEnabled === true,
     librarySaveEnabled:
       tenantEnabled &&
-      tenantFlags.marketplaceHyperframesLibrarySaveEnabled === true &&
-      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE),
+      tenantFlags.marketplaceHyperframesLibrarySaveEnabled === true,
     operatorEnabled:
       tenantEnabled &&
-      tenantFlags.marketplaceHyperframesOperatorEnabled === true &&
-      !falseyEnv(process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED),
-    templateAllowlist: csvEnv(
-      process.env.MARKETPLACE_HYPERFRAMES_TEMPLATE_ALLOWLIST
-    ),
+      tenantFlags.marketplaceHyperframesOperatorEnabled === true,
+    templateAllowlist: [],
   };
   const merged = { ...baseFlags, ...overrides };
   const enabled = baseFlags.enabled && merged.enabled !== false;

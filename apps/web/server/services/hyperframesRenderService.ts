@@ -20,6 +20,11 @@ import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
 import type { HyperframesAuthContext } from "./hyperframesFeatureAccessService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import { redactHyperframesDiagnostics } from "./hyperframesCompositionSanitizer";
+import {
+  getHyperframesRuntimeMode,
+  isHyperframesCliRuntimeAllowed,
+  isHyperframesProducerRuntimeAllowed,
+} from "./hyperframesRuntimeAdapter";
 
 export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -89,21 +94,17 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function truthyEnv(value: string | undefined): boolean {
-  return /^(1|true|yes|on)$/i.test((value ?? "").trim());
-}
-
 function isHyperframesRuntimeReadyForProjection(): boolean {
-  return truthyEnv(process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY);
+  const runtimeMode = getHyperframesRuntimeMode();
+  if (runtimeMode === "producer") return isHyperframesProducerRuntimeAllowed();
+  if (runtimeMode === "cli") return isHyperframesCliRuntimeAllowed();
+  return false;
 }
 
 const DEFAULT_HYPERFRAMES_QUEUED_STALE_MS = 2 * 60 * 1000;
 
 function hyperframesQueuedStaleMs(): number {
-  const parsed = Number(process.env.MARKETPLACE_HYPERFRAMES_QUEUED_STALE_MS);
-  return Number.isFinite(parsed) && parsed >= 15_000
-    ? Math.min(parsed, 10 * 60 * 1000)
-    : DEFAULT_HYPERFRAMES_QUEUED_STALE_MS;
+  return DEFAULT_HYPERFRAMES_QUEUED_STALE_MS;
 }
 
 function dateAgeMs(value: unknown, nowMs = Date.now()): number | null {
@@ -182,7 +183,7 @@ export function mapOutboxStatusToRenderStatus(
   if (status === "failed") {
     const error = lastError ?? "";
     if (
-      /runtime configuration failure|HTML\/CSS\/browser runtime is required|requires Node >=22\.22|blocked until production rollout gates pass|official runtime mode is not configured/i.test(
+      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured/i.test(
         error
       )
     ) {

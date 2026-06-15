@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   buildHyperframesCreditEstimate,
@@ -7,30 +7,6 @@ import {
 } from "../hyperframesFeatureAccessService";
 
 describe("hyperframesFeatureAccessService", () => {
-  const previousEnv = {
-    enabled: process.env.MARKETPLACE_HYPERFRAMES_ENABLED,
-    disabled: process.env.MARKETPLACE_HYPERFRAMES_DISABLED,
-    worker: process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED,
-    library: process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE,
-    operator: process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED,
-  };
-
-  afterEach(() => {
-    for (const [key, value] of [
-      ["MARKETPLACE_HYPERFRAMES_ENABLED", previousEnv.enabled],
-      ["MARKETPLACE_HYPERFRAMES_DISABLED", previousEnv.disabled],
-      ["MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED", previousEnv.worker],
-      ["MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE", previousEnv.library],
-      ["MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED", previousEnv.operator],
-    ] as const) {
-      if (value == null) {
-        delete process.env[key];
-      } else {
-        process.env[key] = value;
-      }
-    }
-  });
-
   it("keeps flags safely disabled by default and Standard Order available", () => {
     const access = resolveHyperframesFeatureAccess({
       auth: { userId: 1, tenantId: "tenant_1" },
@@ -119,8 +95,9 @@ describe("hyperframesFeatureAccessService", () => {
     });
   });
 
-  it("lets explicit env false values act as global HyperFrames kill switches", () => {
+  it("ignores legacy env false values because Admin Tenant Config is the source of truth", () => {
     process.env.MARKETPLACE_HYPERFRAMES_ENABLED = "false";
+    process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "true";
     process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED = "false";
     process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE = "false";
     process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED = "false";
@@ -136,29 +113,28 @@ describe("hyperframesFeatureAccessService", () => {
     );
 
     expect(flags).toMatchObject({
-      enabled: false,
-      tenantAllowed: false,
-      workerEnabled: false,
-      librarySaveEnabled: false,
-      operatorEnabled: false,
+      enabled: true,
+      tenantAllowed: true,
+      workerEnabled: true,
+      librarySaveEnabled: true,
+      operatorEnabled: true,
     });
 
     delete process.env.MARKETPLACE_HYPERFRAMES_ENABLED;
+    delete process.env.MARKETPLACE_HYPERFRAMES_DISABLED;
     delete process.env.MARKETPLACE_HYPERFRAMES_RENDER_WORKER_ENABLED;
     delete process.env.MARKETPLACE_HYPERFRAMES_ALLOW_LIBRARY_SAVE;
     delete process.env.MARKETPLACE_HYPERFRAMES_OPERATOR_ENABLED;
   });
 
-  it("does not let internal overrides bypass global kill switches", () => {
-    process.env.MARKETPLACE_HYPERFRAMES_DISABLED = "true";
-
+  it("does not let internal overrides bypass disabled tenant feature flags", () => {
     const flags = readHyperframesFeatureFlagsFromTenantConfig(
       { userId: 1, tenantId: "tenant_1" },
       {
-        marketplaceHyperframesEnabled: true,
-        marketplaceHyperframesWorkerEnabled: true,
-        marketplaceHyperframesLibrarySaveEnabled: true,
-        marketplaceHyperframesOperatorEnabled: true,
+        marketplaceHyperframesEnabled: false,
+        marketplaceHyperframesWorkerEnabled: false,
+        marketplaceHyperframesLibrarySaveEnabled: false,
+        marketplaceHyperframesOperatorEnabled: false,
       },
       {
         enabled: true,
