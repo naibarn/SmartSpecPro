@@ -26,6 +26,7 @@ interface HyperframesStoryboardReviewPanelProps {
   creatingPreview?: boolean;
   saving?: boolean;
   manualFallbackVisible?: boolean;
+  compact?: boolean;
   locale?: MarketplaceHyperframesUiLocale | string;
 }
 
@@ -39,14 +40,15 @@ export function HyperframesStoryboardReviewPanel({
   creatingPreview,
   saving,
   manualFallbackVisible,
+  compact,
   locale,
 }: HyperframesStoryboardReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
-  const [expanded, setExpanded] = useState(() => Boolean(render));
+  const [expanded, setExpanded] = useState(() => Boolean(render) && !compact);
   const repairAction = getUserSafeHyperframesRepairAction(render);
   useEffect(() => {
-    if (render) setExpanded(true);
-  }, [render?.renderJobId]);
+    if (render && !compact) setExpanded(true);
+  }, [compact, render?.renderJobId]);
   const derivedSnapshots =
     snapshots && snapshots.length > 0
       ? snapshots
@@ -58,29 +60,52 @@ export function HyperframesStoryboardReviewPanel({
             url: ref.url ?? null,
             status: ref.url ? ("ready" as const) : ("missing" as const),
           }));
+  const statusSummary = render
+    ? `${render.status} · ${Math.round(render.progressPercent ?? 0)}%`
+    : null;
   return (
     <section
-      className="space-y-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100"
+      className={cn(
+        "rounded-lg border border-sky-200 bg-sky-50 text-slate-950 dark:border-sky-800 dark:bg-slate-900 dark:text-slate-100",
+        compact ? "space-y-2 p-2" : "space-y-3 p-3"
+      )}
       aria-label="HyperFrames storyboard review"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between",
+          compact ? "gap-2" : "gap-3"
+        )}
+      >
         <button
           type="button"
           onClick={() => setExpanded(current => !current)}
           className="min-w-0 flex-1 text-left"
           aria-expanded={expanded}
         >
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-sky-900 dark:text-sky-100">
+          <div className="inline-flex max-w-full items-center gap-2 text-sm font-semibold text-sky-900 dark:text-sky-100">
             <ChevronDown
               className={cn(
-                "h-4 w-4 transition-transform",
+                "h-4 w-4 shrink-0 transition-transform",
                 expanded ? "rotate-180" : ""
               )}
             />
-            <Sparkles className="h-4 w-4" />
-            {copy.autoPreviewTitle}
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="truncate">{copy.autoPreviewTitle}</span>
+            {compact && statusSummary ? (
+              <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-sky-100 dark:bg-slate-950 dark:text-sky-100 dark:ring-sky-800">
+                {statusSummary}
+              </span>
+            ) : null}
           </div>
-          <p className="mt-1 line-clamp-1 text-xs leading-5 text-sky-800 dark:text-sky-100/85">
+          <p
+            className={cn(
+              "line-clamp-1 text-sky-800 dark:text-sky-100/85",
+              compact
+                ? "mt-0.5 text-[11px] leading-4"
+                : "mt-1 text-xs leading-5"
+            )}
+          >
             {render?.safeMessage ?? copy.autoPreviewDescription}
           </p>
         </button>
@@ -89,14 +114,26 @@ export function HyperframesStoryboardReviewPanel({
             type="button"
             onClick={onCreatePreview}
             disabled={creatingPreview}
-            className="bg-sky-600 text-white hover:bg-sky-700"
+            size={compact ? "sm" : "default"}
+            className={cn(
+              "bg-sky-600 text-white hover:bg-sky-700",
+              compact ? "h-8 px-3 text-xs" : ""
+            )}
           >
-            {creatingPreview ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {creatingPreview ? (
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
             {copy.createPreview}
           </Button>
         ) : null}
         {repairAction && onRetry ? (
-          <Button type="button" variant="outline" onClick={onRetry}>
+          <Button
+            type="button"
+            variant="outline"
+            size={compact ? "sm" : "default"}
+            className={compact ? "h-8 px-3 text-xs" : undefined}
+            onClick={onRetry}
+          >
             <RefreshCw className="mr-2 h-4 w-4" />
             {repairAction.label}
           </Button>
@@ -110,11 +147,18 @@ export function HyperframesStoryboardReviewPanel({
             onRetry={repairAction ? undefined : onRetry}
             onSaveToLibrary={onSaveToLibrary}
             saving={saving}
+            compact={compact}
             locale={locale}
           />
-          <HyperframesSnapshotComparison snapshots={derivedSnapshots} locale={locale} />
+          <HyperframesSnapshotComparison
+            snapshots={derivedSnapshots}
+            locale={locale}
+            compact={compact}
+          />
           {manualFallbackVisible ? (
-            <p className="text-xs text-slate-600 dark:text-slate-300">{copy.manualFallback}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              {copy.manualFallback}
+            </p>
           ) : null}
         </>
       ) : null}

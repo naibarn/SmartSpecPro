@@ -6051,7 +6051,7 @@ export default function StoryboardReviewPage() {
       </header>
 
       {hyperframesContextAvailable ? (
-        <div className="border-b bg-sky-50 px-3 py-3 sm:px-4">
+        <div className="border-b bg-sky-50 px-2 py-2 sm:px-3">
           <HyperframesStoryboardReviewPanel
             render={hyperframesRenderProjection}
             snapshots={hyperframesSnapshots}
@@ -6069,47 +6069,45 @@ export default function StoryboardReviewPage() {
             creatingPreview={createHyperframesPreviewMutation.isPending}
             saving={saveHyperframesRenderToLibraryMutation.isPending}
             manualFallbackVisible
+            compact
             locale={locale}
           />
-          <div className="mt-3 rounded-lg border border-sky-200 bg-white p-3 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="rounded-full">
+          <div className="mt-2 rounded-md border border-sky-200 bg-white px-2.5 py-2 shadow-sm">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="secondary" className="h-6 rounded-full px-2 text-[11px]">
                     {locale === "th" ? "HyperFrames Final Composite" : "HyperFrames Final Composite"}
                   </Badge>
-                  <Badge variant="outline" className="rounded-full">
+                  <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
                     {hyperframesFinalSourceReadiness.completedVideoCount} video shots
                   </Badge>
                   {hyperframesFinalSourceReadiness.completedImageCount > 0 ? (
-                    <Badge variant="outline" className="rounded-full">
+                    <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
                       {hyperframesFinalSourceReadiness.completedImageCount} images
                     </Badge>
                   ) : null}
                   {hyperframesFinalSourceReadiness.incompleteVideoCount > 0 ? (
-                    <Badge variant="outline" className="rounded-full">
+                    <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
                       {locale === "th"
                         ? `${hyperframesFinalSourceReadiness.incompleteVideoCount} วิดีโอยังไม่เสร็จ`
                         : `${hyperframesFinalSourceReadiness.incompleteVideoCount} pending video`}
                     </Badge>
                   ) : null}
                   {hyperframesFinalSourceReadiness.selectedCompletedVideoCount > 0 ? (
-                    <Badge variant="outline" className="rounded-full">
+                    <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
                       {locale === "th"
                         ? `เลือกไว้ ${hyperframesFinalSourceReadiness.selectedCompletedVideoCount}`
                         : `${hyperframesFinalSourceReadiness.selectedCompletedVideoCount} selected`}
                     </Badge>
                   ) : null}
-                  <Badge variant="outline" className="rounded-full">
-                    {locale === "th" ? "ตั้งค่ายุบเริ่มต้น" : "settings collapsed by default"}
-                  </Badge>
-                  <Badge variant="outline" className="rounded-full">
+                  <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
                     {Math.round(hyperframesFinalDurationSeconds)}s
                   </Badge>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "rounded-full",
+                      "h-6 rounded-full px-2 text-[11px]",
                       hyperframesFinalAutosaveStatus === "saving"
                         ? "border-sky-200 bg-sky-50 text-sky-800"
                         : hyperframesFinalAutosaveStatus === "error"
@@ -6126,25 +6124,25 @@ export default function StoryboardReviewPage() {
                         ? locale === "th" ? "บันทึกไม่สำเร็จ" : "Save failed"
                         : hyperframesFinalAutosaveStatus === "saved"
                           ? locale === "th" ? "บันทึกแล้ว" : "Saved"
-                          : locale === "th" ? "รอบันทึก" : "Unsaved"}
+                      : locale === "th" ? "รอบันทึก" : "Unsaved"}
                   </Badge>
                 </div>
-                <h2 className="mt-2 text-sm font-semibold text-slate-950">
+                <h2 className="sr-only">
                   {locale === "th" ? "Render รวม MP4 จาก Storyboard Review พร้อมข้อความและ Subtitle" : "Render Storyboard Review MP4 shots with text and subtitles"}
                 </h2>
-                <p className="mt-1 text-xs text-slate-600">
+                <p className="mt-1 line-clamp-1 text-[11px] leading-4 text-slate-600">
                   {locale === "th"
                     ? "ใช้คลิปที่เลือกไว้ก่อน ถ้าไม่ได้เลือกจะใช้ทุก shot ที่ completed แล้ว แยกจาก render เดิมของหน้า"
                     : "Uses selected completed clips first, otherwise all completed shots. This is separate from the existing page render."}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
+              <div className="flex shrink-0 flex-wrap gap-1.5">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   onClick={() => setIsHyperframesFinalPanelExpanded(current => !current)}
-                  className="h-9"
+                  className="h-8 px-3 text-xs"
                 >
                   <ChevronDown
                     className={cn(
@@ -6165,7 +6163,7 @@ export default function StoryboardReviewPage() {
                     updateHyperframesFinalCompositeStateMutation.isPending ||
                     Boolean(hyperframesFinalCompositeDisabledReason)
                   }
-                  className="h-9"
+                  className="h-8 px-3 text-xs"
                   title={hyperframesFinalCompositeDisabledReason ?? undefined}
                   aria-disabled={Boolean(hyperframesFinalCompositeDisabledReason)}
                 >
@@ -6182,7 +6180,7 @@ export default function StoryboardReviewPage() {
             {hyperframesFinalCompositeStatusText ? (
               <div
                 className={cn(
-                  "mt-3 flex flex-col gap-1 rounded-md border px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between",
+                  "mt-2 flex flex-col gap-1 rounded-md border px-2 py-1.5 text-[11px] sm:flex-row sm:items-center sm:justify-between",
                   createHyperframesFinalCompositeMutation.isPending
                     ? "border-sky-200 bg-sky-50 text-sky-900"
                     : hyperframesFinalCompositeIsProblem
@@ -6245,7 +6243,7 @@ export default function StoryboardReviewPage() {
               </div>
             ) : null}
             {hyperframesFinalCompositeDisabledReason ? (
-              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-semibold">

@@ -25,6 +25,7 @@ interface HyperframesRenderPanelProps {
   loading?: boolean;
   cancelling?: boolean;
   saving?: boolean;
+  compact?: boolean;
   onCancel?: () => void;
   onRetry?: () => void;
   onSaveToLibrary?: () => void;
@@ -36,6 +37,7 @@ export function HyperframesRenderPanel({
   loading,
   cancelling,
   saving,
+  compact,
   onCancel,
   onRetry,
   onSaveToLibrary,
@@ -69,12 +71,16 @@ export function HyperframesRenderPanel({
 
   return (
     <section
-      className="rounded-lg border bg-white p-4 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      className={
+        compact
+          ? "rounded-md border bg-white px-3 py-2 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+          : "rounded-lg border bg-white p-4 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+      }
       aria-label="HyperFrames render status"
       aria-live="polite"
       data-library-ready={canSaveToLibrary ? "true" : "false"}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {uiState.state === "loading" || uiState.active ? (
@@ -86,14 +92,30 @@ export function HyperframesRenderPanel({
             )}
             {copy.hyperframesRender}
           </div>
-          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          <p
+            className={
+              compact
+                ? "mt-0.5 line-clamp-1 text-xs leading-5 text-slate-600 dark:text-slate-300"
+                : "mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300"
+            }
+          >
             {render?.safeMessage ?? copy.loadingRenderStatus}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {uiState.canCancel && onCancel ? (
-            <Button type="button" variant="outline" size="sm" onClick={onCancel} disabled={cancelling}>
-              {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <X className="mr-2 h-4 w-4" />
+              )}
               {copy.cancel}
             </Button>
           ) : null}
@@ -104,8 +126,17 @@ export function HyperframesRenderPanel({
             </Button>
           ) : null}
           {canSaveToLibrary ? (
-            <Button type="button" size="sm" onClick={onSaveToLibrary} disabled={saving}>
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Library className="mr-2 h-4 w-4" />}
+            <Button
+              type="button"
+              size="sm"
+              onClick={onSaveToLibrary}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Library className="mr-2 h-4 w-4" />
+              )}
               {copy.saveToLibrary}
             </Button>
           ) : null}
@@ -119,18 +150,42 @@ export function HyperframesRenderPanel({
           ) : null}
         </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div
+        className={
+          compact
+            ? "mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+            : "mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+        }
+      >
         <div
           className="h-full rounded-full bg-sky-500 transition-all"
           style={{ width: `${render?.progressPercent ?? 0}%` }}
         />
       </div>
       {renderDetails.length ? (
-        <dl className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-3">
+        <dl
+          className={
+            compact
+              ? "mt-2 grid gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-3"
+              : "mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2 lg:grid-cols-3"
+          }
+        >
           {renderDetails.map(item => (
-            <div key={item.label} className="min-w-0 rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950">
-              <dt className="font-medium text-slate-500 dark:text-slate-400">{item.label}</dt>
-              <dd className="mt-1 truncate font-mono text-slate-800 dark:text-slate-100" title={item.value}>
+            <div
+              key={item.label}
+              className={
+                compact
+                  ? "min-w-0 rounded-md bg-slate-50 px-2 py-1.5 dark:bg-slate-950"
+                  : "min-w-0 rounded-md bg-slate-50 px-3 py-2 dark:bg-slate-950"
+              }
+            >
+              <dt className="font-medium text-slate-500 dark:text-slate-400">
+                {item.label}
+              </dt>
+              <dd
+                className="mt-1 truncate font-mono text-slate-800 dark:text-slate-100"
+                title={item.value}
+              >
                 {item.value}
               </dd>
             </div>
@@ -138,7 +193,13 @@ export function HyperframesRenderPanel({
         </dl>
       ) : null}
       {render?.safeDiagnostics?.length ? (
-        <div className="mt-3 rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+        <div
+          className={
+            compact
+              ? "mt-2 rounded-md bg-slate-50 p-2 text-[11px] leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300"
+              : "mt-3 rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300"
+          }
+        >
           {render.safeDiagnostics.slice(0, 3).map(item => (
             <p key={item}>{item}</p>
           ))}
