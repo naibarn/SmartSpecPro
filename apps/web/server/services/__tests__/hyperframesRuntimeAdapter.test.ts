@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -141,6 +141,14 @@ describe("hyperframesRuntimeAdapter", () => {
   it("executes the pinned HyperFrames CLI with an injected runner", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const toolsDir = join(dir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+    const ffmpegPath = join(toolsDir, "ffmpeg");
+    const ffprobePath = join(toolsDir, "ffprobe");
+    await writeFile(ffmpegPath, "#!/bin/sh\nexit 0\n");
+    await writeFile(ffprobePath, "#!/bin/sh\nexit 0\n");
+    await chmod(ffmpegPath, 0o755);
+    await chmod(ffprobePath, 0o755);
     const commandRunner = vi.fn(async (_command: string, args: string[]) => {
       expect(args).toContain("render");
       expect(args).toContain("--strict");
@@ -156,6 +164,8 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
         HYPERFRAMES_PLAYER_READY_TIMEOUT_MS: "6500",
+        HYPERFRAMES_FFMPEG_BINARY: ffmpegPath,
+        HYPERFRAMES_FFPROBE_BINARY: ffprobePath,
       },
       payload: {
         compositionHtml:
@@ -175,8 +185,15 @@ describe("hyperframesRuntimeAdapter", () => {
         JSON.stringify({ title: "Custom title" }),
         "--strict-variables",
       ]),
-      expect.any(Object)
+      expect.objectContaining({
+        env: expect.objectContaining({
+          FFMPEG_PATH: ffmpegPath,
+          FFPROBE_PATH: ffprobePath,
+        }),
+      })
     );
+    const options = commandRunner.mock.calls[0]?.[2];
+    expect(options?.env?.PATH?.split(":")[0]).toBe(toolsDir);
     expect(result.renderer).toBe("hyperframes_cli");
     expect(result.officialRuntime).toBe(true);
     expect(result.runtimeDiagnostics.packageNames).toEqual([

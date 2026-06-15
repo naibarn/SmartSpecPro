@@ -183,7 +183,7 @@ export function mapOutboxStatusToRenderStatus(
   if (status === "failed") {
     const error = lastError ?? "";
     if (
-      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured/i.test(
+      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured|FFmpeg not found|FFprobe not found/i.test(
         error
       )
     ) {
@@ -269,6 +269,25 @@ function progressForStatus(status: HyperframesRenderStatus): number {
     stale_input_hash: 100,
   };
   return progress[status] ?? 0;
+}
+
+function safeMessageForRenderError(
+  status: HyperframesRenderStatus,
+  lastError?: string | null
+): string | undefined {
+  const error = lastError ?? "";
+  if (status === "blocked_needs_user") {
+    if (/FFmpeg not found|FFprobe not found/i.test(error)) {
+      return "HyperFrames render ไม่พร้อม เพราะ worker หา ffmpeg/ffprobe ไม่เจอ ให้ตรวจ runtime PATH หรือ binary config แล้วกด Render ใหม่";
+    }
+    if (/missing render media asset/i.test(error)) {
+      return "HyperFrames render ไม่พร้อม เพราะไฟล์วิดีโอหรือ asset ที่อ้างอิงหายไป ให้ตรวจคลิปของแต่ละ shot แล้วกด Render ใหม่";
+    }
+    if (/HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready/i.test(error)) {
+      return "HyperFrames Final Composite ยังไม่พร้อม เพราะ official HTML/CSS/browser runtime ยังไม่พร้อม";
+    }
+  }
+  return undefined;
 }
 
 const HYPERFRAMES_PRIVATE_OUTPUT_PATH_RE =
@@ -668,26 +687,79 @@ export async function queueHyperframesRenderJob(input: {
   });
   const renderJobId = `hf_${stableHash(idempotencyKey)}`;
   const db = await getDb();
+  const jobType = input.jobType ?? "hyperframes_render";
+  const now = new Date();
   if (db) {
-    await db
+    const insertedRows = await db
       .insert(marketplaceAutoReviewOutboxJobs)
       .values({
         id: renderJobId,
         runId,
         tenantId,
         userId: input.auth.userId,
-        jobType: input.jobType ?? "hyperframes_render",
+        jobType,
         idempotencyKey,
         status: "queued",
         priority: input.priority ?? 70,
         attempts: 0,
         maxAttempts: input.maxAttempts ?? 3,
         payloadJson: payload,
-        scheduledAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        scheduledAt: now,
+        createdAt: now,
+        updatedAt: now,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+    if (insertedRows.length === 0) {
+      const [existingJob] = await db
+        .select()
+        .from(marketplaceAutoReviewOutboxJobs)
+        .where(eq(marketplaceAutoReviewOutboxJobs.id, renderJobId))
+        .limit(1);
+      if (existingJob) {
+        const existingStatus = mapOutboxStatusToRenderStatus(
+          existingJob.status,
+          existingJob.lastError,
+          existingJob.jobType
+        );
+        const shouldRequeue =
+          existingStatus === "failed_transient" ||
+          existingStatus === "blocked_needs_user" ||
+          existingJob.status === "cancelled" ||
+          existingJob.status === "dead_lettered";
+        if (shouldRequeue) {
+          await db
+            .update(marketplaceAutoReviewOutboxJobs)
+            .set({
+              status: "queued",
+              priority: input.priority ?? existingJob.priority ?? 70,
+              attempts: 0,
+              maxAttempts: input.maxAttempts ?? existingJob.maxAttempts ?? 3,
+              lockedBy: null,
+              lockedUntil: null,
+              completedAt: null,
+              lastError: null,
+              payloadJson: payload,
+              scheduledAt: now,
+              updatedAt: now,
+            })
+            .where(eq(marketplaceAutoReviewOutboxJobs.id, renderJobId));
+        } else if (existingStatus === "failed_permanent") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "ไม่ได้ส่ง Render เพราะ prompt/config ชุดเดิมเคย fail แบบถาวรแล้ว ให้แก้ prompt/settings หรือกด Generate Prompt ใหม่ก่อน render อีกครั้ง",
+          });
+        } else {
+          return getHyperframesRenderProjection({
+            auth: input.auth,
+            renderJobId,
+            productId: input.composition.provenance.productId,
+            runId,
+          });
+        }
+      }
+    }
   }
   return buildHyperframesRenderProjection({
     tenantId,
@@ -859,7 +931,7 @@ export async function getHyperframesRenderProjection(input: {
           ? payload.renderIntent === "final"
             ? "HyperFrames Final Composite ยังไม่เริ่มหลังรอนานกว่าปกติ ตรวจสอบ worker queue หรือกด render ใหม่เพื่อสร้างงานล่าสุด"
             : "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก"
-          : undefined,
+          : safeMessageForRenderError(projectedStatus, job.lastError),
         safeDiagnostics,
         outputRefs: outputRefs.outputRefs,
         artifactRefs: outputRefs.artifactRefs,

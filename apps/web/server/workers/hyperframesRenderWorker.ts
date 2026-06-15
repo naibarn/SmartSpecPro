@@ -191,7 +191,7 @@ function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): R
 }
 
 function isNonRetryableHyperframesRuntimeError(message: string): boolean {
-  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset/i.test(message);
+  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset|FFmpeg not found|FFprobe not found/i.test(message);
 }
 
 function commandBufferText(value: unknown): string {

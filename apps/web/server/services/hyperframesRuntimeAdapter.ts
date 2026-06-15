@@ -2,13 +2,16 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import {
+  accessSync,
+  constants as fsConstants,
   copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { extname, join } from "node:path";
+import { delimiter, dirname, extname, join } from "node:path";
+import { homedir } from "node:os";
 
 import { storageCopyToPath } from "../storage";
 
@@ -29,6 +32,8 @@ export interface HyperframesRuntimeAdapterEnv {
   HYPERFRAMES_PRODUCTION_RUNTIME_READY?: string;
   HYPERFRAMES_OFFICIAL_RUNTIME_READY?: string;
   HYPERFRAMES_CLI_BINARY?: string;
+  HYPERFRAMES_FFMPEG_BINARY?: string;
+  HYPERFRAMES_FFPROBE_BINARY?: string;
   HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME?: string;
   HYPERFRAMES_PLAYER_READY_TIMEOUT_MS?: string;
   HYPERFRAMES_PAGE_NAVIGATION_TIMEOUT_SEC?: string;
@@ -505,6 +510,70 @@ function resolveHyperframesCliBinary(env?: HyperframesRuntimeAdapterEnv): string
   return localBinary ?? "hyperframes";
 }
 
+function executableExists(filePath: string): boolean {
+  try {
+    accessSync(filePath, fsConstants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function uniquePathDirs(dirs: string[]): string[] {
+  const seen = new Set<string>();
+  return dirs
+    .map(dir => dir.trim())
+    .filter(Boolean)
+    .filter(dir => {
+      if (seen.has(dir)) return false;
+      seen.add(dir);
+      return true;
+    });
+}
+
+function runtimeToolSearchDirs(): string[] {
+  return uniquePathDirs([
+    ...String(process.env.PATH ?? "").split(delimiter),
+    join(homedir(), ".local", "bin"),
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+  ]);
+}
+
+function resolveRuntimeExecutable(
+  binaryName: "ffmpeg" | "ffprobe",
+  explicitPath?: string
+): string | null {
+  const explicit = String(explicitPath ?? "").trim();
+  if (explicit) return executableExists(explicit) ? explicit : null;
+  for (const dir of runtimeToolSearchDirs()) {
+    const candidate = join(dir, binaryName);
+    if (executableExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+function buildHyperframesCliProcessEnv(
+  env?: HyperframesRuntimeAdapterEnv
+): NodeJS.ProcessEnv {
+  const ffmpegPath = resolveRuntimeExecutable("ffmpeg", env?.HYPERFRAMES_FFMPEG_BINARY);
+  const ffprobePath = resolveRuntimeExecutable("ffprobe", env?.HYPERFRAMES_FFPROBE_BINARY);
+  const toolDirs = [
+    ffmpegPath ? dirname(ffmpegPath) : "",
+    ffprobePath ? dirname(ffprobePath) : "",
+  ];
+  return {
+    ...process.env,
+    PATH: uniquePathDirs([
+      ...toolDirs,
+      ...String(process.env.PATH ?? "").split(delimiter),
+    ]).join(delimiter),
+    ...(ffmpegPath ? { FFMPEG_PATH: ffmpegPath } : {}),
+    ...(ffprobePath ? { FFPROBE_PATH: ffprobePath } : {}),
+  };
+}
+
 export async function executeHyperframesCliRender(
   input: HyperframesRuntimeRenderInput
 ): Promise<HyperframesRuntimeRenderResult> {
@@ -551,14 +620,15 @@ export async function executeHyperframesCliRender(
   if (variables) {
     args.push("--variables", JSON.stringify(variables), "--strict-variables");
   }
+  const processEnv = buildHyperframesCliProcessEnv(input.env);
   const result = await (input.commandRunner
     ? input.commandRunner(command, args, {
         cwd: input.workspace,
-        env: process.env,
+        env: processEnv,
       })
     : execFileSync(command, args, {
         cwd: input.workspace,
-        env: process.env,
+        env: processEnv,
         stdio: "pipe",
       }));
   if (!existsSync(input.outputPath)) {

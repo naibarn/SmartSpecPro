@@ -24,6 +24,7 @@ import {
   cancelHyperframesRenderJob,
   getHyperframesRenderProjection,
   mapOutboxStatusToRenderStatus,
+  queueHyperframesRenderJob,
   redactHyperframesRenderProjectionForUser,
   retryHyperframesRenderJob,
 } from "../hyperframesRenderService";
@@ -59,6 +60,35 @@ function createOutboxMutationDb(
       }),
     }),
     returning,
+  };
+}
+
+function createOutboxInsertConflictDb(job: Record<string, unknown> | null) {
+  const updatedSets: Record<string, unknown>[] = [];
+  const returning = vi.fn(async () => []);
+  return {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => (job ? [job] : []),
+        }),
+      }),
+    }),
+    insert: () => ({
+      values: () => ({
+        onConflictDoNothing: () => ({ returning }),
+      }),
+    }),
+    update: () => ({
+      set: (values: Record<string, unknown>) => {
+        updatedSets.push(values);
+        return {
+          where: () => undefined,
+        };
+      },
+    }),
+    returning,
+    updatedSets,
   };
 }
 
@@ -103,6 +133,100 @@ describe("hyperframesRenderService", () => {
         "hyperframes_render"
       )
     ).toBe("blocked_needs_user");
+  });
+
+  it("maps missing FFmpeg/FFprobe worker dependencies to blocked configuration status", () => {
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime transient failure: Command failed: hyperframes render --strict | stderr tail: FFmpeg not found | FFprobe not found",
+        "hyperframes_render"
+      )
+    ).toBe("blocked_needs_user");
+  });
+
+  it("requeues an idempotent final composite render when the previous same config failed due runtime configuration", async () => {
+    const composition = buildHyperframesCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: {
+        selectedImageUrls: ["https://cdn.example.com/product.png"],
+      },
+    });
+    const db = createOutboxInsertConflictDb({
+      id: "hf_existing",
+      tenantId: "tenant_1",
+      userId: 1,
+      runId: "mar_1",
+      status: "failed",
+      attempts: 3,
+      maxAttempts: 3,
+      priority: 82,
+      lockedBy: "worker-1",
+      lastError:
+        "HyperFrames runtime transient failure: FFmpeg not found | FFprobe not found",
+      jobType: "hyperframes_render",
+      payloadJson: buildHyperframesRenderJobPayload({ composition }),
+      updatedAt: new Date("2026-06-15T00:00:00.000Z"),
+    });
+    mockGetDb.mockResolvedValue(db);
+
+    const projection = await queueHyperframesRenderJob({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      composition,
+      priority: 82,
+      maxAttempts: 3,
+    });
+
+    expect(projection.status).toBe("queued");
+    expect(db.updatedSets).toHaveLength(1);
+    expect(db.updatedSets[0]).toMatchObject({
+      status: "queued",
+      attempts: 0,
+      maxAttempts: 3,
+      lockedBy: null,
+      lockedUntil: null,
+      completedAt: null,
+      lastError: null,
+    });
+  });
+
+  it("explains why an idempotent render was not queued when the same config failed permanently", async () => {
+    const composition = buildHyperframesCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: {
+        selectedImageUrls: ["https://cdn.example.com/product.png"],
+      },
+    });
+    const db = createOutboxInsertConflictDb({
+      id: "hf_existing",
+      tenantId: "tenant_1",
+      userId: 1,
+      runId: "mar_1",
+      status: "failed",
+      attempts: 1,
+      maxAttempts: 3,
+      priority: 82,
+      lockedBy: null,
+      lastError: "QA rejected unsafe output",
+      jobType: "hyperframes_render",
+      payloadJson: buildHyperframesRenderJobPayload({ composition }),
+      updatedAt: new Date("2026-06-15T00:00:00.000Z"),
+    });
+    mockGetDb.mockResolvedValue(db);
+
+    await expect(
+      queueHyperframesRenderJob({
+        auth: { userId: 1, tenantId: "tenant_1" },
+        composition,
+      })
+    ).rejects.toThrow(/prompt\/config ชุดเดิมเคย fail แบบถาวร/);
+    expect(db.updatedSets).toHaveLength(0);
   });
 
   it("projects final composite creative and audio metadata into outbox payload", () => {
