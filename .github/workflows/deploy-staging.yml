@@ -1,9 +1,12 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type deploy-staging to confirm this GCP deployment.'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -11,6 +14,7 @@ permissions:
 
 jobs:
   build-and-deploy:
+    if: ${{ github.event.inputs.confirm == 'deploy-staging' }}
     runs-on: ubuntu-latest
 
     steps:
