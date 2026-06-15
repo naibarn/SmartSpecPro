@@ -151,9 +151,12 @@ function isFinalCompositeRenderPayload(payload: Record<string, unknown>): boolea
   );
 }
 
-function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): Record<string, unknown> {
+function getFinalCompositeAudioValidation(payload: Record<string, unknown>): {
+  missingAssetRefs: string[];
+  validatedAssetRefs: string[];
+  validatedAssets: unknown[];
+} {
   const finalConfig = getFinalCompositeConfig(payload);
-  const audioEvents = getFinalCompositeAudioEvents(payload);
   const audioValidation =
     finalConfig.audioAssetValidation &&
     typeof finalConfig.audioAssetValidation === "object" &&
@@ -170,8 +173,70 @@ function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): R
     ? audioValidation.validatedAssets.filter(Boolean)
     : [];
   return {
+    missingAssetRefs,
+    validatedAssetRefs,
+    validatedAssets,
+  };
+}
+
+function getNativeAudioInputCandidateCount(payload: Record<string, unknown>): number {
+  const finalConfig = getFinalCompositeConfig(payload);
+  if (finalConfig.preserveNativeAudio === false) return 0;
+  return getFinalCompositeShots(payload).filter(shot =>
+    Boolean(
+      String(shot.sourceVideoUrl ?? "").trim() ||
+        String(shot.sourceVideoRef ?? "").trim()
+    )
+  ).length;
+}
+
+function getRenderableFinalCompositeAudioEventCount(
+  payload: Record<string, unknown>
+): number {
+  const audioValidation = getFinalCompositeAudioValidation(payload);
+  const missingRefs = new Set(audioValidation.missingAssetRefs);
+  const validatedRefs = new Set([
+    ...audioValidation.validatedAssetRefs,
+    ...audioValidation.validatedAssets
+      .map(asset =>
+        asset && typeof asset === "object" && "assetRef" in asset
+          ? String((asset as { assetRef?: unknown }).assetRef ?? "").trim()
+          : ""
+      )
+      .filter(Boolean),
+  ]);
+  return getFinalCompositeAudioEvents(payload).filter(event => {
+    const ref = String(event.assetRef ?? "").trim();
+    if (!ref || missingRefs.has(ref)) return false;
+    return validatedRefs.size === 0 || validatedRefs.has(ref);
+  }).length;
+}
+
+export function shouldRequireHyperframesOutputAudio(
+  payload: Record<string, unknown>
+): boolean {
+  if (!isFinalCompositeRenderPayload(payload)) return false;
+  return (
+    getNativeAudioInputCandidateCount(payload) > 0 ||
+    getRenderableFinalCompositeAudioEventCount(payload) > 0
+  );
+}
+
+export function buildOfficialRuntimeAudioMixReport(
+  payload: Record<string, unknown>,
+  playableProbe?: { hasAudio?: boolean }
+): Record<string, unknown> {
+  const finalConfig = getFinalCompositeConfig(payload);
+  const audioEvents = getFinalCompositeAudioEvents(payload);
+  const audioValidation = getFinalCompositeAudioValidation(payload);
+  const nativeInputCandidateCount = getNativeAudioInputCandidateCount(payload);
+  return {
     preserveNativeAudio: finalConfig.preserveNativeAudio !== false,
     nativeInputWithAudioCount: 0,
+    nativeInputCandidateCount,
+    expectedOutputAudio: shouldRequireHyperframesOutputAudio(payload),
+    outputAudioProbeHasAudio:
+      typeof playableProbe?.hasAudio === "boolean" ? playableProbe.hasAudio : undefined,
     outputAudioPolicy: isFinalCompositeRenderPayload(payload)
       ? "official_html_css_browser_runtime"
       : "official_hyperframes_runtime",
@@ -181,12 +246,13 @@ function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): R
       ? finalConfig.sfxPresetIds.map(id => String(id ?? "").trim()).filter(Boolean)
       : [],
     audioEventCount: audioEvents.length,
+    renderableAudioEventCount: getRenderableFinalCompositeAudioEventCount(payload),
     generatedSyntheticEventCount: 0,
     syntheticFallbackAudio: false,
-    missingAssetRefs,
-    validatedAssetRefs,
-    validatedAudioAssetCount: validatedAssets.length,
-    stagedAssetValidationPassed: missingAssetRefs.length === 0,
+    missingAssetRefs: audioValidation.missingAssetRefs,
+    validatedAssetRefs: audioValidation.validatedAssetRefs,
+    validatedAudioAssetCount: audioValidation.validatedAssets.length,
+    stagedAssetValidationPassed: audioValidation.missingAssetRefs.length === 0,
   };
 }
 
@@ -940,6 +1006,11 @@ export async function executeLocalHyperframesSmokeRender(input: {
         }`
       );
     }
+    if (shouldRequireHyperframesOutputAudio(input.payload) && !playableProbe.hasAudio) {
+      throw new Error(
+        "HyperFrames output audio probe failed: final composite expected audio from preserved source clips or validated audio events, but rendered MP4 has no audio stream."
+      );
+    }
     const fileBuffer = readFileSync(outputPath);
     const contentHash = sha256Hash(fileBuffer);
     const storageKey = [
@@ -967,7 +1038,7 @@ export async function executeLocalHyperframesSmokeRender(input: {
       thumbnailUrl: null,
       qaStatus: "passed",
       playableProbe,
-      audioMixReport: buildOfficialRuntimeAudioMixReport(input.payload),
+      audioMixReport: buildOfficialRuntimeAudioMixReport(input.payload, playableProbe),
       officialHyperframesRuntime: {
         renderer: runtimeRender.renderer,
         runtimeDiagnostics: runtimeRender.runtimeDiagnostics,

@@ -947,10 +947,17 @@ function stripInternalMinorSafetyDirectiveText(value: unknown): string {
 function stripNegatedMinorSafetyMentions(value: unknown): string {
   let text = cleanText(value);
   if (!text) return "";
+  const minorRoleList =
+    "(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)(?:\\s*,?\\s*(?:or\\s+)?(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors))*";
   const patterns = [
     /\bno\s+(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\s+(?:appears?|present|visible|shown|included)\b/gi,
     /\bwithout\s+(?:a\s+|any\s+)?(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\b/gi,
     /\bdo\s+not\s+(?:show|include|add|replace[^.]*?\s+with)\s+(?:a\s+|any\s+)?(?:baby|babies|infant|toddler|child|children|kid|kids|minor|minors)\b/gi,
+    new RegExp(
+      `\\b(?:must|should)\\s+not\\s+(?:be\\s+)?(?:depicted|shown|rendered|treated|converted|transformed|used)\\s+(?:as\\s+)?(?:a\\s+|any\\s+)?${minorRoleList}\\b`,
+      "gi"
+    ),
+    new RegExp(`\\bnot\\s+(?:a\\s+|any\\s+)?${minorRoleList}\\b`, "gi"),
     /ไม่มี(?:เด็ก|ทารก|เด็กอ่อน)[^.!?\n\r]*/gi,
   ];
   for (const pattern of patterns) {
@@ -7565,7 +7572,8 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
     blockers.push("prompt_too_long_for_image_provider");
   }
   if (
-    marketplaceAutoReviewPlanNeedsMinorSafetyLock(input.plan) &&
+    (marketplaceAutoReviewPlanNeedsMinorSafetyLock(input.plan) ||
+      textHasMinorSafetySignal(prompt)) &&
     !/MINOR SAFETY CLOTHING LOCK/i.test(prompt)
   ) {
     blockers.push("minor_safety_clothing_lock_missing");
@@ -7739,14 +7747,6 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
       );
     if (!hasExactProductReferenceLock) {
       addContractIssue("product_reference_primary_visual_lock_missing");
-    }
-    if (
-      runtimeContract.referenceCharacterImageCount > 0 &&
-      /(?:child|children|kid|toddler|baby)\s+(?:character\s+)?(?:from|in|matching|using)\s+@Image2|@Image2[^\n]{0,80}(?:child|children|kid|toddler|baby)/i.test(
-        prompt
-      )
-    ) {
-      blockers.push("character_reference_age_role_mismatch");
     }
     if (
       /\b(?:create|generate|make|use|show)\s+(?:a\s+)?(?:collage|masonry|mixed-size panels?)\b/i.test(
@@ -7968,9 +7968,9 @@ function characterReferencePresenterDirective(
     return "No character reference image is supplied. If the product story needs people, use hands-only or non-identifying partial body unless a generic person is explicitly required.";
   }
   return [
-    "Character/presenter reference directive: @Image2 is the uploaded presenter/reviewer identity reference, not a child, toddler, baby, product user, or age-converted variant.",
-    "Any visible face, head, hair, body identity, presenter, reviewer, parent, family member, or person from the character slot must preserve the same adult/young-adult identity, face structure, hair, body proportions, and wardrobe/styling from @Image2.",
-    "Do not write child from @Image2, toddler from @Image2, kid from @Image2, baby from @Image2, or transform the uploaded presenter into a different age/gender/person. For child-focused products, show the product, hands-only interaction, or non-identifying child details only if needed; never bind @Image2 to a child.",
+    "Character/presenter reference directive: @Image2 is the uploaded character or presenter identity reference.",
+    "Any visible face, head, hair, body identity, presenter, reviewer, parent, family member, or person from the character slot must preserve the same identity, age range, face structure, hair, body proportions, and wardrobe/styling from @Image2.",
+    "Do not age-convert @Image2 into a different person or demographic. If @Image2 is a baby, toddler, child, kid, or minor, the child may be used as the character reference but must be safely dressed with chest, torso, and underwear areas covered; no shirtless, bare-torso, underwear-only, diaper-only, bath/changing/nude/semi-nude, or suggestive minor framing.",
   ].join(" ");
 }
 

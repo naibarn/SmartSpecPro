@@ -4207,7 +4207,59 @@ describe("marketplace auto review audio/video planning", () => {
     );
   });
 
-  it("blocks skill-generated storyboard prompts that bind uploaded character reference to a child", () => {
+  it("allows uploaded child character references when minor clothing safety is locked", () => {
+    const plan = {
+      ...basePlan,
+      productTruth: {
+        ...basePlan.productTruth,
+        productName: "Sumikko baby care set",
+        productCategory: "mother_baby",
+        categoryText: "แม่และเด็ก",
+        categoryPath: ["แม่และเด็ก"],
+      },
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "MINOR SAFETY CLOTHING LOCK: If any baby, toddler, child, kid, or minor appears, they must be safely dressed in age-appropriate clothing covering chest, torso, and underwear areas. No shirtless child, no bare chest or bare torso, no underwear-only/diaper-only child scene, no bath/changing/nude/semi-nude framing, no suggestive pose, and no close crop of a minor's underwear or diaper area.",
+      "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK: The child character must consistently match the facial features, hair, and likeness of the safely dressed child in @Image2.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "mother_baby",
+        referenceProductImageCount: 1,
+        referenceCharacterImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images", "reference_character_images"],
+      },
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
+    expect(result.blockers).not.toContain("minor_safety_clothing_lock_missing");
+  });
+
+  it("requires a minor clothing safety lock when a skill prompt introduces a child reference", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -4238,7 +4290,7 @@ describe("marketplace auto review audio/video planning", () => {
         generationMode: "multi_frame_storyboard",
         layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
         aspectRatio: "9:16",
-        productCategory: "mother_baby",
+        productCategory: "furniture",
         referenceProductImageCount: 1,
         referenceCharacterImageCount: 1,
         schemaAudit: { status: "passed" },
@@ -4247,7 +4299,51 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.blockers).toContain("character_reference_age_role_mismatch");
+    expect(result.blockers).toContain("minor_safety_clothing_lock_missing");
+    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
+  });
+
+  it("allows uploaded adult character reference guardrails that explicitly reject child age conversion", () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const prompt = [
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
+      "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK: The presenter in the storyboard must preserve the young adult female identity, facial structure, hair, and styling from @Image2. She must not be depicted as a child, toddler, or baby. Whenever her face is visible, it must be naturally lit, sharp, and realistic.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ].join("\n");
+
+    const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      prompt,
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "mother_baby",
+        referenceProductImageCount: 1,
+        referenceCharacterImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images", "reference_character_images"],
+      },
+    });
+
+    expect(result.status).toBe("passed");
+    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
   });
 
   it("warns on skill-generated storyboard prompts that drop exact 3x3 layout instructions", () => {

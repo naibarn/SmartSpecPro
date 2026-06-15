@@ -47,3 +47,12 @@ CONVERGENCE:
 - Quality: Added a regression test that failed before the patch and now asserts the polling/start-wait contract, broad invalidation, and transient start-action cleanup.
 - Verification: Focused Vitest passed; full web TypeScript check passed; targeted Marketplace HyperFrames Playwright route test passed; `git diff --check` passed for touched files.
 - Convergence: Targeted review found no remaining exact `{ productId, limit: 8 }` invalidations for `listAutoReviewRuns` in Product Detail and no SocratiCode-reported downstream callers for the changed page file.
+
+## Round 7 - HyperFrames Overlay And Audio Review
+- Finding: First-shot text was duplicated because final composite HTML emitted both the global `hook-layer` and shot-1 `.shot-copy` when hook and per-shot text were both enabled.
+- Finding: Native source audio was stripped because generated source `<video>` clips were always emitted with `muted`, regardless of `preserveNativeAudio`.
+- Finding: Silent MP4 outputs could be marked completed because worker probing accepted video+duration without checking expected audio.
+- Fix: Bumped final composite builder to v7, removed `muted` when native audio preservation is enabled, suppressed shot-1 copy when the hook layer owns the first-shot overlay, and made the worker fail closed when expected audio is missing from the rendered MP4 probe.
+- Additional scoped fix: Character reference minor-role validation now distinguishes explicit adult/no-child guardrails from affirmative @Image2-to-minor bindings.
+- Verification: Focused composition Vitest 6/6, worker policy Vitest 14/14, Marketplace Auto Review Vitest 180/180, reference evidence Vitest 2/2, `npm run check`, `npm run build`, and `git diff --check` all passed.
+- Convergence: SocratiCode impact found no extra callers for HyperFrames composition/worker changes; Marketplace Auto Review impact identified the reference-evidence test, which passed. No material follow-up findings remain.

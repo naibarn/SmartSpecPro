@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   buildCompletedHyperframesStagePayload,
+  buildOfficialRuntimeAudioMixReport,
   buildFinalCompositeAss,
   executeLocalHyperframesSmokeRender,
   isHyperframesRuntimeExecutionReady,
   isHyperframesWorkerEnabled,
   resolveHyperframesFfmpegBinary,
   runHyperframesRenderWorkerOnce,
+  shouldRequireHyperframesOutputAudio,
 } from "../../workers/hyperframesRenderWorker";
 
 describe("hyperframesWorkerPolicy", () => {
@@ -162,6 +164,72 @@ describe("hyperframesWorkerPolicy", () => {
         },
       })
     ).rejects.toThrow(/HTML\/CSS\/browser runtime is required/);
+  });
+
+  it("requires an audio stream when final composite preserves native source audio", () => {
+    const payload = {
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      finalCompositeConfig: {
+        preserveNativeAudio: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            durationSec: 8,
+            sourceVideoUrl: "/api/storage/files/tenant/run/shot-1.mp4",
+          },
+        ],
+        audioEvents: [],
+        audioAssetValidation: {
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+      },
+    };
+
+    expect(shouldRequireHyperframesOutputAudio(payload)).toBe(true);
+    expect(
+      buildOfficialRuntimeAudioMixReport(payload, { hasAudio: false })
+    ).toMatchObject({
+      preserveNativeAudio: true,
+      nativeInputWithAudioCount: 0,
+      nativeInputCandidateCount: 1,
+      expectedOutputAudio: true,
+      outputAudioProbeHasAudio: false,
+      renderableAudioEventCount: 0,
+    });
+  });
+
+  it("does not require an audio stream when native audio and audio events are disabled", () => {
+    const payload = {
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      finalCompositeConfig: {
+        preserveNativeAudio: false,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            durationSec: 8,
+            sourceVideoUrl: "/api/storage/files/tenant/run/shot-1.mp4",
+          },
+        ],
+        audioEvents: [],
+        audioAssetValidation: {
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+      },
+    };
+
+    expect(shouldRequireHyperframesOutputAudio(payload)).toBe(false);
+    expect(buildOfficialRuntimeAudioMixReport(payload)).toMatchObject({
+      preserveNativeAudio: false,
+      nativeInputCandidateCount: 0,
+      expectedOutputAudio: false,
+      renderableAudioEventCount: 0,
+    });
   });
 
   it("expands legacy ellipsized Thai overlay text before writing the final ASS render script", () => {

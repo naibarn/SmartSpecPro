@@ -22,7 +22,7 @@ import {
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
-  "hyperframes_final_composite_builder_v6";
+  "hyperframes_final_composite_builder_v7";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -658,17 +658,26 @@ function buildHyperframesFinalCompositeHtml(input: {
   const timelineByShotId = new Map(timeline.entries.map(entry => [entry.shotId, entry]));
   const fontStack = `"${cssString(config.fontFamily)}", "Noto Sans Thai", "Prompt", "Kanit", "Sarabun", system-ui, sans-serif`;
   const safeInset = `${Math.round(config.safeZonePercent * 10) / 10}%`;
+  const preserveNativeAudio = config.preserveNativeAudio !== false;
+  const sourceVideoAudioAttributes = preserveNativeAudio
+    ? 'data-native-audio="true" data-audio-role="native_source"'
+    : "muted";
   const shotHtml = config.shots
     .map((shot, index) => {
-      const lines = (config.includeShotText ? shot.onScreenText : []).filter(Boolean);
+      const shouldUseHookAsFirstShotCopy =
+        config.includeHookText && (index === 0 || shot.index === 0);
+      const lines =
+        config.includeShotText && !shouldUseHookAsFirstShotCopy
+          ? shot.onScreenText.filter(Boolean)
+          : [];
       const cues = config.burnInSubtitles ? shot.subtitleCues : [];
       const timelineEntry = timelineByShotId.get(shot.id);
       const videoTrackIndex = shot.index * 2;
       const overlayTrackIndex = videoTrackIndex + 1;
       const shotOverlayPreset = shot.overlayPreset ?? config.overlayPreset;
       return `
-      <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" muted playsinline></video>
-      <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}">
+      <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" ${sourceVideoAudioAttributes} playsinline></video>
+      <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}"${shouldUseHookAsFirstShotCopy ? ' data-shot-copy-suppressed="hook-layer"' : ""}>
         <div class="shade"></div>
         <div class="shot-copy">
           ${lines.map((line, lineIndex) => `<div class="shot-line line-${lineIndex + 1}">${escapeHtml(line)}</div>`).join("")}

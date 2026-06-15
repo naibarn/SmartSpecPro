@@ -354,7 +354,7 @@ describe("hyperframesCompositionService", () => {
       timelineVersion: 1,
     });
     expect(composition.provenance.builderVersion).toBe(
-      "hyperframes_final_composite_builder_v6"
+      "hyperframes_final_composite_builder_v7"
     );
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
     expect(composition.compositionHtml).toContain(
@@ -368,7 +368,15 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain('data-overlay-preset="price_impact"');
     expect(composition.compositionHtml).toContain('data-media-start="0"');
     expect(composition.compositionHtml).toContain('data-hf-auto-start="true"');
+    expect(composition.compositionHtml).toContain('data-native-audio="true"');
+    expect(composition.compositionHtml).not.toMatch(/<video[^>]+muted/);
     expect(composition.compositionHtml).toContain('data-track-index="0"');
+    expect(composition.compositionHtml).toContain(
+      '<div class="hook-main">แท็บเล็ตจอใหญ่</div>'
+    );
+    expect(composition.compositionHtml).not.toContain(
+      '<div class="shot-line line-1">แท็บเล็ตจอใหญ่</div>'
+    );
     expect(composition.compositionHtml).toContain('class="clip audio-event"');
     expect(composition.compositionHtml).not.toMatch(
       /<audio[^>]+hf_audio_music_upbeat_ecommerce_social_v1\.wav/
@@ -411,6 +419,67 @@ describe("hyperframesCompositionService", () => {
         "official_html_css_browser_runtime_required",
       ]),
     });
+  });
+
+  it("mutes storyboard source videos only when native audio preservation is disabled", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: { title: "BENO PRO-FLEX" },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: "per_shot" as const,
+        overlayPreset: "kinetic_bold_hook",
+        includeHookText: false,
+        includeShotText: true,
+        burnInSubtitles: false,
+        subtitlePreset: "classic_box",
+        preserveNativeAudio: false,
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "none",
+        sfxPresetIds: [],
+        audioEvents: [],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+        fontFamily: "Prompt",
+        styleBrief: "",
+        hookText: "",
+        supportingText: "",
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "storage://shot-1",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "kinetic_bold_hook",
+            onScreenText: ["ชงกาแฟหอมเข้ม"],
+            subtitleCues: [],
+            animationPreset: "glow_feature",
+            transition: "fade",
+          },
+        ],
+      },
+    });
+
+    expect(composition.compositionHtml).toMatch(/<video[^>]+muted/);
+    expect(composition.compositionHtml).not.toContain('data-native-audio="true"');
   });
 
   it("does not emit audio tags for final composite audio refs that were not validated for staging", () => {
