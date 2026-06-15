@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import {
   copyFileSync,
@@ -7,7 +8,9 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { extname, join } from "node:path";
+
+import { storageCopyToPath } from "../storage";
 
 type HyperframesProducerModule = {
   createRenderJob?: (config: Record<string, unknown>) => unknown;
@@ -39,6 +42,7 @@ export interface HyperframesRuntimeRenderInput {
   env?: HyperframesRuntimeAdapterEnv;
   importer?: (specifier: string) => Promise<unknown>;
   commandRunner?: (command: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv }) => unknown | Promise<unknown>;
+  storageCopier?: (relKey: string, targetPath: string) => Promise<{ key: string }>;
 }
 
 export interface HyperframesRuntimeRenderResult {
@@ -270,6 +274,123 @@ function getCompositionHtml(payload: Record<string, unknown>): string {
     : buildHyperframesProducerFallbackHtml(payload);
 }
 
+function missingAudioRefsFromPayload(payload: Record<string, unknown>): Set<string> {
+  const config =
+    payload.finalCompositeConfig && typeof payload.finalCompositeConfig === "object"
+      ? (payload.finalCompositeConfig as Record<string, unknown>)
+      : payload;
+  const validation =
+    config.audioAssetValidation && typeof config.audioAssetValidation === "object"
+      ? (config.audioAssetValidation as Record<string, unknown>)
+      : {};
+  const refs = Array.isArray(validation.missingAssetRefs)
+    ? validation.missingAssetRefs
+    : [];
+  return new Set(refs.map(ref => String(ref ?? "").trim()).filter(Boolean));
+}
+
+function audioSrcFromTag(tag: string): string | null {
+  const match = tag.match(/\bsrc=("([^"]*)"|'([^']*)')/i);
+  return (match?.[2] ?? match?.[3] ?? "").trim() || null;
+}
+
+function removeUnstageableAudioRefs(
+  html: string,
+  payload: Record<string, unknown>
+): string {
+  const missingRefs = missingAudioRefsFromPayload(payload);
+  return html.replace(/<audio\b[\s\S]*?<\/audio>\s*/gi, tag => {
+    const src = audioSrcFromTag(tag);
+    if (!src) return tag;
+    if (missingRefs.has(src)) return "";
+    if (src.startsWith("/") && !storageKeyFromRuntimeAssetRef(src)) return "";
+    return tag;
+  });
+}
+
+function storageKeyFromRuntimeAssetRef(ref: string): string | null {
+  const trimmed = ref.trim();
+  if (!trimmed) return null;
+  try {
+    const path = /^https?:\/\//i.test(trimmed)
+      ? new URL(trimmed).pathname
+      : trimmed;
+    if (path.startsWith("/api/storage/files/")) {
+      return decodeURIComponent(path.slice("/api/storage/files/".length));
+    }
+    if (path.startsWith("/uploads/")) {
+      return decodeURIComponent(path.slice("/uploads/".length));
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function stagedMediaFileName(storageKey: string): string {
+  const hash = createHash("sha256").update(storageKey).digest("hex").slice(0, 24);
+  const ext = extname(storageKey);
+  return `${hash}${/^\.[a-z0-9]{1,8}$/i.test(ext) ? ext : ".bin"}`;
+}
+
+function isMissingStorageAssetError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  return /ENOENT|NoSuchKey|NotFound|not found|404/i.test(message);
+}
+
+function storageAssetErrorMessage(error: unknown): string {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  return message.replace(/\s+/g, " ").trim().slice(0, 240) || "unknown error";
+}
+
+async function stageHyperframesStorageMediaRefs(input: {
+  workspace: string;
+  html: string;
+  storageCopier?: HyperframesRuntimeRenderInput["storageCopier"];
+}): Promise<string> {
+  const attributePattern = /\b(src|href|poster)=("([^"]*)"|'([^']*)')/gi;
+  const refs = new Map<string, string>();
+  let match: RegExpExecArray | null;
+  while ((match = attributePattern.exec(input.html))) {
+    const ref = match[3] ?? match[4] ?? "";
+    const storageKey = storageKeyFromRuntimeAssetRef(ref);
+    if (storageKey) refs.set(ref, storageKey);
+  }
+  if (refs.size === 0) return input.html;
+
+  const mediaDir = join(input.workspace, "assets", "media");
+  mkdirSync(mediaDir, { recursive: true });
+  const copier = input.storageCopier ?? storageCopyToPath;
+  const stagedRefs = new Map<string, string>();
+  for (const [ref, storageKey] of refs) {
+    const stagedName = stagedMediaFileName(storageKey);
+    const targetPath = join(mediaDir, stagedName);
+    try {
+      await copier(storageKey, targetPath);
+    } catch (error) {
+      if (isMissingStorageAssetError(error)) {
+        throw new Error(
+          `HyperFrames missing render media asset: ${storageKey}`
+        );
+      }
+      throw new Error(
+        `HyperFrames media asset staging failed for ${storageKey}: ${storageAssetErrorMessage(error)}`
+      );
+    }
+    stagedRefs.set(ref, `./assets/media/${stagedName}`);
+  }
+
+  return input.html.replace(attributePattern, (full, attr, quoted, doubleValue, singleValue) => {
+    const ref = doubleValue ?? singleValue ?? "";
+    const stagedRef = stagedRefs.get(ref);
+    if (!stagedRef) return full;
+    const quote = quoted.startsWith("'") ? "'" : "\"";
+    return `${attr}=${quote}${stagedRef}${quote}`;
+  });
+}
+
 function getHyperframesVariables(payload: Record<string, unknown>): Record<string, unknown> | null {
   const variables = payload.hyperframesVariables ?? payload.variables;
   if (!variables || typeof variables !== "object" || Array.isArray(variables)) {
@@ -389,7 +510,12 @@ export async function executeHyperframesCliRender(
 ): Promise<HyperframesRuntimeRenderResult> {
   assertHyperframesCliRuntimeAllowed(input.env);
   const htmlPath = join(input.workspace, "index.html");
-  writeFileSync(htmlPath, getCompositionHtml(input.payload), "utf8");
+  const compositionHtml = await stageHyperframesStorageMediaRefs({
+    workspace: input.workspace,
+    html: removeUnstageableAudioRefs(getCompositionHtml(input.payload), input.payload),
+    storageCopier: input.storageCopier,
+  });
+  writeFileSync(htmlPath, compositionHtml, "utf8");
   const runtimeAssets = stageHyperframesRuntimeAssets(input.workspace, input.env);
   const command = resolveHyperframesCliBinary(input.env);
   const playerReadyTimeoutMs = parsePositiveInt(
@@ -458,7 +584,12 @@ export async function executeHyperframesProducerRender(
 ): Promise<HyperframesRuntimeRenderResult> {
   assertHyperframesProducerRuntimeAllowed(input.env);
   const htmlPath = join(input.workspace, "index.html");
-  writeFileSync(htmlPath, getCompositionHtml(input.payload), "utf8");
+  const compositionHtml = await stageHyperframesStorageMediaRefs({
+    workspace: input.workspace,
+    html: removeUnstageableAudioRefs(getCompositionHtml(input.payload), input.payload),
+    storageCopier: input.storageCopier,
+  });
+  writeFileSync(htmlPath, compositionHtml, "utf8");
   const runtimeAssets = stageHyperframesRuntimeAssets(input.workspace, input.env);
   const producer = await importHyperframesProducer(input.importer);
   const playerReadyTimeoutMs = parsePositiveInt(

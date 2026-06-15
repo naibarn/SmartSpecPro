@@ -975,6 +975,18 @@ describe("hyperframesRenderService", () => {
       )
     ).toBe("failed_transient");
     expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime transient failure: Command failed: hyperframes render /tmp/work --strict | stdout tail: audio_src_not_found: <audio> element references file(s) not found in the project"
+      )
+    ).toBe("failed_transient");
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime configuration failure: HyperFrames missing render media asset: media-jobs/assets/missing.mp4"
+      )
+    ).toBe("blocked_needs_user");
+    expect(
       mapOutboxStatusToRenderStatus("failed", "QA rejected unsafe output")
     ).toBe("failed_permanent");
   });

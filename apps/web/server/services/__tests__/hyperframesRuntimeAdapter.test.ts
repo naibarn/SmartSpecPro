@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -183,5 +184,116 @@ describe("hyperframesRuntimeAdapter", () => {
       "@hyperframes/producer",
     ]);
     expect(result.runtimeDiagnostics.playerReadyTimeoutMs).toBe(6500);
+  });
+
+  it("stages storage media refs into the HyperFrames project before CLI render", async () => {
+    const dir = workspace();
+    const outputPath = join(dir, "output.mp4");
+    const copied: Array<{ key: string; targetPath: string }> = [];
+    const commandRunner = vi.fn(async () => {
+      await writeFile(outputPath, Buffer.from("mp4"));
+      return { ok: true };
+    });
+
+    await executeHyperframesCliRender({
+      workspace: dir,
+      outputPath,
+      env: {
+        HYPERFRAMES_RUNTIME_MODE: "cli",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      },
+      payload: {
+        compositionHtml:
+          '<video src="/api/storage/files/media-jobs/assets/shot-1.mp4"></video><audio src="/uploads/audio/sfx.wav"></audio>',
+      },
+      storageCopier: async (key, targetPath) => {
+        copied.push({ key, targetPath });
+        await writeFile(targetPath, Buffer.from("asset"));
+        return { key };
+      },
+      commandRunner,
+    });
+
+    const html = readFileSync(join(dir, "index.html"), "utf8");
+    expect(copied.map(item => item.key)).toEqual([
+      "media-jobs/assets/shot-1.mp4",
+      "audio/sfx.wav",
+    ]);
+    expect(html).not.toContain("/api/storage/files/");
+    expect(html).not.toContain("/uploads/audio/sfx.wav");
+    expect(html).toMatch(/src="\.\/assets\/media\/[a-f0-9]{24}\.mp4"/);
+    expect(html).toMatch(/src="\.\/assets\/media\/[a-f0-9]{24}\.wav"/);
+    expect(commandRunner).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes legacy missing audio refs before strict CLI lint sees them", async () => {
+    const dir = workspace();
+    const outputPath = join(dir, "output.mp4");
+    const commandRunner = vi.fn(async () => {
+      await writeFile(outputPath, Buffer.from("mp4"));
+      return { ok: true };
+    });
+
+    await executeHyperframesCliRender({
+      workspace: dir,
+      outputPath,
+      env: {
+        HYPERFRAMES_RUNTIME_MODE: "cli",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      },
+      payload: {
+        compositionHtml:
+          '<audio src="/api/storage/hyperframes/audio-presets/missing.wav"></audio><video src="/api/storage/files/media-jobs/assets/shot-1.mp4"></video>',
+        finalCompositeConfig: {
+          audioAssetValidation: {
+            missingAssetRefs: [
+              "/api/storage/hyperframes/audio-presets/missing.wav",
+            ],
+          },
+        },
+      },
+      storageCopier: async (key, targetPath) => {
+        await writeFile(targetPath, Buffer.from(key));
+        return { key };
+      },
+      commandRunner,
+    });
+
+    const html = readFileSync(join(dir, "index.html"), "utf8");
+    expect(html).not.toContain("<audio");
+    expect(html).not.toContain("/api/storage/hyperframes/audio-presets/missing.wav");
+    expect(html).toMatch(/<video src="\.\/assets\/media\/[a-f0-9]{24}\.mp4"/);
+  });
+
+  it("fails before CLI render when a required staged media asset is missing", async () => {
+    const dir = workspace();
+    const outputPath = join(dir, "output.mp4");
+    const commandRunner = vi.fn();
+
+    await expect(
+      executeHyperframesCliRender({
+        workspace: dir,
+        outputPath,
+        env: {
+          HYPERFRAMES_RUNTIME_MODE: "cli",
+          HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+          HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        },
+        payload: {
+          compositionHtml:
+            '<video src="/api/storage/files/media-jobs/assets/missing.mp4"></video>',
+        },
+        storageCopier: async () => {
+          throw new Error("NoSuchKey");
+        },
+        commandRunner,
+      })
+    ).rejects.toThrow(
+      /HyperFrames missing render media asset: media-jobs\/assets\/missing\.mp4/
+    );
+
+    expect(commandRunner).not.toHaveBeenCalled();
   });
 });

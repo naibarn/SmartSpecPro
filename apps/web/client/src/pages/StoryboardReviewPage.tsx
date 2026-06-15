@@ -133,14 +133,21 @@ function getTaskReferenceFrameRoles(task: StoryboardGenerationTask): StoryboardR
   const roles = Array.isArray(task.storyboardContext?.extraParams?.referenceFrameRoles)
     ? task.storyboardContext?.extraParams?.referenceFrameRoles
     : [];
-  return [
-    normalizeReferenceFrameRole(roles?.[0], "start"),
-    normalizeReferenceFrameRole(roles?.[1], "stop"),
-  ];
+  const referenceImageCount = Array.isArray(task.storyboardContext?.referenceImages)
+    ? task.storyboardContext.referenceImages.filter((image) => String(image?.url ?? "").trim()).length
+    : 0;
+  if (roles.length > 0) {
+    const roleCount = referenceImageCount > 0 ? referenceImageCount : roles.length;
+    return Array.from({ length: roleCount }, (_item, index) =>
+      normalizeReferenceFrameRole(roles?.[index], index === 0 ? "start" : "stop"),
+    );
+  }
+  if (referenceImageCount <= 0) return [];
+  return referenceImageCount === 1 ? ["reference"] : ["start", "stop"];
 }
 
 function frameRolesUseExactFirstLast(roles: StoryboardReferenceFrameRole[]): boolean {
-  return roles[0] === "start" && roles[1] === "stop";
+  return roles.length >= 2 && roles[0] === "start" && roles[1] === "stop";
 }
 
 function generationTypeForFrameRoles(roles: StoryboardReferenceFrameRole[]): string {
@@ -739,6 +746,11 @@ type HyperframesFinalShotTransition = HyperframesFinalCompositeConfig["shots"][n
 type HyperframesFinalSfxRole = Exclude<(typeof hyperframesAudioRoles)[number], "voiceover" | "music" | "ambience">;
 type HyperframesFinalSfxTrigger = Exclude<(typeof hyperframesAudioVisualTriggers)[number], "video_start">;
 type HyperframesFinalSfxTarget = "all" | "first" | "last" | string;
+type HyperframesFinalAutosaveStatus = "idle" | "saving" | "saved" | "error";
+type HyperframesFinalAutosaveSnapshot = {
+  signature: string;
+  textVariables: Record<string, unknown>;
+};
 type HyperframesFinalSfxDraft = {
   id: string;
   presetId: string;
@@ -864,6 +876,7 @@ const DEFAULT_HYPERFRAMES_FINAL_SFX_IDS = HYPERFRAMES_FINAL_SFX_PRESETS
 const DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF =
   "Create a 9:16 vertical Thai ecommerce product ad video using HyperFrames.";
 const HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH = HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS;
+const HYPERFRAMES_FINAL_AUTOSAVE_DELAY_MS = 800;
 
 function getCreativePresetLabel(
   preset: Pick<HyperframesCreativePreset, "labels" | "id">,
@@ -2174,10 +2187,18 @@ export default function StoryboardReviewPage() {
   const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(true);
   const [hyperframesFinalTextPreviewReplayKey, setHyperframesFinalTextPreviewReplayKey] = useState(0);
   const [hyperframesFinalPromptGeneratedSignature, setHyperframesFinalPromptGeneratedSignature] = useState("");
+  const [hyperframesFinalAutosaveStatus, setHyperframesFinalAutosaveStatus] =
+    useState<HyperframesFinalAutosaveStatus>("idle");
   const hyperframesFinalStateRevisionRef = useRef<number | null>(null);
   const hyperframesFinalStateHydrationKeyRef = useRef<string | null>(null);
   const hyperframesFinalActiveIdentityKeyRef = useRef<string | null>(null);
   const hyperframesFinalResetIdentityKeyRef = useRef<string | null>(null);
+  const hyperframesFinalAutosaveSnapshotRef = useRef<HyperframesFinalAutosaveSnapshot | null>(null);
+  const hyperframesFinalAutosaveLastSignatureRef = useRef("");
+  const hyperframesFinalAutosaveInFlightRef = useRef(false);
+  const hyperframesFinalAutosaveNeedsFlushRef = useRef(false);
+  const hyperframesFinalAutosaveFlushRef = useRef<() => Promise<void>>(async () => undefined);
+  const hyperframesFinalAutosaveSkipNextRef = useRef(false);
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
@@ -4017,6 +4038,11 @@ export default function StoryboardReviewPage() {
     setHyperframesFinalPromptGeneratedSignature("");
     hyperframesFinalStateRevisionRef.current = null;
     hyperframesFinalStateHydrationKeyRef.current = null;
+    hyperframesFinalAutosaveLastSignatureRef.current = "";
+    hyperframesFinalAutosaveSnapshotRef.current = null;
+    hyperframesFinalAutosaveNeedsFlushRef.current = false;
+    hyperframesFinalAutosaveSkipNextRef.current = false;
+    setHyperframesFinalAutosaveStatus("idle");
   }, []);
 
   useEffect(() => {
@@ -4063,6 +4089,7 @@ export default function StoryboardReviewPage() {
     const hydrationKey = `${hyperframesFinalIdentityKey}:${revision ?? "unknown"}:${state.updatedAt ?? ""}`;
     if (hyperframesFinalStateHydrationKeyRef.current === hydrationKey) return;
     hyperframesFinalStateHydrationKeyRef.current = hydrationKey;
+    hyperframesFinalAutosaveSkipNextRef.current = true;
     const textVariables =
       state.textVariables && typeof state.textVariables === "object"
         ? (state.textVariables as Record<string, any>)
@@ -4133,6 +4160,9 @@ export default function StoryboardReviewPage() {
     }
     if (typeof textVariables.syntheticAudioFallback === "boolean") {
       setHyperframesFinalSyntheticAudioFallback(textVariables.syntheticAudioFallback);
+    }
+    if (typeof textVariables.burnInSubtitles === "boolean") {
+      setHyperframesFinalBurnInSubtitles(textVariables.burnInSubtitles);
     }
     if (typeof textVariables.styleBrief === "string") {
       setHyperframesFinalStyleBrief(textVariables.styleBrief || DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF);
@@ -4426,6 +4456,61 @@ export default function StoryboardReviewPage() {
     ],
   );
 
+  const hyperframesFinalAutosaveSnapshot = useMemo<HyperframesFinalAutosaveSnapshot>(() => {
+    const textVariables: Record<string, unknown> = {
+      fontFamily: hyperframesFinalFont,
+      overlayPresetId: hyperframesFinalOverlayPreset,
+      subtitlePresetId: hyperframesFinalSubtitlePreset,
+      audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
+      musicPresetId: hyperframesFinalMusicPresetId || undefined,
+      sfxPresetIds: hyperframesFinalSfxPresetIds,
+      sfxDrafts: hyperframesFinalSfxDrafts,
+      preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
+      syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+      burnInSubtitles: hyperframesFinalBurnInSubtitles,
+      styleBrief: hyperframesFinalStyleBrief.trim() || generatedHyperframesFinalRenderPrompt,
+      hookText: hyperframesFinalHookText,
+      supportingText: hyperframesFinalSupportingText,
+      perShotText: hyperframesFinalShotTextById,
+      perShotSubtitles: hyperframesFinalSubtitleById,
+      perShotOverlayPreset: hyperframesFinalShotOverlayPresetById,
+      perShotAnimationPreset: hyperframesFinalShotAnimationById,
+      perShotTransition: hyperframesFinalShotTransitionById,
+    };
+    return {
+      signature: JSON.stringify({
+        productId: effectiveHyperframesProductId ?? "",
+        runId: effectiveHyperframesRunId ?? "",
+        reviewId: canonicalReviewId ?? "",
+        textVariables,
+      }),
+      textVariables,
+    };
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    generatedHyperframesFinalRenderPrompt,
+    hyperframesFinalAudioPackPresetId,
+    hyperframesFinalBurnInSubtitles,
+    hyperframesFinalFont,
+    hyperframesFinalHookText,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalPreserveNativeAudio,
+    hyperframesFinalSfxDrafts,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalShotAnimationById,
+    hyperframesFinalShotOverlayPresetById,
+    hyperframesFinalShotTextById,
+    hyperframesFinalShotTransitionById,
+    hyperframesFinalStyleBrief,
+    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitlePreset,
+    hyperframesFinalSupportingText,
+    hyperframesFinalSyntheticAudioFallback,
+  ]);
+
   const isHyperframesFinalPromptStale = Boolean(
     hyperframesFinalPromptGeneratedSignature &&
       hyperframesFinalPromptGeneratedSignature !== hyperframesFinalPromptInputSignature,
@@ -4658,6 +4743,100 @@ export default function StoryboardReviewPage() {
     updateHyperframesFinalCompositeStateMutation,
   ]);
 
+  useEffect(() => {
+    hyperframesFinalAutosaveSnapshotRef.current = hyperframesFinalAutosaveSnapshot;
+  }, [hyperframesFinalAutosaveSnapshot]);
+
+  const flushHyperframesFinalCompositeAutosave = useCallback(async () => {
+    if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return;
+    }
+    if (hyperframesFinalAutosaveInFlightRef.current) {
+      hyperframesFinalAutosaveNeedsFlushRef.current = true;
+      return;
+    }
+
+    hyperframesFinalAutosaveInFlightRef.current = true;
+    let shouldScheduleAnotherFlush = false;
+    setHyperframesFinalAutosaveStatus("saving");
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        hyperframesFinalAutosaveNeedsFlushRef.current = false;
+        const snapshot = hyperframesFinalAutosaveSnapshotRef.current;
+        if (!snapshot || snapshot.signature === hyperframesFinalAutosaveLastSignatureRef.current) {
+          break;
+        }
+        await persistHyperframesFinalCompositeState({
+          textVariables: snapshot.textVariables,
+        });
+        hyperframesFinalAutosaveLastSignatureRef.current = snapshot.signature;
+
+        const latestSnapshot = hyperframesFinalAutosaveSnapshotRef.current;
+        if (
+          !hyperframesFinalAutosaveNeedsFlushRef.current &&
+          (!latestSnapshot || latestSnapshot.signature === hyperframesFinalAutosaveLastSignatureRef.current)
+        ) {
+          break;
+        }
+      }
+
+      const latestSnapshot = hyperframesFinalAutosaveSnapshotRef.current;
+      shouldScheduleAnotherFlush = Boolean(
+        latestSnapshot && latestSnapshot.signature !== hyperframesFinalAutosaveLastSignatureRef.current,
+      );
+      setHyperframesFinalAutosaveStatus(shouldScheduleAnotherFlush ? "idle" : "saved");
+    } catch (error) {
+      console.error("Failed to autosave HyperFrames Final Composite state.", error);
+      setHyperframesFinalAutosaveStatus("error");
+    } finally {
+      hyperframesFinalAutosaveInFlightRef.current = false;
+      if (shouldScheduleAnotherFlush && typeof window !== "undefined") {
+        window.setTimeout(() => {
+          void hyperframesFinalAutosaveFlushRef.current();
+        }, 0);
+      }
+    }
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    persistHyperframesFinalCompositeState,
+  ]);
+
+  useEffect(() => {
+    hyperframesFinalAutosaveFlushRef.current = flushHyperframesFinalCompositeAutosave;
+  }, [flushHyperframesFinalCompositeAutosave]);
+
+  useEffect(() => {
+    if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return;
+    }
+    if (hyperframesFinalSourceClips.length === 0) {
+      return;
+    }
+    if (hyperframesFinalAutosaveSkipNextRef.current) {
+      hyperframesFinalAutosaveSkipNextRef.current = false;
+      hyperframesFinalAutosaveLastSignatureRef.current = hyperframesFinalAutosaveSnapshot.signature;
+      setHyperframesFinalAutosaveStatus("saved");
+      return;
+    }
+    if (hyperframesFinalAutosaveSnapshot.signature === hyperframesFinalAutosaveLastSignatureRef.current) {
+      return;
+    }
+
+    setHyperframesFinalAutosaveStatus(current => current === "saving" ? current : "idle");
+    const timeoutId = window.setTimeout(() => {
+      void hyperframesFinalAutosaveFlushRef.current();
+    }, HYPERFRAMES_FINAL_AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    hyperframesFinalAutosaveSnapshot.signature,
+    hyperframesFinalSourceClips.length,
+  ]);
+
   const createHyperframesFinalComposite = useCallback(async () => {
     if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
       toast.error(locale === "th" ? "ยังไม่มี product/run context สำหรับ HyperFrames final composite" : "Missing product/run context for HyperFrames final composite.");
@@ -4809,6 +4988,7 @@ export default function StoryboardReviewPage() {
           sfxDrafts: hyperframesFinalSfxDrafts,
           preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
           syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
+          burnInSubtitles: hyperframesFinalBurnInSubtitles,
           styleBrief: hyperframesFinalStyleBrief.trim() || generatedHyperframesFinalRenderPrompt,
           hookText: renderHookText,
           supportingText: renderSupportingText,
@@ -5925,6 +6105,28 @@ export default function StoryboardReviewPage() {
                   </Badge>
                   <Badge variant="outline" className="rounded-full">
                     {Math.round(hyperframesFinalDurationSeconds)}s
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full",
+                      hyperframesFinalAutosaveStatus === "saving"
+                        ? "border-sky-200 bg-sky-50 text-sky-800"
+                        : hyperframesFinalAutosaveStatus === "error"
+                          ? "border-red-200 bg-red-50 text-red-700"
+                          : hyperframesFinalAutosaveStatus === "saved"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-slate-200 bg-white text-slate-500",
+                    )}
+                    aria-live="polite"
+                  >
+                    {hyperframesFinalAutosaveStatus === "saving"
+                      ? locale === "th" ? "กำลังบันทึก" : "Saving"
+                      : hyperframesFinalAutosaveStatus === "error"
+                        ? locale === "th" ? "บันทึกไม่สำเร็จ" : "Save failed"
+                        : hyperframesFinalAutosaveStatus === "saved"
+                          ? locale === "th" ? "บันทึกแล้ว" : "Saved"
+                          : locale === "th" ? "รอบันทึก" : "Unsaved"}
                   </Badge>
                 </div>
                 <h2 className="mt-2 text-sm font-semibold text-slate-950">

@@ -20,6 +20,7 @@ const baseInput = {
       sfxPresetIds: ["hf_audio_sfx_whoosh_scene_transition_v1"],
       preserveNativeAudio: true,
       syntheticAudioFallback: true,
+      burnInSubtitles: true,
     },
     shotMediaAssignments: [
       {
@@ -59,6 +60,7 @@ describe("Storyboard Review HyperFrames final composite state", () => {
         hookText: "พร้อมส่ง ของเล่นตักทราย",
         musicPresetId: "hf_audio_music_upbeat_ecommerce_social_v1",
         preserveNativeAudio: true,
+        burnInSubtitles: true,
       },
     });
     expect(getStoryboardReviewHyperframesFinalCompositeState(result.reviewData)).toEqual(
@@ -119,6 +121,7 @@ describe("Storyboard Review HyperFrames final composite state", () => {
             ],
             perShotText: { shot_1: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น" },
             perShotSubtitles: { shot_1: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+            burnInSubtitles: false,
             perShotOverlayPreset: { shot_1: "hook_sequence" },
             perShotAnimationPreset: { shot_1: "glow_feature" },
             perShotTransition: { shot_1: "fade" },
@@ -138,6 +141,9 @@ describe("Storyboard Review HyperFrames final composite state", () => {
       perShotOverlayPreset: { shot_1: "hook_sequence" },
       perShotAnimationPreset: { shot_1: "glow_feature" },
       perShotTransition: { shot_1: "fade" },
+      perShotText: { shot_1: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น" },
+      perShotSubtitles: { shot_1: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+      burnInSubtitles: false,
     });
   });
 

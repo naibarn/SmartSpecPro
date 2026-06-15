@@ -16,6 +16,7 @@ import {
   isHyperframesProducerRuntimeAllowed,
 } from "../services/hyperframesRuntimeAdapter";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { redactHyperframesDiagnostics } from "../services/hyperframesCompositionSanitizer";
 
 const HYPERFRAMES_WORKER_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -190,7 +191,43 @@ function buildOfficialRuntimeAudioMixReport(payload: Record<string, unknown>): R
 }
 
 function isNonRetryableHyperframesRuntimeError(message: string): boolean {
-  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed/i.test(message);
+  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset/i.test(message);
+}
+
+function commandBufferText(value: unknown): string {
+  if (Buffer.isBuffer(value)) return value.toString("utf8");
+  if (value instanceof Uint8Array) return Buffer.from(value).toString("utf8");
+  return typeof value === "string" ? value : "";
+}
+
+function compactRuntimeLog(value: string): string {
+  return value
+    .replace(/\u001b\[[0-9;?]*[A-Za-z]/g, " ")
+    .split(/\r?\n/)
+    .map(line => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(-18)
+    .join(" | ");
+}
+
+function runtimeErrorMessage(error: unknown): string {
+  const base =
+    error instanceof Error ? error.message : "HyperFrames runtime failed.";
+  const record =
+    error && typeof error === "object"
+      ? (error as { stdout?: unknown; stderr?: unknown })
+      : {};
+  const stdout = compactRuntimeLog(commandBufferText(record.stdout));
+  const stderr = compactRuntimeLog(commandBufferText(record.stderr));
+  return redactHyperframesDiagnostics(
+    [
+      base,
+      stdout ? `stdout tail: ${stdout}` : "",
+      stderr ? `stderr tail: ${stderr}` : "",
+    ]
+      .filter(Boolean)
+      .join(" | ")
+  );
 }
 
 function getFinalCompositeOverlayPreset(payload: Record<string, unknown>): HyperframesFinalOverlayPreset {
@@ -1067,8 +1104,7 @@ export async function runHyperframesRenderWorkerOnce(
       continue;
     } catch (error) {
       const attempts = Number(job.attempts ?? 0) + 1;
-      const message =
-        error instanceof Error ? error.message : "HyperFrames runtime failed.";
+      const message = runtimeErrorMessage(error);
       const nonRetryableRuntimeError = isNonRetryableHyperframesRuntimeError(message);
       const exhausted =
         attempts >= Number(job.maxAttempts ?? 3) ||
@@ -1082,7 +1118,7 @@ export async function runHyperframesRenderWorkerOnce(
           attempts,
           lastError: `${nonRetryableRuntimeError ? "HyperFrames runtime configuration failure" : "HyperFrames runtime transient failure"}: ${message.slice(
             0,
-            220
+            1000
           )}`,
           completedAt: null,
           scheduledAt: exhausted

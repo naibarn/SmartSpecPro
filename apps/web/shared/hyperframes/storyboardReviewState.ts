@@ -35,6 +35,7 @@ export const HyperframesFinalCompositeTextVariablesSchema = z
     sfxDrafts: z.array(HyperframesFinalCompositeSfxDraftSchema).max(12).optional(),
     preserveNativeAudio: z.boolean().default(true),
     syntheticAudioFallback: z.boolean().default(true),
+    burnInSubtitles: z.boolean().default(true),
     styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional(),
     hookText: z.string().trim().max(240).optional(),
     supportingText: z.string().trim().max(240).optional(),

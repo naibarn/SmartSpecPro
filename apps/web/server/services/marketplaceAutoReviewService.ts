@@ -3722,6 +3722,86 @@ function characterPresetRecordFromPlanOrMetadata(
   );
 }
 
+function marketplaceAutoReviewUsesUploadedCharacterReference(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): boolean {
+  const detail = cleanText(plan.productDetail);
+  const anchors = marketplaceAutoReviewReferenceAnchorsFromMetadata(metadata);
+  const characterMode = normalizeMarketplaceAutoReviewCharacterMode(
+    anchors.characterMode
+  );
+  return Boolean(
+    /uploaded character reference image|Character anchor\b/i.test(detail) ||
+      (characterMode === "uploaded_reference" &&
+        (cleanText(anchors.characterImageUrl) ||
+          cleanText(anchors.characterImageRef) ||
+          cleanText(anchors.characterImageProvidedRef)))
+  );
+}
+
+function marketplaceAutoReviewPresenterGenderFromPreset(
+  record: Record<string, string>
+): "male" | "female" | "gender_neutral" | "" {
+  const gender = cleanText(record.gender).toLowerCase();
+  const label = cleanText(record.genderLabel).toLowerCase();
+  const source = `${gender} ${label}`;
+  if (gender === "male" || /\b(?:male|man)\b|ผู้ชาย|ชาย/.test(source)) {
+    return "male";
+  }
+  if (gender === "female" || /\b(?:female|woman)\b|ผู้หญิง|หญิง/.test(source)) {
+    return "female";
+  }
+  if (
+    gender === "gender_neutral" ||
+    /gender[-_\s]?neutral|ไม่ระบุเพศ/.test(source)
+  ) {
+    return "gender_neutral";
+  }
+  return "";
+}
+
+function marketplaceAutoReviewPresenterGenderFromPlanOrMetadata(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): "male" | "female" | "gender_neutral" | "" {
+  if (marketplaceAutoReviewUsesUploadedCharacterReference(plan, metadata)) {
+    return "";
+  }
+  return marketplaceAutoReviewPresenterGenderFromPreset(
+    characterPresetRecordFromPlanOrMetadata(plan, metadata)
+  );
+}
+
+function stripThaiGenderedPoliteParticles(value: string): string {
+  return cleanText(value)
+    .replace(/นะคะ/g, "นะ")
+    .replace(/นะครับ/g, "นะ")
+    .replace(/ค่ะ|คะ|ครับ/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function alignThaiSpeechToMarketplaceAutoReviewPresenter(
+  value: string,
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): string {
+  const text = cleanText(value);
+  if (!text) return "";
+  const gender = marketplaceAutoReviewPresenterGenderFromPlanOrMetadata(
+    plan,
+    metadata
+  );
+  if (gender === "male") {
+    return text.replace(/นะคะ/g, "นะครับ").replace(/ค่ะ|คะ/g, "ครับ");
+  }
+  if (marketplaceAutoReviewUsesUploadedCharacterReference(plan, metadata)) {
+    return stripThaiGenderedPoliteParticles(text);
+  }
+  return text;
+}
+
 function extractMarkedPromptLine(text: string, marker: string): string {
   const source = cleanText(text);
   const start = source.indexOf(marker);
@@ -5615,7 +5695,7 @@ export function resolveMarketplaceAutoReviewAudioStrategy(input: {
 }
 
 export function buildMarketplaceAutoReviewNativeSpeechText(input: {
-  plan: { productTruth: { productName: string } };
+  plan: AutoReviewPlan;
   shot: {
     voiceover: string;
     durationSeconds: number;
@@ -5623,8 +5703,13 @@ export function buildMarketplaceAutoReviewNativeSpeechText(input: {
     productRole?: string;
   };
   isLastShot?: boolean;
+  metadata?: RunMetadata | null;
 }): string {
-  return cleanText(input.shot.voiceover);
+  return alignThaiSpeechToMarketplaceAutoReviewPresenter(
+    input.shot.voiceover,
+    input.plan,
+    input.metadata
+  );
 }
 
 function stageKeysForMode(
@@ -9664,6 +9749,41 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
   referenceAnchors: ResolvedMarketplaceAutoReviewReferenceAnchors;
 }): string {
   const { plan } = params;
+  const characterPreset = characterPresetRecordFromUnknown(
+    params.referenceAnchors.characterPreset
+  );
+  const characterSubject = characterSubjectFromPresetRecord(characterPreset);
+  const characterGender =
+    marketplaceAutoReviewPresenterGenderFromPreset(characterPreset);
+  const hasUploadedCharacterReference = Boolean(
+    cleanText(params.referenceAnchors.characterImageUrl) ||
+      cleanText(params.referenceAnchors.characterImageRef) ||
+      cleanText(params.referenceAnchors.characterImageProvidedRef)
+  );
+  const presenterVoiceDirective = hasUploadedCharacterReference
+    ? [
+        "Presenter / voice lock:",
+        "Use the uploaded character reference as the presenter source of truth.",
+        "Infer the speaker voice, Thai polite particles, age, and persona from the visible presenter in that reference.",
+        "Do not default to a mother, female host, or feminine polite particles just because the product is in the mother-baby category.",
+      ].join(" ")
+    : characterSubject
+      ? [
+          "Presenter / voice lock:",
+          `Selected presenter is ${characterSubject}.`,
+          "The rewritten Thai spoken lines must match this selected gender, age range, and role.",
+          characterGender === "male"
+            ? "Because the selected presenter is male/ผู้ชาย, use male-coded or neutral Thai polite particles such as ครับ when a particle is needed; do not use ค่ะ, คะ, or mother/female-host wording."
+            : characterGender === "female"
+              ? "Because the selected presenter is female/ผู้หญิง, keep Thai polite particles consistent with that voice."
+              : "Use neutral Thai phrasing when gender is not explicitly selected.",
+          "Do not infer a female/mother voice from a mother-baby product category when the selected presenter says otherwise.",
+        ].join(" ")
+      : [
+          "Presenter / voice lock:",
+          "No presenter gender is explicitly selected for voiceover rewrite; use neutral marketplace narration.",
+          "Do not infer a female/mother voice solely from a mother-baby product category.",
+        ].join(" ");
   const shotGuide = plan.shots
     .slice()
     .sort((a, b) => a.order - b.order)
@@ -9698,10 +9818,17 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
       resolvedAudioStrategy: params.resolvedAudioStrategy,
       referenceAnchors: {
         productImageRef: params.referenceAnchors.productImageRef,
+        characterMode: params.referenceAnchors.characterMode,
+        characterBrief: params.referenceAnchors.characterBrief,
+        characterPreset: params.referenceAnchors.characterPreset,
         characterImageRef: params.referenceAnchors.characterImageRef,
         environmentImageRef: params.referenceAnchors.environmentImageRef,
+        reviewTone: params.referenceAnchors.reviewTone,
+        storytellingStructure: params.referenceAnchors.storytellingStructure,
       },
     }),
+    "",
+    presenterVoiceDirective,
     "",
     "Shot-by-shot source. Rewrite only the spoken voiceover, not the visual/camera/product-role notes:",
     shotGuide.join("\n\n"),
@@ -13612,11 +13739,7 @@ function buildCompactMarketplaceAutoReviewVideoCharacterLine(
   if (mode === "product_only") return "Product-only; do not add people.";
   if (mode === "hands_only")
     return "Hands-only; keep faces hidden and do not add a presenter.";
-  if (
-    /uploaded character reference image|Character anchor\b/i.test(
-      plan.productDetail
-    )
-  ) {
+  if (marketplaceAutoReviewUsesUploadedCharacterReference(plan, metadata)) {
     return "Use the visible/uploaded presenter identity; no new people.";
   }
   return subject
@@ -13630,11 +13753,7 @@ function buildCompactMarketplaceAutoReviewVideoVoiceLine(
 ): string {
   const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
   const subject = characterSubjectFromPresetRecord(preset);
-  if (
-    /uploaded character reference image|Character anchor\b/i.test(
-      plan.productDetail
-    )
-  ) {
+  if (marketplaceAutoReviewUsesUploadedCharacterReference(plan, metadata)) {
     return "Voice matches the visible/uploaded presenter; natural central Thai.";
   }
   return subject
@@ -13643,17 +13762,24 @@ function buildCompactMarketplaceAutoReviewVideoVoiceLine(
 }
 
 function buildCompactMarketplaceAutoReviewVideoActionLine(input: {
+  plan: AutoReviewPlan;
   shot: AutoReviewShot;
   referenceMode: MarketplaceAutoReviewVideoReferenceMode;
+  metadata?: RunMetadata | null;
 }): string {
+  const voiceover = alignThaiSpeechToMarketplaceAutoReviewPresenter(
+    input.shot.voiceover,
+    input.plan,
+    input.metadata
+  );
   const parts =
     input.referenceMode === "start_stop"
-      ? [input.shot.title, input.shot.movement, input.shot.voiceover]
+      ? [input.shot.title, input.shot.movement, voiceover]
       : [
           input.shot.title,
           input.shot.visual,
           input.shot.movement,
-          input.shot.voiceover,
+          voiceover,
         ];
   return compactImagePromptText(
     [
@@ -13681,8 +13807,10 @@ function buildCompactMarketplaceAutoReviewVideoPrompt(input: {
       ? "Use @Image1 as the storyboard frame. Frame defines product, people, props, location, lighting."
       : "Use @Image1 as start frame. Use @Image2 as stop frame. Frames define product, people, props, location, lighting.";
   const action = buildCompactMarketplaceAutoReviewVideoActionLine({
+    plan: input.plan,
     shot: input.shot,
     referenceMode: input.referenceMode,
+    metadata: input.metadata,
   });
   const camera = compactImagePromptText(
     [
@@ -13702,6 +13830,7 @@ function buildCompactMarketplaceAutoReviewVideoPrompt(input: {
       plan: input.plan,
       shot: input.shot,
       isLastShot: input.isLastShot,
+      metadata: input.metadata,
     }) ||
     `${input.plan.productTruth.productName} ช่วยให้เห็นปัญหาและทางออกของสินค้านี้ชัดขึ้น`;
   const hasNativeSpeech = input.audioStrategy === "native_video_audio";
@@ -19370,9 +19499,7 @@ function buildStoryboardReviewOutput(params: {
       : storyboardFrameUrls;
   const startStopSource = hasGeneratedStartStopFrameChain
     ? "generated_start_stop_frames"
-    : hasStoryboardFrameChain
-      ? "storyboard_adjacent_frames"
-      : "single_storyboard_frame";
+    : "single_storyboard_frame";
   const resolvedAudioStrategy =
     params.metadata.resolvedAudioStrategy ??
     resolveMarketplaceAutoReviewAudioStrategy({
@@ -19402,9 +19529,7 @@ function buildStoryboardReviewOutput(params: {
         : cleanText(storyboardFrameUrls[index]);
       const stopFrameUrl = usesStartStopFrames
         ? cleanText(frameUrls[index + 1])
-        : hasStoryboardFrameChain
-          ? cleanText(storyboardFrameUrls[index + 1])
-          : "";
+        : "";
       const primaryFrameUrl = startFrameUrl || cleanText(frameUrls[index]);
       const referenceMode: MarketplaceAutoReviewVideoReferenceMode =
         startFrameUrl && stopFrameUrl
@@ -19486,6 +19611,7 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
   run: MarketplaceAutoReviewRun;
 }) {
   return params.clips.map(clip => {
+    const referenceMode = cleanText(asRecord(clip.metadata).referenceMode);
     const startFrameUrl = cleanText(
       clip.startFrameUrl || clip.thumbnailUrl || clip.url
     );
@@ -19496,7 +19622,7 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
     const referenceFrameRoles = stopFrameUrl
       ? ["start", "stop"]
       : startFrameUrl
-        ? ["start"]
+        ? [referenceMode === "single_storyboard_frame" ? "reference" : "start"]
         : [];
     return {
       id: cleanText(clip.id) || `shot-${clip.order}`,
@@ -19794,6 +19920,7 @@ async function scheduleVideoAttempt(params: {
         audioStrategy: resolvedAudioStrategy,
         isLastShot: shot.order === plan.shots.length,
         referenceMode,
+        metadata: params.metadata,
       }) +
       (unit.repairInstruction
         ? `\nTargeted repair: ${unit.repairInstruction}`
@@ -19999,13 +20126,17 @@ async function scheduleVideoAttempt(params: {
   return attemptId;
 }
 
-function buildFullVoiceoverScript(plan: AutoReviewPlan): string {
+function buildFullVoiceoverScript(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): string {
   return plan.shots
     .map(shot =>
       buildMarketplaceAutoReviewNativeSpeechText({
         plan,
         shot,
         isLastShot: shot.order === plan.shots.length,
+        metadata,
       })
     )
     .filter(Boolean)
@@ -20461,7 +20592,7 @@ async function ensureAudioForVideo(params: {
     params.plan.shots.length
   );
   if (!params.metadata.audioMediaTaskId) {
-    const text = buildFullVoiceoverScript(params.plan);
+    const text = buildFullVoiceoverScript(params.plan, params.metadata);
     const credit = await reserveMarketplaceMediaCredits({
       db: params.db,
       tenantId: params.tenantId,
@@ -20832,6 +20963,7 @@ function buildVideoEditorProject(params: {
         audioStrategy: resolvedAudioStrategy,
         isLastShot: index === params.plan.shots.length - 1,
         referenceMode,
+        metadata: runMetadata,
       }),
       referenceUrls: [
         referenceMode === "start_stop"
@@ -20894,7 +21026,7 @@ function buildVideoEditorProject(params: {
       filename: `${params.run.id}-voiceover.mp3`,
       format: audioUrl.toLowerCase().includes(".wav") ? "wav" : "mp3",
       duration: audioActualDuration,
-      generationPrompt: buildFullVoiceoverScript(params.plan),
+      generationPrompt: buildFullVoiceoverScript(params.plan, runMetadata),
       generationModelId: cleanText(runMetadata.audioTaskModel) || undefined,
       generationExtraParams: {
         marketplaceProductId: params.plan.productTruth.productId,
@@ -21362,6 +21494,7 @@ async function createVideoEditorProjection(params: {
         audioStrategy: resolvedAudioStrategy,
         isLastShot: index === params.plan.shots.length - 1,
         referenceMode,
+        metadata: params.metadata,
       }),
       voiceover: shot.voiceover,
       durationSeconds: shot.durationSeconds,

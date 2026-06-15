@@ -495,6 +495,15 @@ function pickStoryboardVoiceoverLine(lines: string[], taskIndex: number, totalTa
   return lines[Math.min(Math.max(0, taskIndex), lines.length - 1)]!;
 }
 
+function neutralizeThaiStoryboardFallbackPoliteParticles(value: string): string {
+  return compactPromptPlannerOption(value)
+    .replace(/นะคะ/g, "นะ")
+    .replace(/นะครับ/g, "นะ")
+    .replace(/ค่ะ|คะ|ครับ/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function buildNaturalThaiSplitStoryboardVoiceover(
   options: BuildFirstLastFrameStoryboardTasksOptions,
   taskIndex: number,
@@ -579,7 +588,9 @@ function buildSplitStoryboardVoiceoverScript(
   const isMiddle = !isFirst && !isLast;
 
   if (isThai) {
-    return buildNaturalThaiSplitStoryboardVoiceover(options, taskIndex, totalTasks, productName);
+    return neutralizeThaiStoryboardFallbackPoliteParticles(
+      buildNaturalThaiSplitStoryboardVoiceover(options, taskIndex, totalTasks, productName),
+    );
   }
 
   if (isEnglish) {

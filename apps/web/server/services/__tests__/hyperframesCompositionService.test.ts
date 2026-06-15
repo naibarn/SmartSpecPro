@@ -318,7 +318,9 @@ describe("hyperframesCompositionService", () => {
           missingAssetRefs: [
             "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
           ],
-          validatedAssetRefs: [],
+          validatedAssetRefs: [
+            "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+          ],
         },
         fontFamily: "Prompt",
         styleBrief: "",
@@ -356,7 +358,13 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain('data-media-start="0"');
     expect(composition.compositionHtml).toContain('data-track-index="0"');
     expect(composition.compositionHtml).toContain('class="clip audio-event"');
-    expect(composition.compositionHtml).toContain('data-volume="0.18"');
+    expect(composition.compositionHtml).not.toMatch(
+      /<audio[^>]+hf_audio_music_upbeat_ecommerce_social_v1\.wav/
+    );
+    expect(composition.compositionHtml).toMatch(
+      /<audio[^>]+hf_audio_sfx_whoosh_scene_transition_v1\.wav/
+    );
+    expect(composition.compositionHtml).toContain('data-volume="0.22"');
     expect(composition.compositionHtml).toContain("data-audio-event-map-hash=");
     expect(composition.compositionHtml).toContain("window.__timelines");
     expect(composition.compositionHtml).toContain(".source-video.is-active");
@@ -372,5 +380,92 @@ describe("hyperframesCompositionService", () => {
         "official_html_css_browser_runtime_required",
       ]),
     });
+  });
+
+  it("does not emit audio tags for final composite audio refs that were not validated for staging", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: { title: "BENO PRO-FLEX" },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: "hook_and_per_shot",
+        overlayPreset: "kinetic_bold_hook",
+        includeHookText: true,
+        includeShotText: true,
+        burnInSubtitles: true,
+        subtitlePreset: "classic_box",
+        preserveNativeAudio: true,
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+        sfxPresetIds: ["hf_audio_sfx_whoosh_scene_transition_v1"],
+        audioEvents: [
+          {
+            id: "music_bed_main",
+            role: "music",
+            presetId: "hf_audio_music_upbeat_ecommerce_social_v1",
+            visualTrigger: "video_start",
+            startSec: 0,
+            durationSec: 8,
+            volume: 0.18,
+            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+          },
+          {
+            id: "sfx_scene_cut",
+            role: "transition_sfx",
+            presetId: "hf_audio_sfx_whoosh_scene_transition_v1",
+            visualTrigger: "scene_cut",
+            startSec: 0.2,
+            durationSec: 0.22,
+            volume: 0.22,
+            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+          },
+        ],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [
+            "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+            "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+          ],
+          validatedAssetRefs: [],
+        },
+        fontFamily: "Prompt",
+        styleBrief: "",
+        hookText: "ชงกาแฟหอมเข้ม",
+        supportingText: "BENO PRO-FLEX",
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "storage://shot-1",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "price_impact",
+            onScreenText: ["ชงกาแฟหอมเข้ม"],
+            subtitleCues: [{ startSec: 0, endSec: 2, text: "เปิด Hook" }],
+            animationPreset: "glow_feature",
+            transition: "fade",
+          },
+        ],
+      },
+    });
+
+    expect(composition.compositionHtml).not.toContain('class="clip audio-event"');
+    expect(composition.compositionHtml).not.toContain("<audio");
+    expect(composition.assets.some(asset => asset.kind === "audio")).toBe(false);
+    expect(composition.finalCompositeConfig.audioAssetValidation.missingAssetRefs).toHaveLength(2);
   });
 });

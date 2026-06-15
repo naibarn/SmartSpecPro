@@ -502,6 +502,50 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
     expect(details).toContain("ไม่ใช่คำบรรยายภาพ");
   });
 
+  it("passes selected male presenter and polite-particle lock to mother-baby voiceover rewrite", () => {
+    const details = buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest(
+      {
+        plan: {
+          ...reviewPlan,
+          productTruth: {
+            ...reviewPlan.productTruth,
+            productName: "เก้าอี้กินข้าวเด็ก",
+            productCategory: "mother_baby",
+            categoryText: "สินค้าแม่และเด็ก",
+            categoryPath: ["แม่และเด็ก", "เก้าอี้กินข้าวเด็ก"],
+          },
+        } as any,
+        referenceAnchors: {
+          productImageRef: "product-reference:1",
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทย ผู้ชาย, 30-39, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+          characterPreset: {
+            mode: "described_character",
+            gender: "male",
+            genderLabel: "ผู้ชาย",
+            age: "adult_30_39",
+            ageLabel: "30-39",
+            appearance: "thai",
+            appearanceLabel: "คนไทย",
+            role: "mom_parent",
+            roleLabel: "แม่/ผู้ปกครอง",
+            style: "friendly_everyday",
+            styleLabel: "เป็นกันเอง",
+          },
+          characterImageRef: null,
+          environmentImageRef: null,
+        } as any,
+      }
+    );
+
+    expect(details).toContain("Presenter / voice lock");
+    expect(details).toContain("Thai, male presenter/man, 30-39 years old");
+    expect(details).toContain("do not use ค่ะ, คะ");
+    expect(details).toContain("mother-baby product category");
+    expect(details).toContain("characterPreset");
+  });
+
   it("splits skill output into spoken shot lines and drops visual metadata", () => {
     const lines = splitMarketplaceAutoReviewVoiceoverSkillOutputForTest(
       [
@@ -2696,6 +2740,88 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).not.toMatch(/\bearly 30s\b/i);
   });
 
+  it("aligns mother-baby native dialogue particles to a selected male presenter", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productTruth: {
+          ...basePlan.productTruth,
+          productName: "เก้าอี้กินข้าวเด็ก",
+          productCategory: "mother_baby",
+          categoryText: "สินค้าแม่และเด็ก",
+          categoryPath: ["แม่และเด็ก", "เก้าอี้กินข้าวเด็ก"],
+        },
+        productDetail:
+          "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก ใช้เป็นที่นั่งสำหรับมื้ออาหารของลูก.",
+      } as any,
+      shot: {
+        ...baseShot,
+        durationSeconds: 5,
+        title: "มื้ออาหารง่ายขึ้น",
+        voiceover:
+          "มื้ออาหารจะง่ายขึ้นมาก แค่เริ่มจากที่นั่งที่ปรับพอดีกับโต๊ะค่ะ",
+      } as any,
+      audioStrategy: "native_video_audio",
+      metadata: {
+        referenceAnchors: {
+          characterMode: "described_character",
+          characterBrief:
+            "คนไทย ผู้ชาย, 30-39, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+          characterPreset: {
+            mode: "described_character",
+            gender: "male",
+            genderLabel: "ผู้ชาย",
+            age: "adult_30_39",
+            ageLabel: "30-39",
+            appearance: "thai",
+            appearanceLabel: "คนไทย",
+            role: "mom_parent",
+            roleLabel: "แม่/ผู้ปกครอง",
+            style: "friendly_everyday",
+            styleLabel: "เป็นกันเอง",
+          },
+        },
+      } as any,
+    });
+
+    expect(prompt).toContain("Thai, male presenter/man, 30-39 years old");
+    expect(prompt).toContain("Voice matches Thai, male presenter/man");
+    expect(prompt).toContain("โต๊ะครับ");
+    expect(prompt).not.toMatch(/ค่ะ|คะ/);
+  });
+
+  it("removes gendered Thai particles when uploaded character reference must drive the voice", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: {
+        ...basePlan,
+        productDetail: "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก.",
+      } as any,
+      shot: {
+        ...baseShot,
+        durationSeconds: 5,
+        voiceover:
+          "นึกภาพว่ามื้ออาหารของลูกนิ่งขึ้นและจัดโต๊ะง่ายขึ้นใช่ไหมคะ",
+      } as any,
+      audioStrategy: "native_video_audio",
+      metadata: {
+        referenceAnchors: {
+          characterMode: "uploaded_reference",
+          characterImageUrl: "https://cdn.example.test/male-presenter.png",
+          characterImageRef: "character-upload:char_123",
+          characterPreset: {
+            gender: "female",
+            genderLabel: "ผู้หญิง",
+          },
+        },
+      } as any,
+    });
+
+    expect(prompt).toContain("Voice matches the visible/uploaded presenter");
+    expect(prompt).toContain("ใช่ไหม");
+    expect(prompt).not.toMatch(/ค่ะ|คะ|ครับ/);
+    expect(prompt).not.toMatch(/\bfemale presenter\b|\bfemale voice\b/i);
+  });
+
   it("keeps Marketplace Auto Review video prompts focused on scene action camera audio and dialogue", () => {
     const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
       plan: {
@@ -4516,7 +4642,7 @@ describe("marketplace auto review audio/video planning", () => {
     ]);
   });
 
-  it("builds 3x3 Storyboard Review clips from adjacent cut frames", () => {
+  it("builds 3x3 Storyboard Review clips from one matching storyboard frame per shot", () => {
     const plan = {
       ...basePlan,
       shots: [
@@ -4550,13 +4676,13 @@ describe("marketplace auto review audio/video planning", () => {
         id: "shot-1",
         status: "completed",
         startFrameUrl: "https://cdn.example.test/grid-1.png",
-        stopFrameUrl: "https://cdn.example.test/grid-2.png",
+        stopFrameUrl: null,
       },
       {
         id: "shot-2",
         status: "completed",
         startFrameUrl: "https://cdn.example.test/grid-2.png",
-        stopFrameUrl: "https://cdn.example.test/grid-3.png",
+        stopFrameUrl: null,
       },
       {
         id: "shot-3",
@@ -4566,18 +4692,18 @@ describe("marketplace auto review audio/video planning", () => {
       },
     ]);
     expect(output.clips[0].prompt).toContain(
-      "Use @Image1 as start frame. Use @Image2 as stop frame."
+      "Use @Image1 as the storyboard frame."
     );
     expect(output.clips[0].prompt).not.toContain("Reference contract");
-    expect(output.clips[0].metadata.referenceMode).toBe("start_stop");
-    expect(output.clips[2].prompt).toContain(
-      "Use @Image1 as the storyboard frame."
+    expect(output.clips[0].prompt).not.toContain("Use @Image2 as stop frame.");
+    expect(output.clips[0].metadata.referenceMode).toBe(
+      "single_storyboard_frame"
     );
     expect(output.clips[2].metadata.referenceMode).toBe(
       "single_storyboard_frame"
     );
     expect(output.clips[0].metadata.startStopSource).toBe(
-      "storyboard_adjacent_frames"
+      "single_storyboard_frame"
     );
 
     const tasks = buildMarketplaceAutoReviewStoryboardReviewTasksForTest({
@@ -4602,19 +4728,17 @@ describe("marketplace auto review audio/video planning", () => {
       type: "video",
       thumbnailUrl: "https://cdn.example.test/grid-1.png",
       startFrameUrl: "https://cdn.example.test/grid-1.png",
-      stopFrameUrl: "https://cdn.example.test/grid-2.png",
+      stopFrameUrl: undefined,
     });
     expect(tasks[0]).not.toHaveProperty("url");
     expect(tasks[0]?.storyboardContext?.referenceImages).toEqual([
       { url: "https://cdn.example.test/grid-1.png" },
-      { url: "https://cdn.example.test/grid-2.png" },
     ]);
     expect(tasks[0]?.storyboardContext?.extraParams?.referenceFrameRoles).toEqual([
-      "start",
-      "stop",
+      "reference",
     ]);
     expect(tasks[2]?.storyboardContext?.extraParams?.referenceFrameRoles).toEqual([
-      "start",
+      "reference",
     ]);
   });
 
@@ -6031,6 +6155,67 @@ describe("marketplace auto review audio/video planning", () => {
     expect((textTrack?.clips[0] as any).outMs).toBe(
       baseShot.durationSeconds * 1000
     );
+  });
+
+  it("persists Video Editor generation prompts with metadata-based male voice lock", () => {
+    const project = buildMarketplaceAutoReviewVideoEditorProjectForTest({
+      plan: {
+        ...basePlan,
+        productTruth: {
+          ...basePlan.productTruth,
+          productName: "เก้าอี้กินข้าวเด็ก",
+          productCategory: "mother_baby",
+          categoryText: "สินค้าแม่และเด็ก",
+          categoryPath: ["แม่และเด็ก", "เก้าอี้กินข้าวเด็ก"],
+        },
+        productDetail:
+          "PRODUCT FACTS LOCK: เก้าอี้กินข้าวเด็ก ใช้เป็นที่นั่งสำหรับมื้ออาหารของลูก.",
+        shots: [
+          {
+            ...baseShot,
+            durationSeconds: 5,
+            voiceover:
+              "มื้ออาหารจะง่ายขึ้นมาก แค่เริ่มจากที่นั่งที่ปรับพอดีกับโต๊ะค่ะ",
+          },
+        ],
+      } as any,
+      videoUrls: ["https://cdn.example.test/shot-1.mp4"],
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        metadataJson: {
+          resolvedAudioStrategy: "native_video_audio",
+          storyboardFrameUrls: ["https://cdn.example.test/shot-1-frame.png"],
+          referenceAnchors: {
+            characterMode: "described_character",
+            characterBrief:
+              "คนไทย ผู้ชาย, 30-39, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+            characterPreset: {
+              mode: "described_character",
+              gender: "male",
+              genderLabel: "ผู้ชาย",
+              age: "adult_30_39",
+              ageLabel: "30-39",
+              appearance: "thai",
+              appearanceLabel: "คนไทย",
+              role: "mom_parent",
+              roleLabel: "แม่/ผู้ปกครอง",
+              style: "friendly_everyday",
+              styleLabel: "เป็นกันเอง",
+            },
+          },
+        },
+      } as any,
+    });
+    const videoAsset = Object.values(project.assets).find(
+      asset => asset.type === "video"
+    );
+
+    expect(videoAsset?.generationPrompt).toContain(
+      "Thai, male presenter/man, 30-39 years old"
+    );
+    expect(videoAsset?.generationPrompt).toContain("โต๊ะครับ");
+    expect(videoAsset?.generationPrompt).not.toMatch(/ค่ะ|คะ/);
   });
 
   it("builds video acceptance from clip QA and repairs only failed shot clips", () => {

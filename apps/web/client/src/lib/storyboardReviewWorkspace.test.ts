@@ -62,6 +62,41 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     expect(tasks[0]?.prompt).toContain("Dialogue:\nNo spoken dialogue.");
   });
 
+  it("keeps generated Thai child-product fallback voiceover gender-neutral", () => {
+    const marketplaceProduct = {
+      platform: "shopee" as const,
+      productName: "เก้าอี้กินข้าวเด็ก high chair",
+    };
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        {
+          url: "https://example.com/1.jpg",
+          name: "Frame 1",
+          marketplaceProduct,
+        },
+        {
+          url: "https://example.com/2.jpg",
+          name: "Frame 2",
+          marketplaceProduct,
+        },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        duration: 8,
+        includeVoiceover: true,
+        speechMode: "th",
+        speechLanguage: "Thai",
+        storyboardGuide: "สินค้าแม่และเด็ก ใช้กับมื้ออาหารของลูก",
+        now: 12345,
+      },
+    );
+
+    expect(tasks[0]?.prompt).toContain("Presenter พูดเป็นภาษาไทยว่า");
+    expect(tasks[0]?.prompt).toContain("ลูก");
+    expect(tasks[0]?.prompt).not.toMatch(/ค่ะ|คะ|ครับ/);
+  });
+
   it("keeps marketplace metadata on sliced frame storyboard tasks", () => {
     const marketplaceContext = {
       productId: "product-1",

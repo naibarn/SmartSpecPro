@@ -528,8 +528,9 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
     ref: finalComposite.fontFamily,
     ownedByTenantId: input.tenantId,
   });
+  const renderableAudioEvents = getRenderableHyperframesAudioEvents(finalComposite);
   const remainingAssetSlots = Math.max(0, 40 - assets.length);
-  for (const [index, event] of finalComposite.audioEvents.slice(0, remainingAssetSlots).entries()) {
+  for (const [index, event] of renderableAudioEvents.slice(0, remainingAssetSlots).entries()) {
     assets.push({
       assetId: `asset_audio_event_${index + 1}`,
       slot: event.role,
@@ -621,6 +622,24 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
   };
 }
 
+function getRenderableHyperframesAudioEvents(
+  config: HyperframesFinalCompositeConfig
+): HyperframesFinalCompositeConfig["audioEvents"] {
+  const missingRefs = new Set(
+    config.audioAssetValidation.missingAssetRefs.map(ref => ref.trim()).filter(Boolean)
+  );
+  const validatedRefs = new Set([
+    ...config.audioAssetValidation.validatedAssetRefs.map(ref => ref.trim()).filter(Boolean),
+    ...config.audioAssetValidation.validatedAssets
+      .map(asset => asset.assetRef.trim())
+      .filter(Boolean),
+  ]);
+  return config.audioEvents.filter(event => {
+    const ref = event.assetRef.trim();
+    return Boolean(ref) && validatedRefs.has(ref) && !missingRefs.has(ref);
+  });
+}
+
 function buildHyperframesFinalCompositeHtml(input: {
   composition: HyperframesCompositionInput;
   finalComposite: HyperframesFinalCompositeConfig & {
@@ -662,7 +681,7 @@ function buildHyperframesFinalCompositeHtml(input: {
         ${config.supportingText ? `<div class="hook-sub">${escapeHtml(config.supportingText)}</div>` : ""}
       </div>`
     : "";
-  const audioHtml = config.audioEvents
+  const audioHtml = getRenderableHyperframesAudioEvents(config)
     .map(
       (event, index) =>
         `<audio id="audio-event-${index + 1}" class="clip audio-event" data-track-index="${config.shots.length * 2 + 2 + index}" data-audio-role="${escapeHtml(event.role)}" data-visual-trigger="${escapeHtml(event.visualTrigger)}" data-start="${event.startSec}" data-duration="${event.durationSec ?? ""}" data-volume="${event.volume}" data-preset-id="${escapeHtml(event.presetId ?? "")}" src="${escapeHtml(event.assetRef)}" preload="metadata"></audio>`
