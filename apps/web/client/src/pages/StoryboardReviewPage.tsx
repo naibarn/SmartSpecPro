@@ -2656,7 +2656,7 @@ export default function StoryboardReviewPage() {
       },
       onError: error => toast.error(error.message),
     });
-  const generateHyperframesFinalPromptSkillMutation = trpc.chat.executeSkill.useMutation({
+  const generateHyperframesFinalPromptSkillMutation = trpc.skills.executeCustomSkill.useMutation({
     onError: error => toast.error(error.message),
   });
   const updateHyperframesFinalCompositeStateMutation =
@@ -5170,15 +5170,17 @@ export default function StoryboardReviewPage() {
     try {
       const result = await generateHyperframesFinalPromptSkillMutation.mutateAsync({
         skillId: "hyperframes-render-prompt",
-        prompt: [
-          "Use the hyperframes-render-prompt skill to create one complete HyperFrames final composite render prompt.",
-          "Return only the final prompt text or JSON with a prompt field.",
-          "Do not invent product claims, prices, logos, or unsupported facts.",
-          `Keep the final prompt within ${HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH} characters. Compress sections if needed; do not cut off mid-sentence.`,
-          "Use dynamicParams as the source of truth for product facts, clips, overlay copy, subtitles, audio, and timing.",
-        ].join("\n"),
-        dynamicParams: {
+        originSurface: "media_studio",
+        userInputs: {
           purpose: "marketplace_hyperframes_final_composite_prompt",
+          request: [
+            "Use the hyperframes-render-prompt skill to create one complete HyperFrames final composite render prompt.",
+            "Return only the final prompt text or JSON with a prompt field.",
+            "Do not invent product claims, prices, logos, or unsupported facts.",
+            `Keep the final prompt within ${HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH} characters. Compress sections if needed; do not cut off mid-sentence.`,
+            "Use these userInputs as the source of truth for product facts, clips, overlay copy, subtitles, audio, and timing.",
+          ].join("\n"),
+          maxPromptLength: HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH,
           maxPromptChars: HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH,
           currentPromptPreview: generatedHyperframesFinalRenderPrompt,
           productTitle: hyperframesFinalProductPromptContext.productTitle,
@@ -5217,7 +5219,8 @@ export default function StoryboardReviewPage() {
         },
       });
       const skillPrompt = extractHyperframesPromptFromSkillMessage(
-        (result as { message?: string | null } | undefined)?.message,
+        (result as { content?: string | null; message?: string | null } | undefined)?.content
+          ?? (result as { content?: string | null; message?: string | null } | undefined)?.message,
       );
       if (!skillPrompt.trim()) {
         throw new Error(locale === "th" ? "hyperframes-render-prompt skill ไม่ได้ส่ง prompt กลับมา" : "hyperframes-render-prompt skill returned an empty prompt.");
@@ -8308,9 +8311,10 @@ export default function StoryboardReviewPage() {
                 @keyframes hfPreviewOverlayLifetime { 0%, 86% { opacity: 1; } 100% { opacity: 0; } }
                 @keyframes hfPreviewGlow { 0%, 100% { box-shadow: 0 0 0 rgba(34,211,238,0); } 50% { box-shadow: 0 0 34px rgba(34,211,238,.42); } }
                 @keyframes hfPreviewPrice { 0% { opacity: 0; transform: translateY(24px) scale(.82); } 60% { opacity: 1; transform: translateY(-4px) scale(1.14); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-                .hf-preview-stage { aspect-ratio: 9 / 16; min-height: 320px; max-height: 520px; max-width: 22rem; position: relative; overflow: hidden; }
+                .hf-preview-stage { aspect-ratio: 9 / 16; container-type: inline-size; min-height: 320px; max-height: 520px; max-width: 22rem; position: relative; overflow: hidden; }
                 .hf-preview-stage--compact { min-height: 260px; max-height: 360px; max-width: 15rem; width: 100%; }
                 .hf-preview-stage--large { min-height: 430px; max-height: 680px; max-width: 27rem; width: min(100%, 27rem); margin-inline: auto; }
+                .hf-preview-stage--modal { min-height: 0; height: min(calc(100dvh - 5rem), calc((100dvw - 1rem) * 16 / 9)); max-height: none; width: min(calc((100dvh - 5rem) * 9 / 16), calc(100dvw - 1rem)); max-width: none; margin-inline: auto; }
                 .hf-preview-stage--thumb { min-height: 0; height: 10.5rem; width: 5.9rem; max-height: none; max-width: none; margin-inline: auto; border: 1px solid rgba(148,163,184,.38); box-shadow: 0 10px 22px rgba(15,23,42,.14); }
                 .hf-preview-poster { position: absolute; inset: 0; z-index: 1; height: 100%; width: 100%; object-fit: cover; opacity: .96; transition: opacity .2s ease; }
                 .hf-preview-poster--hidden { opacity: 0; }
@@ -8481,6 +8485,16 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-chip-list { display: none; }
                 .hf-preview-stage[data-preset="price_impact"] .hf-preview-overlay-copy,
                 .hf-preview-stage[data-preset="hero_price_billboard"] .hf-preview-overlay-copy { justify-content: flex-end; padding-bottom: 25%; }
+                .hf-preview-stage--modal { padding: clamp(16px, 3.7cqw, 36px) !important; }
+                .hf-preview-stage--modal .hf-preview-overlay-copy { padding: clamp(16px, 3.7cqw, 36px) !important; }
+                .hf-preview-stage--modal .hf-preview-layer-tag { font-size: clamp(10px, 2.3cqw, 18px) !important; padding: clamp(4px, .9cqw, 8px) clamp(8px, 1.8cqw, 16px) !important; }
+                .hf-preview-stage--modal .hf-preview-title { font-size: clamp(28px, 6.5cqw, 64px) !important; line-height: 1.08 !important; }
+                .hf-preview-stage--modal .hf-preview-hook { font-size: clamp(18px, 4.2cqw, 40px) !important; line-height: 1.18 !important; }
+                .hf-preview-stage--modal .hf-preview-price { font-size: clamp(34px, 7.8cqw, 76px) !important; }
+                .hf-preview-stage--modal .hf-preview-chip { font-size: clamp(13px, 3cqw, 28px) !important; padding: clamp(8px, 1.85cqw, 18px) clamp(12px, 2.8cqw, 26px) !important; }
+                .hf-preview-stage--modal .hf-preview-chip-list { gap: clamp(8px, 1.85cqw, 18px) !important; margin-top: clamp(16px, 3.7cqw, 36px) !important; }
+                .hf-preview-stage--modal .hf-sub-preview-inline .hf-sub-line { line-height: 1.22 !important; }
+                .hf-preview-stage--modal .hf-preview-layer-tag--subtitle { margin-bottom: clamp(6px, 1.4cqw, 13px) !important; }
                 .hf-preview-stage--thumb .hf-preview-overlay-copy { min-height: 0 !important; padding-bottom: 8% !important; }
                 .hf-preview-stage--thumb .hf-preview-copy-top { box-sizing: border-box; max-width: 96% !important; margin-top: 0 !important; transform: none !important; }
                 .hf-preview-stage--thumb .hf-preview-title { max-width: 100% !important; font-size: 10px !important; line-height: 1.08 !important; -webkit-line-clamp: 3; }
@@ -9986,8 +10000,11 @@ export default function StoryboardReviewPage() {
           aria-label={videoPreview.title}
           onClick={() => setVideoPreview(null)}
         >
-          <div className="flex max-h-full w-full max-w-5xl flex-col gap-3" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between gap-3 text-white">
+          <div
+            className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100dvw-1rem)] max-w-none flex-col gap-2 sm:h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-1.5rem)] sm:w-[calc(100dvw-1.5rem)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between gap-3 text-white">
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium">{videoPreview.title}</div>
                 {videoPreview.subtitle ? (
@@ -10028,10 +10045,15 @@ export default function StoryboardReviewPage() {
                 overlay?.chips?.some(line => line.trim().length > 0),
               );
               const hasSubtitleCopy = Boolean(overlay?.subtitleText?.trim());
+              const modalSubtitleFontSize = overlay?.subtitleFontSizePx ?? 18;
+              const modalSubtitleFontSizeCss = `clamp(${modalSubtitleFontSize}px, 4.2cqw, ${Math.max(
+                28,
+                Math.round(modalSubtitleFontSize * 2.1),
+              )}px)`;
               return (
                 <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
                   <div
-                    className="hf-preview-stage relative aspect-[9/16] h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] w-[min(100%,56.25dvh)] max-w-full overflow-hidden rounded-lg bg-black p-4 text-left text-slate-950"
+                    className="hf-preview-stage hf-preview-stage--modal relative aspect-[9/16] overflow-hidden rounded-lg bg-black p-4 text-left text-slate-950"
                     data-preset={overlay?.overlayPreset ?? "auto"}
                     data-text-motion={overlay?.textMotionPreset ?? "none"}
                     data-has-media="true"
@@ -10121,9 +10143,25 @@ export default function StoryboardReviewPage() {
                           ) : null}
                         </div>
                         {overlay?.presetKind !== "clean" && overlay?.chips?.some(line => line.trim().length > 0) ? (
-                          <div className="hf-preview-chip-list mt-4 grid w-full gap-2">
+                          <div
+                            className={cn(
+                              "hf-preview-chip-list mt-4 grid gap-2",
+                              overlay?.presetKind === "spec" ? "ml-auto w-[58%]" : "w-full",
+                              overlay?.presetKind === "cards" ? "grid-cols-2" : "",
+                            )}
+                          >
                             {overlay.chips.filter(Boolean).slice(0, 3).map((line, index) => (
-                              <div key={`${line}-${index}`} className="hf-preview-chip rounded-full bg-white/85 px-3 py-2 font-black text-slate-950 shadow-sm">
+                              <div
+                                key={`${line}-${index}`}
+                                className={cn(
+                                  "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
+                                  overlay?.overlayPreset === "neon_gaming_specs"
+                                    ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                                    : overlay?.presetKind === "price"
+                                      ? "bg-white text-slate-950"
+                                      : "bg-white/85 text-slate-950",
+                                )}
+                              >
                                 {line}
                               </div>
                             ))}
@@ -10137,7 +10175,10 @@ export default function StoryboardReviewPage() {
                         data-subtitle-preset={overlay?.subtitlePreset ?? "classic_box"}
                       >
                         {overlay?.subtitlePreset === "karaoke_word" ? (
-                          <div className="hf-sub-line" style={{ fontSize: overlay?.subtitleFontSizePx ?? 34 }}>
+                          <div className="hf-sub-line" style={{ fontSize: modalSubtitleFontSizeCss }}>
+                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+                              {locale === "th" ? "Subtitle" : "Subtitle"}
+                            </span>
                             {(overlay.subtitleText ?? "").split(/\s+/).filter(Boolean).map((word, wordIndex) => (
                               <span key={`${word}-${wordIndex}`} className="hf-sub-word">
                                 {word}
@@ -10145,7 +10186,10 @@ export default function StoryboardReviewPage() {
                             ))}
                           </div>
                         ) : (
-                          <div className="hf-sub-line" style={{ fontSize: overlay?.subtitleFontSizePx ?? 34 }}>
+                          <div className="hf-sub-line" style={{ fontSize: modalSubtitleFontSizeCss }}>
+                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+                              {locale === "th" ? "Subtitle" : "Subtitle"}
+                            </span>
                             {overlay?.subtitleText}
                           </div>
                         )}

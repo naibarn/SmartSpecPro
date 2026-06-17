@@ -23,6 +23,16 @@ describe("apiResponseDiagnostics", () => {
     ).toContain("session may have expired");
   });
 
+  it("builds a timeout-specific html response message", () => {
+    expect(
+      buildUnexpectedHtmlResponseMessage({
+        requestUrl: "https://smartaihub.app/trpc/chat.executeSkill",
+        status: 524,
+        bodySnippet: "<!DOCTYPE html><html><body>Cloudflare timeout</body></html>",
+      }),
+    ).toContain("timed out before returning JSON");
+  });
+
   it("throws a readable error when an api response is html", async () => {
     const response = new Response(
       "<!DOCTYPE html><html><body>App shell</body></html>",

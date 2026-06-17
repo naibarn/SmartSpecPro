@@ -30,6 +30,10 @@ function isLikelyLoginHtml(status: number, bodySnippet: string): boolean {
   );
 }
 
+function isLikelyGatewayTimeoutHtml(status: number): boolean {
+  return status === 522 || status === 524 || status === 504;
+}
+
 export function isHtmlApiErrorMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return (
@@ -57,6 +61,10 @@ export function buildUnexpectedHtmlResponseMessage(
 
   if (sessionExpired) {
     return `The server returned HTML instead of JSON for ${requestPath}. Your session may have expired.${suffix}`;
+  }
+
+  if (isLikelyGatewayTimeoutHtml(info.status)) {
+    return `The API request for ${requestPath} timed out before returning JSON. The server/proxy returned an HTML timeout page instead.${suffix}`;
   }
 
   return `The server returned HTML instead of JSON for ${requestPath}. The request may have been routed to the web app shell.${suffix}`;

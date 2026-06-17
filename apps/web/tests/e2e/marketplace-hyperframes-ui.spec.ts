@@ -1681,6 +1681,23 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
       .toBe(true);
     await expect(inlineStage.locator(".hf-preview-overlay-copy")).toBeVisible();
     await expect(inlineStage.locator(".hf-sub-preview-inline")).toBeVisible();
+    const inlinePreviewTypography = await inlineStage.evaluate(stage => {
+      const element = stage as HTMLElement;
+      const title = element.querySelector(".hf-preview-title") as HTMLElement | null;
+      const subtitle = element.querySelector(".hf-sub-line") as HTMLElement | null;
+      const subtitleLabel = element.querySelector(".hf-preview-layer-tag--subtitle") as HTMLElement | null;
+      const stageRect = element.getBoundingClientRect();
+      const titleFontPx = title ? Number.parseFloat(window.getComputedStyle(title).fontSize) : 0;
+      const subtitleFontPx = subtitle ? Number.parseFloat(window.getComputedStyle(subtitle).fontSize) : 0;
+      return {
+        stageWidth: stageRect.width,
+        titleFontPx,
+        titleFontRatio: titleFontPx / Math.max(1, stageRect.width),
+        subtitleFontPx,
+        subtitleFontRatio: subtitleFontPx / Math.max(1, stageRect.width),
+        subtitleLabel: subtitleLabel?.textContent?.trim() ?? "",
+      };
+    });
 
     const inlineVideoState = await inlineVideo.evaluate(video => {
       const element = video as HTMLVideoElement;
@@ -1707,6 +1724,27 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await page.getByRole("button", { name: /ขยายวิดีโอ shot 1|Expand shot 1 video/i }).click();
     const dialog = page.getByRole("dialog", { name: /Shot 1/i });
     await expect(dialog).toBeVisible();
+    const fullscreenStage = dialog.locator(".hf-preview-stage--modal").first();
+    await expect(fullscreenStage).toBeVisible();
+    const fullscreenStageSizing = await fullscreenStage.evaluate(stage => {
+      const rect = (stage as HTMLElement).getBoundingClientRect();
+      return {
+        width: rect.width,
+        height: rect.height,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+      };
+    });
+    const expectedModalHeight = Math.min(
+      fullscreenStageSizing.viewportHeight - 80,
+      (fullscreenStageSizing.viewportWidth - 16) * (16 / 9)
+    );
+    const expectedModalWidth = Math.min(
+      (fullscreenStageSizing.viewportHeight - 80) * (9 / 16),
+      fullscreenStageSizing.viewportWidth - 16
+    );
+    expect(fullscreenStageSizing.height).toBeGreaterThan(expectedModalHeight * 0.85);
+    expect(fullscreenStageSizing.width).toBeGreaterThan(expectedModalWidth * 0.85);
     const fullscreenVideo = dialog.locator("video").first();
     await expect(fullscreenVideo).toBeVisible();
     await expect
@@ -1729,6 +1767,36 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
       .toBe(true);
     await expect(dialog.locator(".hf-preview-overlay-copy")).toBeVisible();
     await expect(dialog.locator(".hf-sub-preview-inline")).toBeVisible();
+    const fullscreenPreviewTypography = await fullscreenStage.evaluate(stage => {
+      const element = stage as HTMLElement;
+      const title = element.querySelector(".hf-preview-title") as HTMLElement | null;
+      const subtitle = element.querySelector(".hf-sub-line") as HTMLElement | null;
+      const subtitleLabel = element.querySelector(".hf-preview-layer-tag--subtitle") as HTMLElement | null;
+      const stageRect = element.getBoundingClientRect();
+      const titleFontPx = title ? Number.parseFloat(window.getComputedStyle(title).fontSize) : 0;
+      const subtitleFontPx = subtitle ? Number.parseFloat(window.getComputedStyle(subtitle).fontSize) : 0;
+      return {
+        stageWidth: stageRect.width,
+        titleFontPx,
+        titleFontRatio: titleFontPx / Math.max(1, stageRect.width),
+        subtitleFontPx,
+        subtitleFontRatio: subtitleFontPx / Math.max(1, stageRect.width),
+        subtitleLabel: subtitleLabel?.textContent?.trim() ?? "",
+      };
+    });
+    expect(fullscreenPreviewTypography.titleFontRatio).toBeGreaterThan(
+      inlinePreviewTypography.titleFontRatio * 0.8
+    );
+    expect(fullscreenPreviewTypography.titleFontRatio).toBeLessThan(
+      inlinePreviewTypography.titleFontRatio * 1.35
+    );
+    expect(fullscreenPreviewTypography.subtitleFontRatio).toBeGreaterThan(
+      inlinePreviewTypography.subtitleFontRatio * 0.75
+    );
+    expect(fullscreenPreviewTypography.subtitleFontRatio).toBeLessThan(
+      inlinePreviewTypography.subtitleFontRatio * 1.55
+    );
+    expect(fullscreenPreviewTypography.subtitleLabel).toMatch(/Subtitle/i);
     await dialog.screenshot({
       path: join(evidenceDir, "route-storyboard-selected-shot-video-fullscreen.png"),
     });
