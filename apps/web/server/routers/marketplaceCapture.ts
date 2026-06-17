@@ -582,9 +582,9 @@ export const marketplaceCaptureRouter = router({
           .enum(["storyboard_images", "full_video"])
           .default("storyboard_images"),
         frameStrategy: z
-          .enum(["storyboard_3x3_split", "video_shot_start_stop"])
+          .enum(["auto", "storyboard_3x3_split", "video_shot_start_stop"])
           .optional()
-          .default("storyboard_3x3_split"),
+          .default("auto"),
         audioStrategy: z
           .enum([
             "auto",

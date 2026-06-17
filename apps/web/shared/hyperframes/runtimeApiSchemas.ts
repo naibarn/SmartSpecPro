@@ -188,6 +188,10 @@ export const HyperframesFinalCompositeOverlayPresetSchema = z.enum([
   "electronics_spec_stack",
   "hero_price_billboard",
   "kinetic_bold_hook",
+  "creator_top_punch",
+  "ugc_center_stack",
+  "white_intro_card",
+  "tech_signal_map",
   "split_product_specs",
   "badge_cascade",
   "lower_third_review",
@@ -206,6 +210,15 @@ export const HyperframesFinalCompositeSubtitlePresetSchema = z.enum([
   "neon_glow",
   "review_bubble",
   "no_subtitle_style",
+]);
+
+export const HyperframesFinalCompositeTextMotionPresetSchema = z.enum([
+  "stagger_rise",
+  "slide_right_to_left",
+  "slide_left_to_right",
+  "pop_scale",
+  "wipe_reveal",
+  "none",
 ]);
 
 export const HyperframesFinalCompositeSubtitleCueSchema = z
@@ -251,6 +264,8 @@ export const HyperframesFinalCompositeShotInputSchema = z
       .enum(["fade", "slide", "zoom", "whip", "none"])
       .optional()
       .default("fade"),
+    textMotionPreset: HyperframesFinalCompositeTextMotionPresetSchema.optional()
+      .default("stagger_rise"),
   })
   .strict();
 
@@ -301,6 +316,9 @@ export const HyperframesFinalCompositeConfigSchema = z
       .enum(["bottom", "lower_third"])
       .optional()
       .default("bottom"),
+    subtitleFontSizePx: z.number().int().min(24).max(52).optional().default(34),
+    textMotionPreset: HyperframesFinalCompositeTextMotionPresetSchema.optional()
+      .default("slide_right_to_left"),
     safeZonePercent: z.number().min(0).max(30).optional().default(8),
     cssAnimationEnabled: z.boolean().optional().default(true),
     gsapCompatibleTimeline: z.boolean().optional().default(true),

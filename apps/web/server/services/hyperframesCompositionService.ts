@@ -22,7 +22,7 @@ import {
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
-  "hyperframes_final_composite_builder_v8";
+  "hyperframes_final_composite_builder_v15";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -66,6 +66,23 @@ function escapeHtml(value: unknown): string {
 
 function cssString(value: unknown): string {
   return String(value ?? "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function isHyperframesVideoPromptLikeText(value: unknown): boolean {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return false;
+  return (
+    /^Create a\s+\d+(?:\.\d+)?-second\s+cinematic\s+vid/i.test(text) ||
+    /\bUse\s+@Image\d+\s+as\s+(?:start|stop)\s+frame\b/i.test(text) ||
+    /\bVIDEO CHARACTER LOCK\b/i.test(text) ||
+    /\bScene:\s*Use\s+@Image\d+/i.test(text)
+  );
+}
+
+function normalizeSubtitleFontSizePx(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 34;
+  return Math.max(24, Math.min(52, Math.round(numeric)));
 }
 
 function roundTimelineSecond(value: number): number {
@@ -438,6 +455,7 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
     overlayPreset: shot.overlayPreset,
     animationPreset: shot.animationPreset,
     transition: shot.transition,
+    textMotionPreset: shot.textMotionPreset,
   }));
   const finalCompositeBase = {
     ...finalCompositeInput,
@@ -644,6 +662,28 @@ function getRenderableHyperframesAudioEvents(
   });
 }
 
+function uniqueRenderTextLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const line of lines) {
+    const clean = line.trim();
+    const key = clean.toLocaleLowerCase("th-TH");
+    if (!clean || seen.has(key)) continue;
+    seen.add(key);
+    output.push(clean);
+  }
+  return output;
+}
+
+function getRenderableOverlayTextLines(lines: string[]): string[] {
+  return lines.filter(line => Boolean(line.trim()) && !isHyperframesVideoPromptLikeText(line));
+}
+
+function motionDelayStyle(index: number): string {
+  const delaySec = Math.round(Math.max(0, index) * 14) / 100;
+  return ` style="--motion-delay:${delaySec}s"`;
+}
+
 function buildHyperframesFinalCompositeHtml(input: {
   composition: HyperframesCompositionInput;
   finalComposite: HyperframesFinalCompositeConfig & {
@@ -659,39 +699,71 @@ function buildHyperframesFinalCompositeHtml(input: {
   const fontStack = `"${cssString(config.fontFamily)}", "Noto Sans Thai", "Prompt", "Kanit", "Sarabun", system-ui, sans-serif`;
   const safeInset = `${Math.round(config.safeZonePercent * 10) / 10}%`;
   const preserveNativeAudio = config.preserveNativeAudio !== false;
+  const defaultTextMotionPreset = config.textMotionPreset ?? "slide_right_to_left";
+  const firstShot = config.shots[0];
+  const hookOverlayPreset = firstShot?.overlayPreset ?? config.overlayPreset;
+  const hookTextMotionPreset = firstShot?.textMotionPreset ?? defaultTextMotionPreset;
+  const subtitleFontSizePx = normalizeSubtitleFontSizePx(config.subtitleFontSizePx);
+  const renderConfig = {
+    ...config,
+    subtitleFontSizePx,
+    shots: config.shots.map(shot => ({
+      ...shot,
+      onScreenText: getRenderableOverlayTextLines(shot.onScreenText),
+    })),
+  };
   const sourceVideoAudioAttributes = preserveNativeAudio
     ? 'data-has-audio="true" data-native-audio="true" data-audio-role="native_source"'
     : 'muted data-has-audio="false"';
   const shotHtml = config.shots
     .map((shot, index) => {
-      const shouldUseHookAsFirstShotCopy =
-        config.includeHookText && (index === 0 || shot.index === 0);
       const lines =
-        config.includeShotText && !shouldUseHookAsFirstShotCopy
-          ? shot.onScreenText.filter(Boolean)
+        config.includeShotText
+          ? getRenderableOverlayTextLines(shot.onScreenText)
           : [];
       const cues = config.burnInSubtitles ? shot.subtitleCues : [];
       const timelineEntry = timelineByShotId.get(shot.id);
       const videoTrackIndex = shot.index * 2;
       const overlayTrackIndex = videoTrackIndex + 1;
       const shotOverlayPreset = shot.overlayPreset ?? config.overlayPreset;
+      const shotTextMotionPreset = shot.textMotionPreset ?? defaultTextMotionPreset;
+      const hasShotOverlayCopy = lines.length > 0;
+      const shouldDeferShotCopyAfterHook =
+        Boolean(config.includeHookText && hasShotOverlayCopy && (index === 0 || shot.index === 0));
       return `
       <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" ${sourceVideoAudioAttributes} playsinline></video>
-      <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}"${shouldUseHookAsFirstShotCopy ? ' data-shot-copy-suppressed="hook-layer"' : ""}>
-        <div class="shade"></div>
-        <div class="shot-copy">
-          ${lines.map((line, lineIndex) => `<div class="shot-line line-${lineIndex + 1}">${escapeHtml(line)}</div>`).join("")}
-        </div>
+      <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-text-motion-preset="${escapeHtml(shotTextMotionPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}"${shouldDeferShotCopyAfterHook ? ' data-shot-copy-deferred="after-hook"' : ""} data-has-shot-copy="${hasShotOverlayCopy ? "true" : "false"}">
+        ${hasShotOverlayCopy ? `<div class="overlay-copy-layer">
+          <div class="shade"></div>
+          <div class="shot-copy">
+            ${lines.map((line, lineIndex) => `<div class="shot-line line-${lineIndex + 1} motion-item"${motionDelayStyle(lineIndex)}>${escapeHtml(line)}</div>`).join("")}
+          </div>
+        </div>` : ""}
         <div class="subtitle-stack">
           ${cues.map((cue, cueIndex) => `<div class="subtitle-cue cue-${cueIndex + 1}" data-cue-start="${cue.startSec}" data-cue-end="${cue.endSec}">${escapeHtml(cue.text)}</div>`).join("")}
         </div>
       </section>`;
     })
     .join("\n");
+  const firstShotLines = uniqueRenderTextLines(
+    firstShot ? getRenderableOverlayTextLines(firstShot.onScreenText) : []
+  );
+  const hookMainText = config.hookText || firstShotLines[0] || input.productTitle;
+  const hookSubText =
+    config.supportingText ||
+    firstShotLines.find(line => line !== hookMainText) ||
+    "";
+  const hookChipText =
+    firstShotLines.find(line => line !== hookMainText && line !== hookSubText) ||
+    hookSubText ||
+    (input.productTitle !== hookMainText ? input.productTitle : "");
   const hook = config.includeHookText
-    ? `<div id="hook-layer" class="clip hook-layer" data-start="0" data-duration="3" data-track-index="${config.shots.length * 2 + 1}">
-        <div class="hook-main">${escapeHtml(config.hookText || input.productTitle)}</div>
-        ${config.supportingText ? `<div class="hook-sub">${escapeHtml(config.supportingText)}</div>` : ""}
+    ? `<div id="hook-layer" class="clip hook-layer" data-overlay-preset="${escapeHtml(hookOverlayPreset)}" data-text-motion-preset="${escapeHtml(hookTextMotionPreset)}" data-start="0" data-duration="3" data-track-index="${config.shots.length * 2 + 1}">
+        <div class="hook-stack">
+          <div class="hook-main motion-item"${motionDelayStyle(0)}>${escapeHtml(hookMainText)}</div>
+          ${hookSubText ? `<div class="hook-sub motion-item"${motionDelayStyle(1)}>${escapeHtml(hookSubText)}</div>` : ""}
+        </div>
+        ${hookChipText ? `<div class="hook-chip motion-item"${motionDelayStyle(2)}>${escapeHtml(hookChipText)}</div>` : ""}
       </div>`
     : "";
   const audioHtml = getRenderableHyperframesAudioEvents(config)
@@ -743,8 +815,10 @@ function buildHyperframesFinalCompositeHtml(input: {
       }
       .shot { position: absolute; inset: 0; opacity: 1; overflow: hidden; background: transparent; pointer-events: none; z-index: 2; }
       .source-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 1; transform: scale(1.02); z-index: 0; }
+      .overlay-copy-layer { position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none; }
       .shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(0,0,0,.16), rgba(0,0,0,.08) 48%, rgba(0,0,0,.62)); pointer-events: none; }
       .shot-copy { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 9%; z-index: 2; display: grid; gap: 14px; text-shadow: 0 4px 18px rgba(0,0,0,.55); }
+      .shot-line, .hook-main, .hook-sub, .hook-chip, .subtitle-cue { box-sizing: border-box; overflow-wrap: anywhere; word-break: break-word; }
       .shot-line { display: inline-block; width: fit-content; max-width: 100%; border-radius: 20px; background: rgba(7, 12, 24, .74); padding: 18px 24px; font-size: 52px; font-weight: 800; line-height: 1.08; opacity: 1; transform: translateY(0); }
       .shot-line + .shot-line { font-size: 40px; font-weight: 700; background: rgba(255, 255, 255, .88); color: #0f172a; }
       [data-overlay-preset="auto"] .shot-copy { top: 8%; max-width: 78%; }
@@ -756,35 +830,70 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="hook_sequence"] .shot-copy { top: 8%; right: auto; max-width: 74%; }
       [data-overlay-preset="hook_sequence"] .shot-line:first-child { background: rgba(255,255,255,.92); color: #0f172a; font-size: 62px; }
       [data-overlay-preset="hook_sequence"] .shot-line + .shot-line { background: rgba(37,99,235,.9); color: #fff; }
-      [data-overlay-preset="kinetic_bold_hook"] .shade { background: linear-gradient(180deg, rgba(2,6,23,.16), rgba(2,6,23,.68)); }
-      [data-overlay-preset="kinetic_bold_hook"] .shot-copy { top: 7%; }
+      [data-overlay-preset="kinetic_bold_hook"] .shade { background: linear-gradient(90deg, rgba(2,6,23,.9) 0 53%, rgba(2,6,23,.18) 54% 100%), linear-gradient(135deg, transparent 0 53%, rgba(250,204,21,.9) 54% 78%, transparent 79% 100%); }
+      [data-overlay-preset="kinetic_bold_hook"] .shot-copy { top: 7%; max-width: 78%; }
       [data-overlay-preset="kinetic_bold_hook"] .shot-line:first-child { background: rgba(2,6,23,.86); color: #fff; font-size: 76px; transform: rotate(-1deg); }
       [data-overlay-preset="kinetic_bold_hook"] .shot-line + .shot-line { background: #facc15; color: #020617; transform: rotate(-1deg); }
-      [data-overlay-preset="spec_highlight"] .shot-copy { left: auto; top: 29%; right: ${safeInset}; justify-items: end; }
-      [data-overlay-preset="spec_highlight"] .shot-line { border-radius: 999px; background: rgba(255,255,255,.9); color: #111827; font-size: 40px; box-shadow: 0 12px 32px rgba(15,23,42,.16); }
-      [data-overlay-preset="electronics_spec_stack"] .shot-copy { left: auto; top: 24%; right: ${safeInset}; max-width: 48%; justify-items: end; }
-      [data-overlay-preset="electronics_spec_stack"] .shot-line { border-radius: 999px; background: rgba(255,255,255,.92); color: #111827; font-size: 42px; box-shadow: 0 12px 32px rgba(15,23,42,.18); }
-      [data-overlay-preset="split_product_specs"] .shot-copy { top: 10%; right: auto; max-width: 46%; }
-      [data-overlay-preset="split_product_specs"] .shot-line { border-radius: 18px; background: rgba(255,255,255,.9); color: #0f172a; font-size: 44px; }
-      [data-overlay-preset="neon_gaming_specs"] .shade { background: radial-gradient(circle at 70% 16%, rgba(34,211,238,.2), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.74)); }
-      [data-overlay-preset="neon_gaming_specs"] .shot-copy { top: 10%; }
-      [data-overlay-preset="neon_gaming_specs"] .shot-line { border: 1px solid rgba(34,211,238,.48); background: rgba(2,6,23,.72); color: #cffafe; box-shadow: 0 0 34px rgba(34,211,238,.28); }
-      [data-overlay-preset="feature_cards"] .shot-copy { top: 25%; right: auto; max-width: 72%; }
-      [data-overlay-preset="feature_cards"] .shot-line { background: rgba(2,6,23,.82); color: #fff; border: 1px solid rgba(255,255,255,.18); }
-      [data-overlay-preset="badge_cascade"] .shot-copy { top: 22%; right: auto; max-width: 72%; }
-      [data-overlay-preset="badge_cascade"] .shot-line { border-radius: 999px; background: rgba(15,23,42,.84); color: #fff; border: 1px solid rgba(255,255,255,.22); }
-      [data-overlay-preset="lower_third_review"] .shot-copy { top: auto; bottom: 22%; right: auto; max-width: 76%; }
-      [data-overlay-preset="lower_third_review"] .shot-line { border-radius: 18px; background: rgba(15,23,42,.76); color: #fff; font-size: 42px; }
-      [data-overlay-preset="price_impact"] .shot-copy { top: auto; bottom: 12%; text-align: center; justify-items: center; }
+      [data-overlay-preset="creator_top_punch"] .shade { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.42)); }
+      [data-overlay-preset="creator_top_punch"] .shot-copy { left: 8%; right: 8%; top: 5%; justify-items: center; gap: 2px; text-align: center; text-shadow: 0 4px 0 #020617, 0 8px 18px rgba(2,6,23,.55); }
+      [data-overlay-preset="creator_top_punch"] .shot-line { display: block; width: auto; max-width: 92%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 66px; line-height: 1.02; font-weight: 950; color: #fff; -webkit-text-stroke: 2px #020617; text-stroke: 2px #020617; }
+      [data-overlay-preset="creator_top_punch"] .shot-line:first-child { color: #a7f3d0; font-size: 70px; }
+      [data-overlay-preset="creator_top_punch"] .shot-line + .shot-line { color: #fff; font-size: 62px; transform: none; }
+      [data-overlay-preset="ugc_center_stack"] .shade { background: linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.04) 44%, rgba(2,6,23,.34)); }
+      [data-overlay-preset="ugc_center_stack"] .shot-copy { left: 7%; right: 7%; top: 42%; transform: translateY(-50%); justify-items: center; gap: 0; text-align: center; text-shadow: 0 4px 0 rgba(2,6,23,.82), 0 10px 22px rgba(2,6,23,.46); }
+      [data-overlay-preset="ugc_center_stack"] .shot-line { display: block; width: auto; max-width: 96%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #f8fafc; font-size: 74px; line-height: 1.02; font-weight: 950; -webkit-text-stroke: 2px rgba(2,6,23,.86); text-stroke: 2px rgba(2,6,23,.86); }
+      [data-overlay-preset="ugc_center_stack"] .shot-line:nth-child(2) { color: #fbbf24; font-size: 78px; }
+      [data-overlay-preset="ugc_center_stack"] .shot-line:nth-child(n+3) { color: #fff; font-size: 54px; }
+      [data-overlay-preset="white_intro_card"] .shade { background: #f1f5f9; }
+      [data-overlay-preset="white_intro_card"] .overlay-copy-layer { z-index: 10; }
+      [data-overlay-preset="white_intro_card"] .shot-copy { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 10%; text-align: center; text-shadow: 0 10px 28px rgba(15,23,42,.14); }
+      [data-overlay-preset="white_intro_card"] .shot-copy::before { content: ""; width: 118px; height: 86px; border-radius: 999px; background: radial-gradient(circle at 28% 42%, #2563eb 0 26%, transparent 27%), radial-gradient(circle at 68% 28%, #3b82f6 0 18%, transparent 19%), radial-gradient(circle at 56% 72%, #2563eb 0 18%, transparent 19%); filter: drop-shadow(0 14px 26px rgba(37,99,235,.18)); }
+      [data-overlay-preset="white_intro_card"] .shot-line { display: block; width: auto; max-width: 92%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #111827; font-size: 76px; line-height: 1.04; font-weight: 950; }
+      [data-overlay-preset="white_intro_card"] .shot-line + .shot-line { color: #334155; font-size: 48px; transform: none; }
+      [data-overlay-preset="tech_signal_map"] .shade { background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.34), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.2), transparent 24%), linear-gradient(180deg, rgba(2,6,23,.92), rgba(15,23,42,.8)); }
+      [data-overlay-preset="tech_signal_map"] .shot-copy { left: 6%; right: 6%; top: 6%; bottom: 12%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; text-align: center; }
+      [data-overlay-preset="tech_signal_map"] .shot-copy::before { content: ""; position: absolute; left: 10%; right: 10%; top: 38%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
+      [data-overlay-preset="tech_signal_map"] .shot-line { position: relative; z-index: 1; display: block; width: auto; max-width: 94%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #f8fafc; font-size: 60px; line-height: 1.04; font-weight: 950; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
+      [data-overlay-preset="tech_signal_map"] .shot-line:first-child { color: #22d3ee; font-size: 76px; }
+      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(2) { color: #fb923c; font-size: 72px; }
+      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(n+3) { margin-top: auto; border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 34px; box-shadow: 0 0 24px rgba(34,211,238,.18); }
+      [data-overlay-preset="spec_highlight"] .shade { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.48)); }
+      [data-overlay-preset="spec_highlight"] .shot-copy { left: 8%; right: 8%; top: 4%; justify-items: center; gap: 2px; text-align: center; text-shadow: 0 4px 0 #020617, 0 8px 18px rgba(2,6,23,.55); }
+      [data-overlay-preset="spec_highlight"] .shot-line { display: block; width: auto; max-width: 92%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 66px; line-height: 1.04; font-weight: 950; color: #fff; -webkit-text-stroke: 2px #020617; text-stroke: 2px #020617; }
+      [data-overlay-preset="spec_highlight"] .shot-line:first-child { color: #facc15; font-size: 70px; }
+      [data-overlay-preset="spec_highlight"] .shot-line + .shot-line { color: #fff; font-size: 62px; transform: none; }
+      [data-overlay-preset="electronics_spec_stack"] .shade { background: linear-gradient(90deg, rgba(2,6,23,.08), rgba(2,6,23,.72)); }
+      [data-overlay-preset="electronics_spec_stack"] .shot-copy { left: auto; top: 14%; right: 6%; width: 43%; max-width: 43%; box-sizing: border-box; padding: 22px; border: 1px solid rgba(148,163,184,.34); border-radius: 30px; background: rgba(2,6,23,.72); justify-items: stretch; gap: 12px; text-align: left; backdrop-filter: blur(10px); }
+      [data-overlay-preset="electronics_spec_stack"] .shot-line:first-child { width: auto; border-radius: 18px; background: #38bdf8; color: #020617; font-size: 42px; box-shadow: 0 14px 32px rgba(56,189,248,.28); }
+      [data-overlay-preset="electronics_spec_stack"] .shot-line + .shot-line { width: auto; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(255,255,255,.12); color: #f8fafc; font-size: 30px; box-shadow: none; }
+      [data-overlay-preset="split_product_specs"] .shade { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
+      [data-overlay-preset="split_product_specs"] .shot-copy { top: 13%; right: auto; left: 6%; max-width: 40%; gap: 14px; }
+      [data-overlay-preset="split_product_specs"] .shot-line:first-child { border-radius: 0 22px 22px 0; background: #f8fafc; color: #0f172a; font-size: 48px; box-shadow: 0 14px 36px rgba(2,6,23,.26); }
+      [data-overlay-preset="split_product_specs"] .shot-line + .shot-line { border-radius: 999px; background: #facc15; color: #020617; font-size: 32px; transform: translateX(28px); }
+      [data-overlay-preset="neon_gaming_specs"] .shade { background: radial-gradient(circle at 70% 16%, rgba(34,211,238,.28), transparent 28%), radial-gradient(circle at 22% 72%, rgba(217,70,239,.22), transparent 30%), linear-gradient(180deg, rgba(2,6,23,.25), rgba(2,6,23,.78)); }
+      [data-overlay-preset="neon_gaming_specs"] .shot-copy { top: 9%; left: 7%; right: 7%; gap: 12px; }
+      [data-overlay-preset="neon_gaming_specs"] .shot-line:first-child { border: 1px solid rgba(34,211,238,.62); background: rgba(2,6,23,.76); color: #cffafe; font-size: 58px; box-shadow: 0 0 42px rgba(34,211,238,.32); }
+      [data-overlay-preset="neon_gaming_specs"] .shot-line + .shot-line { border: 1px solid rgba(217,70,239,.58); background: rgba(76,29,149,.54); color: #fdf4ff; font-size: 34px; box-shadow: 0 0 34px rgba(217,70,239,.22); }
+      [data-overlay-preset="feature_cards"] .shot-copy { top: 19%; right: auto; left: 6%; max-width: 88%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-shadow: none; }
+      [data-overlay-preset="feature_cards"] .shot-line { width: auto; min-height: 150px; border-radius: 22px; background: rgba(255,255,255,.92); color: #0f172a; border: 1px solid rgba(255,255,255,.42); font-size: 34px; box-shadow: 0 18px 44px rgba(2,6,23,.24); }
+      [data-overlay-preset="feature_cards"] .shot-line:first-child { grid-column: span 2; min-height: auto; background: rgba(2,6,23,.86); color: #fff; font-size: 48px; }
+      [data-overlay-preset="badge_cascade"] .shot-copy { top: 18%; right: auto; left: 7%; max-width: 74%; gap: 14px; }
+      [data-overlay-preset="badge_cascade"] .shot-line { border-radius: 999px; background: rgba(15,23,42,.88); color: #fff; border: 1px solid rgba(255,255,255,.22); font-size: 40px; box-shadow: 0 14px 34px rgba(2,6,23,.24); }
+      [data-overlay-preset="badge_cascade"] .shot-line:nth-child(2) { transform: translateX(52px); background: rgba(14,165,233,.92); color: #fff; }
+      [data-overlay-preset="badge_cascade"] .shot-line:nth-child(3) { transform: translateX(104px); background: rgba(250,204,21,.94); color: #020617; }
+      [data-overlay-preset="lower_third_review"] .shot-copy { top: auto; bottom: 31%; right: auto; max-width: 76%; }
+      [data-overlay-preset="lower_third_review"] .shot-line:first-child { border-left: 10px solid #38bdf8; border-radius: 18px; background: rgba(15,23,42,.82); color: #fff; font-size: 42px; }
+      [data-overlay-preset="lower_third_review"] .shot-line + .shot-line { border-radius: 18px 18px 18px 4px; background: rgba(255,255,255,.92); color: #0f172a; font-size: 34px; }
+      [data-overlay-preset="price_impact"] .shot-copy { top: auto; bottom: 28%; text-align: center; justify-items: center; }
       [data-overlay-preset="price_impact"] .shot-line:first-child { font-size: 42px; background: rgba(2,6,23,.88); color: #fff; }
       [data-overlay-preset="price_impact"] .shot-line:nth-child(2) { font-size: 92px; background: transparent; color: #facc15; text-shadow: 0 8px 0 rgba(120,53,15,.45), 0 12px 34px rgba(0,0,0,.5); }
-      [data-overlay-preset="hero_price_billboard"] .shot-copy { top: auto; bottom: 10%; text-align: center; justify-items: center; }
+      [data-overlay-preset="hero_price_billboard"] .shot-copy { top: auto; bottom: 25%; text-align: center; justify-items: center; }
       [data-overlay-preset="hero_price_billboard"] .shot-line:first-child { font-size: 44px; background: rgba(2,6,23,.9); color: #fff; }
       [data-overlay-preset="hero_price_billboard"] .shot-line:nth-child(2) { font-size: 104px; background: transparent; color: #facc15; text-shadow: 0 10px 0 rgba(120,53,15,.48), 0 14px 36px rgba(0,0,0,.55); }
       [data-overlay-preset="clean_subtitle"] .shot-copy,
       [data-overlay-preset="none"] .shot-copy { display: none; }
       .subtitle-stack { position: absolute; left: ${safeInset}; right: ${safeInset}; bottom: ${config.subtitlePlacement === "lower_third" ? "20%" : "7%"}; z-index: 3; display: grid; gap: 10px; justify-items: center; }
-      .subtitle-cue { max-width: 88%; border-radius: 16px; background: rgba(0,0,0,.76); padding: 12px 18px; font-size: 34px; font-weight: 700; line-height: 1.18; text-align: center; opacity: 1; box-shadow: 0 8px 26px rgba(0,0,0,.28); }
+      .subtitle-cue { max-width: 92%; border-radius: 16px; background: rgba(0,0,0,.76); padding: 12px 18px; font-size: ${subtitleFontSizePx}px; font-weight: 700; line-height: 1.18; text-align: center; opacity: 1; box-shadow: 0 8px 26px rgba(0,0,0,.28); }
       [data-subtitle-preset="minimal_shadow"] .subtitle-cue { background: transparent; box-shadow: none; text-shadow: 0 4px 12px rgba(0,0,0,.9); }
       [data-subtitle-preset="creator_pop"] .subtitle-cue { border-radius: 999px; background: rgba(255,255,255,.92); color: #020617; transform: scale(.94); }
       [data-subtitle-preset="karaoke_word"] .subtitle-cue { background: rgba(0,0,0,.7); color: #facc15; }
@@ -795,18 +904,84 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-subtitle-preset="neon_glow"] .subtitle-cue { border: 1px solid rgba(34,211,238,.55); background: rgba(2,6,23,.78); color: #cffafe; box-shadow: 0 0 30px rgba(34,211,238,.32); }
       [data-subtitle-preset="review_bubble"] .subtitle-cue { border-radius: 24px 24px 24px 6px; background: rgba(255,255,255,.94); color: #0f172a; }
       [data-subtitle-preset="no_subtitle_style"] .subtitle-stack { display: none; }
-      .hook-layer { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 8%; z-index: 20; display: grid; gap: 14px; text-align: left; text-shadow: 0 5px 24px rgba(0,0,0,.5); }
+      .hook-layer { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 8%; bottom: 20%; z-index: 20; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; text-align: left; text-shadow: 0 5px 24px rgba(0,0,0,.5); pointer-events: none; }
+      .hook-stack, .hook-chip { position: relative; z-index: 1; }
+      .hook-stack { display: grid; justify-items: start; gap: 14px; }
       .hook-main { width: fit-content; max-width: 100%; border-radius: 22px; background: #f8fafc; color: #020617; padding: 22px 28px; font-size: 58px; font-weight: 900; line-height: 1.08; }
-      .hook-sub { width: fit-content; max-width: 100%; border-radius: 999px; background: #f59e0b; color: #111827; padding: 14px 22px; font-size: 36px; font-weight: 800; }
+      .hook-sub { width: fit-content; max-width: 100%; border-radius: 999px; background: #f59e0b; color: #111827; padding: 14px 22px; font-size: 36px; font-weight: 800; line-height: 1.12; text-shadow: none; }
+      .hook-chip { width: fit-content; max-width: 78%; border-radius: 20px; background: rgba(255,255,255,.94); color: #020617; padding: 16px 22px; font-size: 30px; font-weight: 900; line-height: 1.12; text-shadow: none; box-shadow: 0 20px 50px rgba(2,6,23,.25); }
+      [data-overlay-preset="kinetic_bold_hook"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; padding: 4% 6% 22%; }
+      [data-overlay-preset="kinetic_bold_hook"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(90deg, rgba(2,6,23,.9) 0 53%, rgba(2,6,23,.18) 54% 100%), linear-gradient(135deg, transparent 0 53%, rgba(250,204,21,.9) 54% 78%, transparent 79% 100%); pointer-events: none; }
+      [data-overlay-preset="kinetic_bold_hook"] .hook-main { max-width: 72%; border-radius: 0; background: transparent; padding: 0; color: #fff; font-size: 74px; text-shadow: 0 7px 0 rgba(0,0,0,.52), 0 12px 36px rgba(0,0,0,.48); }
+      [data-overlay-preset="kinetic_bold_hook"] .hook-sub { max-width: 92%; border-radius: 22px; background: #facc15; color: #020617; padding: 18px 24px; font-size: 42px; font-weight: 900; transform: rotate(-2deg); }
+      [data-overlay-preset="kinetic_bold_hook"] .hook-chip { max-width: 72%; border-radius: 18px; background: rgba(255,255,255,.94); color: #020617; font-size: 30px; transform: rotate(-1deg); }
+      [data-overlay-preset="creator_top_punch"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: flex-start; align-items: center; padding: 5% 8% 24%; text-align: center; }
+      [data-overlay-preset="creator_top_punch"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.42)); pointer-events: none; }
+      [data-overlay-preset="creator_top_punch"] .hook-stack { justify-items: center; gap: 0; }
+      [data-overlay-preset="creator_top_punch"] .hook-main,
+      [data-overlay-preset="creator_top_punch"] .hook-sub,
+      [data-overlay-preset="creator_top_punch"] .hook-chip { max-width: 92%; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #fff; font-weight: 950; line-height: 1.02; text-align: center; text-shadow: 0 4px 0 #020617, 0 8px 18px rgba(2,6,23,.55); -webkit-text-stroke: 2px #020617; text-stroke: 2px #020617; }
+      [data-overlay-preset="creator_top_punch"] .hook-main { color: #a7f3d0; font-size: 70px; }
+      [data-overlay-preset="creator_top_punch"] .hook-sub { font-size: 62px; }
+      [data-overlay-preset="creator_top_punch"] .hook-chip { margin-top: 10px; font-size: 42px; }
+      [data-overlay-preset="ugc_center_stack"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: center; align-items: center; padding: 0 7% 18%; text-align: center; }
+      [data-overlay-preset="ugc_center_stack"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.04) 44%, rgba(2,6,23,.34)); pointer-events: none; }
+      [data-overlay-preset="ugc_center_stack"] .hook-stack { justify-items: center; gap: 0; transform: translateY(-6%); }
+      [data-overlay-preset="ugc_center_stack"] .hook-main,
+      [data-overlay-preset="ugc_center_stack"] .hook-sub,
+      [data-overlay-preset="ugc_center_stack"] .hook-chip { max-width: 96%; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #f8fafc; font-weight: 950; line-height: 1.02; text-align: center; text-shadow: 0 4px 0 rgba(2,6,23,.82), 0 10px 22px rgba(2,6,23,.46); -webkit-text-stroke: 2px rgba(2,6,23,.86); text-stroke: 2px rgba(2,6,23,.86); }
+      [data-overlay-preset="ugc_center_stack"] .hook-main { font-size: 74px; }
+      [data-overlay-preset="ugc_center_stack"] .hook-sub { color: #fbbf24; font-size: 78px; }
+      [data-overlay-preset="ugc_center_stack"] .hook-chip { display: none; }
+      [data-overlay-preset="white_intro_card"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: center; align-items: center; padding: 0 10% 10%; text-align: center; text-shadow: 0 10px 28px rgba(15,23,42,.14); }
+      [data-overlay-preset="white_intro_card"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: #f1f5f9; pointer-events: none; }
+      [data-overlay-preset="white_intro_card"] .hook-stack { justify-items: center; gap: 8px; }
+      [data-overlay-preset="white_intro_card"] .hook-stack::before { content: ""; width: 118px; height: 86px; border-radius: 999px; background: radial-gradient(circle at 28% 42%, #2563eb 0 26%, transparent 27%), radial-gradient(circle at 68% 28%, #3b82f6 0 18%, transparent 19%), radial-gradient(circle at 56% 72%, #2563eb 0 18%, transparent 19%); filter: drop-shadow(0 14px 26px rgba(37,99,235,.18)); }
+      [data-overlay-preset="white_intro_card"] .hook-main,
+      [data-overlay-preset="white_intro_card"] .hook-sub,
+      [data-overlay-preset="white_intro_card"] .hook-chip { max-width: 92%; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #111827; font-weight: 950; line-height: 1.04; text-align: center; text-shadow: 0 10px 28px rgba(15,23,42,.14); }
+      [data-overlay-preset="white_intro_card"] .hook-main { font-size: 76px; }
+      [data-overlay-preset="white_intro_card"] .hook-sub { color: #334155; font-size: 48px; }
+      [data-overlay-preset="white_intro_card"] .hook-chip { display: none; }
+      [data-overlay-preset="tech_signal_map"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: flex-start; align-items: center; padding: 6% 6% 18%; text-align: center; }
+      [data-overlay-preset="tech_signal_map"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.34), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.2), transparent 24%), linear-gradient(180deg, rgba(2,6,23,.92), rgba(15,23,42,.8)); pointer-events: none; }
+      [data-overlay-preset="tech_signal_map"].hook-layer::after { content: ""; position: absolute; left: 14%; right: 14%; top: 42%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
+      [data-overlay-preset="tech_signal_map"] .hook-stack { justify-items: center; gap: 0; }
+      [data-overlay-preset="tech_signal_map"] .hook-main,
+      [data-overlay-preset="tech_signal_map"] .hook-sub,
+      [data-overlay-preset="tech_signal_map"] .hook-chip { max-width: 94%; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #f8fafc; font-weight: 950; line-height: 1.04; text-align: center; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
+      [data-overlay-preset="tech_signal_map"] .hook-main { color: #22d3ee; font-size: 76px; }
+      [data-overlay-preset="tech_signal_map"] .hook-sub { color: #fb923c; font-size: 72px; }
+      [data-overlay-preset="tech_signal_map"] .hook-chip { margin-top: 34%; border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 34px; }
+      @keyframes overlayCopyLifetime { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
       @keyframes shotIn { from { opacity: 0; transform: scale(1.035); } to { opacity: 1; transform: scale(1); } }
       @keyframes lineIn { from { opacity: 0; transform: translateY(28px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes textSlideRightToLeft { from { opacity: 0; transform: translateX(100%) scale(.98); } 72% { opacity: 1; transform: translateX(-2%) scale(1.015); } to { opacity: 1; transform: translateX(0) scale(1); } }
+      @keyframes textSlideLeftToRight { from { opacity: 0; transform: translateX(-84%) scale(.98); } 72% { opacity: 1; transform: translateX(2%) scale(1.015); } to { opacity: 1; transform: translateX(0) scale(1); } }
+      @keyframes textPopScale { 0% { opacity: 0; transform: scale(.72); } 68% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+      @keyframes textWipeReveal { from { opacity: 1; clip-path: inset(0 100% 0 0); transform: translateX(14px); } to { opacity: 1; clip-path: inset(0 0 0 0); transform: translateX(0); } }
+      @keyframes textStaggerRise { from { opacity: 0; transform: translateY(34px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes floatProduct { 0%,100% { transform: scale(1.02) translateY(0); } 50% { transform: scale(1.055) translateY(-16px); } }
+      .motion-item { --motion-delay: 0s; transform-origin: left center; }
       .shot.is-active { opacity: 1; animation: shotIn .38s ease-out both; }
+      .shot.is-active .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear both; }
+      .shot.is-active[data-shot-copy-deferred="after-hook"] .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear 3s forwards; }
       .source-video.is-active { animation: floatProduct ${Math.max(shotDurationAverage(config), 4)}s ease-in-out infinite; }
-      .shot.is-active .shot-line { animation: lineIn .52s cubic-bezier(.22,1,.36,1) both; }
+      .shot.is-active .shot-line { animation: textStaggerRise .52s cubic-bezier(.22,1,.36,1) both; }
       .shot.is-active .line-2 { animation-delay: .16s; }
       .shot.is-active .line-3 { animation-delay: .28s; }
       .shot.is-active .line-4 { animation-delay: .42s; }
+      .hook-layer[data-text-motion-preset="stagger_rise"] .motion-item,
+      .shot.is-active[data-text-motion-preset="stagger_rise"] .motion-item { animation: textStaggerRise .58s cubic-bezier(.22,1,.36,1) both; animation-delay: var(--motion-delay); }
+      .hook-layer[data-text-motion-preset="slide_right_to_left"] .motion-item,
+      .shot.is-active[data-text-motion-preset="slide_right_to_left"] .motion-item { animation: textSlideRightToLeft .68s cubic-bezier(.18,.9,.24,1) both; animation-delay: var(--motion-delay); }
+      .hook-layer[data-text-motion-preset="slide_left_to_right"] .motion-item,
+      .shot.is-active[data-text-motion-preset="slide_left_to_right"] .motion-item { animation: textSlideLeftToRight .68s cubic-bezier(.18,.9,.24,1) both; animation-delay: var(--motion-delay); }
+      .hook-layer[data-text-motion-preset="pop_scale"] .motion-item,
+      .shot.is-active[data-text-motion-preset="pop_scale"] .motion-item { animation: textPopScale .62s cubic-bezier(.18,.9,.24,1) both; animation-delay: var(--motion-delay); }
+      .hook-layer[data-text-motion-preset="wipe_reveal"] .motion-item,
+      .shot.is-active[data-text-motion-preset="wipe_reveal"] .motion-item { animation: textWipeReveal .72s cubic-bezier(.22,1,.36,1) both; animation-delay: var(--motion-delay); }
+      [data-text-motion-preset="none"] .motion-item { animation: none !important; opacity: 1; clip-path: none; transform: none; }
       .shot-bounce_price.is-active .shot-line:first-child { background: #111827; color: #facc15; transform-origin: left center; }
       .shot-glow_feature.is-active .shot-line:first-child { box-shadow: 0 0 38px rgba(45,212,191,.48); }
       .subtitle-cue.is-active { opacity: 1; }
@@ -820,7 +995,7 @@ function buildHyperframesFinalCompositeHtml(input: {
       ${audioHtml}
       <script>
         window.__hyperframesFinalCompositeConfig = ${JSON.stringify({
-          ...config,
+          ...renderConfig,
           creativeTimeline: timeline,
           compositionInputHash: input.composition.provenance.compositionInputHash,
         })};

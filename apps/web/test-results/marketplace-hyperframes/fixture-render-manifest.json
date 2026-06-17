@@ -3,7 +3,7 @@
   "status": "passed",
   "renderer": "hyperframes_cli_official",
   "officialRuntime": true,
-  "generatedAt": "2026-06-15T04:39:28.380Z",
+  "generatedAt": "2026-06-16T04:29:21.916Z",
   "runtimeDiagnostics": {
     "nodeVersion": "v22.22.3",
     "hyperframesCliVersion": "0.6.95",
@@ -11,19 +11,19 @@
     "fontAssetStaged": true,
     "fixtureMediaAssets": {
       "videoSceneOne": {
-        "path": "/tmp/ssp-hyperframes-official-fixture-o59jMN/assets/video/scene-1.mp4",
+        "path": "/tmp/ssp-hyperframes-official-fixture-EskLtA/assets/video/scene-1.mp4",
         "ok": true,
         "sizeBytes": 12923,
         "contentHash": "hf_70863b3e5e6cb357e013310239c6b173920eed8f779f1d6f"
       },
       "videoSceneTwo": {
-        "path": "/tmp/ssp-hyperframes-official-fixture-o59jMN/assets/video/scene-2.mp4",
+        "path": "/tmp/ssp-hyperframes-official-fixture-EskLtA/assets/video/scene-2.mp4",
         "ok": true,
         "sizeBytes": 12944,
         "contentHash": "hf_63e7470aae83e1c8058cf89244c66af792ad24f78999c19e"
       },
       "musicBed": {
-        "path": "/tmp/ssp-hyperframes-official-fixture-o59jMN/assets/audio/music-bed.wav",
+        "path": "/tmp/ssp-hyperframes-official-fixture-EskLtA/assets/audio/music-bed.wav",
         "ok": true,
         "sizeBytes": 384078,
         "contentHash": "hf_40c170e93640ae94a01809bd6c2dbc3a2bb91a429555526b"
@@ -54,7 +54,7 @@
       "product_truth_hash_mismatch_blocks_render"
     ]
   },
-  "htmlPath": "/tmp/ssp-hyperframes-official-fixture-o59jMN/index.html",
+  "htmlPath": "/tmp/ssp-hyperframes-official-fixture-EskLtA/index.html",
   "frameCount": 48,
   "frames": [],
   "output": {

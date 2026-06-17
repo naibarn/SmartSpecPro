@@ -354,7 +354,7 @@ describe("hyperframesCompositionService", () => {
       timelineVersion: 1,
     });
     expect(composition.provenance.builderVersion).toBe(
-      "hyperframes_final_composite_builder_v8"
+      "hyperframes_final_composite_builder_v15"
     );
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
     expect(composition.compositionHtml).toContain(
@@ -373,11 +373,79 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).not.toMatch(/<video[^>]+muted/);
     expect(composition.compositionHtml).toContain('data-track-index="0"');
     expect(composition.compositionHtml).toContain(
-      '<div class="hook-main">แท็บเล็ตจอใหญ่</div>'
+      'data-text-motion-preset="stagger_rise"'
+    );
+    expect(composition.compositionHtml).toContain(
+      'data-text-motion-preset="slide_right_to_left"'
+    );
+    expect(composition.compositionHtml).not.toContain("SHOT 1");
+    expect(composition.compositionHtml).not.toContain("hook-badge");
+    expect(composition.compositionHtml).toContain(
+      '<div class="hook-main motion-item" style="--motion-delay:0s">แท็บเล็ตจอใหญ่</div>'
+    );
+    expect(composition.compositionHtml).toContain(
+      '<div class="hook-sub motion-item" style="--motion-delay:0.14s">Xiaomi Pad 8</div>'
+    );
+    expect(composition.compositionHtml).toContain(
+      '<div class="hook-chip motion-item" style="--motion-delay:0.28s">Xiaomi Pad 8</div>'
+    );
+    expect(composition.compositionHtml).toContain(
+      'data-shot-copy-deferred="after-hook" data-has-shot-copy="true"'
+    );
+    expect(composition.compositionHtml).toContain('<div class="shade"></div>');
+    expect(composition.compositionHtml).toContain(".overlay-copy-layer");
+    expect(composition.compositionHtml).toContain("@keyframes overlayCopyLifetime");
+    expect(composition.compositionHtml).toContain(
+      ".shot.is-active .overlay-copy-layer"
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="price_impact"] .shot-copy { top: auto; bottom: 28%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="hero_price_billboard"] .shot-copy { top: auto; bottom: 25%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="lower_third_review"] .shot-copy { top: auto; bottom: 31%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="spec_highlight"] .shot-copy { left: 8%; right: 8%; top: 4%;'
+    );
+    expect(composition.compositionHtml).toContain("-webkit-text-stroke: 2px #020617");
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="electronics_spec_stack"] .shot-copy { left: auto; top: 14%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="feature_cards"] .shot-copy { top: 19%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="creator_top_punch"] .shot-copy { left: 8%; right: 8%; top: 5%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="ugc_center_stack"] .shot-copy { left: 7%; right: 7%; top: 42%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="ugc_center_stack"] .hook-sub { color: #fbbf24; font-size: 78px; }'
+    );
+    expect(composition.compositionHtml).toContain(
+      ".shot-line, .hook-main, .hook-sub, .hook-chip, .subtitle-cue { box-sizing: border-box; overflow-wrap: anywhere; word-break: break-word; }"
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="white_intro_card"] .shot-copy { inset: 0; display: flex;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="white_intro_card"] .overlay-copy-layer { z-index: 10; }'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="tech_signal_map"] .shot-copy { left: 6%; right: 6%; top: 6%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="kinetic_bold_hook"].hook-layer::before'
     );
     expect(composition.compositionHtml).not.toContain(
       '<div class="shot-line line-1">แท็บเล็ตจอใหญ่</div>'
     );
+    expect(composition.compositionHtml).toContain("@keyframes textSlideRightToLeft");
+    expect(composition.compositionHtml).toContain('[data-text-motion-preset="slide_right_to_left"] .motion-item');
     expect(composition.compositionHtml).toContain('class="clip audio-event"');
     expect(composition.compositionHtml).not.toMatch(
       /<audio[^>]+hf_audio_music_upbeat_ecommerce_social_v1\.wav/
@@ -483,6 +551,178 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain('data-has-audio="false"');
     expect(composition.compositionHtml).not.toContain('data-has-audio="true"');
     expect(composition.compositionHtml).not.toContain('data-native-audio="true"');
+  });
+
+  it("scopes every per-shot overlay to a short lifetime and defers shot 1 copy until after the hook", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: { title: "BENO PRO-FLEX" },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      finalComposite: {
+        finalVideoLengthSec: 16,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: "hook_and_per_shot",
+        overlayPreset: "kinetic_bold_hook",
+        includeHookText: true,
+        includeShotText: true,
+        burnInSubtitles: true,
+        subtitlePreset: "classic_box",
+        preserveNativeAudio: true,
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "none",
+        sfxPresetIds: [],
+        audioEvents: [],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+        fontFamily: "Prompt",
+        styleBrief: "",
+        hookText: "ชงกาแฟหอมเข้ม",
+        supportingText: "BENO PRO-FLEX",
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "storage://shot-1",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "kinetic_bold_hook",
+            onScreenText: ["ชงกาแฟหอมเข้ม", "BENO PRO-FLEX"],
+            subtitleCues: [{ startSec: 0, endSec: 3, text: "เริ่มต้นด้วยปัญหากาแฟเปรี้ยว" }],
+            animationPreset: "glow_feature",
+            transition: "fade",
+          },
+          {
+            id: "shot_2",
+            index: 1,
+            title: "Shot 2",
+            sourceVideoUrl: "/api/storage/files/shot-2.mp4",
+            sourceVideoRef: "storage://shot-2",
+            startSec: 8,
+            durationSec: 8,
+            overlayPreset: "kinetic_bold_hook",
+            onScreenText: ["บด ชง ตีฟองในเครื่องเดียว", "ใช้งานง่ายขึ้นทุกเช้า"],
+            subtitleCues: [{ startSec: 8, endSec: 11, text: "บด ชง และตีฟองได้ในเครื่องเดียว" }],
+            animationPreset: "smooth_reveal",
+            transition: "fade",
+          },
+        ],
+      },
+    });
+
+    expect(composition.compositionHtml).toMatch(
+      /id="shot-shot_1"[\s\S]*?data-shot-copy-deferred="after-hook" data-has-shot-copy="true"/
+    );
+    expect(composition.compositionHtml).toMatch(
+      /id="shot-shot_1"[\s\S]*?<div class="shot-line line-1 motion-item" style="--motion-delay:0s">ชงกาแฟหอมเข้ม<\/div>/
+    );
+    expect(composition.compositionHtml).toMatch(
+      /id="shot-shot_2"[\s\S]*?data-text-motion-preset="stagger_rise"[\s\S]*?<div class="overlay-copy-layer">[\s\S]*?<div class="shot-line line-1 motion-item" style="--motion-delay:0s">บด ชง ตีฟองในเครื่องเดียว<\/div>/
+    );
+    expect(composition.compositionHtml).toContain(
+      ".overlay-copy-layer { position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none; }"
+    );
+    expect(composition.compositionHtml).toContain(
+      ".shot.is-active .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear both; }"
+    );
+    expect(composition.compositionHtml).toContain(
+      '.shot.is-active[data-shot-copy-deferred="after-hook"] .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear 3s forwards; }'
+    );
+    expect(composition.compositionHtml).toContain(
+      "@keyframes overlayCopyLifetime { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }"
+    );
+  });
+
+  it("keeps video prompt text out of overlay copy and applies selected subtitle size", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      productState: { title: "BENO PRO-FLEX" },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: "per_shot",
+        overlayPreset: "auto",
+        includeHookText: false,
+        includeShotText: true,
+        burnInSubtitles: true,
+        subtitlePreset: "classic_box",
+        subtitleFontSizePx: 28,
+        preserveNativeAudio: true,
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "none",
+        sfxPresetIds: [],
+        audioEvents: [],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+        fontFamily: "Prompt",
+        styleBrief: "",
+        hookText: "",
+        supportingText: "",
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "storage://shot-1",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "auto",
+            onScreenText: [
+              "Create a 5-second cinematic video. Scene: Use @Image1 as start frame.",
+              "ชงกาแฟหอมเข้ม",
+            ],
+            subtitleCues: [
+              {
+                startSec: 0,
+                endSec: 3,
+                text: "คุณเคยชงกาแฟตอนเช้า แบบชงเท่าไหร่ก็ยังได้กาแฟติดเปรี้ยวจนหมดอารมณ์ไหม",
+              },
+            ],
+            animationPreset: "smooth_reveal",
+            transition: "fade",
+          },
+        ],
+      },
+    });
+
+    expect(composition.compositionHtml).not.toContain("Create a 5-second cinematic video");
+    expect(composition.compositionHtml).not.toContain("Use @Image1 as start frame");
+    expect(composition.compositionHtml).toContain(
+      '<div class="shot-line line-1 motion-item" style="--motion-delay:0s">ชงกาแฟหอมเข้ม</div>'
+    );
+    expect(composition.compositionHtml).toContain("font-size: 28px");
+    expect(composition.compositionHtml).toContain(
+      "คุณเคยชงกาแฟตอนเช้า แบบชงเท่าไหร่ก็ยังได้กาแฟติดเปรี้ยวจนหมดอารมณ์ไหม"
+    );
   });
 
   it("does not emit audio tags for final composite audio refs that were not validated for staging", () => {

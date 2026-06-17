@@ -140,7 +140,7 @@ export type HyperframesAutoPlanOverrideInput = z.infer<
 
 export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   platformPresetId: "generic_vertical_9_16",
-  frameStrategy: "storyboard_3x3_split",
+  frameStrategy: "video_shot_start_stop",
   audioStrategy: "native_video_audio",
   shotCount: "9",
   overlayTextMode: "no_text",

@@ -70,9 +70,11 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     });
     expect(onChange).toHaveBeenLastCalledWith({ shotCount: 7 });
     fireEvent.change(screen.getByLabelText("Image model"), {
-      target: { value: "google-banana-2" },
+      target: { value: "google-nano-banana-pro" },
     });
-    expect(onChange).toHaveBeenLastCalledWith({ imageModel: "google-banana-2" });
+    expect(onChange).toHaveBeenLastCalledWith({
+      imageModel: "google-nano-banana-pro",
+    });
     expect(screen.queryByLabelText(/template/i)).toBeNull();
     expect(screen.queryByLabelText(/render engine/i)).toBeNull();
   });
@@ -94,20 +96,20 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.getByLabelText("Audio")).toHaveValue("native_video_audio");
     expect(screen.getByLabelText("Text policy")).toHaveValue("no_text");
     expect(screen.getByLabelText("Shots")).toHaveValue("9");
-    expect(screen.getByLabelText("Frames")).toHaveValue("storyboard_3x3_split");
+    expect(screen.getByLabelText("Frames")).toHaveValue("video_shot_start_stop");
     expect(screen.getByLabelText("Image model")).toHaveValue(
-      "google-nano-banana-pro"
+      "google-banana-2"
     );
     expect(screen.getByText(/no overrides active/i)).toBeTruthy();
   });
 
-  it("keeps 3x3 as the visible frame default when clearing a frame override", () => {
+  it("keeps start/stop as the visible frame default when clearing a frame override", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <AutoStoryboardAdvancedOverrides
-        plan={readyPlan({ frameStrategy: "video_shot_start_stop" })}
+        plan={readyPlan({ frameStrategy: "storyboard_3x3_split" })}
         open
-        value={{ frameStrategy: "video_shot_start_stop" }}
+        value={{ frameStrategy: "storyboard_3x3_split" }}
         onChange={onChange}
         onOpenChange={vi.fn()}
         onResetToAuto={vi.fn()}
@@ -115,9 +117,9 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     );
 
     const frames = screen.getByLabelText("Frames");
-    expect(frames).toHaveValue("video_shot_start_stop");
+    expect(frames).toHaveValue("storyboard_3x3_split");
     fireEvent.change(frames, {
-      target: { value: "storyboard_3x3_split" },
+      target: { value: "video_shot_start_stop" },
     });
     expect(onChange).toHaveBeenLastCalledWith({});
     rerender(
@@ -130,7 +132,7 @@ describe("AutoStoryboardAdvancedOverrides", () => {
         onResetToAuto={vi.fn()}
       />
     );
-    expect(frames).toHaveValue("storyboard_3x3_split");
+    expect(frames).toHaveValue("video_shot_start_stop");
   });
 
   it("clears a local override when the user picks the current auto default", () => {

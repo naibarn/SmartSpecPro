@@ -498,7 +498,7 @@ export function getHyperframesRuntimeDiagnostics(
   };
 }
 
-function resolveHyperframesCliBinary(env?: HyperframesRuntimeAdapterEnv): string {
+export function resolveHyperframesCliBinary(env?: HyperframesRuntimeAdapterEnv): string {
   const explicit = String(env?.HYPERFRAMES_CLI_BINARY ?? "").trim();
   if (explicit) return explicit;
   const candidates = [
@@ -554,7 +554,7 @@ function resolveRuntimeExecutable(
   return null;
 }
 
-function buildHyperframesCliProcessEnv(
+export function buildHyperframesCliProcessEnv(
   env?: HyperframesRuntimeAdapterEnv
 ): NodeJS.ProcessEnv {
   const ffmpegPath = resolveRuntimeExecutable("ffmpeg", env?.HYPERFRAMES_FFMPEG_BINARY);

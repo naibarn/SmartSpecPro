@@ -32,6 +32,7 @@ describe("hyperframesDependencyAudit", () => {
     );
     expect(doctor.hyperframesRuntime.cliPackage).toBe("hyperframes@0.6.95");
     expect(doctor.hyperframesRuntime.producerPackage).toBe("@hyperframes/producer@0.6.95");
+    expect(typeof doctor.whisperCpp.ok).toBe("boolean");
     expect(doctor.localSmokeRenderer.renderer).toBe(
       "diagnostic_ffmpeg_smoke"
     );

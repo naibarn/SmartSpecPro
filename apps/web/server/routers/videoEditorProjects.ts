@@ -20,6 +20,10 @@ import {
   UpdateStoryboardReviewHyperframesFinalCompositeInputSchema,
   mergeStoryboardReviewHyperframesFinalCompositeState,
 } from "../../shared/hyperframes/storyboardReviewState";
+import {
+  storageKeyFromManagedHyperframesMediaUrl,
+  transcribeHyperframesStoryboardShot,
+} from "../services/hyperframesTranscriptionService";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
@@ -424,6 +428,48 @@ function getStoryboardReviewMarketplaceProductId(reviewData: unknown): string {
     if (productId) return productId;
   }
   return "";
+}
+
+function normalizeStoryboardReviewManagedMediaUrl(value: unknown): string {
+  const text = cleanString(value);
+  const key = storageKeyFromManagedHyperframesMediaUrl(text);
+  return key ? `/api/storage/files/${encodeURI(key)}` : text;
+}
+
+function storyboardReviewContainsManagedVideoUrl(reviewData: unknown, sourceVideoUrl: string): boolean {
+  if (!isStoryboardReviewRecord(reviewData)) return false;
+  const target = normalizeStoryboardReviewManagedMediaUrl(sourceVideoUrl);
+  if (!storageKeyFromManagedHyperframesMediaUrl(target)) return false;
+  const candidates: unknown[] = [];
+  const collectFromRecord = (record: Record<string, unknown>) => {
+    for (const key of [
+      "url",
+      "sourceUrl",
+      "sourceVideoUrl",
+      "videoUrl",
+      "resultUrl",
+      "storageRef",
+    ]) {
+      if (record[key]) candidates.push(record[key]);
+    }
+  };
+  const collectList = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    for (const item of value) {
+      if (isStoryboardReviewRecord(item)) collectFromRecord(item);
+    }
+  };
+
+  collectList(reviewData.tasks);
+  collectList(reviewData.clips);
+  if (isStoryboardReviewRecord(reviewData.output)) {
+    collectList(reviewData.output.clips);
+  }
+  if (isStoryboardReviewRecord(reviewData.hyperframesFinalComposite)) {
+    collectList(reviewData.hyperframesFinalComposite.shotMediaAssignments);
+  }
+
+  return candidates.some(candidate => normalizeStoryboardReviewManagedMediaUrl(candidate) === target);
 }
 
 function getStoryboardReviewTaskAutoReviewRunIds(reviewData: unknown): Set<string> {
@@ -1134,6 +1180,93 @@ export const videoEditorProjectsRouter = router({
           error instanceof Error ? error.message : "Invalid HyperFrames state update.";
         throw new TRPCError({
           code: message.includes("revision conflict") ? "CONFLICT" : "BAD_REQUEST",
+          message,
+        });
+      }
+    }),
+
+  /** Create editable subtitle text from a Storyboard Review shot MP4 via HyperFrames transcribe. */
+  transcribeStoryboardReviewShotSubtitle: protectedProcedure
+    .input(
+      z.object({
+        storyboardReviewProjectId: z.number().int().positive(),
+        productId: z.string().trim().min(1).max(180),
+        runId: z.string().trim().min(1).max(180),
+        shotId: z.string().trim().min(1).max(180),
+        sourceVideoUrl: z.string().trim().min(1).max(4096),
+        language: z.string().trim().min(2).max(12).default("th"),
+        model: z.string().trim().min(1).max(80).optional(),
+      }).strict(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const [existing] = await db
+        .select({
+          id: mediaStudioStoryboardReviews.id,
+          reviewData: mediaStudioStoryboardReviews.reviewData,
+        })
+        .from(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Storyboard Review project was not found.",
+        });
+      }
+
+      const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
+        db,
+        userId: ctx.user.id,
+        reviewData: existing.reviewData,
+      });
+      const canonicalProductId =
+        getStoryboardReviewMarketplaceProductId(normalizedReviewData);
+      const canonicalRunId = getStoryboardReviewAutoReviewRunId(normalizedReviewData);
+      if (canonicalProductId !== input.productId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review product does not match HyperFrames transcribe input.",
+        });
+      }
+      if (canonicalRunId !== input.runId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review Auto Review run does not match HyperFrames transcribe input.",
+        });
+      }
+      if (!storyboardReviewContainsManagedVideoUrl(normalizedReviewData, input.sourceVideoUrl)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "HyperFrames transcribe source video is not a managed clip in this Storyboard Review.",
+        });
+      }
+
+      try {
+        const result = await transcribeHyperframesStoryboardShot({
+          sourceVideoUrl: input.sourceVideoUrl,
+          language: input.language,
+          model: input.model,
+        });
+        return {
+          shotId: input.shotId,
+          sourceVideoUrl: input.sourceVideoUrl,
+          ...result,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "HyperFrames transcribe failed.";
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
           message,
         });
       }

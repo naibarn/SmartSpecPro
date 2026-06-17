@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,24 @@ type StoryboardVideoPreview = {
   url: string;
   title: string;
   subtitle?: string | null;
+  overlayPreview?: {
+    posterUrl?: string | null;
+    overlayPreset?: string;
+    textMotionPreset?: string;
+    subtitlePreset?: string;
+    subtitleFontSizePx?: number;
+    layerLabel?: string;
+    titleText?: string;
+    hookText?: string;
+    priceText?: string;
+    chips?: string[];
+    subtitleText?: string;
+    presetKind?: string;
+  };
 };
+
+type HyperframesSelectedShotPreviewMode = "design" | "video";
+type HyperframesSelectedShotVideoLoadState = "idle" | "loading" | "ready" | "error";
 
 function isProbablyVideoUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
@@ -440,11 +457,86 @@ function findFirstStoryboardReviewThumbnail(value: unknown, visited = new WeakSe
   return null;
 }
 
+function findFirstStoryboardReviewImageUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed && isProbablyImageUrl(trimmed) ? normalizeStoryboardMediaUrl(trimmed) : null;
+  }
+
+  if (!value || typeof value !== "object") return null;
+  if (visited.has(value)) return null;
+  visited.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstStoryboardReviewImageUrl(item, visited);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of [
+    "thumbnailUrl",
+    "thumbnail_url",
+    "posterUrl",
+    "poster_url",
+    "imageUrl",
+    "image_url",
+    "referenceUrls",
+    "reference_images",
+    "referenceImages",
+    "storyboardContext",
+    "generationExtraParams",
+  ]) {
+    const found = findFirstStoryboardReviewImageUrl(record[key], visited);
+    if (found) return found;
+  }
+  for (const value of Object.values(record)) {
+    const found = findFirstStoryboardReviewImageUrl(value, visited);
+    if (found) return found;
+  }
+  return null;
+}
+
 function getStoryboardReviewProjectThumbnail(item: unknown): string | null {
   if (!item || typeof item !== "object") return null;
   const record = item as Record<string, unknown>;
   return findFirstStoryboardReviewThumbnail(record.thumbnailUrl)
     ?? findFirstStoryboardReviewThumbnail(record.reviewData);
+}
+
+function getStoryboardClipPosterUrl(clip: StoryboardClipCandidate | null | undefined): string | undefined {
+  if (!clip) return undefined;
+  const referencePoster = clip.referenceUrls?.find(isProbablyImageUrl);
+  if (referencePoster) return referencePoster;
+  const extraPoster = findFirstStoryboardReviewImageUrl(clip.generationExtraParams);
+  if (extraPoster) return extraPoster;
+  const nestedPoster = findFirstStoryboardReviewImageUrl(clip);
+  if (nestedPoster) return nestedPoster;
+  return isProbablyImageUrl(clip.url) ? clip.url : undefined;
+}
+
+function getHyperframesVideoPreviewStatusText(input: {
+  locale: string;
+  hasVideo: boolean;
+  state: HyperframesSelectedShotVideoLoadState;
+  error: string;
+  shotNumber: number;
+}): string {
+  if (!input.hasVideo) {
+    return input.locale === "th" ? "shot นี้ไม่มี MP4 ให้เล่น" : "This shot has no MP4 preview.";
+  }
+  if (input.state === "loading") {
+    return input.locale === "th" ? "กำลังโหลดวิดีโอ..." : "Loading video...";
+  }
+  if (input.state === "error") {
+    return input.error || (input.locale === "th" ? "โหลดวิดีโอไม่สำเร็จ" : "Failed to load video.");
+  }
+  if (input.state === "ready") {
+    return input.locale === "th" ? `กำลังเล่นวิดีโอ shot ${input.shotNumber}` : `Playing shot ${input.shotNumber}`;
+  }
+  return input.locale === "th" ? "กำลังเตรียมวิดีโอ..." : "Preparing video...";
 }
 
 const storyboardUploadAssetResolver = new WebAssetResolver();
@@ -741,6 +833,8 @@ const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-2
 type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 type HyperframesFinalOverlayPreset = HyperframesFinalCompositeConfig["overlayPreset"];
 type HyperframesFinalSubtitlePreset = HyperframesFinalCompositeConfig["subtitlePreset"];
+type HyperframesFinalTextMode = HyperframesFinalCompositeConfig["textMode"];
+type HyperframesFinalTextMotionPreset = NonNullable<HyperframesFinalCompositeConfig["textMotionPreset"]>;
 type HyperframesFinalShotAnimationPreset = HyperframesFinalCompositeConfig["shots"][number]["animationPreset"];
 type HyperframesFinalShotTransition = HyperframesFinalCompositeConfig["shots"][number]["transition"];
 type HyperframesFinalSfxRole = Exclude<(typeof hyperframesAudioRoles)[number], "voiceover" | "music" | "ambience">;
@@ -772,6 +866,10 @@ const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
   { id: "premium_product_hero", labelTh: "Premium Product Hero", labelEn: "Premium product hero", kind: "hook" },
   { id: "hook_sequence", labelTh: "Hook ทีละจังหวะ", labelEn: "Hook sequence", kind: "hook" },
   { id: "kinetic_bold_hook", labelTh: "Kinetic Bold Hook", labelEn: "Kinetic bold hook", kind: "hook" },
+  { id: "creator_top_punch", labelTh: "Creator Top Punch", labelEn: "Creator top punch", kind: "hook" },
+  { id: "ugc_center_stack", labelTh: "UGC Center Stack", labelEn: "UGC center stack", kind: "hook" },
+  { id: "white_intro_card", labelTh: "White Intro Card", labelEn: "White intro card", kind: "hook" },
+  { id: "tech_signal_map", labelTh: "Tech Signal Map", labelEn: "Tech signal map", kind: "spec" },
   { id: "spec_highlight", labelTh: "Spec Highlight", labelEn: "Spec highlight", kind: "spec" },
   { id: "electronics_spec_stack", labelTh: "Electronics Spec Stack", labelEn: "Electronics spec stack", kind: "spec" },
   { id: "split_product_specs", labelTh: "Split Product Specs", labelEn: "Split product specs", kind: "spec" },
@@ -804,6 +902,13 @@ const HYPERFRAMES_FINAL_SUBTITLE_PRESETS: Array<{
   { id: "review_bubble", labelTh: "Review Bubble", labelEn: "Review bubble" },
   { id: "no_subtitle_style", labelTh: "ไม่แสดง Subtitle", labelEn: "No subtitles" },
 ];
+
+const HYPERFRAMES_FINAL_SUBTITLE_FONT_SIZE_OPTIONS = [
+  { value: 28, labelTh: "เล็ก 28px", labelEn: "Small 28px" },
+  { value: 34, labelTh: "ปกติ 34px", labelEn: "Default 34px" },
+  { value: 40, labelTh: "ใหญ่ 40px", labelEn: "Large 40px" },
+  { value: 46, labelTh: "ใหญ่มาก 46px", labelEn: "Extra large 46px" },
+] as const;
 
 const HYPERFRAMES_FINAL_MUSIC_PRESETS = listHyperframesCreativePresets({
   category: "music",
@@ -838,6 +943,109 @@ const HYPERFRAMES_FINAL_SHOT_TRANSITIONS: Array<{
   { id: "whip", labelTh: "Whip", labelEn: "Whip" },
   { id: "none", labelTh: "ไม่ใช้ transition", labelEn: "No transition" },
 ];
+
+const HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS: Array<{
+  id: HyperframesFinalTextMode;
+  labelTh: string;
+  labelEn: string;
+  descriptionTh: string;
+  descriptionEn: string;
+}> = [
+  {
+    id: "hook_and_per_shot",
+    labelTh: "Hook 3 วิแรก + overlay ทุก shot",
+    labelEn: "3s opening hook + overlay every shot",
+    descriptionTh: "shot 1 แสดง Hook ก่อน แล้ว overlay ของ shot 1 เข้าหลัง Hook; shot อื่นแสดง overlay ราย shot",
+    descriptionEn: "Shot 1 shows the hook first, then its own overlay after the hook; other shots show their per-shot overlays.",
+  },
+  {
+    id: "hook_only",
+    labelTh: "Hook เฉพาะ 3 วิแรกของ shot 1",
+    labelEn: "Opening hook on shot 1 only",
+    descriptionTh: "แสดงเฉพาะ Hook/Supporting ใน 3 วินาทีแรกของ shot 1; shot อื่นไม่มี overlay",
+    descriptionEn: "Only Hook/supporting text appears during the first 3 seconds of shot 1; other shots have no overlay.",
+  },
+  {
+    id: "per_shot",
+    labelTh: "Overlay ราย shot ทุก shot",
+    labelEn: "Per-shot overlay on every shot",
+    descriptionTh: "ไม่ใช้ Hook เปิดเรื่อง; ทุก shot ใช้ข้อความ overlay ของ shot นั้น",
+    descriptionEn: "No opening hook; every shot uses its own per-shot overlay copy.",
+  },
+  {
+    id: "none",
+    labelTh: "ไม่ใส่ Hook/Overlay",
+    labelEn: "No hook or overlay",
+    descriptionTh: "ไม่แสดงข้อความ overlay บนภาพ แต่ subtitle ยังแสดงได้ถ้าเปิด Burn-in Subtitle",
+    descriptionEn: "No visual overlay text; subtitles can still render when burn-in subtitles are enabled.",
+  },
+];
+
+function getHyperframesFinalTextModeOption(mode: HyperframesFinalTextMode) {
+  return HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS.find(option => option.id === mode) ??
+    HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS[0]!;
+}
+
+function shouldRenderHyperframesFinalHookText(mode: HyperframesFinalTextMode): boolean {
+  return mode === "hook_only" || mode === "hook_and_per_shot";
+}
+
+function shouldRenderHyperframesFinalShotOverlay(mode: HyperframesFinalTextMode, shotIndex: number): boolean {
+  if (mode === "per_shot") return true;
+  if (mode === "hook_and_per_shot") return true;
+  return false;
+}
+
+function resolveHyperframesFinalRenderOverlayText(input: {
+  textMode: HyperframesFinalTextMode;
+  shotIndex: number;
+  overlayText: string;
+}): string {
+  return shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)
+    ? removeHyperframesVideoPromptOverlayText(input.overlayText)
+    : "";
+}
+
+function resolveHyperframesFinalPreviewOverlayLines(input: {
+  textMode: HyperframesFinalTextMode;
+  shotIndex: number;
+  overlayText: string;
+  hookText: string;
+  supportingText: string;
+  maxLines: number;
+  maxLength: number;
+}): string[] {
+  if (shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)) {
+    return hyperframesPreviewTextLines(removeHyperframesVideoPromptOverlayText(input.overlayText), {
+      maxLines: input.maxLines,
+      maxLength: input.maxLength,
+    });
+  }
+  if (shouldRenderHyperframesFinalHookText(input.textMode) && input.shotIndex === 0) {
+    return hyperframesPreviewTextLines([input.hookText, input.supportingText].join("\n"), {
+      maxLines: input.maxLines,
+      maxLength: input.maxLength,
+    });
+  }
+  return [];
+}
+
+const HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS: Array<{
+  id: HyperframesFinalTextMotionPreset;
+  labelTh: string;
+  labelEn: string;
+}> = [
+  { id: "slide_right_to_left", labelTh: "ข้อความเลื่อนขวาไปซ้าย", labelEn: "Slide right to left" },
+  { id: "stagger_rise", labelTh: "ขึ้นทีละจังหวะ", labelEn: "Stagger rise" },
+  { id: "slide_left_to_right", labelTh: "ข้อความเลื่อนซ้ายไปขวา", labelEn: "Slide left to right" },
+  { id: "pop_scale", labelTh: "เด้งเข้าจอ", labelEn: "Pop scale" },
+  { id: "wipe_reveal", labelTh: "ปาดเปิดข้อความ", labelEn: "Wipe reveal" },
+  { id: "none", labelTh: "ไม่ใช้ animation ข้อความ", labelEn: "No text motion" },
+];
+
+function defaultHyperframesFinalTextMotionPreset(index: number): HyperframesFinalTextMotionPreset {
+  return index === 0 ? "slide_right_to_left" : "stagger_rise";
+}
 
 const HYPERFRAMES_FINAL_SFX_TRIGGER_OPTIONS: Array<{
   id: HyperframesFinalSfxTrigger;
@@ -902,13 +1110,52 @@ function cleanHyperframesOverlayText(value: unknown): string {
     .trim();
 }
 
+function isHyperframesVideoPromptLikeText(value: unknown): boolean {
+  const text = compactStoryboardText(value);
+  if (!text) return false;
+  return (
+    /^Create an?\s+\d+(?:\.\d+)?-second\s+cinematic\s+vid/i.test(text) ||
+    /\bUse\s+@Image\d+\s+as\s+(?:start|stop)\s+frame\b/i.test(text) ||
+    /\bVIDEO CHARACTER LOCK\b/i.test(text) ||
+    /\bScene:\s*Use\s+@Image\d+/i.test(text)
+  );
+}
+
+function removeHyperframesVideoPromptOverlayText(value: string): string {
+  return value
+    .split(/\n+/)
+    .map(line => compactStoryboardText(line))
+    .filter(line => line && !isHyperframesVideoPromptLikeText(line))
+    .join("\n");
+}
+
+function sanitizeHyperframesShotOverlayText(value: unknown): string {
+  return removeHyperframesVideoPromptOverlayText(String(value ?? ""));
+}
+
+function sanitizeHyperframesShotTextMap(value: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(value).map(([id, text]) => [id, sanitizeHyperframesShotOverlayText(text)])
+  );
+}
+
+function normalizeHyperframesSubtitleFontSize(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 34;
+  return Math.max(24, Math.min(52, Math.round(numeric)));
+}
+
+function hyperframesPreviewSubtitleFontSize(renderFontSizePx: number): number {
+  return Math.max(12, Math.min(24, Math.round(renderFontSizePx * 0.48)));
+}
+
 function uniqueHyperframesOverlayLines(lines: string[]): string[] {
   const seen = new Set<string>();
   const unique: string[] = [];
   for (const line of lines) {
     const clean = cleanHyperframesOverlayText(line);
     const key = clean.replace(/[\s…]+/g, "").toLowerCase();
-    if (!key || seen.has(key)) continue;
+    if (!key || seen.has(key) || isHyperframesVideoPromptLikeText(clean)) continue;
     seen.add(key);
     unique.push(clean);
   }
@@ -1036,7 +1283,7 @@ function shotSpecificHyperframesOverlayLines(input: {
   return uniqueHyperframesOverlayLines([
     opener,
     voiceLine,
-    promptLine,
+    isHyperframesVideoPromptLikeText(promptLine) ? "" : promptLine,
     input.index === input.total - 1 ? ctaLine : "",
   ]).slice(0, 3);
 }
@@ -1224,6 +1471,7 @@ function formatHyperframesPromptTimeline(input: {
     overlayPreset?: string;
     animationPreset?: string;
     transition?: string;
+    textMotionPreset?: string;
   }>;
 }): string {
   if (input.shots.length === 0) {
@@ -1239,7 +1487,12 @@ function formatHyperframesPromptTimeline(input: {
     const subtitle = hyperframesPromptLines(shot.subtitleText, 1)[0] ?? "";
     const source = firstThaiProductLine(shot.prompt, 90);
     const text = overlay || subtitle || source || `Shot ${index + 1}`;
-    const style = [shot.overlayPreset, shot.animationPreset, shot.transition ? `transition ${shot.transition}` : ""]
+    const style = [
+      shot.overlayPreset,
+      shot.animationPreset,
+      shot.transition ? `transition ${shot.transition}` : "",
+      shot.textMotionPreset ? `text motion ${shot.textMotionPreset}` : "",
+    ]
       .filter(Boolean)
       .join(", ");
     const motion =
@@ -1259,7 +1512,9 @@ function buildHyperframesFinalRenderPrompt(input: {
   styleBrief: string;
   overlayPreset: HyperframesFinalOverlayPreset;
   subtitlePreset: HyperframesFinalSubtitlePreset;
+  subtitleFontSizePx: number;
   textMode: HyperframesFinalCompositeConfig["textMode"];
+  textMotionPreset: HyperframesFinalTextMotionPreset;
   fontFamily: HyperframesFinalCompositeConfig["fontFamily"];
   hookText: string;
   supportingText: string;
@@ -1279,6 +1534,7 @@ function buildHyperframesFinalRenderPrompt(input: {
     overlayPreset?: string;
     animationPreset?: string;
     transition?: string;
+    textMotionPreset?: HyperframesFinalTextMotionPreset;
   }>;
 }): string {
   const productTitle = fullThaiProductLine(input.productTitle, 180) || "Approved Marketplace product";
@@ -1333,7 +1589,9 @@ function buildHyperframesFinalRenderPrompt(input: {
     "",
     "Text and layout:",
     `- Overlay preset: ${input.overlayPreset}`,
+    `- Subtitle font size: ${normalizeHyperframesSubtitleFontSize(input.subtitleFontSizePx)}px`,
     `- Text mode: ${input.textMode}`,
+    `- Text motion: ${input.textMotionPreset}`,
     `- Thai font: ${input.fontFamily}`,
     "- Keep every Thai line clear, uncut, and inside the 9:16 safe area.",
     "- Do not invent unsupported product claims, prices, logos, or badges.",
@@ -1377,14 +1635,32 @@ function defaultHyperframesShotText(clip: StoryboardClipCandidate, index: number
 function defaultHyperframesSubtitleText(clip: StoryboardClipCandidate): string {
   const voice = compactStoryboardText(extractStoryboardNativeSpeechText(clip.prompt));
   if (voice) return voice;
-  return fullThaiProductLine(clip.prompt, 160);
+  const fallback = fullThaiProductLine(clip.prompt, 160);
+  return isHyperframesVideoPromptLikeText(fallback) ? "" : fallback;
 }
+
+function buildHyperframesSubtitleTextMapFromClips(
+  clips: StoryboardClipCandidate[],
+): Record<string, string> {
+  return Object.fromEntries(
+    clips.map(clip => [clip.id, defaultHyperframesSubtitleText(clip)])
+  );
+}
+
+export const __STORYBOARD_REVIEW_HYPERFRAMES_TEXT_TESTS = {
+  buildHyperframesShotOverlayDraft,
+  buildHyperframesSubtitleTextMapFromClips,
+  defaultHyperframesSubtitleText,
+  sanitizeHyperframesShotTextMap,
+};
 
 function buildHyperframesFinalPayloadPreview(input: {
   renderPrompt: string;
   overlayPreset: HyperframesFinalOverlayPreset;
   subtitlePreset: HyperframesFinalSubtitlePreset;
+  subtitleFontSizePx: number;
   textMode: HyperframesFinalCompositeConfig["textMode"];
+  textMotionPreset: HyperframesFinalTextMotionPreset;
   fontFamily: HyperframesFinalCompositeConfig["fontFamily"];
   hookText: string;
   supportingText: string;
@@ -1405,6 +1681,7 @@ function buildHyperframesFinalPayloadPreview(input: {
     overlayPreset?: HyperframesFinalOverlayPreset;
     animationPreset?: HyperframesFinalShotAnimationPreset;
     transition?: HyperframesFinalShotTransition;
+    textMotionPreset?: HyperframesFinalTextMotionPreset;
   }>;
 }): string {
   return JSON.stringify(
@@ -1424,6 +1701,8 @@ function buildHyperframesFinalPayloadPreview(input: {
         fontFamily: input.fontFamily,
         overlayPreset: input.overlayPreset,
         subtitlePreset: input.subtitlePreset,
+        subtitleFontSizePx: input.subtitleFontSizePx,
+        textMotionPreset: input.textMotionPreset,
         burnInSubtitles: input.burnInSubtitles,
         hookText: input.hookText,
         supportingText: input.supportingText,
@@ -1443,6 +1722,7 @@ function buildHyperframesFinalPayloadPreview(input: {
         overlayPreset: shot.overlayPreset ?? input.overlayPreset,
         animationPreset: shot.animationPreset ?? "smooth_reveal",
         transition: shot.transition ?? "fade",
+        textMotionPreset: shot.textMotionPreset ?? input.textMotionPreset,
         sourcePrompt: firstThaiProductLine(shot.prompt, 180),
         onScreenText: shot.overlayText
           .split(/\n+/)
@@ -2117,7 +2397,7 @@ export default function StoryboardReviewPage() {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [isCompounding, setIsCompounding] = useState(false);
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
-  const [rightPanelTab, setRightPanelTab] = useState<StoryboardRightPanelTab>("video");
+  const [rightPanelTab, setRightPanelTab] = useState<StoryboardRightPanelTab>("history_gallery");
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
   const [audioSourceTab, setAudioSourceTab] = useState<StoryboardAudioSourceTab>("library");
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
@@ -2155,13 +2435,17 @@ export default function StoryboardReviewPage() {
   const [isCropping, setIsCropping] = useState(false);
   const [galleryLightbox, setGalleryLightbox] = useState<{ url: string; title: string } | null>(null);
   const [videoPreview, setVideoPreview] = useState<StoryboardVideoPreview | null>(null);
+  const [videoPreviewError, setVideoPreviewError] = useState("");
+  const [videoPreviewPlaybackReady, setVideoPreviewPlaybackReady] = useState(false);
   const [isImageToolsPanelOpen, setIsImageToolsPanelOpen] = useState(false);
   const [historyGalleryProductFilterEnabled, setHistoryGalleryProductFilterEnabled] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<StoryboardReviewDeleteTarget | null>(null);
   const [hyperframesFinalFont, setHyperframesFinalFont] = useState<HyperframesFinalCompositeConfig["fontFamily"]>("Prompt");
   const [hyperframesFinalTextMode, setHyperframesFinalTextMode] = useState<HyperframesFinalCompositeConfig["textMode"]>("hook_and_per_shot");
+  const [hyperframesFinalTextMotionPreset, setHyperframesFinalTextMotionPreset] = useState<HyperframesFinalTextMotionPreset>("slide_right_to_left");
   const [hyperframesFinalOverlayPreset, setHyperframesFinalOverlayPreset] = useState<HyperframesFinalOverlayPreset>("auto");
   const [hyperframesFinalSubtitlePreset, setHyperframesFinalSubtitlePreset] = useState<HyperframesFinalSubtitlePreset>("classic_box");
+  const [hyperframesFinalSubtitleFontSizePx, setHyperframesFinalSubtitleFontSizePx] = useState(34);
   const [hyperframesFinalAudioPackPresetId, setHyperframesFinalAudioPackPresetId] = useState(DEFAULT_HYPERFRAMES_FINAL_AUDIO_PACK_ID);
   const [hyperframesFinalMusicPresetId, setHyperframesFinalMusicPresetId] = useState(DEFAULT_HYPERFRAMES_FINAL_MUSIC_ID);
   const [hyperframesFinalSfxPresetIds, setHyperframesFinalSfxPresetIds] = useState<string[]>(DEFAULT_HYPERFRAMES_FINAL_SFX_IDS);
@@ -2174,9 +2458,12 @@ export default function StoryboardReviewPage() {
   const [hyperframesFinalSupportingText, setHyperframesFinalSupportingText] = useState("");
   const [hyperframesFinalShotTextById, setHyperframesFinalShotTextById] = useState<Record<string, string>>({});
   const [hyperframesFinalSubtitleById, setHyperframesFinalSubtitleById] = useState<Record<string, string>>({});
+  const [hyperframesFinalSubtitleVttById, setHyperframesFinalSubtitleVttById] = useState<Record<string, string>>({});
+  const [hyperframesFinalSubtitleSrtById, setHyperframesFinalSubtitleSrtById] = useState<Record<string, string>>({});
   const [hyperframesFinalShotOverlayPresetById, setHyperframesFinalShotOverlayPresetById] = useState<Record<string, HyperframesFinalOverlayPreset>>({});
   const [hyperframesFinalShotAnimationById, setHyperframesFinalShotAnimationById] = useState<Record<string, HyperframesFinalShotAnimationPreset>>({});
   const [hyperframesFinalShotTransitionById, setHyperframesFinalShotTransitionById] = useState<Record<string, HyperframesFinalShotTransition>>({});
+  const [hyperframesFinalShotTextMotionById, setHyperframesFinalShotTextMotionById] = useState<Record<string, HyperframesFinalTextMotionPreset>>({});
   const [hyperframesFinalPreviewShotIndex, setHyperframesFinalPreviewShotIndex] = useState(0);
   const [hyperframesFinalSfxDrafts, setHyperframesFinalSfxDrafts] = useState<HyperframesFinalSfxDraft[]>(() =>
     DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
@@ -2184,11 +2471,17 @@ export default function StoryboardReviewPage() {
   const [isHyperframesFinalPanelExpanded, setIsHyperframesFinalPanelExpanded] = useState(false);
   const [isHyperframesFinalPayloadExpanded, setIsHyperframesFinalPayloadExpanded] = useState(false);
   const [isHyperframesFinalAudioPreviewExpanded, setIsHyperframesFinalAudioPreviewExpanded] = useState(false);
-  const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(true);
+  const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(false);
   const [hyperframesFinalTextPreviewReplayKey, setHyperframesFinalTextPreviewReplayKey] = useState(0);
+  const [hyperframesFinalSelectedShotPreviewMode, setHyperframesFinalSelectedShotPreviewMode] =
+    useState<HyperframesSelectedShotPreviewMode>("design");
+  const [hyperframesFinalSelectedShotVideoLoadState, setHyperframesFinalSelectedShotVideoLoadState] =
+    useState<HyperframesSelectedShotVideoLoadState>("idle");
+  const [hyperframesFinalSelectedShotVideoError, setHyperframesFinalSelectedShotVideoError] = useState("");
   const [hyperframesFinalPromptGeneratedSignature, setHyperframesFinalPromptGeneratedSignature] = useState("");
   const [hyperframesFinalAutosaveStatus, setHyperframesFinalAutosaveStatus] =
     useState<HyperframesFinalAutosaveStatus>("idle");
+  const [hyperframesFinalTranscribingShotId, setHyperframesFinalTranscribingShotId] = useState<string | null>(null);
   const hyperframesFinalStateRevisionRef = useRef<number | null>(null);
   const hyperframesFinalStateHydrationKeyRef = useRef<string | null>(null);
   const hyperframesFinalActiveIdentityKeyRef = useRef<string | null>(null);
@@ -2199,6 +2492,7 @@ export default function StoryboardReviewPage() {
   const hyperframesFinalAutosaveNeedsFlushRef = useRef(false);
   const hyperframesFinalAutosaveFlushRef = useRef<() => Promise<void>>(async () => undefined);
   const hyperframesFinalAutosaveSkipNextRef = useRef(false);
+  const hyperframesFinalSelectedShotVideoRef = useRef<HTMLVideoElement | null>(null);
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
@@ -2220,6 +2514,21 @@ export default function StoryboardReviewPage() {
     () => new URLSearchParams(search),
     [search],
   );
+
+  useEffect(() => {
+    setVideoPreviewError("");
+    setVideoPreviewPlaybackReady(false);
+  }, [videoPreview?.url]);
+
+  useEffect(() => {
+    if (hyperframesFinalSelectedShotPreviewMode !== "video") {
+      setHyperframesFinalSelectedShotVideoLoadState("idle");
+      setHyperframesFinalSelectedShotVideoError("");
+      return;
+    }
+    setHyperframesFinalSelectedShotVideoLoadState("loading");
+    setHyperframesFinalSelectedShotVideoError("");
+  }, [hyperframesFinalSelectedShotPreviewMode, hyperframesFinalPreviewShotIndex]);
   const hyperframesRenderJobId = hyperframesSearchParams.get("hyperframesRenderJobId");
   const hyperframesProductId = hyperframesSearchParams.get("productId") ?? undefined;
   const hyperframesRunId = hyperframesSearchParams.get("runId") ?? undefined;
@@ -2360,6 +2669,8 @@ export default function StoryboardReviewPage() {
       },
       onError: error => toast.error(error.message),
     });
+  const transcribeStoryboardReviewShotSubtitleMutation =
+    trpc.videoEditorProjects.transcribeStoryboardReviewShotSubtitle.useMutation();
   const repairHyperframesRenderJobMutation =
     trpc.marketplaceCapture.repairHyperframesRenderJob.useMutation({
       onSuccess: result => {
@@ -3741,6 +4052,24 @@ export default function StoryboardReviewPage() {
     document.body.removeChild(link);
   }, []);
 
+  const downloadHyperframesSubtitleSidecar = useCallback((
+    content: string,
+    title: string,
+    extension: "vtt" | "srt",
+  ) => {
+    const blob = new Blob([content], {
+      type: extension === "vtt" ? "text/vtt;charset=utf-8" : "application/x-subrip;charset=utf-8",
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "storyboard-subtitle"}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  }, []);
+
   const previewLibraryVideo = useCallback((item: LibrarySearchResultItem) => {
     const sourceUrl = extractStoryboardMediaUrl(item, "video");
     if (!sourceUrl) {
@@ -3953,6 +4282,67 @@ export default function StoryboardReviewPage() {
       }));
   }, [draft, selectedRenderClips]);
 
+  const hyperframesFinalSelectedShotVideoUrl =
+    hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex]?.url ??
+    hyperframesFinalSourceClips[0]?.url ??
+    "";
+
+  useEffect(() => {
+    if (hyperframesFinalSelectedShotPreviewMode !== "video" || !hyperframesFinalSelectedShotVideoUrl) return;
+    const video = hyperframesFinalSelectedShotVideoRef.current;
+    if (!video) return;
+    let cancelled = false;
+    const loadTimeout = window.setTimeout(() => {
+      if (cancelled) return;
+      const currentVideo = hyperframesFinalSelectedShotVideoRef.current;
+      if (!currentVideo || currentVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return;
+      setHyperframesFinalSelectedShotVideoLoadState("error");
+      setHyperframesFinalSelectedShotVideoError(
+        locale === "th"
+          ? "preview ยังโหลด MP4 ของ shot นี้ไม่ได้ ตรวจ URL/สิทธิ์ไฟล์ หรือเปิดดูวิดีโอเต็มเพื่อตรวจ source"
+          : "The preview could not load this shot MP4. Check the file URL/permissions or open the full video source.",
+      );
+    }, 4000);
+    setHyperframesFinalSelectedShotVideoLoadState("loading");
+    setHyperframesFinalSelectedShotVideoError("");
+    try {
+      video.muted = true;
+      video.defaultMuted = true;
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        void playPromise.catch((error: unknown) => {
+          if (cancelled) return;
+          setHyperframesFinalSelectedShotVideoLoadState("error");
+          setHyperframesFinalSelectedShotVideoError(
+            error instanceof Error && error.message
+              ? error.message
+              : locale === "th"
+                ? "browser ไม่อนุญาตให้เล่นวิดีโอนี้"
+                : "The browser blocked this video playback.",
+          );
+        });
+      }
+    } catch (error) {
+      setHyperframesFinalSelectedShotVideoLoadState("error");
+      setHyperframesFinalSelectedShotVideoError(
+        error instanceof Error && error.message
+          ? error.message
+          : locale === "th"
+            ? "เริ่มเล่นวิดีโอไม่สำเร็จ"
+            : "Could not start video playback.",
+      );
+    }
+    return () => {
+      cancelled = true;
+      window.clearTimeout(loadTimeout);
+    };
+  }, [
+    hyperframesFinalSelectedShotPreviewMode,
+    hyperframesFinalSelectedShotVideoUrl,
+    hyperframesFinalTextPreviewReplayKey,
+    locale,
+  ]);
+
   const hyperframesFinalSourceReadiness = useMemo(() => {
     const reviewTasks = draft ? storyboardDraftToReviewTasks(draft) : [];
     const tasksWithUrl = reviewTasks.filter(task => Boolean(task.url));
@@ -4012,8 +4402,10 @@ export default function StoryboardReviewPage() {
   const resetHyperframesFinalCompositeState = useCallback(() => {
     setHyperframesFinalFont("Prompt");
     setHyperframesFinalTextMode("hook_and_per_shot");
+    setHyperframesFinalTextMotionPreset("slide_right_to_left");
     setHyperframesFinalOverlayPreset("auto");
     setHyperframesFinalSubtitlePreset("classic_box");
+    setHyperframesFinalSubtitleFontSizePx(34);
     setHyperframesFinalAudioPackPresetId(DEFAULT_HYPERFRAMES_FINAL_AUDIO_PACK_ID);
     setHyperframesFinalMusicPresetId(DEFAULT_HYPERFRAMES_FINAL_MUSIC_ID);
     setHyperframesFinalSfxPresetIds(DEFAULT_HYPERFRAMES_FINAL_SFX_IDS);
@@ -4026,9 +4418,12 @@ export default function StoryboardReviewPage() {
     setHyperframesFinalSupportingText("");
     setHyperframesFinalShotTextById({});
     setHyperframesFinalSubtitleById({});
+    setHyperframesFinalSubtitleVttById({});
+    setHyperframesFinalSubtitleSrtById({});
     setHyperframesFinalShotOverlayPresetById({});
     setHyperframesFinalShotAnimationById({});
     setHyperframesFinalShotTransitionById({});
+    setHyperframesFinalShotTextMotionById({});
     setHyperframesFinalPreviewShotIndex(0);
     setHyperframesFinalSfxDrafts(
       DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) =>
@@ -4097,6 +4492,12 @@ export default function StoryboardReviewPage() {
     if (typeof textVariables.fontFamily === "string") {
       setHyperframesFinalFont(textVariables.fontFamily as HyperframesFinalCompositeConfig["fontFamily"]);
     }
+    if (typeof textVariables.textMotionPreset === "string") {
+      const motion = textVariables.textMotionPreset as HyperframesFinalTextMotionPreset;
+      if (HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS.some(preset => preset.id === motion)) {
+        setHyperframesFinalTextMotionPreset(motion);
+      }
+    }
     if (typeof textVariables.hookText === "string") {
       setHyperframesFinalHookText(textVariables.hookText);
     }
@@ -4114,6 +4515,9 @@ export default function StoryboardReviewPage() {
       if (HYPERFRAMES_FINAL_SUBTITLE_PRESETS.some(preset => preset.id === legacySubtitle)) {
         setHyperframesFinalSubtitlePreset(legacySubtitle);
       }
+    }
+    if (textVariables.subtitleFontSizePx !== undefined) {
+      setHyperframesFinalSubtitleFontSizePx(normalizeHyperframesSubtitleFontSize(textVariables.subtitleFontSizePx));
     }
     if (typeof textVariables.audioPackPresetId === "string") {
       setHyperframesFinalAudioPackPresetId(textVariables.audioPackPresetId);
@@ -4169,10 +4573,18 @@ export default function StoryboardReviewPage() {
       setIsHyperframesFinalPromptEdited(Boolean(textVariables.styleBrief?.trim()));
     }
     if (textVariables.perShotText && typeof textVariables.perShotText === "object") {
-      setHyperframesFinalShotTextById(textVariables.perShotText as Record<string, string>);
+      setHyperframesFinalShotTextById(
+        sanitizeHyperframesShotTextMap(textVariables.perShotText as Record<string, string>)
+      );
     }
     if (textVariables.perShotSubtitles && typeof textVariables.perShotSubtitles === "object") {
       setHyperframesFinalSubtitleById(textVariables.perShotSubtitles as Record<string, string>);
+    }
+    if (textVariables.perShotSubtitleVtt && typeof textVariables.perShotSubtitleVtt === "object") {
+      setHyperframesFinalSubtitleVttById(textVariables.perShotSubtitleVtt as Record<string, string>);
+    }
+    if (textVariables.perShotSubtitleSrt && typeof textVariables.perShotSubtitleSrt === "object") {
+      setHyperframesFinalSubtitleSrtById(textVariables.perShotSubtitleSrt as Record<string, string>);
     }
     if (textVariables.perShotOverlayPreset && typeof textVariables.perShotOverlayPreset === "object") {
       setHyperframesFinalShotOverlayPresetById(textVariables.perShotOverlayPreset as Record<string, HyperframesFinalOverlayPreset>);
@@ -4182,6 +4594,9 @@ export default function StoryboardReviewPage() {
     }
     if (textVariables.perShotTransition && typeof textVariables.perShotTransition === "object") {
       setHyperframesFinalShotTransitionById(textVariables.perShotTransition as Record<string, HyperframesFinalShotTransition>);
+    }
+    if (textVariables.perShotTextMotionPreset && typeof textVariables.perShotTextMotionPreset === "object") {
+      setHyperframesFinalShotTextMotionById(textVariables.perShotTextMotionPreset as Record<string, HyperframesFinalTextMotionPreset>);
     }
   }, [
     canonicalReviewId,
@@ -4222,7 +4637,10 @@ export default function StoryboardReviewPage() {
         ? draftedSupportingText
         : hyperframesFinalSupportingText.trim() || draftedSupportingText;
       hyperframesFinalSourceClips.forEach((clip, index) => {
-        if (!next[clip.id]) {
+        const existing = sanitizeHyperframesShotOverlayText(next[clip.id] ?? "");
+        if (existing) {
+          next[clip.id] = existing;
+        } else {
           next[clip.id] = buildHyperframesShotOverlayDraft({
             preset: hyperframesFinalOverlayPreset,
             productContext,
@@ -4318,6 +4736,97 @@ export default function StoryboardReviewPage() {
     hyperframesFinalSupportingText,
   ]);
 
+  const flushHyperframesFinalAutosaveSoon = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.setTimeout(() => {
+      void hyperframesFinalAutosaveFlushRef.current();
+    }, 0);
+  }, []);
+
+  const regenerateHyperframesFinalSubtitleMap = useCallback(() => {
+    if (hyperframesFinalSourceClips.length === 0) return;
+    setHyperframesFinalSubtitleById(
+      buildHyperframesSubtitleTextMapFromClips(hyperframesFinalSourceClips),
+    );
+    setHyperframesFinalSubtitleVttById({});
+    setHyperframesFinalSubtitleSrtById({});
+    flushHyperframesFinalAutosaveSoon();
+    toast.success(locale === "th" ? "เติม Subtitle จากบทพูดทุก shot แล้ว" : "Filled subtitles from every shot voiceover.");
+  }, [
+    flushHyperframesFinalAutosaveSoon,
+    hyperframesFinalSourceClips,
+    locale,
+    toast,
+  ]);
+
+  const fillHyperframesFinalSubtitleFromPrompt = useCallback((clip: StoryboardClipCandidate) => {
+    const subtitle = defaultHyperframesSubtitleText(clip);
+    setHyperframesFinalSubtitleById(current => ({ ...current, [clip.id]: subtitle }));
+    setHyperframesFinalSubtitleVttById(current => {
+      const next = { ...current };
+      delete next[clip.id];
+      return next;
+    });
+    setHyperframesFinalSubtitleSrtById(current => {
+      const next = { ...current };
+      delete next[clip.id];
+      return next;
+    });
+    flushHyperframesFinalAutosaveSoon();
+    toast.success(locale === "th" ? "สร้าง Subtitle จากบทพูดของ shot นี้แล้ว" : "Created subtitle from this shot voiceover.");
+  }, [
+    flushHyperframesFinalAutosaveSoon,
+    locale,
+    toast,
+  ]);
+
+  const transcribeHyperframesFinalSubtitleFromVideo = useCallback(async (clip: StoryboardClipCandidate) => {
+    if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      toast.error(locale === "th" ? "ยังไม่มี product/run context สำหรับ transcribe" : "Missing product/run context for transcribe.");
+      return;
+    }
+    if (!clip.url) {
+      toast.error(locale === "th" ? "shot นี้ยังไม่มี MP4 ให้ถอดเสียง" : "This shot has no MP4 to transcribe.");
+      return;
+    }
+    setHyperframesFinalTranscribingShotId(clip.id);
+    try {
+      const result = await transcribeStoryboardReviewShotSubtitleMutation.mutateAsync({
+        storyboardReviewProjectId: canonicalReviewId,
+        productId: effectiveHyperframesProductId,
+        runId: effectiveHyperframesRunId,
+        shotId: clip.id,
+        sourceVideoUrl: clip.url,
+        language: "th",
+      });
+      if (!result.text.trim()) {
+        throw new Error(locale === "th" ? "transcript ว่าง ไม่พบเสียงพูดในคลิป" : "Transcript is empty; no speech was detected.");
+      }
+      setHyperframesFinalSubtitleById(current => ({ ...current, [clip.id]: result.text }));
+      setHyperframesFinalSubtitleVttById(current => ({ ...current, [clip.id]: result.vtt }));
+      setHyperframesFinalSubtitleSrtById(current => ({ ...current, [clip.id]: result.srt }));
+      flushHyperframesFinalAutosaveSoon();
+      toast.success(locale === "th" ? "Transcribe จากเสียงคลิปและใส่ Subtitle แล้ว" : "Transcribed clip audio into subtitle text.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(
+        locale === "th"
+          ? `Transcribe ไม่สำเร็จ: ${message}`
+          : `Transcribe failed: ${message}`,
+      );
+    } finally {
+      setHyperframesFinalTranscribingShotId(current => current === clip.id ? null : current);
+    }
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    flushHyperframesFinalAutosaveSoon,
+    locale,
+    toast,
+    transcribeStoryboardReviewShotSubtitleMutation,
+  ]);
+
   const hyperframesFinalProductPromptContext = useMemo(() => {
     const productContext = draft
       ? resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null
@@ -4354,7 +4863,9 @@ export default function StoryboardReviewPage() {
       styleBrief: DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF,
       overlayPreset: hyperframesFinalOverlayPreset,
       subtitlePreset: hyperframesFinalSubtitlePreset,
+      subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
       textMode: hyperframesFinalTextMode,
+      textMotionPreset: hyperframesFinalTextMotionPreset,
       fontFamily: hyperframesFinalFont,
       hookText: hyperframesFinalHookText,
       supportingText: hyperframesFinalSupportingText,
@@ -4368,12 +4879,17 @@ export default function StoryboardReviewPage() {
       shots: hyperframesFinalSourceClips.map((clip, index) => ({
         id: clip.id,
         prompt: clip.prompt,
-        overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+        overlayText: resolveHyperframesFinalRenderOverlayText({
+          textMode: hyperframesFinalTextMode,
+          shotIndex: index,
+          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+        }),
         subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
         durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
         overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
         animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
         transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+        textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
       })),
     });
   }, [
@@ -4393,10 +4909,13 @@ export default function StoryboardReviewPage() {
     hyperframesFinalSfxPresetIds,
     hyperframesFinalShotTransitionById,
     hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitleFontSizePx,
     hyperframesFinalSubtitlePreset,
     hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
+    hyperframesFinalTextMotionPreset,
+    hyperframesFinalShotTextMotionById,
     locale,
   ]);
 
@@ -4408,7 +4927,9 @@ export default function StoryboardReviewPage() {
         priceText: hyperframesFinalProductPromptContext.priceText,
         overlayPreset: hyperframesFinalOverlayPreset,
         subtitlePreset: hyperframesFinalSubtitlePreset,
+        subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
         textMode: hyperframesFinalTextMode,
+        textMotionPreset: hyperframesFinalTextMotionPreset,
         fontFamily: hyperframesFinalFont,
         hookText: hyperframesFinalHookText,
         supportingText: hyperframesFinalSupportingText,
@@ -4423,11 +4944,16 @@ export default function StoryboardReviewPage() {
         shots: hyperframesFinalSourceClips.map((clip, index) => ({
           id: clip.id,
           prompt: clip.prompt,
-          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          overlayText: resolveHyperframesFinalRenderOverlayText({
+            textMode: hyperframesFinalTextMode,
+            shotIndex: index,
+            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          }),
           subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
           overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
           animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
           transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+          textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
           durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
         })),
       }),
@@ -4448,19 +4974,24 @@ export default function StoryboardReviewPage() {
       hyperframesFinalSfxDrafts,
       hyperframesFinalSfxPresetIds,
       hyperframesFinalSubtitleById,
+      hyperframesFinalSubtitleFontSizePx,
       hyperframesFinalSubtitlePreset,
       hyperframesFinalShotTransitionById,
       hyperframesFinalSupportingText,
       hyperframesFinalSyntheticAudioFallback,
       hyperframesFinalTextMode,
+      hyperframesFinalTextMotionPreset,
+      hyperframesFinalShotTextMotionById,
     ],
   );
 
   const hyperframesFinalAutosaveSnapshot = useMemo<HyperframesFinalAutosaveSnapshot>(() => {
     const textVariables: Record<string, unknown> = {
       fontFamily: hyperframesFinalFont,
+      textMotionPreset: hyperframesFinalTextMotionPreset,
       overlayPresetId: hyperframesFinalOverlayPreset,
       subtitlePresetId: hyperframesFinalSubtitlePreset,
+      subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
       audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
       musicPresetId: hyperframesFinalMusicPresetId || undefined,
       sfxPresetIds: hyperframesFinalSfxPresetIds,
@@ -4473,9 +5004,12 @@ export default function StoryboardReviewPage() {
       supportingText: hyperframesFinalSupportingText,
       perShotText: hyperframesFinalShotTextById,
       perShotSubtitles: hyperframesFinalSubtitleById,
+      perShotSubtitleVtt: hyperframesFinalSubtitleVttById,
+      perShotSubtitleSrt: hyperframesFinalSubtitleSrtById,
       perShotOverlayPreset: hyperframesFinalShotOverlayPresetById,
       perShotAnimationPreset: hyperframesFinalShotAnimationById,
       perShotTransition: hyperframesFinalShotTransitionById,
+      perShotTextMotionPreset: hyperframesFinalShotTextMotionById,
     };
     return {
       signature: JSON.stringify({
@@ -4503,12 +5037,17 @@ export default function StoryboardReviewPage() {
     hyperframesFinalShotAnimationById,
     hyperframesFinalShotOverlayPresetById,
     hyperframesFinalShotTextById,
+    hyperframesFinalShotTextMotionById,
     hyperframesFinalShotTransitionById,
     hyperframesFinalStyleBrief,
+    hyperframesFinalSubtitleSrtById,
     hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitleFontSizePx,
     hyperframesFinalSubtitlePreset,
+    hyperframesFinalSubtitleVttById,
     hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
+    hyperframesFinalTextMotionPreset,
   ]);
 
   const isHyperframesFinalPromptStale = Boolean(
@@ -4536,7 +5075,9 @@ export default function StoryboardReviewPage() {
         renderPrompt: hyperframesFinalStyleBrief,
         overlayPreset: hyperframesFinalOverlayPreset,
         subtitlePreset: hyperframesFinalSubtitlePreset,
+        subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
         textMode: hyperframesFinalTextMode,
+        textMotionPreset: hyperframesFinalTextMotionPreset,
         fontFamily: hyperframesFinalFont,
         hookText: hyperframesFinalHookText,
         supportingText: hyperframesFinalSupportingText,
@@ -4551,12 +5092,17 @@ export default function StoryboardReviewPage() {
         shots: hyperframesFinalSourceClips.map((clip, index) => ({
           id: clip.id,
           prompt: clip.prompt,
-          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          overlayText: resolveHyperframesFinalRenderOverlayText({
+            textMode: hyperframesFinalTextMode,
+            shotIndex: index,
+            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+          }),
           subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
           durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
           overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
           animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
           transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+          textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
         })),
       }),
     [
@@ -4577,10 +5123,13 @@ export default function StoryboardReviewPage() {
       hyperframesFinalShotTransitionById,
       hyperframesFinalStyleBrief,
       hyperframesFinalSubtitleById,
+      hyperframesFinalSubtitleFontSizePx,
       hyperframesFinalSubtitlePreset,
       hyperframesFinalSupportingText,
       hyperframesFinalSyntheticAudioFallback,
       hyperframesFinalTextMode,
+      hyperframesFinalTextMotionPreset,
+      hyperframesFinalShotTextMotionById,
     ],
   );
 
@@ -4638,6 +5187,7 @@ export default function StoryboardReviewPage() {
           overlayPreset: hyperframesFinalOverlayPreset,
           subtitlePreset: hyperframesFinalSubtitlePreset,
           textMode: hyperframesFinalTextMode,
+          textMotionPreset: hyperframesFinalTextMotionPreset,
           fontFamily: hyperframesFinalFont,
           hookText: hyperframesFinalHookText,
           supportingText: hyperframesFinalSupportingText,
@@ -4652,11 +5202,16 @@ export default function StoryboardReviewPage() {
           shots: hyperframesFinalSourceClips.map((clip, index) => ({
             id: clip.id,
             prompt: clip.prompt,
-            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+            overlayText: resolveHyperframesFinalRenderOverlayText({
+              textMode: hyperframesFinalTextMode,
+              shotIndex: index,
+              overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
+            }),
             subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
             overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
             animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
             transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+            textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
             durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
           })),
         },
@@ -4705,6 +5260,7 @@ export default function StoryboardReviewPage() {
     hyperframesFinalShotAnimationById,
     hyperframesFinalShotOverlayPresetById,
     hyperframesFinalShotTextById,
+    hyperframesFinalShotTextMotionById,
     hyperframesFinalSourceClips,
     hyperframesFinalSfxDrafts,
     hyperframesFinalSfxPresetIds,
@@ -4714,6 +5270,7 @@ export default function StoryboardReviewPage() {
     hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
+    hyperframesFinalTextMotionPreset,
     locale,
     toast,
   ]);
@@ -4900,7 +5457,7 @@ export default function StoryboardReviewPage() {
         });
         const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
         const editableOverlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
-        const overlayLines = uniqueHyperframesOverlayLines(editableOverlayText
+        const overlayLines = uniqueHyperframesOverlayLines(removeHyperframesVideoPromptOverlayText(editableOverlayText)
           .split(/\n+/)
           .map(line => expandLegacyEllipsizedHyperframesText(
             compactStoryboardText(line),
@@ -4908,11 +5465,9 @@ export default function StoryboardReviewPage() {
             180,
           )))
           .slice(0, 4);
-        const firstShotHookLines =
-          index === 0 && resolvedOverlayPreset !== "clean_subtitle" && hyperframesFinalTextMode !== "none"
-            ? uniqueHyperframesOverlayLines([renderSupportingText, renderHookText]).slice(0, 4)
-            : [];
-        const resolvedShotOverlayLines = overlayLines.length > 0 ? overlayLines : firstShotHookLines;
+        const resolvedShotOverlayLines = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, index)
+          ? overlayLines
+          : [];
         renderPerShotTextById[clip.id] = resolvedShotOverlayLines.join("\n");
         shots.push({
           id: clip.id,
@@ -4927,6 +5482,7 @@ export default function StoryboardReviewPage() {
           overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedOverlayPreset,
           animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
           transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+          textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
         });
         cursor += durationSec;
       }
@@ -4950,7 +5506,7 @@ export default function StoryboardReviewPage() {
         fps: 30,
         textMode: hyperframesFinalTextMode,
         overlayPreset: resolvedOverlayPreset,
-        includeHookText: hyperframesFinalTextMode === "hook_only" || hyperframesFinalTextMode === "hook_and_per_shot",
+        includeHookText: shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode),
         includeShotText: hyperframesFinalTextMode === "per_shot" || hyperframesFinalTextMode === "hook_and_per_shot",
         burnInSubtitles: hyperframesFinalBurnInSubtitles,
         preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
@@ -4971,6 +5527,8 @@ export default function StoryboardReviewPage() {
         hookText: renderHookText,
         supportingText: renderSupportingText,
         subtitlePlacement: "bottom",
+        subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
+        textMotionPreset: hyperframesFinalTextMotionPreset,
         safeZonePercent: 8,
         cssAnimationEnabled: true,
         gsapCompatibleTimeline: true,
@@ -4982,6 +5540,7 @@ export default function StoryboardReviewPage() {
           fontFamily: hyperframesFinalFont,
           overlayPresetId: resolvedOverlayPreset,
           subtitlePresetId: hyperframesFinalSubtitlePreset,
+          subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
           audioPackPresetId: hyperframesFinalAudioPackPresetId || undefined,
           musicPresetId: hyperframesFinalMusicPresetId || undefined,
           sfxPresetIds: selectedSfxPresetIds,
@@ -4990,13 +5549,17 @@ export default function StoryboardReviewPage() {
           syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
           burnInSubtitles: hyperframesFinalBurnInSubtitles,
           styleBrief: hyperframesFinalStyleBrief.trim() || generatedHyperframesFinalRenderPrompt,
+          textMotionPreset: hyperframesFinalTextMotionPreset,
           hookText: renderHookText,
           supportingText: renderSupportingText,
           perShotText: renderPerShotTextById,
           perShotSubtitles: hyperframesFinalSubtitleById,
+          perShotSubtitleVtt: hyperframesFinalSubtitleVttById,
+          perShotSubtitleSrt: hyperframesFinalSubtitleSrtById,
           perShotOverlayPreset: hyperframesFinalShotOverlayPresetById,
           perShotAnimationPreset: hyperframesFinalShotAnimationById,
           perShotTransition: hyperframesFinalShotTransitionById,
+          perShotTextMotionPreset: hyperframesFinalShotTextMotionById,
         },
       });
       const result = await createHyperframesFinalCompositeMutation.mutateAsync({
@@ -5037,16 +5600,21 @@ export default function StoryboardReviewPage() {
     hyperframesFinalShotAnimationById,
     hyperframesFinalShotOverlayPresetById,
     hyperframesFinalShotTextById,
+    hyperframesFinalShotTextMotionById,
     hyperframesFinalSourceClips,
     hyperframesFinalSfxDrafts,
     hyperframesFinalSfxPresetIds,
     hyperframesFinalShotTransitionById,
     hyperframesFinalStyleBrief,
+    hyperframesFinalSubtitleSrtById,
     hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitleFontSizePx,
     hyperframesFinalSubtitlePreset,
+    hyperframesFinalSubtitleVttById,
     hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
+    hyperframesFinalTextMotionPreset,
     importStoryboardAssetForRender,
     locale,
     draft,
@@ -6309,17 +6877,37 @@ export default function StoryboardReviewPage() {
                   ))}
                 </select>
               </label>
+	              <label className="grid gap-1 text-xs font-medium text-slate-700">
+	                {locale === "th" ? "ข้อความบนภาพ" : "Text layer"}
+	                <select
+	                  value={hyperframesFinalTextMode}
+	                  onChange={event => setHyperframesFinalTextMode(event.target.value as HyperframesFinalTextMode)}
+	                  className="h-9 rounded-md border bg-white px-2 text-sm"
+	                >
+	                  {HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS.map(option => (
+	                    <option key={option.id} value={option.id}>
+	                      {locale === "th" ? option.labelTh : option.labelEn}
+	                    </option>
+	                  ))}
+	                </select>
+	                <span className="rounded-md bg-sky-50 px-2 py-1 text-[10px] font-normal leading-relaxed text-sky-800">
+	                  {locale === "th"
+	                    ? getHyperframesFinalTextModeOption(hyperframesFinalTextMode).descriptionTh
+	                    : getHyperframesFinalTextModeOption(hyperframesFinalTextMode).descriptionEn}
+	                </span>
+	              </label>
               <label className="grid gap-1 text-xs font-medium text-slate-700">
-                {locale === "th" ? "Text layer" : "Text layer"}
+                {locale === "th" ? "Text motion" : "Text motion"}
                 <select
-                  value={hyperframesFinalTextMode}
-                  onChange={event => setHyperframesFinalTextMode(event.target.value as HyperframesFinalCompositeConfig["textMode"])}
+                  value={hyperframesFinalTextMotionPreset}
+                  onChange={event => setHyperframesFinalTextMotionPreset(event.target.value as HyperframesFinalTextMotionPreset)}
                   className="h-9 rounded-md border bg-white px-2 text-sm"
                 >
-                  <option value="hook_and_per_shot">{locale === "th" ? "Hook shot แรก + overlay ทุก shot" : "First-shot hook + per-shot overlay"}</option>
-                  <option value="hook_only">{locale === "th" ? "Hook เฉพาะ shot แรก" : "First-shot hook only"}</option>
-                  <option value="per_shot">{locale === "th" ? "Overlay แยกทุก shot" : "Per-shot overlay only"}</option>
-                  <option value="none">{locale === "th" ? "ไม่ใส่ข้อความ" : "No text"}</option>
+                  {HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS.map(preset => (
+                    <option key={preset.id} value={preset.id}>
+                      {locale === "th" ? preset.labelTh : preset.labelEn}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
@@ -6341,6 +6929,20 @@ export default function StoryboardReviewPage() {
                   {HYPERFRAMES_FINAL_SUBTITLE_PRESETS.map(preset => (
                     <option key={preset.id} value={preset.id}>
                       {locale === "th" ? preset.labelTh : preset.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-slate-700">
+                {locale === "th" ? "Subtitle size" : "Subtitle size"}
+                <select
+                  value={hyperframesFinalSubtitleFontSizePx}
+                  onChange={event => setHyperframesFinalSubtitleFontSizePx(normalizeHyperframesSubtitleFontSize(event.target.value))}
+                  className="h-9 rounded-md border bg-white px-2 text-sm"
+                >
+                  {HYPERFRAMES_FINAL_SUBTITLE_FONT_SIZE_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {locale === "th" ? option.labelTh : option.labelEn}
                     </option>
                   ))}
                 </select>
@@ -6424,19 +7026,29 @@ export default function StoryboardReviewPage() {
               <div className="rounded-md border bg-slate-50 px-3 py-2 text-xs text-slate-600 lg:mt-5">
                 CSS/GSAP timeline, 9:16, MP4 1080x1920
               </div>
-            </div>
-            <div className="mt-3 grid gap-3 lg:grid-cols-2">
-              <label className="grid gap-1 text-xs font-medium text-slate-700">
-                {locale === "th" ? "Hook text" : "Hook text"}
-                <Input
-                  value={hyperframesFinalHookText}
-                  onChange={event => setHyperframesFinalHookText(event.target.value)}
-                  placeholder={locale === "th" ? "เช่น จอใหญ่ ลื่นแรง แบตอึด" : "Large, smooth, long battery"}
-                />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-slate-700">
-                {locale === "th" ? "Supporting text" : "Supporting text"}
-                <Input
+	            </div>
+	            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+	              <label className="grid gap-1 text-xs font-medium text-slate-700">
+	                <span className="flex flex-wrap items-center gap-2">
+	                  <span>{locale === "th" ? "Hook text" : "Hook text"}</span>
+	                  <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] text-amber-800">
+	                    {locale === "th" ? "แก้ข้อความเปิด 0-3s ของ shot 1" : "Edits opening 0-3s on shot 1"}
+	                  </Badge>
+	                </span>
+	                <Input
+	                  value={hyperframesFinalHookText}
+	                  onChange={event => setHyperframesFinalHookText(event.target.value)}
+	                  placeholder={locale === "th" ? "เช่น จอใหญ่ ลื่นแรง แบตอึด" : "Large, smooth, long battery"}
+	                />
+	              </label>
+	              <label className="grid gap-1 text-xs font-medium text-slate-700">
+	                <span className="flex flex-wrap items-center gap-2">
+	                  <span>{locale === "th" ? "Supporting text" : "Supporting text"}</span>
+	                  <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] text-amber-800">
+	                    {locale === "th" ? "ข้อความรองของ Hook" : "Secondary hook line"}
+	                  </Badge>
+	                </span>
+	                <Input
                   value={hyperframesFinalSupportingText}
                   onChange={event => setHyperframesFinalSupportingText(event.target.value)}
                   placeholder={locale === "th" ? "ชื่อสินค้า / ราคา / โปรโมชัน" : "Product / price / promotion"}
@@ -6461,6 +7073,28 @@ export default function StoryboardReviewPage() {
                       ? `${hyperframesFinalSourceClips.length} shot`
                       : `${hyperframesFinalSourceClips.length} shots`}
                   </Badge>
+	                  <Button
+	                    type="button"
+	                    size="sm"
+	                    variant="outline"
+	                    className="h-8 bg-white"
+	                    onClick={() => setHyperframesFinalTextPreviewReplayKey(current => current + 1)}
+	                    disabled={hyperframesFinalSourceClips.length === 0}
+	                  >
+	                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+	                    {locale === "th" ? "Replay preview" : "Replay preview"}
+	                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 bg-white"
+                    onClick={regenerateHyperframesFinalSubtitleMap}
+                    disabled={hyperframesFinalSourceClips.length === 0}
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    {locale === "th" ? "เติม Subtitle ทุก shot" : "Fill subtitles for every shot"}
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -6476,44 +7110,108 @@ export default function StoryboardReviewPage() {
               </div>
               {hyperframesFinalSourceClips.length > 0 ? (
                 <>
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                    {hyperframesFinalSourceClips.map((clip, index) => {
-                      const overlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
-                      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
-                      const isSelected = index === hyperframesFinalPreviewShotIndex;
-                      return (
-                        <button
-                          key={clip.id}
-                          type="button"
-                          onClick={() => setHyperframesFinalPreviewShotIndex(index)}
-                          className={cn(
-                            "min-w-[8.5rem] rounded-md border px-3 py-2 text-left transition-colors",
-                            isSelected
-                              ? "border-sky-400 bg-sky-50 text-sky-950"
-                              : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white",
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-semibold">Shot {index + 1}</span>
-                            <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[10px]">
-                              {Math.round(clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
-                            </span>
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-[10px] leading-snug opacity-80">
-                            {overlayText || firstThaiProductLine(subtitleText, 48) || (locale === "th" ? "ยังไม่มี overlay" : "No overlay")}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            <span className={cn(
-                              "rounded-full px-1.5 py-0.5 text-[9px]",
-                              overlayText.trim() ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500",
-                            )}>
-                              {overlayText.trim() ? "overlay" : "no overlay"}
-                            </span>
-                            <span className={cn(
-                              "rounded-full px-1.5 py-0.5 text-[9px]",
-                              subtitleText.trim() ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500",
-                            )}>
-                              {subtitleText.trim() ? "subtitle" : "no subtitle"}
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1 xl:hidden">
+	                    {hyperframesFinalSourceClips.map((clip, index) => {
+	                      const overlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+	                      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
+	                      const shotPreviewPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
+	                      const shotTextMotion = hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
+	                      const shotPresetMeta = getHyperframesOverlayPresetMeta(shotPreviewPreset);
+	                      const shotPosterUrl = getStoryboardClipPosterUrl(clip);
+		                      const shotPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
+		                        textMode: hyperframesFinalTextMode,
+		                        shotIndex: index,
+		                        overlayText,
+		                        hookText: hyperframesFinalHookText,
+		                        supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+		                        maxLines: 3,
+		                        maxLength: 34,
+		                      });
+		                      const shotHasOverlayLayer = shotPreviewLines.length > 0;
+		                      const shotHasSubtitleLayer = hyperframesFinalBurnInSubtitles && subtitleText.trim().length > 0;
+		                      const shotSubtitleLine = firstThaiProductLine(subtitleText, 34);
+		                      const shotPreviewTitle = firstThaiProductLine(shotPreviewLines[0] ?? "", 26);
+		                      const shotPreviewHook = firstThaiProductLine(shotPreviewLines[1] ?? "", 28) || shotSubtitleLine;
+		                      const shotPreviewChips = shotPreviewLines
+	                        .slice(2)
+	                        .map(line => firstThaiProductLine(line, 24))
+	                        .filter(Boolean);
+	                      const isSelected = index === hyperframesFinalPreviewShotIndex;
+	                      return (
+	                        <button
+	                          key={clip.id}
+	                          type="button"
+	                          onClick={() => setHyperframesFinalPreviewShotIndex(index)}
+	                          className={cn(
+	                            "min-w-[8.25rem] rounded-md border px-2 py-2 text-left transition-colors",
+	                            isSelected
+	                              ? "border-sky-400 bg-sky-50 text-sky-950"
+	                              : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white",
+	                          )}
+	                        >
+	                          <div className="flex items-center justify-between gap-2">
+	                            <span className="font-semibold">Shot {index + 1}</span>
+	                            <span className="rounded-full bg-white/80 px-1.5 py-0.5 font-mono text-[10px]">
+	                              {Math.round(clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
+	                            </span>
+	                          </div>
+	                          <div
+	                            key={`hf-shot-map-preview-${clip.id}-${hyperframesFinalTextPreviewReplayKey}`}
+	                            className={cn(
+	                              "hf-preview-stage hf-preview-stage--thumb relative mt-2 aspect-[9/16] h-[10.5rem] w-[5.9rem] max-w-none overflow-hidden rounded-md bg-slate-900 p-1.5 text-slate-950",
+	                              shotPreviewPreset === "neon_gaming_specs" ||
+	                                shotPreviewPreset === "kinetic_bold_hook" ||
+	                                shotPreviewPreset === "ugc_center_stack"
+	                                ? "text-white"
+	                                : "",
+	                            )}
+		                            data-preset={shotPreviewPreset}
+		                            data-text-motion={shotTextMotion}
+		                            data-has-media="true"
+		                            data-has-overlay-copy={shotHasOverlayLayer ? "true" : "false"}
+		                          >
+	                            <video
+	                              key={`hf-shot-map-preview-media-${clip.id}`}
+	                              src={clip.url}
+	                              poster={shotPosterUrl}
+	                              muted
+	                              playsInline
+	                              preload="metadata"
+	                              className="hf-preview-media"
+	                              aria-hidden="true"
+	                            />
+		                            {shotHasOverlayLayer ? (
+		                              <div className="hf-preview-overlay-copy relative z-10 flex h-full min-h-0 flex-col justify-between">
+		                                <div className="hf-preview-copy-top">
+		                                  <div className="hf-preview-title font-black">{shotPreviewTitle}</div>
+		                                  {shotPresetMeta.kind !== "price" && shotPreviewHook ? (
+		                                    <div className="hf-preview-hook mt-1 font-extrabold">{shotPreviewHook}</div>
+		                                  ) : null}
+		                                </div>
+			                                {shotPresetMeta.kind !== "clean" && shotPreviewChips.length > 0 ? (
+		                                  <div className="hf-preview-chip-list mt-1 grid gap-1">
+			                                    {shotPreviewChips.filter(Boolean).slice(0, 1).map((line, chipIndex) => (
+		                                      <div key={`${line}-${chipIndex}`} className="hf-preview-chip rounded-md bg-white/90 px-1.5 py-1 font-black text-slate-950">
+		                                        {line}
+		                                      </div>
+		                                    ))}
+		                                  </div>
+		                                ) : null}
+		                              </div>
+		                            ) : null}
+	                          </div>
+	                          <div className="mt-2 flex flex-wrap gap-1">
+	                            <span className={cn(
+	                              "rounded-full px-1.5 py-0.5 text-[9px]",
+		                              shotHasOverlayLayer ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500",
+		                            )}>
+	                              {shotHasOverlayLayer ? "overlay" : "no overlay"}
+	                            </span>
+	                            <span className={cn(
+	                              "rounded-full px-1.5 py-0.5 text-[9px]",
+	                              shotHasSubtitleLayer ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500",
+	                            )}>
+	                              {shotHasSubtitleLayer ? "subtitle" : "no subtitle"}
                             </span>
                           </div>
                         </button>
@@ -6526,40 +7224,379 @@ export default function StoryboardReviewPage() {
                     const selectedOverlayPreset = hyperframesFinalShotOverlayPresetById[selectedClip.id] ?? hyperframesFinalOverlayPreset;
                     const selectedAnimation = hyperframesFinalShotAnimationById[selectedClip.id] ?? (selectedIndex === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : selectedIndex === 0 ? "glow_feature" : "smooth_reveal");
                     const selectedTransition = hyperframesFinalShotTransitionById[selectedClip.id] ?? "fade";
+                    const selectedTextMotion = hyperframesFinalShotTextMotionById[selectedClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedIndex);
+		                    const selectedPresetMeta = getHyperframesOverlayPresetMeta(selectedOverlayPreset);
+		                    const selectedShotOverlay = hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex);
+		                    const selectedSubtitleText = hyperframesFinalSubtitleById[selectedClip.id] ?? defaultHyperframesSubtitleText(selectedClip);
+		                    const selectedSubtitlePreviewText = compactStoryboardText(selectedSubtitleText);
+                    const selectedOverlayContainsPromptText = selectedShotOverlay
+                      .split(/\n+/)
+                      .some(line => isHyperframesVideoPromptLikeText(line));
+                    const selectedPreviewPosterUrl = getStoryboardClipPosterUrl(selectedClip);
+                    const selectedClipLooksLikeVideo =
+                      selectedClip.mediaType !== "image" && !isProbablyImageUrl(selectedClip.url);
+                    const selectedVideoStatusText = getHyperframesVideoPreviewStatusText({
+                      locale,
+                      hasVideo: selectedClipLooksLikeVideo,
+                      state: hyperframesFinalSelectedShotVideoLoadState,
+                      error: hyperframesFinalSelectedShotVideoError,
+                      shotNumber: selectedIndex + 1,
+                    });
+                    const selectedVideoIsReady =
+                      hyperframesFinalSelectedShotPreviewMode === "video" &&
+                      hyperframesFinalSelectedShotVideoLoadState === "ready";
+                    const selectedPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
+	                      textMode: hyperframesFinalTextMode,
+	                      shotIndex: selectedIndex,
+	                      overlayText: selectedShotOverlay,
+	                      hookText: hyperframesFinalHookText,
+	                      supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                      maxLines: 3,
+	                      maxLength: 42,
+	                    });
+		                    const selectedShouldRenderShotOverlay = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, selectedIndex);
+		                    const selectedHasOverlayLayer = selectedPreviewLines.length > 0;
+		                    const selectedHasSubtitleLayer = hyperframesFinalBurnInSubtitles && selectedSubtitlePreviewText.length > 0;
+		                    const selectedSubtitleLine = selectedSubtitlePreviewText;
+		                    const selectedSubtitlePreviewFontSize = hyperframesPreviewSubtitleFontSize(hyperframesFinalSubtitleFontSizePx);
+		                    const selectedPreviewLayerLabel =
+		                      shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
+		                        selectedIndex === 0 &&
+		                        !selectedShouldRenderShotOverlay
+		                        ? locale === "th" ? "Hook text" : "Hook text"
+		                        : selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
+		                          ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
+		                          : locale === "th" ? "Overlay text" : "Overlay text";
+		                    const selectedPreviewTitle = firstThaiProductLine(selectedPreviewLines[0] ?? "", 34, { ellipsis: false });
+	                    const selectedPreviewHook = firstThaiProductLine(selectedPreviewLines[1] ?? "", 38, { ellipsis: false });
+                    const selectedPreviewChips = selectedPreviewLines
+                      .slice(2)
+                      .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
+                      .filter(Boolean);
+                    const selectedPriceText = firstThaiProductLine(
+                      selectedPreviewChips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? selectedPreviewHook,
+                      24,
+                      { ellipsis: false },
+                    );
                     return (
-                      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(13rem,0.55fr)_minmax(0,1.45fr)]">
-                        <div className="grid gap-3 rounded-md border bg-slate-50 p-2">
-                          <button
-                            type="button"
-                            className="group relative aspect-[9/16] max-h-[18rem] overflow-hidden rounded-md bg-black text-left"
-                            onClick={() => setVideoPreview({
-                              url: selectedClip.url,
-                              title: `Shot ${selectedIndex + 1}`,
-                            })}
-                          >
+                      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(18rem,0.78fr)_minmax(0,1fr)_minmax(8.75rem,0.32fr)]">
+                        <div className="grid gap-2 rounded-md border bg-slate-950 p-3 text-white">
+                          <div className="flex items-center justify-between gap-2 px-1">
+                            <div>
+                              <p className="text-[11px] font-semibold">
+                                {locale === "th" ? "Live preview" : "Live preview"}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                {locale === "th"
+                                  ? selectedHasOverlayLayer
+                                    ? "Preview และ render ใช้โหมดข้อความบนภาพเดียวกัน"
+                                    : "Shot นี้ไม่มี overlay ตามโหมดข้อความบนภาพที่เลือก"
+                                  : selectedHasOverlayLayer
+                                    ? "Preview and render use the same text-layer mode."
+                                    : "This shot has no overlay in the selected text-layer mode."}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className={cn(
+                                  "h-7 border-white/20 px-2 text-[10px] text-white hover:bg-white/20",
+                                  hyperframesFinalSelectedShotPreviewMode === "video" ? "bg-emerald-500/20" : "bg-white/10",
+                                )}
+                                disabled={!selectedClipLooksLikeVideo}
+                                onClick={() => {
+                                  const nextMode: HyperframesSelectedShotPreviewMode =
+                                    hyperframesFinalSelectedShotPreviewMode === "video" ? "design" : "video";
+                                  setHyperframesFinalSelectedShotPreviewMode(nextMode);
+                                  if (nextMode === "video") {
+                                    setHyperframesFinalSelectedShotVideoLoadState("loading");
+                                    setHyperframesFinalSelectedShotVideoError("");
+                                  }
+                                }}
+                              >
+                                {hyperframesFinalSelectedShotPreviewMode === "video" ? (
+                                  <Layers className="mr-1 h-3 w-3" />
+                                ) : (
+                                  <Play className="mr-1 h-3 w-3" />
+                                )}
+                                {hyperframesFinalSelectedShotPreviewMode === "video"
+                                  ? locale === "th" ? "ดูเลย์เอาต์" : "Show layout"
+                                  : locale === "th" ? "เล่นวิดีโอ" : "Play video"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 border-white/20 bg-white/10 px-2 text-[10px] text-white hover:bg-white/20"
+                                onClick={() => {
+                                  setHyperframesFinalTextPreviewReplayKey(current => current + 1);
+                                  if (hyperframesFinalSelectedShotPreviewMode === "video") {
+                                    requestAnimationFrame(() => {
+                                      const video = hyperframesFinalSelectedShotVideoRef.current;
+                                      if (!video) return;
+                                      try {
+                                        video.currentTime = 0;
+                                        void video.play().catch(() => undefined);
+                                      } catch {
+                                        // no-op
+                                      }
+                                    });
+                                  }
+                                }}
+                              >
+                                <RefreshCw className="mr-1 h-3 w-3" />
+                                Replay
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                aria-label={
+                                  locale === "th"
+                                    ? `ขยายวิดีโอ shot ${selectedIndex + 1}`
+                                    : `Expand shot ${selectedIndex + 1} video`
+                                }
+                                className="h-7 border-white/20 bg-white/10 px-2 text-[10px] text-white hover:bg-white/20"
+                                onClick={() => setVideoPreview({
+                                  url: selectedClip.url,
+                                  title: `Shot ${selectedIndex + 1}`,
+                                  overlayPreview: {
+                                    posterUrl: selectedPreviewPosterUrl,
+                                    overlayPreset: selectedOverlayPreset,
+                                    textMotionPreset: selectedTextMotion,
+                                    subtitlePreset: hyperframesFinalSubtitlePreset,
+                                    subtitleFontSizePx: selectedSubtitlePreviewFontSize,
+                                    layerLabel: selectedPreviewLayerLabel,
+                                    titleText: selectedPreviewTitle,
+                                    hookText: selectedPresetMeta.kind === "price" ? "" : selectedPreviewHook,
+                                    priceText: selectedPresetMeta.kind === "price" ? selectedPriceText : "",
+                                    chips: selectedPreviewChips,
+                                    subtitleText: selectedHasSubtitleLayer ? selectedSubtitleLine : "",
+                                    presetKind: selectedPresetMeta.kind,
+                                  },
+                                })}
+                              >
+                                <Maximize2 className="h-3 w-3" />
+                              </Button>
+                              {hyperframesFinalSelectedShotPreviewMode === "video" ? (
+                                <span
+                                  className={cn(
+                                    "max-w-[15rem] truncate rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                                    hyperframesFinalSelectedShotVideoLoadState === "error"
+                                      ? "bg-red-500/20 text-red-100"
+                                      : hyperframesFinalSelectedShotVideoLoadState === "ready"
+                                        ? "bg-emerald-500/20 text-emerald-100"
+                                        : "bg-sky-500/20 text-sky-100",
+                                  )}
+                                  title={selectedVideoStatusText}
+                                >
+                                  {selectedVideoStatusText}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div
+                            key={`hyperframes-final-large-preview-${selectedClip.id}-${hyperframesFinalTextPreviewReplayKey}`}
+                            className={cn(
+                              "hf-preview-stage hf-preview-stage--large relative mx-auto aspect-[9/16] min-h-[430px] max-h-[680px] w-[min(100%,27rem)] max-w-[27rem] overflow-hidden rounded-md bg-slate-900 p-4 text-left text-slate-950",
+                              selectedOverlayPreset === "neon_gaming_specs" ||
+                                selectedOverlayPreset === "kinetic_bold_hook" ||
+                                selectedOverlayPreset === "ugc_center_stack"
+                                ? "text-white"
+                                : "",
+                            )}
+	                            data-preset={selectedOverlayPreset}
+	                            data-text-motion={selectedTextMotion}
+	                            data-has-media="true"
+	                            data-has-overlay-copy={selectedHasOverlayLayer ? "true" : "false"}
+                              data-preview-mode={hyperframesFinalSelectedShotPreviewMode}
+	                          >
                             <video
+                              key={`hf-compact-preview-media-${selectedClip.id}-${hyperframesFinalSelectedShotPreviewMode}`}
                               src={selectedClip.url}
+                              poster={selectedPreviewPosterUrl}
+                              ref={hyperframesFinalSelectedShotVideoRef}
                               muted
                               playsInline
-                              preload="metadata"
-                              className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
-                            />
-                            <div className="absolute inset-x-2 top-2 rounded bg-black/55 px-2 py-1 text-[10px] font-semibold text-white">
-                              Shot {selectedIndex + 1} preview
-                            </div>
-                            <div className="absolute inset-x-2 bottom-2 rounded bg-white/90 px-2 py-1 text-[10px] leading-snug text-slate-900">
-                              {firstThaiProductLine(
-                                hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex),
-                                54,
-                              ) || firstThaiProductLine(
-                                hyperframesFinalSubtitleById[selectedClip.id] ?? defaultHyperframesSubtitleText(selectedClip),
-                                54,
+                              preload="auto"
+                              autoPlay={hyperframesFinalSelectedShotPreviewMode === "video"}
+                              loop={hyperframesFinalSelectedShotPreviewMode === "video"}
+                              controls={hyperframesFinalSelectedShotPreviewMode === "video"}
+                              className={cn(
+                                hyperframesFinalSelectedShotPreviewMode === "video"
+                                  ? "absolute inset-0 z-[8] h-full w-full bg-transparent object-contain transition-opacity duration-200"
+                                  : "hf-preview-media",
+                                hyperframesFinalSelectedShotPreviewMode === "video" ? "hf-preview-media--interactive" : "",
+                                "opacity-100",
                               )}
-                            </div>
-                          </button>
+                              onLoadedMetadata={() => {
+                                const video = hyperframesFinalSelectedShotVideoRef.current;
+                                if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                                  setHyperframesFinalSelectedShotVideoLoadState("ready");
+                                  setHyperframesFinalSelectedShotVideoError("");
+                                }
+                              }}
+                              onLoadStart={() => {
+                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
+                                  setHyperframesFinalSelectedShotVideoLoadState("loading");
+                                  setHyperframesFinalSelectedShotVideoError("");
+                                }
+                              }}
+                              onLoadedData={() => {
+                                setHyperframesFinalSelectedShotVideoLoadState("ready");
+                                setHyperframesFinalSelectedShotVideoError("");
+                              }}
+                              onCanPlay={() => {
+                                setHyperframesFinalSelectedShotVideoLoadState("ready");
+                                setHyperframesFinalSelectedShotVideoError("");
+                              }}
+                              onPlaying={() => {
+                                setHyperframesFinalSelectedShotVideoLoadState("ready");
+                                setHyperframesFinalSelectedShotVideoError("");
+                              }}
+                              onTimeUpdate={(event) => {
+                                if (event.currentTarget.currentTime <= 0.02) return;
+                                setHyperframesFinalSelectedShotVideoLoadState("ready");
+                                setHyperframesFinalSelectedShotVideoError("");
+                              }}
+                              onWaiting={() => undefined}
+                              onStalled={() => {
+                                if (hyperframesFinalSelectedShotPreviewMode !== "video") return;
+                                setHyperframesFinalSelectedShotVideoLoadState("error");
+                                setHyperframesFinalSelectedShotVideoError(
+                                  locale === "th"
+                                    ? "เบราว์เซอร์หยุดโหลดวิดีโอจาก URL นี้ ตรวจ source MP4 หรือสิทธิ์ไฟล์"
+                                    : "The browser stalled while loading this MP4. Check the source URL or file permissions.",
+                                );
+                              }}
+                              onError={() => {
+                                const mediaError = hyperframesFinalSelectedShotVideoRef.current?.error;
+                                const mediaMessage =
+                                  mediaError?.code === 1 ? (locale === "th" ? "การเล่นวิดีโอถูกยกเลิก" : "Video playback was aborted.")
+                                  : mediaError?.code === 2 ? (locale === "th" ? "เกิดปัญหาเครือข่ายระหว่างโหลดวิดีโอ" : "A network error interrupted video loading.")
+                                  : mediaError?.code === 3 ? (locale === "th" ? "เบราว์เซอร์ถอดรหัสวิดีโอนี้ไม่ได้" : "The browser could not decode this video.")
+                                  : mediaError?.code === 4 ? (locale === "th" ? "รูปแบบไฟล์วิดีโอนี้ไม่รองรับใน browser" : "This video format is not supported by the browser.")
+                                  : locale === "th" ? "โหลดวิดีโอของ shot นี้ไม่สำเร็จ" : "Failed to load this shot video.";
+                                setHyperframesFinalSelectedShotVideoLoadState("error");
+                                setHyperframesFinalSelectedShotVideoError(mediaMessage);
+                              }}
+                              aria-hidden={hyperframesFinalSelectedShotPreviewMode === "design"}
+                            />
+                            {selectedPreviewPosterUrl && (
+                              hyperframesFinalSelectedShotPreviewMode === "design" ||
+                              (hyperframesFinalSelectedShotPreviewMode === "video" && !selectedVideoIsReady)
+                            ) ? (
+                              <img
+                                src={selectedPreviewPosterUrl}
+                                alt=""
+                                aria-hidden="true"
+                                className={cn(
+                                  "pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95 transition-opacity duration-200",
+                                )}
+                              />
+                            ) : null}
+                            {hyperframesFinalSelectedShotPreviewMode === "video" &&
+                              !selectedPreviewPosterUrl &&
+                              hyperframesFinalSelectedShotVideoLoadState !== "ready" ? (
+                                <div className="absolute inset-0 z-[5] flex items-center justify-center bg-slate-950/80 p-5 text-center text-xs font-semibold leading-relaxed text-white">
+                                  {locale === "th"
+                                    ? "ยังไม่มี poster สำหรับ shot นี้ กำลังพยายามโหลด MP4 โดยตรง"
+                                    : "No poster is available for this shot. Loading the MP4 directly."}
+                                </div>
+                            ) : null}
+                            {hyperframesFinalSelectedShotPreviewMode === "video" ? (
+                              <div className="absolute inset-x-3 top-3 z-30 rounded-full bg-slate-950/85 px-3 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-lg">
+                                <span>{selectedVideoStatusText}</span>
+                              </div>
+                            ) : null}
+		                            {selectedHasOverlayLayer ? (
+		                              <div className={cn(
+                                      "hf-preview-overlay-copy relative z-10 flex h-full min-h-[198px] flex-col justify-between",
+                                      hyperframesFinalSelectedShotPreviewMode === "video" ? "pointer-events-none" : "",
+                                    )}>
+		                                <div className="hf-preview-copy-top">
+		                                  <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
+		                                    {selectedPreviewLayerLabel}
+		                                  </div>
+		                                  <div className={cn(
+	                                    "hf-preview-title max-w-[92%] font-black",
+	                                    selectedOverlayPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
+	                                  )}>
+	                                    {selectedPreviewTitle}
+	                                  </div>
+	                                  {selectedPresetMeta.kind === "price" ? (
+	                                    <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
+	                                      {selectedPriceText}
+	                                    </div>
+	                                  ) : selectedPreviewHook ? (
+	                                    <div className={cn(
+	                                      "hf-preview-hook mt-2 font-extrabold",
+	                                      selectedOverlayPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
+	                                    )}>
+	                                      {selectedPreviewHook}
+	                                    </div>
+	                                  ) : null}
+	                                </div>
+		                                {selectedPresetMeta.kind !== "clean" && selectedPreviewChips.length > 0 ? (
+	                                  <div className={cn(
+	                                    "hf-preview-chip-list mt-4 grid gap-2",
+	                                    selectedPresetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
+	                                    selectedPresetMeta.kind === "cards" ? "grid-cols-2" : "",
+	                                  )}>
+		                                    {selectedPreviewChips.filter(Boolean).slice(0, 3).map((line, index) => (
+	                                      <div
+	                                        key={`${line}-${index}`}
+	                                        className={cn(
+	                                          "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
+	                                          selectedOverlayPreset === "neon_gaming_specs"
+	                                            ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+	                                            : selectedPresetMeta.kind === "price"
+	                                              ? "bg-white text-slate-950"
+	                                              : "bg-white/85 text-slate-950",
+	                                        )}
+	                                      >
+	                                        {line}
+	                                      </div>
+	                                    ))}
+	                                  </div>
+	                                ) : null}
+	                              </div>
+	                            ) : null}
+		                            {selectedHasSubtitleLayer && selectedSubtitleLine ? (
+	                              <div
+	                                className={cn(
+                                    "hf-sub-preview-inline",
+                                    hyperframesFinalSelectedShotPreviewMode === "video" ? "pointer-events-none" : "",
+                                  )}
+	                                data-subtitle-preset={hyperframesFinalSubtitlePreset}
+	                              >
+	                                {hyperframesFinalSubtitlePreset === "karaoke_word" ? (
+	                                  <div className="hf-sub-line" style={{ fontSize: selectedSubtitlePreviewFontSize }}>
+	                                    <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+	                                      {locale === "th" ? "Subtitle" : "Subtitle"}
+	                                    </span>
+	                                    {selectedSubtitleLine.split(/\s+/).filter(Boolean).map((word, wordIndex) => (
+	                                      <span key={`${word}-${wordIndex}`} className="hf-sub-word">
+	                                        {word}
+	                                      </span>
+	                                    ))}
+	                                  </div>
+	                                ) : (
+	                                  <div className="hf-sub-line" style={{ fontSize: selectedSubtitlePreviewFontSize }}>
+	                                    <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+	                                      {locale === "th" ? "Subtitle" : "Subtitle"}
+	                                    </span>
+	                                    {selectedSubtitleLine}
+	                                  </div>
+	                                )}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="grid gap-3">
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-4">
                           <label className="grid gap-1 text-[11px] font-medium text-slate-600">
                             {locale === "th" ? "Style ของ shot" : "Shot style"}
                             <select
@@ -6611,28 +7648,266 @@ export default function StoryboardReviewPage() {
                               ))}
                             </select>
                           </label>
+                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+                            {locale === "th" ? "Text motion" : "Text motion"}
+                            <select
+                              value={selectedTextMotion}
+                              onChange={event => setHyperframesFinalShotTextMotionById(current => ({
+                                ...current,
+                                [selectedClip.id]: event.target.value as HyperframesFinalTextMotionPreset,
+                              }))}
+                              className="h-9 rounded-md border bg-white px-2 text-xs"
+                            >
+                              {HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS.map(preset => (
+                                <option key={preset.id} value={preset.id}>
+                                  {locale === "th" ? preset.labelTh : preset.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
+	                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
+	                            <span className="flex flex-wrap items-center gap-2">
+	                              <span>{locale === "th" ? `Overlay text สำหรับ shot ${selectedIndex + 1}` : `Overlay text for shot ${selectedIndex + 1}`}</span>
+	                              <Badge
+	                                variant="outline"
+	                                className={cn(
+	                                  "rounded-full px-2 py-0 text-[10px] font-medium",
+	                                  selectedShouldRenderShotOverlay
+	                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+	                                    : "border-slate-200 bg-slate-50 text-slate-500",
+	                                )}
+		                              >
+		                                {selectedShouldRenderShotOverlay
+		                                  ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
+		                                    ? locale === "th" ? "ใช้หลัง Hook" : "after hook"
+		                                    : locale === "th" ? "ใช้ตอน render" : "rendered"
+		                                  : locale === "th" ? "ไม่ใช้ในโหมดนี้" : "not used in this mode"}
+		                              </Badge>
+		                            </span>
+	                            <Textarea
+	                              value={hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex)}
+	                              onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
+	                              onBlur={() => void hyperframesFinalAutosaveFlushRef.current()}
+	                              disabled={!selectedShouldRenderShotOverlay}
+	                              className={cn(
+	                                "min-h-[76px] text-xs",
+	                                selectedShouldRenderShotOverlay ? "bg-white" : "bg-slate-50 text-slate-400",
+	                              )}
+	                              placeholder={locale === "th" ? "ข้อความบนจอเฉพาะ shot นี้" : "On-screen text for this shot"}
+	                            />
+		                            <span className="text-[10px] font-normal leading-relaxed text-slate-500">
+		                              {selectedShouldRenderShotOverlay
+		                                ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
+		                                  ? locale === "th" ? "ช่องนี้คือ Overlay text ของ shot 1 หลัง Hook 0-3s; Hook แก้ที่ช่อง Hook text ด้านบน" : "This is shot 1 overlay after the 0-3s hook; edit the hook in Hook text above."
+		                                  : locale === "th" ? "ข้อความช่องนี้จะแสดงใน preview และ final render ของ shot นี้" : "This text appears in this shot preview and final render."
+		                                : locale === "th" ? "โหมดข้อความบนภาพปัจจุบันไม่ render overlay ของ shot นี้" : "The current text-layer mode does not render this shot overlay."}
+		                            </span>
+		                            {selectedOverlayContainsPromptText ? (
+		                              <span className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-normal leading-relaxed text-amber-800">
+		                                {locale === "th"
+		                                  ? "พบข้อความ prompt วิดีโอในช่อง Overlay text ระบบจะไม่วาดข้อความส่วนนั้นบนภาพ ให้แก้เป็นข้อความสั้น ๆ ที่ต้องการแสดงบนจอ"
+		                                  : "Video prompt text was detected in Overlay text. It will not be drawn on the video; replace it with short on-screen copy."}
+		                              </span>
+		                            ) : null}
+		                          </label>
                           <label className="grid gap-1 text-[11px] font-medium text-slate-600">
-                            {locale === "th" ? `Overlay text สำหรับ shot ${selectedIndex + 1}` : `Overlay text for shot ${selectedIndex + 1}`}
-                            <Textarea
-                              value={hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex)}
-                              onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
-                              className="min-h-[76px] bg-white text-xs"
-                              placeholder={locale === "th" ? "ข้อความบนจอเฉพาะ shot นี้" : "On-screen text for this shot"}
-                            />
-                          </label>
-                          <label className="grid gap-1 text-[11px] font-medium text-slate-600">
-                            {locale === "th" ? `Subtitle / Voiceover shot ${selectedIndex + 1}` : `Subtitle / voiceover shot ${selectedIndex + 1}`}
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span>{locale === "th" ? `Subtitle / Voiceover shot ${selectedIndex + 1}` : `Subtitle / voiceover shot ${selectedIndex + 1}`}</span>
+                              <Badge
+                                variant="outline"
+	                                className={cn(
+	                                  "rounded-full px-2 py-0 text-[10px] font-medium",
+	                                  selectedHasSubtitleLayer
+	                                    ? "border-sky-200 bg-sky-50 text-sky-700"
+	                                    : "border-slate-200 bg-slate-50 text-slate-500",
+	                                )}
+	                              >
+                                {selectedHasSubtitleLayer
+                                  ? locale === "th" ? "แสดง subtitle" : "subtitle shown"
+                                  : locale === "th" ? "ไม่แสดง subtitle" : "subtitle hidden"}
+                              </Badge>
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 bg-white px-2 text-[10px]"
+                                onClick={() => fillHyperframesFinalSubtitleFromPrompt(selectedClip)}
+                              >
+                                <RefreshCw className="mr-1 h-3 w-3" />
+                                {locale === "th" ? "สร้างจากบทพูด" : "Create from voiceover"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-7 bg-white px-2 text-[10px]"
+                                onClick={() => void transcribeHyperframesFinalSubtitleFromVideo(selectedClip)}
+                                disabled={hyperframesFinalTranscribingShotId === selectedClip.id}
+                              >
+                                {hyperframesFinalTranscribingShotId === selectedClip.id ? (
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Mic className="mr-1 h-3 w-3" />
+                                )}
+                                {locale === "th" ? "Transcribe จากคลิป" : "Transcribe from clip"}
+                              </Button>
+                              {hyperframesFinalSubtitleVttById[selectedClip.id]?.trim() ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 bg-white px-2 text-[10px]"
+                                  onClick={() =>
+                                    downloadHyperframesSubtitleSidecar(
+                                      hyperframesFinalSubtitleVttById[selectedClip.id]!,
+                                      `${draft ? getStoryboardReviewName(draft) : "storyboard-review"}-shot-${hyperframesFinalPreviewShotIndex + 1}-subtitle`,
+                                      "vtt",
+                                    )
+                                  }
+                                >
+                                  <Download className="mr-1 h-3 w-3" />
+                                  VTT
+                                </Button>
+                              ) : null}
+                              {hyperframesFinalSubtitleSrtById[selectedClip.id]?.trim() ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 bg-white px-2 text-[10px]"
+                                  onClick={() =>
+                                    downloadHyperframesSubtitleSidecar(
+                                      hyperframesFinalSubtitleSrtById[selectedClip.id]!,
+                                      `${draft ? getStoryboardReviewName(draft) : "storyboard-review"}-shot-${hyperframesFinalPreviewShotIndex + 1}-subtitle`,
+                                      "srt",
+                                    )
+                                  }
+                                >
+                                  <Download className="mr-1 h-3 w-3" />
+                                  SRT
+                                </Button>
+                              ) : null}
+                            </div>
                             <Textarea
                               value={hyperframesFinalSubtitleById[selectedClip.id] ?? defaultHyperframesSubtitleText(selectedClip)}
-                              onChange={event => setHyperframesFinalSubtitleById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
+                              onChange={event => {
+                                setHyperframesFinalSubtitleById(current => ({ ...current, [selectedClip.id]: event.target.value }));
+                                setHyperframesFinalSubtitleVttById(current => {
+                                  const next = { ...current };
+                                  delete next[selectedClip.id];
+                                  return next;
+                                });
+                                setHyperframesFinalSubtitleSrtById(current => {
+                                  const next = { ...current };
+                                  delete next[selectedClip.id];
+                                  return next;
+                                });
+                              }}
+                              onBlur={() => void hyperframesFinalAutosaveFlushRef.current()}
                               className="min-h-[76px] bg-white text-xs"
-                              placeholder={locale === "th" ? "ระบบเติมจากบทพูดของ shot ได้ หรือแก้เอง" : "Defaults from this shot voiceover; editable."}
-                            />
+	                              placeholder={locale === "th" ? "ระบบเติมจากบทพูดของ shot ได้ หรือแก้เอง" : "Defaults from this shot voiceover; editable."}
+	                            />
+                            <span className="text-[10px] font-normal leading-relaxed text-slate-500">
+                              {hyperframesFinalBurnInSubtitles
+                                ? locale === "th" ? `Subtitle ช่องนี้จะแสดงเต็มข้อความใน preview และ final render; ปรับขนาดได้ที่ Subtitle size (${hyperframesFinalSubtitleFontSizePx}px)` : `This subtitle appears fully in preview and final render; adjust size with Subtitle size (${hyperframesFinalSubtitleFontSizePx}px).`
+                                : locale === "th" ? "ปิด Burn-in Subtitle อยู่ จึงเก็บบทพูดไว้แต่ไม่แสดงบนภาพ" : "Burn-in subtitles are off, so this is stored as voiceover text but not drawn on the video."}
+                            </span>
+                            <span className="text-[10px] font-normal leading-relaxed text-slate-500">
+                              {locale === "th"
+                                ? "ปุ่ม สร้างจากบทพูด ใช้ข้อความพูดที่มีอยู่ใน prompt ของ shot นี้ ส่วน Transcribe จากคลิป จะถอดเสียงจริงจากไฟล์ MP4 ผ่าน HyperFrames CLI และจะ error ตรง ๆ ถ้า runtime ยังไม่พร้อม"
+                                : "Create from voiceover uses the shot's existing spoken line from the prompt. Transcribe from clip runs HyperFrames CLI on the real MP4 and fails explicitly if the runtime is unavailable."}
+                            </span>
+                            <span className="text-[10px] font-normal leading-relaxed text-slate-500">
+                              {locale === "th"
+                                ? "ถ้า shot นี้เคยถอดเสียงจากคลิปแล้ว จะดาวน์โหลดไฟล์ VTT/SRT ของ shot นั้นได้ทันทีจากปุ่มด้านบน"
+                                : "When this shot has been transcribed from the clip, its VTT/SRT sidecars can be downloaded from the buttons above."}
+                            </span>
                           </label>
                         </div>
                         </div>
+                        <aside className="hidden max-h-[44rem] overflow-y-auto rounded-md border bg-slate-50 p-2 xl:grid xl:content-start xl:gap-2">
+                          <div className="flex items-center justify-between gap-2 px-1">
+                            <span className="text-[11px] font-semibold text-slate-700">
+                              {locale === "th" ? "เลือก shot" : "Select shot"}
+                            </span>
+                            <Badge variant="outline" className="rounded-full bg-white px-2 py-0 text-[10px]">
+                              {hyperframesFinalSourceClips.length}
+                            </Badge>
+                          </div>
+	                          {hyperframesFinalSourceClips.map((railClip, railIndex) => {
+	                            const railOverlayText = hyperframesFinalShotTextById[railClip.id] ?? defaultHyperframesShotText(railClip, railIndex);
+	                            const railSubtitleText = hyperframesFinalSubtitleById[railClip.id] ?? defaultHyperframesSubtitleText(railClip);
+	                            const railPosterUrl = getStoryboardClipPosterUrl(railClip);
+	                            const railIsSelected = railIndex === hyperframesFinalPreviewShotIndex;
+	                            const railPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
+	                              textMode: hyperframesFinalTextMode,
+	                              shotIndex: railIndex,
+	                              overlayText: railOverlayText,
+	                              hookText: hyperframesFinalHookText,
+	                              supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                              maxLines: 1,
+	                              maxLength: 32,
+	                            });
+	                            const railHasOverlayLayer = railPreviewLines.length > 0;
+	                            const railHasSubtitleLayer = hyperframesFinalBurnInSubtitles && railSubtitleText.trim().length > 0;
+	                            const railPreviewText = firstThaiProductLine(railPreviewLines[0] ?? "", 32);
+	                            return (
+                              <button
+                                key={`hf-shot-rail-${railClip.id}`}
+                                type="button"
+                                onClick={() => setHyperframesFinalPreviewShotIndex(railIndex)}
+                                className={cn(
+                                  "rounded-md border p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+                                  railIsSelected
+                                    ? "border-sky-400 bg-sky-50 text-sky-950"
+                                    : "border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-sky-50/60",
+                                )}
+                              >
+                                <div className="flex items-center justify-between gap-2 px-0.5">
+                                  <span className="text-[10px] font-semibold">Shot {railIndex + 1}</span>
+                                  <span className="rounded-full bg-white/90 px-1.5 py-0.5 font-mono text-[9px]">
+                                    {Math.round(railClip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)}s
+                                  </span>
+                                </div>
+                                <div className="relative mt-1.5 aspect-[9/16] overflow-hidden rounded-md bg-slate-900">
+                                  <video
+                                    key={`hf-shot-rail-media-${railClip.id}`}
+                                    src={railClip.url}
+                                    poster={railPosterUrl}
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    className="absolute inset-0 h-full w-full object-cover opacity-90"
+                                    aria-hidden="true"
+                                  />
+	                                  {railHasOverlayLayer ? (
+	                                    <div className="absolute inset-x-1 bottom-1 rounded bg-white/90 px-1.5 py-1 text-[8px] font-bold leading-tight text-slate-950">
+	                                      {railPreviewText}
+	                                    </div>
+	                                  ) : null}
+	                                </div>
+	                                <div className="mt-1.5 flex flex-wrap gap-1">
+	                                  <span className={cn(
+	                                    "rounded-full px-1.5 py-0.5 text-[9px]",
+	                                    railHasOverlayLayer ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500",
+	                                  )}>
+	                                    {railHasOverlayLayer ? "overlay" : "no overlay"}
+	                                  </span>
+	                                  <span className={cn(
+	                                    "rounded-full px-1.5 py-0.5 text-[9px]",
+	                                    railHasSubtitleLayer ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500",
+	                                  )}>
+	                                    {railHasSubtitleLayer ? "subtitle" : "no subtitle"}
+	                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </aside>
                       </div>
                     );
                   })()}
@@ -6972,6 +8247,7 @@ export default function StoryboardReviewPage() {
                     overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
                     animationPreset: "smooth_reveal" as const,
                     transition: "fade" as const,
+                    textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
                   };
                 });
                 const events = buildHyperframesFinalAudioEvents({
@@ -7026,34 +8302,75 @@ export default function StoryboardReviewPage() {
                 @keyframes hfPreviewRise { from { opacity: 0; transform: translateY(18px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
                 @keyframes hfPreviewPop { 0% { opacity: 0; transform: scale(.72) rotate(-2deg); } 70% { opacity: 1; transform: scale(1.08) rotate(0deg); } 100% { opacity: 1; transform: scale(1); } }
                 @keyframes hfPreviewSlide { from { opacity: 0; transform: translateX(44px); } to { opacity: 1; transform: translateX(0); } }
+                @keyframes hfPreviewSlideRightToLeft { from { opacity: 0; transform: translateX(110%) scale(.98); } 72% { opacity: 1; transform: translateX(-3%) scale(1.02); } to { opacity: 1; transform: translateX(0) scale(1); } }
+                @keyframes hfPreviewSlideLeftToRight { from { opacity: 0; transform: translateX(-90%) scale(.98); } 72% { opacity: 1; transform: translateX(3%) scale(1.02); } to { opacity: 1; transform: translateX(0) scale(1); } }
+                @keyframes hfPreviewWipe { from { opacity: 1; clip-path: inset(0 100% 0 0); transform: translateX(10px); } to { opacity: 1; clip-path: inset(0 0 0 0); transform: translateX(0); } }
+                @keyframes hfPreviewOverlayLifetime { 0%, 86% { opacity: 1; } 100% { opacity: 0; } }
                 @keyframes hfPreviewGlow { 0%, 100% { box-shadow: 0 0 0 rgba(34,211,238,0); } 50% { box-shadow: 0 0 34px rgba(34,211,238,.42); } }
                 @keyframes hfPreviewPrice { 0% { opacity: 0; transform: translateY(24px) scale(.82); } 60% { opacity: 1; transform: translateY(-4px) scale(1.14); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
                 .hf-preview-stage { aspect-ratio: 9 / 16; min-height: 320px; max-height: 520px; max-width: 22rem; position: relative; overflow: hidden; }
-                .hf-preview-media { position: absolute; inset: 0; z-index: 0; height: 100%; width: 100%; object-fit: cover; opacity: .92; pointer-events: none; }
+                .hf-preview-stage--compact { min-height: 260px; max-height: 360px; max-width: 15rem; width: 100%; }
+                .hf-preview-stage--large { min-height: 430px; max-height: 680px; max-width: 27rem; width: min(100%, 27rem); margin-inline: auto; }
+                .hf-preview-stage--thumb { min-height: 0; height: 10.5rem; width: 5.9rem; max-height: none; max-width: none; margin-inline: auto; border: 1px solid rgba(148,163,184,.38); box-shadow: 0 10px 22px rgba(15,23,42,.14); }
+                .hf-preview-poster { position: absolute; inset: 0; z-index: 1; height: 100%; width: 100%; object-fit: cover; opacity: .96; transition: opacity .2s ease; }
+                .hf-preview-poster--hidden { opacity: 0; }
+                .hf-preview-media { position: absolute; inset: 0; z-index: 2; height: 100%; width: 100%; object-fit: cover; opacity: .92; pointer-events: none; }
+                .hf-preview-media--interactive { z-index: 4; pointer-events: auto; }
+                .hf-preview-media--hidden { opacity: 0; }
+                .hf-preview-video-status { position: absolute; left: 50%; bottom: 14px; z-index: 28; transform: translateX(-50%); max-width: calc(100% - 28px); border-radius: 999px; background: rgba(2,6,23,.74); padding: 8px 12px; color: #fff; text-align: center; font-size: 11px; font-weight: 700; line-height: 1.2; box-shadow: 0 8px 24px rgba(0,0,0,.28); pointer-events: none; }
                 .hf-preview-title, .hf-preview-hook, .hf-preview-chip, .hf-preview-price, .hf-sub-line { max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
-                .hf-preview-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 28px; line-height: 1.08; }
+                .hf-preview-overlay-copy { box-sizing: border-box; padding-bottom: 18%; animation: hfPreviewOverlayLifetime 3.2s linear both; }
+                .hf-preview-copy-top { position: relative; z-index: 1; }
+	                .hf-preview-chip-list { position: relative; z-index: 1; }
+	                .hf-preview-layer-tag { width: fit-content; max-width: 100%; line-height: 1; text-shadow: none; }
+	                .hf-preview-layer-tag--subtitle { display: block; margin: 0 auto 6px; border-radius: 999px; background: rgba(255,255,255,.9); padding: 4px 8px; color: #0f172a; font-size: 10px; font-weight: 900; letter-spacing: 0; box-shadow: 0 6px 14px rgba(0,0,0,.18); }
+	                .hf-preview-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 28px; line-height: 1.08; }
                 .hf-preview-hook { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 18px; line-height: 1.18; }
                 .hf-preview-price { font-size: 34px; line-height: 1.02; }
                 .hf-preview-chip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 1.2; }
-                .hf-preview-stage::before { content: ""; position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at 18% 18%, rgba(255,255,255,.55), transparent 28%), linear-gradient(135deg, rgba(255,255,255,.85), rgba(226,232,240,.82)); pointer-events: none; }
-                .hf-preview-stage[data-has-media="true"]::before { background: linear-gradient(180deg, rgba(2,6,23,.36), rgba(2,6,23,.18) 44%, rgba(2,6,23,.46)); }
+	                .hf-preview-stage::before { content: ""; position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at 18% 18%, rgba(255,255,255,.55), transparent 28%), linear-gradient(135deg, rgba(255,255,255,.85), rgba(226,232,240,.82)); pointer-events: none; animation: hfPreviewOverlayLifetime 3.2s linear both; }
+	                .hf-preview-stage[data-has-overlay-copy="false"]::before { background: transparent !important; animation: none !important; }
+	                .hf-preview-stage[data-has-media="true"]::before { background: linear-gradient(180deg, rgba(2,6,23,.36), rgba(2,6,23,.18) 44%, rgba(2,6,23,.46)); }
                 .hf-preview-stage[data-preset="auto"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.26), transparent 30%), radial-gradient(circle at 82% 18%, rgba(250,204,21,.3), transparent 26%), linear-gradient(135deg, #f8fafc, #dbeafe 52%, #fff7ed); }
                 .hf-preview-stage[data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 22%, rgba(255,255,255,.72), transparent 32%), linear-gradient(145deg, #fef3c7, #f8fafc 45%, #e2e8f0); }
                 .hf-preview-stage[data-preset="hook_sequence"]::before { background: linear-gradient(135deg, #eff6ff 0 58%, #0f172a 59% 100%); }
                 .hf-preview-stage[data-preset="kinetic_bold_hook"]::before { background: radial-gradient(circle at 72% 22%, rgba(250,204,21,.34), transparent 30%), linear-gradient(135deg, #111827, #020617 55%, #facc15 56% 100%); }
+                .hf-preview-stage[data-preset="creator_top_punch"]::before { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.42)); }
+                .hf-preview-stage[data-preset="ugc_center_stack"]::before { background: linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.04) 44%, rgba(2,6,23,.34)); }
+                .hf-preview-stage[data-preset="white_intro_card"]::before { background: #f1f5f9; }
+                .hf-preview-stage[data-preset="tech_signal_map"]::before { background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.28), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.18), transparent 24%), linear-gradient(180deg, #020617, #0f172a); }
+                .hf-preview-stage[data-preset="spec_highlight"]::before { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.48)); }
+                .hf-preview-stage[data-preset="electronics_spec_stack"]::before { background: linear-gradient(90deg, rgba(2,6,23,.08), rgba(2,6,23,.72)); }
+                .hf-preview-stage[data-preset="split_product_specs"]::before { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
                 .hf-preview-stage[data-preset="neon_gaming_specs"]::before { background: radial-gradient(circle at 70% 20%, rgba(34,211,238,.28), transparent 30%), linear-gradient(135deg, #020617, #172554 45%, #111827); }
+                .hf-preview-stage[data-preset="feature_cards"]::before { background: linear-gradient(180deg, rgba(15,23,42,.5), rgba(15,23,42,.24)); }
+                .hf-preview-stage[data-preset="badge_cascade"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.3), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.5), rgba(2,6,23,.16)); }
                 .hf-preview-stage[data-preset="hero_price_billboard"]::before,
                 .hf-preview-stage[data-preset="price_impact"]::before { background: linear-gradient(160deg, #f8fafc 0 48%, #111827 49% 100%); }
                 .hf-preview-stage[data-preset="lower_third_review"]::before { background: linear-gradient(180deg, rgba(15,23,42,.1), rgba(15,23,42,.55)), linear-gradient(135deg, #e0f2fe, #f8fafc); }
                 .hf-preview-stage[data-has-media="true"][data-preset="auto"]::before { background: linear-gradient(180deg, rgba(14,165,233,.22), rgba(2,6,23,.2) 48%, rgba(250,204,21,.2)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 18%, rgba(255,255,255,.42), transparent 32%), linear-gradient(180deg, rgba(255,255,255,.18), rgba(15,23,42,.32)); }
+                .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy,
+                .hf-preview-stage[data-preview-mode="video"] .hf-sub-preview-inline,
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-layer-tag { pointer-events: none; }
                 .hf-preview-stage[data-has-media="true"][data-preset="hook_sequence"]::before { background: linear-gradient(135deg, rgba(239,246,255,.88) 0 50%, rgba(15,23,42,.28) 51% 100%); }
                 .hf-preview-stage[data-has-media="true"][data-preset="kinetic_bold_hook"]::before { background: linear-gradient(90deg, rgba(2,6,23,.9) 0 53%, rgba(2,6,23,.18) 54% 100%), linear-gradient(135deg, transparent 0 53%, rgba(250,204,21,.9) 54% 78%, transparent 79% 100%); }
+                .hf-preview-stage[data-has-media="true"][data-preset="creator_top_punch"]::before { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.42)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="ugc_center_stack"]::before { background: linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.04) 44%, rgba(2,6,23,.34)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="white_intro_card"]::before { background: #f1f5f9; }
+                .hf-preview-stage[data-has-media="true"][data-preset="tech_signal_map"]::before { background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.34), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.2), transparent 24%), linear-gradient(180deg, rgba(2,6,23,.9), rgba(15,23,42,.78)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="spec_highlight"]::before { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.48)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="electronics_spec_stack"]::before { background: linear-gradient(90deg, rgba(2,6,23,.08), rgba(2,6,23,.74)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="split_product_specs"]::before { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
                 .hf-preview-stage[data-has-media="true"][data-preset="neon_gaming_specs"]::before { background: radial-gradient(circle at 70% 20%, rgba(34,211,238,.32), transparent 30%), linear-gradient(180deg, rgba(2,6,23,.72), rgba(23,37,84,.52)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="feature_cards"]::before { background: linear-gradient(180deg, rgba(15,23,42,.48), rgba(15,23,42,.22)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="badge_cascade"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.34), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.58), rgba(2,6,23,.14)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="hero_price_billboard"]::before,
                 .hf-preview-stage[data-has-media="true"][data-preset="price_impact"]::before { background: linear-gradient(160deg, rgba(248,250,252,.78) 0 44%, rgba(17,24,39,.74) 45% 100%); }
                 .hf-preview-stage[data-has-media="true"][data-preset="lower_third_review"]::before { background: linear-gradient(180deg, rgba(15,23,42,.12), rgba(15,23,42,.64)); }
-                .hf-preview-badge { animation: hfPreviewPop .55s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-media--interactive { z-index: 8; }
                 .hf-preview-title { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .12s both; }
                 .hf-preview-hook { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .34s both; }
                 .hf-preview-chip { animation: hfPreviewSlide .48s cubic-bezier(.2,.9,.2,1) both; }
@@ -7061,38 +8378,160 @@ export default function StoryboardReviewPage() {
                 .hf-preview-chip:nth-child(2) { animation-delay: .76s; }
                 .hf-preview-chip:nth-child(3) { animation-delay: .94s; }
                 .hf-preview-chip:nth-child(4) { animation-delay: 1.12s; }
+                .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-title,
+                .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-hook,
+                .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-chip { animation-name: hfPreviewSlideRightToLeft; animation-duration: .68s; animation-timing-function: cubic-bezier(.18,.9,.24,1); animation-fill-mode: both; }
+                .hf-preview-stage[data-text-motion="slide_left_to_right"] .hf-preview-title,
+                .hf-preview-stage[data-text-motion="slide_left_to_right"] .hf-preview-hook,
+                .hf-preview-stage[data-text-motion="slide_left_to_right"] .hf-preview-chip { animation-name: hfPreviewSlideLeftToRight; animation-duration: .68s; animation-timing-function: cubic-bezier(.18,.9,.24,1); animation-fill-mode: both; }
+                .hf-preview-stage[data-text-motion="pop_scale"] .hf-preview-title,
+                .hf-preview-stage[data-text-motion="pop_scale"] .hf-preview-hook,
+                .hf-preview-stage[data-text-motion="pop_scale"] .hf-preview-chip { animation-name: hfPreviewPop; animation-duration: .62s; animation-timing-function: cubic-bezier(.18,.9,.24,1); animation-fill-mode: both; }
+                .hf-preview-stage[data-text-motion="wipe_reveal"] .hf-preview-title,
+                .hf-preview-stage[data-text-motion="wipe_reveal"] .hf-preview-hook,
+                .hf-preview-stage[data-text-motion="wipe_reveal"] .hf-preview-chip { animation-name: hfPreviewWipe; animation-duration: .72s; animation-timing-function: cubic-bezier(.22,1,.36,1); animation-fill-mode: both; }
+                .hf-preview-stage[data-text-motion="none"] .hf-preview-title,
+                .hf-preview-stage[data-text-motion="none"] .hf-preview-hook,
+                .hf-preview-stage[data-text-motion="none"] .hf-preview-chip { animation: none !important; opacity: 1; clip-path: none; transform: none; }
                 .hf-preview-stage[data-preset="hero_price_billboard"] .hf-preview-price,
                 .hf-preview-stage[data-preset="price_impact"] .hf-preview-price { animation: hfPreviewPrice .72s cubic-bezier(.2,.9,.2,1) .42s both; }
                 .hf-preview-stage[data-preset="neon_gaming_specs"] .hf-preview-chip { animation-name: hfPreviewPop, hfPreviewGlow; animation-duration: .48s, 1.4s; animation-iteration-count: 1, infinite; }
                 .hf-preview-stage[data-preset="auto"] .hf-preview-title { max-width: 72%; border-radius: 18px; background: rgba(255,255,255,.82); padding: 10px 12px; color: #0f172a; }
                 .hf-preview-stage[data-preset="auto"] .hf-preview-hook { display: inline-block; border-radius: 999px; background: #0ea5e9; padding: 8px 12px; color: white; }
                 .hf-preview-stage[data-preset="auto"] .hf-preview-chip { border: 1px solid rgba(14,165,233,.3); background: rgba(255,255,255,.9); color: #0f172a; }
-                .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-badge { transform-origin: left center; }
                 .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-title { margin-inline: auto; max-width: 86%; text-align: center; font-size: 28px; color: #111827; }
                 .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-hook { margin-inline: auto; width: fit-content; border-radius: 999px; background: rgba(255,255,255,.82); padding: 8px 16px; color: #334155; }
                 .hf-preview-stage[data-preset="premium_product_hero"] .hf-preview-chip { margin-inline: auto; width: fit-content; background: rgba(15,23,42,.82); color: white; }
                 .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-title { max-width: 68%; color: #0f172a; }
                 .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-hook { display: inline-block; border-radius: 12px; background: #0f172a; padding: 8px 12px; color: white; }
                 .hf-preview-stage[data-preset="hook_sequence"] .hf-preview-chip { width: fit-content; background: #2563eb; color: white; }
-                .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-badge { background: #facc15; color: #020617; transform: rotate(-4deg); }
                 .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-title { max-width: 96%; font-size: 26px; color: white; text-shadow: 0 3px 0 rgba(0,0,0,.55); }
                 .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-hook { display: inline-block; transform: rotate(-2deg); border-radius: 10px; background: #facc15; padding: 8px 12px; color: #020617; }
                 .hf-preview-stage[data-preset="kinetic_bold_hook"] .hf-preview-chip { border-radius: 10px; background: white; color: #020617; transform: rotate(-1deg); }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-overlay-copy { justify-content: flex-start; align-items: center; gap: 4px; padding-bottom: 18%; text-align: center; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-copy-top { margin-top: 5%; max-width: 92%; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-title,
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-chip { display: block; padding: 0; border-radius: 0; background: transparent; font-weight: 950; line-height: 1.02; text-align: center; text-shadow: 0 2px 0 #020617, 0 4px 10px rgba(2,6,23,.66); -webkit-text-stroke: .9px #020617; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-title { color: #a7f3d0; font-size: 26px; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-hook { margin-top: 0; color: #fff; font-size: 24px; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-chip-list { margin-top: 4px !important; margin-left: 0 !important; width: 84% !important; justify-items: center; }
+                .hf-preview-stage[data-preset="creator_top_punch"] .hf-preview-chip { color: #fff; font-size: 16px; }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-overlay-copy { justify-content: center; align-items: center; gap: 0; padding-bottom: 16%; text-align: center; }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-copy-top { max-width: 96%; transform: translateY(-6%); }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-title,
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-chip { display: block; padding: 0; border-radius: 0; background: transparent; color: #f8fafc; font-weight: 950; line-height: 1.02; text-align: center; text-shadow: 0 2px 0 rgba(2,6,23,.9), 0 5px 12px rgba(2,6,23,.48); -webkit-text-stroke: .9px rgba(2,6,23,.9); }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-title { font-size: 27px; }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-hook { margin-top: 0; color: #fbbf24; font-size: 29px; }
+                .hf-preview-stage[data-preset="ugc_center_stack"] .hf-preview-chip-list { display: none; }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-overlay-copy { justify-content: center; align-items: center; gap: 8px; padding-bottom: 0; text-align: center; }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-overlay-copy::before { content: ""; width: 44px; height: 34px; border-radius: 999px; background: radial-gradient(circle at 28% 42%, #2563eb 0 26%, transparent 27%), radial-gradient(circle at 68% 28%, #3b82f6 0 18%, transparent 19%), radial-gradient(circle at 56% 72%, #2563eb 0 18%, transparent 19%); filter: drop-shadow(0 6px 12px rgba(37,99,235,.18)); }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-copy-top { max-width: 86%; }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-title,
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-chip { display: block; padding: 0; border-radius: 0; background: transparent; color: #111827; font-weight: 900; line-height: 1.04; text-align: center; text-shadow: 0 4px 14px rgba(15,23,42,.14); }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-title { font-size: 26px; }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-hook { color: #334155; font-size: 18px; }
+                .hf-preview-stage[data-preset="white_intro_card"] .hf-preview-chip-list { display: none; }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-overlay-copy { justify-content: flex-start; align-items: center; gap: 8px; padding-bottom: 8%; text-align: center; color: #f8fafc; }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-overlay-copy::before { content: ""; position: absolute; left: 14%; right: 14%; top: 37%; height: 1px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 20px rgba(34,211,238,.42); }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-copy-top { margin-top: 6%; max-width: 96%; }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-title { color: #22d3ee; font-size: 27px; text-shadow: 0 0 16px rgba(34,211,238,.5), 0 2px 0 rgba(2,6,23,.9); }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-hook { color: #f8fafc; font-size: 21px; text-shadow: 0 0 12px rgba(255,255,255,.26), 0 2px 0 rgba(2,6,23,.9); }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-chip-list { margin-top: auto !important; margin-left: 0 !important; width: 90% !important; grid-template-columns: repeat(2, minmax(0,1fr)); }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-chip { border: 1px solid rgba(34,211,238,.42); border-radius: 12px; background: rgba(2,6,23,.58); color: #cffafe; box-shadow: 0 0 18px rgba(34,211,238,.18); }
+                .hf-preview-stage[data-preset="tech_signal_map"] .hf-preview-chip:nth-child(even) { border-color: rgba(251,146,60,.48); color: #fed7aa; box-shadow: 0 0 18px rgba(251,146,60,.18); }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-overlay-copy { justify-content: flex-start; align-items: center; gap: 4px; padding-bottom: 0; text-align: center; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-copy-top { margin-top: 4%; max-width: 90%; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-title,
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-chip { display: block; padding: 0; border-radius: 0; background: transparent; color: #fff; font-weight: 950; line-height: 1.04; text-shadow: 0 2px 0 #020617, 0 4px 10px rgba(2,6,23,.64); -webkit-text-stroke: .9px #020617; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-title { color: #facc15; font-size: 25px; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-hook { margin-top: 0; color: #fff; font-size: 23px; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-chip-list { margin-top: 4px !important; margin-left: 0 !important; width: 86% !important; justify-items: center; }
+                .hf-preview-stage[data-preset="spec_highlight"] .hf-preview-chip { font-size: 16px; }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-overlay-copy { align-items: flex-end; justify-content: flex-start; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-chip-list { width: 48%; border: 1px solid rgba(148,163,184,.34); background: rgba(2,6,23,.72); color: #f8fafc; backdrop-filter: blur(8px); }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-copy-top { margin-top: 13%; border-radius: 18px 18px 8px 8px; padding: 12px; }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-chip-list { margin-left: auto !important; margin-top: 4px !important; border-top: 0; border-radius: 8px 8px 18px 18px; padding: 8px; }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-title { color: #38bdf8; font-size: 21px; }
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-chip { border-radius: 10px; background: rgba(255,255,255,.12); color: #f8fafc; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-copy-top { margin-top: 12%; max-width: 46%; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-title { border-radius: 0 16px 16px 0; background: #f8fafc; padding: 10px 12px; color: #0f172a; font-size: 22px; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook { border-radius: 999px; background: #facc15; padding: 8px 12px; color: #020617; transform: translateX(16px); }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip-list { margin-left: 16px !important; width: 44% !important; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip { border-radius: 999px; background: #facc15; color: #020617; }
+                .hf-preview-stage[data-preset="feature_cards"] .hf-preview-overlay-copy { justify-content: flex-start; gap: 10px; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="feature_cards"] .hf-preview-title { border-radius: 14px; background: rgba(2,6,23,.86); padding: 10px 12px; color: #fff; font-size: 22px; }
+                .hf-preview-stage[data-preset="feature_cards"] .hf-preview-hook { display: none; }
+                .hf-preview-stage[data-preset="feature_cards"] .hf-preview-chip-list { margin-top: 8px !important; width: 100% !important; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                .hf-preview-stage[data-preset="feature_cards"] .hf-preview-chip { min-height: 76px; border-radius: 14px; background: rgba(255,255,255,.92); color: #0f172a; }
+                .hf-preview-stage[data-preset="badge_cascade"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="badge_cascade"] .hf-preview-title { margin-top: 12%; width: fit-content; border-radius: 999px; background: rgba(15,23,42,.88); padding: 10px 14px; color: #fff; font-size: 21px; }
+                .hf-preview-stage[data-preset="badge_cascade"] .hf-preview-hook { width: fit-content; border-radius: 999px; background: #0ea5e9; padding: 8px 12px; color: #fff; transform: translateX(22px); }
+                .hf-preview-stage[data-preset="badge_cascade"] .hf-preview-chip-list { width: 72% !important; margin-left: 44px !important; }
+                .hf-preview-stage[data-preset="badge_cascade"] .hf-preview-chip:nth-child(odd) { background: rgba(250,204,21,.94); color: #020617; transform: translateX(18px); }
+                .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-overlay-copy { justify-content: flex-end; padding-bottom: 28%; }
+                .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-title { border-left: 5px solid #38bdf8; border-radius: 12px; background: rgba(15,23,42,.82); padding: 8px 10px; color: #fff; font-size: 20px; }
+                .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-hook { border-radius: 12px 12px 12px 4px; background: rgba(255,255,255,.92); padding: 8px 10px; color: #0f172a; }
+                .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-chip-list { display: none; }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-overlay-copy,
+                .hf-preview-stage[data-preset="hero_price_billboard"] .hf-preview-overlay-copy { justify-content: flex-end; padding-bottom: 25%; }
+                .hf-preview-stage--thumb .hf-preview-overlay-copy { min-height: 0 !important; padding-bottom: 8% !important; }
+                .hf-preview-stage--thumb .hf-preview-copy-top { box-sizing: border-box; max-width: 96% !important; margin-top: 0 !important; transform: none !important; }
+                .hf-preview-stage--thumb .hf-preview-title { max-width: 100% !important; font-size: 10px !important; line-height: 1.08 !important; -webkit-line-clamp: 3; }
+                .hf-preview-stage--thumb .hf-preview-hook { max-width: 100% !important; font-size: 8.5px !important; line-height: 1.12 !important; transform: none !important; -webkit-line-clamp: 2; }
+                .hf-preview-stage--thumb .hf-preview-chip-list { box-sizing: border-box; width: 100% !important; max-width: 100% !important; margin: 0 !important; margin-left: 0 !important; grid-template-columns: 1fr !important; transform: none !important; }
+                .hf-preview-stage--thumb .hf-preview-chip { box-sizing: border-box; min-height: 0 !important; width: 100% !important; max-width: 100% !important; font-size: 7.5px !important; line-height: 1.1 !important; padding: 3px 5px !important; transform: none !important; }
+                .hf-preview-stage--thumb[data-preset="electronics_spec_stack"] .hf-preview-copy-top,
+                .hf-preview-stage--thumb[data-preset="electronics_spec_stack"] .hf-preview-chip-list,
+                .hf-preview-stage--thumb[data-preset="split_product_specs"] .hf-preview-copy-top,
+                .hf-preview-stage--thumb[data-preset="split_product_specs"] .hf-preview-chip-list,
+                .hf-preview-stage--thumb[data-preset="badge_cascade"] .hf-preview-copy-top,
+                .hf-preview-stage--thumb[data-preset="badge_cascade"] .hf-preview-chip-list { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; transform: none !important; }
+                .hf-preview-stage--thumb[data-preset="split_product_specs"] .hf-preview-hook,
+                .hf-preview-stage--thumb[data-preset="badge_cascade"] .hf-preview-hook,
+                .hf-preview-stage--thumb[data-preset="badge_cascade"] .hf-preview-chip { transform: none !important; }
+                .hf-preview-stage--thumb[data-preset="white_intro_card"] .hf-preview-overlay-copy::before { width: 22px; height: 17px; }
+                .hf-preview-stage--thumb[data-preset="white_intro_card"] .hf-preview-chip-list,
+                .hf-preview-stage--thumb[data-preset="ugc_center_stack"] .hf-preview-chip-list,
+                .hf-preview-stage--thumb[data-preset="clean_subtitle"] .hf-preview-chip-list { display: none !important; }
+                .hf-preview-stage--thumb[data-preset="price_impact"] .hf-preview-price,
+                .hf-preview-stage--thumb[data-preset="hero_price_billboard"] .hf-preview-price { font-size: 14px !important; line-height: 1.02 !important; }
                 .hf-sub-preview { min-height: 198px; position: relative; overflow: hidden; }
                 .hf-sub-preview .hf-preview-media { opacity: .68; }
+                .hf-sub-preview-inline { position: absolute; left: 7%; right: 7%; bottom: 5.5%; z-index: 20; display: flex; justify-content: center; text-align: center; pointer-events: none; }
                 .hf-sub-line { animation: hfPreviewRise .52s cubic-bezier(.2,.9,.2,1) both; }
-                .hf-sub-preview[data-subtitle-preset="classic_box"] .hf-sub-line { border-radius: 10px; background: rgba(0,0,0,.76); padding: 10px 14px; color: #fff; }
-                .hf-sub-preview[data-subtitle-preset="minimal_shadow"] .hf-sub-line { background: transparent; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9); }
-                .hf-sub-preview[data-subtitle-preset="creator_pop"] .hf-sub-line { border-radius: 999px; background: #fff; padding: 10px 16px; color: #020617; box-shadow: 0 10px 24px rgba(0,0,0,.28); animation-name: hfPreviewPop; }
-                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word { display: inline-block; margin: 0 2px 4px; border-radius: 8px; padding: 2px 6px; animation: hfPreviewPop .42s cubic-bezier(.2,.9,.2,1) both; }
-                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(odd) { background: #facc15; color: #020617; }
-                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(even) { color: #fff; }
-                .hf-sub-preview[data-subtitle-preset="highlight_bar"] .hf-sub-line { background: linear-gradient(transparent 52%, rgba(250,204,21,.82) 52%); color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.9); }
-                .hf-sub-preview[data-subtitle-preset="lower_third"] .hf-sub-line { width: 100%; border-left: 5px solid #38bdf8; background: rgba(15,23,42,.82); padding: 12px 16px; text-align: left; color: #fff; }
-                .hf-sub-preview[data-subtitle-preset="cinematic_wide"] .hf-sub-line { width: 100%; background: rgba(0,0,0,.58); padding: 12px 20px; color: #f8fafc; }
-                .hf-sub-preview[data-subtitle-preset="neon_glow"] .hf-sub-line { border: 1px solid rgba(34,211,238,.55); border-radius: 12px; background: rgba(2,6,23,.72); padding: 10px 14px; color: #cffafe; box-shadow: 0 0 28px rgba(34,211,238,.32); }
-                .hf-sub-preview[data-subtitle-preset="review_bubble"] .hf-sub-line { border-radius: 18px 18px 18px 4px; background: #fff; padding: 12px 16px; color: #0f172a; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
-                .hf-sub-preview[data-subtitle-preset="no_subtitle_style"] .hf-sub-line { display: none; }
+                .hf-sub-preview-inline .hf-sub-line { box-sizing: border-box; max-width: 100%; font-size: 15px; font-weight: 800; line-height: 1.22; }
+                .hf-preview-stage--large .hf-sub-preview-inline .hf-sub-line { font-size: 18px; }
+                .hf-sub-preview[data-subtitle-preset="classic_box"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="classic_box"] .hf-sub-line { border-radius: 10px; background: rgba(0,0,0,.76); padding: 10px 14px; color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="minimal_shadow"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="minimal_shadow"] .hf-sub-line { background: transparent; color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9); }
+                .hf-sub-preview[data-subtitle-preset="creator_pop"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="creator_pop"] .hf-sub-line { border-radius: 999px; background: #fff; padding: 10px 16px; color: #020617; box-shadow: 0 10px 24px rgba(0,0,0,.28); animation-name: hfPreviewPop; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word,
+                .hf-sub-preview-inline[data-subtitle-preset="karaoke_word"] .hf-sub-word { display: inline-block; margin: 0 2px 4px; border-radius: 8px; padding: 2px 6px; animation: hfPreviewPop .42s cubic-bezier(.2,.9,.2,1) both; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(odd),
+                .hf-sub-preview-inline[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(odd) { background: #facc15; color: #020617; }
+                .hf-sub-preview[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(even),
+                .hf-sub-preview-inline[data-subtitle-preset="karaoke_word"] .hf-sub-word:nth-child(even) { color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="highlight_bar"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="highlight_bar"] .hf-sub-line { background: linear-gradient(transparent 52%, rgba(250,204,21,.82) 52%); color: #fff; text-shadow: 0 3px 8px rgba(0,0,0,.9); }
+                .hf-sub-preview[data-subtitle-preset="lower_third"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="lower_third"] .hf-sub-line { width: 100%; border-left: 5px solid #38bdf8; background: rgba(15,23,42,.82); padding: 12px 16px; text-align: left; color: #fff; }
+                .hf-sub-preview[data-subtitle-preset="cinematic_wide"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="cinematic_wide"] .hf-sub-line { width: 100%; background: rgba(0,0,0,.58); padding: 12px 20px; color: #f8fafc; }
+                .hf-sub-preview[data-subtitle-preset="neon_glow"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="neon_glow"] .hf-sub-line { border: 1px solid rgba(34,211,238,.55); border-radius: 12px; background: rgba(2,6,23,.72); padding: 10px 14px; color: #cffafe; box-shadow: 0 0 28px rgba(34,211,238,.32); }
+                .hf-sub-preview[data-subtitle-preset="review_bubble"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="review_bubble"] .hf-sub-line { border-radius: 18px 18px 18px 4px; background: #fff; padding: 12px 16px; color: #0f172a; box-shadow: 0 10px 24px rgba(0,0,0,.24); }
+                .hf-sub-preview[data-subtitle-preset="no_subtitle_style"] .hf-sub-line,
+                .hf-sub-preview-inline[data-subtitle-preset="no_subtitle_style"] .hf-sub-line { display: none; }
               `}</style>
 	              <div className="flex flex-wrap items-center justify-between gap-2">
 	                <div>
@@ -7158,6 +8597,9 @@ export default function StoryboardReviewPage() {
                   const previewPreset = selectedPreviewClip
                     ? hyperframesFinalShotOverlayPresetById[selectedPreviewClip.id] ?? hyperframesFinalOverlayPreset
                     : hyperframesFinalOverlayPreset;
+                  const previewTextMotion = selectedPreviewClip
+                    ? hyperframesFinalShotTextMotionById[selectedPreviewClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedPreviewIndex)
+                    : hyperframesFinalTextMotionPreset;
                   const presetMeta = getHyperframesOverlayPresetMeta(previewPreset);
                   const selectedShotOverlay = selectedPreviewClip
                     ? hyperframesFinalShotTextById[selectedPreviewClip.id] ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex)
@@ -7165,30 +8607,27 @@ export default function StoryboardReviewPage() {
                   const selectedSubtitle = selectedPreviewClip
                     ? hyperframesFinalSubtitleById[selectedPreviewClip.id] ?? defaultHyperframesSubtitleText(selectedPreviewClip)
                     : "";
-                  const selectedPreviewPosterUrl = selectedPreviewClip?.referenceUrls?.find(isProbablyImageUrl);
-                  const overlayPreviewLines = hyperframesPreviewTextLines(selectedShotOverlay, {
-                    maxLines: 4,
-                    maxLength: 42,
-                  });
-                  const firstShotFallbackLines = selectedPreviewIndex === 0
-                    ? hyperframesPreviewTextLines(
-                      [
-                        hyperframesFinalHookText,
-                        hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-                      ].join("\n"),
-                      { maxLines: 2, maxLength: 42 },
-                    )
-                    : [];
-                  const previewLines = (overlayPreviewLines.length > 0
-                    ? overlayPreviewLines
-                    : firstShotFallbackLines
-                  ).slice(0, 3);
-                  const subtitlePreviewLine = firstThaiProductLine(selectedSubtitle, 56);
-                  const title = firstThaiProductLine(previewLines[0] ?? "", 34, { ellipsis: false }) ||
-                    (locale === "th" ? `ข้อความ shot ${selectedPreviewIndex + 1}` : `Shot ${selectedPreviewIndex + 1} text`);
-                  const hook = firstThaiProductLine(previewLines[1] ?? "", 38, { ellipsis: false }) ||
-                    subtitlePreviewLine ||
-                    (locale === "th" ? "บทพูดของ shot นี้" : "This shot voiceover");
+                  const selectedPreviewPosterUrl = getStoryboardClipPosterUrl(selectedPreviewClip);
+		                  const previewLines = resolveHyperframesFinalPreviewOverlayLines({
+	                    textMode: hyperframesFinalTextMode,
+	                    shotIndex: selectedPreviewIndex,
+	                    overlayText: selectedShotOverlay,
+	                    hookText: hyperframesFinalHookText,
+	                    supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                    maxLines: 3,
+	                    maxLength: 42,
+	                  });
+		                  const hasPreviewOverlayLayer = previewLines.length > 0;
+		                  const previewLayerLabel =
+		                    shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
+		                      selectedPreviewIndex === 0 &&
+		                      !shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, selectedPreviewIndex)
+		                      ? locale === "th" ? "Hook text" : "Hook text"
+		                      : selectedPreviewIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
+		                        ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
+		                        : locale === "th" ? "Overlay text" : "Overlay text";
+		                  const title = firstThaiProductLine(previewLines[0] ?? "", 34, { ellipsis: false });
+	                  const hook = firstThaiProductLine(previewLines[1] ?? "", 38, { ellipsis: false });
                   const chips = previewLines
                     .slice(2)
                     .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
@@ -7201,12 +8640,18 @@ export default function StoryboardReviewPage() {
                   return (
                     <div
                       className={cn(
-                        "hf-preview-stage rounded-md p-4 text-slate-950",
-                        previewPreset === "neon_gaming_specs" || previewPreset === "kinetic_bold_hook" ? "text-white" : "",
+                        "hf-preview-stage relative aspect-[9/16] min-h-[320px] max-h-[520px] w-full max-w-[22rem] overflow-hidden rounded-md bg-slate-900 p-4 text-slate-950",
+                        previewPreset === "neon_gaming_specs" ||
+                          previewPreset === "kinetic_bold_hook" ||
+                          previewPreset === "ugc_center_stack"
+                          ? "text-white"
+                          : "",
                       )}
-                      data-preset={previewPreset}
-                      data-has-media={selectedPreviewClip?.url ? "true" : "false"}
-                    >
+	                      data-preset={previewPreset}
+	                      data-text-motion={previewTextMotion}
+	                      data-has-media={selectedPreviewClip?.url ? "true" : "false"}
+	                      data-has-overlay-copy={hasPreviewOverlayLayer ? "true" : "false"}
+	                    >
                       {selectedPreviewClip?.url ? (
                         <video
                           key={`hf-preview-media-${selectedPreviewClip.id}`}
@@ -7219,57 +8664,56 @@ export default function StoryboardReviewPage() {
                           aria-hidden="true"
                         />
                       ) : null}
-                      <div className="relative z-10 flex h-full min-h-[198px] flex-col justify-between">
-                        <div>
-                          <div className={cn(
-                            "hf-preview-badge inline-block rounded-sm px-2 py-1 text-[11px] font-black uppercase",
-                            presetMeta.kind === "price" ? "bg-yellow-300 text-slate-950" : "bg-cyan-300 text-slate-950",
-                          )}>
-                            Shot {selectedPreviewIndex + 1} · {locale === "th" ? presetMeta.labelTh : presetMeta.labelEn}
-                          </div>
-                          <div className={cn(
-	                            "hf-preview-title mt-3 max-w-[92%] font-black",
-	                            previewPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
-	                          )}>
-                            {title}
-                          </div>
-                          {presetMeta.kind === "price" ? (
-	                            <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
-                              {priceText}
-                            </div>
-                          ) : (
-                            <div className={cn(
-	                              "hf-preview-hook mt-2 font-extrabold",
-                              previewPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
-                            )}>
-                              {hook}
-                            </div>
-                          )}
-                        </div>
-                        {presetMeta.kind !== "clean" ? (
-                          <div className={cn(
-                            "mt-4 grid gap-2",
-                            presetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
-                            presetMeta.kind === "cards" ? "grid-cols-2" : "",
-                          )}>
-	                            {(chips.length > 0 ? chips : [hook]).slice(0, 3).map((line, index) => (
-                              <div
-                                key={`${line}-${index}`}
-                                className={cn(
-	                                  "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
-                                  previewPreset === "neon_gaming_specs"
-                                    ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
-                                    : presetMeta.kind === "price"
-                                      ? "bg-white text-slate-950"
-                                      : "bg-white/85 text-slate-950",
-                                )}
-                              >
-                                {line}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
+		                      {hasPreviewOverlayLayer ? (
+		                        <div className="hf-preview-overlay-copy relative z-10 flex h-full min-h-[198px] flex-col justify-between">
+		                          <div>
+		                            <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
+		                              {previewLayerLabel}
+		                            </div>
+		                            <div className={cn(
+	                              "hf-preview-title max-w-[92%] font-black",
+	                              previewPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
+	                            )}>
+	                              {title}
+	                            </div>
+	                            {presetMeta.kind === "price" ? (
+	                              <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
+	                                {priceText}
+	                              </div>
+	                            ) : hook ? (
+	                              <div className={cn(
+	                                "hf-preview-hook mt-2 font-extrabold",
+	                                previewPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
+	                              )}>
+	                                {hook}
+	                              </div>
+	                            ) : null}
+	                          </div>
+		                          {presetMeta.kind !== "clean" && chips.length > 0 ? (
+	                            <div className={cn(
+	                              "mt-4 grid gap-2",
+	                              presetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
+	                              presetMeta.kind === "cards" ? "grid-cols-2" : "",
+	                            )}>
+		                              {chips.filter(Boolean).slice(0, 3).map((line, index) => (
+	                                <div
+	                                  key={`${line}-${index}`}
+	                                  className={cn(
+	                                    "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
+	                                    previewPreset === "neon_gaming_specs"
+	                                      ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+	                                      : presetMeta.kind === "price"
+	                                        ? "bg-white text-slate-950"
+	                                        : "bg-white/85 text-slate-950",
+	                                  )}
+	                                >
+	                                  {line}
+	                                </div>
+	                              ))}
+	                            </div>
+	                          ) : null}
+	                        </div>
+	                      ) : null}
                     </div>
                   );
                 })()}
@@ -7278,11 +8722,12 @@ export default function StoryboardReviewPage() {
                   const subtitlePreviewIndex = subtitlePreviewClip
                     ? Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === subtitlePreviewClip.id))
                     : 0;
-                  const subtitlePreviewPosterUrl = subtitlePreviewClip?.referenceUrls?.find(isProbablyImageUrl);
-                  const subtitleText = subtitlePreviewClip
-                    ? hyperframesFinalSubtitleById[subtitlePreviewClip.id] ?? defaultHyperframesSubtitleText(subtitlePreviewClip)
-                    : locale === "th" ? "ยังไม่มี shot ที่พร้อม" : "No ready shot";
-                  const line = firstThaiProductLine(subtitleText, 74);
+                  const subtitlePreviewPosterUrl = getStoryboardClipPosterUrl(subtitlePreviewClip);
+	                  const subtitleText = subtitlePreviewClip
+	                    ? hyperframesFinalSubtitleById[subtitlePreviewClip.id] ?? defaultHyperframesSubtitleText(subtitlePreviewClip)
+	                    : locale === "th" ? "ยังไม่มี shot ที่พร้อม" : "No ready shot";
+	                  const line = compactStoryboardText(subtitleText);
+	                  const subtitlePreviewFontSize = hyperframesPreviewSubtitleFontSize(hyperframesFinalSubtitleFontSizePx);
                   return (
                     <div
                       className="hf-sub-preview flex items-end rounded-md bg-black p-4"
@@ -7306,22 +8751,30 @@ export default function StoryboardReviewPage() {
                           ? `Subtitle / Voiceover shot ${subtitlePreviewIndex + 1}`
                           : `Shot ${subtitlePreviewIndex + 1} subtitle / voiceover`}
                       </p>
-                      <div className="absolute inset-x-4 bottom-5 z-10 flex justify-center text-center text-sm font-bold leading-relaxed">
-                        {hyperframesFinalSubtitlePreset === "karaoke_word" ? (
-                          <div className="hf-sub-line max-w-[92%]">
-                            {line.split(/\s+/).filter(Boolean).slice(0, 8).map((word, index) => (
-                              <span
+	                      <div className="absolute inset-x-4 bottom-5 z-10 flex justify-center text-center text-sm font-bold leading-relaxed">
+	                        {hyperframesFinalSubtitlePreset === "karaoke_word" ? (
+	                          <div className="hf-sub-line max-w-[92%]" style={{ fontSize: subtitlePreviewFontSize }}>
+	                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+	                              {locale === "th" ? "Subtitle" : "Subtitle"}
+	                            </span>
+	                            {line.split(/\s+/).filter(Boolean).map((word, index) => (
+	                              <span
                                 key={`${word}-${index}`}
                                 className="hf-sub-word"
                                 style={{ animationDelay: `${index * 0.11}s` }}
                               >
                                 {word}
                               </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="hf-sub-line max-w-[92%]">{line}</div>
-                        )}
+	                            ))}
+	                          </div>
+	                        ) : (
+	                          <div className="hf-sub-line max-w-[92%]" style={{ fontSize: subtitlePreviewFontSize }}>
+	                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
+	                              {locale === "th" ? "Subtitle" : "Subtitle"}
+	                            </span>
+	                            {line}
+	                          </div>
+	                        )}
                       </div>
                     </div>
                   );
@@ -7346,10 +8799,67 @@ export default function StoryboardReviewPage() {
                     size="sm"
                     variant="outline"
                     className="h-8 bg-white"
-                    onClick={() => setVideoPreview({
-                      url: hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex]?.url ?? hyperframesFinalSourceClips[0]!.url,
-                      title: `Shot ${hyperframesFinalPreviewShotIndex + 1}`,
-                    })}
+                    onClick={() => {
+                      const modalClip =
+                        hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ??
+                        hyperframesFinalSourceClips[0]!;
+                      const modalIndex = Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === modalClip.id));
+                      const modalOverlayPreset = hyperframesFinalShotOverlayPresetById[modalClip.id] ?? hyperframesFinalOverlayPreset;
+                      const modalPresetMeta = getHyperframesOverlayPresetMeta(modalOverlayPreset);
+                      const modalTextMotion = hyperframesFinalShotTextMotionById[modalClip.id] ?? defaultHyperframesFinalTextMotionPreset(modalIndex);
+                      const modalOverlayText = hyperframesFinalShotTextById[modalClip.id] ?? defaultHyperframesShotText(modalClip, modalIndex);
+                      const modalSubtitleText = hyperframesFinalSubtitleById[modalClip.id] ?? defaultHyperframesSubtitleText(modalClip);
+                      const modalPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
+                        textMode: hyperframesFinalTextMode,
+                        shotIndex: modalIndex,
+                        overlayText: modalOverlayText,
+                        hookText: hyperframesFinalHookText,
+                        supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        maxLines: 3,
+                        maxLength: 42,
+                      });
+                      const modalPreviewTitle = firstThaiProductLine(modalPreviewLines[0] ?? "", 34, { ellipsis: false });
+                      const modalPreviewHook = firstThaiProductLine(modalPreviewLines[1] ?? "", 38, { ellipsis: false });
+                      const modalPreviewChips = modalPreviewLines
+                        .slice(2)
+                        .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
+                        .filter(Boolean);
+                      const modalPriceText = firstThaiProductLine(
+                        modalPreviewChips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? modalPreviewHook,
+                        24,
+                        { ellipsis: false },
+                      );
+                      const modalShouldRenderShotOverlay = shouldRenderHyperframesFinalShotOverlay(
+                        hyperframesFinalTextMode,
+                        modalIndex,
+                      );
+                      const modalLayerLabel =
+                        shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
+                          modalIndex === 0 &&
+                          !modalShouldRenderShotOverlay
+                          ? locale === "th" ? "Hook text" : "Hook text"
+                          : modalIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
+                            ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
+                            : locale === "th" ? "Overlay text" : "Overlay text";
+                      setVideoPreview({
+                        url: modalClip.url,
+                        title: `Shot ${modalIndex + 1}`,
+                        overlayPreview: {
+                          posterUrl: getStoryboardClipPosterUrl(modalClip),
+                          overlayPreset: modalOverlayPreset,
+                          textMotionPreset: modalTextMotion,
+                          subtitlePreset: hyperframesFinalSubtitlePreset,
+                          subtitleFontSizePx: hyperframesPreviewSubtitleFontSize(hyperframesFinalSubtitleFontSizePx),
+                          layerLabel: modalLayerLabel,
+                          titleText: modalPreviewTitle,
+                          hookText: modalPresetMeta.kind === "price" ? "" : modalPreviewHook,
+                          priceText: modalPresetMeta.kind === "price" ? modalPriceText : "",
+                          chips: modalPreviewChips,
+                          subtitleText: hyperframesFinalBurnInSubtitles ? compactStoryboardText(modalSubtitleText) : "",
+                          presetKind: modalPresetMeta.kind,
+                        },
+                      });
+                    }}
                   >
                     <Maximize2 className="mr-2 h-3.5 w-3.5" />
                     {locale === "th" ? "ดูวิดีโอ shot ที่เลือก" : "Preview selected video"}
@@ -7360,6 +8870,7 @@ export default function StoryboardReviewPage() {
                     const overlay = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
                     const subtitle = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
                     const style = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
+                    const motion = hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
                     return (
                       <button
                         key={clip.id}
@@ -7379,6 +8890,7 @@ export default function StoryboardReviewPage() {
                           </span>
                         </div>
                         <p className="mt-1 truncate text-[11px]">{overlay || firstThaiProductLine(subtitle, 80)}</p>
+                        <p className="mt-1 truncate text-[10px] text-sky-700">{motion}</p>
                         <p className="mt-1 truncate text-[10px] text-slate-500">{clip.url}</p>
                       </button>
                     );
@@ -8507,15 +10019,142 @@ export default function StoryboardReviewPage() {
                 </Button>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
-              <video
-                src={videoPreview.url}
-                controls
-                playsInline
-                preload="metadata"
-                className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
-              />
-            </div>
+            {(() => {
+              const overlay = videoPreview.overlayPreview;
+              const hasOverlayCopy = Boolean(
+                overlay?.titleText ||
+                overlay?.hookText ||
+                overlay?.priceText ||
+                overlay?.chips?.some(line => line.trim().length > 0),
+              );
+              const hasSubtitleCopy = Boolean(overlay?.subtitleText?.trim());
+              return (
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
+                  <div
+                    className="hf-preview-stage relative aspect-[9/16] h-[calc(100dvh-8rem)] max-h-[calc(100dvh-8rem)] w-[min(100%,56.25dvh)] max-w-full overflow-hidden rounded-lg bg-black p-4 text-left text-slate-950"
+                    data-preset={overlay?.overlayPreset ?? "auto"}
+                    data-text-motion={overlay?.textMotionPreset ?? "none"}
+                    data-has-media="true"
+                    data-has-overlay-copy={hasOverlayCopy ? "true" : "false"}
+                    data-preview-mode="video"
+                  >
+                    {overlay?.posterUrl && !videoPreviewPlaybackReady ? (
+                      <img
+                        src={overlay.posterUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95"
+                      />
+                    ) : null}
+                    <video
+                      key={videoPreview.url}
+                      src={videoPreview.url}
+                      poster={overlay?.posterUrl ?? undefined}
+                      controls
+                      autoPlay
+                      playsInline
+                      preload="auto"
+                      className={cn(
+                        "absolute inset-0 z-10 h-full w-full bg-transparent object-contain transition-opacity duration-200",
+                        "opacity-100",
+                      )}
+                      onLoadStart={() => {
+                        setVideoPreviewError("");
+                      }}
+                      onLoadedData={() => {
+                        setVideoPreviewPlaybackReady(true);
+                        setVideoPreviewError("");
+                      }}
+                      onCanPlay={() => {
+                        setVideoPreviewPlaybackReady(true);
+                        setVideoPreviewError("");
+                      }}
+                      onPlaying={() => {
+                        setVideoPreviewPlaybackReady(true);
+                        setVideoPreviewError("");
+                      }}
+                      onTimeUpdate={(event) => {
+                        if (event.currentTarget.currentTime <= 0.02) return;
+                        setVideoPreviewPlaybackReady(true);
+                        setVideoPreviewError("");
+                      }}
+                      onError={(event) => {
+                        const code = event.currentTarget.error?.code;
+                        setVideoPreviewPlaybackReady(false);
+                        setVideoPreviewError(
+                          code === 2
+                            ? locale === "th" ? "โหลดวิดีโอไม่สำเร็จจากปัญหาเครือข่าย" : "Network error while loading this video."
+                            : code === 3
+                              ? locale === "th" ? "เบราว์เซอร์ถอดรหัสวิดีโอนี้ไม่ได้" : "The browser could not decode this video."
+                              : code === 4
+                                ? locale === "th" ? "รูปแบบไฟล์วิดีโอนี้ไม่รองรับใน browser" : "This video format is not supported by the browser."
+                                : locale === "th" ? "โหลดวิดีโอนี้ไม่สำเร็จ" : "Could not load this video.",
+                        );
+                      }}
+                    />
+                    {videoPreviewError ? (
+                      <div className="absolute inset-x-4 top-4 z-40 rounded-md bg-red-950/85 px-3 py-2 text-center text-xs font-semibold leading-relaxed text-white shadow-lg">
+                        {videoPreviewError}
+                      </div>
+                    ) : null}
+                    {hasOverlayCopy ? (
+                      <div className="hf-preview-overlay-copy pointer-events-none absolute inset-0 z-20 flex h-full min-h-0 flex-col justify-between p-4">
+                        <div className="hf-preview-copy-top">
+                          {overlay?.layerLabel ? (
+                            <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
+                              {overlay.layerLabel}
+                            </div>
+                          ) : null}
+                          {overlay?.titleText ? (
+                            <div className="hf-preview-title max-w-[92%] font-black">
+                              {overlay.titleText}
+                            </div>
+                          ) : null}
+                          {overlay?.priceText ? (
+                            <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
+                              {overlay.priceText}
+                            </div>
+                          ) : overlay?.hookText ? (
+                            <div className="hf-preview-hook mt-2 font-extrabold">
+                              {overlay.hookText}
+                            </div>
+                          ) : null}
+                        </div>
+                        {overlay?.presetKind !== "clean" && overlay?.chips?.some(line => line.trim().length > 0) ? (
+                          <div className="hf-preview-chip-list mt-4 grid w-full gap-2">
+                            {overlay.chips.filter(Boolean).slice(0, 3).map((line, index) => (
+                              <div key={`${line}-${index}`} className="hf-preview-chip rounded-full bg-white/85 px-3 py-2 font-black text-slate-950 shadow-sm">
+                                {line}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {hasSubtitleCopy ? (
+                      <div
+                        className="hf-sub-preview-inline pointer-events-none z-30"
+                        data-subtitle-preset={overlay?.subtitlePreset ?? "classic_box"}
+                      >
+                        {overlay?.subtitlePreset === "karaoke_word" ? (
+                          <div className="hf-sub-line" style={{ fontSize: overlay?.subtitleFontSizePx ?? 34 }}>
+                            {(overlay.subtitleText ?? "").split(/\s+/).filter(Boolean).map((word, wordIndex) => (
+                              <span key={`${word}-${wordIndex}`} className="hf-sub-word">
+                                {word}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="hf-sub-line" style={{ fontSize: overlay?.subtitleFontSizePx ?? 34 }}>
+                            {overlay?.subtitleText}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : null}

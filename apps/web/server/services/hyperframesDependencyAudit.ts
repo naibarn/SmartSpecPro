@@ -98,6 +98,17 @@ function getHyperframesFontStatus() {
   };
 }
 
+function getWhisperCppStatus() {
+  const available = hasCommand("whisper-cpp");
+  return {
+    ok: available,
+    binary: available ? readCommand("command -v whisper-cpp").trim() : "",
+    message: available
+      ? "whisper-cpp is available for HyperFrames transcribe."
+      : "HyperFrames transcribe requires whisper-cpp on this worker/local machine.",
+  };
+}
+
 export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResult {
   return {
     featureFlagsDefaultOff: true,
@@ -126,6 +137,7 @@ export function runHyperframesDoctorCheck() {
   const nodeOk = isSupportedHyperframesNodeVersion(process.version);
   const officialNodeOk = isSupportedOfficialHyperframesNodeVersion(process.version);
   const fonts = getHyperframesFontStatus();
+  const whisperCpp = getWhisperCppStatus();
   const hyperframesCliAvailable = hasCommand("hyperframes") || hasCommand("npx");
   return {
     node: {
@@ -161,6 +173,7 @@ export function runHyperframesDoctorCheck() {
     ffprobe: {
       ok: hasCommand("ffprobe"),
     },
+    whisperCpp,
     localSmokeRenderer: {
       ok: hasCommand("ffmpeg"),
       renderer: "diagnostic_ffmpeg_smoke",

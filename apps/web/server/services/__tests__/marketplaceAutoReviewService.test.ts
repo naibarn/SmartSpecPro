@@ -39,6 +39,7 @@ import {
   imageReasonCodesContainStoryboardGridLayoutBlockerForTest,
   isMarketplaceAutoReviewCompletedStageStatusForTest,
   isMarketplaceAutoReviewRunEligibleForOperationalCleanupForTest,
+  marketplaceAutoReviewImageRepairBudgetAllowsStoryboardReviewHandoffForTest,
   marketplaceAutoReviewOperationalCleanupCutoffForTest,
   marketplaceAutoReviewCreativePlannerErrorIsRetryableForTest,
   marketplaceAutoReviewStageAttemptKeyForStatusForTest,
@@ -53,6 +54,7 @@ import {
   normalizeMarketplaceAutoReviewCreativeShotsForTest,
   normalizeMarketplaceAutoReviewImageModelForTest,
   normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest,
+  normalizeMarketplaceAutoReviewShotFrameVisionQaDecisionForTest,
   normalizeMarketplaceAutoReviewStageCompletionEvidenceForTest,
   buildMarketplaceAutoReviewVideoPromptForTest,
   buildFeature117ContractMetadataForTest,
@@ -67,6 +69,8 @@ import {
   evaluateMarketplaceAutoReviewInputChangeImpactForTest,
   ensureMinorSafetyClothingLockInImagePromptForTest,
   ensureStoryboardGridLayoutContractInImagePromptForTest,
+  marketplaceAutoReviewImagePromptMaxCharsForTest,
+  optimizeMarketplaceAutoReviewFinalImagePromptForProviderForTest,
   filterMarketplaceAutoReviewImageRepairUnitsForTest,
   inferProductReferenceStoryboardCategoryForTest,
   isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest,
@@ -489,11 +493,10 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
   };
 
   it("builds product_details as a storyboard-to-spoken-voiceover request", () => {
-    const details = buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest(
-      {
+    const details =
+      buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest({
         plan: reviewPlan,
-      }
-    );
+      });
 
     expect(details).toContain("Marketplace Capture Auto Review หน้า Product");
     expect(details).toContain("Selected video concept");
@@ -503,8 +506,8 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
   });
 
   it("passes selected male presenter and polite-particle lock to mother-baby voiceover rewrite", () => {
-    const details = buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest(
-      {
+    const details =
+      buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest({
         plan: {
           ...reviewPlan,
           productTruth: {
@@ -536,8 +539,7 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
           characterImageRef: null,
           environmentImageRef: null,
         } as any,
-      }
-    );
+      });
 
     expect(details).toContain("Presenter / voice lock");
     expect(details).toContain("Thai, male presenter/man, 30-39 years old");
@@ -615,8 +617,8 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
       })),
     };
 
-    const hydrated =
-      hydrateMarketplaceAutoReviewPlanForStoryboardReviewForTest({
+    const hydrated = hydrateMarketplaceAutoReviewPlanForStoryboardReviewForTest(
+      {
         plan: scaffoldPlan,
         metadata: {
           creativePlanning: {
@@ -629,7 +631,8 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
             },
           },
         },
-      });
+      }
+    );
 
     expect(hydrated.repairedFromVoiceoverRewrite).toBe(true);
     expect(hydrated.plan.title).toContain("Marketplace review");
@@ -639,7 +642,9 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
     expect(hydrated.plan.voiceoverScript).not.toContain(
       "product_truth_scaffold_no_spoken_line"
     );
-    expect(hydrated.plan.shots[0]?.voiceover).toContain("หยิบของทีไรก็เสียเวลา");
+    expect(hydrated.plan.shots[0]?.voiceover).toContain(
+      "หยิบของทีไรก็เสียเวลา"
+    );
     expect(hydrated.plan.shots[0]?.visual).toContain("visually supports");
   });
 });
@@ -1119,8 +1124,7 @@ describe("marketplace auto review audio/video planning", () => {
       voice: "warm",
       primaryCharacterDetails:
         "ใบหน้ารูปไข่ ผมบ๊อบสีน้ำตาล ตาสีน้ำตาล ใส่เสื้อเชิ้ตขาว",
-      secondaryCharacterDetails:
-        "เด็กผู้ชายวัย 6 ขวบ ใส่เสื้อสีฟ้า ยืนข้างแม่",
+      secondaryCharacterDetails: "เด็กผู้ชายวัย 6 ขวบ ใส่เสื้อสีฟ้า ยืนข้างแม่",
       propDetails: "มีหมาและกระเป๋าผ้าอยู่ข้างสินค้า",
     });
     const directive = describedCharacterAnchorDirectiveForTest({
@@ -1170,7 +1174,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(directive).toContain(
       "Hook → Problem → Emotion → Insight → Solution → Result → CTA"
     );
-    expect(directive).toContain("override the automatic creative variation seed");
+    expect(directive).toContain(
+      "override the automatic creative variation seed"
+    );
   });
 
   it("does not convert unknown creative direction values into prompt directives", () => {
@@ -1183,7 +1189,8 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it.each(["product_only", "hands_only"])(
-    "allows %s mode without uploaded character image", mode => {
+    "allows %s mode without uploaded character image",
+    mode => {
       const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
         productTruth: {
           imageUrls: ["https://cdn.example.test/product-hero.png"],
@@ -1731,7 +1738,9 @@ describe("marketplace auto review audio/video planning", () => {
 
       expect(pack.sourceKind).toBe(mode);
       expect(pack.referenceImageRefs).toEqual([]);
-      expect(pack.allowedFaceUsage).toBe(mode === "hands_only" ? "hands_only" : "none");
+      expect(pack.allowedFaceUsage).toBe(
+        mode === "hands_only" ? "hands_only" : "none"
+      );
       expect(pack.fallbackPlan).toBe(
         mode === "hands_only" ? "hands_only" : "product_only"
       );
@@ -1765,9 +1774,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect((error as any).message).toMatch(
       /returned 1 usable concepts, expected at least 3/
     );
-    expect((error as any).code).toBe(
-      "creative_planner_concept_count_mismatch"
-    );
+    expect((error as any).code).toBe("creative_planner_concept_count_mismatch");
     expect((error as any).actualConceptCount).toBe(1);
     expect((error as any).expectedMinimumConceptCount).toBe(3);
   });
@@ -2799,8 +2806,7 @@ describe("marketplace auto review audio/video planning", () => {
       shot: {
         ...baseShot,
         durationSeconds: 5,
-        voiceover:
-          "นึกภาพว่ามื้ออาหารของลูกนิ่งขึ้นและจัดโต๊ะง่ายขึ้นใช่ไหมคะ",
+        voiceover: "นึกภาพว่ามื้ออาหารของลูกนิ่งขึ้นและจัดโต๊ะง่ายขึ้นใช่ไหมคะ",
       } as any,
       audioStrategy: "native_video_audio",
       metadata: {
@@ -2900,8 +2906,7 @@ describe("marketplace auto review audio/video planning", () => {
         title: "แนะนำ BENO PRO-FLEX",
         movement: "steady close-up from presenter to product controls",
         visual: `เครื่อง BENO PRO-FLEX พร้อมแมวขนปุยนั่งข้าง ๆ. Prop details: ${longPropDetails}`,
-        voiceover:
-          "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย",
+        voiceover: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมในเครื่องเดียวเลย",
       } as any,
       audioStrategy: "native_video_audio",
       isLastShot: false,
@@ -3123,13 +3128,11 @@ describe("marketplace auto review audio/video planning", () => {
       buildMarketplaceAutoReview3x3StoryboardPromptForTest({
         plan,
         overlayTextMode: "allow_text",
-    });
+      });
 
     expect(noTextPrompt).toContain("No text, captions, labels");
     expect(noTextPrompt).toContain("skill: product-reference-storyboard");
-    expect(noTextPrompt).toContain(
-      "generation_mode: multi_frame_storyboard"
-    );
+    expect(noTextPrompt).toContain("generation_mode: multi_frame_storyboard");
     expect(noTextPrompt).toContain(
       "storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact"
     );
@@ -3139,7 +3142,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).toContain("reference_product_images:");
     expect(noTextPrompt).toContain("production_concept_details:");
     expect(noTextPrompt).toContain("SHOT-BY-SHOT STORYBOARD PROMPT");
-    expect((noTextPrompt.match(/Frame \d/g) ?? []).length).toBeGreaterThanOrEqual(9);
+    expect(
+      (noTextPrompt.match(/Frame \d/g) ?? []).length
+    ).toBeGreaterThanOrEqual(9);
     expect(noTextPrompt.length).toBeLessThanOrEqual(4900);
     expect(allowTextPrompt.length).toBeLessThanOrEqual(4900);
     expect(noTextPrompt.match(/VISUAL:/g)).toHaveLength(9);
@@ -3154,7 +3159,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).toContain("no visible dividers");
     expect(noTextPrompt).toContain("no white borders");
     expect(noTextPrompt).toContain("no measurement overlays");
-    expect(noTextPrompt).toContain("Prohibit marketplace/mobile app screenshots");
+    expect(noTextPrompt).toContain(
+      "Prohibit marketplace/mobile app screenshots"
+    );
     expect(noTextPrompt).toContain("cart/checkout flows");
     expect(noTextPrompt).toContain("no timecodes");
     expect(noTextPrompt).toContain("no black caption bars");
@@ -3166,7 +3173,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(allowTextPrompt).toContain("no visible dividers");
     expect(allowTextPrompt).toContain("no collage/masonry layout");
     expect(allowTextPrompt).toContain("Never include video seconds");
-    expect(allowTextPrompt).toContain("Prohibit marketplace/mobile app screenshots");
+    expect(allowTextPrompt).toContain(
+      "Prohibit marketplace/mobile app screenshots"
+    );
     expect(allowTextPrompt).toContain("Prohibit Shopee");
     expect(allowTextPrompt).not.toMatch(/\b0-5s\b/);
     expect(allowTextPrompt).not.toMatch(/\b5-10s\b/);
@@ -3182,8 +3191,7 @@ describe("marketplace auto review audio/video planning", () => {
         categoryText: "แม่และเด็ก ผ้าอ้อมเด็ก",
         categoryPath: ["แม่และเด็ก", "ผ้าอ้อมเด็ก"],
       },
-      productDetail:
-        "สินค้า: ผ้าอ้อมเด็ก ใช้กับทารกและเด็กเล็กในบ้าน",
+      productDetail: "สินค้า: ผ้าอ้อมเด็ก ใช้กับทารกและเด็กเล็กในบ้าน",
       shots: [baseShot],
     } as any;
     const unit = {
@@ -3309,6 +3317,121 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt.length).toBeLessThanOrEqual(4900);
   });
 
+  it("optimizes over-budget final image prompts with the prompt optimizer skill before provider preflight", async () => {
+    const plan = {
+      ...basePlan,
+      shots: [baseShot],
+    } as any;
+    const unit = {
+      unitId: "storyboard-grid-image",
+      role: "storyboard_grid",
+    } as any;
+    const maxChars = marketplaceAutoReviewImagePromptMaxCharsForTest();
+    const requiredPromptLines = [
+      "OUTPUT FORMAT LOCK: Plain prompt text only.",
+      "CINEMATIC REALISM LOCK: cinematic realism lock; photorealistic commercial film stills.",
+      "PRODUCT REFERENCE LOCK: Use @Image1 / the first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product. Written product description is secondary and must never override the attached product image or generic product description.",
+      "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows, realistic lens depth.",
+      "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
+      "SHOT-BY-SHOT STORYBOARD PROMPT:",
+      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      ...Array.from(
+        { length: 9 },
+        (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
+      ),
+    ];
+    const optimizedPrompt = requiredPromptLines.join("\n");
+    const overBudgetPrompt = [
+      optimizedPrompt,
+      Array.from(
+        { length: 160 },
+        (_item, index) =>
+          `Verbose duplicated provider context that must be rewritten by the optimizer skill ${index}.`
+      ).join(" "),
+    ].join("\n");
+    const optimizer = vi.fn(async input => ({
+      execution: {
+        runtime: {
+          status: "completed",
+          selection: {
+            engine: "shared_skill_text_runtime",
+            mode: "llm",
+          },
+          requestId: "optimizer-request-1",
+          traceId: "optimizer-trace-1",
+        },
+      },
+      value: {
+        rawContent: optimizedPrompt,
+        usage: { promptTokens: 12, completionTokens: 8 },
+        creditsUsed: 1,
+        modelId: "optimizer-model",
+        providerName: "optimizer-provider",
+      },
+      preferredTargetChars: 4300,
+      llmMaxTokens: 1200,
+      promptLengthPlan: null,
+      systemPromptLengthChars: 20,
+      userPromptLengthChars: 30,
+    }));
+
+    expect(overBudgetPrompt.length).toBeGreaterThan(maxChars);
+    const finalPrompt =
+      await optimizeMarketplaceAutoReviewFinalImagePromptForProviderForTest({
+        tenantId: "tenant-1",
+        userId: 7,
+        runId: "mar-run-1",
+        unitId: "shot-1-start",
+        attempt: 2,
+        promptAttempt: null,
+        sourcePrompt: overBudgetPrompt,
+        optimizer: optimizer as any,
+      });
+    const preflight = validateMarketplaceAutoReviewImagePromptPreflightForTest({
+      prompt: finalPrompt.prompt,
+      unit,
+      plan,
+      overlayTextMode: "no_text",
+      skillRuntime: {
+        selectedSkill: "product-reference-storyboard",
+        fallbackUsed: false,
+        generationMode: "multi_frame_storyboard",
+        layoutPreset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+        aspectRatio: "9:16",
+        productCategory: "furniture",
+        referenceProductImageCount: 1,
+        schemaAudit: { status: "passed" },
+        inputKeys: ["reference_product_images"],
+      },
+    });
+
+    expect(optimizer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourcePrompt: overBudgetPrompt,
+        maxOutputChars: maxChars,
+        runId: "mar-run-1",
+        unitId: "shot-1-start",
+        attempt: 2,
+        promptAttempt: null,
+      })
+    );
+    expect(finalPrompt.prompt).toBe(optimizedPrompt);
+    expect(finalPrompt.audit).toMatchObject({
+      used: true,
+      reason: "final_image_prompt_over_provider_budget",
+      sourcePromptLengthChars: overBudgetPrompt.length,
+      optimizedPromptLengthChars: optimizedPrompt.length,
+      maxOutputChars: maxChars,
+      requestId: "optimizer-request-1",
+      traceId: "optimizer-trace-1",
+    });
+    expect(preflight.status).toBe("passed");
+    expect(preflight.blockers).not.toContain(
+      "prompt_too_long_for_image_provider"
+    );
+  });
+
   it("builds product-reference-storyboard skill inputs with schema-shaped role image arrays and detected product category", () => {
     const plan = {
       ...basePlan,
@@ -3371,6 +3494,31 @@ describe("marketplace auto review audio/video planning", () => {
       environment: 1,
       total: 3,
     });
+    expect(inputs.reference_image_role_order).toBe(
+      "@Image1=product, @Image2=character, @Image3=environment"
+    );
+    expect(inputs.reference_image_manifest).toEqual([
+      {
+        placeholder: "@Image1",
+        role: "product",
+        url: "https://example.com/product.png",
+        instruction: expect.stringContaining("primary product visual source"),
+      },
+      {
+        placeholder: "@Image2",
+        role: "character",
+        url: "https://cdn.example.test/person.png",
+        instruction: expect.stringContaining(
+          "character identity and wardrobe continuity"
+        ),
+      },
+      {
+        placeholder: "@Image3",
+        role: "environment",
+        url: "https://cdn.example.test/place.png",
+        instruction: expect.stringContaining("environment, mood"),
+      },
+    ]);
     expect(String(inputs.product_reference_exact_recreation_lock)).toContain(
       "primary visual source of truth"
     );
@@ -3387,6 +3535,9 @@ describe("marketplace auto review audio/video planning", () => {
       "IMAGE ATTEMPT 1 STORY LENS"
     );
     expect(String(inputs.storyboard_guide)).toContain("Product drift guard");
+    expect(String(inputs.storyboard_guide)).toContain(
+      "Reference image order: @Image1=product, @Image2=character, @Image3=environment"
+    );
     expect(String(inputs.production_concept_details)).toContain(
       "Product reference exact recreation lock"
     );
@@ -3395,6 +3546,9 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(String(inputs.production_concept_details)).toContain(
       "Do not show any alternate bedside table"
+    );
+    expect(String(inputs.production_concept_details)).toContain(
+      "Reference image order: @Image1=product, @Image2=character, @Image3=environment"
     );
     expect(String(inputs.production_concept_details)).toContain(
       "Main storyboard category: furniture"
@@ -3410,6 +3564,12 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(String(inputs.runtime_contract)).toContain(
       "fresh skill call for image attempt 1"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "Reference image order is binding: @Image1=product, @Image2=character, @Image3=environment"
+    );
+    expect(String(inputs.runtime_contract)).toContain(
+      "name that placeholder as the character identity source of truth"
     );
   });
 
@@ -3475,12 +3635,16 @@ describe("marketplace auto review audio/video planning", () => {
     expect(attempts.map(input => input.image_attempt_number)).toEqual([
       1, 2, 3,
     ]);
-    expect(new Set(attempts.map(input => input.image_attempt_story_lens_id)).size)
-      .toBe(3);
-    expect(new Set(snapshots.map(snapshot => snapshot.userInputHash)).size)
-      .toBe(3);
-    expect(new Set(snapshots.map(snapshot => snapshot.imageAttemptStoryLensHash)).size)
-      .toBe(3);
+    expect(
+      new Set(attempts.map(input => input.image_attempt_story_lens_id)).size
+    ).toBe(3);
+    expect(
+      new Set(snapshots.map(snapshot => snapshot.userInputHash)).size
+    ).toBe(3);
+    expect(
+      new Set(snapshots.map(snapshot => snapshot.imageAttemptStoryLensHash))
+        .size
+    ).toBe(3);
     expect(String(attempts[1].image_attempt_story_lens)).toContain(
       "Daily routine confidence"
     );
@@ -3714,10 +3878,10 @@ describe("marketplace auto review audio/video planning", () => {
   it("keeps described presenter locks in storyboard skill inputs without character images", () => {
     const describedDirective = describedCharacterAnchorDirectiveForTest({
       characterMode: "described_character",
-      characterBrief: "คนไทย ผู้หญิง, 20-29, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
+      characterBrief:
+        "คนไทย ผู้หญิง, 20-29, role แม่/ผู้ปกครอง, style เป็นกันเอง.",
       characterPreset: {
-        primaryCharacterDetails:
-          "ผมยาวสีดำ ตาสีน้ำตาล ใส่เสื้อคาร์ดิแกนสีครีม",
+        primaryCharacterDetails: "ผมยาวสีดำ ตาสีน้ำตาล ใส่เสื้อคาร์ดิแกนสีครีม",
         secondaryCharacterDetails: "เด็กหญิงวัยประถมยืนข้างโต๊ะ",
         propDetails: "มีแมวสีส้มและกล่องของเล่นในห้องนั่งเล่น",
       },
@@ -3850,6 +4014,53 @@ describe("marketplace auto review audio/video planning", () => {
     );
   });
 
+  it("overrides generic fashion clothing category for baby bodysuit marketplace evidence", () => {
+    const plan = {
+      ...basePlan,
+      productTruth: {
+        ...basePlan.productTruth,
+        productName:
+          "ชุดเด็กแรกเกิด บอร์ดี้สูท เสื้อผ้าเด็กอ่อน รอมเปอร์แขนยาวขายาว",
+        productCategory: "fashion_clothing",
+        categoryText: "Bodysuits & One-pieces",
+        categoryPath: [
+          "Baby & Maternity",
+          "Baby Clothing & Shoes",
+          "Bodysuits & One-pieces",
+        ],
+        description:
+          "ชุดรอมเปอร์เด็ก บอดี้สูทเด็ก รุ่นแขนยาว ขายาว สำหรับแรกเกิด-12 เดือน",
+      },
+      productDetail:
+        "PRODUCT FACTS LOCK: Purple ribbed newborn romper bodysuit with snap buttons.",
+      shots: [baseShot],
+    } as any;
+
+    const inputs = buildProductReferenceStoryboardSkillInputsForTest({
+      plan,
+      unit: {
+        unitId: "storyboard-grid-image",
+        role: "storyboard_grid",
+      } as any,
+      overlayTextMode: "no_text",
+      referenceImageGroups: {
+        product: ["https://example.com/baby-romper.png"],
+        character: ["https://example.com/presenter.png"],
+        environment: [],
+        all: [
+          "https://example.com/baby-romper.png",
+          "https://example.com/presenter.png",
+        ],
+      },
+      promptSkillAttempt: 1,
+    });
+
+    expect(inferProductReferenceStoryboardCategoryForTest(plan)).toBe(
+      "mother_baby"
+    );
+    expect(inputs.product_category).toBe("mother_baby");
+  });
+
   it("uses the confirmed main storyboard category before marketplace subcategory keywords", () => {
     const plan = {
       ...basePlan,
@@ -3911,8 +4122,7 @@ describe("marketplace auto review audio/video planning", () => {
           "เครื่องใช้ไฟฟ้าในครัวขนาดเล็ก",
           "เครื่องชงกาแฟและอุปกรณ์",
         ],
-        description:
-          "เครื่องชงกาแฟเอสเพรสโซ่พร้อมบด ชง และตีฟองในเครื่องเดียว",
+        description: "เครื่องชงกาแฟเอสเพรสโซ่พร้อมบด ชง และตีฟองในเครื่องเดียว",
       },
       productDetail: [
         "PRODUCT FACTS LOCK: BENO Coffee Machine PRO-FLEX for home coffee making.",
@@ -3993,8 +4203,7 @@ describe("marketplace auto review audio/video planning", () => {
         "แสดงโต๊ะข้างเตียงไม้สีอ่อนในห้องนอนจริง มีคนใช้งานหรือมือหยิบของ จัดองค์ประกอบให้เห็นชั้นวาง โครงขา และสัดส่วนสินค้าอย่างชัดเจน",
       camera:
         "กล้องแนวโฆษณาสินค้า แสงธรรมชาติจากหน้าต่าง ระยะภาพสลับ wide medium close-up และมุมพิสูจน์รายละเอียด",
-      movement:
-        "slow push-in แล้วตัดต่อเหมือนภาพนิ่งจากรีลสินค้า",
+      movement: "slow push-in แล้วตัดต่อเหมือนภาพนิ่งจากรีลสินค้า",
       voiceover:
         "เล่าประโยชน์สินค้าโดยไม่ให้ข้อความหรือเวลาไปปรากฏบนภาพ และคุมให้ตรงกับปัญหาของผู้ซื้อ",
       productRole:
@@ -4255,7 +4464,9 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(result.status).toBe("passed");
-    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
+    expect(result.blockers).not.toContain(
+      "character_reference_age_role_mismatch"
+    );
     expect(result.blockers).not.toContain("minor_safety_clothing_lock_missing");
   });
 
@@ -4300,7 +4511,9 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(result.status).toBe("failed");
     expect(result.blockers).toContain("minor_safety_clothing_lock_missing");
-    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
+    expect(result.blockers).not.toContain(
+      "character_reference_age_role_mismatch"
+    );
   });
 
   it("allows uploaded adult character reference guardrails that explicitly reject child age conversion", () => {
@@ -4343,7 +4556,9 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(result.status).toBe("passed");
-    expect(result.blockers).not.toContain("character_reference_age_role_mismatch");
+    expect(result.blockers).not.toContain(
+      "character_reference_age_role_mismatch"
+    );
   });
 
   it("warns on skill-generated storyboard prompts that drop exact 3x3 layout instructions", () => {
@@ -4681,7 +4896,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(output.clips[0].prompt).toContain(
       "Thai, male presenter/man, 30-39 years old"
     );
-    expect(output.clips[0].prompt).toContain("Voice matches Thai, male presenter/man");
+    expect(output.clips[0].prompt).toContain(
+      "Voice matches Thai, male presenter/man"
+    );
     expect(output.clips[0].prompt.length).toBeLessThanOrEqual(2000);
     expect(output.clips[0].prompt).not.toMatch(
       /\byoung mother-style female voice\b|\bfemale voice\b/i
@@ -4732,10 +4949,9 @@ describe("marketplace auto review audio/video planning", () => {
       { url: "https://cdn.example.test/frame-1.png" },
       { url: "https://cdn.example.test/frame-2.png" },
     ]);
-    expect(tasks[0]?.storyboardContext?.extraParams?.referenceFrameRoles).toEqual([
-      "start",
-      "stop",
-    ]);
+    expect(
+      tasks[0]?.storyboardContext?.extraParams?.referenceFrameRoles
+    ).toEqual(["start", "stop"]);
   });
 
   it("builds 3x3 Storyboard Review clips from one matching storyboard frame per shot", () => {
@@ -4830,12 +5046,12 @@ describe("marketplace auto review audio/video planning", () => {
     expect(tasks[0]?.storyboardContext?.referenceImages).toEqual([
       { url: "https://cdn.example.test/grid-1.png" },
     ]);
-    expect(tasks[0]?.storyboardContext?.extraParams?.referenceFrameRoles).toEqual([
-      "reference",
-    ]);
-    expect(tasks[2]?.storyboardContext?.extraParams?.referenceFrameRoles).toEqual([
-      "reference",
-    ]);
+    expect(
+      tasks[0]?.storyboardContext?.extraParams?.referenceFrameRoles
+    ).toEqual(["reference"]);
+    expect(
+      tasks[2]?.storyboardContext?.extraParams?.referenceFrameRoles
+    ).toEqual(["reference"]);
   });
 
   it("does not fake missing generated start/stop frames from storyboard frames", () => {
@@ -5009,6 +5225,80 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.reasonCodes).toEqual(["product_visual_discrepancy"]);
   });
 
+  it("requires repair when shot-frame QA detects a character reference mismatch", () => {
+    const result =
+      normalizeMarketplaceAutoReviewShotFrameVisionQaDecisionForTest({
+        plan: basePlan as any,
+        parsed: {
+          verdict: "pass",
+          score: 92,
+          productMatchesReference: true,
+          continuityMatchesShot: true,
+          characterConsistencySafe: false,
+          adWarningTextSafe: true,
+          minorPresent: false,
+          minorSafetyClothingSafe: true,
+        },
+        reasonCodes: [],
+      });
+
+    expect(result.verdict).toBe("repair");
+    expect(result.characterConsistencySafe).toBe(false);
+    expect(result.reasonCodes).toContain("character_reference_mismatch");
+  });
+
+  it("does not select image attempts with character reference mismatch", () => {
+    const reviews = buildMarketplaceAutoReviewImageAttemptReviewsForTest({
+      metadata: {
+        storyboardGridUrl: "https://cdn.example.test/grid-character-drift.png",
+        storyboardFrameUrls: Array.from(
+          { length: 9 },
+          (_, index) =>
+            `https://cdn.example.test/grid-character-drift-shot-${index + 1}.png`
+        ),
+      } as any,
+      refs: [
+        {
+          unitId: "storyboard-grid-image",
+          mediaType: "image",
+          stageKey: "image_generation",
+          role: "storyboard_grid",
+          attempt: 1,
+          taskId: "task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.test/grid-character-drift.png",
+        },
+      ] as any,
+      qaEnvelopes: [
+        {
+          qaEnvelopeId: "storyboard-grid-qa:mar_test:1",
+          mediaUnit: "storyboard_grid",
+          verdict: "repair",
+          reasonCodes: ["character_reference_mismatch"],
+          characterConsistencySafe: false,
+        },
+      ],
+      repairUnits: [
+        buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest({
+          reasonCodes: ["character_reference_mismatch"],
+          repairInstruction:
+            "Regenerate with stricter character identity lock from @Image2.",
+        }),
+      ],
+      status: "repair_required",
+      expectedFrameCount: 9,
+    });
+
+    expect(reviews[0].selectionEligible).toBe(false);
+    expect(reviews[0].selectionBlockers).toContain(
+      "character_reference_mismatch"
+    );
+    const selected = selectMarketplaceAutoReviewBestImageAttemptForTest({
+      metadata: { imageAttemptReviews: reviews } as any,
+    });
+    expect(selected.selectedImageAttempt).toBeUndefined();
+  });
+
   it("keeps storyboard grid layout failures selectable with warning evidence", () => {
     expect(
       imageReasonCodesContainStoryboardGridLayoutBlockerForTest([
@@ -5020,7 +5310,8 @@ describe("marketplace auto review audio/video planning", () => {
         storyboardGridUrl: "https://cdn.example.test/grid-2x5.png",
         storyboardFrameUrls: Array.from(
           { length: 9 },
-          (_, index) => `https://cdn.example.test/grid-2x5-shot-${index + 1}.png`
+          (_, index) =>
+            `https://cdn.example.test/grid-2x5-shot-${index + 1}.png`
         ),
       } as any,
       refs: [
@@ -5068,15 +5359,16 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it("accepts image QA with warnings after the repair budget is exhausted", () => {
-    const repairUnit = buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
-      qa: {
-        qaEnvelopeId: "vision-qa:mar_1:shot-1",
-        shotId: "shot-1",
-        verdict: "repair",
-        reasonCodes: ["marketplace_ui_detected", "continuityIssue"],
-        repairInstruction: "Regenerate the grid without marketplace UI.",
-      },
-    });
+    const repairUnit =
+      buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+        qa: {
+          qaEnvelopeId: "vision-qa:mar_1:shot-1",
+          shotId: "shot-1",
+          verdict: "repair",
+          reasonCodes: ["marketplace_ui_detected", "continuityIssue"],
+          repairInstruction: "Regenerate the grid without marketplace UI.",
+        },
+      });
     const refs = [1, 2, 3].map(attempt => ({
       unitId: "storyboard-grid-image",
       mediaType: "image",
@@ -5124,7 +5416,7 @@ describe("marketplace auto review audio/video planning", () => {
     });
   });
 
-  it("hands off whole-storyboard product mismatch to user review after repair budget is exhausted", () => {
+  it("hands off QA blockers after repair budget is exhausted when frames are ready", () => {
     const repairUnit =
       buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
         qa: {
@@ -5137,6 +5429,56 @@ describe("marketplace auto review audio/video planning", () => {
             "Regenerate with stricter product reference fidelity.",
         },
       });
+
+    const metadata = {
+      storyboardGridUrl: "https://cdn.example.test/grid-3.png",
+      storyboardFrameUrls: Array.from(
+        { length: 9 },
+        (_, index) => `https://cdn.example.test/grid-3-shot-${index + 1}.png`
+      ),
+      pendingImageRepairUnits: [repairUnit],
+      imageAttemptReviews: [1, 2, 3].map(attempt => ({
+        reviewId: `image-attempt-review:mar_test:${attempt}`,
+        attempt,
+        status: "repair_required",
+        qualityScore: 0,
+        negativeScore: 104,
+        selectionEligible: false,
+        selectionBlockers: ["productMismatch"],
+        storyboardGridUrl: `https://cdn.example.test/grid-${attempt}.png`,
+        storyboardFrameUrls: Array.from(
+          { length: 9 },
+          (_, index) =>
+            `https://cdn.example.test/grid-${attempt}-shot-${index + 1}.png`
+        ),
+        scoreBreakdown: {
+          productFidelityWholeStoryboardFailure: true,
+          productFidelityFailedFrames: 9,
+        },
+      })),
+      generatedMediaAcceptanceEnvelope: {
+        acceptanceEnvelopeId: "acceptance:image:old",
+        status: "repair_required",
+        warningCount: 9,
+      },
+      shotFrameVisionQaEnvelopes: Array.from({ length: 9 }, (_, index) => ({
+        qaEnvelopeId: `vision-qa:mar_1:shot-${index + 1}`,
+        verdict: "repair",
+        reasonCodes: ["productMismatch"],
+        failedFrameRoles: ["storyboard_frame"],
+      })),
+    } as any;
+
+    expect(
+      marketplaceAutoReviewImageRepairBudgetAllowsStoryboardReviewHandoffForTest(
+        {
+          metadata,
+          repairUnits: [repairUnit],
+          expectedFrameCount: 9,
+        }
+      )
+    ).toBe(true);
+
     const refs = [1, 2, 3].map(attempt => ({
       unitId: "storyboard-grid-image",
       mediaType: "image",
@@ -5147,62 +5489,104 @@ describe("marketplace auto review audio/video planning", () => {
       status: "completed",
       resultUrl: `https://cdn.example.test/grid-${attempt}.png`,
     }));
-
-    const metadata = acceptMarketplaceAutoReviewImageQaWithWarningsForTest({
-      metadata: {
-        storyboardGridUrl: "https://cdn.example.test/grid-3.png",
-        storyboardFrameUrls: Array.from(
-          { length: 9 },
-          (_, index) => `https://cdn.example.test/grid-3-shot-${index + 1}.png`
-        ),
-        pendingImageRepairUnits: [repairUnit],
-        imageAttemptReviews: [1, 2, 3].map(attempt => ({
-          reviewId: `image-attempt-review:mar_test:${attempt}`,
-          attempt,
-          status: "repair_required",
-          qualityScore: 0,
-          negativeScore: 104,
-          selectionEligible: false,
-          selectionBlockers: ["productMismatch"],
-          storyboardGridUrl: `https://cdn.example.test/grid-${attempt}.png`,
-          storyboardFrameUrls: Array.from(
-            { length: 9 },
-            (_, index) =>
-              `https://cdn.example.test/grid-${attempt}-shot-${index + 1}.png`
-          ),
-          scoreBreakdown: {
-            productFidelityWholeStoryboardFailure: true,
-            productFidelityFailedFrames: 9,
-          },
-        })),
-        generatedMediaAcceptanceEnvelope: {
-          acceptanceEnvelopeId: "acceptance:image:old",
-          status: "repair_required",
-          warningCount: 9,
-        },
-        shotFrameVisionQaEnvelopes: Array.from({ length: 9 }, (_, index) => ({
-          qaEnvelopeId: `vision-qa:mar_1:shot-${index + 1}`,
-          verdict: "repair",
-          reasonCodes: ["productMismatch"],
-          failedFrameRoles: ["storyboard_frame"],
-        })),
-      },
-      repairUnits: [repairUnit],
-      refs: refs as any,
-    });
-
-    expect(metadata.pendingImageRepairUnits).toEqual([]);
-    expect(metadata.storyboardFrameUrls).toHaveLength(9);
-    expect(metadata.generatedMediaAcceptanceEnvelope).toMatchObject({
+    const acceptedMetadata =
+      acceptMarketplaceAutoReviewImageQaWithWarningsForTest({
+        metadata,
+        repairUnits: [repairUnit],
+        refs: refs as any,
+      });
+    expect(acceptedMetadata.pendingImageRepairUnits).toEqual([]);
+    expect(acceptedMetadata.storyboardFrameUrls).toHaveLength(9);
+    expect(acceptedMetadata.generatedMediaAcceptanceEnvelope).toMatchObject({
       status: "accepted_with_warnings",
       userReviewRequired: true,
       overrideReason: "repair_budget_exhausted_storyboard_review_required",
     });
-    expect(metadata.imageQaReviewOverride).toMatchObject({
+    expect(acceptedMetadata.imageQaReviewOverride).toMatchObject({
       status: "accepted_with_warnings",
       reason: "repair_budget_exhausted_storyboard_review_required",
       repairUnitIds: ["storyboard-grid-image"],
     });
+
+    expect(
+      marketplaceAutoReviewImageRepairBudgetAllowsStoryboardReviewHandoffForTest(
+        {
+          metadata: {
+            storyboardFrameUrls: Array.from(
+              { length: 9 },
+              (_, index) =>
+                `https://cdn.example.test/character-grid-shot-${index + 1}.png`
+            ),
+            storyboardGridVisionQaEnvelopes: [
+              {
+                qaEnvelopeId: "storyboard-grid-qa:mar_1:1",
+                verdict: "repair",
+                reasonCodes: ["character_reference_mismatch"],
+                characterConsistencySafe: false,
+              },
+            ],
+          } as any,
+          repairUnits: [
+            buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+              qa: {
+                qaEnvelopeId: "storyboard-grid-qa:mar_1:1",
+                verdict: "repair",
+                reasonCodes: ["character_reference_mismatch"],
+                repairInstruction:
+                  "Regenerate with stricter character reference fidelity.",
+              },
+            }),
+          ],
+          expectedFrameCount: 9,
+        }
+      )
+    ).toBe(true);
+    expect(
+      marketplaceAutoReviewImageRepairBudgetAllowsStoryboardReviewHandoffForTest(
+        {
+          metadata,
+          repairUnits: [
+            buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+              qa: {
+                qaEnvelopeId: "storyboard-grid-qa:mar_1:safety",
+                verdict: "repair",
+                reasonCodes: ["minor_safety_child_clothing_issue"],
+                repairInstruction:
+                  "Regenerate with publish-safe child clothing and framing.",
+              },
+            }),
+          ],
+          expectedFrameCount: 9,
+        }
+      )
+    ).toBe(true);
+    expect(
+      marketplaceAutoReviewImageRepairBudgetAllowsStoryboardReviewHandoffForTest(
+        {
+          metadata: {
+            storyboardGridVisionQaEnvelopes: [
+              {
+                qaEnvelopeId: "storyboard-grid-qa:mar_1:no-frames",
+                verdict: "repair",
+                reasonCodes: ["minor_safety_child_clothing_issue"],
+              },
+            ],
+          } as any,
+          repairUnits: [
+            buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+              qa: {
+                qaEnvelopeId: "storyboard-grid-qa:mar_1:no-frames",
+                verdict: "repair",
+                reasonCodes: ["minor_safety_child_clothing_issue"],
+                repairInstruction:
+                  "Regenerate with publish-safe child clothing and framing.",
+              },
+            }),
+          ],
+          expectedFrameCount: 9,
+        }
+      )
+    ).toBe(false);
   });
 
   it("does not persist recursive advance outbox jobs for background schedulers", () => {
@@ -5210,9 +5594,7 @@ describe("marketplace auto review audio/video planning", () => {
       shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(undefined)
     ).toBe(true);
     expect(
-      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest(
-        "manual_or_api"
-      )
+      shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest("manual_or_api")
     ).toBe(true);
     expect(
       shouldPersistMarketplaceAutoReviewAdvanceOutboxJobForTest("auto")
@@ -5230,9 +5612,9 @@ describe("marketplace auto review audio/video planning", () => {
         "completed_with_warnings"
       )
     ).toBe(true);
-    expect(isMarketplaceAutoReviewCompletedStageStatusForTest("completed")).toBe(
-      true
-    );
+    expect(
+      isMarketplaceAutoReviewCompletedStageStatusForTest("completed")
+    ).toBe(true);
     expect(isMarketplaceAutoReviewCompletedStageStatusForTest("running")).toBe(
       false
     );
@@ -5405,14 +5787,15 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it("treats unavailable vision QA as a repair signal, not a clean pass", () => {
-    const qa = buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest({
-      runId: "mar_qa_unavailable",
-      shotId: "shot-1",
-      error: {
-        code: "adapter_runtime_error",
-        message: "adapter runtime error",
-      },
-    });
+    const qa =
+      buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest({
+        runId: "mar_qa_unavailable",
+        shotId: "shot-1",
+        error: {
+          code: "adapter_runtime_error",
+          message: "adapter runtime error",
+        },
+      });
 
     expect(qa).toMatchObject({
       status: "qa_unavailable_warning",
@@ -5427,17 +5810,18 @@ describe("marketplace auto review audio/video planning", () => {
   });
 
   it("scores image generation attempts with negative QA and repair penalties", () => {
-    const repairUnit = buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
-      qa: {
-        qaEnvelopeId: "vision-qa:mar_1:shot-1",
-        shotId: "shot-1",
-        verdict: "repair",
-        score: 88,
-        reasonCodes: ["productMismatch"],
-        failedFrameRoles: ["storyboard_frame"],
-        repairInstruction: "Regenerate with stricter product match.",
-      },
-    });
+    const repairUnit =
+      buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest({
+        qa: {
+          qaEnvelopeId: "vision-qa:mar_1:shot-1",
+          shotId: "shot-1",
+          verdict: "repair",
+          score: 88,
+          reasonCodes: ["productMismatch"],
+          failedFrameRoles: ["storyboard_frame"],
+          repairInstruction: "Regenerate with stricter product match.",
+        },
+      });
     const reviews = buildMarketplaceAutoReviewImageAttemptReviewsForTest({
       metadata: {
         storyboardGridUrl: "https://cdn.example.test/grid-1.png",
@@ -5467,10 +5851,10 @@ describe("marketplace auto review audio/video planning", () => {
       ] as any,
       qaEnvelopes: [
         {
-        qaEnvelopeId: "vision-qa:mar_1:shot-1",
-        verdict: "repair",
-        score: 88,
-        reasonCodes: ["productMismatch"],
+          qaEnvelopeId: "vision-qa:mar_1:shot-1",
+          verdict: "repair",
+          score: 88,
+          reasonCodes: ["productMismatch"],
           failedFrameRoles: ["storyboard_frame"],
         },
       ],
@@ -5571,9 +5955,7 @@ describe("marketplace auto review audio/video planning", () => {
             negativeScore: 10,
             resultUrls: ["https://cdn.example.test/grid-1.png"],
             storyboardGridUrl: "https://cdn.example.test/grid-1.png",
-            storyboardFrameUrls: [
-              "https://cdn.example.test/grid-1-shot-1.png",
-            ],
+            storyboardFrameUrls: ["https://cdn.example.test/grid-1-shot-1.png"],
           },
           {
             reviewId: "image-attempt-review:mar_test:3",
@@ -5583,9 +5965,7 @@ describe("marketplace auto review audio/video planning", () => {
             negativeScore: 34,
             resultUrls: ["https://cdn.example.test/grid-3.png"],
             storyboardGridUrl: "https://cdn.example.test/grid-3.png",
-            storyboardFrameUrls: [
-              "https://cdn.example.test/grid-3-shot-1.png",
-            ],
+            storyboardFrameUrls: ["https://cdn.example.test/grid-3-shot-1.png"],
           },
         ],
       },
@@ -5625,9 +6005,7 @@ describe("marketplace auto review audio/video planning", () => {
             reasonCodes: ["productMismatch"],
             resultUrls: ["https://cdn.example.test/grid-1.png"],
             storyboardGridUrl: "https://cdn.example.test/grid-1.png",
-            storyboardFrameUrls: [
-              "https://cdn.example.test/grid-1-shot-1.png",
-            ],
+            storyboardFrameUrls: ["https://cdn.example.test/grid-1-shot-1.png"],
           },
           {
             reviewId: "image-attempt-review:mar_test:3",
@@ -5638,9 +6016,7 @@ describe("marketplace auto review audio/video planning", () => {
             reasonCodes: ["minor_layout_warning"],
             resultUrls: ["https://cdn.example.test/grid-3.png"],
             storyboardGridUrl: "https://cdn.example.test/grid-3.png",
-            storyboardFrameUrls: [
-              "https://cdn.example.test/grid-3-shot-1.png",
-            ],
+            storyboardFrameUrls: ["https://cdn.example.test/grid-3-shot-1.png"],
           },
         ],
       },
@@ -5656,7 +6032,7 @@ describe("marketplace auto review audio/video planning", () => {
     });
   });
 
-  it("accepts the best available image attempt when a later provider repair attempt fails", () => {
+  it("does not accept the best image attempt after provider failure before three completed image attempts", () => {
     const metadata =
       acceptMarketplaceAutoReviewBestImageAttemptAfterProviderFailureForTest({
         metadata: {
@@ -5715,29 +6091,7 @@ describe("marketplace auto review audio/video planning", () => {
         } as any,
       });
 
-    expect(metadata).not.toBeNull();
-    expect(metadata?.pendingImageRepairUnits).toEqual([]);
-    expect(metadata?.selectedImageAttempt).toBe(1);
-    expect(metadata?.storyboardGridUrl).toBe(
-      "https://cdn.example.test/grid-1.png"
-    );
-    expect(metadata?.storyboardFrameUrls).toEqual([
-      "https://cdn.example.test/grid-1-shot-1.png",
-    ]);
-    expect(metadata?.generatedMediaAcceptanceEnvelope).toMatchObject({
-      status: "accepted_with_warnings",
-      userReviewRequired: true,
-      overrideReason:
-        "provider_repair_attempt_failed_using_best_available_attempt",
-      failedAttempt: 3,
-      selectedImageAttempt: 1,
-    });
-    expect(metadata?.imageQaReviewOverride).toMatchObject({
-      status: "accepted_with_warnings",
-      reason: "provider_repair_attempt_failed_using_best_available_attempt",
-      selectedImageAttempt: 1,
-      failedAttempt: 3,
-    });
+    expect(metadata).toBeNull();
   });
 
   it("does not select product-mismatched image attempts even when they tie on score", () => {
@@ -5853,10 +6207,7 @@ describe("marketplace auto review audio/video planning", () => {
         lineageRefs: [],
         policyRefs: ["storyboard-grid-layout-hard-blocker"],
         acceptanceRefs: [],
-        missingRefs: [
-          "stageCompletionSuccess",
-          "storyboardGridLayoutAccepted",
-        ],
+        missingRefs: ["stageCompletionSuccess", "storyboardGridLayoutAccepted"],
         warningApprovalRefs: [],
         createdAt: "2026-06-02T00:00:00.000Z",
       }).status
@@ -5873,9 +6224,7 @@ describe("marketplace auto review audio/video planning", () => {
           frameUrls: ["https://cdn.example.test/frame-1.png"],
           qaVerdictRefs: ["vision-qa:mar_complete_image:shot-1"],
           statusDetail: {
-            reasonCodes: [
-              "repair_budget_exhausted_storyboard_review_required",
-            ],
+            reasonCodes: ["repair_budget_exhausted_storyboard_review_required"],
           },
         },
       });
@@ -5892,8 +6241,7 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(
       MarketplaceAutoReviewStageCompletionEvidenceSchema.parse({
-        evidenceId:
-          "stage-evidence:mar_complete_image:image_generation:test",
+        evidenceId: "stage-evidence:mar_complete_image:image_generation:test",
         runId: "mar_complete_image",
         stageKey: "image_generation",
         status: evidence?.status,

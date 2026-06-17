@@ -31,7 +31,7 @@ describe("HyperFrames auto plan contract", () => {
 
     expect(defaults).toMatchObject({
       outputMode: "storyboard_images",
-      frameStrategy: "storyboard_3x3_split",
+      frameStrategy: "video_shot_start_stop",
       audioStrategy: "native_video_audio",
       shotCount: 9,
       renderEngine: "hyperframes_composition",

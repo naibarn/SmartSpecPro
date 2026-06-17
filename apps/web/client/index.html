@@ -149,8 +149,8 @@
           }
         });
 
-        // Remove by data attributes
-        document.querySelectorAll('[data-loc*="Previewer"], [data-loc*="preview"], [data-preview-mode], [data-testid*="preview"], [data-testid*="banner"]').forEach(function(el) {
+        // Remove external preview banners only at the document root.
+        document.querySelectorAll('body > [data-loc*="Previewer"], body > [data-loc*="preview"], body > [data-preview-mode], body > [data-testid*="preview"], body > [data-testid*="banner"]').forEach(function(el) {
           if (isAppElement(el)) return;
           el.remove();
         });

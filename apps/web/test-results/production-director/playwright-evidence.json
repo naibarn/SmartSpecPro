@@ -73,11 +73,11 @@
         {
           "title": "Marketplace HyperFrames Auto Review UI gate",
           "file": "marketplace-hyperframes-ui.spec.ts",
-          "line": 868,
+          "line": 934,
           "column": 6,
           "specs": [
             {
-              "title": "fixture matrix includes Auto, blocked, completed, duplicate, and Standard cases",
+              "title": "authenticated Storyboard Review selected shot video preview keeps media visible under overlay layers",
               "ok": true,
               "tags": [],
               "tests": [
@@ -92,12 +92,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 13,
+                      "duration": 3521,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-06-13T06:19:57.412Z",
+                      "startTime": "2026-06-17T14:28:18.859Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -105,383 +105,9 @@
                   "status": "expected"
                 }
               ],
-              "id": "5a050f4a632e5693260d-3c129df8802b10807f79",
+              "id": "5a050f4a632e5693260d-b3c40bcc32550c928d9e",
               "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 869,
-              "column": 3
-            },
-            {
-              "title": "Product Detail Auto ready/blocked/disabled and Standard preservation",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 6,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:19:57.453Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-b6c41ce1a4570ffff55f",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 892,
-              "column": 3
-            },
-            {
-              "title": "Storyboard Review preview/result-first panel and manual fallback",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:19:57.470Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-674e9513c850cfde5255",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 927,
-              "column": 3
-            },
-            {
-              "title": "MediaStudio resumes HyperFrames render-to-Library session",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:19:57.482Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-3a6073c5cf7977a7a02d",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 944,
-              "column": 3
-            },
-            {
-              "title": "browser fixture UI covers responsive Auto, Standard, Storyboard, and MediaStudio states",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 4444,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:19:57.493Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-cf73364e632cec38f224",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 964,
-              "column": 3
-            },
-            {
-              "title": "authenticated Product Detail hides Auto surface when HyperFrames access is disabled",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1608,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:02.010Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-c7cda166ab031d52f4f3",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1163,
-              "column": 3
-            },
-            {
-              "title": "authenticated Product Detail shows retryable Auto plan errors while preserving Standard Order",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 8317,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:03.627Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-bd7f450c3408c58adfff",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1195,
-              "column": 3
-            },
-            {
-              "title": "authenticated Product Detail resumes the active Auto run without starting a duplicate",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1496,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:11.956Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-b7744272ad5151f825f5",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1224,
-              "column": 3
-            },
-            {
-              "title": "authenticated Product Detail treats an active Standard run as a Standard blocker, not Auto resume",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 1503,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:13.458Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-e4577abced5e8a085415",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1286,
-              "column": 3
-            },
-            {
-              "title": "authenticated Product Detail supports Advanced Auto overrides, reset, and start payload",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 5830,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:14.968Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-fbb91314520b9a6f9e35",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1362,
-              "column": 3
-            },
-            {
-              "title": "authenticated Storyboard Review repair action calls the self-service repair API",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 2074,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:20.805Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-e6f57ab8dea7403de6d9",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1474,
-              "column": 3
-            },
-            {
-              "title": "authenticated live app routes expose Product Detail, Storyboard Review, and MediaStudio HyperFrames flow",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 11886,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-13T06:20:22.886Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-c22cc173462da1003201",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1509,
+              "line": 1575,
               "column": 3
             }
           ]
@@ -491,9 +117,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-06-13T06:19:52.721Z",
-    "duration": 42175.390999999996,
-    "expected": 12,
+    "startTime": "2026-06-17T14:28:12.921Z",
+    "duration": 9638.595,
+    "expected": 1,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

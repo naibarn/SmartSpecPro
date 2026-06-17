@@ -120,6 +120,7 @@ describe("HyperFrames runtime API schemas", () => {
         textMode: "hook_and_per_shot",
         overlayPreset: "spec_highlight",
         subtitlePreset: "karaoke_word",
+        subtitleFontSizePx: 28,
         burnInSubtitles: true,
         hookText: "แท็บเล็ตจอใหญ่ ลื่นแรง แบตอึด",
         supportingText: "Xiaomi Pad 8 เริ่มต้น 10,946.-",
@@ -150,7 +151,40 @@ describe("HyperFrames runtime API schemas", () => {
     expect(input.config.overlayPreset).toBe("spec_highlight");
     expect(input.config.shots[0]?.overlayPreset).toBe("price_impact");
     expect(input.config.subtitlePreset).toBe("karaoke_word");
+    expect(input.config.subtitleFontSizePx).toBe(28);
     expect(input.config.shots[0]?.subtitleCues[0]?.endSec).toBe(2);
+  });
+
+  it("accepts the expanded final composite overlay preset set", () => {
+    for (const overlayPreset of [
+      "creator_top_punch",
+      "ugc_center_stack",
+      "white_intro_card",
+      "tech_signal_map",
+    ]) {
+      const input = CreateHyperframesFinalCompositeInputSchema.parse({
+        productId: "product_1",
+        runId: "mar_1",
+        config: {
+          finalVideoLengthSec: 8,
+          overlayPreset,
+          shots: [
+            {
+              id: "shot_1",
+              index: 0,
+              sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
+              startSec: 0,
+              durationSec: 8,
+              overlayPreset,
+              onScreenText: ["ข้อความเปิดคลิป", "อ่านง่ายในสามวินาทีแรก"],
+            },
+          ],
+        },
+      });
+
+      expect(input.config.overlayPreset).toBe(overlayPreset);
+      expect(input.config.shots[0]?.overlayPreset).toBe(overlayPreset);
+    }
   });
 
   it("uses the shared final render prompt limit for styleBrief", () => {

@@ -2172,7 +2172,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewOutputMode, setAutoReviewOutputMode] =
     useState<AutoReviewOutputMode>("storyboard_images");
   const [autoReviewFrameStrategy, setAutoReviewFrameStrategy] =
-    useState<AutoReviewFrameStrategy>("storyboard_3x3_split");
+    useState<AutoReviewFrameStrategy>("video_shot_start_stop");
   const [autoReviewAudioStrategy, setAutoReviewAudioStrategy] =
     useState<AutoReviewAudioStrategy>("native_video_audio");
   const [autoReviewShotCount, setAutoReviewShotCount] =
@@ -3866,7 +3866,9 @@ export default function MarketplaceCaptureProductDetail() {
       const requestedOutputMode: AutoReviewOutputMode =
         action === "storyboard" ? "storyboard_images" : "full_video";
       const requestedFrameStrategy: AutoReviewFrameStrategy =
-        autoReviewFrameStrategy;
+        action === "storyboard"
+          ? autoReviewFrameStrategy
+          : "video_shot_start_stop";
       const selectedAudioStrategy: AutoReviewAudioStrategy =
         autoReviewAudioStrategy === "auto"
           ? "native_video_audio"
@@ -4914,6 +4916,11 @@ export default function MarketplaceCaptureProductDetail() {
                       aria-pressed={autoReviewOutputMode === mode}
                       onClick={() => {
                         setAutoReviewOutputMode(mode);
+                        setAutoReviewFrameStrategy(
+                          mode === "full_video"
+                            ? "video_shot_start_stop"
+                            : autoReviewFrameStrategy
+                        );
                         if (autoReviewAudioStrategy === "auto") {
                           setAutoReviewAudioStrategy("native_video_audio");
                         }

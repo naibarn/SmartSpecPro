@@ -6,10 +6,12 @@ import {
   HyperframesThaiFontFamilySchema,
 } from "./creativePresets";
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
+import { HyperframesFinalCompositeTextMotionPresetSchema } from "./runtimeApiSchemas";
 
 const SafeIdSchema = z.string().trim().min(1).max(180);
 const SafeHashSchema = z.string().trim().min(6).max(160);
 const SafeTextSchema = z.string().trim().max(4000);
+const SafeSubtitleSidecarSchema = z.string().trim().max(24000);
 const StoryboardReviewProjectIdSchema = z.union([z.string(), z.number()]);
 const HyperframesFinalCompositeSfxDraftSchema = z
   .object({
@@ -39,11 +41,18 @@ export const HyperframesFinalCompositeTextVariablesSchema = z
     styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional(),
     hookText: z.string().trim().max(240).optional(),
     supportingText: z.string().trim().max(240).optional(),
+    subtitleFontSizePx: z.number().int().min(24).max(52).optional(),
+    textMotionPreset: HyperframesFinalCompositeTextMotionPresetSchema.optional(),
     perShotText: z.record(SafeTextSchema).default({}),
     perShotSubtitles: z.record(SafeTextSchema).default({}),
+    perShotSubtitleVtt: z.record(SafeSubtitleSidecarSchema).default({}),
+    perShotSubtitleSrt: z.record(SafeSubtitleSidecarSchema).default({}),
     perShotOverlayPreset: z.record(SafeIdSchema).default({}),
     perShotAnimationPreset: z.record(SafeIdSchema).default({}),
     perShotTransition: z.record(SafeIdSchema).default({}),
+    perShotTextMotionPreset: z
+      .record(HyperframesFinalCompositeTextMotionPresetSchema)
+      .default({}),
     creativeVariables: HyperframesCreativeVariablesSchema.optional(),
   })
   .strict();

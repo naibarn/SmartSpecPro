@@ -573,20 +573,20 @@
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
-/* Hide preview mode banners - CSS-based removal as backup */
+/* Hide external preview mode banners only at the document root. */
 #manus-previewer-content-root,
 #preview-mode-banner,
 #staging-banner,
-[data-loc*="PreviewerMode"],
-[data-loc*="preview"],
-[data-preview-mode],
-[class*="preview-banner"],
-[class*="staging-banner"],
-[class*="manus-preview"],
-[class*="previewer"],
-[class*="Previewer"],
-[id*="previewer"],
-[id*="Previewer"],
+body > [data-loc*="PreviewerMode"],
+body > [data-loc*="preview"],
+body > [data-preview-mode],
+body > [class*="preview-banner"],
+body > [class*="staging-banner"],
+body > [class*="manus-preview"],
+body > [class*="previewer"],
+body > [class*="Previewer"],
+body > [id*="previewer"],
+body > [id*="Previewer"],
 /* Target any fixed/absolute positioned elements at bottom that look like banners */
 body > div[style*="position: fixed"][style*="bottom"],
 body > div[style*="position:fixed"][style*="bottom"],

@@ -76,7 +76,6 @@ describe("hyperframesAutoPlanService", () => {
       "tiktok_reels_shorts_9_16"
     );
     expect(customizedPlan.overrideDiff.fields).toEqual([
-      "frameStrategy",
       "shotCount",
       "imageModel",
       "qualityMode",

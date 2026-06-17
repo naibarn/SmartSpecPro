@@ -21,6 +21,7 @@ const baseInput = {
       preserveNativeAudio: true,
       syntheticAudioFallback: true,
       burnInSubtitles: true,
+      subtitleFontSizePx: 28,
     },
     shotMediaAssignments: [
       {
@@ -61,6 +62,7 @@ describe("Storyboard Review HyperFrames final composite state", () => {
         musicPresetId: "hf_audio_music_upbeat_ecommerce_social_v1",
         preserveNativeAudio: true,
         burnInSubtitles: true,
+        subtitleFontSizePx: 28,
       },
     });
     expect(getStoryboardReviewHyperframesFinalCompositeState(result.reviewData)).toEqual(
@@ -121,10 +123,14 @@ describe("Storyboard Review HyperFrames final composite state", () => {
             ],
             perShotText: { shot_1: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น" },
             perShotSubtitles: { shot_1: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+            perShotSubtitleVtt: { shot_1: "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nพอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+            perShotSubtitleSrt: { shot_1: "1\n00:00:00,000 --> 00:00:01,500\nพอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
             burnInSubtitles: false,
             perShotOverlayPreset: { shot_1: "hook_sequence" },
             perShotAnimationPreset: { shot_1: "glow_feature" },
             perShotTransition: { shot_1: "fade" },
+            textMotionPreset: "slide_right_to_left",
+            perShotTextMotionPreset: { shot_1: "pop_scale" },
           },
         },
       },
@@ -141,8 +147,12 @@ describe("Storyboard Review HyperFrames final composite state", () => {
       perShotOverlayPreset: { shot_1: "hook_sequence" },
       perShotAnimationPreset: { shot_1: "glow_feature" },
       perShotTransition: { shot_1: "fade" },
+      textMotionPreset: "slide_right_to_left",
+      perShotTextMotionPreset: { shot_1: "pop_scale" },
       perShotText: { shot_1: "BENO PRO-FLEX ชงกาแฟง่ายขึ้น" },
       perShotSubtitles: { shot_1: "พอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+      perShotSubtitleVtt: { shot_1: "WEBVTT\n\n00:00:00.000 --> 00:00:01.500\nพอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
+      perShotSubtitleSrt: { shot_1: "1\n00:00:00,000 --> 00:00:01,500\nพอใช้ BENO PRO-FLEX เราบด ชง และตีฟองนมได้เลย" },
       burnInSubtitles: false,
     });
   });

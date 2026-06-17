@@ -109,6 +109,10 @@ type HyperframesFinalOverlayPreset =
   | "electronics_spec_stack"
   | "hero_price_billboard"
   | "kinetic_bold_hook"
+  | "creator_top_punch"
+  | "ugc_center_stack"
+  | "white_intro_card"
+  | "tech_signal_map"
   | "split_product_specs"
   | "badge_cascade"
   | "lower_third_review"
@@ -315,6 +319,10 @@ function coerceFinalCompositeOverlayPreset(
     preset === "electronics_spec_stack" ||
     preset === "hero_price_billboard" ||
     preset === "kinetic_bold_hook" ||
+    preset === "creator_top_punch" ||
+    preset === "ugc_center_stack" ||
+    preset === "white_intro_card" ||
+    preset === "tech_signal_map" ||
     preset === "split_product_specs" ||
     preset === "badge_cascade" ||
     preset === "lower_third_review" ||
@@ -547,6 +555,7 @@ function isSpecOverlayPreset(preset: HyperframesFinalOverlayPreset): boolean {
   return preset === "spec_highlight" ||
     preset === "electronics_spec_stack" ||
     preset === "split_product_specs" ||
+    preset === "tech_signal_map" ||
     preset === "neon_gaming_specs";
 }
 

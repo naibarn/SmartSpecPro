@@ -31,6 +31,7 @@ const BASE_URL = (
 const ROUTE_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Crect width='320' height='320' fill='%23e0f2fe'/%3E%3Ccircle cx='160' cy='136' r='70' fill='%230ea5e9'/%3E%3Crect x='70' y='224' width='180' height='34' rx='17' fill='%230f172a'/%3E%3C/svg%3E";
 const ROUTE_VIDEO_URL = "https://cdn.example.test/hyperframes/final.mp4";
+const ROUTE_SHOT_VIDEO_URL = `${BASE_URL}/e2e-assets/marketplace-hyperframes-shot.mp4`;
 const ROUTE_VIDEO_FIXTURE_PATH = join(
   evidenceDir,
   "marketplace-hyperframes-fixture.mp4"
@@ -167,6 +168,70 @@ function retryableRenderProjection() {
     },
     qaStatus: undefined,
     outputRefs: [],
+  };
+}
+
+function storyboardReviewWithVideoShots() {
+  const now = Date.parse("2026-06-04T00:00:00.000Z");
+  const tasks = [0, 1].map(index => ({
+    id: `shot-${index + 1}`,
+    index,
+    status: "completed",
+    type: "video",
+    prompt:
+      index === 0
+        ? "Hook shot with overlay and subtitle"
+        : "Proof shot with overlay and subtitle",
+    model: "veo3/generate-veo-3-video-lite",
+    durationSeconds: 8,
+    createdAt: now,
+    updatedAt: now,
+    url: ROUTE_SHOT_VIDEO_URL,
+    storyboardContext: {
+      aspectRatio: "9:16",
+      duration: 8,
+      model: "veo3/generate-veo-3-video-lite",
+      referenceImages: [{ url: ROUTE_IMAGE, name: "poster" }],
+      referenceVideos: [],
+      extraParams: {
+        marketplaceProductId: "product_1",
+        autoReviewRunId: "mar_1",
+      },
+    },
+  }));
+  const reviewData = {
+    version: 1,
+    reviewId: 1,
+    name: "E2E selected shot video preview",
+    updatedAt: now,
+    taskIds: tasks.map(task => task.id),
+    selectedTaskIds: tasks.map(task => task.id),
+    tasks,
+    companionAudio: [],
+    compoundStatus: null,
+    projectLink: null,
+    renderJobId: null,
+    marketplaceContext: {
+      productId: "product_1",
+      platform: "shopee",
+      productName: "BENO PRO-FLEX",
+      affiliateUrl: "https://example.test/product?aff=ssp",
+    },
+    productionContext: {
+      productionRunId: "mar_1",
+      productionProjectTitle: "BENO PRO-FLEX test",
+      voiceoverFullScript:
+        "คุณเคยชงกาแฟตอนเช้า แบบชงเท่าไหร่ก็ยังได้กาแฟติดเปรี้ยวจนหมดอารมณ์ไหม",
+    },
+    voiceoverFullScript:
+      "คุณเคยชงกาแฟตอนเช้า แบบชงเท่าไหร่ก็ยังได้กาแฟติดเปรี้ยวจนหมดอารมณ์ไหม",
+  };
+  return {
+    id: 1,
+    name: "E2E selected shot video preview",
+    reviewData,
+    createdAt: "2026-06-04T00:00:00.000Z",
+    updatedAt: "2026-06-04T00:00:00.000Z",
   };
 }
 
@@ -473,6 +538,7 @@ type RouteMockOptions = {
   autoPlanError?: boolean;
   autoReviewRuns?: unknown[];
   render?: ReturnType<typeof completedRenderProjection>;
+  storyboardReview?: unknown;
   overridePlanDelayMs?: number;
 };
 
@@ -637,7 +703,7 @@ function routeMockData(
     ];
   }
   if (procedure === "videoEditorProjects.getStoryboardReview") {
-    return null;
+    return options.storyboardReview ?? null;
   }
   if (procedure === "videoEditorProjects.listStoryboardReviews") return [];
   if (procedure === "users.getPreferences") {
@@ -794,7 +860,7 @@ async function mockAuthenticatedHyperframesRoutes(
   await page.route("**/*", async route => {
     const requestUrl = route.request().url();
     const pathname = new URL(requestUrl).pathname;
-    if (requestUrl === ROUTE_VIDEO_URL) {
+    if (requestUrl === ROUTE_VIDEO_URL || requestUrl === ROUTE_SHOT_VIDEO_URL) {
       route.fulfill({
         status: 200,
         contentType: "video/mp4",
@@ -1503,6 +1569,168 @@ test.describe("Marketplace HyperFrames Auto Review UI gate", () => {
     await page.screenshot({
       path: join(evidenceDir, "route-storyboard-repair-390x844.png"),
       fullPage: true,
+    });
+  });
+
+  test("authenticated Storyboard Review selected shot video preview keeps media visible under overlay layers", async ({
+    page,
+  }) => {
+    mkdirSync(evidenceDir, { recursive: true });
+    const routeLog: RouteMockLogEntry[] = [];
+    await mockAuthenticatedHyperframesRoutes(page, routeLog, {
+      storyboardReview: storyboardReviewWithVideoShots(),
+    });
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+
+    await page.goto(
+      `${BASE_URL}/storyboard-review/1?hyperframesRenderJobId=hf_route_1&productId=product_1&runId=mar_1`,
+      { waitUntil: "domcontentloaded" }
+    );
+    await expect(page.getByLabel("HyperFrames storyboard review")).toBeVisible({
+      timeout: 30_000,
+    });
+    if (!(await page.getByText(/Shot text map/i).first().isVisible())) {
+      await page.getByRole("button", { name: /ตั้งค่า|Settings/i }).click();
+    }
+    await expect(page.getByText(/Shot text map/i)).toBeVisible();
+
+    await page.getByRole("button", { name: /เล่นวิดีโอ|Play video/i }).first().click();
+    const inlineStage = page.locator(".hf-preview-stage--large").first();
+    const inlineVideo = inlineStage.locator("video").first();
+    const inlineVideoDiagnostics = await inlineVideo.evaluate(video => {
+      const element = video as HTMLVideoElement;
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      const parentRect = element.parentElement?.getBoundingClientRect();
+      return {
+        src: element.currentSrc || element.src,
+        readyState: element.readyState,
+        videoWidth: element.videoWidth,
+        videoHeight: element.videoHeight,
+        paused: element.paused,
+        currentTime: element.currentTime,
+        rect: {
+          width: rect.width,
+          height: rect.height,
+          top: rect.top,
+          left: rect.left,
+        },
+        parentRect: parentRect
+          ? {
+              width: parentRect.width,
+              height: parentRect.height,
+              top: parentRect.top,
+              left: parentRect.left,
+            }
+          : null,
+        opacity: style.opacity,
+        display: style.display,
+        visibility: style.visibility,
+        position: style.position,
+        zIndex: style.zIndex,
+      };
+    });
+    const allStageDiagnostics = await page.locator(".hf-preview-stage--large").evaluateAll(stages =>
+      stages.map((stage, index) => {
+        const element = stage as HTMLElement;
+        const video = element.querySelector("video") as HTMLVideoElement | null;
+        const style = window.getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return {
+          index,
+          previewMode: element.getAttribute("data-preview-mode"),
+          rect: { width: rect.width, height: rect.height, top: rect.top, left: rect.left },
+          opacity: style.opacity,
+          display: style.display,
+          visibility: style.visibility,
+          video: video
+            ? {
+                src: video.currentSrc || video.src,
+                readyState: video.readyState,
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                visibility: window.getComputedStyle(video).visibility,
+              }
+            : null,
+        };
+      })
+    );
+    writeFileSync(
+      join(evidenceDir, "route-storyboard-selected-shot-video-preassert.json"),
+      JSON.stringify({ inlineVideoDiagnostics, allStageDiagnostics, routeLog }, null, 2)
+    );
+    await expect(inlineVideo).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          inlineVideo.evaluate(video => {
+            const element = video as HTMLVideoElement;
+            const style = window.getComputedStyle(element);
+            return (
+              element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+              element.videoWidth > 0 &&
+              element.videoHeight > 0 &&
+              style.opacity !== "0" &&
+              style.visibility !== "hidden" &&
+              style.display !== "none"
+            );
+          }),
+        { timeout: 20_000 }
+      )
+      .toBe(true);
+    await expect(inlineStage.locator(".hf-preview-overlay-copy")).toBeVisible();
+    await expect(inlineStage.locator(".hf-sub-preview-inline")).toBeVisible();
+
+    const inlineVideoState = await inlineVideo.evaluate(video => {
+      const element = video as HTMLVideoElement;
+      const style = window.getComputedStyle(element);
+      return {
+        src: element.currentSrc || element.src,
+        readyState: element.readyState,
+        videoWidth: element.videoWidth,
+        videoHeight: element.videoHeight,
+        currentTime: element.currentTime,
+        opacity: style.opacity,
+        display: style.display,
+        visibility: style.visibility,
+      };
+    });
+    writeFileSync(
+      join(evidenceDir, "route-storyboard-selected-shot-video-preview.json"),
+      JSON.stringify({ inlineVideoState, routeLog }, null, 2)
+    );
+    await inlineStage.screenshot({
+      path: join(evidenceDir, "route-storyboard-selected-shot-video-preview.png"),
+    });
+
+    await page.getByRole("button", { name: /ขยายวิดีโอ shot 1|Expand shot 1 video/i }).click();
+    const dialog = page.getByRole("dialog", { name: /Shot 1/i });
+    await expect(dialog).toBeVisible();
+    const fullscreenVideo = dialog.locator("video").first();
+    await expect(fullscreenVideo).toBeVisible();
+    await expect
+      .poll(
+        async () =>
+          fullscreenVideo.evaluate(video => {
+            const element = video as HTMLVideoElement;
+            const style = window.getComputedStyle(element);
+            return (
+              element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+              element.videoWidth > 0 &&
+              element.videoHeight > 0 &&
+              style.opacity !== "0" &&
+              style.visibility !== "hidden" &&
+              style.display !== "none"
+            );
+          }),
+        { timeout: 20_000 }
+      )
+      .toBe(true);
+    await expect(dialog.locator(".hf-preview-overlay-copy")).toBeVisible();
+    await expect(dialog.locator(".hf-sub-preview-inline")).toBeVisible();
+    await dialog.screenshot({
+      path: join(evidenceDir, "route-storyboard-selected-shot-video-fullscreen.png"),
     });
   });
 
