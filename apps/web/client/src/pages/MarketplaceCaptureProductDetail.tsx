@@ -495,6 +495,39 @@ function compactDisplayValue(value: unknown): string {
   return compactText(value);
 }
 
+function parseDecimalValue(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const text = compactDisplayValue(value).replace(/,/g, "");
+  if (!text) return null;
+  const match = text.match(/\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatDecimalValue(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatCommissionRateValue(value: unknown): string {
+  const rate = parseDecimalValue(value);
+  return rate == null ? "-" : `${formatDecimalValue(rate)}%`;
+}
+
+function formatCommissionAmountValue(
+  priceCurrent: unknown,
+  commissionRatePercent: unknown,
+  currency: unknown
+): string {
+  const price = parseDecimalValue(priceCurrent);
+  const rate = parseDecimalValue(commissionRatePercent);
+  if (price == null || rate == null) return "-";
+  return `${formatDecimalValue(price * (rate / 100))} ${compactText(currency) || "THB"}`;
+}
+
 function formatDiagnosticDateTime(value: unknown): string {
   const text = compactDisplayValue(value);
   if (!text) return "-";
@@ -2172,7 +2205,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewOutputMode, setAutoReviewOutputMode] =
     useState<AutoReviewOutputMode>("storyboard_images");
   const [autoReviewFrameStrategy, setAutoReviewFrameStrategy] =
-    useState<AutoReviewFrameStrategy>("video_shot_start_stop");
+    useState<AutoReviewFrameStrategy>("storyboard_3x3_split");
   const [autoReviewAudioStrategy, setAutoReviewAudioStrategy] =
     useState<AutoReviewAudioStrategy>("native_video_audio");
   const [autoReviewShotCount, setAutoReviewShotCount] =
@@ -3866,9 +3899,7 @@ export default function MarketplaceCaptureProductDetail() {
       const requestedOutputMode: AutoReviewOutputMode =
         action === "storyboard" ? "storyboard_images" : "full_video";
       const requestedFrameStrategy: AutoReviewFrameStrategy =
-        action === "storyboard"
-          ? autoReviewFrameStrategy
-          : "video_shot_start_stop";
+        autoReviewFrameStrategy;
       const selectedAudioStrategy: AutoReviewAudioStrategy =
         autoReviewAudioStrategy === "auto"
           ? "native_video_audio"
@@ -4683,7 +4714,23 @@ export default function MarketplaceCaptureProductDetail() {
                 <dt className="text-sm font-medium text-slate-500">
                   Commission
                 </dt>
-                <dd>{isEditingProduct ? <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.commissionRatePercent} onChange={event => updateProductEditField("commissionRatePercent", event.target.value)} /> : `${compactText(item.commissionRatePercent) || "-"}%`}</dd>
+                <dd>
+                  {isEditingProduct ? (
+                    <>
+                      <input className="mt-1 w-full rounded-md border px-2 py-1 text-sm" value={productEditForm.commissionRatePercent} onChange={event => updateProductEditField("commissionRatePercent", event.target.value)} />
+                      <div className="mt-1 text-xs text-slate-500">
+                        {formatCommissionAmountValue(productEditForm.priceCurrent, productEditForm.commissionRatePercent, item.currency)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>{formatCommissionRateValue(item.commissionRatePercent)}</div>
+                      <div className="text-xs text-slate-500">
+                        {formatCommissionAmountValue(item.priceCurrent, item.commissionRatePercent, item.currency)}
+                      </div>
+                    </>
+                  )}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-slate-500">
@@ -4916,11 +4963,6 @@ export default function MarketplaceCaptureProductDetail() {
                       aria-pressed={autoReviewOutputMode === mode}
                       onClick={() => {
                         setAutoReviewOutputMode(mode);
-                        setAutoReviewFrameStrategy(
-                          mode === "full_video"
-                            ? "video_shot_start_stop"
-                            : autoReviewFrameStrategy
-                        );
                         if (autoReviewAudioStrategy === "auto") {
                           setAutoReviewAudioStrategy("native_video_audio");
                         }
@@ -6889,7 +6931,10 @@ export default function MarketplaceCaptureProductDetail() {
                             {snapshot.currency ?? "THB"}
                           </td>
                           <td className="px-3 py-2">
-                            {snapshot.commissionRatePercent ?? "-"}%
+                            <div>{formatCommissionRateValue(snapshot.commissionRatePercent)}</div>
+                            <div className="text-xs text-slate-500">
+                              {formatCommissionAmountValue(snapshot.priceCurrent, snapshot.commissionRatePercent, snapshot.currency)}
+                            </div>
                           </td>
                           <td className="px-3 py-2">
                             {formatCount(

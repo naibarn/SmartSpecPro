@@ -45,6 +45,35 @@ function formatCompactCount(raw: string | number | null | undefined, fallback?: 
   return value ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value) : "-";
 }
 
+function parseDecimal(raw: string | number | null | undefined): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (!raw) return null;
+  const match = raw.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function formatDecimal(value: number, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    ...options,
+  }).format(value);
+}
+
+function formatCommissionRate(rate: string | number | null | undefined): string {
+  const value = parseDecimal(rate);
+  return value == null ? "-" : `${formatDecimal(value)}%`;
+}
+
+function formatCommissionAmount(product: any): string {
+  const price = parseDecimal(product.priceCurrent);
+  const rate = parseDecimal(product.commissionRatePercent);
+  if (price == null || rate == null) return "-";
+  return `${formatDecimal(price * (rate / 100))} ${product.currency ?? "THB"}`;
+}
+
 function productCategory(product: any) {
   const raw = product.platformRawJson ?? {};
   return raw.categoryText || raw.category || raw.latestProductDraft?.categoryText || "Uncategorized";
@@ -389,7 +418,7 @@ export default function MarketplaceCaptureProducts() {
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div><div className="text-xs text-slate-500">Price</div><div className="font-medium">{product.priceCurrent ?? "-"} {product.currency ?? "THB"}</div></div>
-          <div><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{product.commissionRatePercent ?? "-"}%</div></div>
+          <div><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{formatCommissionRate(product.commissionRatePercent)}</div><div className="text-xs text-slate-500">{formatCommissionAmount(product)}</div></div>
           <div><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(product.soldCountNormalized, product.soldCountText)}</div></div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -601,7 +630,7 @@ export default function MarketplaceCaptureProducts() {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Price</div><div className="font-medium">{panelProduct.priceCurrent ?? "-"} {panelProduct.currency ?? "THB"}</div></div>
-              <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{panelProduct.commissionRatePercent ?? "-"}%</div></div>
+              <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{formatCommissionRate(panelProduct.commissionRatePercent)}</div><div className="text-xs text-slate-500">{formatCommissionAmount(panelProduct)}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(panelProduct.soldCountNormalized, panelProduct.soldCountText)}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Rating</div><div className="font-medium">{panelProduct.ratingScore ?? "-"}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Reviews</div><div className="font-medium">{formatCompactCount(panelProduct.reviewCountText, panelHistory[0]?.reviewCountNormalized)}</div></div>
