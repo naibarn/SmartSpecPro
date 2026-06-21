@@ -334,10 +334,15 @@ export {};
       inputDetails = retry.input || inputDetails;
       retryUsed = true;
     }
-    dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    if (!inputSet) {
+      dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    } else {
+      await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
+    }
     void recordDiagnosticLog("higgsfield_drag_delivery", {
-      strategy: inputSet ? "file_input_then_synthetic_drop" : "synthetic_drop_only",
+      strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
       fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
+      cleanupStep: inputSet ? "dragleave_dragend" : "drop",
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
