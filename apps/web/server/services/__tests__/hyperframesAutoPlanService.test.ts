@@ -59,6 +59,7 @@ describe("hyperframesAutoPlanService", () => {
         frameStrategy: "video_shot_start_stop",
         qualityMode: "high",
         imageModel: "google-nano-banana-pro",
+        videoModel: "kling3/generate-kling-3-video",
         shotCount: 7,
         platformPresetId: "tiktok_reels_shorts_9_16",
         renderEngine: "existing_ffmpeg_timeline",
@@ -69,6 +70,7 @@ describe("hyperframesAutoPlanService", () => {
       frameStrategy: "video_shot_start_stop",
       qualityMode: "high",
       imageModel: "google-nano-banana-pro",
+      videoModel: "kling3/generate-kling-3-video",
       shotCount: 7,
       renderEngine: "hyperframes_composition",
     });
@@ -76,8 +78,10 @@ describe("hyperframesAutoPlanService", () => {
       "tiktok_reels_shorts_9_16"
     );
     expect(customizedPlan.overrideDiff.fields).toEqual([
+      "frameStrategy",
       "shotCount",
       "imageModel",
+      "videoModel",
       "qualityMode",
       "platformPreset",
     ]);

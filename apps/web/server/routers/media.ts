@@ -11,6 +11,7 @@ import {
   mediaGenerationService,
   MEDIA_MODELS,
   DEFAULT_MODELS,
+  resolveReferenceUrl,
   type MediaType,
   type MediaTask,
   type AudioModel,
@@ -82,6 +83,16 @@ import {
   listDeferredMediaTasks,
   scheduleDeferredVideoRetry,
 } from "../services/deferredMediaRetryService";
+import { resolveMediaTransport } from "../services/mediaTransportResolver";
+import {
+  cancelMcpMediaGeneration,
+  getMcpMediaTask,
+  listMcpMediaTasks,
+  submitMcpMediaGeneration,
+} from "../services/mcpMediaAdapter";
+import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
+import type { MediaTransport, MediaOriginSurface } from "../../shared/mcpConnectTypes";
+import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { assertMediaProviderAssetsUsable } from "../services/mediaProviderAssetService";
 
 const extraParamsSchema = z
@@ -94,10 +105,83 @@ const extraParamsSchema = z
     }
   });
 
-const creditOriginSurfaceSchema = z.enum(["media_studio"]).optional();
+const creditOriginSurfaceSchema = z.enum([
+  "media_studio",
+  "auto_storyboard_review",
+  "marketplace_capture",
+  "storyboard_review",
+]).optional();
+const mediaTransportSchema = z.enum(["gateway_api", "mcp"]).optional();
+
+function assertMcpFieldsOnlyWithMcpTransport(input: {
+  transport?: "gateway_api" | "mcp";
+  mcpConnectionId?: string;
+  sharedGroupId?: number;
+  mcpApprovalId?: string;
+  mcpProviderKey?: string;
+  mcpProviderModelId?: string;
+  mcpToolName?: string;
+  mcpArgumentShape?: string;
+}) {
+  const hasMcpOnlyFields = Boolean(
+    input.mcpConnectionId ||
+    input.sharedGroupId !== undefined ||
+    input.mcpApprovalId ||
+    input.mcpProviderKey ||
+    input.mcpProviderModelId ||
+    input.mcpToolName ||
+    input.mcpArgumentShape,
+  );
+  if (input.transport === "gateway_api" && hasMcpOnlyFields) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "MCP connection, group, approval, and provider route fields cannot be used with transport=gateway_api",
+    });
+  }
+}
 
 function compactText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function optionalTrimmedText(value: unknown): string | undefined {
+  const trimmed = compactText(value);
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveMcpRouteFromModelId(modelId: unknown): { providerKey?: string; providerModelId?: string } {
+  const value = compactText(modelId);
+  if (!value) return {};
+  const [providerPart, ...modelParts] = value.split("/");
+  const providerToken = providerPart?.trim().toLowerCase();
+  const providerKey =
+    providerToken === "higgsfield" || providerToken === "higgsfield-mcp"
+      ? "higgsfield"
+      : providerToken === "magnific" || providerToken === "magnific-mcp"
+        ? "magnific"
+        : undefined;
+  if (!providerKey) return {};
+  return {
+    providerKey,
+    providerModelId: modelParts.length > 0 ? modelParts.join("/").trim() || undefined : undefined,
+  };
+}
+
+function defaultMcpArgumentShape(providerKey: string | undefined, assetType: "image" | "video") {
+  if (providerKey === "higgsfield") {
+    return assetType === "image" ? "higgsfield.generate_image" : "higgsfield.generate_video";
+  }
+  if (providerKey === "magnific") {
+    return assetType === "image" ? "magnific.images_generate" : "magnific.video_generate";
+  }
+  return undefined;
+}
+
+function resolveReferenceUrlsForProvider(urls: string[] | undefined, publicUrl?: string | null): string[] | undefined {
+  const resolved = (urls ?? [])
+    .map((url) => resolveReferenceUrl(url, publicUrl))
+    .filter((url) => url.trim().length > 0);
+  return resolved.length > 0 ? resolved : undefined;
 }
 
 function dateToIso(value: unknown): string {
@@ -2008,12 +2092,29 @@ export const mediaRouter = router({
         numImages: z.number().min(1).max(4).optional(),
         resolution: z.string().optional(),
         outputFormat: z.string().optional(),
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceStyleUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        mcpProviderKey: z.string().max(64).optional(),
+        mcpProviderModelId: z.string().max(256).optional(),
+        mcpToolName: z.string().max(128).optional(),
+        mcpArgumentShape: z.string().max(128).optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (input.transport === "mcp") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
+      }
+      if (input.mcpConnectionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
+      }
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -2176,9 +2277,24 @@ export const mediaRouter = router({
         referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        mcpProviderKey: z.string().max(64).optional(),
+        mcpProviderModelId: z.string().max(256).optional(),
+        mcpToolName: z.string().max(128).optional(),
+        mcpArgumentShape: z.string().max(128).optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (input.transport === "mcp") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
+      }
+      if (input.mcpConnectionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
+      }
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -2327,9 +2443,17 @@ export const mediaRouter = router({
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      if (input.transport === "mcp" || input.mcpConnectionId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
+      }
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -2482,6 +2606,11 @@ export const mediaRouter = router({
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2654,9 +2783,19 @@ export const mediaRouter = router({
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        mcpProviderKey: z.string().max(64).optional(),
+        mcpProviderModelId: z.string().max(256).optional(),
+        mcpToolName: z.string().max(128).optional(),
+        mcpArgumentShape: z.string().max(128).optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      assertMcpFieldsOnlyWithMcpTransport(input);
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -2705,6 +2844,86 @@ export const mediaRouter = router({
         numImages: input.numImages,
         resolution: input.resolution,
       });
+      const modelTransport = resolveMediaModelTransportConfig({
+        provider: modelMeta.provider,
+        modelId: model,
+        configJson: dbModel.configJson,
+      });
+      const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
+
+      if (shouldUseMcpTransport) {
+        const modelRoute = resolveMcpRouteFromModelId(model);
+        const mcpProviderKey =
+          optionalTrimmedText(input.mcpProviderKey) ??
+          modelRoute.providerKey ??
+          (modelTransport.transport === "mcp" ? modelTransport.providerKey : undefined);
+        const rawMcpProviderModelId =
+          optionalTrimmedText(input.mcpProviderModelId) ??
+          modelRoute.providerModelId ??
+          (modelTransport.transport === "mcp" ? modelTransport.providerModelId : undefined) ??
+          modelTransport.providerModelId;
+        const mcpToolName =
+          optionalTrimmedText(input.mcpToolName) ??
+          (modelTransport.transport === "mcp" ? modelTransport.toolName : undefined);
+        const mcpArgumentShape =
+          optionalTrimmedText(input.mcpArgumentShape) ??
+          (modelTransport.transport === "mcp" ? modelTransport.argumentShape : undefined) ??
+          defaultMcpArgumentShape(mcpProviderKey, "image");
+        const mcpProviderModelId = normalizeMcpProviderModelIdForProvider({
+          providerKey: mcpProviderKey,
+          providerModelId: rawMcpProviderModelId,
+          assetType: "image",
+          argumentShape: mcpArgumentShape,
+        }) ?? rawMcpProviderModelId;
+        if (!mcpProviderKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `MCP provider route metadata is missing for model "${model}". Re-select an MCP media model and try again.`,
+          });
+        }
+        const resolvedReferenceImageUrls = resolveReferenceUrlsForProvider(input.referenceImageUrls, ctx.publicUrl);
+        const resolvedReferenceStyleUrl = input.referenceStyleUrl
+          ? resolveReferenceUrl(input.referenceStyleUrl, ctx.publicUrl)
+          : undefined;
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        if (!tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for MCP media generation" });
+        }
+        const transportMetadata = await resolveMediaTransport({
+          tenantId,
+          actorUserId: ctx.user.id,
+          originSurface: (input.originSurface ?? "media_studio") as MediaOriginSurface,
+          assetType: "image",
+          requestedTransport: "mcp" as MediaTransport,
+          mcpConnectionId: input.mcpConnectionId,
+          sharedGroupId: input.sharedGroupId,
+          approvalId: input.mcpApprovalId,
+          providerKey: mcpProviderKey,
+          providerModelId: mcpProviderModelId,
+          model: mcpProviderModelId ?? model,
+          toolName: mcpToolName,
+          argumentShape: mcpArgumentShape,
+          idempotencyKey: input.idempotencyKey,
+        });
+        return submitMcpMediaGeneration({
+          tenantId,
+          prompt: input.prompt,
+          model,
+          metadata: transportMetadata,
+          parameters: {
+            ...modelTransport.defaultParams,
+            ...input.extraParams,
+            aspectRatio: input.aspectRatio,
+            resolution: input.resolution,
+            outputFormat: input.outputFormat,
+            numImages: input.numImages ?? 1,
+            referenceImageUrls: resolvedReferenceImageUrls,
+            referenceImageCount: resolvedReferenceImageUrls?.length ?? 0,
+            referenceStyleUrl: resolvedReferenceStyleUrl,
+            hasReferenceStyle: Boolean(resolvedReferenceStyleUrl),
+          },
+        });
+      }
 
       // Check and deduct credits upfront to prevent race condition
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -2817,9 +3036,19 @@ export const mediaRouter = router({
         apiConfig: z.record(z.string()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
+        transport: mediaTransportSchema,
+        mcpConnectionId: z.string().optional(),
+        sharedGroupId: z.number().int().optional(),
+        mcpApprovalId: z.string().optional(),
+        mcpProviderKey: z.string().max(64).optional(),
+        mcpProviderModelId: z.string().max(256).optional(),
+        mcpToolName: z.string().max(128).optional(),
+        mcpArgumentShape: z.string().max(128).optional(),
+        idempotencyKey: z.string().max(128).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
+      assertMcpFieldsOnlyWithMcpTransport(input);
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -2889,6 +3118,86 @@ export const mediaRouter = router({
         referenceVideoUrl: input.referenceVideoUrl,
         video_list: normalizedExtraParams?.video_list,
       });
+      const modelTransport = resolveMediaModelTransportConfig({
+        provider: modelMeta.provider,
+        modelId: model,
+        configJson: dbModel.configJson,
+      });
+      const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
+
+      if (shouldUseMcpTransport) {
+        const modelRoute = resolveMcpRouteFromModelId(model);
+        const mcpProviderKey =
+          optionalTrimmedText(input.mcpProviderKey) ??
+          modelRoute.providerKey ??
+          (modelTransport.transport === "mcp" ? modelTransport.providerKey : undefined);
+        const rawMcpProviderModelId =
+          optionalTrimmedText(input.mcpProviderModelId) ??
+          modelRoute.providerModelId ??
+          (modelTransport.transport === "mcp" ? modelTransport.providerModelId : undefined) ??
+          modelTransport.providerModelId;
+        const mcpToolName =
+          optionalTrimmedText(input.mcpToolName) ??
+          (modelTransport.transport === "mcp" ? modelTransport.toolName : undefined);
+        const mcpArgumentShape =
+          optionalTrimmedText(input.mcpArgumentShape) ??
+          (modelTransport.transport === "mcp" ? modelTransport.argumentShape : undefined) ??
+          defaultMcpArgumentShape(mcpProviderKey, "video");
+        const mcpProviderModelId = normalizeMcpProviderModelIdForProvider({
+          providerKey: mcpProviderKey,
+          providerModelId: rawMcpProviderModelId,
+          assetType: "video",
+          argumentShape: mcpArgumentShape,
+        }) ?? rawMcpProviderModelId;
+        if (!mcpProviderKey) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `MCP provider route metadata is missing for model "${model}". Re-select an MCP media model and try again.`,
+          });
+        }
+        const resolvedReferenceImageUrls = resolveReferenceUrlsForProvider(input.referenceImageUrls, ctx.publicUrl);
+        const resolvedReferenceVideoUrls = resolveReferenceUrlsForProvider([
+          ...(input.referenceVideoUrls ?? []),
+          ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : []),
+        ], ctx.publicUrl);
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        if (!tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for MCP media generation" });
+        }
+        const transportMetadata = await resolveMediaTransport({
+          tenantId,
+          actorUserId: ctx.user.id,
+          originSurface: (input.originSurface ?? "media_studio") as MediaOriginSurface,
+          assetType: "video",
+          requestedTransport: "mcp" as MediaTransport,
+          mcpConnectionId: input.mcpConnectionId,
+          sharedGroupId: input.sharedGroupId,
+          approvalId: input.mcpApprovalId,
+          providerKey: mcpProviderKey,
+          providerModelId: mcpProviderModelId,
+          model: mcpProviderModelId ?? model,
+          toolName: mcpToolName,
+          argumentShape: mcpArgumentShape,
+          idempotencyKey: input.idempotencyKey,
+        });
+        return submitMcpMediaGeneration({
+          tenantId,
+          prompt: input.prompt,
+          model,
+          metadata: transportMetadata,
+          parameters: {
+            ...modelTransport.defaultParams,
+            ...normalizedExtraParams,
+            duration,
+            aspectRatio: input.aspectRatio,
+            resolution: input.resolution,
+            referenceImageUrls: resolvedReferenceImageUrls,
+            referenceImageCount: resolvedReferenceImageUrls?.length ?? 0,
+            referenceVideoUrls: resolvedReferenceVideoUrls,
+            referenceVideoCount: resolvedReferenceVideoUrls?.length ?? 0,
+          },
+        });
+      }
 
       // Check and deduct credits upfront to prevent race condition
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -3032,6 +3341,10 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .query(async ({ input, ctx }) => {
       try {
+        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
+        if (mcpTask) {
+          return mcpTask;
+        }
         const userToken = getUserToken(ctx);
         const deferredTask = await getDeferredMediaTask(
           input.taskId,
@@ -3277,13 +3590,19 @@ export const mediaRouter = router({
           providerTasks.flatMap(task => [task.id, task.taskId].filter(Boolean) as string[])
         );
         const nonDuplicateHyperframesTasks = hyperframesTasks.filter(task => !providerTaskIds.has(task.id));
-        const mergedTasks = [...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
+        const mcpTasks = await listMcpMediaTasks({
+          userId: ctx.user.id,
+          mediaType: input?.mediaType as MediaType | undefined,
+          status: input?.status,
+          limit: input?.limit ?? 50,
+        });
+        const mergedTasks = [...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
           .slice(0, input?.limit ?? 50);
         return {
           ...result,
           tasks: mergedTasks,
-          total: (result.total ?? result.tasks?.length ?? 0) + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
+          total: (result.total ?? result.tasks?.length ?? 0) + mcpTasks.length + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
           limit: input?.limit ?? result.limit,
           offset: input?.offset ?? result.offset,
         };
@@ -3353,6 +3672,10 @@ export const mediaRouter = router({
         const deferredTask = await cancelDeferredMediaTask(input.taskId, ctx.user.id);
         if (deferredTask) {
           return deferredTask;
+        }
+        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
+        if (mcpTask) {
+          return cancelMcpMediaGeneration(mcpTask);
         }
 
         const userToken = getUserToken(ctx);

@@ -528,7 +528,12 @@ function readFirstHttpUrl(
 ): string | null {
   if (!value) return null;
   if (typeof value === "string") {
-    return /^https?:\/\//i.test(value.trim()) ? value.trim() : null;
+    const trimmed = value.trim();
+    return /^https?:\/\//i.test(trimmed) ||
+      trimmed.startsWith("/api/storage/") ||
+      trimmed.startsWith("/uploads/")
+      ? trimmed
+      : null;
   }
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -634,6 +639,8 @@ function extractMediaHistoryResultUrl(task: MediaTask): string | null {
     readFirstHttpUrl(task.resultData?.image_url) ||
     readFirstHttpUrl(task.resultData?.audioUrl) ||
     readFirstHttpUrl(task.resultData?.audio_url) ||
+    readFirstHttpUrl(task.resultData?.outputUrls) ||
+    readFirstHttpUrl(task.resultData?.output_urls) ||
     readFirstHttpUrl(task.resultData?.output) ||
     readFirstHttpUrl(task.resultData?.data) ||
     readFirstHttpUrl(task.resultData?.response) ||
@@ -744,6 +751,8 @@ function extractMediaHistoryThumbnailUrl(task: MediaTask): string | null {
     readFirstHttpUrl(resultData.thumbnail) ||
     readFirstHttpUrl(resultData.thumbnail_url) ||
     readFirstHttpUrl(resultData.thumbnailUrl) ||
+    readFirstHttpUrl(resultData.previewUrls) ||
+    readFirstHttpUrl(resultData.preview_urls) ||
     readFirstHttpUrl(parsedResultJson?.poster) ||
     readFirstHttpUrl(parsedResultJson?.poster_url) ||
     readFirstHttpUrl(parsedResultJson?.thumbnail) ||

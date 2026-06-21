@@ -123,6 +123,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       shotCount: 7,
       overlayTextMode: "allow_text",
       imageModel: "google-banana-2",
+      videoModel: "kling3/generate-kling-3-video",
       qualityMode: "high",
     };
     const startPlan = {
@@ -139,6 +140,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
         shotCount: 7,
         overlayTextMode: "allow_text",
         imageModel: "google-banana-2",
+        videoModel: "kling3/generate-kling-3-video",
         qualityMode: "high",
       },
     };
@@ -218,6 +220,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
         shotCount: 7,
         overlayTextMode: "allow_text",
         imageModel: "google-banana-2",
+        videoModel: "kling3/generate-kling-3-video",
         qualityMode: "premium_strict_qa",
         referenceAnchors: null,
       },

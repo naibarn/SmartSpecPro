@@ -4,6 +4,8 @@ import {
   CreateHyperframesFinalCompositeInputSchema,
   CreateHyperframesPreviewOutputSchema,
   GetAutoStoryboardReviewPlanInputSchema,
+  GetVideoSegmentPlanPreviewInputSchema,
+  GetVideoSegmentPlanPreviewOutputSchema,
   ListHyperframesCreativePresetsInputSchema,
   ListHyperframesCreativePresetsOutputSchema,
   RepairHyperframesRenderJobInputSchema,
@@ -32,6 +34,7 @@ describe("HyperFrames runtime API schemas", () => {
         qualityMode: "high",
         platformPresetId: "tiktok_reels_shorts_9_16",
         imageModel: "google-banana-2",
+        videoModel: "kling3/generate-kling-3-video",
       },
     });
 
@@ -39,6 +42,7 @@ describe("HyperFrames runtime API schemas", () => {
       qualityMode: "high",
       platformPresetId: "tiktok_reels_shorts_9_16",
       imageModel: "google-banana-2",
+      videoModel: "kling3/generate-kling-3-video",
     });
     expect(() =>
       GetAutoStoryboardReviewPlanInputSchema.parse({
@@ -79,6 +83,121 @@ describe("HyperFrames runtime API schemas", () => {
         idempotencyKey: "x".repeat(193),
       })
     ).toThrow();
+  });
+
+  it("accepts safe creative preset selections on Auto Storyboard start anchors", () => {
+    const input = StartAutoStoryboardReviewInputSchema.parse({
+      productId: "product_1",
+      referenceAnchors: {
+        productImageUrl: "https://cdn.example.test/product.png",
+        creativePresets: [
+          { family: "tone_preset", presetId: "tone_warm_honest" },
+          { family: "audio_preset", presetId: "audio_thai_tts" },
+        ],
+      },
+    });
+
+    expect(input.referenceAnchors?.creativePresets).toEqual([
+      { family: "tone_preset", presetId: "tone_warm_honest" },
+      { family: "audio_preset", presetId: "audio_thai_tts" },
+    ]);
+  });
+
+  it("accepts server-owned video segment preview inputs with MCP metadata", () => {
+    const input = GetVideoSegmentPlanPreviewInputSchema.parse({
+      productId: "product_1",
+      overrides: {
+        videoModel: "magnific-mcp/imagen-nano-banana-2-flash",
+        videoStructureMode: "adaptive_multi_shot",
+        creativeBrief: "Make the review warmer but keep product facts locked.",
+      },
+      transportMetadata: {
+        transport: "mcp",
+        connectionId: "mcp_conn_1",
+        sharedGroupId: 12,
+      },
+      referenceAnchors: {
+        productImageUrl: "https://cdn.example.test/product.png",
+        creativePresets: [
+          { family: "tone_preset", presetId: "tone_warm_honest" },
+        ],
+      },
+    });
+
+    expect(input.overrides.videoStructureMode).toBe("adaptive_multi_shot");
+    expect(input.transportMetadata?.transport).toBe("mcp");
+    expect(input.referenceAnchors?.creativePresets).toEqual([
+      { family: "tone_preset", presetId: "tone_warm_honest" },
+    ]);
+  });
+
+  it("validates video segment preview output with separated credit source and basis", () => {
+    const parsed = GetVideoSegmentPlanPreviewOutputSchema.parse({
+      contractVersion: "hyperframes_marketplace_auto_review_v1",
+      videoSegmentPlan: {
+        schemaVersion: 1,
+        sourceSurface: "marketplace_capture",
+        mode: "adaptive_multi_shot",
+        effectiveMode: "per_shot",
+        videoModelId: "magnific-mcp/imagen-nano-banana-2-flash",
+        transport: "mcp",
+        audioStrategy: "separate_tts_voiceover",
+        referenceMode: "single_storyboard_frame",
+        creativePresets: [],
+        segments: [
+          {
+            segmentId: "seg_1",
+            index: 0,
+            shotIds: ["shot_1"],
+            durationSeconds: 5,
+            referenceMode: "single_storyboard_frame",
+            referenceImageUrls: ["https://cdn.example.test/frame.png"],
+            subShots: [
+              {
+                shotId: "shot_1",
+                index: 0,
+                durationSeconds: 5,
+                title: "Hook",
+              },
+            ],
+            warnings: [],
+          },
+        ],
+        fallbackReason: "selected_model_does_not_support_multi_shot",
+        warnings: [],
+        planHash: "plan_hash_123",
+      },
+      accessDecision: {
+        allowed: true,
+        transport: "mcp",
+        mcpConnectionId: "mcp_conn_1",
+        sharedGroupId: 12,
+      },
+      creditEstimate: {
+        mode: "per_shot",
+        estimatedCredits: 1,
+        basis: "jobs",
+        creditSource: "mcp_provider_account",
+        notes: ["Provider-specific adjustments happen at submission time."],
+      },
+      warnings: [
+        {
+          code: "multi_shot_not_supported",
+          message: "Fallback to per-shot.",
+          severity: "warning",
+          source: "fallback",
+          shotIds: ["shot_1"],
+        },
+      ],
+      fallbackReason: "selected_model_does_not_support_multi_shot",
+    });
+
+    expect(parsed.creditEstimate).toMatchObject({
+      basis: "jobs",
+      creditSource: "mcp_provider_account",
+    });
+    expect(JSON.stringify(parsed)).not.toContain("token");
+    expect(JSON.stringify(parsed)).not.toContain("session");
   });
 
   it("requires charge summary, polling, and repair actions on preview output", () => {
@@ -243,6 +362,66 @@ describe("HyperFrames runtime API schemas", () => {
     });
 
     expect(input.config.overlayPreset).toBe("neon_gaming_specs");
+  });
+
+  it("accepts long spec overlay presets with up to fifteen user-controlled lines", () => {
+    const longSpecLines = Array.from(
+      { length: 15 },
+      (_, index) => `สเปกบรรทัดที่ ${index + 1} RAM 16GB SSD 1TB กล้องคมชัด ไม่ตัดคำกลางประโยค`
+    );
+    const input = CreateHyperframesFinalCompositeInputSchema.parse({
+      productId: "product_1",
+      runId: "mar_1",
+      config: {
+        finalVideoLengthSec: 8,
+        overlayPreset: "spec_lines_15_neon",
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "spec_lines_15_neon",
+            onScreenText: longSpecLines,
+          },
+        ],
+      },
+    });
+
+    expect(input.config.overlayPreset).toBe("spec_lines_15_neon");
+    expect(input.config.shots[0]?.overlayPreset).toBe("spec_lines_15_neon");
+    expect(input.config.shots[0]?.onScreenText).toHaveLength(15);
+    expect(input.config.shots[0]?.onScreenText.at(-1)).toContain("สเปกบรรทัดที่ 15");
+  });
+
+  it("rejects long spec overlay text maps above the supported fifteen line maximum", () => {
+    const tooManyLines = Array.from(
+      { length: 16 },
+      (_, index) => `สเปกบรรทัดที่ ${index + 1}`
+    );
+
+    expect(() =>
+      CreateHyperframesFinalCompositeInputSchema.parse({
+        productId: "product_1",
+        runId: "mar_1",
+        config: {
+          finalVideoLengthSec: 8,
+          overlayPreset: "spec_lines_15_neon",
+          shots: [
+            {
+              id: "shot_1",
+              index: 0,
+              sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
+              startSec: 0,
+              durationSec: 8,
+              overlayPreset: "spec_lines_15_neon",
+              onScreenText: tooManyLines,
+            },
+          ],
+        },
+      })
+    ).toThrow();
   });
 
   it("accepts final composite audio presets and event maps", () => {

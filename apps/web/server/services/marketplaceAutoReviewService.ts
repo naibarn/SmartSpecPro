@@ -96,6 +96,26 @@ import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { buildHyperframesCompositionInput } from "./hyperframesCompositionService";
 import { resolveHyperframesFeatureAccessForTenant } from "./hyperframesFeatureAccessService";
 import { queueHyperframesRenderJob } from "./hyperframesRenderService";
+import {
+  autoReviewCreativePresetRequestedAudioStrategy,
+  buildAutoReviewCreativePresetDirective,
+  normalizeAutoReviewCreativePresetSelections,
+  type AutoReviewCreativePresetSelection,
+} from "../../shared/hyperframes/autoReviewCreativePresets";
+import {
+  buildVideoSegmentPrompt,
+  normalizeVideoSegmentCreativeBrief,
+  planVideoSegments,
+  resolveVideoModelSegmentCapability,
+  type VideoSegmentPlan,
+  type VideoSegmentReferenceMode,
+  type VideoSegmentStructureMode,
+} from "../../shared/videoSegmentPlanner";
+import {
+  resolveMediaModelTransportConfig,
+  type MediaModelTransportConfig,
+} from "../../shared/mediaModelTransport";
+import type { MediaAssetType } from "../../shared/mcpConnectTypes";
 
 export type MarketplaceAutoReviewOutputMode =
   | "storyboard_images"
@@ -116,9 +136,8 @@ export type MarketplaceAutoReviewQualityModeInput =
   | "balanced"
   | "premium_strict_qa";
 export type MarketplaceAutoReviewOverlayTextMode = "no_text" | "allow_text";
-export type MarketplaceAutoReviewImageModel =
-  | "google-nano-banana-pro"
-  | "google-banana-2";
+export type MarketplaceAutoReviewImageModel = string;
+export type MarketplaceAutoReviewVideoModel = string;
 export type MarketplaceAutoReviewResolvedAudioStrategy =
   | "native_video_audio"
   | "separate_tts_voiceover"
@@ -142,6 +161,7 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
+  creativePresets?: AutoReviewCreativePresetSelection[] | null;
   requiredRoles?: string[] | null;
   lockPolicy?: Record<string, unknown> | null;
   productImageUrl?: string | null;
@@ -182,6 +202,7 @@ type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   characterPreset?: string | Record<string, unknown> | unknown[] | null;
   reviewTone?: string | null;
   storytellingStructure?: string | null;
+  creativePresets: AutoReviewCreativePresetSelection[];
   requiredRoles: string[];
   lockPolicy?: Record<string, unknown>;
   productImageUrl: string;
@@ -214,7 +235,8 @@ const MIN_SHOT_COUNT = 7;
 const MAX_SHOT_COUNT = 9;
 const DEFAULT_SHOT_DURATION_SECONDS = 5;
 const DEFAULT_IMAGE_MODEL: MarketplaceAutoReviewImageModel = "google-banana-2";
-const DEFAULT_VIDEO_MODEL = "veo3/generate-veo-3-video-lite";
+const DEFAULT_VIDEO_MODEL: MarketplaceAutoReviewVideoModel =
+  "veo3/generate-veo-3-video-lite";
 const ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID =
   "elevenlabs-product-voiceover-dialogue";
 const MARKETPLACE_AUTO_REVIEW_VOICEOVER_SPEECH_STYLES = [
@@ -324,10 +346,14 @@ function normalizeMarketplaceAutoReviewImageModel(
   value: unknown
 ): MarketplaceAutoReviewImageModel {
   const model = cleanText(value);
-  if (model === "google-banana-2" || model === "google-nano-banana-pro") {
-    return model;
-  }
-  return DEFAULT_IMAGE_MODEL;
+  return model || DEFAULT_IMAGE_MODEL;
+}
+
+function normalizeMarketplaceAutoReviewVideoModel(
+  value: unknown
+): MarketplaceAutoReviewVideoModel {
+  const model = cleanText(value);
+  return model || DEFAULT_VIDEO_MODEL;
 }
 
 export function normalizeMarketplaceAutoReviewImageModelForTest(
@@ -485,6 +511,7 @@ type RunMetadata = Record<string, any> & {
   concept?: AutoReviewPlan;
   audioStrategy?: MarketplaceAutoReviewAudioStrategyInput;
   resolvedAudioStrategy?: MarketplaceAutoReviewResolvedAudioStrategy;
+  videoModel?: MarketplaceAutoReviewVideoModel;
   overlayTextMode?: MarketplaceAutoReviewOverlayTextMode;
   expectedNativeAudio?: boolean;
   voiceoverSource?: string;
@@ -534,6 +561,10 @@ type RunMetadata = Record<string, any> & {
   qualityModePolicy?: Record<string, unknown>;
   creativePerformanceMemory?: Record<string, unknown>;
   mediaArtifactInspection?: Record<string, unknown>;
+  videoStructureMode?: VideoSegmentStructureMode;
+  manualVideoGroupSize?: number;
+  creativeBrief?: string | null;
+  videoSegmentPlan?: VideoSegmentPlan;
 };
 
 type StageEvidenceStatus =
@@ -1130,15 +1161,21 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
   const requiredFragments = [
     "one single 9:16 image",
     "strict 3x3 grid",
-    "exactly 9 frames",
-    "exactly 9 vertical frames",
+    "EXACTLY 9 PANELS",
+    "9 CELLS ONLY",
     "exactly 3 equal-width columns",
     "exactly 3 equal-height rows",
     "no collage/masonry layout",
-    "no separator lines",
-    "no visible dividers",
+    "clean narrow gutters between panels",
+    "Each panel occupies exactly one cell",
+    "Never split one panel into two cells",
+    "wide field of view inside a vertical portrait panel",
   ];
-  if (requiredFragments.every(fragment => lower.includes(fragment))) {
+  if (
+    requiredFragments.every(fragment =>
+      lower.includes(fragment.toLowerCase())
+    )
+  ) {
     return { prompt: base, applied: false };
   }
   const frameCount = countPromptMatches(base, /\bFrame\s+\d+\s*:/gi);
@@ -1146,7 +1183,7 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
     return { prompt: base, applied: false };
   }
   const layoutLine =
-    "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.";
+    "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
   const hasStoryboardHeader = /SHOT-BY-SHOT STORYBOARD PROMPT:/i.test(base);
   const next = hasStoryboardHeader
     ? base.replace(
@@ -1160,9 +1197,16 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
   return { prompt: base, applied: false };
 }
 
-function imageReasonCodeBlocksPublishSafety(code: unknown): boolean {
+function imageReasonCodeMentionsMinorSafety(code: unknown): boolean {
   const normalized = cleanText(code).toLowerCase();
   return /minor.*safety|child.*safety|child.*clothing|baby.*clothing|shirtless|bare.*(?:chest|torso)|(?:diaper|underwear).*only|nudit|semi.*nude|เด็ก.*(?:ไม่ใส่เสื้อ|เปลือย|เสื้อผ้าไม่ครบ)|เด็ก.*ผ้าอ้อมอย่างเดียว/.test(
+    normalized
+  );
+}
+
+function imageReasonCodeBlocksPublishSafety(code: unknown): boolean {
+  const normalized = cleanText(code).toLowerCase();
+  return /shirtless|bare.*(?:chest|torso)|(?:diaper|underwear).*only|nudit|semi.*nude|เปลือย|ไม่ใส่เสื้อ|เสื้อผ้าไม่ครบ|ผ้าอ้อมอย่างเดียว/.test(
     normalized
   );
 }
@@ -1224,13 +1268,16 @@ function normalizeVisionQaMinorSafetyResult(input: {
   );
   const presence = visionQaMinorPresenceState(input.parsed);
   const minorSafetyReasonCodes = input.reasonCodes.filter(
+    imageReasonCodeMentionsMinorSafety
+  );
+  const explicitMinorSafetyBlockers = minorSafetyReasonCodes.filter(
     imageReasonCodeBlocksPublishSafety
   );
   const nonMinorReasonCodes = input.reasonCodes.filter(
-    code => !imageReasonCodeBlocksPublishSafety(code)
+    code => !imageReasonCodeMentionsMinorSafety(code)
   );
   const keepMinorSafetyReasons =
-    minorSafetyReasonCodes.length > 0 &&
+    explicitMinorSafetyBlockers.length > 0 &&
     (presence.present || (minorSafetyLockRequired && !presence.known));
   const missingMinorEvidence =
     minorSafetyLockRequired &&
@@ -1238,7 +1285,12 @@ function normalizeVisionQaMinorSafetyResult(input: {
     minorSafetyReasonCodes.length === 0;
   const reasonCodes = uniqueCleanTexts([
     ...nonMinorReasonCodes,
-    ...(keepMinorSafetyReasons ? minorSafetyReasonCodes : []),
+    ...(keepMinorSafetyReasons ? explicitMinorSafetyBlockers : []),
+    ...(minorSafetyReasonCodes.length > 0 &&
+    !keepMinorSafetyReasons &&
+    (presence.present || (minorSafetyLockRequired && !presence.known))
+      ? ["minor_safety_child_clothing_unverified"]
+      : []),
     ...(missingMinorEvidence
       ? ["vision_qa_minor_presence_evidence_missing"]
       : []),
@@ -1423,11 +1475,16 @@ function buildMarketplaceAutoReviewImagePromptContractChecks(
       runtimeContract.hasAspectRatio || lower.includes("aspect_ratio: 9:16"),
     hasSingleCanvas: lower.includes("one single 9:16 image"),
     hasStrict3x3Grid: lower.includes("strict 3x3 grid"),
-    hasExactNineFrames: lower.includes("exactly 9 frames"),
-    hasNineVerticalFrames: lower.includes("exactly 9 vertical frames"),
+    hasExactNineFrames:
+      lower.includes("exactly 9 panels") || lower.includes("exactly 9 frames"),
+    hasNineVerticalFrames:
+      lower.includes("9 cells only") ||
+      lower.includes("exactly 9 vertical frames"),
     hasEqualColumns: lower.includes("exactly 3 equal-width columns"),
     hasEqualRows: lower.includes("exactly 3 equal-height rows"),
-    hasNoSeparatorLock: lower.includes("no separator lines"),
+    hasNoSeparatorLock:
+      lower.includes("clean narrow gutters") ||
+      lower.includes("no separator lines"),
     frameLabelCount: countPromptMatches(text, /\bFrame\s+\d+\b/g),
     visualLabelCount: countPromptMatches(text, /VISUAL:/g),
     productVerifyLabelCount: countPromptMatches(text, /PRODUCT VERIFY:/g),
@@ -2646,6 +2703,128 @@ function compactRecord<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+function normalizeMarketplaceMcpTransportMetadata(
+  value: unknown,
+  params: { tenantId: string; actorUserId: number },
+): Record<string, unknown> | undefined {
+  const record = asRecord(value);
+  if (record.transport !== "mcp") return undefined;
+  const connectionId = cleanText(record.connectionId) || cleanText(record.mcpConnectionId);
+  if (!connectionId) {
+    return {
+      transport: "mcp",
+      tenantId: params.tenantId,
+      actorUserId: params.actorUserId,
+      originSurface: "marketplace_capture",
+    };
+  }
+  return compactRecord({
+    transport: "mcp",
+    tenantId: params.tenantId,
+    actorUserId: params.actorUserId,
+    originSurface: "marketplace_capture",
+    connectionId,
+    sharedGroupId: typeof record.sharedGroupId === "number" ? record.sharedGroupId : undefined,
+    approvalId: cleanText(record.approvalId) || cleanText(record.mcpApprovalId) || undefined,
+    providerKey: cleanText(record.providerKey) || undefined,
+    providerModelId: cleanText(record.providerModelId) || undefined,
+    toolName: cleanText(record.toolName) || undefined,
+    argumentShape: cleanText(record.argumentShape) || undefined,
+    idempotencyKey: cleanText(record.idempotencyKey) || undefined,
+  });
+}
+
+function mergeMarketplaceMcpTransportMetadataForModel(
+  value: unknown,
+  params: {
+    mediaType: MediaAssetType;
+    originSurface?: string;
+    modelTransport: MediaModelTransportConfig;
+  },
+): Record<string, unknown> | undefined {
+  const record = asRecord(value);
+  if (record.transport !== "mcp") return undefined;
+  return compactRecord({
+    ...record,
+    assetType: params.mediaType,
+    originSurface: params.originSurface ?? "marketplace_capture",
+    providerKey: cleanText(record.providerKey) || params.modelTransport.providerKey,
+    providerModelId:
+      cleanText(record.providerModelId) || params.modelTransport.providerModelId,
+    toolName: cleanText(record.toolName) || params.modelTransport.toolName,
+    argumentShape:
+      cleanText(record.argumentShape) || params.modelTransport.argumentShape,
+  });
+}
+
+export function mergeMarketplaceMcpTransportMetadataForModelForTest(
+  value: unknown,
+  params: {
+    mediaType: MediaAssetType;
+    originSurface?: string;
+    modelTransport: MediaModelTransportConfig;
+  },
+): Record<string, unknown> | undefined {
+  return mergeMarketplaceMcpTransportMetadataForModel(value, params);
+}
+
+async function resolveMarketplaceAutoReviewMediaModelTransportConfig(params: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  mediaType: MediaAssetType;
+  modelId: string;
+  providerKey?: string | null;
+}): Promise<MediaModelTransportConfig> {
+  const staticModel = getStaticModelById(params.modelId);
+  const staticTransport = resolveMediaModelTransportConfig({
+    provider: params.providerKey ?? staticModel?.provider,
+    modelId: params.modelId,
+    configJson: staticModel?.configJson,
+  });
+
+  const [dbModel] = await params.db
+    .select({
+      provider: mediaModels.provider,
+      configJson: mediaModels.configJson,
+    })
+    .from(mediaModels)
+    .where(
+      and(
+        eq(mediaModels.modelId, params.modelId),
+        eq(mediaModels.modelType, params.mediaType),
+      )
+    )
+    .limit(1);
+
+  if (!dbModel) return staticTransport;
+  return resolveMediaModelTransportConfig({
+    provider: params.providerKey ?? dbModel.provider,
+    modelId: params.modelId,
+    configJson: dbModel.configJson,
+  });
+}
+
+async function buildMarketplaceDirectMediaTransportMetadata(params: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  metadata: Record<string, unknown>;
+  mediaType: MediaAssetType;
+  modelId: string;
+}): Promise<Record<string, unknown> | undefined> {
+  const baseMetadata = asRecord(params.metadata).transportMetadata;
+  if (!baseMetadata) return undefined;
+  const baseRecord = asRecord(baseMetadata);
+  const modelTransport = await resolveMarketplaceAutoReviewMediaModelTransportConfig({
+    db: params.db,
+    mediaType: params.mediaType,
+    modelId: params.modelId,
+    providerKey: cleanText(baseRecord.providerKey) || undefined,
+  });
+  return mergeMarketplaceMcpTransportMetadataForModel(baseMetadata, {
+    mediaType: params.mediaType,
+    originSurface: "marketplace_capture",
+    modelTransport,
+  });
+}
+
 function uniqRefs(values: unknown[]): string[] {
   const refs = new Set<string>();
   for (const value of values.flat()) {
@@ -3546,8 +3725,9 @@ function normalizeMarketplaceAutoReviewStorytellingStructure(
 function buildMarketplaceAutoReviewCreativeDirectionDirective(
   anchors: Pick<
     ResolvedMarketplaceAutoReviewReferenceAnchors,
-    "reviewTone" | "storytellingStructure"
-  >
+    "reviewTone" | "storytellingStructure" | "creativePresets"
+  >,
+  options: { videoModel?: string | null } = {}
 ): string {
   const tone =
     anchors.reviewTone &&
@@ -3557,13 +3737,18 @@ function buildMarketplaceAutoReviewCreativeDirectionDirective(
     MARKETPLACE_AUTO_REVIEW_STORYTELLING_DIRECTIVES[
       anchors.storytellingStructure
     ];
-  if (!tone && !structure) return "";
+  const presetDirective = buildAutoReviewCreativePresetDirective({
+    selections: anchors.creativePresets,
+    videoModel: options.videoModel,
+  });
+  if (!tone && !structure && !presetDirective) return "";
   return [
     "USER-SELECTED CREATIVE DIRECTION LOCK:",
     tone ? `Review tone: ${tone.label}. ${tone.directive}` : "",
     structure
       ? `Storytelling structure: ${structure.label}. ${structure.directive}`
       : "",
+    presetDirective,
     "These selected creative direction fields override the automatic creative variation seed wherever they conflict, while product truth, policy, shot count, and reference anchors remain higher priority.",
   ]
     .filter(Boolean)
@@ -3573,13 +3758,21 @@ function buildMarketplaceAutoReviewCreativeDirectionDirective(
 export function creativeDirectionDirectiveForTest(input: {
   reviewTone?: string | null;
   storytellingStructure?: string | null;
+  creativePresets?: unknown;
+  videoModel?: string | null;
 }): string {
-  return buildMarketplaceAutoReviewCreativeDirectionDirective({
-    reviewTone: normalizeMarketplaceAutoReviewReviewTone(input.reviewTone),
-    storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
-      input.storytellingStructure
-    ),
-  });
+  return buildMarketplaceAutoReviewCreativeDirectionDirective(
+    {
+      reviewTone: normalizeMarketplaceAutoReviewReviewTone(input.reviewTone),
+      storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
+        input.storytellingStructure
+      ),
+      creativePresets: normalizeAutoReviewCreativePresetSelections(
+        input.creativePresets
+      ),
+    },
+    { videoModel: input.videoModel }
+  );
 }
 
 function characterPresetRecordFromUnknown(
@@ -4096,6 +4289,9 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     normalizeMarketplaceAutoReviewStorytellingStructure(
       params.referenceAnchors?.storytellingStructure
     );
+  const creativePresets = normalizeAutoReviewCreativePresetSelections(
+    params.referenceAnchors?.creativePresets
+  );
   const characterImageUrl =
     cleanText(params.referenceAnchors?.characterImageUrl) || null;
   const environmentImageUrl =
@@ -4233,6 +4429,7 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     characterPreset,
     reviewTone,
     storytellingStructure,
+    creativePresets,
     requiredRoles,
     lockPolicy: asRecord(params.referenceAnchors?.lockPolicy),
     productImageUrl,
@@ -5345,6 +5542,9 @@ function referenceAnchorsInputSnapshot(
     storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
       anchors.storytellingStructure
     ),
+    creativePresets: normalizeAutoReviewCreativePresetSelections(
+      anchors.creativePresets
+    ),
     requiredRoles,
     productImageUrl: cleanText(anchors.productImageUrl) || null,
     productImageRef: cleanText(anchors.productImageRef) || null,
@@ -5768,9 +5968,7 @@ function resolveFrameStrategy(
   ) {
     return requested;
   }
-  return outputMode === "full_video"
-    ? "video_shot_start_stop"
-    : "storyboard_3x3_split";
+  return "storyboard_3x3_split";
 }
 
 function isVeo31NativeAudioModel(modelId?: string | null): boolean {
@@ -7589,8 +7787,38 @@ function imageRepairUnitsForFrameStrategy(
   pendingRepairUnits: DirectImageUnit[]
 ): DirectImageUnit[] {
   return frameStrategy === "storyboard_3x3_split"
-    ? pendingRepairUnits.filter(unit => unit.role === "storyboard_grid")
+    ? pendingRepairUnits.filter(
+        unit =>
+          unit.role === "storyboard_grid" &&
+          cleanText(unit.unitId) === "storyboard-grid-image"
+      )
     : pendingRepairUnits;
+}
+
+function maxImageProviderSubmissionsForFrameStrategy(
+  frameStrategy: MarketplaceAutoReviewFrameStrategy
+): number {
+  return frameStrategy === "storyboard_3x3_split"
+    ? MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1
+    : Number.POSITIVE_INFINITY;
+}
+
+function imageProviderSubmissionCountForFrameStrategy(
+  refs: DirectMediaTaskRef[],
+  frameStrategy: MarketplaceAutoReviewFrameStrategy
+): number {
+  return refs.filter(ref => {
+    if (ref.mediaType !== "image" || !directMediaRefReachedProvider(ref)) {
+      return false;
+    }
+    if (frameStrategy === "storyboard_3x3_split") {
+      return (
+        cleanText(ref.unitId) === "storyboard-grid-image" ||
+        cleanText(ref.role) === "storyboard_grid"
+      );
+    }
+    return true;
+  }).length;
 }
 
 function buildInitialVideoUnits(plan: AutoReviewPlan): DirectVideoUnit[] {
@@ -7760,13 +7988,13 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         true,
       ],
       [
-        "exact_frame_count_missing",
-        ["exactly 9 frames", "9 total frames"],
+        "exact_panel_count_missing",
+        ["EXACTLY 9 PANELS", "9 PANELS / 9 CELLS ONLY", "exactly 9 panels"],
         true,
       ],
       [
-        "vertical_frame_count_missing",
-        ["exactly 9 vertical frames", "9 vertical frames"],
+        "exact_cell_count_missing",
+        ["9 CELLS ONLY", "9 PANELS / 9 CELLS ONLY", "exactly 9 cells"],
         true,
       ],
       [
@@ -7785,8 +8013,24 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
         true,
       ],
       [
-        "no_separator_lock_missing",
-        ["no separator lines", "no visible dividers"],
+        "panel_gutter_lock_missing",
+        ["clean narrow gutters", "narrow gutters between panels"],
+        true,
+      ],
+      [
+        "single_cell_per_panel_lock_missing",
+        [
+          "Each panel occupies exactly one cell",
+          "Never split one panel into two cells",
+        ],
+        true,
+      ],
+      [
+        "wide_shot_portrait_panel_lock_missing",
+        [
+          "wide field of view inside a vertical portrait panel",
+          "not a horizontal panel",
+        ],
         true,
       ],
       ["cinematic_realism_lock_missing", ["cinematic realism lock"]],
@@ -8079,7 +8323,7 @@ function buildProductReferenceStoryboardPromptPreflightFeedback(params: {
       `Previous product-reference-storyboard output failed prompt preflight on skill attempt ${params.promptSkillAttempt}.`,
       `Fix blockers: ${blockerText}.`,
       "Regenerate the final prompt through the same skill contract. Do not patch or summarize the previous output.",
-      "The returned prompt should explicitly include one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, HUMAN REALISM, ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as renderable frame text.",
+      "The returned prompt should explicitly include LAYOUT LOCK at the top and after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. Keep cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, HUMAN REALISM, ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as renderable frame text.",
     ].join(" "),
   };
 }
@@ -8102,7 +8346,7 @@ function buildProductReferenceStoryboardIncompleteOutputFeedback(params: {
       `Fix blockers: ${blockerText}.`,
       "Regenerate a complete final prompt through the same skill contract. Do not patch, summarize, reuse, or fallback to the previous output.",
       "The returned prompt must include OUTPUT FORMAT LOCK, CINEMATIC REALISM LOCK, PRODUCT REFERENCE LOCK, TEXT RENDERING POLICY, CAMERA/LIGHT/DEPTH, PRODUCT VERIFY, SHOT-BY-SHOT STORYBOARD PROMPT, and complete Frame 1 through Frame 9 with non-empty visual-only prose.",
-      "For the storyboard grid, include the exact quality anchors: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      "For the storyboard grid, include the exact quality anchors at the top and repeat them after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
       "In no-text mode, do not include renderable camera labels or technical text such as ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, storyboard_grid, panel names, corner labels, captions, subtitles, or random glyphs.",
     ].join(" "),
   };
@@ -9021,8 +9265,8 @@ function buildStoryboardGridRepairUnit(params: {
   repairInstruction: string;
 }): DirectImageUnit {
   const instruction = [
-    "Repair scope lock: regenerate the entire storyboard as one single 9:16 final canvas containing exactly 9 equal vertical storyboard panels in a strict 3x3 grid. Never output one standalone lifestyle/product image. Never repair only one panel as a separate image.",
-    "Grid lock: exactly 3 equal-width columns and 3 equal-height rows, every cell identical size, edge-to-edge, no collage/masonry layout, no merged cells, no variable panel sizes, no white gutters, no borders, no separator lines, no text, no labels, and no measurement overlays.",
+    "Repair scope lock: regenerate the entire storyboard as one single 9:16 final canvas containing EXACTLY 9 PANELS / 9 CELLS ONLY in a strict 3x3 grid. Never output one standalone lifestyle/product image. Never repair only one panel as a separate image.",
+    "Grid lock: exactly 3 equal-width columns and 3 equal-height rows, every cell identical size, clean narrow gutters between panels, no collage/masonry layout, no merged cells, no variable panel sizes, no labels, no numbers, no text, and no measurement overlays. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
     "Product reference lock: use the supplied product reference image as the strict visual source of truth for product shape, proportions, construction, countable parts, materials, colors, and scale. Do not approximate, redesign, simplify, or substitute the product.",
     params.repairInstruction,
   ]
@@ -9419,6 +9663,22 @@ export function filterMarketplaceAutoReviewImageRepairUnitsForTest(input: {
     input.frameStrategy,
     input.pendingRepairUnits
   );
+}
+
+export function countMarketplaceAutoReviewImageProviderSubmissionsForTest(input: {
+  frameStrategy: MarketplaceAutoReviewFrameStrategy;
+  refs: DirectMediaTaskRef[];
+}): number {
+  return imageProviderSubmissionCountForFrameStrategy(
+    input.refs,
+    input.frameStrategy
+  );
+}
+
+export function maxMarketplaceAutoReviewImageProviderSubmissionsForTest(
+  frameStrategy: MarketplaceAutoReviewFrameStrategy
+): number {
+  return maxImageProviderSubmissionsForFrameStrategy(frameStrategy);
 }
 
 export function buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest(input: {
@@ -10118,6 +10378,7 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
         environmentImageRef: params.referenceAnchors.environmentImageRef,
         reviewTone: params.referenceAnchors.reviewTone,
         storytellingStructure: params.referenceAnchors.storytellingStructure,
+        creativePresets: params.referenceAnchors.creativePresets,
       },
     }),
     "",
@@ -12304,7 +12565,8 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
     );
   const creativeDirectionDirective =
     buildMarketplaceAutoReviewCreativeDirectionDirective(
-      params.referenceAnchors
+      params.referenceAnchors,
+      { videoModel: cleanText(asRecord(params.preflightMetadata).videoModel) }
     );
   const buildRuntimeInput = (correction?: {
     actualShotCount: number;
@@ -12353,6 +12615,15 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       `Output mode: ${params.outputMode}`,
       `Frame strategy: ${params.frameStrategy}`,
       `Audio strategy: ${params.resolvedAudioStrategy}`,
+      params.resolvedAudioStrategy === "separate_tts_voiceover"
+        ? "Separate TTS voiceover is selected: storyboard shot.voiceover and voiceoverScript are the single source of spoken content. Video prompts must not ask the video provider to generate native speech. The TTS narration must follow the same story beats, timing, and visual intent as the storyboard."
+        : "",
+      params.resolvedAudioStrategy === "native_video_audio"
+        ? "Native video audio is selected: any spoken line must remain aligned with each storyboard shot and must not add product facts beyond product truth."
+        : "",
+      params.resolvedAudioStrategy === "silent"
+        ? "Silent video is selected: do not plan spoken dialogue, voiceover, music, captions, subtitles, or visible text inside generated video."
+        : "",
       `Image overlay text policy: ${overlayTextMode}`,
       overlayTextMode === "no_text"
         ? "Do not plan any rendered text inside generated images; any required disclosure should be handled by voiceover or downstream editor metadata."
@@ -13088,6 +13359,7 @@ function buildFeature117ContractMetadata(input: {
       characterPreset: anchors.characterPreset ?? null,
       reviewTone: anchors.reviewTone ?? null,
       storytellingStructure: anchors.storytellingStructure ?? null,
+      creativePresets: anchors.creativePresets,
       productImageUrl: selectedProductImageUrl,
       productImageRef: selectedProductImageRef,
       productImageProvidedRef: anchors.productImageProvidedRef,
@@ -13896,9 +14168,9 @@ function imageOverlayTextPolicyPrompt(
   overlayTextMode: MarketplaceAutoReviewOverlayTextMode
 ): string {
   if (overlayTextMode === "allow_text") {
-    return `TEXT POLICY: Short Thai overlay text is allowed only if truthful and not covering product. Never include video seconds, time ranges, timecodes, shot numbers, frame labels, subtitle blocks, black caption bars, or timing text. ${buildMarketplaceUiSafetyText()}`;
+    return `TEXT POLICY: Short Thai overlay text is allowed only if truthful and not covering product. Never include video seconds/timecodes/frame labels/black caption bars. ${buildMarketplaceUiSafetyText()}`;
   }
-  return `TEXT POLICY: No text, captions, labels, watermarks, UI, no black caption bars, subtitles, video seconds/time ranges, no timecodes, shot/frame labels, no measurement overlays, dimension text, or glyphs. ${buildMarketplaceUiSafetyText()}`;
+  return `TEXT POLICY: No text/captions/labels/watermarks/UI, no black caption bars/subtitles/video seconds, no timecodes/frame labels/measurement overlays/dimension text/glyphs. ${buildMarketplaceUiSafetyText()}`;
 }
 
 function build3x3StoryboardPrompt(
@@ -13937,11 +14209,13 @@ function build3x3StoryboardPrompt(
       return `Frame ${frameNumber} reserved | VISUAL: continuity. | STORY MATCH: reserve/no text.`;
     }
   );
-  const frameLines = [...storyFrameLines, ...unusedFrameLines].join("\n\n");
+  const frameLines = [...storyFrameLines, ...unusedFrameLines].join("\n");
+  const storyboardLayoutLock =
+    "LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
   const outputFormat =
     overlayTextMode === "allow_text"
-      ? "OUTPUT FORMAT LOCK: Plain prompt text only. Generate one single 9:16 image canvas: strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, equal cells, no visible dividers, no gutters, no white borders, no separator lines, no merged panels, no collage/masonry layout. Optional short text only under TEXT POLICY; no video seconds/timecodes."
-      : "OUTPUT FORMAT LOCK: Generate one single 9:16 image canvas: strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, equal cells, no visible dividers, no gutters, no white borders, no separator lines, no merged panels, no collage/masonry layout.";
+      ? "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images. Optional short text only under TEXT POLICY; no video seconds/timecodes."
+      : "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images.";
   const productCategoryHint =
     plan.productTruth.productName ||
     plan.productTruth.brand ||
@@ -13952,37 +14226,35 @@ function build3x3StoryboardPrompt(
     "generation_mode: multi_frame_storyboard",
     "storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact",
     "aspect_ratio: 9:16",
-    "Prompt budget: under 4500 chars for image provider compatibility.",
-    "MEDIA STUDIO SKILL FIELD MAPPING:",
-    `storyboard_guide: ${compactImagePromptText(plan.storyboardGuide, 110)}`,
-    `voiceover_script: ${compactImagePromptText(plan.voiceoverScript, 70)}`,
-    `product_detail: ${compactImagePromptText(plan.productDetail, 110)}`,
+    `storyboard_guide: ${compactImagePromptText(plan.storyboardGuide, 90)}`,
+    `voiceover_script: ${compactImagePromptText(plan.voiceoverScript, 60)}`,
+    `product_detail: ${compactImagePromptText(plan.productDetail, 90)}`,
     "reference_product_images: supplied separately as immutable product reference images",
-    "reference_character_images: supplied separately if any",
-    "reference_environment_images: supplied separately if any",
-    `production_concept_details: ${compactImagePromptText(`${plan.title}; ${plan.shots.length} active shots; ${productCategoryHint}`, 70)}`,
+    `production_concept_details: ${compactImagePromptText(`${plan.title}; ${plan.shots.length} active shots; ${productCategoryHint}`, 55)}`,
     "",
+    storyboardLayoutLock,
     outputFormat,
     imageOverlayTextPolicyPrompt(overlayTextMode),
     "CINEMATIC REALISM LOCK: photorealistic product-film stills, varied camera, realistic lens/light/depth, grounded shadows.",
-    "PRODUCT REFERENCE LOCK: immutable reference_product_images; exact shape/proportions/material/shelves/posts/legs/labels/packaging/scale; no added/removed parts.",
-    "PRODUCT VISUAL SOURCE LOCK: generated product must match the supplied product reference image, not a generic product description. Do not redesign, simplify, substitute, or change countable parts.",
-    "TEXT RENDERING POLICY: backend text only unless allow_text. Never render seconds/timecodes, frame labels, dimension text, marketplace/mobile app screenshots, logos, prices, ratings, review widgets, or cart/checkout flows.",
-    "PROOF/REVIEW VISUAL LOCK: show real product use/satisfied person/product detail only; no review cards, stars, screens, UI overlays, ratings, or text.",
+    "PRODUCT REFERENCE LOCK / PRODUCT VISUAL SOURCE LOCK: @Image1/supplied product reference image is the primary visual source of truth; written description is secondary and must never override; recreate/match the exact same actual reference product; no added/removed parts.",
+    "TEXT RENDERING POLICY: no seconds/timecodes, frame labels, dimension text, marketplace/mobile app screenshots, logos, prices, ratings, review widgets, or cart/checkout flows.",
+    "PROOF/REVIEW VISUAL LOCK: show real product use; no review cards/stars/screens/UI/ratings/text.",
     buildMinorSafetyClothingLock(plan),
     `CAMERA/LIGHT/DEPTH: ${sharedCameraLightDepth}`,
     `PRODUCT VERIFY: ${sharedProductVerify}`,
-    "HUMAN REALISM: apply only where people appear; same approved identity if supplied, otherwise hands-only/no recognizable invented face, natural skin/anatomy.",
+    "HUMAN REALISM: people only if needed; same approved identity if supplied, otherwise hands-only/no invented face; natural anatomy.",
     buildApprovedCharacterAnchorRequirement(plan),
-    `REQUESTED STORY SHOTS: ${plan.shots.length}. Frames 1-${plan.shots.length} active; remaining frames reserved.`,
+    plan.shots.length < MAX_SHOT_COUNT
+      ? `REQUESTED STORY SHOTS: ${plan.shots.length}. Frames 1-${plan.shots.length} active; remaining frames reserved.`
+      : "",
     "SHOT-BY-SHOT STORYBOARD PROMPT:",
+    storyboardLayoutLock,
     frameLines,
     "",
-    "FINAL GRID/TEXT LOCK: regular 3x3 equal cells; no captions, frame labels, seconds, timecodes, measurements, gutters, dividers, or separator lines.",
+    "FINAL GRID/TEXT LOCK: strict 3x3, nine-cell grid, clean narrow gutters, one panel per cell, never 2x5/5x2/10 panels, no captions/frame labels/seconds/timecodes/measurements.",
     "REPAIR SCOPE LOCK: if this is a repair attempt, still regenerate the full 3x3 storyboard grid as one 9:16 canvas with all 9 panels; never output a single standalone scene.",
-    "Continuity: same film, exact product, same environment family, same character if visible.",
     repairInstruction
-      ? `TARGETED GRID REPAIR: ${compactImagePromptText(repairInstruction, 120)}. Keep full 3x3 grid, all 9 panels, exact product reference match, and shot count.`
+      ? `TARGETED GRID REPAIR: ${compactImagePromptText(repairInstruction, 90)}. Keep full 3x3 grid, all 9 panels, exact product reference match.`
       : "",
   ].join("\n");
 }
@@ -16227,8 +16499,13 @@ export async function startMarketplaceAutoReviewRun(
     shotCount?: number | null;
     overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
     imageModel?: MarketplaceAutoReviewImageModel | null;
+    videoModel?: MarketplaceAutoReviewVideoModel | null;
+    videoStructureMode?: VideoSegmentStructureMode | null;
+    manualVideoGroupSize?: number | null;
+    creativeBrief?: string | null;
     qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
     referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
+    transportMetadata?: Record<string, unknown> | null;
   },
   auth: AuthContext,
   runtime: RuntimeContext = {}
@@ -16243,7 +16520,11 @@ export async function startMarketplaceAutoReviewRun(
   const outputMode = input.outputMode;
   const frameStrategy = resolveFrameStrategy(outputMode, input.frameStrategy);
   const audioStrategy: MarketplaceAutoReviewAudioStrategyInput =
-    input.audioStrategy ?? "auto";
+    autoReviewCreativePresetRequestedAudioStrategy(
+      input.referenceAnchors?.creativePresets
+    ) ??
+    input.audioStrategy ??
+    "auto";
   const requestedShotCount = normalizeMarketplaceAutoReviewShotCount(
     input.shotCount
   );
@@ -16251,15 +16532,25 @@ export async function startMarketplaceAutoReviewRun(
     input.overlayTextMode
   );
   const imageModel = normalizeMarketplaceAutoReviewImageModel(input.imageModel);
+  const videoModel = normalizeMarketplaceAutoReviewVideoModel(input.videoModel);
+  const videoStructureMode = input.videoStructureMode ?? "per_shot";
+  const manualVideoGroupSize = Number.isFinite(Number(input.manualVideoGroupSize))
+    ? Math.max(1, Math.min(12, Math.floor(Number(input.manualVideoGroupSize))))
+    : undefined;
+  const creativeBrief = cleanText(input.creativeBrief);
   const resolvedAudioStrategy = resolveMarketplaceAutoReviewAudioStrategy({
     outputMode,
     requested: audioStrategy,
-    videoModel: DEFAULT_VIDEO_MODEL,
+    videoModel,
   });
   const qualityMode: MarketplaceAutoReviewQualityModeInput =
     input.qualityMode ?? "balanced";
   const stages = stageKeysForMode(outputMode);
   const tenantId = autoTenantId(auth);
+  const transportMetadata = normalizeMarketplaceMcpTransportMetadata(
+    input.transportMetadata,
+    { tenantId, actorUserId: auth.userId },
+  );
   const requestedIdempotencyKey = cleanText(input.idempotencyKey);
 
   const bundle = await getMarketplaceProductWithAccess(input.productId, auth);
@@ -16286,6 +16577,10 @@ export async function startMarketplaceAutoReviewRun(
       requestedShotCount,
       overlayTextMode,
       imageModel,
+      videoModel,
+      videoStructureMode,
+      manualVideoGroupSize,
+      creativeBrief,
       referenceAnchorHash,
       runId,
     });
@@ -16376,9 +16671,14 @@ export async function startMarketplaceAutoReviewRun(
       resolvedAudioStrategy,
       overlayTextMode,
       imageModel,
+      videoModel,
+      videoStructureMode,
+      manualVideoGroupSize,
+      creativeBrief,
       requestedShotCount: shotCountForPlan(currentPlan),
       qualityMode,
       referenceAnchors,
+      transportMetadata,
       expectedNativeAudio: resolvedAudioStrategy === "native_video_audio",
       voiceoverSource:
         resolvedAudioStrategy === "native_video_audio"
@@ -16810,6 +17110,24 @@ async function markRunFailed(
         policyRefs: ["fail-closed"],
       },
     });
+    await db.execute(sql`
+      UPDATE "marketplace_auto_review_stage_attempts"
+      SET
+        "status" = 'failed',
+        "reasonCode" = COALESCE("reasonCode", 'run_failed'),
+        "completedAt" = COALESCE("completedAt", NOW()),
+        "updatedAt" = NOW()
+      WHERE "runId" = ${run.id}
+        AND "stageKey" = ${stageKey as StageKey}
+        AND "status" NOT IN (
+          'completed',
+          'completed_with_warnings',
+          'skipped',
+          'blocked',
+          'failed',
+          'cancelled'
+        )
+    `);
   }
   return updateRun({
     db,
@@ -16898,13 +17216,42 @@ async function scheduleImageAttempt(params: {
       ? pendingRepairUnits
       : providerUnreachedIntentUnits
   );
+  const hasStoryboardGridProviderRef = existingRefs.some(
+    ref =>
+      directMediaRefReachedProvider(ref) &&
+      cleanText(ref.unitId) === "storyboard-grid-image" &&
+      cleanText(ref.role) === "storyboard_grid"
+  );
   const units =
     repairUnits.length > 0
       ? repairUnits
-      : existingRefs.length === 0
+      : existingRefs.length === 0 ||
+          (frameStrategy === "storyboard_3x3_split" &&
+            !hasStoryboardGridProviderRef)
         ? buildInitialImageUnits(plan, frameStrategy)
         : [];
-  if (units.length === 0)
+  const maxImageProviderSubmissions =
+    maxImageProviderSubmissionsForFrameStrategy(frameStrategy);
+  const providerSubmissionCount = imageProviderSubmissionCountForFrameStrategy(
+    existingRefs,
+    frameStrategy
+  );
+  const remainingProviderSubmissions = Number.isFinite(
+    maxImageProviderSubmissions
+  )
+    ? Math.max(0, maxImageProviderSubmissions - providerSubmissionCount)
+    : Number.POSITIVE_INFINITY;
+  const cappedUnits =
+    frameStrategy === "storyboard_3x3_split"
+      ? units
+          .filter(
+            unit =>
+              unit.role === "storyboard_grid" &&
+              cleanText(unit.unitId) === "storyboard-grid-image"
+          )
+          .slice(0, remainingProviderSubmissions)
+      : units;
+  if (cappedUnits.length === 0)
     return (
       cleanText(params.metadata.imageAttemptId) ||
       `direct-image-${params.run.id}`
@@ -16914,7 +17261,7 @@ async function scheduleImageAttempt(params: {
     cleanText(params.metadata.imageAttemptId) || `direct-image-${nanoid(12)}`;
   const submittedRefs: DirectMediaTaskRef[] = [];
   let skippedExhaustedRepairUnits = 0;
-  for (const unit of units) {
+  for (const unit of cappedUnits) {
     const attempt = nextDirectAttempt(existingRefs, unit.unitId);
     if (attempt > MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1) {
       console.warn("[marketplaceAutoReview] image_repair_max_attempts", {
@@ -17138,6 +17485,12 @@ async function scheduleImageAttempt(params: {
         existingRefs,
         submittedRefs,
       });
+      const transportMetadata = await buildMarketplaceDirectMediaTransportMetadata({
+        db: params.db,
+        metadata: params.metadata,
+        mediaType: "image",
+        modelId: imageModel,
+      });
       const task = await mediaGenerationService.generateImageAsync(
         {
           prompt,
@@ -17148,17 +17501,7 @@ async function scheduleImageAttempt(params: {
           numImages: 1,
           referenceImageUrls: productReferenceUrls,
           publicUrl: publicUrl || undefined,
-          extraParams: compactRecord({
-            reference_image_manifest: providerReferenceImageManifest,
-            reference_image_role_order: providerReferenceImageManifest.map(
-              entry => `${entry.placeholder}=${entry.role}`
-            ),
-            reference_image_role_counts: {
-              product: providerReferenceImageGroups.product.length,
-              character: providerReferenceImageGroups.character.length,
-              environment: providerReferenceImageGroups.environment.length,
-              total: providerReferenceImageGroups.all.length,
-            },
+          extraParams: {
             __origin_surface: "marketplace_auto_review",
             __execution_path: "direct_media_service",
             __no_node_canvas_execution: true,
@@ -17169,23 +17512,21 @@ async function scheduleImageAttempt(params: {
             __auto_review_concept_id: plan.conceptId,
             __unit_id: unit.unitId,
             __unit_role: unit.role,
-            __overlay_text_mode: overlayTextMode,
-            __image_model: imageModel,
-            __prompt_preflight_status: promptPackage.preflight.status,
-            __prompt_preflight_score: promptPackage.preflight.score,
-            __prompt_preflight_rule_set: promptPackage.preflight.ruleSet,
-            __prompt_hash: promptAudit.promptHash,
-            __prompt_length_chars: prompt.length,
-            __reference_image_manifest: providerReferenceImageManifest,
-            __prompt_max_length_chars:
-              MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
-            __prompt_skill_id: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
-            __prompt_skill_runtime_status:
-              promptPackage.skillRun?.runtime.status || undefined,
-            __prompt_skill_output_length_chars:
-              promptPackage.skillRun?.prompt.length || undefined,
             __repair_attempt: attempt,
-          }),
+            referenceImageManifest: providerReferenceImageManifest,
+            referenceImageRoleOrder: providerReferenceImageManifest.map(
+              entry => `${entry.placeholder}=${entry.role}`
+            ),
+            referenceImageRoleCounts:
+              providerReferenceImageManifest.reduce<Record<string, number>>(
+                (counts, entry) => {
+                  counts[entry.role] = (counts[entry.role] ?? 0) + 1;
+                  return counts;
+                },
+                {}
+              ),
+          },
+          transportMetadata,
           auditContext: {
             userId: params.auth.userId,
             traceId: `marketplace-auto-review-image:${params.run.id}:${unit.unitId}:${attempt}`,
@@ -19922,6 +20263,249 @@ async function ensureStoryboardFrames(params: {
   return metadata;
 }
 
+function marketplaceVideoSegmentReferenceMode(params: {
+  frameStrategy: MarketplaceAutoReviewFrameStrategy;
+  hasGeneratedStartStopFrameChain: boolean;
+}): VideoSegmentReferenceMode {
+  if (
+    params.frameStrategy === "video_shot_start_stop" &&
+    params.hasGeneratedStartStopFrameChain
+  ) {
+    return "start_stop";
+  }
+  return "single_storyboard_frame";
+}
+
+function buildMarketplaceAutoReviewVideoSegmentPlannerInput(params: {
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+  referenceMode: VideoSegmentReferenceMode;
+  resolvedAudioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
+}) {
+  const videoModel = normalizeMarketplaceAutoReviewVideoModel(
+    params.metadata.videoModel
+  );
+  const creativePresets = normalizeAutoReviewCreativePresetSelections(
+    asRecord(params.metadata.referenceAnchors).creativePresets
+  );
+  const transport: "gateway_api" | "mcp" =
+    asRecord(params.metadata).transport === "mcp" ||
+    asRecord(asRecord(params.metadata).transportMetadata).transport === "mcp"
+      ? "mcp"
+      : "gateway_api";
+  const transportMetadata = asRecord(asRecord(params.metadata).transportMetadata);
+  const provider =
+    cleanText(asRecord(params.metadata).videoProvider) ||
+    cleanText(transportMetadata.providerKey) ||
+    (transport === "mcp" && /higgsfield/i.test(videoModel)
+      ? "higgsfield"
+      : transport === "mcp" && /magnific/i.test(videoModel)
+        ? "magnific"
+        : "");
+  return {
+    sourceSurface: "marketplace_capture" as const,
+    mode: params.metadata.videoStructureMode ?? "per_shot",
+    manualGroupSize: params.metadata.manualVideoGroupSize,
+    videoModelId: videoModel,
+    provider: provider || undefined,
+    transport,
+    audioStrategy: params.resolvedAudioStrategy,
+    referenceMode: params.referenceMode,
+    creativeBrief: normalizeVideoSegmentCreativeBrief(
+      params.metadata.creativeBrief
+    ),
+    creativePresets,
+    shots: params.plan.shots.map((shot, index) => ({
+      shotId: shot.id,
+      index,
+      title: shot.title,
+      visualPrompt: [shot.storyboardGuide, shot.visual, shot.camera, shot.movement]
+        .filter(Boolean)
+        .join(" "),
+      voiceover: shot.voiceover,
+      durationSeconds: shot.durationSeconds || DEFAULT_SHOT_DURATION_SECONDS,
+      storyboardFrameUrl:
+        cleanText(params.metadata.storyboardFrameUrls?.[index]) || undefined,
+      startFrameUrl:
+        cleanText(params.metadata.startFrameUrls?.[index]) || undefined,
+      stopFrameUrl: cleanText(params.metadata.stopFrameUrls?.[index]) || undefined,
+    })),
+    capability: resolveVideoModelSegmentCapability({
+      modelId: videoModel,
+      provider: provider || undefined,
+      transport,
+      configJson: asRecord(params.metadata).videoModelConfig,
+    }),
+  };
+}
+
+function buildMarketplaceAutoReviewVideoSegmentPlan(params: {
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+  referenceMode: VideoSegmentReferenceMode;
+  resolvedAudioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
+}): VideoSegmentPlan {
+  return planVideoSegments(
+    buildMarketplaceAutoReviewVideoSegmentPlannerInput(params)
+  );
+}
+
+function videoSegmentPlanFromRunMetadata(
+  metadata: RunMetadata | null | undefined
+): VideoSegmentPlan | null {
+  const value = metadata?.videoSegmentPlan;
+  if (!value || typeof value !== "object") return null;
+  return value as VideoSegmentPlan;
+}
+
+function buildMarketplaceAutoReviewVideoSegmentPrompt(params: {
+  videoSegmentPlan: VideoSegmentPlan;
+  segmentId: string;
+  productFacts: string;
+  creativePresetDirective?: string | null;
+}) {
+  const segment = params.videoSegmentPlan.segments.find(
+    item => item.segmentId === params.segmentId
+  );
+  if (!segment) return "";
+  return buildVideoSegmentPrompt({
+    plan: params.videoSegmentPlan,
+    segment,
+    productFacts: params.productFacts,
+    creativePresetDirective: params.creativePresetDirective,
+  });
+}
+
+type MarketplaceVideoSegmentObservabilityEvent =
+  | "video_segment_plan_created"
+  | "video_segment_plan_fallback"
+  | "video_segment_prompt_built"
+  | "video_segment_prompt_regenerated"
+  | "video_segment_split_fallback"
+  | "video_segment_access_blocked";
+
+function redactVideoSegmentObservabilityValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    if (/token|secret|session|signature|x-amz|provider|prompt/i.test(value)) {
+      return "[redacted]";
+    }
+    if (/^https?:\/\//i.test(value)) return "[url-redacted]";
+    return value;
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+      if (/token|secret|session|signed|prompt|raw|url/i.test(key)) {
+        return [key, "[redacted]"];
+      }
+      return [key, redactVideoSegmentObservabilityValue(item)];
+    })
+  );
+}
+
+export function buildMarketplaceVideoSegmentObservabilityEventForTest(input: {
+  event: MarketplaceVideoSegmentObservabilityEvent;
+  runId?: string | null;
+  productId?: string | null;
+  plan?: VideoSegmentPlan | null;
+  metadata?: Record<string, unknown> | null;
+}) {
+  return {
+    event: input.event,
+    runId: cleanText(input.runId),
+    productId: cleanText(input.productId),
+    planHash: input.plan?.planHash,
+    effectiveMode: input.plan?.effectiveMode,
+    segmentCount: input.plan?.segments.length ?? 0,
+    fallbackReason: input.plan?.fallbackReason,
+    metadata: redactVideoSegmentObservabilityValue(input.metadata ?? {}),
+  };
+}
+
+export function getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest(input: {
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+}) {
+  const shotCount = input.plan.shots.length;
+  const frameStrategy =
+    input.run.frameStrategy as MarketplaceAutoReviewFrameStrategy;
+  const hasGeneratedStartStopFrameChain =
+    frameStrategy === "video_shot_start_stop" &&
+    hasCompleteFrameSet(input.metadata.startFrameUrls, shotCount) &&
+    hasCompleteFrameSet(input.metadata.stopFrameUrls, shotCount);
+  const resolvedAudioStrategy =
+    input.metadata.resolvedAudioStrategy ??
+    resolveMarketplaceAutoReviewAudioStrategy({
+      outputMode: input.run.outputMode as MarketplaceAutoReviewOutputMode,
+      requested: input.metadata.audioStrategy,
+      videoModel: input.metadata.videoModel,
+    });
+  const videoSegmentPlan = buildMarketplaceAutoReviewVideoSegmentPlan({
+    ...input,
+    referenceMode: marketplaceVideoSegmentReferenceMode({
+      frameStrategy,
+      hasGeneratedStartStopFrameChain,
+    }),
+    resolvedAudioStrategy,
+  });
+  const previewTransportMetadata = asRecord(asRecord(input.metadata).transportMetadata);
+  const transport =
+    asRecord(input.metadata).transport === "mcp" ||
+    previewTransportMetadata.transport === "mcp"
+      ? "mcp"
+      : "gateway_api";
+  return {
+    videoSegmentPlan,
+    accessDecision: {
+      allowed: true,
+      transport,
+      provider:
+        cleanText(asRecord(input.metadata).videoProvider) ||
+        cleanText(previewTransportMetadata.providerKey) ||
+        undefined,
+      mcpConnectionId:
+        cleanText(asRecord(input.metadata).mcpConnectionId) ||
+        cleanText(previewTransportMetadata.connectionId) ||
+        undefined,
+      sharedGroupId: Number.isFinite(Number(asRecord(input.metadata).sharedGroupId))
+        ? Number(asRecord(input.metadata).sharedGroupId)
+        : Number.isFinite(Number(previewTransportMetadata.sharedGroupId))
+          ? Number(previewTransportMetadata.sharedGroupId)
+        : undefined,
+    },
+    creditEstimate: {
+      mode:
+        videoSegmentPlan.effectiveMode === "per_shot"
+          ? "per_shot" as const
+          : "segment_duration" as const,
+      estimatedCredits: videoSegmentPlan.segments.length,
+      basis:
+        videoSegmentPlan.effectiveMode === "per_shot"
+          ? "jobs" as const
+          : "segments" as const,
+      creditSource:
+        transport === "mcp"
+          ? "mcp_provider_account" as const
+          : "gateway_api" as const,
+      notes: [
+        "Estimate counts planned video segment submissions before provider-specific adjustments.",
+      ],
+    },
+    warnings: videoSegmentPlan.warnings.map(item => ({
+      code: item.code,
+      message: item.message,
+      severity: item.severity,
+      source: item.source === "fallback" ? "fallback" as const : "planner" as const,
+      shotIds: item.shotIds,
+      segmentId: item.segmentId,
+    })),
+    fallbackReason: videoSegmentPlan.fallbackReason,
+  };
+}
+
 function buildStoryboardReviewOutput(params: {
   run: MarketplaceAutoReviewRun;
   plan: AutoReviewPlan;
@@ -19957,8 +20541,22 @@ function buildStoryboardReviewOutput(params: {
     resolveMarketplaceAutoReviewAudioStrategy({
       outputMode: params.run.outputMode as MarketplaceAutoReviewOutputMode,
       requested: params.metadata.audioStrategy,
-      videoModel: DEFAULT_VIDEO_MODEL,
+      videoModel: params.metadata.videoModel,
     });
+  const videoModel = normalizeMarketplaceAutoReviewVideoModel(
+    params.metadata.videoModel
+  );
+  const creativePresets = normalizeAutoReviewCreativePresetSelections(
+    asRecord(params.metadata.referenceAnchors).creativePresets
+  );
+  const videoSegmentPlan = buildMarketplaceAutoReviewVideoSegmentPlan({
+    ...params,
+    referenceMode: marketplaceVideoSegmentReferenceMode({
+      frameStrategy,
+      hasGeneratedStartStopFrameChain,
+    }),
+    resolvedAudioStrategy,
+  });
   return {
     schemaVersion: AUTO_REVIEW_SCHEMA_VERSION,
     title: params.plan.title,
@@ -19970,6 +20568,7 @@ function buildStoryboardReviewOutput(params: {
     audioStrategy: params.metadata.audioStrategy ?? "auto",
     resolvedAudioStrategy,
     expectedNativeAudio: resolvedAudioStrategy === "native_video_audio",
+    videoSegmentPlan,
     conceptDetails: params.plan.productDetail,
     storyboardGuide: params.plan.storyboardGuide,
     voiceoverScript: params.plan.voiceoverScript,
@@ -19987,6 +20586,21 @@ function buildStoryboardReviewOutput(params: {
         startFrameUrl && stopFrameUrl
           ? "start_stop"
           : "single_storyboard_frame";
+      const segment = videoSegmentPlan.segments.find(item =>
+        item.shotIds.includes(shot.id)
+      );
+      const creativePresetDirective = buildAutoReviewCreativePresetDirective({
+        selections: creativePresets,
+        videoModel,
+      });
+      const videoSegmentPrompt = segment
+        ? buildMarketplaceAutoReviewVideoSegmentPrompt({
+            videoSegmentPlan,
+            segmentId: segment.segmentId,
+            productFacts: params.plan.productDetail,
+            creativePresetDirective,
+          })
+        : "";
       return {
         id: shot.id,
         index,
@@ -20008,6 +20622,7 @@ function buildStoryboardReviewOutput(params: {
           referenceMode,
           metadata: params.metadata,
         }),
+        model: videoModel,
         storyboardGuide: shot.storyboardGuide,
         voiceover: shot.voiceover,
         startSeconds: shot.startSeconds,
@@ -20022,6 +20637,13 @@ function buildStoryboardReviewOutput(params: {
           expectedNativeAudio: resolvedAudioStrategy === "native_video_audio",
           referenceMode,
           startStopSource,
+          creativePresets,
+          creativePresetDirective,
+          videoSegmentPlanVersion: videoSegmentPlan.schemaVersion,
+          videoSegmentPlanHash: videoSegmentPlan.planHash,
+          videoSegmentId: segment?.segmentId,
+          videoSegmentShotIds: segment?.shotIds,
+          videoSegmentPrompt,
         },
       };
     }),
@@ -20064,7 +20686,18 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
   clips: ReturnType<typeof buildStoryboardReviewOutput>["clips"];
   plan: AutoReviewPlan;
   run: MarketplaceAutoReviewRun;
+  metadata: RunMetadata;
 }) {
+  const baseTransportMetadata = asRecord(params.metadata).transportMetadata;
+  const baseTransportRecord = asRecord(baseTransportMetadata);
+  const taskTransportMetadata: Record<string, unknown> | null =
+    baseTransportRecord.transport === "mcp"
+      ? {
+          ...baseTransportRecord,
+          originSurface: "storyboard_review",
+          assetType: "video",
+        }
+      : null;
   return params.clips.map(clip => {
     const referenceMode = cleanText(asRecord(clip.metadata).referenceMode);
     const startFrameUrl = cleanText(
@@ -20088,7 +20721,7 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
         cleanText(clip.prompt) ||
         cleanText(clip.title) ||
         "Storyboard video clip",
-      model: DEFAULT_VIDEO_MODEL,
+      model: cleanText(asRecord(clip).model) || DEFAULT_VIDEO_MODEL,
       durationSeconds: Number.isFinite(Number(clip.durationSeconds))
         ? Number(clip.durationSeconds)
         : DEFAULT_SHOT_DURATION_SECONDS,
@@ -20102,6 +20735,7 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
       updatedAt: Date.now(),
       source: "imported",
       statusDetail: "Waiting for generated video clip",
+      transportMetadata: taskTransportMetadata,
       storyboardContext: {
         aspectRatio: "9:16",
         duration: Number.isFinite(Number(clip.durationSeconds))
@@ -20109,7 +20743,11 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
           : DEFAULT_SHOT_DURATION_SECONDS,
         referenceImages,
         apiConfig: {},
+        transportMetadata: taskTransportMetadata,
         extraParams: {
+          mediaTransport:
+            taskTransportMetadata?.transport === "mcp" ? "mcp" : "gateway_api",
+          mediaProvider: cleanText(asRecord(params.metadata).videoProvider),
           marketplaceProductId: params.plan.productTruth.productId,
           productionRunId: params.run.productionRunId,
           autoReviewRunId: params.run.id,
@@ -20117,6 +20755,23 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
           shotId: cleanText(clip.id) || null,
           shotOrder: clip.order,
           referenceFrameRoles,
+          creativePresets: asRecord(clip.metadata).creativePresets,
+          creativePresetDirective: cleanText(
+            asRecord(clip.metadata).creativePresetDirective
+          ),
+          videoSegmentPlanVersion: asRecord(clip.metadata).videoSegmentPlanVersion,
+          videoSegmentPlanHash: cleanText(
+            asRecord(clip.metadata).videoSegmentPlanHash
+          ),
+          videoSegmentId: cleanText(asRecord(clip.metadata).videoSegmentId),
+          videoSegmentShotIds: Array.isArray(
+            asRecord(clip.metadata).videoSegmentShotIds
+          )
+            ? asRecord(clip.metadata).videoSegmentShotIds
+            : undefined,
+          videoSegmentPrompt: cleanText(
+            asRecord(clip.metadata).videoSegmentPrompt
+          ),
         },
       },
     };
@@ -20133,6 +20788,7 @@ export function buildMarketplaceAutoReviewStoryboardReviewTasksForTest(input: {
     clips: output.clips,
     plan: input.plan,
     run: input.run,
+    metadata: input.metadata,
   });
 }
 
@@ -20183,6 +20839,7 @@ async function createStoryboardReview(params: {
     clips,
     plan: params.plan,
     run: params.run,
+    metadata: params.metadata,
   });
   const reviewTaskIds = reviewTasks.map(task => task.id);
   const reviewUpdatedAt = Date.now();
@@ -20227,6 +20884,13 @@ async function createStoryboardReview(params: {
         tasks: reviewTasks,
         clips,
         output,
+        videoSegmentState: {
+          schemaVersion: 1,
+          videoSegmentPlan: output.videoSegmentPlan,
+          effectiveMode: output.videoSegmentPlan.effectiveMode,
+          promptSource: "initial",
+          lastPromptGeneratedAt: new Date(reviewUpdatedAt).toISOString(),
+        },
         conceptDetails: params.plan.productDetail,
         storyboardGuide: params.plan.storyboardGuide,
         voiceoverScript: params.plan.voiceoverScript,
@@ -20358,8 +21022,11 @@ async function scheduleVideoAttempt(params: {
     resolveMarketplaceAutoReviewAudioStrategy({
       outputMode: "full_video",
       requested: params.metadata.audioStrategy,
-      videoModel: DEFAULT_VIDEO_MODEL,
+      videoModel: params.metadata.videoModel,
     });
+  const videoModel = normalizeMarketplaceAutoReviewVideoModel(
+    params.metadata.videoModel
+  );
   const referenceMode: MarketplaceAutoReviewVideoReferenceMode = params.metadata
     .startFrameUrls?.length
     ? "start_stop"
@@ -20399,7 +21066,7 @@ async function scheduleVideoAttempt(params: {
         mediaType: "video",
         unitId: unit.unitId,
         attempt,
-        model: DEFAULT_VIDEO_MODEL,
+        model: videoModel,
         selections: {
           duration: shot.durationSeconds,
           resolution: "1080p",
@@ -20421,7 +21088,7 @@ async function scheduleVideoAttempt(params: {
         stageKey: "video_generation",
         unit,
         attempt,
-        model: DEFAULT_VIDEO_MODEL,
+        model: videoModel,
         credit,
         referenceImageUrls: refs,
       });
@@ -20435,15 +21102,22 @@ async function scheduleVideoAttempt(params: {
         existingRefs,
         submittedRefs,
       });
+      const transportMetadata = await buildMarketplaceDirectMediaTransportMetadata({
+        db: params.db,
+        metadata: params.metadata,
+        mediaType: "video",
+        modelId: videoModel,
+      });
       const task = await mediaGenerationService.generateVideoAsync(
         {
           prompt,
-          model: DEFAULT_VIDEO_MODEL,
+          model: videoModel,
           duration: shot.durationSeconds,
           aspectRatio: "9:16",
           resolution: "1080p",
           referenceImageUrls: refs,
           publicUrl: cleanText(params.runtime.publicUrl) || undefined,
+          transportMetadata,
           extraParams: {
             __origin_surface: "marketplace_auto_review",
             __execution_path: "direct_media_service",
@@ -20478,7 +21152,7 @@ async function scheduleVideoAttempt(params: {
         attempt,
         taskId: task.id,
         providerTaskId: task.taskId,
-        model: task.model || DEFAULT_VIDEO_MODEL,
+        model: task.model || videoModel,
         status: task.status,
         creditAmount: credit.amount,
         creditTransactionId: credit.transactionId,
@@ -20508,7 +21182,7 @@ async function scheduleVideoAttempt(params: {
           shotOrder: unit.shotOrder,
           attempt,
           taskId: `submit-failed:${unit.unitId}:${attempt}`,
-          model: DEFAULT_VIDEO_MODEL,
+          model: videoModel,
           status: "failed",
           creditAmount: credit.amount,
           creditTransactionId: credit.transactionId,
@@ -20862,7 +21536,7 @@ async function ensureAudioForVideo(params: {
     resolveMarketplaceAutoReviewAudioStrategy({
       outputMode: params.run.outputMode as MarketplaceAutoReviewOutputMode,
       requested: params.metadata.audioStrategy,
-      videoModel: DEFAULT_VIDEO_MODEL,
+      videoModel: params.metadata.videoModel,
     });
   const stageOrder = stageIndex("audio_generation", FULL_VIDEO_STAGES);
   if (resolvedAudioStrategy !== "separate_tts_voiceover") {
@@ -21393,6 +22067,9 @@ function buildVideoEditorProject(params: {
     .startFrameUrls?.length
     ? "start_stop"
     : "single_storyboard_frame";
+  const videoModel = normalizeMarketplaceAutoReviewVideoModel(
+    runMetadata.videoModel
+  );
   const assets: VideoEditorProject["assets"] = {};
   const clips: VideoEditorProject["timeline"]["tracks"][number]["clips"] = [];
   let cursor = 0;
@@ -21409,7 +22086,7 @@ function buildVideoEditorProject(params: {
         cleanText(
           (params.run.metadataJson as RunMetadata)?.videoMediaTaskIds?.[index]
         ) || undefined,
-      model: DEFAULT_VIDEO_MODEL,
+      model: videoModel,
       name: `${shot.order}. ${shot.title}`,
       path: url,
       originalPath: url,
@@ -21435,7 +22112,7 @@ function buildVideoEditorProject(params: {
           ? (params.run.metadataJson as RunMetadata)?.stopFrameUrls?.[index]
           : undefined,
       ].filter(Boolean) as string[],
-      generationModelId: DEFAULT_VIDEO_MODEL,
+      generationModelId: videoModel,
       generationAspectRatio: "9:16",
       generationExtraParams: {
         marketplaceProductId: params.plan.productTruth.productId,
@@ -23749,6 +24426,133 @@ function extractPlanFromRun(run: MarketplaceAutoReviewRun): AutoReviewPlan {
   return concept as AutoReviewPlan;
 }
 
+function planFromProductionBible(value: unknown): AutoReviewPlan | null {
+  const bible = asRecord(value);
+  const productTruth = asRecord(bible.productTruth) as ProductTruth;
+  const shotsInput = Array.isArray(bible.shots) ? bible.shots : [];
+  const shots = shotsInput.map((item, index) => {
+    const shot = asRecord(item);
+    return {
+      id: cleanText(shot.id) || `shot-${index + 1}`,
+      order: Math.max(1, Math.floor(toNumber(shot.order, index + 1))),
+      title: cleanText(shot.title),
+      startSeconds: toNumber(
+        shot.startSeconds,
+        index * DEFAULT_SHOT_DURATION_SECONDS
+      ),
+      endSeconds: toNumber(
+        shot.endSeconds,
+        (index + 1) * DEFAULT_SHOT_DURATION_SECONDS
+      ),
+      durationSeconds: toNumber(
+        shot.durationSeconds,
+        DEFAULT_SHOT_DURATION_SECONDS
+      ),
+      storyboardGuide: cleanText(shot.storyboardGuide),
+      voiceover: cleanText(shot.voiceover),
+      camera: cleanText(shot.camera),
+      visual: cleanText(shot.visual),
+      movement: cleanText(shot.movement),
+      productRole: cleanText(shot.productRole),
+    } satisfies AutoReviewShot;
+  });
+  const plan: AutoReviewPlan = {
+    conceptId: cleanText(bible.conceptId),
+    title: cleanText(bible.title),
+    productTruth,
+    storyboardGuide: cleanText(bible.storyboardGuide),
+    voiceoverScript: cleanText(bible.voiceoverScript),
+    productDetail: cleanText(bible.productDetail),
+    shots,
+  };
+  const hasRequiredPlan =
+    Boolean(plan.conceptId) &&
+    Boolean(plan.title) &&
+    Boolean(cleanText(plan.productTruth.productId)) &&
+    Boolean(cleanText(plan.productTruth.productName)) &&
+    Boolean(plan.storyboardGuide) &&
+    Boolean(plan.voiceoverScript) &&
+    Boolean(plan.productDetail) &&
+    plan.shots.length > 0 &&
+    plan.shots.every(
+      shot =>
+        Boolean(shot.id) &&
+        Boolean(shot.title) &&
+        Boolean(shot.storyboardGuide) &&
+        Boolean(shot.voiceover) &&
+        Boolean(shot.camera) &&
+        Boolean(shot.visual) &&
+        Boolean(shot.movement) &&
+        Boolean(shot.productRole)
+    );
+  return hasRequiredPlan ? plan : null;
+}
+
+async function rehydrateRunConceptFromProductionBible(params: {
+  db: Db;
+  run: MarketplaceAutoReviewRun;
+  metadata: RunMetadata;
+}): Promise<{ run: MarketplaceAutoReviewRun; metadata: RunMetadata }> {
+  if (params.metadata.concept && typeof params.metadata.concept === "object") {
+    return { run: params.run, metadata: params.metadata };
+  }
+  const tenantClause = params.run.tenantId
+    ? eq(mediaProductionRuns.tenantId, params.run.tenantId)
+    : undefined;
+  const [productionRun] = await params.db
+    .select({ productionBible: mediaProductionRuns.productionBible })
+    .from(mediaProductionRuns)
+    .where(
+      and(
+        eq(mediaProductionRuns.productionRunId, params.run.productionRunId),
+        eq(mediaProductionRuns.userId, params.run.userId),
+        tenantClause
+      )
+    )
+    .orderBy(desc(mediaProductionRuns.createdAt))
+    .limit(1);
+  const recoveredPlan = planFromProductionBible(productionRun?.productionBible);
+  if (!recoveredPlan) {
+    return { run: params.run, metadata: params.metadata };
+  }
+  const recoveredAt = nowIso();
+  const nextMetadata = withUpdatedCreditSummary({
+    ...params.metadata,
+    concept: recoveredPlan,
+    productTruth: recoveredPlan.productTruth,
+    productImageUrls: recoveredPlan.productTruth.imageUrls,
+    requestedShotCount:
+      params.metadata.requestedShotCount ?? shotCountForPlan(recoveredPlan),
+    operationalRecoveryEvidence: {
+      ...asRecord(params.metadata.operationalRecoveryEvidence),
+      conceptMetadataRehydration: {
+        status: "recovered",
+        source: "media_production_runs.productionBible",
+        productionRunId: params.run.productionRunId,
+        conceptId: recoveredPlan.conceptId,
+        shotCount: recoveredPlan.shots.length,
+        recoveredAt,
+      },
+    },
+  });
+  const updatedRun = await updateRun({
+    db: params.db,
+    runId: params.run.id,
+    metadataJson: nextMetadata,
+    errorMessage: null,
+  });
+  return {
+    run: updatedRun ?? { ...params.run, metadataJson: nextMetadata },
+    metadata: nextMetadata,
+  };
+}
+
+export function planFromProductionBibleForTest(
+  value: unknown
+): AutoReviewPlan | null {
+  return planFromProductionBible(value);
+}
+
 async function reloadRun(db: Db, runId: string, auth: AuthContext) {
   const [run] = await db
     .select()
@@ -23936,6 +24740,13 @@ export async function advanceMarketplaceAutoReviewRun(
     ) {
       return getMarketplaceAutoReviewRun(runId, auth);
     }
+    const rehydrated = await rehydrateRunConceptFromProductionBible({
+      db,
+      run,
+      metadata,
+    });
+    run = rehydrated.run;
+    metadata = rehydrated.metadata;
     const plan = extractPlanFromRun(run);
     const currentBundle = await getMarketplaceProductWithAccess(
       run.productId,

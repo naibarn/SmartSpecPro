@@ -117,6 +117,10 @@ type HyperframesFinalOverlayPreset =
   | "badge_cascade"
   | "lower_third_review"
   | "neon_gaming_specs"
+  | "spec_lines_6_clean"
+  | "spec_lines_10_dark"
+  | "spec_lines_12_light"
+  | "spec_lines_15_neon"
   | "clean_subtitle";
 
 type HyperframesFinalSubtitlePreset =
@@ -327,6 +331,10 @@ function coerceFinalCompositeOverlayPreset(
     preset === "badge_cascade" ||
     preset === "lower_third_review" ||
     preset === "neon_gaming_specs" ||
+    preset === "spec_lines_6_clean" ||
+    preset === "spec_lines_10_dark" ||
+    preset === "spec_lines_12_light" ||
+    preset === "spec_lines_15_neon" ||
     preset === "clean_subtitle"
   ) {
     return preset;
@@ -551,12 +559,28 @@ function isPriceOverlayPreset(preset: HyperframesFinalOverlayPreset): boolean {
   return preset === "price_impact" || preset === "hero_price_billboard";
 }
 
+const LONG_SPEC_OVERLAY_LINE_LIMITS: Partial<Record<HyperframesFinalOverlayPreset, number>> = {
+  spec_lines_6_clean: 6,
+  spec_lines_10_dark: 10,
+  spec_lines_12_light: 12,
+  spec_lines_15_neon: 15,
+};
+
+function getLongSpecOverlayLineLimit(preset: HyperframesFinalOverlayPreset): number | null {
+  return LONG_SPEC_OVERLAY_LINE_LIMITS[preset] ?? null;
+}
+
+function isLongSpecOverlayPreset(preset: HyperframesFinalOverlayPreset): boolean {
+  return getLongSpecOverlayLineLimit(preset) != null;
+}
+
 function isSpecOverlayPreset(preset: HyperframesFinalOverlayPreset): boolean {
   return preset === "spec_highlight" ||
     preset === "electronics_spec_stack" ||
     preset === "split_product_specs" ||
     preset === "tech_signal_map" ||
-    preset === "neon_gaming_specs";
+    preset === "neon_gaming_specs" ||
+    isLongSpecOverlayPreset(preset);
 }
 
 function isCardOverlayPreset(preset: HyperframesFinalOverlayPreset): boolean {
@@ -590,6 +614,9 @@ function buildOverlayAssText(input: {
       maxLines: input.style === "PriceMain" ? 1 : 2,
       ellipsis: false,
     });
+  }
+  if (isLongSpecOverlayPreset(input.preset)) {
+    return escapeAssText(input.line);
   }
   if (isSpecOverlayPreset(input.preset)) {
     return wrapAssText(input.line, {
@@ -655,6 +682,45 @@ function buildKineticBoldHookOverlayEvents(input: {
     const itemStart = Math.min(end - 0.2, chipStart + index * 0.2);
     if (itemStart >= end) return;
     events.push(`Dialogue: 2,${assTime(itemStart)},${assTime(end)},KineticChip,,0,0,0,,{\\an7\\pos(86,${y})\\fad(120,150)\\frz-1}${chip}`);
+  });
+  return events;
+}
+
+function buildLongSpecOverlayEvents(input: {
+  lines: string[];
+  preset: HyperframesFinalOverlayPreset;
+  shotStart: number;
+  windowEnd: number;
+}): string[] {
+  const limit = getLongSpecOverlayLineLimit(input.preset) ?? 4;
+  const lines = input.lines
+    .map(line => String(line ?? "").trim())
+    .filter(Boolean)
+    .slice(0, limit);
+  if (lines.length === 0) return [];
+  const detailStyle =
+    input.preset === "spec_lines_6_clean" ? "SpecLongClean" :
+      input.preset === "spec_lines_10_dark" ? "SpecLongDark" :
+        input.preset === "spec_lines_12_light" ? "SpecLongLight" :
+          "SpecLongNeon";
+  const hookStyle = `${detailStyle}Hook`;
+  const layout =
+    input.preset === "spec_lines_6_clean"
+      ? { x: 78, y: 1040, step: 86 }
+      : input.preset === "spec_lines_10_dark"
+        ? { x: 70, y: 210, step: 70 }
+        : input.preset === "spec_lines_12_light"
+          ? { x: 72, y: 880, step: 58 }
+          : { x: 64, y: 150, step: 48 };
+  const events: string[] = [];
+  lines.forEach((line, index) => {
+    const start = Math.min(input.windowEnd - 0.2, input.shotStart + 0.12 + index * 0.1);
+    if (start >= input.windowEnd) return;
+    const motion = index % 2 === 0
+      ? `\\move(${layout.x - 36},${layout.y + index * layout.step},${layout.x},${layout.y + index * layout.step},0,260)`
+      : `\\move(${layout.x + 36},${layout.y + index * layout.step},${layout.x},${layout.y + index * layout.step},0,260)`;
+    const style = index === 0 ? hookStyle : detailStyle;
+    events.push(`Dialogue: 0,${assTime(start)},${assTime(input.windowEnd)},${style},,0,0,0,,{\\an7\\fad(120,170)${motion}}${escapeAssText(line)}`);
   });
   return events;
 }
@@ -727,6 +793,14 @@ function buildTimedOverlayEvents(input: {
       windowEnd,
     });
   }
+  if (isLongSpecOverlayPreset(preset)) {
+    return buildLongSpecOverlayEvents({
+      lines,
+      preset,
+      shotStart: input.shotStart,
+      windowEnd,
+    });
+  }
   const styles = isPrice
     ? ["FeatureSmall", "PriceMain", "FeatureSmall", "FeatureSmall"]
     : isSpecOverlayPreset(preset)
@@ -786,21 +860,21 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
     const duration = Math.max(1, Number(shot.durationSec ?? 8) || 8);
     const shotStart = cursor;
     const shotEnd = cursor + duration;
+    const shotOverlayPreset = coerceFinalCompositeOverlayPreset(
+      shot.overlayPreset,
+      overlayPreset
+    );
     const shotOnScreen = textConfig.includeShotText ? (shot.onScreenText ?? []) : [];
     const onScreen = shotOnScreen
       .map(text => expandLegacyEllipsizedAssText(text, expansionSources, 180))
       .filter(Boolean)
-      .slice(0, 4);
+      .slice(0, getLongSpecOverlayLineLimit(shotOverlayPreset) ?? 4);
     const firstShotHook = Number(shot.index ?? 0) === 0 && textConfig.includeHookText
       ? [textConfig.supportingText, textConfig.hookText]
         .map(text => cleanOverlayAssText(text))
         .filter(Boolean)
         .slice(0, 4)
       : [];
-    const shotOverlayPreset = coerceFinalCompositeOverlayPreset(
-      shot.overlayPreset,
-      overlayPreset
-    );
     events.push(...buildTimedOverlayEvents({
       lines: onScreen.length > 0 ? onScreen : firstShotHook,
       shotStart,
@@ -844,6 +918,14 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
     "Style: HookMain,Prompt,64,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,4,0,8,96,96,150,1",
     "Style: HookSub,Prompt,50,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,3,0,8,104,104,275,1",
     "Style: SpecChip,Noto Sans Thai,40,&H00111111,&H000000FF,&H00FFFFFF,&HDFFFFFFF,1,0,0,0,100,100,0,0,3,1.5,0,6,96,96,0,1",
+    "Style: SpecLongCleanHook,Noto Sans Thai,56,&H00111111,&H000000FF,&H00FFFFFF,&HE8FFFFFF,1,0,0,0,100,100,0,0,3,1.2,0,7,72,72,0,1",
+    "Style: SpecLongClean,Noto Sans Thai,38,&H00111111,&H000000FF,&H00FFFFFF,&H00000000,1,0,0,0,100,100,0,0,1,3,1,7,72,72,0,1",
+    "Style: SpecLongDarkHook,Noto Sans Thai,44,&H00FEE2A8,&H000000FF,&H9038BDF8,&HA8020617,1,0,0,0,100,100,0,0,3,1.2,0,7,72,72,0,1",
+    "Style: SpecLongDark,Noto Sans Thai,28,&H00F8FAFC,&H000000FF,&H90020617,&H00000000,1,0,0,0,100,100,0,0,1,3,1,7,72,72,0,1",
+    "Style: SpecLongLightHook,Noto Sans Thai,38,&H00111111,&H000000FF,&H00FFFFFF,&HEFFFFFFF,1,0,0,0,100,100,0,0,3,1,0,7,72,72,0,1",
+    "Style: SpecLongLight,Noto Sans Thai,22,&H00111111,&H000000FF,&H00FFFFFF,&H00000000,1,0,0,0,100,100,0,0,1,2.5,1,7,72,72,0,1",
+    "Style: SpecLongNeonHook,Noto Sans Thai,32,&H00FEE2A8,&H000000FF,&H9038BDF8,&HA8020617,1,0,0,0,100,100,0,0,3,1.2,0,7,64,64,0,1",
+    "Style: SpecLongNeon,Noto Sans Thai,18,&H00F8FAFC,&H000000FF,&H00E8F967,&H00000000,1,0,0,0,100,100,0,0,1,2.5,1,7,64,64,0,1",
     "Style: FeatureSmall,Noto Sans Thai,42,&H00FFFFFF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,3,2,0,7,112,112,0,1",
     "Style: KineticPanel,Noto Sans Thai,1,&H00170602,&H000000FF,&H00170602,&H00170602,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",
     "Style: KineticAccent,Noto Sans Thai,1,&H0015CCFA,&H000000FF,&H0015CCFA,&H0015CCFA,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1",

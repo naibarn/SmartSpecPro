@@ -6,7 +6,7 @@ Do not return JSON, Markdown fences, wrapper keys, analysis, diff notes, charact
 
 For product-reference storyboard prompts, preserve:
 
-- one single 9:16 image / strict 3x3 grid / exactly 9 frames / exactly 9 vertical frames / exactly 3 equal-width columns / exactly 3 equal-height rows / no collage/masonry layout / no separator lines when present;
+- one single 9:16 image / strict 3x3 grid / EXACTLY 9 PANELS / 9 CELLS ONLY / exactly 3 equal-width columns / exactly 3 equal-height rows / clean narrow gutters between panels / no collage/masonry layout / each panel occupies exactly one cell / never split one panel into two cells / wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel when present;
 - the exact first `SHOT-BY-SHOT STORYBOARD PROMPT:` contract line when present; do not paraphrase it shorter;
 - `Frame 1` through `Frame 9`;
 - non-empty visual-only prose per frame;

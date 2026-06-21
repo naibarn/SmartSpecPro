@@ -1304,6 +1304,241 @@ export type GroupMember = typeof groupMembers.$inferSelect;
 export type InsertGroupMember = typeof groupMembers.$inferInsert;
 
 /**
+ * MCP Connect provider templates, user connections, sharing policy, schema cache, usage audit, and shared video approvals.
+ */
+export const mcpProviderTemplates = pgTable("mcp_provider_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  providerKey: varchar("provider_key", { length: 64 }).notNull(),
+  displayName: varchar("display_name", { length: 128 }).notNull(),
+  mcpUrl: text("mcp_url").notNull(),
+  authType: varchar("auth_type", { length: 32 }).notNull().default("oauth"),
+  allowedAssetTypes: jsonb("allowed_asset_types").$type<Array<"image" | "video">>().notNull().default(sql`'[]'::jsonb`),
+  expectedToolHints: jsonb("expected_tool_hints").$type<Record<string, string[]>>().notNull().default(sql`'{}'::jsonb`),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("mcp_provider_templates_provider_key_unique").on(t.providerKey),
+  uniqueIndex("mcp_provider_templates_mcp_url_unique").on(t.mcpUrl),
+  index("mcp_provider_templates_enabled_idx").on(t.isEnabled),
+]);
+
+export const userMcpConnections = pgTable("user_mcp_connections", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("owner_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  providerTemplateId: varchar("provider_template_id", { length: 36 })
+    .notNull()
+    .references(() => mcpProviderTemplates.id, { onDelete: "restrict" }),
+  displayName: varchar("display_name", { length: 128 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("connected"),
+  encryptedTokenRef: text("encrypted_token_ref"),
+  encryptionKeyVersion: varchar("encryption_key_version", { length: 64 }),
+  providerAccountLabel: text("provider_account_label"),
+  providerAccountHash: varchar("provider_account_hash", { length: 128 }),
+  tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  scopes: jsonb("scopes").$type<string[]>(),
+  lastErrorCode: varchar("last_error_code", { length: 128 }),
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  lastHealthCheckAt: timestamp("last_health_check_at", { withTimezone: true }),
+  lastToolDiscoveryAt: timestamp("last_tool_discovery_at", { withTimezone: true }),
+  defaultForImage: boolean("default_for_image").notNull().default(false),
+  defaultForVideo: boolean("default_for_video").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+}, (t) => [
+  index("user_mcp_connections_tenant_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
+  index("user_mcp_connections_tenant_provider_status_idx").on(t.tenantId, t.providerTemplateId, t.status),
+  index("user_mcp_connections_provider_account_hash_idx").on(t.tenantId, t.providerTemplateId, t.providerAccountHash),
+  index("user_mcp_connections_token_expires_at_idx").on(t.tokenExpiresAt),
+  uniqueIndex("user_mcp_connections_default_image_unique")
+    .on(t.tenantId, t.ownerUserId, t.providerTemplateId)
+    .where(sql`default_for_image = true AND status IN ('connected', 'requires_reauth', 'error')`),
+  uniqueIndex("user_mcp_connections_default_video_unique")
+    .on(t.tenantId, t.ownerUserId, t.providerTemplateId)
+    .where(sql`default_for_video = true AND status IN ('connected', 'requires_reauth', 'error')`),
+]);
+
+export const mcpConnectionGroupShares = pgTable("mcp_connection_group_shares", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id", { length: 36 })
+    .notNull()
+    .references(() => userMcpConnections.id, { onDelete: "restrict" }),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => userGroups.id, { onDelete: "restrict" }),
+  enabled: boolean("enabled").notNull().default(true),
+  allowedAssetTypes: jsonb("allowed_asset_types").$type<Array<"image" | "video">>().notNull().default(sql`'[]'::jsonb`),
+  allowedTools: jsonb("allowed_tools").$type<string[]>(),
+  allowedModels: jsonb("allowed_models").$type<string[]>(),
+  dailyUseLimit: integer("daily_use_limit"),
+  concurrencyLimit: integer("concurrency_limit"),
+  requiresVideoApproval: boolean("requires_video_approval").notNull().default(true),
+  dailyWindowTimezone: varchar("daily_window_timezone", { length: 64 }),
+  createdByUserId: integer("created_by_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (t) => [
+  uniqueIndex("mcp_connection_group_shares_active_unique")
+    .on(t.tenantId, t.connectionId, t.groupId)
+    .where(sql`deleted_at IS NULL`),
+  index("mcp_connection_group_shares_group_enabled_idx").on(t.tenantId, t.groupId, t.enabled),
+  index("mcp_connection_group_shares_connection_enabled_idx").on(t.tenantId, t.connectionId, t.enabled),
+]);
+
+export const mcpToolSchemaCache = pgTable("mcp_tool_schema_cache", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  providerTemplateId: varchar("provider_template_id", { length: 36 })
+    .notNull()
+    .references(() => mcpProviderTemplates.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id", { length: 36 })
+    .references(() => userMcpConnections.id, { onDelete: "cascade" }),
+  toolName: varchar("tool_name", { length: 128 }).notNull(),
+  schemaHash: varchar("schema_hash", { length: 128 }).notNull(),
+  inputSchema: jsonb("input_schema").$type<Record<string, unknown>>().notNull(),
+  safeProjection: jsonb("safe_projection").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("mcp_tool_schema_cache_provider_tool_idx").on(t.tenantId, t.providerTemplateId, t.toolName),
+  index("mcp_tool_schema_cache_connection_tool_idx").on(t.tenantId, t.connectionId, t.toolName),
+  index("mcp_tool_schema_cache_expires_at_idx").on(t.expiresAt),
+  index("mcp_tool_schema_cache_schema_hash_idx").on(t.schemaHash),
+]);
+
+export const mcpConnectionUsageEvents = pgTable("mcp_connection_usage_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id", { length: 36 })
+    .references(() => userMcpConnections.id, { onDelete: "restrict" }),
+  ownerUserId: integer("owner_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  actorUserId: integer("actor_user_id")
+    .references(() => users.id, { onDelete: "set null" }),
+  groupId: integer("group_id")
+    .references(() => userGroups.id, { onDelete: "set null" }),
+  mediaTaskId: varchar("media_task_id", { length: 128 }),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  assetType: varchar("asset_type", { length: 32 }),
+  providerKey: varchar("provider_key", { length: 64 }),
+  status: varchar("status", { length: 32 }),
+  redactedSummary: jsonb("redacted_summary").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  schemaHash: varchar("schema_hash", { length: 128 }),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("mcp_connection_usage_events_connection_date_idx").on(t.tenantId, t.connectionId, t.occurredAt),
+  index("mcp_connection_usage_events_owner_date_idx").on(t.tenantId, t.ownerUserId, t.occurredAt),
+  index("mcp_connection_usage_events_actor_date_idx").on(t.tenantId, t.actorUserId, t.occurredAt),
+  index("mcp_connection_usage_events_group_date_idx").on(t.tenantId, t.groupId, t.occurredAt),
+  index("mcp_connection_usage_events_media_task_idx").on(t.tenantId, t.mediaTaskId),
+]);
+
+export const mcpSharedVideoApprovals = pgTable("mcp_shared_video_approvals", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id", { length: 36 })
+    .notNull()
+    .references(() => userMcpConnections.id, { onDelete: "restrict" }),
+  shareId: varchar("share_id", { length: 36 })
+    .notNull()
+    .references(() => mcpConnectionGroupShares.id, { onDelete: "restrict" }),
+  groupId: integer("group_id")
+    .notNull()
+    .references(() => userGroups.id, { onDelete: "restrict" }),
+  ownerUserId: integer("owner_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  actorUserId: integer("actor_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  assetType: varchar("asset_type", { length: 32 }).notNull().default("video"),
+  promptHash: varchar("prompt_hash", { length: 128 }).notNull(),
+  requestHash: varchar("request_hash", { length: 128 }).notNull(),
+  redactedRequestSummary: jsonb("redacted_request_summary").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  status: varchar("status", { length: 32 }).notNull().default("pending"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedByMediaTaskId: varchar("consumed_by_media_task_id", { length: 128 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+}, (t) => [
+  index("mcp_shared_video_approvals_pending_expiry_idx").on(t.tenantId, t.status, t.expiresAt),
+  uniqueIndex("mcp_shared_video_approvals_consumed_task_unique")
+    .on(t.consumedByMediaTaskId)
+    .where(sql`consumed_by_media_task_id IS NOT NULL`),
+]);
+
+export const mcpMediaTasks = pgTable("mcp_media_tasks", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 })
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  connectionId: varchar("connection_id", { length: 36 })
+    .references(() => userMcpConnections.id, { onDelete: "set null" }),
+  shareId: varchar("share_id", { length: 36 })
+    .references(() => mcpConnectionGroupShares.id, { onDelete: "set null" }),
+  providerTaskId: varchar("provider_task_id", { length: 128 }),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }),
+  mediaType: varchar("media_type", { length: 32 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("processing"),
+  model: varchar("model", { length: 255 }).notNull(),
+  prompt: text("prompt").notNull(),
+  parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  resultData: jsonb("result_data").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("mcp_media_tasks_tenant_user_created_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("mcp_media_tasks_status_idx").on(t.tenantId, t.status, t.updatedAt),
+  index("mcp_media_tasks_connection_idx").on(t.tenantId, t.connectionId, t.createdAt),
+  uniqueIndex("mcp_media_tasks_idempotency_unique")
+    .on(t.tenantId, t.userId, t.idempotencyKey)
+    .where(sql`idempotency_key IS NOT NULL`),
+]);
+
+export type McpProviderTemplate = typeof mcpProviderTemplates.$inferSelect;
+export type InsertMcpProviderTemplate = typeof mcpProviderTemplates.$inferInsert;
+export type UserMcpConnection = typeof userMcpConnections.$inferSelect;
+export type InsertUserMcpConnection = typeof userMcpConnections.$inferInsert;
+export type McpConnectionGroupShare = typeof mcpConnectionGroupShares.$inferSelect;
+export type InsertMcpConnectionGroupShare = typeof mcpConnectionGroupShares.$inferInsert;
+export type McpToolSchemaCache = typeof mcpToolSchemaCache.$inferSelect;
+export type InsertMcpToolSchemaCache = typeof mcpToolSchemaCache.$inferInsert;
+export type McpConnectionUsageEvent = typeof mcpConnectionUsageEvents.$inferSelect;
+export type InsertMcpConnectionUsageEvent = typeof mcpConnectionUsageEvents.$inferInsert;
+export type McpSharedVideoApproval = typeof mcpSharedVideoApprovals.$inferSelect;
+export type InsertMcpSharedVideoApproval = typeof mcpSharedVideoApprovals.$inferInsert;
+export type McpMediaTask = typeof mcpMediaTasks.$inferSelect;
+export type InsertMcpMediaTask = typeof mcpMediaTasks.$inferInsert;
+
+/**
  * Theme configuration type (shared between tenants and presets)
  */
 export type ThemeConfig = {

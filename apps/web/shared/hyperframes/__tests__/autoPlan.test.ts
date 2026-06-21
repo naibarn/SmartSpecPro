@@ -31,7 +31,7 @@ describe("HyperFrames auto plan contract", () => {
 
     expect(defaults).toMatchObject({
       outputMode: "storyboard_images",
-      frameStrategy: "video_shot_start_stop",
+      frameStrategy: "storyboard_3x3_split",
       audioStrategy: "native_video_audio",
       shotCount: 9,
       renderEngine: "hyperframes_composition",
@@ -51,6 +51,10 @@ describe("HyperFrames auto plan contract", () => {
       shotCount: String(defaults.shotCount),
       overlayTextMode: defaults.overlayTextMode,
       imageModel: defaults.imageModel,
+      videoModel: defaults.videoModel,
+      videoStructureMode: defaults.videoStructureMode,
+      manualVideoGroupSize: String(defaults.manualVideoGroupSize),
+      creativeBrief: defaults.creativeBrief,
       qualityMode: defaults.qualityMode,
     });
   });
@@ -95,6 +99,9 @@ describe("HyperFrames auto plan contract", () => {
         shotCount: 7,
         qualityMode: "high",
         imageModel: "google-banana-2",
+        videoModel: "kling3/generate-kling-3-video",
+        videoStructureMode: "adaptive_multi_shot",
+        creativeBrief: "Make it concise and proof-first.",
         platformPresetId: "tiktok_reels_shorts_9_16",
         renderEngine: "existing_ffmpeg_timeline",
       },
@@ -104,6 +111,9 @@ describe("HyperFrames auto plan contract", () => {
       shotCount: 7,
       qualityMode: "high",
       imageModel: "google-banana-2",
+      videoModel: "kling3/generate-kling-3-video",
+      videoStructureMode: "adaptive_multi_shot",
+      creativeBrief: "Make it concise and proof-first.",
       renderEngine: "hyperframes_composition",
       templateId: "marketplace_storyboard_motion_9x9_v1",
     });
@@ -120,5 +130,26 @@ describe("HyperFrames auto plan contract", () => {
     expect(normalized).toMatchObject({ qualityMode: "high" });
     expect(normalized).not.toHaveProperty("shotCount");
     expect(normalized).not.toHaveProperty("renderEngine");
+  });
+
+  it("accepts video structure overrides and prunes invalid manual group sizes", () => {
+    const normalized = normalizeHyperframesAutoPlanOverrides({
+      videoStructureMode: "manual_group_size",
+      manualVideoGroupSize: 4,
+      creativeBrief: "Warm proof-first review.",
+      invalidVideoStructure: "nope",
+    });
+
+    expect(normalized).toMatchObject({
+      videoStructureMode: "manual_group_size",
+      manualVideoGroupSize: 4,
+      creativeBrief: "Warm proof-first review.",
+    });
+
+    expect(
+      normalizeHyperframesAutoPlanOverrides({
+        manualVideoGroupSize: 99,
+      })
+    ).not.toHaveProperty("manualVideoGroupSize");
   });
 });

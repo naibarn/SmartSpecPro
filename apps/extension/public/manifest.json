@@ -29,6 +29,8 @@
     "https://magnific.ai/*",
     "https://*.magnific.com/*",
     "https://magnific.com/*",
+    "https://higgsfield.ai/*",
+    "https://*.higgsfield.ai/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -71,7 +73,9 @@
         "https://*.magnific.ai/*",
         "https://magnific.ai/*",
         "https://*.magnific.com/*",
-        "https://magnific.com/*"
+        "https://magnific.com/*",
+        "https://higgsfield.ai/*",
+        "https://*.higgsfield.ai/*"
       ],
       "js": [
         "assets/dragBridge.js"

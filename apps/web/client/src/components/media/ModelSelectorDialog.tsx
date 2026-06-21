@@ -11,6 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
 import {
+  getMediaModelTransportLabel,
+  resolveMediaModelTransportConfig,
+} from "@shared/mediaModelTransport";
+import {
   Search,
   Bot,
   Image,
@@ -67,6 +71,7 @@ export function formatMediaProviderDisplayName(providerName: unknown): string {
     fal_ai: "Fal.ai",
     fal: "Fal.ai",
     magnific: "Magnific",
+    higgsfield: "Higgsfield",
     wavespeed_ai: "WaveSpeed",
     wavespeed: "WaveSpeed",
     byteplus_modelark: "BytePlus ModelArk",
@@ -274,6 +279,11 @@ interface ModelCardProps {
 function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
   const modeLabel = getModelGenerationModeLabel(model);
   const providerName = getProviderName(model);
+  const transportConfig = resolveMediaModelTransportConfig({
+    provider: model.provider,
+    modelId: model.modelId,
+    configJson: model.configJson,
+  });
   return (
     <button
       onClick={onSelect}
@@ -309,6 +319,17 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
                 {modeLabel}
               </Badge>
             )}
+            <Badge
+              variant={transportConfig.transport === "mcp" ? "default" : "outline"}
+              className={cn(
+                "text-[10px] px-1.5 py-0",
+                transportConfig.transport === "mcp"
+                  ? "bg-sky-500 text-white"
+                  : "border-slate-300 bg-white text-slate-600",
+              )}
+            >
+              {getMediaModelTransportLabel(transportConfig)}
+            </Badge>
             {model.isDefault && (
               <Badge className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0">
                 <Star className="h-3 w-3 mr-0.5 inline" />

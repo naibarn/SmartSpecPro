@@ -2,7 +2,7 @@
 name: auto_cinematic_image
 description: Generate reference-locked cinematic image prompt packages for portraits, contact sheets, angle grids, macro detail packs, and video keyframes.
 category: image_prompt_generation
-version: 1.0.0
+version: 1.0.1
 icon: sparkles
 tags:
   - shared-skill
@@ -12,7 +12,7 @@ trigger_patterns: []
 enabled_by_default: false
 credit_multiplier: 1
 priority: 50
-execution_mode: llm-only
+execution_mode: python
 strict_provider_pin: false
 config:
   media_studio:

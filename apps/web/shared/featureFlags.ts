@@ -100,6 +100,23 @@ export interface TenantFeatureFlags {
   marketplaceHyperframesWorkerEnabled: boolean; // F92 — Tenant-scoped HyperFrames worker queueing
   marketplaceHyperframesLibrarySaveEnabled: boolean; // F93 — Save completed HyperFrames renders to Library
   marketplaceHyperframesOperatorEnabled: boolean; // F94 — Delegated HyperFrames operator controls
+  mcpConnectEnabled: boolean; // F95 — MCP Connect master rollout gate
+  mcpConnectMagnificEnabled: boolean; // F96 — Magnific MCP provider rollout gate
+  mcpConnectHiggsfieldEnabled: boolean; // F97 — Higgsfield MCP provider rollout gate
+  mcpConnectGroupSharingEnabled: boolean; // F98 — MCP Connect group sharing rollout gate
+  mcpMediaStudioEnabled: boolean; // F99 — Media Studio MCP transport surface gate
+  mcpAutoStoryboardReviewEnabled: boolean; // F100 — Auto Storyboard Review MCP transport surface gate
+  mcpMarketplaceCaptureEnabled: boolean; // F101 — Marketplace Capture MCP transport surface gate
+  mcpStoryboardReviewEnabled: boolean; // F102 — Storyboard Review MCP transport surface gate
+  mcpMediaImageEnabled: boolean; // F103 — MCP image generation asset gate
+  mcpMediaVideoEnabled: boolean; // F104 — MCP video generation asset gate
+  mcpToolSchemaCacheEnabled: boolean; // F105 — MCP tools/list schema cache gate
+  mcpAutoFallbackToGatewayApiEnabled: boolean; // F106 — Explicit MCP to Gateway API fallback gate
+  mcpProviderCreditsTrackedEnabled: boolean; // F107 — MCP provider-credit usage tracking gate
+  videoSegmentPlannerShadow: boolean; // F108 — Video segment planner shadow metadata
+  videoSegmentPlannerPerShot: boolean; // F109 — Per-shot segment planner handoff
+  videoSegmentPlannerPreview: boolean; // F110 — Backend video segment preview summaries
+  videoSegmentPlannerMultiShotBeta: boolean; // F111 — Tenant/model gated multi-shot video segments
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -203,6 +220,23 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "marketplaceHyperframesWorkerEnabled",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
+  "mcpConnectEnabled",
+  "mcpConnectMagnificEnabled",
+  "mcpConnectHiggsfieldEnabled",
+  "mcpConnectGroupSharingEnabled",
+  "mcpMediaStudioEnabled",
+  "mcpAutoStoryboardReviewEnabled",
+  "mcpMarketplaceCaptureEnabled",
+  "mcpStoryboardReviewEnabled",
+  "mcpMediaImageEnabled",
+  "mcpMediaVideoEnabled",
+  "mcpToolSchemaCacheEnabled",
+  "mcpAutoFallbackToGatewayApiEnabled",
+  "mcpProviderCreditsTrackedEnabled",
+  "videoSegmentPlannerShadow",
+  "videoSegmentPlannerPerShot",
+  "videoSegmentPlannerPreview",
+  "videoSegmentPlannerMultiShotBeta",
 ]);
 
 /**
@@ -305,6 +339,23 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   marketplaceHyperframesWorkerEnabled: false,
   marketplaceHyperframesLibrarySaveEnabled: false,
   marketplaceHyperframesOperatorEnabled: false,
+  mcpConnectEnabled: false,
+  mcpConnectMagnificEnabled: false,
+  mcpConnectHiggsfieldEnabled: false,
+  mcpConnectGroupSharingEnabled: false,
+  mcpMediaStudioEnabled: false,
+  mcpAutoStoryboardReviewEnabled: false,
+  mcpMarketplaceCaptureEnabled: false,
+  mcpStoryboardReviewEnabled: false,
+  mcpMediaImageEnabled: false,
+  mcpMediaVideoEnabled: false,
+  mcpToolSchemaCacheEnabled: false,
+  mcpAutoFallbackToGatewayApiEnabled: false,
+  mcpProviderCreditsTrackedEnabled: false,
+  videoSegmentPlannerShadow: true,
+  videoSegmentPlannerPerShot: true,
+  videoSegmentPlannerPreview: false,
+  videoSegmentPlannerMultiShotBeta: false,
 };
 
 export type HermesRolloutSurface =

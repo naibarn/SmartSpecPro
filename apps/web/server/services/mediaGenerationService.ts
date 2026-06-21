@@ -39,6 +39,15 @@ import {
   inferMediaModelHintFromText,
   resolveEnabledMediaModelSelection,
 } from "./enabledMediaModelSelection";
+import { resolveMediaTransport } from "./mediaTransportResolver";
+import { getMcpMediaTask, submitMcpMediaGeneration } from "./mcpMediaAdapter";
+import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
+import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
+import type {
+  MediaAssetType,
+  MediaOriginSurface,
+  MediaTaskTransportMetadata,
+} from "../../shared/mcpConnectTypes";
 
 // ==================== Types ====================
 
@@ -303,6 +312,34 @@ async function resolveEffectiveMediaRequestModel(input: {
       provider,
       requestedApiConfig: input.requestedApiConfig,
     }),
+  };
+}
+
+function isMcpTransportRequest(request: { transportMetadata?: Partial<MediaTaskTransportMetadata> }): boolean {
+  return request.transportMetadata?.transport === "mcp";
+}
+
+function resolveMcpRequestedMediaModel(input: {
+  mediaType: "image" | "video";
+  request: ImageGenerationRequest | VideoGenerationRequest;
+}): { modelId: string; provider: string; apiConfig?: Record<string, string> } {
+  const modelId = input.request.model || DEFAULT_MODELS[input.mediaType];
+  if (input.request.transportMetadata?.providerKey) {
+    return {
+      modelId,
+      provider: input.request.transportMetadata.providerKey,
+      apiConfig: undefined,
+    };
+  }
+  const transportConfig = resolveMediaModelTransportConfig({
+    provider: input.request.transportMetadata?.providerKey,
+    modelId,
+    configJson: resolveStaticModelConfigJson(modelId),
+  });
+  return {
+    modelId,
+    provider: transportConfig.providerKey ?? input.request.transportMetadata?.providerKey ?? resolveProvider(modelId, input.request.apiConfig),
+    apiConfig: undefined,
   };
 }
 
@@ -984,6 +1021,8 @@ export interface ImageGenerationRequest {
   referenceStyleUrl?: string;
   /** Optional audit metadata for end-to-end traceability */
   auditContext?: MediaAuditContext;
+  /** Optional MCP/Gateway transport metadata for direct service callers */
+  transportMetadata?: Partial<MediaTaskTransportMetadata>;
 }
 
 export interface VideoGenerationRequest {
@@ -1008,6 +1047,8 @@ export interface VideoGenerationRequest {
   referenceVideoUrl?: string;
   /** Optional audit metadata for end-to-end traceability */
   auditContext?: MediaAuditContext;
+  /** Optional MCP/Gateway transport metadata for direct service callers */
+  transportMetadata?: Partial<MediaTaskTransportMetadata>;
 }
 
 export interface AudioGenerationRequest {
@@ -1173,10 +1214,45 @@ const CLIENT_ONLY_EXTRA_PARAM_KEYS = new Set([
   "marketplace_product",
 ]);
 
+const PROVIDER_INTERNAL_EXTRA_PARAM_KEYS = new Set([
+  "reference_image_manifest",
+  "referenceImageManifest",
+  "reference_image_role_order",
+  "referenceImageRoleOrder",
+  "reference_image_role_counts",
+  "referenceImageRoleCounts",
+]);
+
+const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
+  "__origin_surface",
+  "__execution_path",
+  "__no_node_canvas_execution",
+  "__marketplace_product_id",
+  "__marketplace_product_name",
+  "__production_run_id",
+  "__auto_review_run_id",
+  "__auto_review_concept_id",
+  "__unit_id",
+  "__unit_role",
+  "__repair_attempt",
+  "__resolved_audio_strategy",
+]);
+
 function stripClientOnlyExtraParams(extraParams: Record<string, any>): Record<string, any> {
   const sanitized = { ...extraParams };
   for (const key of CLIENT_ONLY_EXTRA_PARAM_KEYS) {
     delete sanitized[key];
+  }
+  return sanitized;
+}
+
+function stripProviderInternalExtraParams(extraParams: Record<string, any>): Record<string, any> {
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(extraParams)) {
+    if ((key.startsWith("__") && !PERSISTED_INTERNAL_EXTRA_PARAM_KEYS.has(key)) || PROVIDER_INTERNAL_EXTRA_PARAM_KEYS.has(key)) {
+      continue;
+    }
+    sanitized[key] = value;
   }
   return sanitized;
 }
@@ -1231,7 +1307,17 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
 }
 
 function buildPythonBackendExtraParams(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
-  return resolveExtraParamsUrls(stripClientOnlyExtraParams(extraParams), publicUrl);
+  return resolveExtraParamsUrls(
+    stripProviderInternalExtraParams(stripClientOnlyExtraParams(extraParams)),
+    publicUrl,
+  );
+}
+
+export function buildPythonBackendExtraParamsForTest(
+  extraParams: Record<string, any>,
+  publicUrl?: string | null,
+): Record<string, any> {
+  return buildPythonBackendExtraParams(extraParams, publicUrl);
 }
 
 function assertValidAudioModelExtraParams(modelId: string, extraParams: Record<string, unknown> | undefined): void {
@@ -1488,6 +1574,78 @@ function enrichMediaSubmitError(error: unknown, endpointPath: string): Error {
   return enriched;
 }
 
+function normalizeMcpOriginSurface(
+  value: unknown,
+  source?: string,
+): MediaOriginSurface {
+  if (
+    value === "media_studio" ||
+    value === "auto_storyboard_review" ||
+    value === "marketplace_capture" ||
+    value === "storyboard_review"
+  ) {
+    return value;
+  }
+  if (source === "marketplace_auto_review" || source === "marketplace_capture") {
+    return "marketplace_capture";
+  }
+  if (source === "storyboard_review") {
+    return "storyboard_review";
+  }
+  if (source === "auto_storyboard_review") {
+    return "auto_storyboard_review";
+  }
+  return "media_studio";
+}
+
+function buildMcpServiceParameters(
+  assetType: MediaAssetType,
+  request: ImageGenerationRequest | VideoGenerationRequest,
+): Record<string, unknown> {
+  const referenceImageUrls =
+    request.referenceImageUrls && request.referenceImageUrls.length > 0
+      ? request.referenceImageUrls.map((url) =>
+          resolveReferenceUrl(url, request.publicUrl),
+        )
+      : undefined;
+  const extraParams = request.extraParams ?? {};
+  const referenceImageManifest =
+    extraParams.referenceImageManifest ?? extraParams.reference_image_manifest;
+  const referenceImageRoleOrder =
+    extraParams.referenceImageRoleOrder ?? extraParams.reference_image_role_order;
+  const referenceImageRoleCounts =
+    extraParams.referenceImageRoleCounts ?? extraParams.reference_image_role_counts;
+  const common = {
+    assetType,
+    model: request.model,
+    aspectRatio: request.aspectRatio,
+    resolution: request.resolution,
+    extraParams: request.extraParams,
+    referenceImageUrls,
+    referenceImageManifest,
+    referenceImageRoleOrder,
+    referenceImageRoleCounts,
+    referenceImageCount: referenceImageUrls?.length ?? 0,
+  };
+  if (assetType === "image") {
+    const imageRequest = request as ImageGenerationRequest;
+    return {
+      ...common,
+      size: imageRequest.size,
+      numImages: imageRequest.numImages,
+      outputFormat: imageRequest.outputFormat,
+      hasReferenceStyle: Boolean(imageRequest.referenceStyleUrl),
+    };
+  }
+  const videoRequest = request as VideoGenerationRequest;
+  return {
+    ...common,
+    duration: videoRequest.duration,
+    fps: videoRequest.fps,
+    referenceVideoCount: videoRequest.referenceVideoUrls?.length ?? (videoRequest.referenceVideoUrl ? 1 : 0),
+  };
+}
+
 export class MediaGenerationService {
   private baseUrl: string;
 
@@ -1508,6 +1666,125 @@ export class MediaGenerationService {
 
   private getAuditContext(request: { auditContext?: MediaAuditContext }): MediaAuditContext {
     return request.auditContext ?? {};
+  }
+
+  private async submitMcpMediaTaskIfRequested(
+    assetType: MediaAssetType,
+    request: (ImageGenerationRequest | VideoGenerationRequest) & { transportMetadata?: Partial<MediaTaskTransportMetadata> },
+    modelId: string,
+    prompt: string,
+  ): Promise<MediaTask | null> {
+    const rawMetadata = request.transportMetadata as
+      | (Partial<MediaTaskTransportMetadata> & {
+          mcpConnectionId?: string;
+          approvalId?: string;
+          mcpApprovalId?: string;
+        })
+      | null
+      | undefined;
+    if (rawMetadata?.transport !== "mcp") return null;
+
+    const tenantId = typeof rawMetadata.tenantId === "string"
+      ? rawMetadata.tenantId
+      : typeof request.auditContext?.tenantId === "string"
+        ? request.auditContext.tenantId
+        : "";
+    const actorUserId = typeof rawMetadata.actorUserId === "number"
+      ? rawMetadata.actorUserId
+      : typeof request.auditContext?.userId === "number"
+        ? request.auditContext.userId
+        : undefined;
+    const connectionId = typeof rawMetadata.connectionId === "string"
+      ? rawMetadata.connectionId
+      : typeof rawMetadata.mcpConnectionId === "string"
+        ? rawMetadata.mcpConnectionId
+        : "";
+    if (!tenantId || !actorUserId || !connectionId) {
+      throw new Error("MCP transport requires tenantId, actorUserId, and connectionId");
+    }
+
+    const originSurface = normalizeMcpOriginSurface(
+      rawMetadata.originSurface,
+      typeof request.auditContext?.source === "string" ? request.auditContext.source : undefined,
+    );
+    const modelTransport =
+      rawMetadata.providerKey || rawMetadata.providerModelId || rawMetadata.toolName
+        ? {
+            providerKey: rawMetadata.providerKey,
+            providerModelId: rawMetadata.providerModelId,
+            toolName: rawMetadata.toolName,
+            argumentShape: rawMetadata.argumentShape,
+          }
+        : await this.resolveMcpModelTransportConfig(
+            assetType,
+            modelId,
+            rawMetadata.providerKey,
+          );
+    const providerKey = rawMetadata.providerKey ?? modelTransport.providerKey;
+    const rawProviderModelId =
+      rawMetadata.providerModelId ?? modelTransport.providerModelId;
+    const providerModelId = normalizeMcpProviderModelIdForProvider({
+      providerKey,
+      providerModelId: rawProviderModelId,
+      assetType,
+      argumentShape: rawMetadata.argumentShape ?? modelTransport.argumentShape,
+    }) ?? rawProviderModelId;
+    const metadata = await resolveMediaTransport({
+      tenantId,
+      actorUserId,
+      originSurface,
+      assetType,
+      requestedTransport: "mcp",
+      mcpConnectionId: connectionId,
+      sharedGroupId: rawMetadata.sharedGroupId,
+      approvalId: rawMetadata.approvalId ?? rawMetadata.mcpApprovalId,
+      providerKey,
+      providerModelId,
+      model: providerModelId ?? modelId,
+      toolName: rawMetadata.toolName ?? modelTransport.toolName,
+      argumentShape: rawMetadata.argumentShape ?? modelTransport.argumentShape,
+      idempotencyKey: rawMetadata.idempotencyKey,
+    });
+    return submitMcpMediaGeneration({
+      tenantId,
+      prompt,
+      model: modelId,
+      metadata,
+      parameters: buildMcpServiceParameters(assetType, request),
+    });
+  }
+
+  private async resolveMcpModelTransportConfig(
+    assetType: MediaAssetType,
+    modelId: string,
+    providerKey?: string | null,
+  ) {
+    const staticConfig = resolveMediaModelTransportConfig({
+      provider: providerKey,
+      modelId,
+      configJson: resolveStaticModelConfigJson(modelId),
+    });
+    if (staticConfig.transport === "mcp" && staticConfig.toolName) {
+      return staticConfig;
+    }
+
+    const selection = await resolveEnabledMediaModelSelection({
+      mediaType: assetType,
+      requestedModel: modelId,
+      requestedProvider: providerKey,
+      requireConfiguredProvider: false,
+      allowSubstitution: false,
+    });
+    if (!selection.ok) {
+      return staticConfig;
+    }
+
+    const dbConfig = resolveMediaModelTransportConfig({
+      provider: selection.provider,
+      modelId: selection.modelId,
+      configJson: selection.model.configJson,
+    });
+    return dbConfig.transport === "mcp" ? dbConfig : staticConfig;
   }
 
   private logRetryableSubmitError(params: {
@@ -1748,7 +2025,6 @@ export class MediaGenerationService {
         fallbackModel: DEFAULT_MODELS.image,
       });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
-
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
       model: modelId,
@@ -1879,7 +2155,6 @@ export class MediaGenerationService {
         fallbackModel: DEFAULT_MODELS.video,
       });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
-
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
       model: modelId,
@@ -2092,14 +2367,23 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const { modelId, provider, apiConfig: effectiveApiConfig } =
-      await resolveEffectiveMediaRequestModel({
-        mediaType: "image",
-        requestedModel: request.model,
-        promptText: request.prompt,
-        requestedApiConfig: request.apiConfig,
-        fallbackModel: DEFAULT_MODELS.image,
-      });
+      isMcpTransportRequest(request)
+        ? resolveMcpRequestedMediaModel({ mediaType: "image", request })
+        : await resolveEffectiveMediaRequestModel({
+            mediaType: "image",
+            requestedModel: request.model,
+            promptText: request.prompt,
+            requestedApiConfig: request.apiConfig,
+            fallbackModel: DEFAULT_MODELS.image,
+          });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
+    const mcpTask = await this.submitMcpMediaTaskIfRequested(
+      "image",
+      request,
+      modelId,
+      normalizedPrompt,
+    );
+    if (mcpTask) return mcpTask;
 
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
@@ -2218,14 +2502,23 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const { modelId, provider, apiConfig: effectiveApiConfig } =
-      await resolveEffectiveMediaRequestModel({
-        mediaType: "video",
-        requestedModel: request.model,
-        promptText: request.prompt,
-        requestedApiConfig: request.apiConfig,
-        fallbackModel: DEFAULT_MODELS.video,
-      });
+      isMcpTransportRequest(request)
+        ? resolveMcpRequestedMediaModel({ mediaType: "video", request })
+        : await resolveEffectiveMediaRequestModel({
+            mediaType: "video",
+            requestedModel: request.model,
+            promptText: request.prompt,
+            requestedApiConfig: request.apiConfig,
+            fallbackModel: DEFAULT_MODELS.video,
+          });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
+    const mcpTask = await this.submitMcpMediaTaskIfRequested(
+      "video",
+      request,
+      modelId,
+      normalizedPrompt,
+    );
+    if (mcpTask) return mcpTask;
 
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
@@ -2449,6 +2742,31 @@ export class MediaGenerationService {
         endpoint: `/api/v1/media/tasks/${taskId}`,
       },
     });
+
+    if (taskId.startsWith("mcp_")) {
+      const userId = typeof auditContext?.userId === "number" ? auditContext.userId : null;
+      if (!userId) {
+        throw new Error("MCP task polling requires authenticated user context");
+      }
+      const task = await getMcpMediaTask(taskId, userId);
+      if (!task) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      auditLogger.log({
+        traceId: typeof auditContext?.traceId === "string" ? auditContext.traceId : undefined,
+        eventType: "media_response",
+        userId,
+        requestType: "getTask",
+        mediaTaskId: taskId,
+        statusCode: 200,
+        responsePayload: {
+          transport: "mcp",
+          status: task.status,
+          mediaType: task.mediaType,
+        },
+      });
+      return task;
+    }
 
     const response = await fetch(`${this.baseUrl}/api/v1/media/tasks/${taskId}`, {
       method: "GET",

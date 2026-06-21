@@ -55,6 +55,16 @@ describe("AutoStoryboardAdvancedOverrides", () => {
         onChange={onChange}
         onOpenChange={vi.fn()}
         onResetToAuto={vi.fn()}
+        videoModelOptions={[
+          {
+            value: "veo3/generate-veo-3-video-lite",
+            label: "Veo 3 Lite",
+          },
+          {
+            value: "kling3/generate-kling-3-video",
+            label: "Kling 3.0",
+          },
+        ]}
       />
     );
 
@@ -74,6 +84,12 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     });
     expect(onChange).toHaveBeenLastCalledWith({
       imageModel: "google-nano-banana-pro",
+    });
+    fireEvent.change(screen.getByLabelText("Video model"), {
+      target: { value: "kling3/generate-kling-3-video" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      videoModel: "kling3/generate-kling-3-video",
     });
     expect(screen.queryByLabelText(/template/i)).toBeNull();
     expect(screen.queryByLabelText(/render engine/i)).toBeNull();
@@ -96,20 +112,128 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.getByLabelText("Audio")).toHaveValue("native_video_audio");
     expect(screen.getByLabelText("Text policy")).toHaveValue("no_text");
     expect(screen.getByLabelText("Shots")).toHaveValue("9");
-    expect(screen.getByLabelText("Frames")).toHaveValue("video_shot_start_stop");
+    expect(screen.getByLabelText("Frames")).toHaveValue("storyboard_3x3_split");
     expect(screen.getByLabelText("Image model")).toHaveValue(
       "google-banana-2"
     );
+    expect(screen.getByLabelText("Video model")).toHaveValue(
+      "veo3/generate-veo-3-video-lite"
+    );
+    expect(screen.getByLabelText("Video structure")).toHaveValue("per_shot");
+    expect(screen.getByLabelText("Creative brief")).toHaveValue("");
     expect(screen.getByText(/no overrides active/i)).toBeTruthy();
   });
 
-  it("keeps start/stop as the visible frame default when clearing a frame override", () => {
+  it("shows manual group size only for manual video structure mode", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <AutoStoryboardAdvancedOverrides
-        plan={readyPlan({ frameStrategy: "storyboard_3x3_split" })}
+        plan={readyPlan()}
         open
-        value={{ frameStrategy: "storyboard_3x3_split" }}
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByLabelText("Manual group size")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Video structure"), {
+      target: { value: "manual_group_size" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      videoStructureMode: "manual_group_size",
+    });
+
+    rerender(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan({ videoStructureMode: "manual_group_size" })}
+        open
+        value={{ videoStructureMode: "manual_group_size" }}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText("Manual group size")).toHaveValue("3");
+  });
+
+  it("renders backend-driven preview warnings without local planning logic", () => {
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{ videoStructureMode: "adaptive_multi_shot" }}
+        onChange={vi.fn()}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+        videoSegmentPreview={{
+          effectiveMode: "per_shot",
+          creditSource: "mcp_provider_account",
+          fallbackReason: "selected_model_does_not_support_multi_shot",
+          warnings: [
+            {
+              code: "multi_shot_not_supported",
+              source: "fallback",
+              message: "Selected model falls back to per-shot.",
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Backend preview:/)).toBeTruthy();
+    expect(screen.getByText(/mcp_provider_account/)).toBeTruthy();
+    expect(screen.getByText(/Selected model falls back to per-shot/)).toBeTruthy();
+  });
+
+  it("shows how multi-shot planning groups storyboard shots into video segments", () => {
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{ videoStructureMode: "adaptive_multi_shot" }}
+        onChange={vi.fn()}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+        videoSegmentPreview={{
+          effectiveMode: "adaptive_multi_shot",
+          creditSource: "gateway_api",
+          segments: [
+            {
+              segmentId: "seg_1",
+              shotIds: ["shot-1", "shot-2", "shot-3"],
+              durationSeconds: 12,
+              referenceMode: "segment_start_end",
+            },
+            {
+              segmentId: "seg_2",
+              shotIds: ["shot-4"],
+              durationSeconds: 5,
+              referenceMode: "single_storyboard_frame",
+            },
+          ],
+          warnings: [],
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Multi-shot\/sub-shot preview: 2 video segment/)).toBeTruthy();
+    expect(screen.getByText(/Video 1:/)).toHaveTextContent(
+      "3 sub-shots · shot-1 → shot-2 → shot-3 · 12s"
+    );
+    expect(screen.getByText(/Video 2:/)).toHaveTextContent(
+      "1 sub-shot · shot-4 · 5s"
+    );
+  });
+
+  it("keeps 3x3 as the visible frame default when clearing a frame override", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan({ frameStrategy: "video_shot_start_stop" })}
+        open
+        value={{ frameStrategy: "video_shot_start_stop" }}
         onChange={onChange}
         onOpenChange={vi.fn()}
         onResetToAuto={vi.fn()}
@@ -117,9 +241,9 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     );
 
     const frames = screen.getByLabelText("Frames");
-    expect(frames).toHaveValue("storyboard_3x3_split");
+    expect(frames).toHaveValue("video_shot_start_stop");
     fireEvent.change(frames, {
-      target: { value: "video_shot_start_stop" },
+      target: { value: "storyboard_3x3_split" },
     });
     expect(onChange).toHaveBeenLastCalledWith({});
     rerender(
@@ -132,7 +256,7 @@ describe("AutoStoryboardAdvancedOverrides", () => {
         onResetToAuto={vi.fn()}
       />
     );
-    expect(frames).toHaveValue("video_shot_start_stop");
+    expect(frames).toHaveValue("storyboard_3x3_split");
   });
 
   it("clears a local override when the user picks the current auto default", () => {
@@ -243,6 +367,8 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.getByLabelText("คุณภาพ")).toBeTruthy();
     expect(screen.getByLabelText("จำนวนช็อต")).toBeTruthy();
     expect(screen.getByLabelText("โมเดลภาพ")).toBeTruthy();
+    expect(screen.getByLabelText("โครงสร้างวิดีโอ")).toBeTruthy();
+    expect(screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม")).toBeTruthy();
     expect(screen.getByLabelText("ตัวเลือก Auto ขั้นสูง")).toBeTruthy();
   });
 });

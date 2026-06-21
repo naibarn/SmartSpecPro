@@ -10,6 +10,18 @@ import {
   extractStoryboardNativeSpeechText,
   type StoryboardPromptSpeechMode,
 } from "@shared/storyboardPromptAudio";
+import type { MediaTaskTransportMetadata } from "@shared/mcpConnectTypes";
+import {
+  normalizeVideoSegmentCreativeBrief,
+  planVideoSegments,
+  synthesizePerShotVideoSegmentPlan,
+  type VideoSegmentAudioStrategy,
+  type VideoSegment,
+  type VideoSegmentPlan,
+  type VideoSegmentPlannerShot,
+  type VideoSegmentReferenceMode,
+  type VideoSegmentStructureMode,
+} from "@shared/videoSegmentPlanner";
 
 export interface StoryboardReferenceImage {
   url: string;
@@ -36,6 +48,7 @@ export interface StoryboardVideoGenerationContext {
   referenceVideoUrl?: string;
   useReferenceVideoUrlFallback?: boolean;
   productionContext?: StoryboardProductionContext | null;
+  transportMetadata?: Partial<MediaTaskTransportMetadata> | null;
 }
 
 export interface StoryboardGenerationTask {
@@ -57,6 +70,7 @@ export interface StoryboardGenerationTask {
   source?: "generated" | "imported";
   aspectRatio?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
+  transportMetadata?: Partial<MediaTaskTransportMetadata> | null;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
   productionContext?: StoryboardProductionContext | null;
 }
@@ -105,6 +119,9 @@ export interface StoryboardReviewDraft {
   renderJobId: string | null;
   /** Marketplace product context attached to this storyboard for story/script generation */
   marketplaceContext?: MarketplaceProductReferenceContext | null;
+  /** Manual Storyboard Review identity for HyperFrames renders without Marketplace Capture context */
+  manualHyperframesProductId?: string | null;
+  manualHyperframesRunId?: string | null;
   /** Production project/concept context propagated from Media Studio into Storyboard Review */
   productionContext?: StoryboardProductionContext | null;
   /** Production Director concept details used as creative guidance for prompt planning */
@@ -115,6 +132,344 @@ export interface StoryboardReviewDraft {
   voiceoverFullScript?: string | null;
   /** When true, planner treats voiceoverFullScript as the primary concept/content source */
   useVoiceoverScriptAsConcept?: boolean;
+  videoSegmentState?: StoryboardVideoSegmentState | null;
+}
+
+export interface StoryboardVideoSegmentState {
+  schemaVersion: 1;
+  videoSegmentPlan: VideoSegmentPlan;
+  effectiveMode: string;
+  promptSource: "initial" | "regenerated" | "manual_edit";
+  lastPromptGeneratedAt?: string | null;
+  staleTaskIds?: string[];
+  staleReason?: string | null;
+  splitRetryRequiresConfirmation?: boolean;
+}
+
+export interface ApplyStoryboardReviewVideoOptionsInput {
+  videoModel: string;
+  videoStructureMode: VideoSegmentStructureMode;
+  manualVideoGroupSize?: number | null;
+  provider?: string | null;
+  transport?: "gateway_api" | "mcp" | null;
+  transportMetadata?: Partial<MediaTaskTransportMetadata> | null;
+  includeVoiceover: boolean;
+  speechMode?: StoryboardPromptSpeechMode;
+  speechLanguage?: string | null;
+  includeSound?: boolean;
+  promptTone?: string | null;
+  promptLanguage?: string | null;
+  creativeBrief?: string | null;
+  now?: number;
+}
+
+export function evaluateStoryboardVideoSegmentPromptGenerationGate(input: {
+  taskId: string;
+  taskExtraParams?: Record<string, unknown> | null;
+  videoSegmentState?: StoryboardVideoSegmentState | null;
+}): { allowed: true } | { allowed: false; reasonCode: string; message: string } {
+  const extraParams = input.taskExtraParams ?? {};
+  const staleFromTask = extraParams.videoSegmentPromptStale === true;
+  const staleFromState =
+    input.videoSegmentState?.staleTaskIds?.includes(input.taskId) ?? false;
+  if (!staleFromTask && !staleFromState) return { allowed: true };
+  const promptSource =
+    typeof extraParams.promptSource === "string"
+      ? extraParams.promptSource
+      : input.videoSegmentState?.promptSource;
+  const explicitlyKept =
+    extraParams.videoSegmentPromptExplicitlyKept === true ||
+    extraParams.videoSegmentPromptKeepCurrent === true;
+  if (promptSource === "manual_edit" || explicitlyKept) {
+    return { allowed: true };
+  }
+  return {
+    allowed: false,
+    reasonCode: "video_segment_prompt_stale",
+    message:
+      "This video segment prompt is stale. Regenerate the segment prompt or explicitly keep the current prompt before paid generation.",
+  };
+}
+
+export function applyRegeneratedVideoSegmentPromptToDraft(
+  draft: StoryboardReviewDraft,
+  input: {
+    segmentId: string;
+    prompt: string;
+    taskIds?: string[];
+    generatedAt?: string;
+    creativeBriefHash?: string;
+    now?: number;
+  },
+): StoryboardReviewDraft {
+  const segmentId = input.segmentId.trim();
+  const prompt = input.prompt.trim();
+  if (!segmentId || !prompt) return draft;
+  const explicitTaskIds = (input.taskIds ?? []).map((id) => id.trim()).filter(Boolean);
+  const hasExplicitTaskIds = explicitTaskIds.length > 0;
+  const targetTaskIds = new Set(explicitTaskIds);
+  const now = input.now ?? Date.now();
+  const generatedAt = input.generatedAt ?? new Date(now).toISOString();
+  const nextTasks = draft.tasks.map((task) => {
+    const extraParams = task.storyboardContext?.extraParams ?? {};
+    const taskSegmentId =
+      typeof extraParams.videoSegmentId === "string" ? extraParams.videoSegmentId.trim() : "";
+    const matchesSegment = taskSegmentId === segmentId;
+    const shouldUpdate = hasExplicitTaskIds
+      ? targetTaskIds.has(task.id)
+      : matchesSegment;
+    if (!shouldUpdate) return task;
+    targetTaskIds.add(task.id);
+    return {
+      ...task,
+      prompt,
+      updatedAt: now,
+      storyboardContext: task.storyboardContext
+        ? {
+            ...task.storyboardContext,
+            extraParams: {
+              ...extraParams,
+              promptSource: "regenerated",
+              videoSegmentPrompt: prompt,
+              videoSegmentPromptStale: false,
+              videoSegmentPromptGeneratedAt: generatedAt,
+              ...(input.creativeBriefHash
+                ? { videoSegmentPromptCreativeBriefHash: input.creativeBriefHash }
+                : {}),
+            },
+          }
+        : task.storyboardContext,
+    };
+  });
+  const previousStaleTaskIds = draft.videoSegmentState?.staleTaskIds ?? [];
+  const nextStaleTaskIds = previousStaleTaskIds.filter((id) => !targetTaskIds.has(id));
+  return {
+    ...draft,
+    updatedAt: now,
+    tasks: nextTasks,
+    videoSegmentState: draft.videoSegmentState
+      ? {
+          ...draft.videoSegmentState,
+          promptSource: "regenerated",
+          lastPromptGeneratedAt: generatedAt,
+          staleTaskIds: nextStaleTaskIds,
+          staleReason: nextStaleTaskIds.length > 0
+            ? draft.videoSegmentState.staleReason ?? null
+            : null,
+        }
+      : draft.videoSegmentState,
+  };
+}
+
+function sanitizeStoryboardSegmentId(value: string): string {
+  const sanitized = value.trim().replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+  return sanitized || "shot";
+}
+
+function getStoryboardTaskSegmentId(task: StoryboardGenerationTask): string {
+  const value = task.storyboardContext?.extraParams?.videoSegmentId;
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getStoryboardTaskSegmentShotIds(task: StoryboardGenerationTask): string[] {
+  const value = task.storyboardContext?.extraParams?.videoSegmentShotIds;
+  return Array.isArray(value)
+    ? value.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean)
+    : [];
+}
+
+function findStoryboardVideoSegment(
+  plan: VideoSegmentPlan | null | undefined,
+  task: StoryboardGenerationTask,
+): VideoSegment | null {
+  if (!plan) return null;
+  const segmentId = getStoryboardTaskSegmentId(task);
+  const shotIds = getStoryboardTaskSegmentShotIds(task);
+  return plan.segments.find((segment) => {
+    if (segmentId && segment.segmentId === segmentId) return true;
+    if (shotIds.length > 1 && shotIds.every((shotId) => segment.shotIds.includes(shotId))) return true;
+    return false;
+  }) ?? null;
+}
+
+export function splitStoryboardVideoSegmentTaskToPerShotFallback(
+  draft: StoryboardReviewDraft,
+  input: {
+    taskId: string;
+    confirmed: boolean;
+    now?: number;
+  },
+): StoryboardReviewDraft {
+  const taskIndex = draft.tasks.findIndex((task) => task.id === input.taskId);
+  if (taskIndex < 0) return draft;
+  const sourceTask = draft.tasks[taskIndex];
+  if (!sourceTask?.storyboardContext) return draft;
+  const segment = findStoryboardVideoSegment(draft.videoSegmentState?.videoSegmentPlan, sourceTask);
+  const segmentShotIds = segment?.shotIds ?? getStoryboardTaskSegmentShotIds(sourceTask);
+  if (segmentShotIds.length <= 1) return draft;
+
+  const now = input.now ?? Date.now();
+  if (!input.confirmed) {
+    return {
+      ...draft,
+      updatedAt: now,
+      videoSegmentState: draft.videoSegmentState
+        ? {
+            ...draft.videoSegmentState,
+            splitRetryRequiresConfirmation: true,
+            staleReason: "split_retry_requires_confirmation",
+          }
+        : draft.videoSegmentState,
+      tasks: draft.tasks.map((task) => task.id === input.taskId
+        ? {
+            ...task,
+            status: "error",
+            updatedAt: now,
+            error: task.error,
+            storyboardContext: {
+              ...task.storyboardContext!,
+              extraParams: {
+                ...(task.storyboardContext?.extraParams ?? {}),
+                splitRetryRequiresConfirmation: true,
+                splitFallbackOriginalError:
+                  task.error?.trim() ||
+                  task.storyboardContext?.extraParams?.splitFallbackOriginalError ||
+                  null,
+              },
+            },
+          }
+        : task),
+    };
+  }
+
+  const sourceContext = sourceTask.storyboardContext;
+  const sourceExtraParams = sourceContext.extraParams ?? {};
+  const sourceSegmentId = (segment?.segmentId ?? getStoryboardTaskSegmentId(sourceTask)) || sourceTask.id;
+  const sourceReferenceImages = sourceContext.referenceImages ?? [];
+  const sourceDuration = normalizeStoryboardShotDurationSeconds(sourceTask.durationSeconds ?? sourceContext.duration);
+  const originalError =
+    (typeof sourceExtraParams.splitFallbackOriginalError === "string"
+      ? sourceExtraParams.splitFallbackOriginalError.trim()
+      : "") ||
+    sourceTask.error?.trim() ||
+    null;
+  const splitTasks: StoryboardGenerationTask[] = segmentShotIds.map((shotId, index) => {
+    const subShot = segment?.subShots.find((item) => item.shotId === shotId) ?? segment?.subShots[index];
+    const splitSegmentId = `${sanitizeStoryboardSegmentId(sourceSegmentId)}_${sanitizeStoryboardSegmentId(shotId)}`;
+    const prompt = subShot?.visualPrompt?.trim()
+      ? subShot.visualPrompt.trim()
+      : sourceTask.prompt;
+    const referenceUrls = segment?.referenceImageUrls?.length
+      ? segment.referenceImageUrls
+      : sourceReferenceImages.map((image) => image.url).filter(Boolean);
+    const referenceImages = referenceUrls.length > 0
+      ? referenceUrls.map((url, refIndex) => ({
+          ...(sourceReferenceImages[refIndex] ?? {}),
+          url,
+        }))
+      : sourceReferenceImages;
+    return {
+      ...sourceTask,
+      id: `${sourceTask.id}-split-${index + 1}`,
+      index: sourceTask.index + index,
+      status: "queued" as const,
+      prompt,
+      durationSeconds: subShot?.durationSeconds ?? Math.max(1, Math.round(sourceDuration / segmentShotIds.length)),
+      createdAt: now,
+      updatedAt: now,
+      url: undefined,
+      error: undefined,
+      backendTaskId: undefined,
+      providerTaskId: undefined,
+      statusDetail: undefined,
+      storyboardContext: {
+        ...sourceContext,
+        aspectRatio: sourceContext.aspectRatio,
+        duration: subShot?.durationSeconds ?? sourceContext.duration,
+        referenceImages,
+        extraParams: {
+          ...sourceExtraParams,
+          shotId,
+          videoSegmentId: splitSegmentId,
+          videoSegmentShotIds: [shotId],
+          originalVideoSegmentId: sourceSegmentId,
+          videoSegmentPrompt: prompt,
+          videoSegmentPromptStale: false,
+          splitFallbackFromSegmentId: sourceSegmentId,
+          splitFallbackOriginalError: originalError,
+          splitRetryRequiresConfirmation: false,
+          splitRetryConfirmedAt: new Date(now).toISOString(),
+        },
+      },
+    };
+  });
+
+  const nextTasks = [
+    ...draft.tasks.slice(0, taskIndex),
+    ...splitTasks,
+    ...draft.tasks.slice(taskIndex + 1),
+  ].map((task, index): StoryboardGenerationTask => ({ ...task, index }));
+  const nextTaskIds = nextTasks.map((task) => task.id);
+  const selected = new Set(draft.selectedTaskIds);
+  selected.delete(sourceTask.id);
+  splitTasks.forEach((task) => selected.add(task.id));
+  const nextPlan = draft.videoSegmentState?.videoSegmentPlan
+    ? (() => {
+        const nextSegments = draft.videoSegmentState!.videoSegmentPlan.segments.flatMap((item) => {
+          if (item.segmentId !== sourceSegmentId) return [item];
+          return splitTasks.map((task, index) => {
+            const shotId = getStoryboardTaskSegmentShotIds(task)[0] ?? task.id;
+            return {
+              ...item,
+              segmentId: getStoryboardTaskSegmentId(task),
+              index: item.index + index,
+              shotIds: [shotId],
+              durationSeconds: task.durationSeconds ?? sourceDuration,
+              referenceImageUrls: task.storyboardContext?.referenceImages.map((image) => image.url).filter(Boolean) ?? [],
+              subShots: item.subShots.filter((subShot) => subShot.shotId === shotId).slice(0, 1),
+              warnings: [
+                ...item.warnings,
+                {
+                  code: "split_fallback_per_shot",
+                  message: "Multi-shot segment was split back to per-shot fallback after user confirmation.",
+                  severity: "info" as const,
+                  source: "fallback" as const,
+                  segmentId: getStoryboardTaskSegmentId(task),
+                  shotIds: [shotId],
+                },
+              ],
+            };
+          });
+        }).map((segment, index) => ({ ...segment, index }));
+        return {
+          ...draft.videoSegmentState!.videoSegmentPlan,
+          effectiveMode: nextSegments.every((item) => item.shotIds.length === 1)
+            ? "per_shot" as const
+            : draft.videoSegmentState!.videoSegmentPlan.effectiveMode,
+          segments: nextSegments,
+          fallbackReason: "split_fallback_per_shot",
+          planHash: `${draft.videoSegmentState!.videoSegmentPlan.planHash}_split_${sanitizeStoryboardSegmentId(sourceSegmentId)}`.slice(0, 96),
+        };
+      })()
+    : undefined;
+
+  return {
+    ...draft,
+    updatedAt: now,
+    taskIds: nextTaskIds,
+    selectedTaskIds: nextTaskIds.filter((id) => selected.has(id)),
+    tasks: nextTasks,
+    videoSegmentState: draft.videoSegmentState
+      ? {
+          ...draft.videoSegmentState,
+          effectiveMode: nextPlan?.effectiveMode ?? draft.videoSegmentState.effectiveMode,
+          videoSegmentPlan: nextPlan ?? draft.videoSegmentState.videoSegmentPlan,
+          splitRetryRequiresConfirmation: false,
+          staleTaskIds: (draft.videoSegmentState.staleTaskIds ?? []).filter((id) => id !== sourceTask.id),
+          staleReason: null,
+        }
+      : draft.videoSegmentState,
+  };
 }
 
 export interface FirstLastFrameStoryboardImage {
@@ -166,6 +521,76 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
 export const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
 const STORYBOARD_REVIEW_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 export const DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS = 8;
+export const STORYBOARD_REVIEW_LEGACY_VIDEO_MODEL_REPLACEMENTS: Record<string, string> = {
+  "higgsfield/seedance_unlimited": "higgsfield/seedance_2_0_fast",
+  "higgsfield-mcp/enhanced-seedance-2-fast-unlimited": "higgsfield/seedance_2_0_fast",
+};
+
+export function normalizeStoryboardReviewVideoModelId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const modelId = value.trim();
+  if (!modelId || modelId === "unknown") return undefined;
+  return STORYBOARD_REVIEW_LEGACY_VIDEO_MODEL_REPLACEMENTS[modelId] ?? modelId;
+}
+
+export function normalizeStoryboardTransportMetadata(
+  value: unknown,
+): Partial<MediaTaskTransportMetadata> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      transport: "gateway_api",
+      originSurface: "storyboard_review",
+      creditPolicy: "smartspec_credits",
+    };
+  }
+  const record = value as Record<string, unknown>;
+  const transport = record.transport === "mcp" ? "mcp" : "gateway_api";
+  return {
+    transport,
+    originSurface: record.originSurface === "storyboard_review" ? "storyboard_review" : "storyboard_review",
+    assetType: record.assetType === "image" ? "image" : "video",
+    providerKey: typeof record.providerKey === "string" ? record.providerKey : undefined,
+    providerDisplayName: typeof record.providerDisplayName === "string" ? record.providerDisplayName : undefined,
+    connectionId: typeof record.connectionId === "string" ? record.connectionId : undefined,
+    shareId: typeof record.shareId === "string" ? record.shareId : undefined,
+    sharedGroupId: typeof record.sharedGroupId === "number" ? record.sharedGroupId : undefined,
+    connectionScope: record.connectionScope === "shared" ? "shared" : record.connectionScope === "personal" ? "personal" : undefined,
+    creditPolicy: record.creditPolicy === "provider_credits_tracked" ? "provider_credits_tracked" : "smartspec_credits",
+    providerModelId: typeof record.providerModelId === "string" ? record.providerModelId : undefined,
+    toolName: typeof record.toolName === "string" ? record.toolName : undefined,
+    argumentShape: typeof record.argumentShape === "string" ? record.argumentShape : undefined,
+    schemaHash: typeof record.schemaHash === "string" ? record.schemaHash : undefined,
+  };
+}
+
+function normalizeStoryboardGenerationModelId(value: unknown): string | undefined {
+  return normalizeStoryboardReviewVideoModelId(value);
+}
+
+export function getStoryboardTaskEffectiveGenerationContext(
+  task: StoryboardGenerationTask,
+  draft?: Pick<StoryboardReviewDraft, "videoSegmentState"> | null,
+): StoryboardVideoGenerationContext | null {
+  const context = task.storyboardContext;
+  if (!context) return null;
+  const model =
+    normalizeStoryboardGenerationModelId(draft?.videoSegmentState?.videoSegmentPlan.videoModelId) ??
+    normalizeStoryboardGenerationModelId(task.model) ??
+    normalizeStoryboardGenerationModelId(context.model);
+  const transportMetadataSource =
+    task.transportMetadata ??
+    context.transportMetadata ??
+    context.extraParams?.transportMetadata ??
+    null;
+  const transportMetadata = transportMetadataSource
+    ? normalizeStoryboardTransportMetadata(transportMetadataSource)
+    : null;
+  return {
+    ...context,
+    ...(model ? { model } : {}),
+    transportMetadata,
+  };
+}
 
 function normalizeStoryboardProductionContext(value: unknown): StoryboardProductionContext | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -201,6 +626,495 @@ function normalizeStoryboardShotDurationSeconds(value: unknown): number {
     : DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
 }
 
+function normalizeStoryboardVideoStructureModeValue(
+  value: unknown,
+): VideoSegmentStructureMode {
+  return value === "adaptive_multi_shot" ||
+    value === "compact_multi_shot" ||
+    value === "manual_group_size"
+    ? value
+    : "per_shot";
+}
+
+function normalizeStoryboardVideoAudioStrategyValue(
+  value: unknown,
+): VideoSegmentAudioStrategy {
+  return value === "native_video_audio" ||
+    value === "separate_tts_voiceover" ||
+    value === "silent"
+    ? value
+    : "auto";
+}
+
+function normalizeStoryboardVideoReferenceModeValue(
+  value: unknown,
+): VideoSegmentReferenceMode {
+  return value === "start_stop" || value === "segment_start_end"
+    ? value
+    : "single_storyboard_frame";
+}
+
+function normalizeStoryboardManualGroupSize(value: unknown): number | undefined {
+  const size = Number(value);
+  if (!Number.isFinite(size)) return undefined;
+  const rounded = Math.trunc(size);
+  return rounded >= 1 && rounded <= 12 ? rounded : undefined;
+}
+
+function getStoryboardTaskShotId(task: StoryboardGenerationTask, index: number): string {
+  const existing = task.storyboardContext?.extraParams?.shotId;
+  return typeof existing === "string" && existing.trim()
+    ? existing.trim()
+    : task.id || `shot-${index + 1}`;
+}
+
+function getStoryboardTaskTitle(task: StoryboardGenerationTask): string | undefined {
+  const extraParams = task.storyboardContext?.extraParams ?? {};
+  const productionContext = normalizeStoryboardProductionContext(
+    task.productionContext ??
+      task.storyboardContext?.productionContext ??
+      extraParams.productionContext,
+  );
+  const title =
+    typeof extraParams.sourceShotTitle === "string"
+      ? extraParams.sourceShotTitle.trim()
+      : productionContext?.sourceShotTitle?.trim() ?? "";
+  return title || undefined;
+}
+
+function getStoryboardTaskVoiceover(task: StoryboardGenerationTask): string | undefined {
+  const extraParams = task.storyboardContext?.extraParams ?? {};
+  const planner =
+    extraParams.storyboardPromptPlanner &&
+    typeof extraParams.storyboardPromptPlanner === "object" &&
+    !Array.isArray(extraParams.storyboardPromptPlanner)
+      ? extraParams.storyboardPromptPlanner as Record<string, unknown>
+      : {};
+  const voiceover =
+    typeof planner.voiceoverScript === "string" && planner.voiceoverScript.trim()
+      ? planner.voiceoverScript.trim()
+      : typeof extraParams.voiceoverScript === "string" && extraParams.voiceoverScript.trim()
+        ? extraParams.voiceoverScript.trim()
+        : extractStoryboardNativeSpeechText(task.prompt);
+  return voiceover || undefined;
+}
+
+function buildStoryboardVideoSegmentPlannerShots(
+  draft: Pick<StoryboardReviewDraft, "taskIds" | "tasks">,
+): VideoSegmentPlannerShot[] {
+  const taskById = new Map(draft.tasks.map((task) => [task.id, task]));
+  return draft.taskIds
+    .map((taskId) => taskById.get(taskId))
+    .filter((task): task is StoryboardGenerationTask => Boolean(task) && task?.type !== "image")
+    .map((task, index) => ({
+      shotId: getStoryboardTaskShotId(task, index),
+      index,
+      title: getStoryboardTaskTitle(task),
+      visualPrompt: task.prompt,
+      voiceover: getStoryboardTaskVoiceover(task),
+      durationSeconds: normalizeStoryboardShotDurationSeconds(
+        task.durationSeconds ?? task.storyboardContext?.duration,
+      ),
+      storyboardFrameUrl: task.storyboardContext?.referenceImages?.[0]?.url,
+      startFrameUrl: task.storyboardContext?.referenceImages?.[0]?.url,
+      stopFrameUrl: task.storyboardContext?.referenceImages?.[1]?.url,
+    }));
+}
+
+function inferStoryboardVideoReferenceMode(
+  draft: Pick<StoryboardReviewDraft, "taskIds" | "tasks">,
+  fallback?: VideoSegmentReferenceMode,
+): VideoSegmentReferenceMode {
+  const taskById = new Map(draft.tasks.map((task) => [task.id, task]));
+  const firstVideoTask = draft.taskIds
+    .map((taskId) => taskById.get(taskId))
+    .find((task): task is StoryboardGenerationTask => Boolean(task) && task?.type !== "image");
+  if (!firstVideoTask?.storyboardContext) {
+    return fallback ?? "single_storyboard_frame";
+  }
+  const roles = Array.isArray(firstVideoTask.storyboardContext.extraParams?.referenceFrameRoles)
+    ? firstVideoTask.storyboardContext.extraParams.referenceFrameRoles
+    : [];
+  const hasStartStopRoles = roles[0] === "start" && roles[1] === "stop";
+  const hasTwoFrames = (firstVideoTask.storyboardContext.referenceImages ?? [])
+    .filter((image) => String(image?.url ?? "").trim())
+    .length >= 2;
+  return hasStartStopRoles || hasTwoFrames
+    ? "start_stop"
+    : fallback ?? "single_storyboard_frame";
+}
+
+function resolveStoryboardReviewVideoOptionsAudioStrategy(
+  draft: StoryboardReviewDraft,
+  includeVoiceover: boolean,
+): VideoSegmentAudioStrategy {
+  const existingPlanAudio = draft.videoSegmentState?.videoSegmentPlan.audioStrategy;
+  const firstTaskAudio = draft.tasks
+    .map((task) =>
+      normalizeStoryboardVideoAudioStrategyValue(
+        task.storyboardContext?.extraParams?.resolvedAudioStrategy ??
+          task.storyboardContext?.extraParams?.audioStrategy,
+      )
+    )
+    .find((value) => value !== "auto");
+  if (includeVoiceover) return "native_video_audio";
+  if (existingPlanAudio === "separate_tts_voiceover" || firstTaskAudio === "separate_tts_voiceover") {
+    return "separate_tts_voiceover";
+  }
+  return "silent";
+}
+
+function storyboardStringArraysEqual(left: unknown, right: readonly string[]): boolean {
+  if (!Array.isArray(left) || left.length !== right.length) return false;
+  return right.every((value, index) => left[index] === value);
+}
+
+function normalizeStoryboardVideoSegmentState(
+  value: unknown
+): StoryboardVideoSegmentState | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const plan = record.videoSegmentPlan;
+  if (!plan || typeof plan !== "object") return null;
+  return {
+    schemaVersion: 1,
+    videoSegmentPlan: plan as VideoSegmentPlan,
+    effectiveMode:
+      typeof record.effectiveMode === "string"
+        ? record.effectiveMode
+        : (plan as VideoSegmentPlan).effectiveMode,
+    promptSource:
+      record.promptSource === "regenerated" || record.promptSource === "manual_edit"
+        ? record.promptSource
+        : "initial",
+    lastPromptGeneratedAt:
+      typeof record.lastPromptGeneratedAt === "string"
+        ? record.lastPromptGeneratedAt
+        : null,
+    staleTaskIds: Array.isArray(record.staleTaskIds)
+      ? record.staleTaskIds.filter((id): id is string => typeof id === "string")
+      : [],
+    staleReason:
+      typeof record.staleReason === "string" ? record.staleReason : null,
+    splitRetryRequiresConfirmation: Boolean(
+      record.splitRetryRequiresConfirmation
+    ),
+  };
+}
+
+function synthesizeStoryboardVideoSegmentState(
+  draft: Pick<StoryboardReviewDraft, "tasks">
+): StoryboardVideoSegmentState | null {
+  const videoTasks = draft.tasks.filter(task => task.type !== "image");
+  if (videoTasks.length === 0) return null;
+  const firstTask = videoTasks[0];
+  const plan = synthesizePerShotVideoSegmentPlan({
+    sourceSurface: "storyboard_review",
+    videoModelId: firstTask?.model || firstTask?.storyboardContext?.model || "unknown",
+    transport:
+      firstTask?.transportMetadata?.transport === "mcp" ||
+      firstTask?.storyboardContext?.transportMetadata?.transport === "mcp"
+        ? "mcp"
+        : "gateway_api",
+    audioStrategy:
+      firstTask?.storyboardContext?.extraParams?.resolvedAudioStrategy ??
+      firstTask?.storyboardContext?.extraParams?.audioStrategy ??
+      "auto",
+    referenceMode:
+      firstTask?.storyboardContext?.referenceImages?.length === 2
+        ? "start_stop"
+        : "single_storyboard_frame",
+    shots: videoTasks.map((task, index) => {
+      const frameTask = task as StoryboardGenerationTask & {
+        startFrameUrl?: string | null;
+        stopFrameUrl?: string | null;
+      };
+      return {
+        shotId:
+          typeof task.storyboardContext?.extraParams?.shotId === "string"
+            ? task.storyboardContext.extraParams.shotId
+            : task.id,
+        index,
+        title:
+          typeof task.storyboardContext?.extraParams?.sourceShotTitle === "string"
+            ? task.storyboardContext.extraParams.sourceShotTitle
+            : undefined,
+        visualPrompt: task.prompt,
+        voiceover:
+          typeof task.storyboardContext?.extraParams?.voiceoverScript === "string"
+            ? task.storyboardContext.extraParams.voiceoverScript
+            : undefined,
+        durationSeconds: normalizeStoryboardShotDurationSeconds(
+          task.durationSeconds ?? task.storyboardContext?.duration
+        ),
+        storyboardFrameUrl: task.storyboardContext?.referenceImages?.[0]?.url,
+        startFrameUrl:
+          frameTask.startFrameUrl ?? task.storyboardContext?.referenceImages?.[0]?.url,
+        stopFrameUrl:
+          frameTask.stopFrameUrl ?? task.storyboardContext?.referenceImages?.[1]?.url,
+      };
+    }),
+  });
+  return {
+    schemaVersion: 1,
+    videoSegmentPlan: plan,
+    effectiveMode: plan.effectiveMode,
+    promptSource: "initial",
+    staleTaskIds: [],
+  };
+}
+
+export function applyStoryboardReviewVideoOptionsToDraft(
+  draft: StoryboardReviewDraft,
+  input: ApplyStoryboardReviewVideoOptionsInput,
+): StoryboardReviewDraft {
+  const requestedModel = normalizeStoryboardReviewVideoModelId(input.videoModel) ?? "";
+  const fallbackModel =
+    normalizeStoryboardReviewVideoModelId(draft.videoSegmentState?.videoSegmentPlan.videoModelId) ||
+    normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.type !== "image")?.storyboardContext?.model) ||
+    normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.type !== "image")?.model) ||
+    "veo3/generate-veo-3-video-lite";
+  const videoModel = requestedModel || fallbackModel;
+  const videoStructureMode = normalizeStoryboardVideoStructureModeValue(
+    input.videoStructureMode,
+  );
+  const manualGroupSize =
+    videoStructureMode === "manual_group_size"
+      ? normalizeStoryboardManualGroupSize(input.manualVideoGroupSize) ?? 3
+      : undefined;
+  const speechMode = input.includeVoiceover
+    ? input.speechMode ?? "th"
+    : "none";
+  const speechLanguage = input.includeVoiceover
+    ? String(
+        input.speechLanguage ??
+          (speechMode === "th" ? "Thai" : speechMode === "en" ? "English" : ""),
+      ).trim()
+    : "";
+  const includeSound = Boolean(input.includeSound);
+  const promptTone = typeof input.promptTone === "string" ? input.promptTone.trim() : "";
+  const promptLanguage = typeof input.promptLanguage === "string" ? input.promptLanguage.trim() : "";
+  const audioStrategy = resolveStoryboardReviewVideoOptionsAudioStrategy(
+    draft,
+    Boolean(input.includeVoiceover),
+  );
+  const currentPlan = draft.videoSegmentState?.videoSegmentPlan ?? null;
+  const nextTransport = input.transport === "mcp" ? "mcp" : input.transport === "gateway_api"
+    ? "gateway_api"
+    : currentPlan?.transport ?? "gateway_api";
+  const nextProvider = typeof input.provider === "string" && input.provider.trim()
+    ? input.provider.trim()
+    : currentPlan?.provider;
+  const hasInputTransportMetadata = Object.prototype.hasOwnProperty.call(input, "transportMetadata");
+  const nextTransportMetadata = hasInputTransportMetadata ? input.transportMetadata ?? null : null;
+  const shots = buildStoryboardVideoSegmentPlannerShots(draft);
+  const referenceMode = normalizeStoryboardVideoReferenceModeValue(
+    currentPlan?.referenceMode ?? inferStoryboardVideoReferenceMode(draft),
+  );
+  const nextPlan = shots.length > 0
+    ? planVideoSegments({
+        sourceSurface: "storyboard_review",
+        mode: videoStructureMode,
+        manualGroupSize,
+        videoModelId: videoModel,
+        provider: nextProvider,
+        transport: nextTransport,
+        audioStrategy,
+        referenceMode,
+        creativeBrief:
+          normalizeVideoSegmentCreativeBrief(input.creativeBrief) ??
+          currentPlan?.creativeBrief,
+        creativePresets: currentPlan?.creativePresets ?? [],
+        shots,
+      })
+    : currentPlan;
+  if (!nextPlan) return draft;
+
+  const previousPlan = currentPlan;
+  const structureChanged =
+    previousPlan?.mode !== nextPlan.mode ||
+    previousPlan?.effectiveMode !== nextPlan.effectiveMode ||
+    previousPlan?.manualGroupSize !== nextPlan.manualGroupSize ||
+    previousPlan?.planHash !== nextPlan.planHash;
+  const modelChanged = previousPlan?.videoModelId !== nextPlan.videoModelId;
+  const transportChanged =
+    previousPlan?.transport !== nextPlan.transport ||
+    (previousPlan?.provider ?? "") !== (nextPlan.provider ?? "");
+  const audioChanged = previousPlan?.audioStrategy !== nextPlan.audioStrategy;
+  const now = input.now ?? Date.now();
+  const segmentByShotId = new Map<string, VideoSegment>();
+  nextPlan.segments.forEach((segment) => {
+    segment.shotIds.forEach((shotId) => {
+      segmentByShotId.set(shotId, segment);
+    });
+  });
+
+  let changed = !previousPlan ||
+    structureChanged ||
+    modelChanged ||
+    audioChanged ||
+    draft.videoSegmentState?.effectiveMode !== nextPlan.effectiveMode;
+  const staleTaskIds = new Set(draft.videoSegmentState?.staleTaskIds ?? []);
+  const nextTasks = draft.tasks.map((task, taskIndex): StoryboardGenerationTask => {
+    if (task.type === "image" || !task.storyboardContext) return task;
+
+    const extraParams = task.storyboardContext.extraParams ?? {};
+    const shotId = getStoryboardTaskShotId(task, taskIndex);
+    const segment = segmentByShotId.get(shotId);
+    const existingPlanner =
+      extraParams.storyboardPromptPlanner &&
+      typeof extraParams.storyboardPromptPlanner === "object" &&
+      !Array.isArray(extraParams.storyboardPromptPlanner)
+        ? extraParams.storyboardPromptPlanner as Record<string, unknown>
+        : {};
+    const segmentChanged = Boolean(
+      segment &&
+        (extraParams.videoSegmentId !== segment.segmentId ||
+          !storyboardStringArraysEqual(extraParams.videoSegmentShotIds, segment.shotIds)),
+    );
+    const segmentPlanMetadataChanged =
+      extraParams.videoSegmentPlanVersion !== nextPlan.schemaVersion ||
+      extraParams.videoSegmentPlanHash !== nextPlan.planHash ||
+      extraParams.shotId !== shotId;
+    const audioMetadataChanged =
+      extraParams.audioStrategy !== audioStrategy ||
+      (audioStrategy !== "auto" && extraParams.resolvedAudioStrategy !== audioStrategy);
+    const plannerChanged =
+      existingPlanner.includeVoiceover !== input.includeVoiceover ||
+      existingPlanner.speechMode !== speechMode ||
+      String(existingPlanner.speechLanguage ?? "") !== speechLanguage ||
+      existingPlanner.includeSound !== includeSound ||
+      (promptTone ? existingPlanner.tone !== promptTone : false) ||
+      (promptLanguage ? existingPlanner.language !== promptLanguage : false);
+    const taskModelChanged =
+      task.model !== videoModel || task.storyboardContext.model !== videoModel;
+    const appliedTaskTransportMetadata = hasInputTransportMetadata
+      ? nextTransportMetadata
+      : task.transportMetadata ?? null;
+    const appliedContextTransportMetadata = hasInputTransportMetadata
+      ? nextTransportMetadata
+      : task.storyboardContext.transportMetadata ?? null;
+    const taskTransportChanged =
+      JSON.stringify(task.transportMetadata ?? null) !== JSON.stringify(appliedTaskTransportMetadata) ||
+      JSON.stringify(task.storyboardContext.transportMetadata ?? null) !== JSON.stringify(appliedContextTransportMetadata);
+    const shouldInvalidateGeneratedClip =
+      task.status !== "generating" &&
+      (taskModelChanged || transportChanged || structureChanged || audioChanged || plannerChanged);
+    const shouldUpdateTask =
+      shouldInvalidateGeneratedClip ||
+      plannerChanged ||
+      taskModelChanged ||
+      transportChanged ||
+      taskTransportChanged ||
+      segmentChanged ||
+      segmentPlanMetadataChanged ||
+      audioMetadataChanged;
+    if (shouldUpdateTask) {
+      changed = true;
+    }
+    if (structureChanged || modelChanged || transportChanged || audioChanged || plannerChanged) {
+      staleTaskIds.add(task.id);
+    }
+    if (!shouldUpdateTask) return task;
+    return {
+      ...task,
+      model: videoModel,
+      status: shouldInvalidateGeneratedClip && task.status === "completed"
+        ? "queued"
+        : task.status,
+      url: shouldInvalidateGeneratedClip && task.status === "completed"
+        ? undefined
+        : task.url,
+      backendTaskId: shouldInvalidateGeneratedClip && task.status !== "generating"
+        ? undefined
+        : task.backendTaskId,
+      providerTaskId: shouldInvalidateGeneratedClip && task.status !== "generating"
+        ? undefined
+        : task.providerTaskId,
+      error: shouldInvalidateGeneratedClip ? undefined : task.error,
+      statusDetail: shouldInvalidateGeneratedClip
+        ? "Video options changed. Regenerate this clip with the updated settings."
+        : task.statusDetail,
+      updatedAt: shouldInvalidateGeneratedClip || plannerChanged || taskModelChanged || transportChanged || taskTransportChanged
+        ? now
+        : task.updatedAt,
+      transportMetadata: appliedTaskTransportMetadata,
+      storyboardContext: {
+        ...task.storyboardContext,
+        model: videoModel,
+        transportMetadata: appliedContextTransportMetadata,
+        extraParams: {
+          ...(task.storyboardContext.extraParams ?? {}),
+          mediaTransport: nextPlan.transport,
+          mediaProvider: nextPlan.provider,
+          audioStrategy,
+          resolvedAudioStrategy:
+            audioStrategy === "auto"
+              ? task.storyboardContext.extraParams?.resolvedAudioStrategy
+              : audioStrategy,
+          shotId,
+          videoSegmentPlanVersion: nextPlan.schemaVersion,
+          videoSegmentPlanHash: nextPlan.planHash,
+          ...(segment
+            ? {
+                videoSegmentId: segment.segmentId,
+                videoSegmentShotIds: segment.shotIds,
+              }
+            : {}),
+          ...(structureChanged || audioChanged || plannerChanged
+            ? {
+                videoSegmentPromptStale: true,
+                promptSource:
+                  extraParams.promptSource === "manual_edit"
+                    ? "manual_edit"
+                    : "initial",
+              }
+            : {}),
+          storyboardPromptPlanner: {
+            ...existingPlanner,
+            includeVoiceover: Boolean(input.includeVoiceover),
+            speechMode,
+            speechLanguage,
+            includeSound,
+            ...(promptTone ? { tone: promptTone } : {}),
+            ...(promptLanguage ? { language: promptLanguage } : {}),
+          },
+        },
+      },
+    };
+  });
+
+  if (!changed) return draft;
+
+  return {
+    ...draft,
+    updatedAt: now,
+    tasks: nextTasks,
+    projectLink: null,
+    renderJobId: null,
+    compoundStatus: null,
+    videoSegmentState: {
+      schemaVersion: 1,
+      videoSegmentPlan: nextPlan,
+      effectiveMode: nextPlan.effectiveMode,
+      promptSource: structureChanged || audioChanged ? "initial" : draft.videoSegmentState?.promptSource ?? "initial",
+      lastPromptGeneratedAt: draft.videoSegmentState?.lastPromptGeneratedAt ?? null,
+      staleTaskIds: Array.from(staleTaskIds),
+      staleReason: staleTaskIds.size > 0
+        ? structureChanged
+          ? "video_structure_changed"
+          : modelChanged || transportChanged
+            ? "video_model_changed"
+            : audioChanged
+              ? "audio_prompt_options_changed"
+              : draft.videoSegmentState?.staleReason ?? "prompt_planner_options_changed"
+        : null,
+      splitRetryRequiresConfirmation:
+        draft.videoSegmentState?.splitRetryRequiresConfirmation ?? false,
+    },
+  };
+}
+
 export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewDraft> | null | undefined): StoryboardReviewDraft | null {
   if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.taskIds) || !Array.isArray(parsed.tasks)) {
     return null;
@@ -216,7 +1130,7 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
   const companionAudioUpdatedAt = typeof parsed.companionAudioUpdatedAt === "number" && Number.isFinite(parsed.companionAudioUpdatedAt)
     ? parsed.companionAudioUpdatedAt
     : null;
-  return {
+  const baseDraft: StoryboardReviewDraft = {
     version: 1,
     reviewId: typeof parsed.reviewId === "number" ? parsed.reviewId : null,
     name: typeof parsed.name === "string" ? parsed.name : null,
@@ -232,11 +1146,21 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     projectLink: typeof parsed.projectLink === "string" ? parsed.projectLink : null,
     renderJobId: typeof parsed.renderJobId === "string" ? parsed.renderJobId : null,
     marketplaceContext: parsed.marketplaceContext ?? null,
+    manualHyperframesProductId: typeof parsed.manualHyperframesProductId === "string" ? parsed.manualHyperframesProductId.trim() || null : null,
+    manualHyperframesRunId: typeof parsed.manualHyperframesRunId === "string" ? parsed.manualHyperframesRunId.trim() || null : null,
     productionContext: normalizeStoryboardProductionContext(parsed.productionContext),
     conceptDetails: typeof parsed.conceptDetails === "string" ? parsed.conceptDetails : null,
     storyboardGuide: typeof parsed.storyboardGuide === "string" ? parsed.storyboardGuide : null,
     voiceoverFullScript: typeof parsed.voiceoverFullScript === "string" ? parsed.voiceoverFullScript : null,
     useVoiceoverScriptAsConcept: Boolean(parsed.useVoiceoverScriptAsConcept),
+    videoSegmentState: normalizeStoryboardVideoSegmentState(
+      (parsed as Record<string, unknown>).videoSegmentState
+    ),
+  };
+  return {
+    ...baseDraft,
+    videoSegmentState:
+      baseDraft.videoSegmentState ?? synthesizeStoryboardVideoSegmentState(baseDraft),
   };
 }
 
@@ -894,12 +1818,28 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
       const extraParams: Record<string, unknown> = context
         ? {
             ...(context.extraParams ?? {}),
+            transportMetadata: normalizeStoryboardTransportMetadata(
+              task.transportMetadata ?? context.transportMetadata ?? context.extraParams?.transportMetadata,
+            ),
             ...(context.resolution ? { resolution: context.resolution } : {}),
             ...(!context.extraParams?.marketplaceContext && (task.marketplaceProduct ?? draft.marketplaceContext)
               ? { marketplaceContext: task.marketplaceProduct ?? draft.marketplaceContext }
               : {}),
             ...(!context.extraParams?.productionContext && (task.productionContext ?? context.productionContext ?? draft.productionContext)
               ? { productionContext: task.productionContext ?? context.productionContext ?? draft.productionContext }
+              : {}),
+            ...(draft.videoSegmentState
+              ? {
+                  videoSegmentPlanHash:
+                    draft.videoSegmentState.videoSegmentPlan.planHash,
+                  videoSegmentEffectiveMode:
+                    draft.videoSegmentState.effectiveMode,
+                  videoSegmentPromptStale:
+                    draft.videoSegmentState.staleTaskIds?.includes(task.id) ??
+                    false,
+                  videoSegmentStaleReason:
+                    draft.videoSegmentState.staleReason ?? undefined,
+                }
               : {}),
           }
         : {};

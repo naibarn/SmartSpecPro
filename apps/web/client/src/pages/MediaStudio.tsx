@@ -167,6 +167,7 @@ import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
 } from "@/components/media/ModelSelectorDialog";
+import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
@@ -314,6 +315,7 @@ import {
 } from "@/lib/productionMediaHistoryFilter";
 import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInputSync";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
   GEMINI_OMNI_CHARACTER_CAPABILITY,
@@ -6964,6 +6966,29 @@ interface ReferenceVideo {
   durationSeconds?: number;
 }
 
+function mergeReferenceImagesWithDynamicUrls(
+  referenceImages: ReferenceImage[],
+  dynamicImageUrls: string[]
+): ReferenceImage[] {
+  if (dynamicImageUrls.length === 0) {
+    return referenceImages;
+  }
+  const seen = new Set(referenceImages.map(image => image.url));
+  const merged = [...referenceImages];
+  for (const url of dynamicImageUrls) {
+    const normalized = String(url || "").trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    merged.push({
+      url: normalized,
+      name: "Skill reference image",
+    });
+  }
+  return merged;
+}
+
 interface GeneratedMedia {
   id: string;
   taskId?: string;
@@ -10819,6 +10844,8 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const [mcpConnectionId, setMcpConnectionId] = useState<string | null>(null);
+  const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const [hyperframesRenderLibrarySessions, setHyperframesRenderLibrarySessions] =
     useState<MediaStudioRenderLibrarySession[]>(() =>
       readMediaStudioRenderLibrarySessions().filter(
@@ -12811,6 +12838,34 @@ export default function MediaStudio() {
   const { data: audioMediaModels } = trpc.mediaModels.list.useQuery({
     type: "audio",
   });
+  const mcpConnectionsQuery = trpc.mcpConnections.listConnections.useQuery(
+    undefined,
+    {
+      enabled:
+        isAuthenticated &&
+        !isLoading &&
+        (activeTab === "image" || activeTab === "video"),
+      retry: false,
+    }
+  );
+  const eligibleMcpProviderKeys = useMemo(() => {
+    if (activeTab !== "image" && activeTab !== "video") return new Set<string>();
+    return new Set(
+      (mcpConnectionsQuery.data ?? [])
+        .filter(connection => {
+          if (connection.status !== "connected") return false;
+          if (
+            connection.allowedAssetTypes?.length &&
+            !connection.allowedAssetTypes.includes(activeTab)
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map(connection => String(connection.providerKey ?? "").trim())
+        .filter(Boolean)
+    );
+  }, [activeTab, mcpConnectionsQuery.data]);
   const visibleMediaModels = useMemo(() => {
     const models = (mediaModels?.models as any[] | undefined) ?? [];
     const platformModels = isDesktopPlatform
@@ -12823,14 +12878,37 @@ export default function MediaStudio() {
         hasAnyModelIdCandidate(model, workflowModelIds)
       );
     }
-    return platformModels;
-  }, [activeTab, audioWorkflow, isDesktopPlatform, mediaModels?.models]);
+    if (activeTab !== "image" && activeTab !== "video") return platformModels;
+    return platformModels.filter(model => {
+      const transport = resolveMediaModelTransportConfig({
+        provider: model?.provider,
+        modelId: model?.modelId ?? model?.id,
+        configJson: model?.configJson,
+      });
+      if (transport.transport !== "mcp") return true;
+      return Boolean(
+        transport.providerKey && eligibleMcpProviderKeys.has(transport.providerKey)
+      );
+    });
+  }, [
+    activeTab,
+    audioWorkflow,
+    eligibleMcpProviderKeys,
+    isDesktopPlatform,
+    mediaModels?.models,
+  ]);
   const visibleMediaProviders = useMemo(() => {
+    const providerIds = new Set(
+      visibleMediaModels
+        .map((model: any) => String(model.provider ?? "").trim())
+        .filter(Boolean)
+    );
     const providers = (mediaModels?.providers as string[] | undefined) ?? [];
+    const providerList = providers.filter(provider => providerIds.has(provider));
     return isDesktopPlatform
-      ? providers
-      : providers.filter(provider => provider !== "omnivoice");
-  }, [isDesktopPlatform, mediaModels?.providers]);
+      ? providerList
+      : providerList.filter(provider => provider !== "omnivoice");
+  }, [isDesktopPlatform, mediaModels?.providers, visibleMediaModels]);
   const visibleAudioMediaModels = useMemo(() => {
     const models = (audioMediaModels?.models as any[] | undefined) ?? [];
     return isDesktopPlatform
@@ -12991,6 +13069,18 @@ export default function MediaStudio() {
     () => visibleMediaModels.find(m => m.modelId === selectedModel),
     [selectedModel, visibleMediaModels]
   );
+  const selectedMediaModelTransport = useMemo(
+    () =>
+      resolveMediaModelTransportConfig({
+        provider: selectedMediaModel?.provider,
+        modelId: selectedMediaModel?.modelId ?? selectedModel,
+        configJson: selectedMediaModel?.configJson,
+      }),
+    [selectedMediaModel, selectedModel]
+  );
+  const selectedModelUsesMcp =
+    (activeTab === "image" || activeTab === "video") &&
+    selectedMediaModelTransport.transport === "mcp";
   const isGeminiOmniVideoSelected =
     activeTab === "video" &&
     isGeminiOmniVideoMediaModel(selectedMediaModel, selectedModel);
@@ -15125,6 +15215,19 @@ export default function MediaStudio() {
     visibleMediaModels,
   ]);
 
+  useEffect(() => {
+    if (activeTab !== "image" && activeTab !== "video") return;
+    if (!selectedModel || visibleMediaModels.length === 0) return;
+    if (
+      visibleMediaModels.some((model: any) => model.modelId === selectedModel)
+    ) {
+      return;
+    }
+    setSelectedModel(visibleMediaModels[0].modelId);
+    setMcpConnectionId(null);
+    setMcpSharedGroupId(null);
+  }, [activeTab, selectedModel, setSelectedModel, visibleMediaModels]);
+
   // Set model from localStorage or default when models load
   useEffect(() => {
     if (modelInitialized) return;
@@ -15796,6 +15899,20 @@ export default function MediaStudio() {
     },
     [maxReferenceImages, referenceImages, setReferenceImages]
   );
+
+  useEffect(() => {
+    if (!selectedMediaModelReferenceSupport.imageUrls) {
+      return;
+    }
+    if (dynamicFormReferenceImageUrls.length === 0) {
+      return;
+    }
+    syncAutoPromptReferenceImages(dynamicFormReferenceImageUrls);
+  }, [
+    dynamicFormReferenceImageUrls,
+    selectedMediaModelReferenceSupport.imageUrls,
+    syncAutoPromptReferenceImages,
+  ]);
 
   const handleDynamicFormValuesChange = useCallback(
     (nextValues: Record<string, any>) => {
@@ -18427,9 +18544,13 @@ export default function MediaStudio() {
         modelConfig?.inputFields
       );
     }
+    const generationReferenceImages = mergeReferenceImagesWithDynamicUrls(
+      referenceImages,
+      dynamicFormReferenceImageUrls
+    );
     const effectiveReferenceImages =
       selectedMediaModelReferenceSupport.imageUrls && shouldSendReferenceImages
-        ? referenceImages
+        ? generationReferenceImages
         : [];
     const effectiveReferenceVideos =
       selectedMediaModelReferenceSupport.videoUrls ? referenceVideos : [];
@@ -18621,10 +18742,24 @@ export default function MediaStudio() {
           apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
           resolution: modelInputValues.resolution || undefined,
         });
+        const transportPayload =
+          selectedModelUsesMcp
+            ? {
+                transport: "mcp" as const,
+                mcpConnectionId: mcpConnectionId || undefined,
+                sharedGroupId: mcpSharedGroupId ?? undefined,
+                originSurface: "media_studio" as const,
+                idempotencyKey: `media-studio-${Date.now()}-${i}`,
+              }
+            : {
+                transport: "gateway_api" as const,
+                originSurface: "media_studio" as const,
+              };
 
         if (shouldUseDirectMediaGateway && activeTab === "image") {
           const task = await generateImageAsyncMutation.mutateAsync({
             ...commonPayload,
+            ...transportPayload,
             numImages: 1, // Keep progressive UI behavior
             ...(outputFormatValue
               ? { outputFormat: String(outputFormatValue) }
@@ -18639,6 +18774,7 @@ export default function MediaStudio() {
         } else if (shouldUseDirectMediaGateway && activeTab === "video") {
           const task = await generateVideoAsyncMutation.mutateAsync({
             ...commonPayload,
+            ...transportPayload,
             ...(effectiveSelectedVideoDuration !== undefined
               ? { duration: effectiveSelectedVideoDuration }
               : {}),
@@ -20577,9 +20713,16 @@ export default function MediaStudio() {
           modelConfig?.inputFields
         );
       }
+      const retryDynamicReferenceImageUrls = tabState.useAdvancedMode
+        ? extractMediaStudioDynamicImageUrls(tabState.dynamicFormValues)
+        : [];
+      const retryReferenceImages = mergeReferenceImagesWithDynamicUrls(
+        tabState.referenceImages,
+        retryDynamicReferenceImageUrls
+      );
       const effectiveReferenceImages =
         retryModelReferenceSupport.imageUrls && shouldSendReferenceImages
-          ? tabState.referenceImages
+          ? retryReferenceImages
           : [];
       const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
         ? tabState.referenceVideos
@@ -37988,11 +38131,12 @@ export default function MediaStudio() {
                       </div>
                     )}
 
-                    {/* Generate Button - Primary location under Prompt */}
                     <Button
                       onClick={handleGenerate}
                       disabled={
-                        isVoiceChangerMode
+                        selectedModelUsesMcp && !mcpConnectionId
+                          ? true
+                          : isVoiceChangerMode
                           ? isGenerating ||
                             (credits?.credits || 0) < getModelCost() ||
                             !selectedModel ||
@@ -38118,10 +38262,10 @@ export default function MediaStudio() {
                             </Badge>
                           )}
                       </Button>
-                      <ModelSelectorDialog
-                        open={showModelDialog}
-                        onOpenChange={setShowModelDialog}
-                        models={visibleMediaModels}
+	                      <ModelSelectorDialog
+	                        open={showModelDialog}
+	                        onOpenChange={setShowModelDialog}
+	                        models={visibleMediaModels}
                         providers={visibleMediaProviders.map(name => ({
                           id: name,
                           name,
@@ -38130,12 +38274,36 @@ export default function MediaStudio() {
                         selectedModelId={selectedModel}
                         onSelect={handleSelectMediaModel}
                         mediaType={activeTab}
-                        isLoading={!mediaModels}
-                      />
-                    </div>
+	                        isLoading={!mediaModels}
+	                      />
+	                    </div>
 
-                    {/* Aspect Ratio — uses model-specific options from configJson when available (not for audio) */}
-                    {activeTab !== "audio" &&
+	                    {(activeTab === "image" || activeTab === "video") &&
+	                      selectedModelUsesMcp && (
+	                        <div className="space-y-1 sm:col-span-2 xl:col-span-1">
+	                          <McpConnectionPicker
+	                            value={mcpConnectionId}
+	                            sharedGroupId={mcpSharedGroupId}
+	                            onChange={setMcpConnectionId}
+	                            onSharedGroupChange={setMcpSharedGroupId}
+	                            assetType={activeTab}
+	                            providerKey={selectedMediaModelTransport.providerKey}
+	                          />
+	                          {!mcpConnectionId && (
+	                            <p className="text-xs text-amber-700">
+	                              Select a connected{" "}
+	                              {formatMediaProviderDisplayName(
+	                                selectedMediaModelTransport.providerKey ??
+	                                  "MCP"
+	                              )}{" "}
+	                              account before generating.
+	                            </p>
+	                          )}
+	                        </div>
+	                      )}
+
+	                    {/* Aspect Ratio — uses model-specific options from configJson when available (not for audio) */}
+	                    {activeTab !== "audio" &&
                       (() => {
                         const modelData = visibleMediaModels.find(
                           (m: any) => m.modelId === selectedModel

@@ -154,6 +154,7 @@ export type AuditEventType =
   | "unified_credit"
   | "unified_error"
   | "mcp_tool_call"
+  | "mcp_connect_provider_config_updated"
   | "mcp_server_created"
   | "mcp_server_updated"
   | "mcp_server_deleted"

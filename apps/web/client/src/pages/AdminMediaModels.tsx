@@ -5,6 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "../lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
+import {
+  getMediaModelTransportLabel,
+  resolveMediaModelTransportConfig,
+} from "@shared/mediaModelTransport";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,6 +156,11 @@ interface FormData {
   isEnabled: boolean;
   priority: number;
   // API Config (configJson)
+  transport: "gateway_api" | "mcp";
+  providerModelId: string;
+  mcpProviderKey: string;
+  mcpToolName: string;
+  mcpArgumentShape: string;
   apiEndpoint: string;
   apiQueryEndpoint: string;
   apiPayloadFormat: string;
@@ -1452,6 +1461,11 @@ const DEFAULT_FORM_DATA: FormData = {
   voices: "",
   isEnabled: true,
   priority: 99,
+  transport: "gateway_api",
+  providerModelId: "",
+  mcpProviderKey: "",
+  mcpToolName: "",
+  mcpArgumentShape: "",
   apiEndpoint: "/api/v1/jobs/createTask",
   apiQueryEndpoint: "",
   apiPayloadFormat: "market",
@@ -1711,6 +1725,11 @@ export default function AdminMediaModels() {
   const handleEditModel = (model: MediaModel) => {
     setEditingModel(model);
     const cfg = model.configJson || {};
+    const transportConfig = resolveMediaModelTransportConfig({
+      provider: model.provider,
+      modelId: model.modelId,
+      configJson: cfg,
+    });
     setFormData({
       modelId: model.modelId,
       name: model.name,
@@ -1733,6 +1752,11 @@ export default function AdminMediaModels() {
       voices: (model.voices || []).join("\n"),
       isEnabled: model.isEnabled,
       priority: model.priority,
+      transport: transportConfig.transport,
+      providerModelId: transportConfig.providerModelId || "",
+      mcpProviderKey: transportConfig.providerKey || "",
+      mcpToolName: transportConfig.toolName || "",
+      mcpArgumentShape: transportConfig.argumentShape || "",
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
       apiQueryEndpoint:
         cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
@@ -1769,6 +1793,11 @@ export default function AdminMediaModels() {
     // Clone the model data but with modified modelId and clear editingModel to create new
     setEditingModel(null);
     const cfg = model.configJson || {};
+    const transportConfig = resolveMediaModelTransportConfig({
+      provider: model.provider,
+      modelId: model.modelId,
+      configJson: cfg,
+    });
     // Store original configJson to preserve extra fields when saving
     setDuplicateSourceConfig(cfg);
     setFormData({
@@ -1793,6 +1822,11 @@ export default function AdminMediaModels() {
       voices: (model.voices || []).join("\n"),
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
+      transport: transportConfig.transport,
+      providerModelId: transportConfig.providerModelId || "",
+      mcpProviderKey: transportConfig.providerKey || "",
+      mcpToolName: transportConfig.toolName || "",
+      mcpArgumentShape: transportConfig.argumentShape || "",
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
       apiQueryEndpoint:
         cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
@@ -1908,6 +1942,17 @@ export default function AdminMediaModels() {
 
     const includeMaxPromptLength = formData.maxPromptLength > 0;
     const configJson: Record<string, any> = {
+      transport: formData.transport,
+      providerModelId: formData.providerModelId || formData.modelId,
+      mcp:
+        formData.transport === "mcp"
+          ? {
+              providerKey: formData.mcpProviderKey || formData.provider,
+              providerModelId: formData.providerModelId || formData.modelId,
+              toolName: formData.mcpToolName || undefined,
+              argumentShape: formData.mcpArgumentShape || undefined,
+            }
+          : undefined,
       apiEndpoint: formData.apiEndpoint,
       apiQueryEndpoint: formData.apiQueryEndpoint || undefined,
       apiPayloadFormat: formData.apiPayloadFormat,
@@ -1948,6 +1993,9 @@ export default function AdminMediaModels() {
       // Preserve any extra configJson keys the seed script set
       const existing = editingModel.configJson || {};
       const merged = { ...existing, ...configJson };
+      if (formData.transport !== "mcp") {
+        delete merged.mcp;
+      }
       if (!includeMaxPromptLength) {
         delete merged.maxPromptLength;
       }
@@ -1981,6 +2029,9 @@ export default function AdminMediaModels() {
       const finalConfigJson = duplicateSourceConfig
         ? { ...duplicateSourceConfig, ...configJson }
         : configJson;
+      if (formData.transport !== "mcp") {
+        delete finalConfigJson.mcp;
+      }
       if (!includeMaxPromptLength) {
         delete finalConfigJson.maxPromptLength;
       }
@@ -2598,6 +2649,7 @@ export default function AdminMediaModels() {
                   <TableHead>Model</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Operation</TableHead>
+                  <TableHead>Route</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Provider Readiness</TableHead>
                   <TableHead>Credits</TableHead>
@@ -2610,6 +2662,11 @@ export default function AdminMediaModels() {
                 {visibleModels.map((model: any, index: number) => {
                   const generationModeLabel =
                     getModelGenerationModeLabel(model);
+                  const transportConfig = resolveMediaModelTransportConfig({
+                    provider: model.provider,
+                    modelId: model.modelId,
+                    configJson: model.configJson,
+                  });
                   return (
                     <TableRow key={model.id}>
                       <TableCell className="font-mono text-muted-foreground">
@@ -2654,6 +2711,21 @@ export default function AdminMediaModels() {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
+                          <Badge
+                            variant={transportConfig.transport === "mcp" ? "default" : "outline"}
+                            className={transportConfig.transport === "mcp" ? "bg-sky-500" : ""}
+                          >
+                            {getMediaModelTransportLabel(transportConfig)}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground">
+                            {transportConfig.transport === "mcp"
+                              ? "Provider account"
+                              : "Platform credits"}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
                           <span className="text-sm">
                             {model.providerDisplayName || model.provider}
                           </span>
@@ -2666,7 +2738,19 @@ export default function AdminMediaModels() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {model.providerReady ? (
+                        {transportConfig.transport === "mcp" ? (
+                          <div className="max-w-[260px] space-y-1">
+                            <Badge
+                              variant="outline"
+                              className="border-sky-200 text-sky-700"
+                            >
+                              MCP Connect
+                            </Badge>
+                            <div className="text-xs leading-5 text-muted-foreground">
+                              Uses a connected provider account at runtime.
+                            </div>
+                          </div>
+                        ) : model.providerReady ? (
                           <Badge
                             variant="outline"
                             className="border-green-200 text-green-700"
@@ -3523,6 +3607,81 @@ function ModelForm({
               </p>
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="transport">Generation Route</Label>
+              <Select
+                value={formData.transport}
+                onValueChange={(value: "gateway_api" | "mcp") =>
+                  setFormData({ ...formData, transport: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gateway_api">Gateway API</SelectItem>
+                  <SelectItem value="mcp">MCP Connect</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Users choose the model; SmartSpecPro calls this route automatically.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="providerModelId">Provider Model ID</Label>
+              <Input
+                id="providerModelId"
+                value={formData.providerModelId}
+                onChange={e =>
+                  setFormData({ ...formData, providerModelId: e.target.value })
+                }
+                placeholder="Upstream model id"
+              />
+              <p className="text-xs text-muted-foreground">
+                Example: z_image, gpt-2, seedance_2_0
+              </p>
+            </div>
+          </div>
+
+          {formData.transport === "mcp" && (
+            <div className="grid grid-cols-3 gap-4 rounded-md border p-3">
+              <div className="grid gap-2">
+                <Label htmlFor="mcpProviderKey">MCP Provider Key</Label>
+                <Input
+                  id="mcpProviderKey"
+                  value={formData.mcpProviderKey}
+                  onChange={e =>
+                    setFormData({ ...formData, mcpProviderKey: e.target.value })
+                  }
+                  placeholder="magnific or higgsfield"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="mcpToolName">MCP Tool</Label>
+                <Input
+                  id="mcpToolName"
+                  value={formData.mcpToolName}
+                  onChange={e =>
+                    setFormData({ ...formData, mcpToolName: e.target.value })
+                  }
+                  placeholder="generate_image"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="mcpArgumentShape">Argument Shape</Label>
+                <Input
+                  id="mcpArgumentShape"
+                  value={formData.mcpArgumentShape}
+                  onChange={e =>
+                    setFormData({ ...formData, mcpArgumentShape: e.target.value })
+                  }
+                  placeholder="higgsfield.generate_image"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">

@@ -732,6 +732,104 @@ function inferStoryboardSpeechDirectiveMode(promptText: string): { speechMode: s
   return { speechMode: language ? "other" : "en", speechLanguage: language || "English" };
 }
 
+function compactStoryboardPlannerContextText(
+  value: unknown,
+  maxCharacters = STORYBOARD_REVIEW_PLANNER_CONTEXT_MAX_CHARS,
+): string {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxCharacters) return normalized;
+  const sliced = normalized.slice(0, maxCharacters).replace(/\s+\S*$/, "").trim();
+  return `${sliced || normalized.slice(0, maxCharacters).trim()}...`;
+}
+
+function cleanStoryboardPlannerVoiceoverCandidate(value: unknown): string {
+  return String(value ?? "")
+    .replace(/^\s*(?:Voiceover|Dialogue|Spoken line|บทพูด|เสียงพูด)\s*:\s*/i, "")
+    .replace(/^\s*Speaker\s+\d+\s*:\s*/i, "")
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/[“”"]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractStoryboardPlannerSourceVoiceoverLines(sourceSlot?: {
+  currentPrompt?: string | null;
+  previousVoiceoverScript?: string | null;
+  nextVoiceoverScript?: string | null;
+}): string[] {
+  const lines: string[] = [];
+  const promptText = String(sourceSlot?.currentPrompt ?? "");
+  for (const line of promptText.split(/\n+/)) {
+    const match = line.match(/\bVoiceover\s*:\s*(.+)$/i);
+    const cleaned = cleanStoryboardPlannerVoiceoverCandidate(match?.[1] ?? "");
+    if (cleaned) lines.push(cleaned);
+  }
+  const inlineSpeech = cleanStoryboardPlannerVoiceoverCandidate(
+    extractStoryboardNativeSpeechText(promptText),
+  );
+  if (inlineSpeech) lines.push(inlineSpeech);
+
+  const uniqueLines: string[] = [];
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const key = normalizeStoryboardVoiceoverForDuplicateCheck(line);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    uniqueLines.push(line);
+  }
+  return uniqueLines;
+}
+
+function repairStoryboardPlannerVoiceoversFromSource(input: {
+  slots: StoryboardPlannerSlotResult[];
+  sourceSlotById: ReadonlyMap<string, {
+    currentPrompt?: string | null;
+    durationSeconds?: number | null;
+    previousVoiceoverScript?: string | null;
+    nextVoiceoverScript?: string | null;
+  }>;
+  speechMode: string;
+  speechLanguage?: string | null;
+}): StoryboardPlannerSlotResult[] {
+  if (input.speechMode === "none") return input.slots;
+
+  const voiceoverCounts = buildStoryboardVoiceoverCounts(input.slots);
+  return input.slots.map((slot) => {
+    const sourceSlot = input.sourceSlotById.get(slot.id);
+    const normalizedVoiceover = normalizeStoryboardVoiceoverForDuplicateCheck(slot.voiceoverScript);
+    const needsRepair = !normalizedVoiceover
+      || (voiceoverCounts.get(normalizedVoiceover) ?? 0) > 1
+      || isStoryboardVoiceoverTooShort(
+        slot.voiceoverScript,
+        sourceSlot?.durationSeconds ?? 8,
+        input.speechMode,
+        input.speechLanguage ?? null,
+      );
+    if (!needsRepair) return slot;
+
+    const sourceVoiceoverLines = extractStoryboardPlannerSourceVoiceoverLines(sourceSlot);
+    const repairedVoiceover = sourceVoiceoverLines.join(" ").trim();
+    if (!repairedVoiceover || isStoryboardVoiceoverTooShort(
+      repairedVoiceover,
+      sourceSlot?.durationSeconds ?? 8,
+      input.speechMode,
+      input.speechLanguage ?? null,
+    )) {
+      return slot;
+    }
+
+    return {
+      ...slot,
+      voiceoverScript: repairedVoiceover,
+      qualityNotes: [
+        ...slot.qualityNotes,
+        "Voiceover repaired from the stored segment sub-shot voiceover source before validation.",
+      ],
+    };
+  });
+}
+
 function buildStoryboardPlannerPrompt(input: {
   productMetadata: Record<string, unknown> | null;
   options: Record<string, unknown>;
@@ -774,7 +872,7 @@ function buildStoryboardPlannerPrompt(input: {
           ? "Write motion and camera direction that fits the visible change between these two exact endpoint images."
           : "Write motion and camera direction that follows the exact endpoint roles and uses reference-only images as guidance, not as frozen start/end frames.",
       ].join(" "),
-      currentPrompt: slot.currentPrompt ?? "",
+      currentPrompt: compactStoryboardPlannerContextText(slot.currentPrompt),
       conceptDetails: slotConceptDetails && slotConceptDetails !== globalConceptDetails ? slotConceptDetails : "",
       storyboardGuide: slotStoryboardGuide && slotStoryboardGuide !== globalStoryboardGuide ? slotStoryboardGuide : "",
       durationSeconds: slot.durationSeconds ?? null,
@@ -782,13 +880,13 @@ function buildStoryboardPlannerPrompt(input: {
       aspectRatio: slot.aspectRatio ?? null,
       model: slot.model ?? null,
       voiceoverContinuity: {
-        voiceoverFullScript: slot.voiceoverFullScript ?? "",
-        previousVoiceoverScript: slot.previousVoiceoverScript ?? "",
-        nextVoiceoverScript: slot.nextVoiceoverScript ?? "",
+        voiceoverFullScript: compactStoryboardPlannerContextText(slot.voiceoverFullScript, 6000),
+        previousVoiceoverScript: compactStoryboardPlannerContextText(slot.previousVoiceoverScript, 1200),
+        nextVoiceoverScript: compactStoryboardPlannerContextText(slot.nextVoiceoverScript, 1200),
         previousJourneyStage: slot.previousJourneyStage ?? "",
         nextJourneyStage: slot.nextJourneyStage ?? "",
-        previousPrompt: slot.previousPrompt ?? "",
-        nextPrompt: slot.nextPrompt ?? "",
+        previousPrompt: compactStoryboardPlannerContextText(slot.previousPrompt),
+        nextPrompt: compactStoryboardPlannerContextText(slot.nextPrompt),
       },
     };
   });
@@ -2271,6 +2369,9 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
 
 const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
 const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 4500;
+const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS = 20000;
+const STORYBOARD_REVIEW_PLANNER_CONTEXT_MAX_CHARS = 2400;
 const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS = new Set([
   "household_product",
   "computer_laptop",
@@ -3273,7 +3374,7 @@ export const skillsRouter = router({
       slots: z.array(z.object({
         id: z.string().trim().min(1).max(255),
         index: z.number().int().min(0),
-        currentPrompt: z.string().max(8000).optional(),
+        currentPrompt: z.string().max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS).optional(),
         startFrameUrl: z.string().trim().min(1),
         endFrameUrl: z.string().trim().min(1),
         frameRoles: z.array(z.enum(["start", "stop", "reference"])).min(2).max(2).optional(),
@@ -3283,12 +3384,12 @@ export const skillsRouter = router({
         durationSeconds: z.number().positive().max(60).optional(),
         model: z.string().trim().max(255).optional(),
         voiceoverFullScript: z.string().trim().max(12000).optional(),
-        previousVoiceoverScript: z.string().trim().max(2000).optional(),
-        nextVoiceoverScript: z.string().trim().max(2000).optional(),
+        previousVoiceoverScript: z.string().trim().max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS).optional(),
+        nextVoiceoverScript: z.string().trim().max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS).optional(),
         previousJourneyStage: z.string().trim().max(255).optional(),
         nextJourneyStage: z.string().trim().max(255).optional(),
-        previousPrompt: z.string().max(8000).optional(),
-        nextPrompt: z.string().max(8000).optional(),
+        previousPrompt: z.string().max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS).optional(),
+        nextPrompt: z.string().max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS).optional(),
       })).min(1).max(12),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -3452,6 +3553,12 @@ export const skillsRouter = router({
           soundBrief: "",
           qualityNotes: [],
         });
+        slots = repairStoryboardPlannerVoiceoversFromSource({
+          slots,
+          sourceSlotById,
+          speechMode: input.speechMode,
+          speechLanguage: input.speechLanguage ?? null,
+        });
         slots = slots.map((slot) => enforceStoryboardPlannerNativeAudio({
           slot,
           sourceSlot: sourceSlotById.get(slot.id),
@@ -3545,6 +3652,83 @@ export const skillsRouter = router({
             speechLanguage: input.speechLanguage ?? null,
           }));
         }
+        slots = repairStoryboardPlannerVoiceoversFromSource({
+          slots,
+          sourceSlotById,
+          speechMode: input.speechMode,
+          speechLanguage: input.speechLanguage ?? null,
+        });
+        slots = slots.map((slot) => enforceStoryboardPlannerNativeAudio({
+          slot,
+          sourceSlot: sourceSlotById.get(slot.id),
+          includeSound: input.includeSound,
+          speechMode: input.speechMode,
+          speechLanguage: input.speechLanguage ?? null,
+        }));
+
+        let optimizedPromptSlotCount = 0;
+        let optimizerPromptTokens = 0;
+        let optimizerCompletionTokens = 0;
+        let optimizerCreditsUsed = 0;
+        const overLengthPromptSlots = slots.filter(
+          (slot) => slot.videoPrompt.trim().length > STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS
+        );
+        if (overLengthPromptSlots.length > 0) {
+          console.warn("[Skills] storyboard review video prompts exceeded limit; optimizing before use", {
+            maxOutputChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
+            slotCount: overLengthPromptSlots.length,
+            slots: overLengthPromptSlots.map((slot) => ({
+              id: slot.id,
+              length: slot.videoPrompt.trim().length,
+            })),
+          });
+          const optimizedResults = await Promise.all(overLengthPromptSlots.map(async (slot) => {
+            const sourcePrompt = slot.videoPrompt.trim();
+            const optimizerResult = await optimizeProductReferenceStoryboardPrompt({
+              tenantId: ctx.tenantId ?? "default",
+              userId,
+              sourcePrompt,
+              originSurface: "storyboard_review",
+              unitId: slot.id,
+              model: visionModel,
+              maxOutputChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
+            });
+            const slotPosition = slotPositionById.get(slot.id) ?? 0;
+            const optimizedPrompt = normalizeStoryboardSlotLocalImageAliases(
+              optimizerResult.value.rawContent
+                .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
+                .replace(/\s*```$/i, "")
+                .trim(),
+              slotPosition,
+            );
+            return {
+              slotId: slot.id,
+              sourceLength: sourcePrompt.length,
+              optimizedPrompt,
+              optimizedLength: optimizedPrompt.length,
+              optimizerResult,
+            };
+          }));
+          const optimizedPromptBySlotId = new Map(optimizedResults.map((result) => [result.slotId, result]));
+          optimizedPromptSlotCount = optimizedResults.length;
+          for (const result of optimizedResults) {
+            optimizerPromptTokens += Number(result.optimizerResult.value.usage?.promptTokens ?? 0);
+            optimizerCompletionTokens += Number(result.optimizerResult.value.usage?.completionTokens ?? 0);
+            optimizerCreditsUsed += Number(result.optimizerResult.value.creditsUsed ?? 0);
+          }
+          slots = slots.map((slot) => {
+            const optimized = optimizedPromptBySlotId.get(slot.id);
+            if (!optimized) return slot;
+            return {
+              ...slot,
+              videoPrompt: optimized.optimizedPrompt,
+              qualityNotes: [
+                ...slot.qualityNotes,
+                `Optimized by product-reference-storyboard-prompt-optimizer from ${optimized.sourceLength} to ${optimized.optimizedLength} chars for Storyboard Review video prompt limit.`,
+              ],
+            };
+          });
+        }
 
         const finalNormalizedPromptCounts = new Map<string, number>();
         for (const slot of slots) {
@@ -3560,6 +3744,9 @@ export const skillsRouter = router({
               || isGenericStoryboardTransitionPrompt(slot.videoPrompt)
               || (finalNormalizedPromptCounts.get(normalized) ?? 0) > 1;
           })
+          .map((slot) => slot.id);
+        const overLengthPromptSlotIds = slots
+          .filter((slot) => slot.videoPrompt.trim().length > STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS)
           .map((slot) => slot.id);
         const finalVoiceoverCounts = buildStoryboardVoiceoverCounts(slots);
         const invalidVoiceoverSlotIds = shouldIncludeVoiceover
@@ -3580,6 +3767,9 @@ export const skillsRouter = router({
           : [];
         if (invalidPromptSlotIds.length > 0) {
           throw new Error(`Planner returned generic or duplicate prompts for slots: ${invalidPromptSlotIds.join(",")}`);
+        }
+        if (overLengthPromptSlotIds.length > 0) {
+          throw new Error(`Storyboard Review prompt optimizer returned prompts over ${STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS} chars for slots: ${overLengthPromptSlotIds.join(",")}`);
         }
         if (invalidVoiceoverSlotIds.length > 0) {
           throw new Error(`Planner returned missing, duplicate, or too-short dialogue for slots: ${invalidVoiceoverSlotIds.join(",")}`);
@@ -3606,6 +3796,11 @@ export const skillsRouter = router({
             referenceImageCount: referenceImages.length,
             slotCount: orderedSlots.length,
             repairedSlotCount: repairSlotIds.size,
+            optimizedPromptSlotCount,
+            optimizerInputTokens: optimizerPromptTokens,
+            optimizerOutputTokens: optimizerCompletionTokens,
+            optimizerCreditsUsed,
+            promptMaxChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
             originSurface: "storyboard_review",
           },
         });
@@ -3614,7 +3809,7 @@ export const skillsRouter = router({
           success: true,
           skillId: skillSlug,
           model: visionModel,
-          creditsUsed,
+          creditsUsed: creditsUsed + optimizerCreditsUsed,
           globalVideoStrategy: parsed.global_video_strategy ?? parsed.globalVideoStrategy ?? {},
           slots,
           voiceoverFullScript: String(parsed.voiceover_full_script ?? parsed.voiceoverFullScript ?? "") || suppliedVoiceoverFullScript,

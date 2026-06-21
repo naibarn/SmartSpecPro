@@ -48,6 +48,7 @@ import { MarketplaceInsightsSection } from "@/components/marketplace/Marketplace
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
 import { AutoStoryboardAdvancedOverrides } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
+import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
 import type {
   HyperframesAutoPlanOverrideInput,
@@ -56,7 +57,14 @@ import type {
 import {
   type MarketplaceAutoReviewLaunchMode,
 } from "@shared/hyperframes/contracts";
+import {
+  AUTO_REVIEW_CREATIVE_PRESETS,
+  autoReviewCreativePresetRequestedAudioStrategy,
+  type AutoReviewCreativePresetFamily,
+  type AutoReviewCreativePresetSelection,
+} from "@shared/hyperframes/autoReviewCreativePresets";
 import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 
 type ProductMediaTab = "image" | "video" | "audio";
 type ProductPanelTab = "history" | "library" | "product";
@@ -92,7 +100,7 @@ type AutoReviewAudioStrategy =
   | "silent";
 type AutoReviewShotCount = 7 | 8 | 9;
 type AutoReviewOverlayTextMode = "no_text" | "allow_text";
-type AutoReviewImageModel = "google-nano-banana-pro" | "google-banana-2";
+type AutoReviewImageModel = string;
 type AutoReviewStartAction = "storyboard" | "video" | "auto_review_video";
 type AutoReviewCharacterMode =
   | "product_only"
@@ -122,6 +130,10 @@ type AutoReviewCharacterChoice = {
   id: string;
   label: string;
   description?: string;
+};
+type AutoReviewCreativePresetChoice = AutoReviewCharacterChoice & {
+  id: string;
+  family: AutoReviewCreativePresetFamily;
 };
 type UploadedReferenceAnchor = {
   url: string;
@@ -300,6 +312,57 @@ const AUTO_REVIEW_STORYTELLING_STRUCTURES: Array<
     label: "Problem → Struggle → Solution → Transformation",
   },
 ];
+const AUTO_REVIEW_CREATIVE_PRESET_GROUPS: Array<{
+  family: AutoReviewCreativePresetFamily;
+  title: string;
+  description: string;
+}> = [
+  {
+    family: "pacing_preset",
+    title: "Preset: จังหวะ",
+    description: "คุมความเร็วและความกระชับของแต่ละ beat",
+  },
+  {
+    family: "camera_motion_preset",
+    title: "Preset: กล้อง",
+    description: "คุมภาษากล้อง โดยต้องรักษา reference frame",
+  },
+  {
+    family: "visual_style_preset",
+    title: "Preset: ภาพ",
+    description: "คุมบรรยากาศภาพ โดยห้ามเปลี่ยน product/character lock",
+  },
+  {
+    family: "audio_preset",
+    title: "Preset: เสียง",
+    description: "เลือกไม่มีเสียง / TTS แยก / native audio อย่างปลอดภัย",
+  },
+  {
+    family: "platform_preset",
+    title: "Preset: แพลตฟอร์ม",
+    description: "ปรับจังหวะให้เหมาะกับช่องทาง เช่น TikTok Shop",
+  },
+  {
+    family: "segment_structure_preset",
+    title: "Preset: Multi-shot / Sub-shot",
+    description: "เลือกว่าจะสร้างแบบ per-shot หรือรวมหลาย sub-shot ใน 1 วิดีโอ แล้วดู preview ด้านล่าง",
+  },
+];
+const AUTO_REVIEW_CREATIVE_PRESET_OPTIONS: AutoReviewCreativePresetChoice[] =
+  AUTO_REVIEW_CREATIVE_PRESETS.map(preset => ({
+    id: preset.id,
+    family: preset.family,
+    label: preset.thaiLabel,
+    description: preset.description,
+  }));
+const AUTO_REVIEW_SEGMENT_PRESET_VIDEO_STRUCTURE: Record<
+  string,
+  NonNullable<HyperframesAutoPlanOverrideInput["videoStructureMode"]>
+> = {
+  segment_per_shot_control: "per_shot",
+  segment_adaptive_model: "adaptive_multi_shot",
+  segment_compact_multi: "compact_multi_shot",
+};
 const PRODUCT_REFERENCE_CATEGORY_LABELS: Record<string, string> = {
   auto: "Auto / ให้ระบบเดาหมวดสินค้า",
   household_product: "เครื่องใช้ในบ้าน",
@@ -434,6 +497,24 @@ function normalizeStoryboardReviewLink(
   }
 
   return appendStoryboardReviewHyperframesContext(trimmed, context);
+}
+
+function normalizeAutoReviewOutputLinkUrl(
+  link: unknown,
+  context?: {
+    productId?: unknown;
+    runId?: unknown;
+    renderJobId?: unknown;
+  }
+): string {
+  const record = asRecord(link);
+  const url = compactLinkText(record.url);
+  if (!url) return "";
+  const kind = compactLinkText(record.kind);
+  if (kind === "storyboard_review" || url.includes("/storyboard-review")) {
+    return normalizeStoryboardReviewLink(url, context) ?? url;
+  }
+  return url;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -764,7 +845,7 @@ function autoReviewAttemptMessage(status: string, reasons: string[]): string {
 }
 
 function autoReviewReasonBlocksPublishSafety(reason: string): boolean {
-  return /minor.*safety|child.*safety|child.*clothing|baby.*clothing|shirtless|bare.*(chest|torso)|(diaper|underwear).*only|nudit|semi.*nude|เด็ก.*(ไม่ใส่เสื้อ|เปลือย|เสื้อผ้าไม่ครบ)|เด็ก.*ผ้าอ้อมอย่างเดียว/i.test(
+  return /shirtless|bare.*(chest|torso)|(diaper|underwear).*only|nudit|semi.*nude|เด็ก.*(ไม่ใส่เสื้อ|เปลือย|เสื้อผ้าไม่ครบ)|เด็ก.*ผ้าอ้อมอย่างเดียว/i.test(
     reason
   );
 }
@@ -2214,6 +2295,10 @@ export default function MarketplaceCaptureProductDetail() {
     useState<AutoReviewOverlayTextMode>("no_text");
   const [autoReviewImageModel, setAutoReviewImageModel] =
     useState<AutoReviewImageModel>("google-banana-2");
+  const [autoReviewMcpConnectionId, setAutoReviewMcpConnectionId] =
+    useState<string | null>(null);
+  const [autoReviewMcpSharedGroupId, setAutoReviewMcpSharedGroupId] =
+    useState<number | null>(null);
   const [autoReviewLaunchMode, setAutoReviewLaunchMode] =
     useState<MarketplaceAutoReviewLaunchMode>("auto_storyboard_review");
   const [showAutoStoryboardAdvanced, setShowAutoStoryboardAdvanced] =
@@ -2274,6 +2359,9 @@ export default function MarketplaceCaptureProductDetail() {
     useState<AutoReviewReviewTone>("");
   const [autoReviewStorytellingStructure, setAutoReviewStorytellingStructure] =
     useState<AutoReviewStorytellingStructure>("");
+  const [autoReviewCreativePresets, setAutoReviewCreativePresets] = useState<
+    AutoReviewCreativePresetSelection[]
+  >([]);
   const [
     autoReviewPrimaryCharacterDetails,
     setAutoReviewPrimaryCharacterDetails,
@@ -2298,6 +2386,243 @@ export default function MarketplaceCaptureProductDetail() {
       { productId },
       { enabled: Boolean(productId) }
     );
+  const imageMediaModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
+  const videoMediaModelsQuery = trpc.mediaModels.list.useQuery({ type: "video" });
+  const mcpConnectionsQuery = trpc.mcpConnections.listConnections.useQuery(
+    undefined,
+    { retry: false }
+  );
+  const eligibleImageMcpProviderKeys = useMemo(
+    () =>
+      new Set(
+        (mcpConnectionsQuery.data ?? [])
+          .filter(connection => {
+            if (connection.status !== "connected") return false;
+            return (
+              !connection.allowedAssetTypes?.length ||
+              connection.allowedAssetTypes.includes("image")
+            );
+          })
+          .map(connection => String(connection.providerKey ?? "").trim())
+          .filter(Boolean)
+      ),
+    [mcpConnectionsQuery.data]
+  );
+  const eligibleVideoMcpProviderKeys = useMemo(
+    () =>
+      new Set(
+        (mcpConnectionsQuery.data ?? [])
+          .filter(connection => {
+            if (connection.status !== "connected") return false;
+            return (
+              !connection.allowedAssetTypes?.length ||
+              connection.allowedAssetTypes.includes("video")
+            );
+          })
+          .map(connection => String(connection.providerKey ?? "").trim())
+          .filter(Boolean)
+      ),
+    [mcpConnectionsQuery.data]
+  );
+  const autoReviewImageModelRecords = useMemo(
+    () => ((imageMediaModelsQuery.data?.models as any[] | undefined) ?? []),
+    [imageMediaModelsQuery.data?.models]
+  );
+  const autoReviewVideoModelRecords = useMemo(
+    () => ((videoMediaModelsQuery.data?.models as any[] | undefined) ?? []),
+    [videoMediaModelsQuery.data?.models]
+  );
+  const autoReviewImageModelById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const model of autoReviewImageModelRecords) {
+      const modelId = String(model?.modelId ?? "").trim();
+      if (modelId) map.set(modelId, model);
+    }
+    return map;
+  }, [autoReviewImageModelRecords]);
+  const resolveAutoReviewImageModelTransport = useCallback(
+    (modelId: string) => {
+      const model = autoReviewImageModelById.get(modelId);
+      return resolveMediaModelTransportConfig({
+        provider: model?.provider,
+        modelId,
+        configJson: model?.configJson,
+      });
+    },
+    [autoReviewImageModelById]
+  );
+  const autoReviewVideoModelById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const model of autoReviewVideoModelRecords) {
+      const modelId = String(model?.modelId ?? "").trim();
+      if (modelId) map.set(modelId, model);
+    }
+    return map;
+  }, [autoReviewVideoModelRecords]);
+  const resolveAutoReviewVideoModelTransport = useCallback(
+    (modelId: string) => {
+      const model = autoReviewVideoModelById.get(modelId);
+      return resolveMediaModelTransportConfig({
+        provider: model?.provider,
+        modelId,
+        configJson: model?.configJson,
+      });
+    },
+    [autoReviewVideoModelById]
+  );
+  const autoReviewImageModelOptions = useMemo(() => {
+    return autoReviewImageModelRecords
+      .map(model => {
+        const modelId = String(model?.modelId ?? "").trim();
+        if (!modelId) return null;
+        const transport = resolveMediaModelTransportConfig({
+          provider: model?.provider,
+          modelId,
+          configJson: model?.configJson,
+        });
+        if (
+          transport.transport === "mcp" &&
+          (!transport.providerKey ||
+            !eligibleImageMcpProviderKeys.has(transport.providerKey))
+        ) {
+          return null;
+        }
+        const provider = String(model?.provider ?? transport.providerKey ?? "").trim();
+        const routeLabel = transport.transport === "mcp" ? "MCP" : "API";
+        const providerLabel = provider ? ` • ${provider}` : "";
+        return {
+          value: modelId,
+          label: String(model?.name ?? modelId),
+          description:
+            String(model?.description ?? "").trim() ||
+            `${routeLabel}${providerLabel}`,
+          provider,
+          transport: transport.transport,
+          providerKey: transport.providerKey ?? null,
+          creditCost:
+            typeof model?.creditCost === "number" ? model.creditCost : null,
+        };
+      })
+      .filter(Boolean) as Array<{
+        value: string;
+        label: string;
+        description: string;
+        provider: string;
+        transport: "gateway_api" | "mcp";
+        providerKey: string | null;
+        creditCost: number | null;
+      }>;
+  }, [autoReviewImageModelRecords, eligibleImageMcpProviderKeys]);
+  const autoReviewVideoModelOptions = useMemo(() => {
+    return autoReviewVideoModelRecords
+      .map(model => {
+        const modelId = String(model?.modelId ?? "").trim();
+        if (!modelId) return null;
+        const transport = resolveMediaModelTransportConfig({
+          provider: model?.provider,
+          modelId,
+          configJson: model?.configJson,
+        });
+        if (
+          transport.transport === "mcp" &&
+          (!transport.providerKey ||
+            !eligibleVideoMcpProviderKeys.has(transport.providerKey))
+        ) {
+          return null;
+        }
+        const provider = String(model?.provider ?? transport.providerKey ?? "").trim();
+        const routeLabel = transport.transport === "mcp" ? "MCP" : "API";
+        const providerLabel = provider ? ` • ${provider}` : "";
+        return {
+          value: modelId,
+          label: String(model?.name ?? modelId),
+          description:
+            String(model?.description ?? "").trim() ||
+            `${routeLabel}${providerLabel}`,
+          provider,
+          transport: transport.transport,
+          providerKey: transport.providerKey ?? null,
+          creditCost:
+            typeof model?.creditCost === "number" ? model.creditCost : null,
+        };
+      })
+      .filter(Boolean) as Array<{
+        value: string;
+        label: string;
+        description: string;
+        provider: string;
+        transport: "gateway_api" | "mcp";
+        providerKey: string | null;
+        creditCost: number | null;
+      }>;
+  }, [autoReviewVideoModelRecords, eligibleVideoMcpProviderKeys]);
+  useEffect(() => {
+    if (!autoReviewImageModelOptions.length) return;
+    if (
+      !autoReviewImageModelOptions.some(
+        option => option.value === autoReviewImageModel
+      )
+    ) {
+      setAutoReviewImageModel(autoReviewImageModelOptions[0].value);
+    }
+  }, [autoReviewImageModel, autoReviewImageModelOptions]);
+  useEffect(() => {
+    const overrideImageModel = String(autoStoryboardOverrides.imageModel ?? "").trim();
+    if (!overrideImageModel || !autoReviewImageModelOptions.length) return;
+    if (
+      autoReviewImageModelOptions.some(option => option.value === overrideImageModel)
+    ) {
+      return;
+    }
+    setAutoStoryboardOverrides(previous => {
+      if (!previous.imageModel) return previous;
+      const next = { ...previous };
+      delete next.imageModel;
+      return next;
+    });
+  }, [autoReviewImageModelOptions, autoStoryboardOverrides.imageModel]);
+  useEffect(() => {
+    const overrideVideoModel = String(autoStoryboardOverrides.videoModel ?? "").trim();
+    if (!overrideVideoModel || !autoReviewVideoModelOptions.length) return;
+    if (
+      autoReviewVideoModelOptions.some(option => option.value === overrideVideoModel)
+    ) {
+      return;
+    }
+    setAutoStoryboardOverrides(previous => {
+      if (!previous.videoModel) return previous;
+      const next = { ...previous };
+      delete next.videoModel;
+      return next;
+    });
+  }, [autoReviewVideoModelOptions, autoStoryboardOverrides.videoModel]);
+  const buildAutoReviewTransportMetadata = useCallback(
+    (imageModelId: string, videoModelId?: string) => {
+      const imageTransport = resolveAutoReviewImageModelTransport(imageModelId);
+      const videoTransport = videoModelId
+        ? resolveAutoReviewVideoModelTransport(videoModelId)
+        : null;
+      const transport =
+        imageTransport.transport === "mcp"
+          ? imageTransport
+          : videoTransport?.transport === "mcp"
+            ? videoTransport
+            : null;
+      if (!transport) return undefined;
+      return {
+        transport: "mcp" as const,
+        connectionId: autoReviewMcpConnectionId ?? undefined,
+        mcpConnectionId: autoReviewMcpConnectionId ?? undefined,
+        sharedGroupId: autoReviewMcpSharedGroupId ?? undefined,
+      };
+    },
+    [
+      autoReviewMcpConnectionId,
+      autoReviewMcpSharedGroupId,
+      resolveAutoReviewImageModelTransport,
+      resolveAutoReviewVideoModelTransport,
+    ]
+  );
   const autoStoryboardPlanQuery =
     trpc.marketplaceCapture.getAutoStoryboardReviewPlan.useQuery(
       { productId, overrides: autoStoryboardOverrides },
@@ -2340,6 +2665,50 @@ export default function MarketplaceCaptureProductDetail() {
     autoStoryboardPlan &&
       (!autoStoryboardPlanMatchesCurrentOverrides ||
         (autoStoryboardOverridesActive && autoStoryboardPlanQuery.isFetching))
+  );
+  const selectedStandardImageModelTransport = resolveAutoReviewImageModelTransport(
+    autoReviewImageModel
+  );
+  const selectedStandardImageModelProviderKey =
+    selectedStandardImageModelTransport.transport === "mcp"
+      ? selectedStandardImageModelTransport.providerKey ?? null
+      : null;
+  const autoStoryboardSelectedImageModel = String(
+    autoStoryboardOverrides.imageModel ??
+      autoStoryboardPlan?.defaults?.imageModel ??
+      "google-banana-2"
+  );
+  const autoStoryboardSelectedVideoModel = String(
+    autoStoryboardOverrides.videoModel ??
+      autoStoryboardPlan?.defaults?.videoModel ??
+      "veo3/generate-veo-3-video-lite"
+  );
+  const selectedAutoStoryboardImageModelTransport =
+    resolveAutoReviewImageModelTransport(autoStoryboardSelectedImageModel);
+  const selectedAutoStoryboardVideoModelTransport =
+    resolveAutoReviewVideoModelTransport(autoStoryboardSelectedVideoModel);
+  const selectedAutoStoryboardImageModelProviderKey =
+    selectedAutoStoryboardImageModelTransport.transport === "mcp"
+      ? selectedAutoStoryboardImageModelTransport.providerKey ?? null
+      : null;
+  const selectedAutoStoryboardVideoModelProviderKey =
+    selectedAutoStoryboardVideoModelTransport.transport === "mcp"
+      ? selectedAutoStoryboardVideoModelTransport.providerKey ?? null
+      : null;
+  const selectedAutoStoryboardMcpProviderKey =
+    selectedAutoStoryboardImageModelProviderKey ??
+    selectedAutoStoryboardVideoModelProviderKey;
+  const autoStoryboardVideoSegmentTransportMetadata = useMemo(
+    () =>
+      buildAutoReviewTransportMetadata(
+        autoStoryboardSelectedImageModel,
+        autoStoryboardSelectedVideoModel
+      ),
+    [
+      autoStoryboardSelectedImageModel,
+      autoStoryboardSelectedVideoModel,
+      buildAutoReviewTransportMetadata,
+    ]
   );
   const shouldLoadAutoReviewRuns =
     Boolean(productId) &&
@@ -2815,6 +3184,9 @@ export default function MarketplaceCaptureProductDetail() {
     : "";
   const statusImageTaskSummary =
     autoReviewImageTaskSummary(statusAutoReviewRun);
+  const statusHyperframesRenderRef = statusAutoReviewRun
+    ? hyperframesRenderRefFromAutoReviewRun(statusAutoReviewRun)
+    : null;
   const statusOutputLinks = statusAutoReviewRun
     ? [
         ...(Array.isArray(statusAutoReviewRun?.apiProjection?.outputLinks)
@@ -2823,7 +3195,17 @@ export default function MarketplaceCaptureProductDetail() {
         ...(Array.isArray(statusProjection.outputLinks)
           ? statusProjection.outputLinks
           : []),
-      ].filter(
+      ].map(link => ({
+        ...asRecord(link),
+        url: normalizeAutoReviewOutputLinkUrl(link, {
+          productId: statusAutoReviewRun.productId ?? productId,
+          runId:
+            statusHyperframesRenderRef?.runId ||
+            statusAutoReviewRun.id ||
+            statusAutoReviewRun.productionRunId,
+          renderJobId: statusHyperframesRenderRef?.renderJobId,
+        }),
+      })).filter(
         (link, index, links) =>
           compactText(link?.url) &&
           links.findIndex(
@@ -3222,6 +3604,38 @@ export default function MarketplaceCaptureProductDetail() {
   const resolvedProductAnchorImageDimensions = resolvedProductAnchorImage
     ? imageDimensions[resolvedProductAnchorImage.id]
     : undefined;
+  const autoStoryboardVideoSegmentPreviewInput = useMemo(
+    () => ({
+      productId,
+      overrides: autoStoryboardOverrides,
+      transportMetadata: autoStoryboardVideoSegmentTransportMetadata,
+      referenceAnchors: {
+        schemaVersion: 1,
+        creationIntent: "auto_review_video" as const,
+        productImageUrl: resolvedProductAnchorImageUrl || undefined,
+        creativePresets: autoReviewCreativePresets,
+      },
+    }),
+    [
+      autoReviewCreativePresets,
+      autoStoryboardOverrides,
+      autoStoryboardVideoSegmentTransportMetadata,
+      productId,
+      resolvedProductAnchorImageUrl,
+    ]
+  );
+  const autoStoryboardVideoSegmentPreviewQuery =
+    trpc.marketplaceCapture.getVideoSegmentPlanPreview.useQuery(
+      autoStoryboardVideoSegmentPreviewInput,
+      {
+        enabled:
+          Boolean(productId) &&
+          Boolean(resolvedProductAnchorImageUrl) &&
+          effectiveAutoReviewLaunchMode === "auto_storyboard_review",
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+      }
+    );
   const productDiagnosticsRows = [
     {
       label: t("marketplaceCapture.productDiagnostics.productId"),
@@ -3285,6 +3699,62 @@ export default function MarketplaceCaptureProductDetail() {
     AUTO_REVIEW_STORYTELLING_STRUCTURES.find(
       option => option.id === autoReviewStorytellingStructure
     );
+  const selectedCreativePresetLabels = autoReviewCreativePresets
+    .map(selection =>
+      AUTO_REVIEW_CREATIVE_PRESET_OPTIONS.find(
+        option =>
+          option.id === selection.presetId && option.family === selection.family
+      )
+    )
+    .filter((option): option is AutoReviewCreativePresetChoice =>
+      Boolean(option)
+    )
+    .map(option => option.label);
+  const selectedAudioCreativePreset = autoReviewCreativePresets.find(
+    selection => selection.family === "audio_preset"
+  );
+  const selectAutoReviewCreativePreset = useCallback(
+    (family: AutoReviewCreativePresetFamily, presetId: string) => {
+      const nextSelections =
+        presetId === ""
+          ? autoReviewCreativePresets.filter(item => item.family !== family)
+          : [
+              ...autoReviewCreativePresets.filter(
+                item => item.family !== family
+              ),
+              { family, presetId },
+            ];
+      setAutoReviewCreativePresets(nextSelections);
+      if (family === "audio_preset") {
+        const requestedAudioStrategy =
+          autoReviewCreativePresetRequestedAudioStrategy(nextSelections);
+        setAutoStoryboardOverrides(previous => {
+          const next = { ...previous };
+          if (requestedAudioStrategy) {
+            next.audioStrategy = requestedAudioStrategy;
+          } else {
+            delete next.audioStrategy;
+          }
+          return next;
+        });
+      }
+      if (family === "segment_structure_preset") {
+        setAutoStoryboardOverrides(previous => {
+          const next = { ...previous };
+          const videoStructureMode =
+            AUTO_REVIEW_SEGMENT_PRESET_VIDEO_STRUCTURE[presetId];
+          if (videoStructureMode) {
+            next.videoStructureMode = videoStructureMode;
+          } else {
+            delete next.videoStructureMode;
+            delete next.manualVideoGroupSize;
+          }
+          return next;
+        });
+      }
+    },
+    [autoReviewCreativePresets]
+  );
   const autoReviewCharacterBrief = useMemo(
     () => {
       const genderLabel = optionLabel(
@@ -3632,6 +4102,9 @@ export default function MarketplaceCaptureProductDetail() {
         ...(autoReviewStorytellingStructure
           ? { storytellingStructure: autoReviewStorytellingStructure }
           : {}),
+        ...(autoReviewCreativePresets.length > 0
+          ? { creativePresets: autoReviewCreativePresets }
+          : {}),
         characterMode: autoReviewCharacterMode,
         characterBrief: autoReviewCharacterBrief.summary,
         characterPreset: autoReviewCharacterBrief,
@@ -3779,6 +4252,7 @@ export default function MarketplaceCaptureProductDetail() {
     [
       autoReviewCharacterBrief,
       autoReviewCharacterMode,
+      autoReviewCreativePresets,
       autoReviewStorytellingStructure,
       autoReviewTone,
       characterAnchor,
@@ -3810,6 +4284,29 @@ export default function MarketplaceCaptureProductDetail() {
       return;
     }
     if (
+      selectedAutoStoryboardImageModelProviderKey &&
+      selectedAutoStoryboardVideoModelProviderKey &&
+      selectedAutoStoryboardImageModelProviderKey !==
+        selectedAutoStoryboardVideoModelProviderKey
+    ) {
+      toast.error(
+        "โมเดลภาพและโมเดลวิดีโอใช้ MCP คนละ provider กรุณาเลือก provider เดียวกัน หรือใช้ API model อย่างใดอย่างหนึ่ง"
+      );
+      return;
+    }
+    const transportMetadata = buildAutoReviewTransportMetadata(
+      autoStoryboardSelectedImageModel,
+      autoStoryboardSelectedVideoModel
+    );
+    if (
+      (selectedAutoStoryboardImageModelTransport.transport === "mcp" ||
+        selectedAutoStoryboardVideoModelTransport.transport === "mcp") &&
+      !transportMetadata?.connectionId
+    ) {
+      toast.error("กรุณาเลือก MCP account สำหรับโมเดลนี้ก่อนเริ่มงาน");
+      return;
+    }
+    if (
       autoStoryboardPlan.primaryAction.actionId ===
         "resume_auto_storyboard_review" &&
       autoStoryboardPlan.activeRunId
@@ -3838,6 +4335,7 @@ export default function MarketplaceCaptureProductDetail() {
         expectedPlanHash: autoStoryboardPlan.planHash,
         idempotencyKey: `hf-auto-resume:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
         overrides: autoStoryboardOverrides,
+        transportMetadata,
         referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
       });
       return;
@@ -3871,6 +4369,7 @@ export default function MarketplaceCaptureProductDetail() {
       expectedPlanHash: autoStoryboardPlan.planHash,
       idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
       overrides: autoStoryboardOverrides,
+      transportMetadata,
       referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
     });
   }
@@ -3907,6 +4406,15 @@ export default function MarketplaceCaptureProductDetail() {
       const requestedAudioStrategy: AutoReviewAudioStrategy =
         selectedAudioStrategy;
       const referenceAnchors = buildAutoReviewReferenceAnchors(action);
+      const transportMetadata =
+        buildAutoReviewTransportMetadata(autoReviewImageModel);
+      if (
+        selectedStandardImageModelTransport.transport === "mcp" &&
+        !transportMetadata?.connectionId
+      ) {
+        toast.error("กรุณาเลือก MCP account สำหรับโมเดลนี้ก่อนเริ่มงาน");
+        return;
+      }
 
       setAutoReviewOutputMode(requestedOutputMode);
       setAutoReviewFrameStrategy(requestedFrameStrategy);
@@ -3932,6 +4440,7 @@ export default function MarketplaceCaptureProductDetail() {
         shotCount: autoReviewShotCount,
         overlayTextMode: autoReviewOverlayTextMode,
         imageModel: autoReviewImageModel,
+        transportMetadata,
         referenceAnchors,
       });
     },
@@ -3944,10 +4453,12 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewRunItems,
       autoReviewShotCount,
       autoReviewCharacterMode,
+      buildAutoReviewTransportMetadata,
       buildAutoReviewReferenceAnchors,
       characterAnchorUrl,
       productId,
       resolvedProductAnchorImageUrl,
+      selectedStandardImageModelTransport.transport,
       startAutoReviewMutation,
     ]
   );
@@ -4267,9 +4778,43 @@ export default function MarketplaceCaptureProductDetail() {
               value as AutoReviewStorytellingStructure
             )
         )}
+        {AUTO_REVIEW_CREATIVE_PRESET_GROUPS.map(group => {
+          const selected =
+            autoReviewCreativePresets.find(
+              preset => preset.family === group.family
+            )?.presetId ?? "";
+          const options = [
+            { id: "", label: "Auto", description: "ให้ระบบเลือกเอง" },
+            ...AUTO_REVIEW_CREATIVE_PRESET_OPTIONS.filter(
+              option => option.family === group.family
+            ),
+          ];
+          return (
+            <div key={group.family}>
+              {renderCharacterChoiceGroup(
+                group.title,
+                options,
+                selected,
+                value => selectAutoReviewCreativePreset(group.family, value)
+              )}
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {group.description}
+              </p>
+            </div>
+          );
+        })}
       </div>
+      {selectedAudioCreativePreset?.presetId === "audio_thai_tts" ? (
+        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+          เลือกเสียงไทยแบบ TTS แยก: ระบบจะใช้บทพูดจาก storyboard/shot voiceover เป็น
+          source เดียว และจะไม่สั่งให้โมเดลวิดีโอสร้างเสียงไทยเอง
+          โดยเฉพาะเมื่อใช้ Seedance 2.0
+        </p>
+      ) : null}
       <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-        {autoReviewTone || autoReviewStorytellingStructure
+        {autoReviewTone ||
+        autoReviewStorytellingStructure ||
+        selectedCreativePresetLabels.length > 0
           ? compactStringList([
               autoReviewTone
                 ? `Tone: ${selectedReviewTone?.label ?? autoReviewTone}`
@@ -4279,6 +4824,9 @@ export default function MarketplaceCaptureProductDetail() {
                     selectedStorytellingStructure?.label ??
                     autoReviewStorytellingStructure
                   }`
+                : null,
+              selectedCreativePresetLabels.length > 0
+                ? `Presets: ${selectedCreativePresetLabels.join(" · ")}`
                 : null,
             ]).join(" · ")
           : "Auto: ไม่ส่ง directive เพิ่ม ระบบใช้ creative planner ปัจจุบัน"}
@@ -4392,7 +4940,51 @@ export default function MarketplaceCaptureProductDetail() {
               setAutoStoryboardOverrides({});
               setShowAutoStoryboardAdvanced(false);
             }}
+            imageModelOptions={autoReviewImageModelOptions.map(option => ({
+              value: option.value,
+              label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
+            }))}
+            videoModelOptions={autoReviewVideoModelOptions.map(option => ({
+              value: option.value,
+              label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
+            }))}
+            videoSegmentPreview={{
+              loading: autoStoryboardVideoSegmentPreviewQuery.isFetching,
+              error:
+                autoStoryboardVideoSegmentPreviewQuery.error?.message ?? null,
+              effectiveMode:
+                autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan
+                  .effectiveMode ?? null,
+              creditSource:
+                autoStoryboardVideoSegmentPreviewQuery.data?.creditEstimate
+                  .creditSource ?? null,
+              fallbackReason:
+                autoStoryboardVideoSegmentPreviewQuery.data?.fallbackReason ??
+                null,
+              segments:
+                autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan
+                  .segments.map((segment) => ({
+                    segmentId: segment.segmentId,
+                    shotIds: segment.shotIds,
+                    durationSeconds: segment.durationSeconds,
+                    referenceMode: segment.referenceMode,
+                  })) ?? [],
+              warnings:
+                autoStoryboardVideoSegmentPreviewQuery.data?.warnings ?? [],
+            }}
           />
+          {selectedAutoStoryboardMcpProviderKey ? (
+            <div className="rounded-lg border bg-white p-4">
+              <McpConnectionPicker
+                assetType={selectedAutoStoryboardVideoModelProviderKey ? "video" : "image"}
+                providerKey={selectedAutoStoryboardMcpProviderKey}
+                value={autoReviewMcpConnectionId}
+                sharedGroupId={autoReviewMcpSharedGroupId}
+                onChange={setAutoReviewMcpConnectionId}
+                onSharedGroupChange={setAutoReviewMcpSharedGroupId}
+              />
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>
@@ -5028,40 +5620,58 @@ export default function MarketplaceCaptureProductDetail() {
                   โมเดลสร้างภาพ
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                  {(
-                    [
-                      [
-                        "google-banana-2",
-                        "Nano Banana 2",
-                        "เร็วกว่า เหมาะกับงาน draft หรือ batch",
-                      ],
-                      [
-                        "google-nano-banana-pro",
-                        "Nano Banana Pro",
-                        "คุณภาพสูง เหมาะกับภาพสินค้าและรายละเอียดซับซ้อน",
-                      ],
-                    ] as const
-                  ).map(([model, label, description]) => (
-                    <button
-                      key={model}
-                      type="button"
-                      aria-pressed={autoReviewImageModel === model}
-                      onClick={() => setAutoReviewImageModel(model)}
-                      className={`rounded-lg border p-3 text-left transition ${
-                        autoReviewImageModel === model
-                          ? "border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-100"
-                          : "bg-white/70 hover:bg-white"
-                      }`}
-                    >
-                      <span className="block text-sm font-semibold text-slate-900">
-                        {label}
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">
-                        {description}
-                      </span>
-                    </button>
-                  ))}
+                  {autoReviewImageModelOptions.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-white/60 p-3 text-xs text-slate-500">
+                      ยังไม่มี image model ที่พร้อมใช้งานสำหรับบัญชีนี้
+                    </div>
+                  ) : (
+                    autoReviewImageModelOptions.map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={autoReviewImageModel === option.value}
+                        onClick={() => setAutoReviewImageModel(option.value)}
+                        className={`rounded-lg border p-3 text-left transition ${
+                          autoReviewImageModel === option.value
+                            ? "border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-100"
+                            : "bg-white/70 hover:bg-white"
+                        }`}
+                      >
+                        <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                          {option.label}
+                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                            {option.transport === "mcp" ? "MCP" : "API"}
+                          </span>
+                          {option.provider ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              {option.provider}
+                            </span>
+                          ) : null}
+                          {option.creditCost != null ? (
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              {option.creditCost}c
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                          {option.description}
+                        </span>
+                      </button>
+                    ))
+                  )}
                 </div>
+                {selectedStandardImageModelProviderKey ? (
+                  <div className="mt-3 rounded-lg border bg-white p-3">
+                    <McpConnectionPicker
+                      assetType="image"
+                      providerKey={selectedStandardImageModelProviderKey}
+                      value={autoReviewMcpConnectionId}
+                      sharedGroupId={autoReviewMcpSharedGroupId}
+                      onChange={setAutoReviewMcpConnectionId}
+                      onSharedGroupChange={setAutoReviewMcpSharedGroupId}
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="rounded-lg border bg-slate-50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -5771,6 +6381,10 @@ export default function MarketplaceCaptureProductDetail() {
                     typeof projection.progressPercent === "number"
                       ? Math.round(projection.progressPercent)
                       : null;
+                  const runId =
+                    compactText(run.id) || compactText(run.productionRunId);
+                  const runHyperframesRenderRef =
+                    hyperframesRenderRefFromAutoReviewRun(run);
                   const runOutputLinks = [
                     ...(Array.isArray(run?.apiProjection?.outputLinks)
                       ? run.apiProjection.outputLinks
@@ -5778,7 +6392,14 @@ export default function MarketplaceCaptureProductDetail() {
                     ...(Array.isArray(projection.outputLinks)
                       ? projection.outputLinks
                       : []),
-                  ].filter(
+                  ].map(link => ({
+                    ...asRecord(link),
+                    url: normalizeAutoReviewOutputLinkUrl(link, {
+                      productId: run.productId ?? productId,
+                      runId: runHyperframesRenderRef?.runId || runId,
+                      renderJobId: runHyperframesRenderRef?.renderJobId,
+                    }),
+                  })).filter(
                     (link, index, links) =>
                       compactText(link?.url) &&
                       links.findIndex(
@@ -5794,10 +6415,6 @@ export default function MarketplaceCaptureProductDetail() {
                     run.apiProjection.timeline.items.length > 0;
                   const lockedAnchors = getAutoReviewLockedAnchors(run);
                   const automationSummary = getAutoReviewAutomationSummary(run);
-                  const runId =
-                    compactText(run.id) || compactText(run.productionRunId);
-                  const runHyperframesRenderRef =
-                    hyperframesRenderRefFromAutoReviewRun(run);
                   const isHistoricalAutoReviewRun =
                     Boolean(
                       showAutoReviewHistory &&
@@ -6690,7 +7307,11 @@ export default function MarketplaceCaptureProductDetail() {
                                       {outputLinks.length > 0 ? (
                                         <div className="mt-2 flex flex-wrap gap-2">
                                           {outputLinks.map((link: any) => {
-                                            const href = compactText(link?.url);
+                                            const href = normalizeAutoReviewOutputLinkUrl(link, {
+                                              productId: run.productId ?? productId,
+                                              runId: runHyperframesRenderRef?.runId || runId,
+                                              renderJobId: runHyperframesRenderRef?.renderJobId,
+                                            });
                                             if (!href) return null;
                                             const label =
                                               autoReviewLinkLabel(link);

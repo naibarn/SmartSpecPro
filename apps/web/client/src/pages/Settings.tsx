@@ -68,6 +68,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
+import { McpConnectPanel } from '@/components/settings/McpConnectPanel';
 import { McpServersSettingsPanel } from '@/components/settings/McpServersSettingsPanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { UploadPostGatewayPanel } from '@/components/settings/UploadPostGatewayPanel';
@@ -2279,6 +2280,7 @@ export default function Settings() {
                     description={t('settings.integrations.description')}
                   />
                   <UploadPostGatewayPanel tenantId={user.currentTenantId ?? null} />
+                  <McpConnectPanel />
                   <McpServersSettingsPanel />
                   <GoogleDrivePanel />
                   <OneDrivePanel />

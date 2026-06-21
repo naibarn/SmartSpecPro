@@ -149,6 +149,15 @@ async def test_generate_image_omits_internal_metadata_extra_params_from_provider
         output_format="jpg",
         extra_params={
             "google_search": False,
+            "reference_image_manifest": [
+                {
+                    "placeholder": "@Image1",
+                    "role": "product",
+                    "url": "https://cdn.example.com/very-long-product-file-name.png",
+                },
+            ],
+            "reference_image_role_order": ["@Image1=product"],
+            "reference_image_role_counts": {"product": 1, "total": 1},
             "marketplaceContext": {
                 "platform": "shopee",
                 "productName": "Nordic bedside table",
@@ -165,6 +174,9 @@ async def test_generate_image_omits_internal_metadata_extra_params_from_provider
     assert payload["resolution"] == "4K"
     assert payload["output_format"] == "jpg"
     assert "marketplaceContext" not in payload
+    assert "reference_image_manifest" not in payload
+    assert "reference_image_role_order" not in payload
+    assert "reference_image_role_counts" not in payload
     assert "__reserved_credits" not in payload
     assert "__origin_surface" not in payload
 

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, Fragment } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
@@ -68,6 +68,7 @@ import {
   Zap,
   Bot,
   FileText,
+  Cable,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -302,12 +303,167 @@ function normalizeVectorDbHealthPayload(data: any) {
   };
 }
 
+function McpProviderConfigPanel() {
+  const utils = trpc.useUtils();
+  const configQuery = trpc.mcpConnections.getProviderConfig.useQuery();
+  const saveConfig = trpc.mcpConnections.saveProviderConfig.useMutation({
+    onSuccess: async () => {
+      toast.success("MCP provider settings saved");
+      await utils.mcpConnections.getProviderConfig.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const [form, setForm] = useState({
+    callbackBaseUrl: "",
+    redirectAllowlist: "",
+    timeoutMs: 30000,
+    retryCount: 1,
+    schemaCacheTtlSeconds: 3600,
+    magnificClientId: "",
+    magnificClientSecret: "",
+    magnificAuthorizationUrl: "",
+    magnificTokenUrl: "",
+    magnificEnabled: false,
+    higgsfieldClientId: "",
+    higgsfieldClientSecret: "",
+    higgsfieldAuthorizationUrl: "",
+    higgsfieldTokenUrl: "",
+    higgsfieldEnabled: false,
+  });
+
+  useEffect(() => {
+    const data = configQuery.data;
+    if (!data) return;
+    setForm((prev) => ({
+      ...prev,
+      callbackBaseUrl: data.callbackBaseUrl,
+      redirectAllowlist: data.redirectAllowlist.join("\n"),
+      timeoutMs: data.timeoutMs,
+      retryCount: data.retryCount,
+      schemaCacheTtlSeconds: data.schemaCacheTtlSeconds,
+      magnificClientId: data.providers.magnific.clientId,
+      magnificAuthorizationUrl: data.providers.magnific.authorizationUrl,
+      magnificTokenUrl: data.providers.magnific.tokenUrl,
+      magnificEnabled: data.providers.magnific.enabled,
+      higgsfieldClientId: data.providers.higgsfield.clientId,
+      higgsfieldAuthorizationUrl: data.providers.higgsfield.authorizationUrl,
+      higgsfieldTokenUrl: data.providers.higgsfield.tokenUrl,
+      higgsfieldEnabled: data.providers.higgsfield.enabled,
+    }));
+  }, [configQuery.data]);
+
+  const save = () => {
+    saveConfig.mutate({
+      callbackBaseUrl: form.callbackBaseUrl || undefined,
+      redirectAllowlist: form.redirectAllowlist.split("\n").map((item) => item.trim()).filter(Boolean),
+      timeoutMs: form.timeoutMs,
+      retryCount: form.retryCount,
+      schemaCacheTtlSeconds: form.schemaCacheTtlSeconds,
+      providers: {
+        magnific: {
+          clientId: form.magnificClientId || undefined,
+          clientSecret: form.magnificClientSecret || undefined,
+          authorizationUrl: form.magnificAuthorizationUrl || undefined,
+          tokenUrl: form.magnificTokenUrl || undefined,
+          enabled: form.magnificEnabled,
+        },
+        higgsfield: {
+          clientId: form.higgsfieldClientId || undefined,
+          clientSecret: form.higgsfieldClientSecret || undefined,
+          authorizationUrl: form.higgsfieldAuthorizationUrl || undefined,
+          tokenUrl: form.higgsfieldTokenUrl || undefined,
+          enabled: form.higgsfieldEnabled,
+        },
+      },
+    });
+  };
+
+  const providerBlock = (key: "magnific" | "higgsfield", label: string) => {
+    const prefix = key === "magnific" ? "magnific" : "higgsfield";
+    const configured = configQuery.data?.providers[key]?.clientSecretConfigured;
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-slate-950">{label}</h3>
+            <p className="text-sm text-slate-500">{configured ? "Configured" : "Not configured"}</p>
+          </div>
+          <Switch
+            checked={form[`${prefix}Enabled` as const] as boolean}
+            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, [`${prefix}Enabled`]: checked }))}
+          />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <Label>Client ID</Label>
+            <Input value={form[`${prefix}ClientId` as const] as string} onChange={(event) => setForm((prev) => ({ ...prev, [`${prefix}ClientId`]: event.target.value }))} />
+          </div>
+          <div>
+            <Label>Client secret</Label>
+            <Input type="password" placeholder={configured ? "Leave blank to keep existing secret" : "Enter client secret"} value={form[`${prefix}ClientSecret` as const] as string} onChange={(event) => setForm((prev) => ({ ...prev, [`${prefix}ClientSecret`]: event.target.value }))} />
+          </div>
+          <div>
+            <Label>Authorization URL</Label>
+            <Input value={form[`${prefix}AuthorizationUrl` as const] as string} onChange={(event) => setForm((prev) => ({ ...prev, [`${prefix}AuthorizationUrl`]: event.target.value }))} />
+          </div>
+          <div>
+            <Label>Token URL</Label>
+            <Input value={form[`${prefix}TokenUrl` as const] as string} onChange={(event) => setForm((prev) => ({ ...prev, [`${prefix}TokenUrl`]: event.target.value }))} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <DashboardCard
+      leading={<Cable className="h-5 w-5 text-blue-600" />}
+      title="MCP Connect provider configuration"
+      description="Configure callback URL, redirect allowlist, provider OAuth metadata, and masked client secrets through UI only."
+      bodyClassName="space-y-5"
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <div>
+          <Label>Callback URL</Label>
+          <Input value={form.callbackBaseUrl} onChange={(event) => setForm((prev) => ({ ...prev, callbackBaseUrl: event.target.value }))} placeholder="https://app.example.com" />
+        </div>
+        <div>
+          <Label>Provider timeout (ms)</Label>
+          <Input type="number" value={form.timeoutMs} onChange={(event) => setForm((prev) => ({ ...prev, timeoutMs: Number(event.target.value) }))} />
+        </div>
+        <div>
+          <Label>Schema cache TTL (seconds)</Label>
+          <Input type="number" value={form.schemaCacheTtlSeconds} onChange={(event) => setForm((prev) => ({ ...prev, schemaCacheTtlSeconds: Number(event.target.value) }))} />
+        </div>
+      </div>
+      <div>
+        <Label>Redirect allowlist</Label>
+        <Textarea rows={3} value={form.redirectAllowlist} onChange={(event) => setForm((prev) => ({ ...prev, redirectAllowlist: event.target.value }))} placeholder="One allowed origin per line" />
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {providerBlock("magnific", "Magnific")}
+        {providerBlock("higgsfield", "Higgsfield")}
+      </div>
+      <Button onClick={save} disabled={saveConfig.isPending}>
+        {saveConfig.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+        Save provider settings
+      </Button>
+    </DashboardCard>
+  );
+}
+
 export default function AdminSettings() {
   const { i18n } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
+  const search = useSearch();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("stripe");
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(search).get("tab") || "stripe");
   const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
+
+  useEffect(() => {
+    const tab = new URLSearchParams(search).get("tab");
+    if (tab) setActiveTab(tab);
+  }, [search]);
 
   const copy = {
     dashboard: isThai ? "แดชบอร์ด" : "Dashboard",
@@ -1333,6 +1489,7 @@ export default function AdminSettings() {
     { key: "stt", label: copy.nav.stt.label, sublabel: copy.nav.stt.sublabel, icon: Mic },
     { key: "ai", label: copy.nav.ai.label, sublabel: copy.nav.ai.sublabel, icon: Brain },
     { key: "document_ocr", label: copy.nav.documentOcr.label, sublabel: copy.nav.documentOcr.sublabel, icon: FileText },
+    { key: "mcp_connect", label: "MCP Connect", sublabel: "Provider config", icon: Cable },
     { key: "finance_rules", label: copy.nav.financeRules.label, sublabel: copy.nav.financeRules.sublabel, icon: CheckSquare },
     { key: "vectordb", label: copy.nav.vectordb.label, sublabel: copy.nav.vectordb.sublabel, icon: Database },
     { key: "storage", label: copy.nav.storage.label, sublabel: copy.nav.storage.sublabel, icon: Cloud },
@@ -3630,6 +3787,10 @@ export default function AdminSettings() {
           {/* Document OCR Settings Tab */}
           <TabsContent value="document_ocr">
             <DocumentOcrSettingsPanel />
+          </TabsContent>
+
+          <TabsContent value="mcp_connect">
+            <McpProviderConfigPanel />
           </TabsContent>
 
           {/* Finance Rules Settings Tab */}

@@ -56,6 +56,11 @@ describe("i18n/namespaces", () => {
     expect(getRouteNamespaces("/gallery")).toEqual(["media"]);
   });
 
+  it("/storyboard-review maps to media and common namespaces", () => {
+    expect(getRouteNamespaces("/storyboard-review")).toEqual(["media", "common"]);
+    expect(getRouteNamespaces("/storyboard-review/91")).toEqual(["media", "common"]);
+  });
+
   it("/credits maps to billing namespace", () => {
     expect(getRouteNamespaces("/credits")).toEqual(["billing"]);
   });

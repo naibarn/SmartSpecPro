@@ -43,13 +43,13 @@ function productImageTypeForCandidate(kind: string): string {
   return "main";
 }
 
-function slugForFilename(value: string | undefined, fallback: string): string {
-  return String(value || fallback)
-    .normalize("NFKD")
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 90)
-    .toLowerCase() || fallback;
+function marketplaceImageCandidateFileBaseName(kind: string, index: number): string {
+  const imageType = productImageTypeForCandidate(kind);
+  return `product_${imageType}_${String(index + 1).padStart(2, "0")}`;
+}
+
+export function marketplaceImageCandidateFileBaseNameForTest(kind: string, index: number): string {
+  return marketplaceImageCandidateFileBaseName(kind, index);
 }
 
 function validateMagicBytes(buffer: Buffer, contentType: string): boolean {
@@ -259,7 +259,6 @@ export async function mirrorMarketplaceImageCandidates(input: {
   const config = getMarketplaceCaptureConfig();
   const mirrored: ImageCandidate[] = [];
   const errors: Array<{ url: string; message: string }> = [];
-  const productSlug = slugForFilename(input.productName ?? undefined, "marketplace-product");
   const description = String(input.productDescription ?? "").slice(0, 1000);
 
   for (let index = 0; index < input.candidates.length; index++) {
@@ -272,7 +271,10 @@ export async function mirrorMarketplaceImageCandidates(input: {
       });
       const kind = assetKindForImageCandidate(candidate.kind);
       const imageType = productImageTypeForCandidate(candidate.kind);
-      const fileBaseName = `${productSlug}_${imageType}_${String(index + 1).padStart(2, "0")}`;
+      const fileBaseName = marketplaceImageCandidateFileBaseName(
+        candidate.kind,
+        index
+      );
       const asset = await uploadMarketplaceCaptureAsset({
         captureId: input.captureId,
         userId: input.userId,

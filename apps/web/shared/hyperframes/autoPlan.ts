@@ -28,7 +28,18 @@ export const HyperframesAutoPlanDefaultsSchema = z
     ]),
     shotCount: z.number().int().min(7).max(9),
     overlayTextMode: z.enum(["no_text", "allow_text"]),
-    imageModel: z.enum(["google-nano-banana-pro", "google-banana-2"]),
+    imageModel: z.string().min(1).max(120),
+    videoModel: z.string().min(1).max(120),
+    videoStructureMode: z
+      .enum([
+        "per_shot",
+        "adaptive_multi_shot",
+        "compact_multi_shot",
+        "manual_group_size",
+      ])
+      .default("per_shot"),
+    manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
+    creativeBrief: z.string().trim().max(2000).optional().default(""),
     qualityMode: z.enum(["fast", "balanced", "high"]),
     renderEngine: MarketplaceAutoReviewRenderEngineSchema,
     compositionMode: MarketplaceAutoReviewCompositionModeSchema,
@@ -122,7 +133,18 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
     .optional(),
   shotCount: z.number().int().min(7).max(9).optional(),
   overlayTextMode: z.enum(["no_text", "allow_text"]).optional(),
-  imageModel: z.enum(["google-nano-banana-pro", "google-banana-2"]).optional(),
+  imageModel: z.string().min(1).max(120).optional(),
+  videoModel: z.string().min(1).max(120).optional(),
+  videoStructureMode: z
+    .enum([
+      "per_shot",
+      "adaptive_multi_shot",
+      "compact_multi_shot",
+      "manual_group_size",
+    ])
+    .optional(),
+  manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
+  creativeBrief: z.string().trim().max(2000).optional(),
   qualityMode: z.enum(["fast", "balanced", "high"]).optional(),
   platformPresetId: z.enum([
     "generic_vertical_9_16",
@@ -140,11 +162,15 @@ export type HyperframesAutoPlanOverrideInput = z.infer<
 
 export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   platformPresetId: "generic_vertical_9_16",
-  frameStrategy: "video_shot_start_stop",
+  frameStrategy: "storyboard_3x3_split",
   audioStrategy: "native_video_audio",
   shotCount: "9",
   overlayTextMode: "no_text",
   imageModel: "google-banana-2",
+  videoModel: "veo3/generate-veo-3-video-lite",
+  videoStructureMode: "per_shot",
+  manualVideoGroupSize: "3",
+  creativeBrief: "",
   qualityMode: "balanced",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
 
@@ -170,6 +196,13 @@ export function buildDefaultHyperframesAutoPlanDefaults(input: {
     shotCount: Number(HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.shotCount),
     overlayTextMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.overlayTextMode,
     imageModel: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.imageModel,
+    videoModel: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.videoModel,
+    videoStructureMode:
+      HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.videoStructureMode,
+    manualVideoGroupSize: Number(
+      HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.manualVideoGroupSize
+    ),
+    creativeBrief: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.creativeBrief,
     qualityMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.qualityMode,
     renderEngine: "hyperframes_composition",
     compositionMode,
@@ -219,6 +252,34 @@ export function normalizeHyperframesAutoPlanOverrides(
     );
   if (imageModel.success && imageModel.data) {
     normalized.imageModel = imageModel.data;
+  }
+  const videoModel =
+    HyperframesAutoPlanOverrideFieldSchemas.videoModel.safeParse(
+      overrides.videoModel
+    );
+  if (videoModel.success && videoModel.data) {
+    normalized.videoModel = videoModel.data;
+  }
+  const videoStructureMode =
+    HyperframesAutoPlanOverrideFieldSchemas.videoStructureMode.safeParse(
+      overrides.videoStructureMode
+    );
+  if (videoStructureMode.success && videoStructureMode.data) {
+    normalized.videoStructureMode = videoStructureMode.data;
+  }
+  const manualVideoGroupSize =
+    HyperframesAutoPlanOverrideFieldSchemas.manualVideoGroupSize.safeParse(
+      overrides.manualVideoGroupSize
+    );
+  if (manualVideoGroupSize.success && manualVideoGroupSize.data) {
+    normalized.manualVideoGroupSize = manualVideoGroupSize.data;
+  }
+  const creativeBrief =
+    HyperframesAutoPlanOverrideFieldSchemas.creativeBrief.safeParse(
+      overrides.creativeBrief
+    );
+  if (creativeBrief.success && creativeBrief.data !== undefined) {
+    normalized.creativeBrief = creativeBrief.data;
   }
   const qualityMode =
     HyperframesAutoPlanOverrideFieldSchemas.qualityMode.safeParse(

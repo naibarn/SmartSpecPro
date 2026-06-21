@@ -30,6 +30,8 @@ import {
   buildMarketplaceAutoReviewStoryboardGridQaRepairUnitForTest,
   buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest,
   buildMarketplaceAutoReviewStoryboardReviewTasksForTest,
+  getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest,
+  buildMarketplaceVideoSegmentObservabilityEventForTest,
   buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest,
   buildMarketplaceAutoReviewVisionQaRuntimeUnavailableEnvelopeForTest,
   acceptMarketplaceAutoReviewBestImageAttemptAfterProviderFailureForTest,
@@ -72,6 +74,8 @@ import {
   marketplaceAutoReviewImagePromptMaxCharsForTest,
   optimizeMarketplaceAutoReviewFinalImagePromptForProviderForTest,
   filterMarketplaceAutoReviewImageRepairUnitsForTest,
+  countMarketplaceAutoReviewImageProviderSubmissionsForTest,
+  maxMarketplaceAutoReviewImageProviderSubmissionsForTest,
   inferProductReferenceStoryboardCategoryForTest,
   isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest,
   prepareMarketplaceAutoReviewImagePromptForTest,
@@ -82,6 +86,8 @@ import {
   selectMarketplaceAutoReviewBestImageAttemptForTest,
   mergeMarketplaceAutoReviewQaCacheEntriesForTest,
   maybeQueueHyperframesPreviewAfterStoryboardReadyForTest,
+  mergeMarketplaceMcpTransportMetadataForModelForTest,
+  planFromProductionBibleForTest,
   serializeMarketplaceAutoReviewRunForTest,
   summarizeMarketplaceAutoReviewCancellationForTest,
   splitMarketplaceAutoReviewVoiceoverSkillOutputForTest,
@@ -650,16 +656,123 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
 });
 
 describe("Marketplace Auto Review image model selection", () => {
-  it("accepts Nano Banana Pro and falls back invalid values to Nano Banana 2", () => {
+  it("accepts enabled media model ids and falls back empty values to Nano Banana 2", () => {
     expect(
       normalizeMarketplaceAutoReviewImageModelForTest("google-banana-2")
     ).toBe("google-banana-2");
     expect(
       normalizeMarketplaceAutoReviewImageModelForTest("google-nano-banana-pro")
     ).toBe("google-nano-banana-pro");
-    expect(normalizeMarketplaceAutoReviewImageModelForTest("banana")).toBe(
+    expect(
+      normalizeMarketplaceAutoReviewImageModelForTest("magnific-gpt-image-2")
+    ).toBe("magnific-gpt-image-2");
+    expect(normalizeMarketplaceAutoReviewImageModelForTest("")).toBe(
       "google-banana-2"
     );
+  });
+});
+
+describe("Marketplace Auto Review production bible recovery", () => {
+  it("recovers a complete Auto Review plan from a Production Bible", () => {
+    const plan = planFromProductionBibleForTest({
+      ...basePlan,
+      shots: [baseShot, { ...baseShot, id: "shot-2", order: 2 }],
+      productionRunId: "mp-auto-mp_1-abc",
+    });
+
+    expect(plan).toMatchObject({
+      conceptId: "concept-1",
+      title: "รีวิวสินค้า",
+      productTruth: {
+        productId: "mp_1",
+        productName: "Greenforst โต๊ะวางของข้างเตียง",
+      },
+      productDetail: expect.stringContaining("PRODUCT FACTS LOCK"),
+    });
+    expect(plan?.shots).toHaveLength(2);
+    expect(plan?.shots[1]).toMatchObject({
+      id: "shot-2",
+      order: 2,
+      voiceover: "สั้นมาก",
+    });
+  });
+
+  it("rejects incomplete Production Bible data instead of hiding the root issue", () => {
+    const plan = planFromProductionBibleForTest({
+      ...basePlan,
+      productDetail: "",
+      shots: [{ ...baseShot, voiceover: "" }],
+    });
+
+    expect(plan).toBeNull();
+  });
+});
+
+describe("Marketplace Auto Review MCP transport metadata", () => {
+  it("enriches Higgsfield image metadata with the provider-native image tool", () => {
+    expect(
+      mergeMarketplaceMcpTransportMetadataForModelForTest(
+        {
+          transport: "mcp",
+          tenantId: "tenant-ZCSKEM9s",
+          actorUserId: 109,
+          connectionId: "conn_higgsfield",
+          sharedGroupId: 1,
+        },
+        {
+          mediaType: "image",
+          modelTransport: {
+            transport: "mcp",
+            providerKey: "higgsfield",
+            providerModelId: "nano_banana_2",
+            toolName: "generate_image",
+            argumentShape: "higgsfield.generate_image",
+            creditSource: "provider_account",
+          },
+        },
+      )
+    ).toMatchObject({
+      transport: "mcp",
+      connectionId: "conn_higgsfield",
+      sharedGroupId: 1,
+      assetType: "image",
+      originSurface: "marketplace_capture",
+      providerKey: "higgsfield",
+      providerModelId: "nano_banana_2",
+      toolName: "generate_image",
+      argumentShape: "higgsfield.generate_image",
+    });
+  });
+
+  it("uses the selected media type so video jobs do not reuse the image tool", () => {
+    expect(
+      mergeMarketplaceMcpTransportMetadataForModelForTest(
+        {
+          transport: "mcp",
+          tenantId: "tenant-ZCSKEM9s",
+          actorUserId: 109,
+          connectionId: "conn_higgsfield",
+          sharedGroupId: 1,
+        },
+        {
+          mediaType: "video",
+          modelTransport: {
+            transport: "mcp",
+            providerKey: "higgsfield",
+            providerModelId: "seedance_2_0_fast",
+            toolName: "generate_video",
+            argumentShape: "higgsfield.generate_video",
+            creditSource: "provider_account",
+          },
+        },
+      )
+    ).toMatchObject({
+      assetType: "video",
+      providerKey: "higgsfield",
+      providerModelId: "seedance_2_0_fast",
+      toolName: "generate_video",
+      argumentShape: "higgsfield.generate_video",
+    });
   });
 });
 
@@ -1186,6 +1299,41 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(directive).toBe("");
+  });
+
+  it("adds safe creative preset guidance without weakening product or character locks", () => {
+    const directive = creativeDirectionDirectiveForTest({
+      creativePresets: [
+        { family: "tone_preset", presetId: "tone_expert_confident" },
+        { family: "visual_style_preset", presetId: "visual_real_home_use" },
+      ],
+    });
+
+    expect(directive).toContain("USER-SELECTED CREATIVE PRESET GUIDANCE");
+    expect(directive).toContain("ผู้เชี่ยวชาญมั่นใจ");
+    expect(directive).toContain("ใช้งานจริงในบ้าน");
+    expect(directive).toContain("must not change product identity");
+    expect(directive).toContain("character identity");
+  });
+
+  it("routes Thai audio preset to separate TTS and guards Seedance native speech", () => {
+    const directive = creativeDirectionDirectiveForTest({
+      creativePresets: [
+        { family: "audio_preset", presetId: "audio_thai_tts" },
+      ],
+      videoModel: "seedance-2.0-pro",
+    });
+
+    expect(directive).toContain("เสียงบรรยายไทยแบบ TTS แยก");
+    expect(directive).toContain("separate TTS");
+    expect(directive).toContain("do not ask Seedance");
+    expect(
+      resolveMarketplaceAutoReviewAudioStrategy({
+        outputMode: "full_video",
+        requested: "separate_tts_voiceover",
+        videoModel: "seedance-2.0-pro",
+      })
+    ).toBe("separate_tts_voiceover");
   });
 
   it.each(["product_only", "hands_only"])(
@@ -3113,6 +3261,73 @@ describe("marketplace auto review audio/video planning", () => {
     expect(unit.repairInstruction).toContain("no collage/masonry layout");
   });
 
+  it("caps 3x3 image provider submissions at grid attempts only", () => {
+    const refs = [
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 1,
+        taskId: "img_grid_1",
+        providerTaskId: "provider_grid_1",
+        status: "completed",
+      },
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 2,
+        taskId: "img_grid_2",
+        providerTaskId: "provider_grid_2",
+        status: "completed",
+      },
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 3,
+        taskId: "img_grid_3",
+        providerTaskId: "provider_grid_3",
+        status: "completed",
+      },
+      {
+        unitId: "shot-1-start",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "start_frame",
+        attempt: 1,
+        taskId: "img_shot_1_start",
+        providerTaskId: "provider_shot_1_start",
+        status: "completed",
+      },
+      {
+        unitId: "storyboard-grid-image",
+        mediaType: "image",
+        stageKey: "image_generation",
+        role: "storyboard_grid",
+        attempt: 4,
+        taskId: "submit-intent:storyboard-grid-image:4",
+        status: "submit_intent_recorded",
+        providerSubmitIntentStatus: "recorded_before_provider_submit",
+      },
+    ] as any[];
+
+    expect(
+      countMarketplaceAutoReviewImageProviderSubmissionsForTest({
+        frameStrategy: "storyboard_3x3_split",
+        refs,
+      })
+    ).toBe(3);
+    expect(
+      maxMarketplaceAutoReviewImageProviderSubmissionsForTest(
+        "storyboard_3x3_split"
+      )
+    ).toBe(3);
+  });
+
   it("applies the selected overlay text policy to 3x3 image prompts", () => {
     const plan = {
       ...basePlan,
@@ -3130,7 +3345,7 @@ describe("marketplace auto review audio/video planning", () => {
         overlayTextMode: "allow_text",
       });
 
-    expect(noTextPrompt).toContain("No text, captions, labels");
+    expect(noTextPrompt).toContain("No text/captions/labels");
     expect(noTextPrompt).toContain("skill: product-reference-storyboard");
     expect(noTextPrompt).toContain("generation_mode: multi_frame_storyboard");
     expect(noTextPrompt).toContain(
@@ -3155,10 +3370,10 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).toContain("exactly 3 equal-width columns");
     expect(noTextPrompt).toContain("exactly 3 equal-height rows");
     expect(noTextPrompt).toContain("no collage/masonry layout");
-    expect(noTextPrompt).toContain("no separator lines");
-    expect(noTextPrompt).toContain("no visible dividers");
-    expect(noTextPrompt).toContain("no white borders");
-    expect(noTextPrompt).toContain("no measurement overlays");
+    expect(noTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
+    expect(noTextPrompt).toContain("clean narrow gutters between panels");
+    expect(noTextPrompt).toContain("Never split one panel into two cells");
+    expect(noTextPrompt).toContain("measurement overlays");
     expect(noTextPrompt).toContain(
       "Prohibit marketplace/mobile app screenshots"
     );
@@ -3170,7 +3385,8 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).not.toContain("VOICEOVER / DIALOGUE CONTRACT");
     expect(allowTextPrompt).toContain("Short Thai overlay text is allowed");
     expect(allowTextPrompt).toContain("exactly 3 equal-width columns");
-    expect(allowTextPrompt).toContain("no visible dividers");
+    expect(allowTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
+    expect(allowTextPrompt).toContain("clean narrow gutters between panels");
     expect(allowTextPrompt).toContain("no collage/masonry layout");
     expect(allowTextPrompt).toContain("Never include video seconds");
     expect(allowTextPrompt).toContain(
@@ -3306,9 +3522,10 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt).toContain(
       "storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact"
     );
-    expect(prepared.prompt).toContain("one single 9:16 image canvas");
+    expect(prepared.prompt).toContain("one single 9:16 image");
     expect(prepared.prompt).toContain("strict 3x3 grid");
-    expect(prepared.prompt).toContain("exactly 9 vertical frames");
+    expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
+    expect(prepared.prompt).toContain("clean narrow gutters between panels");
     expect(prepared.prompt).toContain("storyboard_guide:");
     expect(prepared.prompt).toContain("voiceover_script:");
     expect(prepared.prompt).toContain("product_detail:");
@@ -3335,7 +3552,7 @@ describe("marketplace auto review audio/video planning", () => {
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows, realistic lens depth.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
       ...Array.from(
         { length: 9 },
         (_item, index) => `Frame ${index + 1}: visual-only product story panel.`
@@ -3661,7 +3878,7 @@ describe("marketplace auto review audio/video planning", () => {
     const prompt = [
       "OUTPUT FORMAT LOCK: Plain prompt text only.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy.",
       "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
@@ -3706,7 +3923,7 @@ describe("marketplace auto review audio/video planning", () => {
     const prompt = [
       "OUTPUT FORMAT LOCK: Plain prompt text only.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy.",
       "TEXT RENDERING POLICY: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; strict product visual lock; recreate and match the exact same actual reference image product; written product description is secondary and must never override the attached product image or generic product description.",
@@ -4236,7 +4453,8 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(prepared.prompt.length).toBeLessThanOrEqual(4900);
     expect(prepared.prompt.match(/VISUAL:/g)).toHaveLength(9);
-    expect(prepared.prompt).toContain("exactly 9 vertical frames");
+    expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
+    expect(prepared.prompt).toContain("clean narrow gutters between panels");
     expect(prepared.prompt).not.toContain("PROMPT PREFLIGHT REPAIR PATCH");
   });
 
@@ -4250,7 +4468,7 @@ describe("marketplace auto review audio/video planning", () => {
       "CAMERA/LIGHT/DEPTH: cinematic light.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
       ...Array.from(
         { length: 9 },
         (_item, index) =>
@@ -4258,7 +4476,7 @@ describe("marketplace auto review audio/video planning", () => {
       ),
       "Additional compact product fidelity note repeated to push length near the provider budget while keeping all storyboard frame lines intact.",
     ].join("\n");
-    const paddedPrompt = `${nearLimitPrompt}\n${"Product texture and product fidelity. ".repeat(34)}`;
+    const paddedPrompt = `${nearLimitPrompt}\n${"Product texture and product fidelity. ".repeat(20)}`;
     const plan = {
       ...basePlan,
       productTruth: {
@@ -4311,7 +4529,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, 35mm lens feel, warm practical window light, soft shadows, depth separation, grounded wood highlights.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts; light wood finish; compact bedside scale; no drawers; no doors.",
       ...Array.from(
@@ -4377,7 +4595,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       ...Array.from(
@@ -4430,7 +4648,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
       "MINOR SAFETY CLOTHING LOCK: If any baby, toddler, child, kid, or minor appears, they must be safely dressed in age-appropriate clothing covering chest, torso, and underwear areas. No shirtless child, no bare chest or bare torso, no underwear-only/diaper-only child scene, no bath/changing/nude/semi-nude framing, no suggestive pose, and no close crop of a minor's underwear or diaper area.",
@@ -4477,7 +4695,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
       "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK: The child character must consistently match the facial features, hair, and likeness of the child in @Image2.",
@@ -4523,7 +4741,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product.",
       "CHARACTER FACE AND 95 PERCENT IDENTITY LOCK: The presenter in the storyboard must preserve the young adult female identity, facial structure, hair, and styling from @Image2. She must not be depicted as a child, toddler, or baby. Whenever her face is visible, it must be naturally lit, sharp, and realistic.",
@@ -4569,7 +4787,7 @@ describe("marketplace auto review audio/video planning", () => {
     const prompt = [
       "OUTPUT FORMAT LOCK: Plain prompt text only.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, no collage/masonry layout, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, no collage/masonry layout, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       ...Array.from(
@@ -4615,9 +4833,11 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(result.status).toBe("passed");
     expect(result.blockers).not.toContain("equal_rows_missing");
-    expect(result.blockers).not.toContain("no_separator_lock_missing");
+    expect(result.blockers).not.toContain("panel_gutter_lock_missing");
     expect(result.warnings).toContain("equal_rows_missing");
-    expect(result.warnings).toContain("no_separator_lock_missing");
+    expect(result.warnings).toContain("panel_gutter_lock_missing");
+    expect(result.warnings).toContain("single_cell_per_panel_lock_missing");
+    expect(result.warnings).toContain("wide_shot_portrait_panel_lock_missing");
   });
 
   it("warns on skill-generated storyboard prompts with incomplete frame coverage", () => {
@@ -4627,7 +4847,7 @@ describe("marketplace auto review audio/video planning", () => {
     } as any;
     const prompt = [
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy: no text, no dimension text, no timecodes, no marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
       "Frame 1: visual-only product story panel.",
@@ -4704,17 +4924,19 @@ describe("marketplace auto review audio/video planning", () => {
     expect(preflight.warnings).toEqual(
       expect.arrayContaining([
         "output_single_image_missing",
-        "exact_frame_count_missing",
-        "vertical_frame_count_missing",
+        "exact_panel_count_missing",
+        "exact_cell_count_missing",
         "equal_columns_missing",
         "equal_rows_missing",
         "no_collage_lock_missing",
-        "no_separator_lock_missing",
+        "panel_gutter_lock_missing",
+        "single_cell_per_panel_lock_missing",
+        "wide_shot_portrait_panel_lock_missing",
       ])
     );
   });
 
-  it("warns but does not stop repair attempts when a skill prompt omits the exact no-text phrase", () => {
+  it("keeps skill-runtime prompts soft-failed when the dedicated text policy is incomplete", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -4722,7 +4944,7 @@ describe("marketplace auto review audio/video planning", () => {
     const prompt = [
       "OUTPUT FORMAT LOCK: Plain prompt text only.",
       "SHOT-BY-SHOT STORYBOARD PROMPT:",
-      "Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, cinematic realism lock, product reference lock, text rendering policy.",
+      "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. cinematic realism lock, product reference lock, text rendering policy.",
       "TEXT RENDERING POLICY: Avoid visible captions, labels, dimension text, timecodes, and marketplace/mobile app screenshots.",
       "CAMERA/LIGHT/DEPTH: cinematic commercial product-film look, warm practical window light, soft shadows.",
       "PRODUCT VERIFY: Product visual lock from @Image1 / first attached product reference image as the primary visual source of truth; written product description is secondary and must never override the attached product image; generated product must match the exact same product; Greenforst 3-tier open bedside shelf; 3 levels; 4 vertical posts.",
@@ -4755,10 +4977,9 @@ describe("marketplace auto review audio/video planning", () => {
 
     expect(result.status).toBe("passed");
     expect(result.blockers).not.toContain("no_text_policy_missing");
-    expect(result.warnings).toContain("no_text_policy_missing");
   });
 
-  it("blocks 3x3 storyboard image prompts that do not explicitly request 9 vertical frames", () => {
+  it("blocks 3x3 storyboard image prompts that do not explicitly request 9 cells", () => {
     const plan = {
       ...basePlan,
       shots: [baseShot],
@@ -4770,7 +4991,9 @@ describe("marketplace auto review audio/video planning", () => {
     const prompt = buildMarketplaceAutoReview3x3StoryboardPromptForTest({
       plan,
       overlayTextMode: "no_text",
-    }).replace("exactly 9 vertical frames, ", "");
+    })
+      .replace(/ \/ 9 CELLS ONLY/g, "")
+      .replace(/exactly 9 cells only/gi, "exactly nine cells");
 
     const result = validateMarketplaceAutoReviewImagePromptPreflightForTest({
       plan,
@@ -4780,7 +5003,7 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.blockers).toContain("vertical_frame_count_missing");
+    expect(result.blockers).toContain("exact_cell_count_missing");
   });
 
   it("builds Storyboard Review start/stop clips as a continuous frame chain", () => {
@@ -5054,6 +5277,220 @@ describe("marketplace auto review audio/video planning", () => {
     ).toEqual(["reference"]);
   });
 
+  it("persists per-shot video segment plan metadata for Storyboard Review handoff", () => {
+    const plan = {
+      ...basePlan,
+      shots: [
+        { ...baseShot, id: "shot-1", order: 1 },
+        { ...baseShot, id: "shot-2", order: 2, title: "ขยายปัญหา" },
+      ],
+    } as any;
+    const metadata = {
+      storyboardFrameUrls: [
+        "https://cdn.example.test/grid-1.png",
+        "https://cdn.example.test/grid-2.png",
+      ],
+      resolvedAudioStrategy: "separate_tts_voiceover",
+      creativeBrief: "Make the pacing warmer without changing the product.",
+      referenceAnchors: {
+        creativePresets: [{ presetId: "audio_thai_tts", family: "audio_preset" }],
+      },
+    } as any;
+    const output = buildMarketplaceAutoReviewStoryboardReviewOutputForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+      } as any,
+      plan,
+      metadata,
+    });
+    const tasks = buildMarketplaceAutoReviewStoryboardReviewTasksForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+      } as any,
+      plan,
+      metadata,
+    });
+
+    expect(output.videoSegmentPlan).toMatchObject({
+      mode: "per_shot",
+      effectiveMode: "per_shot",
+      referenceMode: "single_storyboard_frame",
+    });
+    expect(output.videoSegmentPlan.segments).toHaveLength(2);
+    expect(tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      videoSegmentPlanVersion: 1,
+      videoSegmentId: output.videoSegmentPlan.segments[0]?.segmentId,
+      videoSegmentShotIds: ["shot-1"],
+    });
+    expect(
+      String(tasks[0]?.storyboardContext?.extraParams?.videoSegmentPrompt)
+    ).toContain("Sub-shot timeline:");
+  });
+
+  it("returns a safe video segment preview response with separated credit basis and source", () => {
+    const plan = {
+      ...basePlan,
+      shots: [
+        { ...baseShot, id: "shot-1", order: 1 },
+        { ...baseShot, id: "shot-2", order: 2, title: "ขยายปัญหา" },
+      ],
+    } as any;
+    const preview = getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+      } as any,
+      plan,
+      metadata: {
+        storyboardFrameUrls: [
+          "https://cdn.example.test/grid-1.png",
+          "https://cdn.example.test/grid-2.png",
+        ],
+        transport: "mcp",
+        videoProvider: "magnific",
+        mcpConnectionId: "mcp_conn_1",
+        providerOAuthToken: "secret-token",
+        providerSessionRef: "secret-session",
+      } as any,
+    });
+
+    expect(preview.videoSegmentPlan.segments).toHaveLength(2);
+    expect(preview.accessDecision).toMatchObject({
+      allowed: true,
+      transport: "mcp",
+      provider: "magnific",
+      mcpConnectionId: "mcp_conn_1",
+    });
+    expect(preview.creditEstimate).toMatchObject({
+      basis: "jobs",
+      creditSource: "mcp_provider_account",
+    });
+    expect(JSON.stringify(preview)).not.toContain("secret-token");
+    expect(JSON.stringify(preview)).not.toContain("secret-session");
+  });
+
+  it("honors MCP transport metadata and keeps Higgsfield Seedance adaptive multi-shot", () => {
+    const plan = {
+      ...basePlan,
+      shots: Array.from({ length: 6 }, (_item, index) => ({
+        ...baseShot,
+        id: `shot-${index + 1}`,
+        order: index + 1,
+        durationSeconds: 3,
+      })),
+    } as any;
+    const preview = getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+      } as any,
+      plan,
+      metadata: {
+        videoModel: "higgsfield/seedance_2_0_fast",
+        videoStructureMode: "adaptive_multi_shot",
+        storyboardFrameUrls: Array.from(
+          { length: 6 },
+          (_item, index) => `https://cdn.example.test/grid-${index + 1}.png`,
+        ),
+        transportMetadata: {
+          transport: "mcp",
+          providerKey: "higgsfield",
+          connectionId: "mcp_conn_1",
+          sharedGroupId: 1,
+        },
+      } as any,
+    });
+
+    expect(preview.videoSegmentPlan).toMatchObject({
+      transport: "mcp",
+      provider: "higgsfield",
+      mode: "adaptive_multi_shot",
+      effectiveMode: "adaptive_multi_shot",
+      fallbackReason: undefined,
+    });
+    expect(preview.videoSegmentPlan.segments).toHaveLength(2);
+    expect(preview.videoSegmentPlan.segments[0]?.shotIds).toEqual([
+      "shot-1",
+      "shot-2",
+      "shot-3",
+    ]);
+    expect(preview.creditEstimate).toMatchObject({
+      basis: "segments",
+      creditSource: "mcp_provider_account",
+    });
+  });
+
+  it("redacts sensitive prompt, token, session, and URL metadata in observability events", () => {
+    const plan = {
+      ...basePlan,
+      shots: [
+        { ...baseShot, id: "shot-1", order: 1 },
+        { ...baseShot, id: "shot-2", order: 2, title: "ขยายปัญหา" },
+      ],
+    } as any;
+    const preview = getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest({
+      run: {
+        id: "mar_1",
+        productionRunId: "prod_1",
+        outputMode: "storyboard_images",
+        frameStrategy: "storyboard_3x3_split",
+      } as any,
+      plan,
+      metadata: {
+        storyboardFrameUrls: [
+          "https://cdn.example.test/grid-1.png",
+          "https://cdn.example.test/grid-2.png",
+        ],
+      } as any,
+    });
+    const event = buildMarketplaceVideoSegmentObservabilityEventForTest({
+      event: "video_segment_plan_created",
+      runId: "mar_1",
+      productId: "mp_1",
+      plan: preview.videoSegmentPlan,
+      metadata: {
+        providerOAuthToken: "secret-token",
+        providerSessionRef: "secret-session",
+        prompt: "raw prompt text",
+        nested: {
+          signedUrl: "https://cdn.example.test/private.png?signature=abc",
+          safeValue: "kept",
+        },
+      },
+    });
+
+    expect(event).toMatchObject({
+      event: "video_segment_plan_created",
+      runId: "mar_1",
+      productId: "mp_1",
+      effectiveMode: "per_shot",
+      segmentCount: 2,
+      metadata: {
+        providerOAuthToken: "[redacted]",
+        providerSessionRef: "[redacted]",
+        prompt: "[redacted]",
+        nested: {
+          signedUrl: "[redacted]",
+          safeValue: "kept",
+        },
+      },
+    });
+    expect(JSON.stringify(event)).not.toContain("secret-token");
+    expect(JSON.stringify(event)).not.toContain("secret-session");
+    expect(JSON.stringify(event)).not.toContain("raw prompt text");
+    expect(JSON.stringify(event)).not.toContain("https://cdn.example.test");
+  });
+
   it("does not fake missing generated start/stop frames from storyboard frames", () => {
     const plan = {
       ...basePlan,
@@ -5223,6 +5660,45 @@ describe("marketplace auto review audio/video planning", () => {
     expect(result.minorSafetyClothingSafe).toBe(true);
     expect(result.minorPresent).toBe(false);
     expect(result.reasonCodes).toEqual(["product_visual_discrepancy"]);
+  });
+
+  it("downgrades generic child clothing QA reasons to an unverified warning", () => {
+    const result =
+      normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest({
+        plan: basePlan as any,
+        parsed: {
+          verdict: "repair",
+          minorPresent: true,
+          minorSafetyClothingSafe: false,
+        },
+        reasonCodes: [
+          "minor_safety_child_clothing_issue",
+          "product_reference_mismatch",
+        ],
+      });
+
+    expect(result.minorSafetyClothingSafe).toBe(true);
+    expect(result.minorPresent).toBe(true);
+    expect(result.reasonCodes).toEqual([
+      "product_reference_mismatch",
+      "minor_safety_child_clothing_unverified",
+    ]);
+  });
+
+  it("keeps explicit child clothing safety blockers", () => {
+    const result =
+      normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest({
+        plan: basePlan as any,
+        parsed: {
+          verdict: "repair",
+          minorPresent: true,
+          minorSafetyClothingSafe: false,
+        },
+        reasonCodes: ["child_shirtless_bare_torso"],
+      });
+
+    expect(result.minorSafetyClothingSafe).toBe(false);
+    expect(result.reasonCodes).toEqual(["child_shirtless_bare_torso"]);
   });
 
   it("requires repair when shot-frame QA detects a character reference mismatch", () => {
@@ -5780,10 +6256,11 @@ describe("marketplace auto review audio/video planning", () => {
     expect(restored.applied).toBe(true);
     expect(restored.prompt).toContain("one single 9:16 image");
     expect(restored.prompt).toContain("strict 3x3 grid");
-    expect(restored.prompt).toContain("exactly 9 vertical frames");
+    expect(restored.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
     expect(restored.prompt).toContain("exactly 3 equal-width columns");
     expect(restored.prompt).toContain("exactly 3 equal-height rows");
-    expect(restored.prompt).toContain("no separator lines");
+    expect(restored.prompt).toContain("clean narrow gutters between panels");
+    expect(restored.prompt).toContain("Never split one panel into two cells");
   });
 
   it("treats unavailable vision QA as a repair signal, not a clean pass", () => {

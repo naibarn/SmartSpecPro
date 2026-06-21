@@ -1310,6 +1310,55 @@
       "when": 1780000010000,
       "tag": "0200_marketplace_auto_review_parallel_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1780000011000,
+      "tag": "0201_mcp_connect_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1780000012000,
+      "tag": "0202_mcp_media_task_persistence",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1780000013000,
+      "tag": "0203_magnific_mcp_resolution_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1780000014000,
+      "tag": "0204_mcp_media_reference_inputs",
+      "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1780000015000,
+      "tag": "0205_magnific_mcp_resolution_case",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1780000016000,
+      "tag": "0206_higgsfield_seedance_provider_model_alias",
+      "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1780000017000,
+      "tag": "0207_disable_higgsfield_unlimited_mcp_model",
+      "breakpoints": true
     }
   ]
 }

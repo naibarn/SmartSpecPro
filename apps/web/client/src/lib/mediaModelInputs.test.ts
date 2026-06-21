@@ -486,6 +486,25 @@ describe("mediaModelInputs", () => {
     });
   });
 
+  it("enables image references for MCP models from explicit config flags", () => {
+    const model = {
+      id: "higgsfield/nano_banana_2",
+      name: "Nano Banana 2 (Higgsfield MCP)",
+      configJson: {
+        transport: "mcp",
+        supportsReferenceImages: true,
+        referenceInputs: { image: true },
+        inputFields: [],
+      },
+    };
+
+    expect(getModelReferenceInputSupport(model)).toEqual({
+      imageUrls: true,
+      videoUrls: false,
+      audioUrls: false,
+    });
+  });
+
   it("labels video generation modes from config data", () => {
     expect(getModelGenerationModeLabel({
       id: "generic-video-to-video",

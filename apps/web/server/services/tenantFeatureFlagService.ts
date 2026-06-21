@@ -88,6 +88,19 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "marketplaceHyperframesWorkerEnabled",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
+  "mcpConnectEnabled",
+  "mcpConnectMagnificEnabled",
+  "mcpConnectHiggsfieldEnabled",
+  "mcpConnectGroupSharingEnabled",
+  "mcpMediaStudioEnabled",
+  "mcpAutoStoryboardReviewEnabled",
+  "mcpMarketplaceCaptureEnabled",
+  "mcpStoryboardReviewEnabled",
+  "mcpMediaImageEnabled",
+  "mcpMediaVideoEnabled",
+  "mcpToolSchemaCacheEnabled",
+  "mcpAutoFallbackToGatewayApiEnabled",
+  "mcpProviderCreditsTrackedEnabled",
 ]);
 
 /**

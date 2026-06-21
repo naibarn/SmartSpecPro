@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/122-video-segment-planner-multi-shot-storyboard-review/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-planner-contracts",
+    "section-02-prompt-builder-and-creative-brief",
+    "section-03-marketplace-auto-review-integration",
+    "section-04-auto-overrides-and-preview-ui",
+    "section-05-storyboard-review-segment-state",
+    "section-06-access-observability-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-06-19T06:10:02.848243+00:00"
+}

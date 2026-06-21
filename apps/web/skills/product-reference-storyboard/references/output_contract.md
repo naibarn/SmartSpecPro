@@ -30,10 +30,13 @@ Required storyboard behavior:
 - Do not show a second competing product or similar background object from environment references; environment references may provide room mood and architecture only.
 - Include `TEXT RENDERING POLICY`. In non-infographic no-text mode, suppress readable non-product prop/background text: blank mugs/cups, blank or unreadable book covers and spines, unreadable screens, no visible prop logos, no wall-art words, no signage, no UI, and no readable numbers unless they are exact product markings to preserve. Explicitly forbid visible prompt labels, frame labels, timecodes, spoken-script text, or any instruction text from being rendered in the image. Also forbid added visible camera-shot abbreviations or technical labels such as `ECU`, `CU`, `MCU`, `MS`, `WS`, `ELS`, `LS`, `OS`, `HA`, `LA`, `storyboard_grid`, panel names, corner labels, captions, subtitles, or random glyphs. Camera/shot shorthand may guide backend planning only; never ask for those codes to appear in a panel.
 - If `cinematic_style` is `info_graphics_realistic` or `info_graphics`, require readable infographic composition with one large headline plus 2-4 short key points using the attached product reference image.
-- For `canvas_9_16_grid_3x3_frame_9_16_exact`, include these exact quality anchors in the final prompt: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
-- Copy the first `SHOT-BY-SHOT STORYBOARD PROMPT:` line from the decoded preset verbatim for `canvas_9_16_grid_3x3_frame_9_16_exact`; do not paraphrase the quality anchors and never change it to 5x2, 2x5, collage, masonry, contact sheet, film strip, mixed-size panels, or any non-3x3 layout.
+- For `canvas_9_16_grid_3x3_frame_9_16_exact`, include these exact quality anchors at the top of the final prompt and repeat them after `SHOT-BY-SHOT STORYBOARD PROMPT:`: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
+- Copy the decoded `LAYOUT LOCK:` line verbatim for `canvas_9_16_grid_3x3_frame_9_16_exact`; do not paraphrase the quality anchors and never change it to 5x2, 2x5, 10 panels, collage, masonry, contact sheet, film strip, mixed-size panels, or any non-3x3 layout.
 
 Allowed plain-text shape:
+
+LAYOUT LOCK:
+Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
 
 OUTPUT FORMAT LOCK:
 ...
@@ -60,7 +63,7 @@ PRODUCT VERIFY:
 Product visual lock from @Image1 / first attached product reference image; then one concise canonical product fact list, e.g. product name/category, exact levels/posts/parts/material/color/scale, and no wrong substitutions.
 
 SHOT-BY-SHOT STORYBOARD PROMPT:
-Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
+LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
 Frame 1: Visual-only description of the first panel and the matched story meaning as visible action, with no rendered text.
 Frame 2: Visual-only description of the second panel and the matched story meaning as visible action, with no rendered text.
 Frame 3: Visual-only description of the third panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.

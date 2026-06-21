@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { AutoReviewCreativePresetSelectionSchema } from "../../shared/hyperframes/autoReviewCreativePresets";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
@@ -67,6 +68,8 @@ import {
   CreateHyperframesPreviewOutputSchema,
   GetAutoStoryboardReviewPlanInputSchema,
   GetAutoStoryboardReviewPlanOutputSchema,
+  GetVideoSegmentPlanPreviewInputSchema,
+  GetVideoSegmentPlanPreviewOutputSchema,
   GetHyperframesRenderJobInputSchema,
   GetHyperframesRenderJobOutputSchema,
   ListHyperframesCreativePresetsInputSchema,
@@ -89,6 +92,7 @@ import {
   createHyperframesFinalCompositeForApi,
   createHyperframesPreviewForApi,
   getAutoStoryboardReviewPlanForApi,
+  getVideoSegmentPlanPreviewForApi,
   getHyperframesRenderJobForApi,
   listHyperframesCreativePresetsForApi,
   listHyperframesTemplatesForApi,
@@ -105,6 +109,16 @@ import {
   replayHyperframesDeadLetterByIdAsOperator,
 } from "../services/hyperframesOperatorService";
 import { readHyperframesFeatureFlagsForTenant } from "../services/hyperframesFeatureAccessService";
+
+const mcpTransportMetadataSchema = z.object({
+  transport: z.enum(["gateway_api", "mcp"]),
+  connectionId: z.string().max(64).optional(),
+  mcpConnectionId: z.string().max(64).optional(),
+  sharedGroupId: z.number().int().optional(),
+  approvalId: z.string().max(128).optional(),
+  mcpApprovalId: z.string().max(128).optional(),
+  idempotencyKey: z.string().max(128).optional(),
+}).optional().nullable();
 
 function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
@@ -599,14 +613,12 @@ export const marketplaceCaptureRouter = router({
           .enum(["no_text", "allow_text"])
           .optional()
           .default("no_text"),
-        imageModel: z
-          .enum(["google-nano-banana-pro", "google-banana-2"])
-          .optional()
-          .default("google-banana-2"),
+        imageModel: z.string().min(1).max(120).optional().default("google-banana-2"),
         qualityMode: z
           .enum(["fast_draft", "balanced", "premium_strict_qa"])
           .optional()
           .nullable(),
+        transportMetadata: mcpTransportMetadataSchema,
         referenceAnchors: z
           .object({
             schemaVersion: z.number().int().positive().optional(),
@@ -655,6 +667,10 @@ export const marketplaceCaptureRouter = router({
               ])
               .optional()
               .nullable(),
+            creativePresets: z
+              .array(AutoReviewCreativePresetSelectionSchema)
+              .max(8)
+              .optional(),
             requiredRoles: z
               .array(z.enum(["product", "character", "environment"]))
               .optional(),
@@ -737,6 +753,19 @@ export const marketplaceCaptureRouter = router({
       })
     ),
 
+  getVideoSegmentPlanPreview: protectedProcedure
+    .input(GetVideoSegmentPlanPreviewInputSchema)
+    .output(GetVideoSegmentPlanPreviewOutputSchema)
+    .query(async ({ input, ctx }) =>
+      getVideoSegmentPlanPreviewForApi({
+        productId: input.productId,
+        overrides: input.overrides,
+        transportMetadata: input.transportMetadata,
+        referenceAnchors: input.referenceAnchors,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
   startAutoStoryboardReview: protectedProcedure
     .input(StartAutoStoryboardReviewInputSchema)
     .output(StartAutoStoryboardReviewOutputSchema)
@@ -746,6 +775,7 @@ export const marketplaceCaptureRouter = router({
         expectedPlanHash: input.expectedPlanHash,
         idempotencyKey: input.idempotencyKey,
         overrides: input.overrides,
+        transportMetadata: input.transportMetadata,
         referenceAnchors: input.referenceAnchors,
         auth: authFromCtx(ctx),
         runtime: autoReviewRuntimeFromCtx(ctx),

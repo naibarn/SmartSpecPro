@@ -13,6 +13,8 @@ import {
   HyperframesFinalCompositeConfigSchema,
   RepairHyperframesRenderJobOutputSchema,
   type CreateHyperframesFinalCompositeInput,
+  type GetVideoSegmentPlanPreviewInput,
+  type GetVideoSegmentPlanPreviewOutput,
   type ListHyperframesCreativePresetsInput,
   type RepairHyperframesRenderJobOutput,
 } from "@shared/hyperframes/runtimeApiSchemas";
@@ -60,6 +62,15 @@ import {
 } from "./hyperframesRuntimeAdapter";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
 import { runHyperframesRenderWorkerOnce } from "../workers/hyperframesRenderWorker";
+import {
+  normalizeVideoSegmentCreativeBrief,
+  planVideoSegments,
+  resolveVideoModelSegmentCapability,
+  type VideoSegmentAudioStrategy,
+  type VideoSegmentPlanWarning,
+  type VideoSegmentPlannerShot,
+  type VideoSegmentTransport,
+} from "../../shared/videoSegmentPlanner";
 
 const INVALIDATES = [
   "marketplaceCapture.listAutoReviewRuns",
@@ -804,6 +815,120 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   };
 }
 
+function hyperframesVideoSegmentPlannerShots(input: {
+  shotCount: number;
+  referenceImageUrl?: string | null;
+}): VideoSegmentPlannerShot[] {
+  const shotCount = Math.min(12, Math.max(1, Math.round(input.shotCount)));
+  return Array.from({ length: shotCount }, (_, index) => ({
+    shotId: `auto-shot-${index + 1}`,
+    index,
+    title: `Auto review shot ${index + 1}`,
+    durationSeconds: 5,
+    storyboardFrameUrl: cleanText(input.referenceImageUrl) || undefined,
+  }));
+}
+
+function normalizeVideoSegmentPreviewWarning(
+  warning: {
+    code: string;
+    message: string;
+    severity?: "info" | "warning" | "error";
+    source?: string;
+    segmentId?: string;
+    shotIds?: string[];
+  }
+): VideoSegmentPlanWarning {
+  return {
+    code: warning.code,
+    message: warning.message,
+    severity: warning.severity ?? "warning",
+    source: warning.source === "fallback" ? "fallback" : "planner",
+    segmentId: warning.segmentId,
+    shotIds: warning.shotIds,
+  };
+}
+
+export async function getVideoSegmentPlanPreviewForApi(input: {
+  productId: string;
+  auth: HyperframesAuthContext;
+  overrides?: GetVideoSegmentPlanPreviewInput["overrides"];
+  transportMetadata?: GetVideoSegmentPlanPreviewInput["transportMetadata"];
+  referenceAnchors?: GetVideoSegmentPlanPreviewInput["referenceAnchors"];
+}): Promise<GetVideoSegmentPlanPreviewOutput> {
+  const plan = await getHyperframesAutoStoryboardReviewPlan({
+    productId: input.productId,
+    auth: input.auth,
+    overrides: input.overrides,
+  });
+  const transport: VideoSegmentTransport =
+    input.transportMetadata?.transport === "mcp" ? "mcp" : "gateway_api";
+  const audioStrategy = plan.defaults.audioStrategy as VideoSegmentAudioStrategy;
+  const referenceImageUrl =
+    cleanText(input.referenceAnchors?.productImageUrl) || null;
+  const videoSegmentPlan = planVideoSegments({
+    sourceSurface: "marketplace_capture",
+    mode: plan.defaults.videoStructureMode,
+    manualGroupSize: plan.defaults.manualVideoGroupSize,
+    videoModelId: plan.defaults.videoModel,
+    transport,
+    audioStrategy,
+    referenceMode: "single_storyboard_frame",
+    creativeBrief: normalizeVideoSegmentCreativeBrief(
+      plan.defaults.creativeBrief
+    ),
+    creativePresets: input.referenceAnchors?.creativePresets ?? [],
+    shots: hyperframesVideoSegmentPlannerShots({
+      shotCount: plan.defaults.shotCount,
+      referenceImageUrl,
+    }),
+    capability: resolveVideoModelSegmentCapability({
+      modelId: plan.defaults.videoModel,
+      transport,
+    }),
+  });
+  const warnings = videoSegmentPlan.warnings.map(
+    normalizeVideoSegmentPreviewWarning
+  );
+  if (!plan.canStart) {
+    warnings.push({
+      code: "auto_storyboard_not_available",
+      message: plan.primaryAction.label,
+      severity: "warning",
+      source: "access",
+    });
+  }
+  const isPerShot = videoSegmentPlan.effectiveMode === "per_shot";
+  return {
+    contractVersion:
+      HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+    videoSegmentPlan,
+    accessDecision: {
+      allowed: plan.canStart,
+      reasonCode: plan.canStart ? undefined : plan.primaryAction.actionId,
+      message: plan.canStart ? undefined : plan.primaryAction.label,
+      transport,
+      mcpConnectionId:
+        cleanText(input.transportMetadata?.mcpConnectionId) ||
+        cleanText(input.transportMetadata?.connectionId) ||
+        undefined,
+      sharedGroupId: input.transportMetadata?.sharedGroupId,
+    },
+    creditEstimate: {
+      mode: isPerShot ? "per_shot" : "segment_duration",
+      estimatedCredits: videoSegmentPlan.segments.length,
+      basis: isPerShot ? "jobs" : "segments",
+      creditSource:
+        transport === "mcp" ? "mcp_provider_account" : "gateway_api",
+      notes: [
+        "Estimate counts planned video segment submissions before provider-specific adjustments.",
+      ],
+    },
+    warnings,
+    fallbackReason: videoSegmentPlan.fallbackReason,
+  };
+}
+
 function toMarketplaceAutoReviewQualityMode(
   qualityMode: "fast" | "balanced" | "high"
 ): "fast_draft" | "balanced" | "premium_strict_qa" {
@@ -870,6 +995,7 @@ export async function startAutoStoryboardReviewForApi(input: {
   expectedPlanHash?: string;
   idempotencyKey?: string;
   overrides?: Record<string, unknown>;
+  transportMetadata?: Record<string, unknown> | null;
   referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   runtime?: Record<string, unknown>;
 }) {
@@ -941,8 +1067,13 @@ export async function startAutoStoryboardReviewForApi(input: {
       shotCount: plan.defaults.shotCount,
       overlayTextMode: plan.defaults.overlayTextMode,
       imageModel: plan.defaults.imageModel,
+      videoModel: plan.defaults.videoModel,
+      videoStructureMode: plan.defaults.videoStructureMode,
+      manualVideoGroupSize: plan.defaults.manualVideoGroupSize,
+      creativeBrief: plan.defaults.creativeBrief,
       qualityMode: toMarketplaceAutoReviewQualityMode(plan.defaults.qualityMode),
       referenceAnchors,
+      transportMetadata: input.transportMetadata,
     },
     input.auth,
     input.runtime ?? {}

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 import { trpc } from "../lib/trpc";
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardCard } from "@/components/dashboard";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ import {
   Loader2,
   ChevronLeft,
   Building2,
+  Cable,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -60,8 +62,9 @@ interface InvoiceConfig {
 export default function TenantSettings() {
   const { user, isLoading: authLoading } = useAuth();
   const { tenant } = useTenant();
+  const search = useSearch();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("invoice");
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(search).get("tab") || "invoice");
 
   // Invoice config state
   const [invoiceForm, setInvoiceForm] = useState<InvoiceConfig>({
@@ -97,12 +100,34 @@ export default function TenantSettings() {
       },
     });
 
+  const featureFlagsQuery = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(
+    { tenantId: tenant?.id == null ? undefined : String(tenant.id) },
+    {
+      enabled:
+        !!user &&
+        !!tenant?.id &&
+        (user.role === "domain_admin" || user.role === "admin"),
+    }
+  );
+  const updateFeatureFlags = trpc.tenantFeatureFlags.updateFeatureFlags.useMutation({
+    onSuccess: () => {
+      toast.success("MCP rollout settings saved");
+      featureFlagsQuery.refetch();
+    },
+    onError: err => toast.error(`Failed to save rollout settings: ${err.message}`),
+  });
+
   // Load settings into form
   useEffect(() => {
     if (invoiceConfig) {
       setInvoiceForm(invoiceConfig as InvoiceConfig);
     }
   }, [invoiceConfig]);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(search).get("tab");
+    if (tab) setActiveTab(tab);
+  }, [search]);
 
   const hasAccess = user?.role === "domain_admin" || user?.role === "admin";
 
@@ -167,6 +192,12 @@ export default function TenantSettings() {
       label: "Invoice",
       sublabel: "Company & Billing",
       icon: FileText,
+    },
+    {
+      key: "mcp_connect",
+      label: "MCP Connect",
+      sublabel: "Rollout flags",
+      icon: Cable,
     },
     // Future tabs can be added here, e.g.:
     // { key: "branding", label: "Branding", sublabel: "Logo & Colors", icon: Palette },
@@ -702,6 +733,56 @@ export default function TenantSettings() {
                           support.
                         </p>
                       )}
+                    </div>
+                  )}
+                </DashboardCard>
+              </TabsContent>
+
+              <TabsContent value="mcp_connect">
+                <DashboardCard
+                  className="overflow-hidden"
+                  title="MCP Connect rollout"
+                  description="Enable MCP Connect by tenant, provider, surface, asset type, and group sharing. Provider configuration is managed in Admin Settings."
+                  leading={<Cable className="w-5 h-5 text-blue-500" />}
+                >
+                  {featureFlagsQuery.isLoading ? (
+                    <div className="py-8 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {[
+                        ["mcpConnectEnabled", "MCP Connect master gate"],
+                        ["mcpConnectMagnificEnabled", "Magnific provider"],
+                        ["mcpConnectHiggsfieldEnabled", "Higgsfield provider"],
+                        ["mcpMediaStudioEnabled", "Media Studio surface"],
+                        ["mcpAutoStoryboardReviewEnabled", "Auto Storyboard Review surface"],
+                        ["mcpMarketplaceCaptureEnabled", "Marketplace Capture surface"],
+                        ["mcpStoryboardReviewEnabled", "Storyboard Review surface"],
+                        ["mcpMediaImageEnabled", "Image generation"],
+                        ["mcpMediaVideoEnabled", "Video generation"],
+                        ["mcpConnectGroupSharingEnabled", "Group sharing"],
+                        ["mcpAutoFallbackToGatewayApiEnabled", "Explicit fallback to Gateway API"],
+                        ["mcpProviderCreditsTrackedEnabled", "Provider credit tracking"],
+                      ].map(([key, label]) => (
+                        <label key={key} className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
+                          <div>
+                            <div className="text-sm font-medium text-gray-950">{label}</div>
+                            <div className="text-xs text-gray-500">{key}</div>
+                          </div>
+                          <Switch
+                            checked={Boolean((featureFlagsQuery.data as any)?.[key])}
+                            disabled={updateFeatureFlags.isPending}
+                            onCheckedChange={(checked) => {
+                              if (!tenant?.id) return;
+                              updateFeatureFlags.mutate({
+                                tenantId: String(tenant.id),
+                                flags: { [key]: checked },
+                              });
+                            }}
+                          />
+                        </label>
+                      ))}
                     </div>
                   )}
                 </DashboardCard>

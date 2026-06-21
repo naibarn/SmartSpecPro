@@ -24,9 +24,18 @@ import {
   storageKeyFromManagedHyperframesMediaUrl,
   transcribeHyperframesStoryboardShot,
 } from "../services/hyperframesTranscriptionService";
+import {
+  buildVideoSegmentPrompt,
+  normalizeVideoSegmentCreativeBrief,
+  type VideoSegmentPlan,
+} from "../../shared/videoSegmentPlanner";
+import {
+  optimizeProductReferenceStoryboardPrompt,
+} from "../services/productReferenceStoryboardSkillRunner";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
+const STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS = 2000;
 
 export function getReviewDataUpdatedAt(reviewData: unknown): number {
   if (!reviewData || typeof reviewData !== "object") return 0;
@@ -430,6 +439,14 @@ function getStoryboardReviewMarketplaceProductId(reviewData: unknown): string {
   return "";
 }
 
+export function getStoryboardReviewHyperframesProductId(reviewData: unknown): string {
+  if (!isStoryboardReviewRecord(reviewData)) return "";
+  return (
+    getStoryboardReviewMarketplaceProductId(reviewData) ||
+    cleanString(reviewData.manualHyperframesProductId)
+  );
+}
+
 function normalizeStoryboardReviewManagedMediaUrl(value: unknown): string {
   const text = cleanString(value);
   const key = storageKeyFromManagedHyperframesMediaUrl(text);
@@ -509,6 +526,14 @@ export function getStoryboardReviewAutoReviewRunId(reviewData: unknown): string 
 
   const taskRunIds = getStoryboardReviewTaskAutoReviewRunIds(reviewData);
   return taskRunIds.size === 1 ? [...taskRunIds][0]! : "";
+}
+
+export function getStoryboardReviewHyperframesRunId(reviewData: unknown): string {
+  if (!isStoryboardReviewRecord(reviewData)) return "";
+  return (
+    getStoryboardReviewAutoReviewRunId(reviewData) ||
+    cleanString(reviewData.manualHyperframesRunId)
+  );
 }
 
 function parseStoryboardReviewId(value: unknown): number | null {
@@ -965,6 +990,183 @@ function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | un
   return fallback ?? undefined;
 }
 
+type StoryboardReviewListRow = {
+  id: number;
+  name: string;
+  status: string;
+  clipCount: number | null;
+  completedClipCount: number | null;
+  thumbnailUrl: string | null;
+  reviewData: unknown;
+  videoEditorProjectId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export function summarizeStoryboardReviewListRows(reviewRows: StoryboardReviewListRow[]) {
+  return reviewRows.map((review) => ({
+    id: review.id,
+    name: review.name,
+    status: review.status,
+    clipCount: review.clipCount ?? 0,
+    completedClipCount: review.completedClipCount ?? 0,
+    thumbnailUrl: getReviewThumbnailUrl(review.reviewData, review.thumbnailUrl) ?? null,
+    videoEditorProjectId: review.videoEditorProjectId,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt,
+  }));
+}
+
+export function regenerateVideoSegmentPromptFromReviewDataForTest(input: {
+  reviewData: unknown;
+  segmentId: string;
+  targetTaskId?: string | null;
+  creativeBrief?: string | null;
+  manualNotes?: string | null;
+}) {
+  if (!isStoryboardReviewRecord(input.reviewData)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Storyboard Review data is invalid.",
+    });
+  }
+  const segmentState = isStoryboardReviewRecord(input.reviewData.videoSegmentState)
+    ? input.reviewData.videoSegmentState
+    : null;
+  const plan = isStoryboardReviewRecord(segmentState?.videoSegmentPlan)
+    ? segmentState?.videoSegmentPlan as unknown as VideoSegmentPlan
+    : null;
+  if (!plan) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Storyboard Review does not have a video segment plan.",
+    });
+  }
+  const segment = plan.segments.find(item => item.segmentId === input.segmentId);
+  if (!segment) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Video segment was not found in this Storyboard Review.",
+    });
+  }
+  const tasks = Array.isArray(input.reviewData.tasks)
+    ? input.reviewData.tasks.filter(isStoryboardReviewRecord)
+    : [];
+  const productFacts =
+    cleanString(input.reviewData.conceptDetails) ||
+    cleanString(input.reviewData.storyboardGuide) ||
+    "Preserve the existing product and storyboard facts.";
+  const creativeBrief = normalizeVideoSegmentCreativeBrief(input.creativeBrief);
+  const prompt = buildVideoSegmentPrompt({
+    plan,
+    segment,
+    productFacts,
+    creativeBrief: creativeBrief ?? plan.creativeBrief,
+    creativePresetDirective: tasks
+      .map(task =>
+        isStoryboardReviewRecord(task.storyboardContext) &&
+        isStoryboardReviewRecord(task.storyboardContext.extraParams)
+          ? cleanString(task.storyboardContext.extraParams.creativePresetDirective)
+          : ""
+      )
+      .find(Boolean),
+  });
+  const segmentTaskIds = tasks
+    .filter(task => {
+      const extraParams =
+        isStoryboardReviewRecord(task.storyboardContext) &&
+        isStoryboardReviewRecord(task.storyboardContext.extraParams)
+          ? task.storyboardContext.extraParams
+          : {};
+      return (
+        cleanString(extraParams.videoSegmentId) === input.segmentId ||
+        segment.shotIds.includes(cleanString(extraParams.shotId)) ||
+        segment.shotIds.includes(cleanString(task.id))
+      );
+    })
+    .map(task => cleanString(task.id))
+    .filter(Boolean);
+  const targetTaskId = cleanString(input.targetTaskId);
+  if (targetTaskId && !segmentTaskIds.includes(targetTaskId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Target task is not part of this video segment.",
+    });
+  }
+  const staleTaskIds = targetTaskId ? [targetTaskId] : segmentTaskIds;
+  const creativeBriefHash = creativeBrief?.normalizedText
+    ? Buffer.from(creativeBrief.normalizedText).toString("base64url").slice(0, 16)
+    : undefined;
+  return {
+    segmentId: input.segmentId,
+    prompt,
+    promptSource: "regenerated" as const,
+    creativeBriefHash,
+    warnings: creativeBrief?.warnings ?? [],
+    staleTaskIds,
+  };
+}
+
+function stripOptimizedPromptText(value: string): string {
+  return value
+    .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
+
+export async function optimizeStoryboardReviewSegmentPromptIfNeededForTest(
+  input: {
+    tenantId: string;
+    userId: number;
+    sourcePrompt: string;
+    segmentId: string;
+    model?: string | null;
+  },
+  optimizer: typeof optimizeProductReferenceStoryboardPrompt = optimizeProductReferenceStoryboardPrompt,
+) {
+  const sourcePrompt = input.sourcePrompt.trim();
+  if (sourcePrompt.length <= STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS) {
+    return {
+      prompt: sourcePrompt,
+      optimized: false,
+      sourceLength: sourcePrompt.length,
+      optimizedLength: sourcePrompt.length,
+    };
+  }
+
+  console.warn("[VideoEditorProjects] storyboard review segment prompt exceeded limit; optimizing before use", {
+    maxOutputChars: STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS,
+    segmentId: input.segmentId,
+    length: sourcePrompt.length,
+  });
+
+  const optimizerResult = await optimizer({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourcePrompt,
+    originSurface: "storyboard_review",
+    unitId: input.segmentId,
+    model: input.model ?? null,
+    maxOutputChars: STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS,
+  });
+  const optimizedPrompt = stripOptimizedPromptText(optimizerResult.value.rawContent);
+  if (!optimizedPrompt) {
+    throw new Error(`Storyboard Review segment prompt optimizer returned an empty prompt for segment ${input.segmentId}`);
+  }
+  if (optimizedPrompt.length > STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS) {
+    throw new Error(
+      `Storyboard Review segment prompt optimizer returned prompt over ${STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS} chars for segment ${input.segmentId}`,
+    );
+  }
+
+  return {
+    prompt: optimizedPrompt,
+    optimized: true,
+    sourceLength: sourcePrompt.length,
+    optimizedLength: optimizedPrompt.length,
+  };
+}
+
 export const videoEditorProjectsRouter = router({
   /** Browser lifecycle debug events for storyboard review audio persistence. */
   debugStoryboardReviewClient: protectedProcedure
@@ -1013,7 +1215,7 @@ export const videoEditorProjectsRouter = router({
             eq(mediaStudioStoryboardReviews.status, "active"),
           );
 
-      const [reviews, [{ total }]] = await Promise.all([
+      const [reviewRows, [{ total }]] = await Promise.all([
         db
           .select({
             id: mediaStudioStoryboardReviews.id,
@@ -1038,6 +1240,8 @@ export const videoEditorProjectsRouter = router({
           .where(where),
       ]);
 
+      const reviews = summarizeStoryboardReviewListRows(reviewRows);
+
       return { reviews, total };
     }),
 
@@ -1045,9 +1249,11 @@ export const videoEditorProjectsRouter = router({
   getStoryboardReview: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
+      const startedAt = Date.now();
       const db = await getDb();
       if (!db) return null;
 
+      const selectStartedAt = Date.now();
       const [review] = await db
         .select()
         .from(mediaStudioStoryboardReviews)
@@ -1058,24 +1264,29 @@ export const videoEditorProjectsRouter = router({
           ),
         )
           .limit(1);
+      const selectDurationMs = Date.now() - selectStartedAt;
 
       writeStoryboardReviewDebugLog({
         event: "getStoryboardReview",
         reviewId: input.id,
         userId: ctx.user.id,
         found: Boolean(review),
+        durationMs: Date.now() - startedAt,
+        selectDurationMs,
         request: summarizeDebugRequest(ctx),
         stored: summarizeCompanionAudio(review?.reviewData),
       });
 
       if (!review) return null;
 
+      const autoReviewContextStartedAt = Date.now();
       const autoReviewProduct = await getStoryboardReviewAutoReviewContext({
         db,
         userId: ctx.user.id,
         reviewId: input.id,
         reviewData: review.reviewData,
       });
+      const autoReviewContextDurationMs = Date.now() - autoReviewContextStartedAt;
       const marketplaceContext = autoReviewProduct
         ? Object.fromEntries(
             Object.entries(autoReviewProduct).filter(
@@ -1088,13 +1299,43 @@ export const videoEditorProjectsRouter = router({
           review.reviewData,
           marketplaceContext,
         );
+      const repairStartedAt = Date.now();
+      const repairedReviewData = repairStoryboardReviewMarketplacePromptLocks(
+        reviewDataWithMarketplaceContext,
+        autoReviewProduct ?? null,
+      );
+      const repairDurationMs = Date.now() - repairStartedAt;
+      const repairedReviewDataRecord =
+        repairedReviewData && typeof repairedReviewData === "object"
+          ? (repairedReviewData as Record<string, unknown>)
+          : {};
+      const repairedTasks = Array.isArray(repairedReviewDataRecord.tasks)
+        ? repairedReviewDataRecord.tasks
+        : [];
+
+      writeStoryboardReviewDebugLog({
+        event: "getStoryboardReview.completed",
+        reviewId: input.id,
+        userId: ctx.user.id,
+        found: true,
+        durationMs: Date.now() - startedAt,
+        selectDurationMs,
+        autoReviewContextDurationMs,
+        repairDurationMs,
+        taskCount: repairedTasks.length,
+        hasMarketplaceContext: Boolean(marketplaceContext),
+        autoReviewRunId: autoReviewProduct?.runId ?? null,
+        productId:
+          typeof marketplaceContext?.productId === "string"
+            ? marketplaceContext.productId
+            : null,
+        request: summarizeDebugRequest(ctx),
+        stored: summarizeCompanionAudio(repairedReviewData),
+      });
 
       return {
         ...review,
-        reviewData: repairStoryboardReviewMarketplacePromptLocks(
-          reviewDataWithMarketplaceContext,
-          autoReviewProduct ?? null,
-        ),
+        reviewData: repairedReviewData,
         autoReview: autoReviewProduct
           ? {
               runId: autoReviewProduct.runId,
@@ -1103,6 +1344,125 @@ export const videoEditorProjectsRouter = router({
               isSuperseded: autoReviewProduct.isSuperseded,
             }
           : null,
+      };
+    }),
+
+  regenerateVideoSegmentPrompt: protectedProcedure
+    .input(
+      z.object({
+        storyboardReviewId: z.number().int().positive(),
+        segmentId: z.string().min(1),
+        targetTaskId: z.string().min(1).optional().nullable(),
+        creativeBrief: z.string().max(20_000).optional().nullable(),
+        manualNotes: z.string().max(2000).optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+      const [review] = await db
+        .select({
+          id: mediaStudioStoryboardReviews.id,
+          reviewData: mediaStudioStoryboardReviews.reviewData,
+        })
+        .from(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          )
+        )
+        .limit(1);
+      if (!review) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Storyboard Review project was not found.",
+        });
+      }
+      const result = regenerateVideoSegmentPromptFromReviewDataForTest({
+        reviewData: review.reviewData,
+        segmentId: input.segmentId,
+        targetTaskId: input.targetTaskId,
+        creativeBrief: input.creativeBrief,
+        manualNotes: input.manualNotes,
+      });
+      const optimizedPrompt = await optimizeStoryboardReviewSegmentPromptIfNeededForTest({
+        tenantId: ctx.tenantId ?? "default",
+        userId: ctx.user.id,
+        sourcePrompt: result.prompt,
+        segmentId: result.segmentId,
+      });
+      const resultPrompt = optimizedPrompt.prompt;
+      const reviewData = isStoryboardReviewRecord(review.reviewData)
+        ? { ...review.reviewData }
+        : {};
+      const affectedTaskIds = new Set(result.staleTaskIds);
+      const nextTasks = Array.isArray(reviewData.tasks)
+        ? reviewData.tasks.map(task => {
+            if (!isStoryboardReviewRecord(task)) return task;
+            if (!result.staleTaskIds.includes(cleanString(task.id))) return task;
+            return {
+              ...task,
+              prompt: resultPrompt,
+              updatedAt: Date.now(),
+              storyboardContext: isStoryboardReviewRecord(task.storyboardContext)
+                ? {
+                    ...task.storyboardContext,
+                    extraParams: {
+                      ...(isStoryboardReviewRecord(task.storyboardContext.extraParams)
+                        ? task.storyboardContext.extraParams
+                        : {}),
+                      promptSource: "regenerated",
+                      videoSegmentPrompt: resultPrompt,
+                      videoSegmentPromptStale: false,
+                      videoSegmentPromptGeneratedAt: new Date().toISOString(),
+                      videoSegmentPromptOptimized: optimizedPrompt.optimized,
+                      videoSegmentPromptSourceLength: optimizedPrompt.sourceLength,
+                      videoSegmentPromptLength: optimizedPrompt.optimizedLength,
+                      ...(result.creativeBriefHash
+                        ? { videoSegmentPromptCreativeBriefHash: result.creativeBriefHash }
+                        : {}),
+                    },
+                  }
+                : task.storyboardContext,
+            };
+          })
+        : [];
+      const previousVideoSegmentState = isStoryboardReviewRecord(reviewData.videoSegmentState)
+        ? reviewData.videoSegmentState
+        : {};
+      const previousStaleTaskIds = Array.isArray(previousVideoSegmentState.staleTaskIds)
+        ? previousVideoSegmentState.staleTaskIds.map(cleanString).filter(Boolean)
+        : [];
+      const nextStaleTaskIds = previousStaleTaskIds.filter(taskId => !affectedTaskIds.has(taskId));
+      const nextReviewData = {
+        ...reviewData,
+        tasks: nextTasks,
+        updatedAt: Date.now(),
+        videoSegmentState: {
+          ...previousVideoSegmentState,
+          promptSource: "regenerated",
+          lastPromptGeneratedAt: new Date().toISOString(),
+          staleTaskIds: nextStaleTaskIds,
+          staleReason: nextStaleTaskIds.length > 0
+            ? previousVideoSegmentState.staleReason ?? null
+            : null,
+        },
+      };
+      await db
+        .update(mediaStudioStoryboardReviews)
+        .set({
+          reviewData: nextReviewData,
+          updatedAt: new Date(),
+        })
+        .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId));
+      return {
+        ...result,
+        prompt: resultPrompt,
+        optimized: optimizedPrompt.optimized,
+        sourceLength: optimizedPrompt.sourceLength,
+        optimizedLength: optimizedPrompt.optimizedLength,
+        maxPromptChars: STORYBOARD_REVIEW_VIDEO_SEGMENT_PROMPT_MAX_CHARS,
       };
     }),
 
@@ -1140,8 +1500,8 @@ export const videoEditorProjectsRouter = router({
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
-        getStoryboardReviewMarketplaceProductId(normalizedReviewData);
-      const canonicalRunId = getStoryboardReviewAutoReviewRunId(normalizedReviewData);
+        getStoryboardReviewHyperframesProductId(normalizedReviewData);
+      const canonicalRunId = getStoryboardReviewHyperframesRunId(normalizedReviewData);
       if (canonicalProductId !== input.productId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -1229,8 +1589,8 @@ export const videoEditorProjectsRouter = router({
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
-        getStoryboardReviewMarketplaceProductId(normalizedReviewData);
-      const canonicalRunId = getStoryboardReviewAutoReviewRunId(normalizedReviewData);
+        getStoryboardReviewHyperframesProductId(normalizedReviewData);
+      const canonicalRunId = getStoryboardReviewHyperframesRunId(normalizedReviewData);
       if (canonicalProductId !== input.productId) {
         throw new TRPCError({
           code: "BAD_REQUEST",

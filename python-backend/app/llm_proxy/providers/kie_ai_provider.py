@@ -95,6 +95,12 @@ _INTERNAL_EXTRA_PARAM_KEYS = {
     "marketplaceProduct",
     "marketplace_context",
     "marketplace_product",
+    "reference_image_manifest",
+    "referenceImageManifest",
+    "reference_image_role_order",
+    "referenceImageRoleOrder",
+    "reference_image_role_counts",
+    "referenceImageRoleCounts",
 }
 
 

@@ -124,6 +124,7 @@ const DesktopView = lazy(() => import("./pages/DesktopView"));
 const SkillBrowser = lazy(() => import("./pages/SkillBrowser"));
 const DockerRedirect = lazy(() => import("./pages/DockerRedirect"));
 const GoogleDriveCallback = lazy(() => import("./pages/GoogleDriveCallback"));
+const McpConnectCallback = lazy(() => import("./pages/McpConnectCallback"));
 const OneDriveCallback = lazy(() => import("./pages/OneDriveCallback"));
 const UploadPostCallback = lazy(() => import("./pages/UploadPostCallback"));
 const DocPage = lazy(() => import("./pages/DocPage"));
@@ -481,8 +482,8 @@ function Router() {
         <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>
         <Route path="/media-studio"><RequireAuth><MediaStudio /></RequireAuth></Route>
         <Route path="/content-composer"><RequireAuth><ContentComposer /></RequireAuth></Route>
-        <Route path="/storyboard-review"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/storyboard-review/:reviewId"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
+        <Route path="/storyboard-review"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>
         <Route path="/billing/invoices/:invoiceId"><RequireAuth><BillingCenter /></RequireAuth></Route>
         <Route path="/billing"><RequireAuth><BillingCenter /></RequireAuth></Route>
@@ -505,6 +506,7 @@ function Router() {
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/auth/callback/mcp-connect" component={McpConnectCallback} />
         <Route path="/auth/callback/google-drive" component={GoogleDriveCallback} />
         <Route path="/auth/callback/onedrive" component={OneDriveCallback} />
         <Route path="/auth/callback/upload-post" component={UploadPostCallback} />

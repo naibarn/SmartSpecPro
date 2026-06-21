@@ -9,6 +9,7 @@ export const ROUTE_NAMESPACES = [
   { pathPrefix: "/media", namespaces: ["media"] as const },
   { pathPrefix: "/generate", namespaces: ["media"] as const },
   { pathPrefix: "/gallery", namespaces: ["media"] as const },
+  { pathPrefix: "/storyboard-review", namespaces: ["media", "common"] as const },
   { pathPrefix: "/marketplace", namespaces: ["marketplace"] as const },
   { pathPrefix: "/presentation", namespaces: ["presentation"] as const },
   { pathPrefix: "/video-editor", namespaces: ["presentation"] as const },

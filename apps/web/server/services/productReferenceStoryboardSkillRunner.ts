@@ -47,6 +47,8 @@ const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_FATAL_CODES = new Set([
   "storyboard_layout_preset_contract_missing",
   "output_single_image_missing",
   "exact_frame_count_missing",
+  "exact_panel_count_missing",
+  "exact_cell_count_missing",
   "vertical_frame_count_missing",
   "wide_frame_count_missing",
   "square_frame_count_missing",
@@ -56,6 +58,9 @@ const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_FATAL_CODES = new Set([
   "equal_rows_missing",
   "no_collage_lock_missing",
   "no_separator_lock_missing",
+  "panel_gutter_lock_missing",
+  "single_cell_per_panel_lock_missing",
+  "wide_shot_portrait_panel_lock_missing",
   "product_reference_image_exact_recreation_missing",
   "renderable_camera_abbreviation_label_leak",
   "renderable_storyboard_grid_label_leak",
@@ -723,14 +728,101 @@ function buildStoryboardLayoutContract(input: {
     input.mode === "exact" && input.frameAspectRatio
       ? `, exactly ${exactFrameDescriptor}`
       : `, ${expectedFrameCount} crop-safe frames with generous margins`;
-  const requiredPromptLine = [
-    `Create one single ${input.canvasAspectRatio} image as a strict ${input.gridColumns}x${input.gridRows} grid with exactly ${expectedFrameCount} frames${frameShape}`,
-    `exactly ${input.gridColumns} equal-width columns`,
-    `exactly ${input.gridRows} equal-height rows`,
-    "no collage/masonry layout",
-    "no separator lines",
-    "and no visible dividers.",
-  ].join(", ");
+  const isVerticalNinePanelGrid =
+    input.canvasAspectRatio === "9:16" &&
+    input.gridColumns === 3 &&
+    input.gridRows === 3 &&
+    expectedFrameCount === 9 &&
+    input.frameAspectRatio === "9:16" &&
+    input.mode === "exact";
+  const requiredPromptLine = isVerticalNinePanelGrid
+    ? "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel."
+    : [
+        `Create one single ${input.canvasAspectRatio} image as a strict ${input.gridColumns}x${input.gridRows} grid with exactly ${expectedFrameCount} frames${frameShape}`,
+        `exactly ${input.gridColumns} equal-width columns`,
+        `exactly ${input.gridRows} equal-height rows`,
+        "no collage/masonry layout",
+        "no separator lines",
+        "and no visible dividers.",
+      ].join(", ");
+  const countFragments: Array<readonly [string, readonly string[]]> =
+    isVerticalNinePanelGrid
+      ? [
+          [
+            "exact_panel_count_missing",
+            [
+              "EXACTLY 9 PANELS",
+              "9 PANELS / 9 CELLS ONLY",
+              "exactly 9 panels",
+            ],
+          ],
+          [
+            "exact_cell_count_missing",
+            [
+              "9 CELLS ONLY",
+              "9 PANELS / 9 CELLS ONLY",
+              "exactly 9 cells",
+            ],
+          ],
+        ]
+      : [
+          [
+            "exact_frame_count_missing",
+            [
+              `exactly ${expectedFrameCount} frames`,
+              `${expectedFrameCount} total frames`,
+            ],
+          ],
+        ];
+  const shapeFragments: Array<readonly [string, readonly string[]]> =
+    isVerticalNinePanelGrid
+      ? [
+          [
+            "single_cell_per_panel_lock_missing",
+            [
+              "Each panel occupies exactly one cell",
+              "Never split one panel into two cells",
+            ],
+          ],
+          [
+            "wide_shot_portrait_panel_lock_missing",
+            [
+              "wide field of view inside a vertical portrait panel",
+              "not a horizontal panel",
+            ],
+          ],
+        ]
+      : input.mode === "exact" && input.frameAspectRatio
+        ? [
+            [
+              exactFrameCode,
+              [
+                `exactly ${exactFrameDescriptor}`,
+                exactFrameDescriptor,
+                `${input.frameAspectRatio} frames`,
+              ],
+            ],
+          ]
+        : [
+            [
+              "crop_safe_frame_margin_missing",
+              ["crop-safe frames", "crop safe frames", "generous margins"],
+            ],
+          ];
+  const dividerFragments: Array<readonly [string, readonly string[]]> =
+    isVerticalNinePanelGrid
+      ? [
+          [
+            "panel_gutter_lock_missing",
+            ["clean narrow gutters", "narrow gutters between panels"],
+          ],
+        ]
+      : [
+          [
+            "no_separator_lock_missing",
+            ["no separator lines", "no visible dividers"],
+          ],
+        ];
   return {
     ...input,
     expectedFrameCount,
@@ -743,27 +835,8 @@ function buildStoryboardLayoutContract(input: {
           `single ${input.canvasAspectRatio} image`,
         ],
       ],
-      [
-        "exact_frame_count_missing",
-        [`exactly ${expectedFrameCount} frames`, `${expectedFrameCount} total frames`],
-      ],
-      ...(input.mode === "exact" && input.frameAspectRatio
-        ? ([
-            [
-              exactFrameCode,
-              [
-                `exactly ${exactFrameDescriptor}`,
-                exactFrameDescriptor,
-                `${input.frameAspectRatio} frames`,
-              ],
-            ],
-          ] as Array<readonly [string, readonly string[]]>)
-        : ([
-            [
-              "crop_safe_frame_margin_missing",
-              ["crop-safe frames", "crop safe frames", "generous margins"],
-            ],
-          ] as Array<readonly [string, readonly string[]]>)),
+      ...countFragments,
+      ...shapeFragments,
       [
         "equal_columns_missing",
         [
@@ -779,7 +852,7 @@ function buildStoryboardLayoutContract(input: {
         ],
       ],
       ["no_collage_lock_missing", ["no collage/masonry layout", "no collage"]],
-      ["no_separator_lock_missing", ["no separator lines", "no visible dividers"]],
+      ...dividerFragments,
     ],
   };
 }
@@ -1144,6 +1217,96 @@ function countMatches(text: string, pattern: RegExp): number {
   return text.match(pattern)?.length ?? 0;
 }
 
+function restoreProductReferenceStoryboardMandatoryContract(input: {
+  prompt: string;
+  userInputs: Record<string, unknown>;
+  maxOutputChars: number;
+}): {
+  prompt: string;
+  applied: boolean;
+  restoredCodes: string[];
+} {
+  const base = input.prompt.trim();
+  if (!base) {
+    return { prompt: base, applied: false, restoredCodes: [] };
+  }
+  const layoutContract = resolveStoryboardLayoutPresetContract(
+    input.userInputs.storyboard_layout_preset
+  );
+  const expectedFrameCount = layoutContract?.expectedFrameCount ?? 9;
+  const frameCount = countMatches(base, /\bFrame\s+\d+\s*:/gi);
+  if (frameCount < expectedFrameCount) {
+    return { prompt: base, applied: false, restoredCodes: [] };
+  }
+
+  let prompt = base;
+  const restoredCodes: string[] = [];
+  const requiredLayoutFragments =
+    layoutContract?.requiredFragments ??
+    PRODUCT_REFERENCE_STORYBOARD_LAYOUT_CONTRACTS
+      .canvas_9_16_grid_3x3_frame_9_16_exact.requiredFragments;
+  const missingLayout = requiredLayoutFragments.filter(
+    ([, fragments]) =>
+      !fragments.some(fragment =>
+        prompt.toLowerCase().includes(fragment.toLowerCase())
+      )
+  );
+  if (missingLayout.length > 0 && layoutContract?.requiredPromptLine) {
+    const layoutLine = layoutContract.requiredPromptLine;
+    const next = /SHOT-BY-SHOT STORYBOARD PROMPT:/i.test(prompt)
+      ? prompt.replace(
+          /SHOT-BY-SHOT STORYBOARD PROMPT:\s*/i,
+          `SHOT-BY-SHOT STORYBOARD PROMPT:\n${layoutLine}\n`
+        )
+      : `SHOT-BY-SHOT STORYBOARD PROMPT:\n${layoutLine}\n${prompt}`;
+    if (next.length <= input.maxOutputChars) {
+      prompt = next;
+      restoredCodes.push(
+        ...missingLayout.map(([code]) => `layout:${code}`)
+      );
+    }
+  }
+
+  const hasExactProductReferenceLock =
+    /(?:@Image1|product reference image|attached product image)/i.test(
+      prompt
+    ) &&
+    /(?:primary visual source of truth|strict product visual lock|strict visual source of truth)/i.test(
+      prompt
+    ) &&
+    /(?:text|description)[^\n]{0,100}(?:secondary|must never override|never override)|(?:not|never)[^\n]{0,140}(?:generic product description|text description)/i.test(
+      prompt
+    ) &&
+    /(?:recreate|match|copy|replicate)[^\n]{0,180}(?:exact|same|actual reference|reference image)/i.test(
+      prompt
+    );
+  if (!hasExactProductReferenceLock) {
+    const productTitle = cleanInputString(input.userInputs.product_title);
+    const productLock = [
+      "PRODUCT REFERENCE LOCK: Use @Image1 / the first attached product reference image as the primary visual source of truth; the written product description is secondary and must never override the attached product image or generic product description. Recreate and match the exact same actual reference image product, including silhouette, proportions, material, color, countable parts, construction, and scale.",
+      productTitle ? `Product title context: ${productTitle}.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const next = /SHOT-BY-SHOT STORYBOARD PROMPT:/i.test(prompt)
+      ? prompt.replace(
+          /SHOT-BY-SHOT STORYBOARD PROMPT:/i,
+          `${productLock}\nSHOT-BY-SHOT STORYBOARD PROMPT:`
+        )
+      : `${productLock}\n${prompt}`;
+    if (next.length <= input.maxOutputChars) {
+      prompt = next;
+      restoredCodes.push("product_reference_image_exact_recreation_missing");
+    }
+  }
+
+  return {
+    prompt,
+    applied: restoredCodes.length > 0,
+    restoredCodes,
+  };
+}
+
 function validateProductReferenceStoryboardOutputCompleteness(
   prompt: string,
   layoutPreset: unknown = "canvas_9_16_grid_3x3_frame_9_16_exact",
@@ -1301,6 +1464,23 @@ export function validateProductReferenceStoryboardOutputCompletenessForTest(
   );
 }
 
+export function restoreProductReferenceStoryboardMandatoryContractForTest(input: {
+  prompt: string;
+  userInputs?: Record<string, unknown> | null;
+  maxOutputChars?: number | null;
+}): {
+  prompt: string;
+  applied: boolean;
+  restoredCodes: string[];
+} {
+  return restoreProductReferenceStoryboardMandatoryContract({
+    prompt: input.prompt,
+    userInputs: input.userInputs ?? {},
+    maxOutputChars:
+      input.maxOutputChars ?? PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS,
+  });
+}
+
 export function resolveStoryboardLayoutPresetContractForTest(
   preset: string
 ): ProductReferenceStoryboardLayoutContract | null {
@@ -1398,6 +1578,7 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
     | "media_production"
     | "media_studio_production"
     | "media_studio_video_shot"
+    | "storyboard_review"
     | null;
   runId?: string | null;
   unitId?: string | null;
@@ -2191,6 +2372,28 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       runtimeStatus: optimizerResult.execution.runtime.status,
     });
   }
+  const contractRestore =
+    restoreProductReferenceStoryboardMandatoryContract({
+      prompt: rawOutput,
+      userInputs: mergedUserInputs,
+      maxOutputChars,
+    });
+  if (contractRestore.applied) {
+    rawOutput = contractRestore.prompt;
+    console.info(
+      "[productReferenceStoryboardSkillRunner] mandatory_contract_restored",
+      {
+        skillId: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
+        runId: input.runId ?? null,
+        unitId: input.unitId ?? null,
+        attempt: input.attempt ?? null,
+        promptAttempt: input.promptAttempt ?? null,
+        restoredCodes: contractRestore.restoredCodes,
+        outputLengthChars: rawOutput.length,
+        fallbackUsed: false,
+      }
+    );
+  }
   if (rawOutput.length > maxOutputChars) {
     throw new ProductReferenceStoryboardSkillOutputLimitError({
       runId: input.runId ?? null,
@@ -2298,6 +2501,17 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     completenessWarnings,
     completenessStatus:
       completenessWarnings.length === 0 ? "passed" : "warning",
+    mandatoryContractRestore: contractRestore.applied
+      ? {
+          applied: true,
+          restoredCodes: contractRestore.restoredCodes,
+          fallbackUsed: false,
+        }
+      : {
+          applied: false,
+          restoredCodes: [],
+          fallbackUsed: false,
+        },
     layoutContract: schemaAudit.layoutContract,
     promptOptimizer: promptOptimizerAudit,
     inputKeys: Object.keys(mergedUserInputs).sort(),

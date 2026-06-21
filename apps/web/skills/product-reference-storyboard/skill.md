@@ -67,11 +67,11 @@ Current-run reference images beat every default. `reference_product_images` are 
 
 `storyboard_layout_preset` is the single source of truth for the final canvas, grid columns, grid rows, total frame count, and per-frame shape. Decode it before writing any frame prose. Do not let `aspect_ratio`, `required_frame_count`, `storyboard_guide`, `voiceover_script`, Product Detail prose, or reference-image composition override the decoded preset.
 
-When the preset is `canvas_9_16_grid_3x3_frame_9_16_exact`, the first line after `SHOT-BY-SHOT STORYBOARD PROMPT:` must be exactly:
+When the preset is `canvas_9_16_grid_3x3_frame_9_16_exact`, put the layout lock at the very top of the final prompt and repeat it as the first line after `SHOT-BY-SHOT STORYBOARD PROMPT:`. The repeated line must be exactly:
 
-Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, and no visible dividers.
+LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
 
-This line is mandatory. Do not paraphrase it, do not change 3x3 to 5x2, 2x5, collage, masonry, contact sheet, film strip, or mixed-size panels, and do not infer layout from the product reference image. If the decoded preset and another input conflict, follow the preset and keep the story content inside the decoded frames.
+This line is mandatory. Do not paraphrase it, do not change 3x3 to 5x2, 2x5, 10 panels, collage, masonry, contact sheet, film strip, or mixed-size panels, and do not infer layout from the product reference image. If the decoded preset and another input conflict, follow the preset and keep the story content inside the decoded cells. A story frame may contain only one panel/cell; a folding, setup, before/after, comparison, or transition beat must never split itself into two cells.
 
 Preset decoding rules:
 - `canvas_1_1_grid_1x1_frame_1_1_exact`: one single 1:1 image, strict 1x1 grid, exactly 1 frame, exactly 1 square frame.
@@ -84,7 +84,7 @@ Preset decoding rules:
 - `canvas_16_9_grid_3x2_crop_safe`: one single 16:9 image, strict 3x2 grid, exactly 6 crop-safe frames with generous margins.
 - `canvas_9_16_grid_1x1_frame_9_16_exact`: one single 9:16 image, strict 1x1 grid, exactly 1 frame, exactly 1 vertical frame.
 - `canvas_9_16_grid_2x2_frame_9_16_exact`: one single 9:16 image, strict 2x2 grid, exactly 4 frames, exactly 4 vertical frames.
-- `canvas_9_16_grid_3x3_frame_9_16_exact`: one single 9:16 image, strict 3x3 grid, exactly 9 frames, exactly 9 vertical frames.
+- `canvas_9_16_grid_3x3_frame_9_16_exact`: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, one panel per cell, never 2x5/5x2/10 panels.
 - `canvas_9_16_grid_1x2_crop_safe`: one single 9:16 image, strict 1x2 grid, exactly 2 crop-safe frames with generous margins.
 - `canvas_9_16_grid_2x3_crop_safe`: one single 9:16 image, strict 2x3 grid, exactly 6 crop-safe frames with generous margins.
 - `canvas_4_3_grid_4x3_frame_1_1_exact`: one single 4:3 image, strict 4x3 grid, exactly 12 frames, exactly 12 square frames.
@@ -204,8 +204,11 @@ Return plain prompt text only. Do not return JSON, YAML, Markdown fences, wrappe
 
 Use this shape:
 
+LAYOUT LOCK:
+Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
+
 OUTPUT FORMAT LOCK:
-Plain prompt text only.
+Plain prompt text only. One final 9:16 storyboard image, not separate images. Never create 2x5, 5x2, or 10 panels.
 
 VIDEO IDENTITY SAFETY LOCK:
 No back-facing or no-face visible-head identity frames unless explicitly rear-only with no turn/no face reveal.
@@ -229,7 +232,7 @@ PRODUCT VERIFY:
 Product visual lock from @Image1 / first attached product reference image; then one concise canonical product fact list, e.g. product name/category, exact levels/posts/parts/material/color/scale, and no wrong substitutions.
 
 SHOT-BY-SHOT STORYBOARD PROMPT:
-Create one single 9:16 image as a strict 3x3 grid with exactly 9 frames, exactly 9 vertical frames, exactly 3 equal-width columns, exactly 3 equal-height rows, no collage/masonry layout, no separator lines, no visible dividers, borderless edge-to-edge panels, zero gutters, zero margins, and no frame outlines.
+LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
 Frame 1: Visual-only description of the first panel and the matched story meaning as visible action, with no rendered text.
 Frame 2: Visual-only description of the second panel and the matched story meaning as visible action, with no rendered text.
 Frame 3: Visual-only description of the third panel and the matched story meaning as visible action, with natural human-realism wording if a person appears.
@@ -242,4 +245,4 @@ Frame 9: Visual-only description of the ninth panel and the matched story meanin
 
 Invalid output examples: a single line such as `*: 33.3-40s. Visual: ...`, one source storyboard bullet, only `Frame 9`, only a final scene summary, any answer with fewer than nine `Frame N:` lines, or frame text containing `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover, timecodes, subtitles, or captions.
 
-For `canvas_9_16_grid_3x3_frame_9_16_exact`, copy the first `SHOT-BY-SHOT STORYBOARD PROMPT:` line verbatim. Do not paraphrase `one single 9:16 image`, `strict 3x3 grid`, `exactly 9 frames`, `exactly 9 vertical frames`, `exactly 3 equal-width columns`, `exactly 3 equal-height rows`, `no collage/masonry layout`, `no separator lines`, or `no visible dividers`.
+For `canvas_9_16_grid_3x3_frame_9_16_exact`, copy the top `LAYOUT LOCK:` line again as the first `SHOT-BY-SHOT STORYBOARD PROMPT:` line verbatim. Do not paraphrase `one single 9:16 image`, `strict 3x3 grid`, `EXACTLY 9 PANELS / 9 CELLS ONLY`, `exactly 3 equal-width columns`, `exactly 3 equal-height rows`, `clean narrow gutters between panels`, `Each panel occupies exactly one cell`, `Never split one panel into two cells`, or `Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel`.

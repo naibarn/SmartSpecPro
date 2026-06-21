@@ -7,8 +7,31 @@ import {
   ALLOWED_FEATURE_FLAGS,
   FEATURE_FLAG_DEFAULTS,
 } from "../../../shared/featureFlags";
+import { validateFeatureFlags } from "../tenantFeatureFlagService";
 
 describe("MCP Feature Flags", () => {
+  const mediaMcpFlags = [
+    "mcpConnectEnabled",
+    "mcpConnectMagnificEnabled",
+    "mcpConnectHiggsfieldEnabled",
+    "mcpConnectGroupSharingEnabled",
+    "mcpMediaStudioEnabled",
+    "mcpAutoStoryboardReviewEnabled",
+    "mcpMarketplaceCaptureEnabled",
+    "mcpStoryboardReviewEnabled",
+    "mcpMediaImageEnabled",
+    "mcpMediaVideoEnabled",
+    "mcpToolSchemaCacheEnabled",
+    "mcpAutoFallbackToGatewayApiEnabled",
+    "mcpProviderCreditsTrackedEnabled",
+  ] as const;
+  const videoSegmentPlannerFlags = [
+    "videoSegmentPlannerShadow",
+    "videoSegmentPlannerPerShot",
+    "videoSegmentPlannerPreview",
+    "videoSegmentPlannerMultiShotBeta",
+  ] as const;
+
   it("mcpServerRegistry flag exists in ALLOWED_FEATURE_FLAGS", () => {
     expect(ALLOWED_FEATURE_FLAGS.has("mcpServerRegistry")).toBe(true);
   });
@@ -21,8 +44,8 @@ describe("MCP Feature Flags", () => {
     expect(ALLOWED_FEATURE_FLAGS.has("mcpOAuth")).toBe(true);
   });
 
-  it("mcpServerRegistry defaults to false (phased rollout)", () => {
-    expect(FEATURE_FLAG_DEFAULTS.mcpServerRegistry).toBe(false);
+  it("mcpServerRegistry remains enabled by default for the existing registry surface", () => {
+    expect(FEATURE_FLAG_DEFAULTS.mcpServerRegistry).toBe(true);
   });
 
   it("mcpStdio defaults to false (phased rollout)", () => {
@@ -31,6 +54,45 @@ describe("MCP Feature Flags", () => {
 
   it("mcpOAuth defaults to false (phased rollout)", () => {
     expect(FEATURE_FLAG_DEFAULTS.mcpOAuth).toBe(false);
+  });
+
+  it("MCP Connect media flags exist in ALLOWED_FEATURE_FLAGS", () => {
+    for (const flag of mediaMcpFlags) {
+      expect(ALLOWED_FEATURE_FLAGS.has(flag)).toBe(true);
+    }
+  });
+
+  it("MCP Connect media flags default to false", () => {
+    for (const flag of mediaMcpFlags) {
+      expect(FEATURE_FLAG_DEFAULTS[flag]).toBe(false);
+    }
+  });
+
+  it("tenant flag validation strips arbitrary MCP-like keys", () => {
+    const result = validateFeatureFlags({
+      mcpConnectEnabled: true,
+      mcp_connect_enabled: true,
+      mcpArbitraryProviderEnabled: true,
+      mcpProviderCreditsTrackedEnabled: false,
+    });
+
+    expect(result).toEqual({
+      mcpConnectEnabled: true,
+      mcpProviderCreditsTrackedEnabled: false,
+    });
+  });
+
+  it("video segment planner rollout flags exist in ALLOWED_FEATURE_FLAGS", () => {
+    for (const flag of videoSegmentPlannerFlags) {
+      expect(ALLOWED_FEATURE_FLAGS.has(flag)).toBe(true);
+    }
+  });
+
+  it("video segment planner defaults keep only shadow and per-shot enabled", () => {
+    expect(FEATURE_FLAG_DEFAULTS.videoSegmentPlannerShadow).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.videoSegmentPlannerPerShot).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.videoSegmentPlannerPreview).toBe(false);
+    expect(FEATURE_FLAG_DEFAULTS.videoSegmentPlannerMultiShotBeta).toBe(false);
   });
 });
 

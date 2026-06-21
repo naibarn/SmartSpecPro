@@ -1,12 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  applyStoryboardReviewVideoOptionsToDraft,
+  applyRegeneratedVideoSegmentPromptToDraft,
   buildFirstLastFrameStoryboardTasks,
+  evaluateStoryboardVideoSegmentPromptGenerationGate,
   getStoryboardReviewAutoReviewRunIdFromDraft,
   getStoryboardReviewProductIdFromDraft,
+  getStoryboardTaskEffectiveGenerationContext,
+  normalizeStoryboardTransportMetadata,
   mergeFresherStoryboardReviewTasks,
+  normalizeStoryboardReviewDraft,
   readStoryboardReviewDraft,
   replaceStoryboardVideoSlot,
   replaceStoryboardReferenceFrame,
+  splitStoryboardVideoSegmentTaskToPerShotFallback,
   storyboardDraftToReviewTasks,
   STORYBOARD_REVIEW_DRAFT_STORAGE_KEY,
   type StoryboardReviewDraft,
@@ -14,6 +21,813 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("Storyboard Review video segment state", () => {
+  it("keeps MCP provider route metadata while normalizing drafts", () => {
+    expect(normalizeStoryboardTransportMetadata({
+      transport: "mcp",
+      originSurface: "storyboard_review",
+      assetType: "video",
+      connectionId: "mcp_conn_1",
+      providerKey: "higgsfield",
+      providerModelId: "seedance_unlimited",
+      toolName: "generate_video",
+      argumentShape: "higgsfield.generate_video",
+      creditPolicy: "provider_credits_tracked",
+    })).toMatchObject({
+      transport: "mcp",
+      connectionId: "mcp_conn_1",
+      providerKey: "higgsfield",
+      providerModelId: "seedance_unlimited",
+      toolName: "generate_video",
+      argumentShape: "higgsfield.generate_video",
+    });
+  });
+
+  it("applies Storyboard Review video options to task generation context", () => {
+    const now = 123_456;
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: now - 1,
+      taskIds: ["task-1", "task-2"],
+      selectedTaskIds: ["task-1", "task-2"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "per_shot",
+        promptSource: "initial",
+        staleTaskIds: [],
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "per_shot",
+          effectiveMode: "per_shot",
+          videoModelId: "veo3/generate-veo-3-video-lite",
+          transport: "gateway_api",
+          audioStrategy: "native_video_audio",
+          referenceMode: "start_stop",
+          creativePresets: [],
+          segments: [],
+          warnings: [],
+          planHash: "vsp_existing",
+        },
+      },
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "completed",
+          type: "video",
+          prompt: "Old prompt 1",
+          model: "veo3/generate-veo-3-video-lite",
+          url: "https://example.com/old-1.mp4",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            model: "veo3/generate-veo-3-video-lite",
+            referenceImages: [
+              { url: "https://example.com/1.jpg" },
+              { url: "https://example.com/2.jpg" },
+            ],
+            referenceVideos: [],
+            extraParams: {
+              shotId: "shot-1",
+              storyboardPromptPlanner: {
+                includeVoiceover: true,
+                speechMode: "th",
+                speechLanguage: "Thai",
+              },
+            },
+          },
+        },
+        {
+          id: "task-2",
+          index: 1,
+          status: "queued",
+          type: "video",
+          prompt: "Old prompt 2",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            model: "veo3/generate-veo-3-video-lite",
+            referenceImages: [
+              { url: "https://example.com/2.jpg" },
+              { url: "https://example.com/3.jpg" },
+            ],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-2" },
+          },
+        },
+      ],
+    });
+
+    expect(draft).toBeTruthy();
+    const updated = applyStoryboardReviewVideoOptionsToDraft(draft!, {
+      videoModel: "custom-video-model",
+      videoStructureMode: "per_shot",
+      includeVoiceover: false,
+      speechMode: "none",
+      speechLanguage: "",
+      now,
+    });
+
+    expect(updated.videoSegmentState?.videoSegmentPlan.videoModelId).toBe("custom-video-model");
+    expect(updated.videoSegmentState?.videoSegmentPlan.audioStrategy).toBe("silent");
+    expect(updated.videoSegmentState?.staleTaskIds).toEqual(["task-1", "task-2"]);
+    expect(updated.tasks[0]).toMatchObject({
+      model: "custom-video-model",
+      status: "queued",
+      url: undefined,
+    });
+    expect(updated.tasks[0]?.storyboardContext).toMatchObject({
+      model: "custom-video-model",
+      extraParams: {
+        audioStrategy: "silent",
+        resolvedAudioStrategy: "silent",
+        videoSegmentPromptStale: true,
+        storyboardPromptPlanner: {
+          includeVoiceover: false,
+          speechMode: "none",
+          speechLanguage: "",
+        },
+      },
+    });
+  });
+
+  it("applies MCP video model route metadata to every storyboard video task", () => {
+    const now = 223_456;
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: now - 1,
+      taskIds: ["task-1", "task-2"],
+      selectedTaskIds: ["task-1", "task-2"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "per_shot",
+        promptSource: "initial",
+        staleTaskIds: [],
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "per_shot",
+          effectiveMode: "per_shot",
+          videoModelId: "veo3/generate-veo-3-video-lite",
+          transport: "gateway_api",
+          audioStrategy: "native_video_audio",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [
+            {
+              segmentId: "seg-1",
+              index: 0,
+              shotIds: ["shot-1"],
+              durationSeconds: 5,
+              referenceMode: "single_storyboard_frame",
+              referenceImageUrls: ["https://example.com/1.jpg"],
+              subShots: [{ shotId: "shot-1", index: 0, durationSeconds: 5 }],
+              warnings: [],
+            },
+            {
+              segmentId: "seg-2",
+              index: 1,
+              shotIds: ["shot-2"],
+              durationSeconds: 5,
+              referenceMode: "single_storyboard_frame",
+              referenceImageUrls: ["https://example.com/2.jpg"],
+              subShots: [{ shotId: "shot-2", index: 1, durationSeconds: 5 }],
+              warnings: [],
+            },
+          ],
+          warnings: [],
+          planHash: "vsp_gateway_1",
+        },
+      },
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "queued",
+          type: "video",
+          prompt: "Shot 1 prompt",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            model: "veo3/generate-veo-3-video-lite",
+            referenceImages: [{ url: "https://example.com/1.jpg" }],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-1" },
+          },
+        },
+        {
+          id: "task-2",
+          index: 1,
+          status: "queued",
+          type: "video",
+          prompt: "Shot 2 prompt",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now - 9,
+          updatedAt: now - 9,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            model: "veo3/generate-veo-3-video-lite",
+            referenceImages: [{ url: "https://example.com/2.jpg" }],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-2" },
+          },
+        },
+      ],
+    });
+
+    const updated = applyStoryboardReviewVideoOptionsToDraft(draft!, {
+      videoModel: "higgsfield/seedance_2_0_fast",
+      videoStructureMode: "adaptive_multi_shot",
+      manualVideoGroupSize: 3,
+      provider: "higgsfield",
+      transport: "mcp",
+      transportMetadata: {
+        transport: "mcp",
+        connectionId: "mcp_conn_1",
+        providerKey: "higgsfield",
+        providerModelId: "seedance_2_0_fast",
+        toolName: "generate_video",
+        argumentShape: "higgsfield.generate_video",
+        originSurface: "storyboard_review",
+      },
+      includeVoiceover: true,
+      speechMode: "th",
+      speechLanguage: "Thai",
+      includeSound: true,
+      now,
+    });
+
+    expect(updated.videoSegmentState?.videoSegmentPlan).toMatchObject({
+      videoModelId: "higgsfield/seedance_2_0_fast",
+      provider: "higgsfield",
+      transport: "mcp",
+      mode: "adaptive_multi_shot",
+    });
+    expect(updated.videoSegmentState?.staleReason).toBe("video_structure_changed");
+    expect(updated.videoSegmentState?.staleTaskIds).toEqual(["task-1", "task-2"]);
+    for (const task of updated.tasks) {
+      expect(task.model).toBe("higgsfield/seedance_2_0_fast");
+      expect(task.transportMetadata).toMatchObject({
+        transport: "mcp",
+        connectionId: "mcp_conn_1",
+        providerKey: "higgsfield",
+        providerModelId: "seedance_2_0_fast",
+        toolName: "generate_video",
+        argumentShape: "higgsfield.generate_video",
+      });
+      expect(task.storyboardContext).toMatchObject({
+        model: "higgsfield/seedance_2_0_fast",
+        transportMetadata: {
+          transport: "mcp",
+          connectionId: "mcp_conn_1",
+          providerKey: "higgsfield",
+          providerModelId: "seedance_2_0_fast",
+          toolName: "generate_video",
+          argumentShape: "higgsfield.generate_video",
+        },
+        extraParams: {
+          mediaTransport: "mcp",
+          mediaProvider: "higgsfield",
+          videoSegmentPromptStale: true,
+        },
+      });
+    }
+  });
+
+  it("normalizes legacy Higgsfield Unlimited drafts to the supported Seedance Fast MCP model", () => {
+    const now = 323_456;
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: now,
+      taskIds: ["task-1"],
+      selectedTaskIds: ["task-1"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "adaptive_multi_shot",
+        promptSource: "initial",
+        staleTaskIds: [],
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "adaptive_multi_shot",
+          effectiveMode: "adaptive_multi_shot",
+          videoModelId: "higgsfield/seedance_unlimited",
+          provider: "higgsfield",
+          transport: "mcp",
+          audioStrategy: "native_video_audio",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [],
+          warnings: [],
+          planHash: "vsp_higgsfield_selected",
+        },
+      },
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "queued",
+          type: "video",
+          prompt: "Shot prompt",
+          model: "higgsfield/seedance_unlimited",
+          createdAt: now,
+          updatedAt: now,
+          transportMetadata: {
+            transport: "mcp",
+            connectionId: "mcp_conn_higgsfield",
+            providerKey: "higgsfield",
+            providerModelId: "seedance_unlimited",
+            toolName: "generate_video",
+            argumentShape: "higgsfield.generate_video",
+          },
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 8,
+            model: "veo3/generate-veo-3-video-lite",
+            referenceImages: [
+              { url: "https://cdn.example.com/storyboard-frame.jpg" },
+              { url: "https://cdn.example.com/character-lock.jpg" },
+            ],
+            referenceVideos: [],
+            extraParams: {
+              shotId: "shot-1",
+            },
+          },
+        },
+      ],
+    });
+
+    expect(draft).toBeTruthy();
+    const context = getStoryboardTaskEffectiveGenerationContext(draft!.tasks[0]!, draft);
+
+    expect(context?.model).toBe("higgsfield/seedance_2_0_fast");
+    expect(context?.transportMetadata).toMatchObject({
+      transport: "mcp",
+      connectionId: "mcp_conn_higgsfield",
+      providerKey: "higgsfield",
+      providerModelId: "seedance_unlimited",
+    });
+    expect(context?.referenceImages.map((image) => image.url)).toEqual([
+      "https://cdn.example.com/storyboard-frame.jpg",
+      "https://cdn.example.com/character-lock.jpg",
+    ]);
+  });
+
+  it("synthesizes per-shot video segment state for legacy review drafts", () => {
+    const now = Date.now();
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: now,
+      taskIds: ["task-1", "task-2"],
+      selectedTaskIds: ["task-1", "task-2"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "queued",
+          type: "video",
+          prompt: "Shot 1 prompt",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now,
+          updatedAt: now,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            referenceImages: [{ url: "https://example.com/start.png" }],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-1" },
+          },
+        },
+        {
+          id: "task-2",
+          index: 1,
+          status: "queued",
+          type: "video",
+          prompt: "Shot 2 prompt",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now,
+          updatedAt: now,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            referenceImages: [{ url: "https://example.com/next.png" }],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-2" },
+          },
+        },
+      ],
+    });
+
+    expect(draft?.videoSegmentState?.effectiveMode).toBe("per_shot");
+    expect(draft?.videoSegmentState?.videoSegmentPlan.segments).toHaveLength(2);
+    expect(
+      draft?.videoSegmentState?.videoSegmentPlan.segments[0]?.shotIds
+    ).toEqual(["shot-1"]);
+  });
+
+  it("projects segment lineage into review task generation params", () => {
+    const now = Date.now();
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      updatedAt: now,
+      taskIds: ["task-1"],
+      selectedTaskIds: ["task-1"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "queued",
+          type: "video",
+          prompt: "Shot 1 prompt",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now,
+          updatedAt: now,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            referenceImages: [{ url: "https://example.com/start.png" }],
+            referenceVideos: [],
+            extraParams: { shotId: "shot-1" },
+          },
+        },
+      ],
+    });
+    const tasks = storyboardDraftToReviewTasks(draft);
+
+    expect(tasks[0]?.generationExtraParams).toMatchObject({
+      videoSegmentEffectiveMode: "per_shot",
+      videoSegmentPromptStale: false,
+    });
+    expect(tasks[0]?.generationExtraParams?.videoSegmentPlanHash).toBeTruthy();
+  });
+
+  it("blocks paid generation for stale auto-generated segment prompts", () => {
+    const gate = evaluateStoryboardVideoSegmentPromptGenerationGate({
+      taskId: "task-1",
+      taskExtraParams: {
+        videoSegmentPromptStale: true,
+        promptSource: "initial",
+      },
+    });
+
+    expect(gate).toMatchObject({
+      allowed: false,
+      reasonCode: "video_segment_prompt_stale",
+    });
+  });
+
+  it("allows stale segment prompts only after manual edit or explicit keep", () => {
+    expect(
+      evaluateStoryboardVideoSegmentPromptGenerationGate({
+        taskId: "task-1",
+        taskExtraParams: {
+          videoSegmentPromptStale: true,
+          promptSource: "manual_edit",
+        },
+      })
+    ).toEqual({ allowed: true });
+    expect(
+      evaluateStoryboardVideoSegmentPromptGenerationGate({
+        taskId: "task-1",
+        taskExtraParams: {
+          videoSegmentPromptStale: true,
+          videoSegmentPromptExplicitlyKept: true,
+        },
+      })
+    ).toEqual({ allowed: true });
+  });
+
+  it("applies regenerated segment prompts only to affected tasks", () => {
+    const now = 123_456;
+    const draft: StoryboardReviewDraft = {
+      version: 1,
+      updatedAt: now - 1,
+      taskIds: ["task-1", "task-2"],
+      selectedTaskIds: ["task-1", "task-2"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "multi_shot",
+        promptSource: "initial",
+        staleTaskIds: ["task-1", "task-2"],
+        staleReason: "creative_brief_changed",
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "auto",
+          effectiveMode: "multi_shot",
+          videoModelId: "veo3/generate-veo-3-video-lite",
+          provider: "kie.ai",
+          transport: "gateway_api",
+          audioStrategy: "separate_tts_voiceover",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [],
+          warnings: [],
+          planHash: "vsp_test",
+        },
+      },
+      tasks: [
+        {
+          id: "task-1",
+          index: 0,
+          status: "queued",
+          type: "video",
+          prompt: "Old segment 1",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            referenceImages: [],
+            referenceVideos: [],
+            extraParams: {
+              videoSegmentId: "seg-1",
+              videoSegmentPromptStale: true,
+              promptSource: "initial",
+            },
+          },
+        },
+        {
+          id: "task-2",
+          index: 1,
+          status: "queued",
+          type: "video",
+          prompt: "Old segment 2",
+          model: "veo3/generate-veo-3-video-lite",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 5,
+            referenceImages: [],
+            referenceVideos: [],
+            extraParams: {
+              videoSegmentId: "seg-2",
+              videoSegmentPromptStale: true,
+              promptSource: "initial",
+            },
+          },
+        },
+      ],
+    };
+
+    const updated = applyRegeneratedVideoSegmentPromptToDraft(draft, {
+      segmentId: "seg-1",
+      prompt: "New regenerated prompt",
+      taskIds: ["task-1"],
+      creativeBriefHash: "brief_hash",
+      generatedAt: "2026-06-19T00:00:00.000Z",
+      now,
+    });
+
+    expect(updated.tasks[0]?.prompt).toBe("New regenerated prompt");
+    expect(updated.tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      promptSource: "regenerated",
+      videoSegmentPrompt: "New regenerated prompt",
+      videoSegmentPromptStale: false,
+      videoSegmentPromptCreativeBriefHash: "brief_hash",
+    });
+    expect(updated.tasks[1]?.prompt).toBe("Old segment 2");
+    expect(updated.tasks[1]?.storyboardContext?.extraParams?.videoSegmentPromptStale).toBe(true);
+    expect(updated.videoSegmentState?.staleTaskIds).toEqual(["task-2"]);
+    expect(updated.videoSegmentState?.staleReason).toBe("creative_brief_changed");
+  });
+
+  it("does not update sibling shots in the same segment when taskIds are explicit", () => {
+    const now = 123_456;
+    const draft: StoryboardReviewDraft = {
+      version: 1,
+      updatedAt: now - 1,
+      taskIds: ["task-1", "task-2", "task-3"],
+      selectedTaskIds: ["task-1", "task-2", "task-3"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "compact_multi_shot",
+        promptSource: "initial",
+        staleTaskIds: ["task-1", "task-2", "task-3"],
+        staleReason: "creative_brief_changed",
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "compact_multi_shot",
+          effectiveMode: "compact_multi_shot",
+          videoModelId: "higgsfield/seedance_2_0_fast",
+          provider: "higgsfield",
+          transport: "mcp",
+          audioStrategy: "native_audio",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [],
+          warnings: [],
+          planHash: "vsp_same_segment",
+        },
+      },
+      tasks: ["task-1", "task-2", "task-3"].map((id, index) => ({
+        id,
+        index,
+        status: "queued",
+        type: "video",
+        prompt: `Old prompt ${index + 1}`,
+        model: "higgsfield/seedance_2_0_fast",
+        createdAt: now - 10,
+        updatedAt: now - 10,
+        storyboardContext: {
+          aspectRatio: "9:16",
+          duration: 5,
+          referenceImages: [],
+          referenceVideos: [],
+          extraParams: {
+            videoSegmentId: "seg-1",
+            videoSegmentPromptStale: true,
+            promptSource: "initial",
+          },
+        },
+      })),
+    };
+
+    const updated = applyRegeneratedVideoSegmentPromptToDraft(draft, {
+      segmentId: "seg-1",
+      prompt: "Shot 1 regenerated prompt",
+      taskIds: ["task-1"],
+      generatedAt: "2026-06-19T00:00:00.000Z",
+      now,
+    });
+
+    expect(updated.tasks.map((task) => task.prompt)).toEqual([
+      "Shot 1 regenerated prompt",
+      "Old prompt 2",
+      "Old prompt 3",
+    ]);
+    expect(updated.tasks[0]?.storyboardContext?.extraParams?.videoSegmentPromptStale).toBe(false);
+    expect(updated.tasks[1]?.storyboardContext?.extraParams?.videoSegmentPromptStale).toBe(true);
+    expect(updated.tasks[2]?.storyboardContext?.extraParams?.videoSegmentPromptStale).toBe(true);
+    expect(updated.videoSegmentState?.staleTaskIds).toEqual(["task-2", "task-3"]);
+  });
+
+  it("requires confirmation before splitting a failed multi-shot segment to per-shot tasks", () => {
+    const now = 123_456;
+    const draft: StoryboardReviewDraft = {
+      version: 1,
+      updatedAt: now - 1,
+      taskIds: ["segment-task"],
+      selectedTaskIds: ["segment-task"],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      videoSegmentState: {
+        schemaVersion: 1,
+        effectiveMode: "adaptive_multi_shot",
+        promptSource: "initial",
+        staleTaskIds: [],
+        staleReason: null,
+        splitRetryRequiresConfirmation: false,
+        videoSegmentPlan: {
+          schemaVersion: 1,
+          sourceSurface: "storyboard_review",
+          mode: "adaptive_multi_shot",
+          effectiveMode: "adaptive_multi_shot",
+          videoModelId: "seedance-2",
+          provider: "kie.ai",
+          transport: "gateway_api",
+          audioStrategy: "separate_tts_voiceover",
+          referenceMode: "single_storyboard_frame",
+          creativePresets: [],
+          segments: [
+            {
+              segmentId: "seg_1",
+              index: 0,
+              shotIds: ["shot-1", "shot-2"],
+              durationSeconds: 10,
+              referenceMode: "single_storyboard_frame",
+              referenceImageUrls: ["https://example.com/1.jpg", "https://example.com/2.jpg"],
+              subShots: [
+                {
+                  shotId: "shot-1",
+                  index: 0,
+                  durationSeconds: 5,
+                  title: "Hook",
+                  visualPrompt: "Show the product hook.",
+                },
+                {
+                  shotId: "shot-2",
+                  index: 1,
+                  durationSeconds: 5,
+                  title: "Proof",
+                  visualPrompt: "Show the product proof.",
+                },
+              ],
+              warnings: [],
+            },
+          ],
+          warnings: [],
+          planHash: "vsp_split_test",
+        },
+      },
+      tasks: [
+        {
+          id: "segment-task",
+          index: 0,
+          status: "error",
+          type: "video",
+          prompt: "Combined prompt",
+          model: "seedance-2",
+          createdAt: now - 10,
+          updatedAt: now - 10,
+          error: "Provider rejected multi-shot payload",
+          durationSeconds: 10,
+          storyboardContext: {
+            aspectRatio: "9:16",
+            duration: 10,
+            referenceImages: [
+              { url: "https://example.com/1.jpg" },
+              { url: "https://example.com/2.jpg" },
+            ],
+            referenceVideos: [],
+            extraParams: {
+              videoSegmentId: "seg_1",
+              videoSegmentShotIds: ["shot-1", "shot-2"],
+            },
+          },
+        },
+      ],
+    };
+
+    const blocked = splitStoryboardVideoSegmentTaskToPerShotFallback(draft, {
+      taskId: "segment-task",
+      confirmed: false,
+      now,
+    });
+
+    expect(blocked.tasks).toHaveLength(1);
+    expect(blocked.videoSegmentState?.splitRetryRequiresConfirmation).toBe(true);
+    expect(blocked.tasks[0]?.storyboardContext?.extraParams?.splitRetryRequiresConfirmation).toBe(true);
+
+    const split = splitStoryboardVideoSegmentTaskToPerShotFallback(blocked, {
+      taskId: "segment-task",
+      confirmed: true,
+      now: now + 1,
+    });
+
+    expect(split.tasks).toHaveLength(2);
+    expect(split.taskIds).toEqual(["segment-task-split-1", "segment-task-split-2"]);
+    expect(split.tasks.map((task) => task.status)).toEqual(["queued", "queued"]);
+    expect(split.tasks.map((task) => task.prompt)).toEqual([
+      "Show the product hook.",
+      "Show the product proof.",
+    ]);
+    expect(split.tasks[0]?.storyboardContext?.extraParams).toMatchObject({
+      shotId: "shot-1",
+      videoSegmentShotIds: ["shot-1"],
+      splitFallbackFromSegmentId: "seg_1",
+      splitFallbackOriginalError: "Provider rejected multi-shot payload",
+      splitRetryRequiresConfirmation: false,
+    });
+    expect(split.videoSegmentState?.splitRetryRequiresConfirmation).toBe(false);
+    expect(split.videoSegmentState?.videoSegmentPlan.effectiveMode).toBe("per_shot");
+    expect(split.videoSegmentState?.videoSegmentPlan.fallbackReason).toBe("split_fallback_per_shot");
+  });
 });
 
 describe("buildFirstLastFrameStoryboardTasks", () => {
@@ -927,5 +1741,29 @@ describe("Storyboard Review HyperFrames context helpers", () => {
 
     expect(getStoryboardReviewProductIdFromDraft(mixedDraft)).toBe("mp_123");
     expect(getStoryboardReviewAutoReviewRunIdFromDraft(mixedDraft)).toBe("");
+  });
+
+  it("preserves manual HyperFrames identity without treating it as Auto Review context", () => {
+    const manualDraft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 11,
+      name: "Manual Storyboard",
+      updatedAt: 12345,
+      taskIds: [],
+      selectedTaskIds: [],
+      tasks: [],
+      companionAudio: [],
+      compoundStatus: null,
+      projectLink: null,
+      renderJobId: null,
+      marketplaceContext: null,
+      manualHyperframesProductId: " manual_product_1 ",
+      manualHyperframesRunId: " manual_run_1 ",
+    });
+
+    expect(manualDraft?.manualHyperframesProductId).toBe("manual_product_1");
+    expect(manualDraft?.manualHyperframesRunId).toBe("manual_run_1");
+    expect(getStoryboardReviewProductIdFromDraft(manualDraft)).toBe("");
+    expect(getStoryboardReviewAutoReviewRunIdFromDraft(manualDraft)).toBe("");
   });
 });

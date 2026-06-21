@@ -368,4 +368,49 @@ describe("hyperframesWorkerPolicy", () => {
     expect(visualSegments.length).toBeGreaterThan(1);
     expect(Math.max(...visualSegments.map(segment => Array.from(segment).length))).toBeLessThanOrEqual(18);
   });
+
+  it("keeps long spec overlay lines without renderer wrapping or ellipsizing", () => {
+    const specLines = Array.from(
+      { length: 15 },
+      (_, index) => `บรรทัดสเปก ${index + 1} RAM 16GB SSD 1TB หน้าจอสีตรงสำหรับงานจริง`
+    );
+    const ass = buildFinalCompositeAss(
+      [
+        {
+          index: 0,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v001.mp4",
+          onScreenText: specLines,
+          overlayPreset: "spec_lines_15_neon",
+          animationPreset: "smooth_reveal",
+        },
+      ],
+      {
+        finalCompositeConfig: {
+          overlayPreset: "spec_lines_15_neon",
+          subtitlePreset: "classic_box",
+          textMode: "per_shot",
+          includeShotText: true,
+          includeHookText: false,
+          burnInSubtitles: false,
+        },
+      }
+    );
+    const specDialogues = ass
+      .split("\n")
+      .filter(line => line.startsWith("Dialogue:") && line.includes("SpecLongNeon"));
+
+    expect(ass).toContain("Style: SpecLongNeonHook");
+    expect(ass).toContain("Style: SpecLongNeon,Noto Sans Thai,18");
+    expect(ass).toContain("Style: SpecLongCleanHook,Noto Sans Thai,56");
+    expect(ass).toContain("Style: SpecLongClean,Noto Sans Thai,38");
+    expect(specDialogues).toHaveLength(15);
+    expect(specDialogues[0]).toContain("SpecLongNeonHook");
+    expect(specDialogues[1]).toContain("SpecLongNeon");
+    expect(specDialogues[1]).not.toContain("SpecLongNeonHook");
+    expect(specDialogues.at(-1)).toContain("บรรทัดสเปก 15");
+    expect(specDialogues.join("\n")).not.toContain("\\N");
+    expect(specDialogues.join("\n")).not.toContain("…");
+    expect(ass).not.toMatch(/Style: SpecLong(?:Clean|Dark|Light|Neon),[^\n]+,0,0,3,/);
+  });
 });

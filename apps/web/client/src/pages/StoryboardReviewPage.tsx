@@ -6,6 +6,7 @@ import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ResizableCollapsiblePanel } from "@/components/ui/resizable-collapsible-panel";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -25,6 +26,11 @@ import { HyperframesStoryboardReviewPanel } from "@/components/marketplaceCaptur
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import {
+  getStoryboardHistoryProductFilter,
+  storyboardHistoryTaskMatchesProduct,
+} from "@/lib/storyboardHistoryGalleryFilter";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import {
   buildHyperframesRenderLibrarySession,
   getHyperframesRenderLibraryReadyOutput,
@@ -84,16 +90,22 @@ import {
 } from "@shared/hyperframes/creativePresets";
 import {
   DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+  applyStoryboardReviewVideoOptionsToDraft,
+  applyRegeneratedVideoSegmentPromptToDraft,
   clearStoryboardReviewDraft,
+  evaluateStoryboardVideoSegmentPromptGenerationGate,
   getStoryboardCompanionAudioUpdatedAt,
   getStoryboardReviewAutoReviewRunIdFromDraft,
   getStoryboardReviewName,
   getStoryboardReviewProductIdFromDraft,
+  getStoryboardTaskEffectiveGenerationContext,
   mergeFresherStoryboardReviewTasks,
   normalizeStoryboardReviewDraft,
+  normalizeStoryboardReviewVideoModelId,
   readStoryboardReviewDraft,
   replaceStoryboardVideoSlot,
   replaceStoryboardReferenceFrame,
+  splitStoryboardVideoSegmentTaskToPerShotFallback,
   storyboardDraftToReviewTasks,
   writeStoryboardReviewDraft,
   type StoryboardGenerationTask,
@@ -103,10 +115,9 @@ import {
 } from "@/lib/storyboardReviewWorkspace";
 import { cn } from "@/lib/utils";
 import { videoEditorRenderService } from "@/services/videoEditorService";
+import type { VideoSegment, VideoSegmentStructureMode } from "@shared/videoSegmentPlanner";
 import {
-  buildCompactStoryboardReviewVideoPrompt,
   extractStoryboardNativeSpeechText,
-  splitStoryboardVoiceoverScriptByShot,
 } from "@shared/storyboardPromptAudio";
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
@@ -162,6 +173,13 @@ type StoryboardReviewDeleteTarget = {
   id: number | null;
   name: string;
 };
+
+type StoryboardReviewSplitFallbackTarget = {
+  taskId: string;
+  segmentId: string;
+  shotCount: number;
+  error?: string | null;
+};
 type StoryboardVideoPreview = {
   url: string;
   title: string;
@@ -181,6 +199,292 @@ type StoryboardVideoPreview = {
     presetKind?: string;
   };
 };
+
+type StoryboardReviewVideoOptionValues = {
+  videoModel: string;
+  videoStructureMode: VideoSegmentStructureMode;
+  manualVideoGroupSize: number;
+  plannerOptions: StoryboardPromptPlannerOptions;
+};
+
+function normalizeStoryboardPromptPlannerSpeechLanguage(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function areStoryboardPromptPlannerOptionsEqual(
+  a: StoryboardPromptPlannerOptions,
+  b: StoryboardPromptPlannerOptions,
+): boolean {
+  return Boolean(a.includeVoiceover) === Boolean(b.includeVoiceover) &&
+    a.speechMode === b.speechMode &&
+    normalizeStoryboardPromptPlannerSpeechLanguage(a.speechLanguage) ===
+      normalizeStoryboardPromptPlannerSpeechLanguage(b.speechLanguage) &&
+    Boolean(a.includeSound) === Boolean(b.includeSound) &&
+    a.tone === b.tone &&
+    a.language === b.language;
+}
+
+const STORYBOARD_REVIEW_RIGHT_PANEL_WIDTH_KEY = "smartspec_storyboard_review_right_panel_width_v1";
+const STORYBOARD_REVIEW_RIGHT_PANEL_COLLAPSED_KEY = "smartspec_storyboard_review_right_panel_collapsed_v1";
+const STORYBOARD_REVIEW_RIGHT_PANEL_DEFAULT_WIDTH = 360;
+const STORYBOARD_REVIEW_RIGHT_PANEL_MIN_WIDTH = 300;
+const STORYBOARD_REVIEW_RIGHT_PANEL_MAX_WIDTH = 920;
+const STORYBOARD_REVIEW_PROMPT_PLANNER_CONTEXT_MAX_CHARS = 6000;
+const STORYBOARD_REVIEW_VOICEOVER_CONTINUITY_CONTEXT_MAX_CHARS = 1200;
+const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
+const STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS = [
+  {
+    value: "veo3/generate-veo-3-video-lite",
+    label: "Veo 3.1 Lite (API • kie.ai)",
+  },
+] as const;
+
+type StoryboardReviewVideoModelOption = {
+  value: string;
+  label: string;
+  provider: string;
+  transport: "gateway_api" | "mcp";
+  providerKey: string | null;
+  providerModelId?: string | null;
+  toolName?: string | null;
+  argumentShape?: string | null;
+};
+
+function optionalStoryboardRouteString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function StoryboardReviewToggleSwitch({
+  checked,
+  disabled,
+  onCheckedChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs outline-none transition-all focus-visible:ring-2 focus-visible:ring-sky-500/40 disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-sky-600" : "bg-slate-300",
+      )}
+    >
+      <span
+        className={cn(
+          "block size-4 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[calc(100%-2px)]" : "translate-x-0",
+        )}
+      />
+    </button>
+  );
+}
+
+function readStoredStoryboardReviewPanelWidth(): number {
+  if (typeof window === "undefined") return STORYBOARD_REVIEW_RIGHT_PANEL_DEFAULT_WIDTH;
+  const value = Number(window.localStorage.getItem(STORYBOARD_REVIEW_RIGHT_PANEL_WIDTH_KEY));
+  if (!Number.isFinite(value)) return STORYBOARD_REVIEW_RIGHT_PANEL_DEFAULT_WIDTH;
+  return Math.min(
+    STORYBOARD_REVIEW_RIGHT_PANEL_MAX_WIDTH,
+    Math.max(STORYBOARD_REVIEW_RIGHT_PANEL_MIN_WIDTH, Math.round(value)),
+  );
+}
+
+function readStoredStoryboardReviewPanelCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(STORYBOARD_REVIEW_RIGHT_PANEL_COLLAPSED_KEY) === "true";
+}
+
+function normalizeStoryboardReviewVideoStructureMode(
+  value: unknown,
+): VideoSegmentStructureMode {
+  return value === "adaptive_multi_shot" ||
+    value === "compact_multi_shot" ||
+    value === "manual_group_size"
+    ? value
+    : "per_shot";
+}
+
+function normalizeStoryboardReviewPlannerSpeechMode(
+  value: unknown,
+  fallback: StoryboardPromptPlannerOptions["speechMode"],
+): StoryboardPromptPlannerOptions["speechMode"] {
+  return value === "en" || value === "th" || value === "other" || value === "none"
+    ? value
+    : fallback;
+}
+
+function normalizeStoryboardReviewPlannerTone(
+  value: unknown,
+): StoryboardPromptPlannerOptions["tone"] {
+  return value === "premium" ||
+    value === "demo" ||
+    value === "ugc" ||
+    value === "cinematic"
+    ? value
+    : "sales";
+}
+
+function normalizeStoryboardReviewPlannerLanguage(
+  value: unknown,
+  locale: string,
+): StoryboardPromptPlannerOptions["language"] {
+  if (value === "th" || value === "en" || value === "auto") return value;
+  return locale === "th" ? "th" : "auto";
+}
+
+function getFirstStoryboardVideoTask(
+  draft?: StoryboardReviewDraft | null,
+): StoryboardGenerationTask | null {
+  if (!draft) return null;
+  const taskById = new Map(draft.tasks.map((task) => [task.id, task]));
+  return draft.taskIds
+    .map((taskId) => taskById.get(taskId))
+    .find((task): task is StoryboardGenerationTask => Boolean(task) && task?.type !== "image") ?? null;
+}
+
+function getStoryboardReviewVideoOptionValues(
+  draft: StoryboardReviewDraft | null | undefined,
+  locale: string,
+): StoryboardReviewVideoOptionValues {
+  const firstTask = getFirstStoryboardVideoTask(draft);
+  const plan = draft?.videoSegmentState?.videoSegmentPlan;
+  const planner =
+    firstTask?.storyboardContext?.extraParams?.storyboardPromptPlanner &&
+    typeof firstTask.storyboardContext.extraParams.storyboardPromptPlanner === "object" &&
+    !Array.isArray(firstTask.storyboardContext.extraParams.storyboardPromptPlanner)
+      ? firstTask.storyboardContext.extraParams.storyboardPromptPlanner as Record<string, unknown>
+      : {};
+  const planWantsNativeSpeech = plan?.audioStrategy === "native_video_audio";
+  const promptHasSpeech = Boolean(
+    draft?.tasks.some((task) => task.type !== "image" && extractStoryboardNativeSpeechText(task.prompt)),
+  );
+  const includeVoiceover = typeof planner.includeVoiceover === "boolean"
+    ? planner.includeVoiceover
+    : normalizeStoryboardReviewPlannerSpeechMode(planner.speechMode, "none") !== "none" ||
+      planWantsNativeSpeech ||
+      promptHasSpeech;
+  const defaultSpeechMode: StoryboardPromptPlannerOptions["speechMode"] = includeVoiceover
+    ? locale === "th" ? "th" : "en"
+    : "none";
+  const speechMode = includeVoiceover
+    ? normalizeStoryboardReviewPlannerSpeechMode(planner.speechMode, defaultSpeechMode)
+    : "none";
+  const speechLanguage = includeVoiceover
+    ? String(
+        planner.speechLanguage ??
+          (speechMode === "th" ? "Thai" : speechMode === "en" ? "English" : ""),
+      ).trim()
+    : "";
+
+  return {
+    videoModel:
+      normalizeStoryboardReviewVideoModelId(plan?.videoModelId) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.model) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.model) ||
+      STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS[0].value,
+    videoStructureMode: normalizeStoryboardReviewVideoStructureMode(plan?.mode),
+    manualVideoGroupSize:
+      typeof plan?.manualGroupSize === "number" && Number.isFinite(plan.manualGroupSize)
+        ? plan.manualGroupSize
+        : 3,
+    plannerOptions: {
+      includeVoiceover,
+      speechMode,
+      speechLanguage,
+      includeSound: Boolean(planner.includeSound),
+      tone: normalizeStoryboardReviewPlannerTone(planner.tone),
+      language: normalizeStoryboardReviewPlannerLanguage(planner.language, locale),
+    },
+  };
+}
+
+function buildStoryboardReviewCurrentVideoModelOption(input: {
+  draft: StoryboardReviewDraft | null | undefined;
+  model: any;
+  modelId: string;
+}): StoryboardReviewVideoModelOption | null {
+  const modelId = input.modelId.trim();
+  const normalizedModelId = normalizeStoryboardReviewVideoModelId(modelId);
+  if (!normalizedModelId) return null;
+  const firstTask = getFirstStoryboardVideoTask(input.draft);
+  const plan = input.draft?.videoSegmentState?.videoSegmentPlan;
+  const firstTaskParams =
+    firstTask?.storyboardContext?.extraParams &&
+    typeof firstTask.storyboardContext.extraParams === "object" &&
+    !Array.isArray(firstTask.storyboardContext.extraParams)
+      ? firstTask.storyboardContext.extraParams as Record<string, unknown>
+      : {};
+  const firstTaskTransportMetadata =
+    firstTaskParams.transportMetadata &&
+    typeof firstTaskParams.transportMetadata === "object" &&
+    !Array.isArray(firstTaskParams.transportMetadata)
+      ? firstTaskParams.transportMetadata as Record<string, unknown>
+      : null;
+  const planProvider =
+    typeof plan?.provider === "string" ? plan.provider.trim() : "";
+  const explicitTransport =
+    firstTaskTransportMetadata?.transport === "mcp" || plan?.transport === "mcp"
+      ? "mcp"
+      : null;
+  const resolvedTransport = resolveMediaModelTransportConfig({
+    provider: input.model?.provider ?? planProvider,
+    modelId: normalizedModelId,
+    configJson: input.model?.configJson,
+  });
+  const transport = explicitTransport ?? resolvedTransport.transport;
+  const legacyProviderKey =
+    typeof firstTaskTransportMetadata?.providerKey === "string"
+      ? firstTaskTransportMetadata.providerKey.trim()
+      : "";
+  const legacyProviderModelId =
+    typeof firstTaskTransportMetadata?.providerModelId === "string"
+      ? firstTaskTransportMetadata.providerModelId.trim()
+      : "";
+  const legacyToolName =
+    typeof firstTaskTransportMetadata?.toolName === "string"
+      ? firstTaskTransportMetadata.toolName.trim()
+      : "";
+  const legacyArgumentShape =
+    typeof firstTaskTransportMetadata?.argumentShape === "string"
+      ? firstTaskTransportMetadata.argumentShape.trim()
+      : "";
+  const providerKey =
+    resolvedTransport.providerKey ||
+    legacyProviderKey ||
+    planProvider ||
+    null;
+  const providerModelId =
+    resolvedTransport.providerModelId ||
+    legacyProviderModelId ||
+    null;
+  const provider =
+    String(input.model?.provider ?? planProvider ?? providerKey ?? "").trim();
+  return {
+    value: modelId,
+    label: `${String(input.model?.name ?? modelId)} (${transport === "mcp" ? "MCP" : "API"}${provider || providerKey ? ` • ${provider || providerKey}` : ""})`,
+    provider,
+    transport,
+    providerKey,
+    providerModelId,
+    toolName:
+      resolvedTransport.toolName ||
+      legacyToolName ||
+      null,
+    argumentShape:
+      resolvedTransport.argumentShape ||
+      legacyArgumentShape ||
+      null,
+  };
+}
 
 type HyperframesSelectedShotPreviewMode = "design" | "video";
 type HyperframesSelectedShotVideoLoadState = "idle" | "loading" | "ready" | "error";
@@ -308,73 +612,6 @@ function findStoryboardImageUrl(value: unknown, visited = new WeakSet<object>())
     if (found) return found;
   }
   return null;
-}
-
-function compactStoryboardHistoryText(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  return "";
-}
-
-function stringifyStoryboardHistoryValue(value: unknown, visited = new WeakSet<object>()): string {
-  if (value == null) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (typeof value !== "object") return "";
-  if (visited.has(value)) return "";
-  visited.add(value);
-  if (Array.isArray(value)) {
-    return value.map((item) => stringifyStoryboardHistoryValue(item, visited)).join(" ");
-  }
-  return Object.entries(value as Record<string, unknown>)
-    .map(([key, item]) => `${key} ${stringifyStoryboardHistoryValue(item, visited)}`)
-    .join(" ");
-}
-
-function storyboardProductContextFromValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function getStoryboardHistoryProductFilter(draft: StoryboardReviewDraft | null) {
-  if (!draft) return null;
-  const contexts = [
-    storyboardProductContextFromValue(draft.marketplaceContext),
-    ...draft.tasks.flatMap((task) => [
-      storyboardProductContextFromValue(task.marketplaceProduct),
-      storyboardProductContextFromValue(task.storyboardContext?.extraParams?.marketplaceContext),
-    ]),
-  ].filter((item): item is Record<string, unknown> => Boolean(item));
-  if (contexts.length === 0) return null;
-  const firstNonEmpty = (keys: string[]) => {
-    for (const context of contexts) {
-      for (const key of keys) {
-        const text = compactStoryboardHistoryText(context[key]);
-        if (text) return text;
-      }
-    }
-    return "";
-  };
-  const filter = {
-    productId: firstNonEmpty(["productId", "marketplaceProductId", "product_id"]),
-    itemId: firstNonEmpty(["itemId", "productItemId", "externalProductId", "product_item_id"]),
-    shopId: firstNonEmpty(["shopId", "externalShopId", "productShopId", "product_shop_id"]),
-    sourceUrl: firstNonEmpty(["sourceUrl", "productSourceUrl", "product_source_url"]),
-    productName: firstNonEmpty(["productName", "productTitle", "title", "product_title"]),
-  };
-  return Object.values(filter).some(Boolean) ? filter : null;
-}
-
-function storyboardHistoryTaskMatchesProduct(task: unknown, filter: NonNullable<ReturnType<typeof getStoryboardHistoryProductFilter>>) {
-  const text = stringifyStoryboardHistoryValue(task).toLowerCase();
-  if (!text) return false;
-  const exactNeedles = [filter.productId, filter.itemId, filter.shopId, filter.sourceUrl]
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  if (exactNeedles.some((needle) => text.includes(needle))) return true;
-  const productName = filter.productName.trim().toLowerCase();
-  return productName.length >= 8 && text.includes(productName);
 }
 
 function toCanvasSafeStoryboardImageUrl(imageUrl: string): string {
@@ -650,32 +887,6 @@ function prepareVeoPromptForGenerationType(promptText: string, generationType: u
   return `${VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION}\n${promptText}`.trim();
 }
 
-function buildStoryboardPlannedPrompt(input: {
-  basePrompt: string;
-  durationSeconds?: number | null;
-  aspectRatio?: string | null;
-  frameRoles?: readonly string[] | null;
-  includeVoiceover: boolean;
-  speechMode: StoryboardPromptPlannerOptions["speechMode"];
-  speechLanguage?: string;
-  voiceoverScript?: string;
-  includeSound: boolean;
-  soundBrief?: string;
-}): string {
-  return buildCompactStoryboardReviewVideoPrompt({
-    visualPrompt: input.basePrompt,
-    durationSeconds: input.durationSeconds,
-    aspectRatio: input.aspectRatio,
-    frameRoles: input.frameRoles,
-    includeVoiceover: input.includeVoiceover,
-    speechMode: input.speechMode,
-    speechLanguage: input.speechLanguage,
-    voiceoverScript: input.voiceoverScript,
-    includeSound: input.includeSound,
-    soundBrief: input.soundBrief,
-  }).trim();
-}
-
 const STORYBOARD_PRODUCTION_CONTEXT_KEYS = [
   "productionRunId",
   "productionProjectTitle",
@@ -700,6 +911,37 @@ function firstStoryboardText(...values: unknown[]): string {
     if (text) return text;
   }
   return "";
+}
+
+function getStoryboardTaskVideoSegmentId(task?: StoryboardGenerationTask | null): string {
+  const value = task?.storyboardContext?.extraParams?.videoSegmentId;
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getStoryboardTaskShotId(task: StoryboardGenerationTask, fallbackIndex: number): string {
+  const value = task.storyboardContext?.extraParams?.shotId;
+  return typeof value === "string" && value.trim() ? value.trim() : task.id || `shot-${fallbackIndex + 1}`;
+}
+
+function storyboardTaskBelongsToSegment(
+  task: StoryboardGenerationTask,
+  segment: VideoSegment,
+  fallbackIndex: number,
+): boolean {
+  const segmentId = getStoryboardTaskVideoSegmentId(task);
+  if (segmentId && segmentId === segment.segmentId) return true;
+  return segment.shotIds.includes(getStoryboardTaskShotId(task, fallbackIndex));
+}
+
+function buildSegmentPromptPlanningCurrentPrompt(segment: VideoSegment): string {
+  return compactStoryboardPromptPlannerContext(segment.subShots
+    .map((shot, index) => [
+      `Sub-shot ${index + 1}: ${shot.durationSeconds}s`,
+      shot.title,
+      shot.visualPrompt,
+      shot.voiceover ? `Voiceover: ${shot.voiceover}` : "",
+    ].filter(Boolean).join(" - "))
+    .join("\n")) ?? "";
 }
 
 function normalizeReviewProductionContext(value: unknown): StoryboardProductionContext | null {
@@ -828,7 +1070,7 @@ function sleepMs(ms: number): Promise<void> {
 
 const STORYBOARD_GENERATION_POLL_INTERVAL_MS = 5000;
 const STORYBOARD_GENERATION_POLL_RETRY_INTERVAL_MS = 15000;
-const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-audio-debug-20260527-2325";
+const STORYBOARD_REVIEW_PAGE_DEBUG_BUILD = "storyboard-review-page-route-open-hotfix-20260620-1605";
 
 type StoryboardProviderTaskStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 type HyperframesFinalOverlayPreset = HyperframesFinalCompositeConfig["overlayPreset"];
@@ -874,6 +1116,10 @@ const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
   { id: "electronics_spec_stack", labelTh: "Electronics Spec Stack", labelEn: "Electronics spec stack", kind: "spec" },
   { id: "split_product_specs", labelTh: "Split Product Specs", labelEn: "Split product specs", kind: "spec" },
   { id: "neon_gaming_specs", labelTh: "Neon Gaming Specs", labelEn: "Neon gaming specs", kind: "spec" },
+  { id: "spec_lines_6_clean", labelTh: "Spec 6 บรรทัด Clean", labelEn: "Spec sheet 6 lines clean", kind: "spec" },
+  { id: "spec_lines_10_dark", labelTh: "Spec 10 บรรทัด Dark", labelEn: "Spec sheet 10 lines dark", kind: "spec" },
+  { id: "spec_lines_12_light", labelTh: "Spec 12 บรรทัด Light", labelEn: "Spec sheet 12 lines light", kind: "spec" },
+  { id: "spec_lines_15_neon", labelTh: "Spec 15 บรรทัด Neon", labelEn: "Spec sheet 15 lines neon", kind: "spec" },
   { id: "feature_cards", labelTh: "Feature Cards", labelEn: "Feature cards", kind: "cards" },
   { id: "badge_cascade", labelTh: "Badge Cascade", labelEn: "Badge cascade", kind: "cards" },
   { id: "lower_third_review", labelTh: "Review Lower Third", labelEn: "Review lower third", kind: "review" },
@@ -884,6 +1130,23 @@ const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
 
 function getHyperframesOverlayPresetMeta(id: HyperframesFinalOverlayPreset) {
   return HYPERFRAMES_FINAL_OVERLAY_PRESETS.find(preset => preset.id === id) ?? HYPERFRAMES_FINAL_OVERLAY_PRESETS[0]!;
+}
+
+function isHyperframesSpecOverlayPreset(preset: HyperframesFinalOverlayPreset | string | null | undefined): boolean {
+  if (!preset) return false;
+  return getHyperframesOverlayPresetMeta(preset as HyperframesFinalOverlayPreset).kind === "spec";
+}
+
+const HYPERFRAMES_LONG_SPEC_OVERLAY_LINE_LIMITS: Partial<Record<HyperframesFinalOverlayPreset, number>> = {
+  spec_lines_6_clean: 6,
+  spec_lines_10_dark: 10,
+  spec_lines_12_light: 12,
+  spec_lines_15_neon: 15,
+};
+
+function getHyperframesOverlayLineLimit(preset: HyperframesFinalOverlayPreset | string | null | undefined): number {
+  if (isHyperframesSpecOverlayPreset(preset)) return Number.MAX_SAFE_INTEGER;
+  return HYPERFRAMES_LONG_SPEC_OVERLAY_LINE_LIMITS[preset as HyperframesFinalOverlayPreset] ?? 4;
 }
 
 const HYPERFRAMES_FINAL_SUBTITLE_PRESETS: Array<{
@@ -1009,23 +1272,30 @@ function resolveHyperframesFinalRenderOverlayText(input: {
 function resolveHyperframesFinalPreviewOverlayLines(input: {
   textMode: HyperframesFinalTextMode;
   shotIndex: number;
+  overlayPreset?: HyperframesFinalOverlayPreset | string | null;
   overlayText: string;
   hookText: string;
   supportingText: string;
   maxLines: number;
   maxLength: number;
 }): string[] {
-  if (shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)) {
-    return hyperframesPreviewTextLines(removeHyperframesVideoPromptOverlayText(input.overlayText), {
+  const normalizeLines = (value: string) => isHyperframesSpecOverlayPreset(input.overlayPreset)
+    ? uniqueHyperframesOverlayLines(
+      removeHyperframesVideoPromptOverlayText(value)
+        .split(/\n+/)
+        .map(line => compactStoryboardText(line))
+        .filter(Boolean),
+    )
+    : hyperframesPreviewTextLines(removeHyperframesVideoPromptOverlayText(value), {
       maxLines: input.maxLines,
       maxLength: input.maxLength,
     });
+
+  if (shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)) {
+    return normalizeLines(input.overlayText);
   }
   if (shouldRenderHyperframesFinalHookText(input.textMode) && input.shotIndex === 0) {
-    return hyperframesPreviewTextLines([input.hookText, input.supportingText].join("\n"), {
-      maxLines: input.maxLines,
-      maxLength: input.maxLength,
-    });
+    return normalizeLines([input.hookText, input.supportingText].join("\n"));
   }
   return [];
 }
@@ -1411,6 +1681,17 @@ function compactStoryboardText(value: unknown, fallback = ""): string {
   return text.length > 0 ? text : fallback;
 }
 
+function compactStoryboardPromptPlannerContext(
+  value: unknown,
+  maxLength = STORYBOARD_REVIEW_PROMPT_PLANNER_CONTEXT_MAX_CHARS,
+): string | undefined {
+  const text = compactStoryboardText(value);
+  if (!text) return undefined;
+  if (text.length <= maxLength) return text;
+  const sliced = text.slice(0, maxLength).replace(/\s+\S*$/, "").trim();
+  return `${sliced || text.slice(0, maxLength).trim()}...`;
+}
+
 function firstThaiProductLine(
   value: string,
   maxLength = 64,
@@ -1445,6 +1726,18 @@ function hyperframesPreviewTextLines(
       .map(line => firstThaiProductLine(line, maxLength, { ellipsis: false }))
       .filter(Boolean),
   ).slice(0, maxLines);
+}
+
+function formatHyperframesPreviewLineForPreset(
+  line: string,
+  preset: HyperframesFinalOverlayPreset | string | null | undefined,
+  maxLength: number,
+  options: { ellipsis?: boolean } = {},
+): string {
+  if (isHyperframesSpecOverlayPreset(preset)) {
+    return cleanHyperframesOverlayText(line);
+  }
+  return firstThaiProductLine(line, maxLength, options);
 }
 
 function hyperframesPromptLines(value: string, maxLines = 6): string[] {
@@ -1728,7 +2021,7 @@ function buildHyperframesFinalPayloadPreview(input: {
           .split(/\n+/)
           .map(line => compactStoryboardText(line))
           .filter(Boolean)
-          .slice(0, 4),
+          .slice(0, getHyperframesOverlayLineLimit(shot.overlayPreset ?? input.overlayPreset)),
         subtitle: shot.subtitleText
           .split(/\n+/)
           .map(line => compactStoryboardText(line))
@@ -1961,6 +2254,13 @@ function parseReviewIdFromSearch(search: string): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
 }
 
+function parseReviewIdFromPathname(pathname: string): number | null {
+  const match = pathname.match(/^\/storyboard-review\/(\d+)(?:\/)?$/);
+  if (!match?.[1]) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
+}
+
 function asLegacyObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
@@ -1977,6 +2277,21 @@ function normalizeLegacyReviewData(value: unknown): Record<string, unknown> | nu
   }
   const objectValue = asLegacyObject(value);
   return Object.keys(objectValue).length > 0 ? objectValue : null;
+}
+
+function normalizeServerStoryboardReviewDraft(
+  reviewRecord: Record<string, any> | null | undefined,
+  reviewId: number,
+): StoryboardReviewDraft | null {
+  if (!reviewRecord || Number(reviewRecord.id) !== reviewId) return null;
+  const parsedLegacyData = normalizeLegacyReviewData(reviewRecord.reviewData);
+  const nextDraft = normalizeStoryboardReviewDraft(reviewRecord.reviewData)
+    ?? (parsedLegacyData ? normalizeLegacyStoryboardReviewDraft(parsedLegacyData, reviewId) : null);
+  return nextDraft ? {
+    ...nextDraft,
+    reviewId,
+    name: nextDraft.name ?? (typeof reviewRecord.name === "string" ? reviewRecord.name : null),
+  } : null;
 }
 
 function normalizeLegacyStoryboardTaskStatus(value: unknown): StoryboardGenerationTask["status"] {
@@ -2227,6 +2542,86 @@ function isDraftNewerThan(a: StoryboardReviewDraft | null | undefined, b: Storyb
   return (a?.updatedAt ?? 0) > (b?.updatedAt ?? 0);
 }
 
+function getStoryboardDraftContentSignature(draft: StoryboardReviewDraft | null | undefined): string {
+  if (!draft) return "null";
+
+  const tasks = Array.isArray(draft.tasks) ? draft.tasks : [];
+  const companionAudio = Array.isArray(draft.companionAudio) ? draft.companionAudio : [];
+
+  try {
+    return JSON.stringify({
+      reviewId: draft.reviewId ?? null,
+      name: draft.name ?? null,
+      taskIds: Array.isArray(draft.taskIds) ? draft.taskIds : [],
+      selectedTaskIds: Array.isArray(draft.selectedTaskIds) ? draft.selectedTaskIds : [],
+      compoundStatus: draft.compoundStatus ?? null,
+      projectLink: draft.projectLink ?? null,
+      renderJobId: draft.renderJobId ?? null,
+      marketplaceContext: draft.marketplaceContext ?? null,
+      manualHyperframesProductId: draft.manualHyperframesProductId ?? null,
+      manualHyperframesRunId: draft.manualHyperframesRunId ?? null,
+      productionContext: draft.productionContext ?? null,
+      conceptDetails: draft.conceptDetails ?? null,
+      storyboardGuide: draft.storyboardGuide ?? null,
+      voiceoverFullScript: draft.voiceoverFullScript ?? null,
+      useVoiceoverScriptAsConcept: Boolean(draft.useVoiceoverScriptAsConcept),
+      videoSegmentState: draft.videoSegmentState ?? null,
+      companionAudio: companionAudio.map((audio) => ({
+        id: audio.id,
+        title: audio.title,
+        url: audio.url,
+        prompt: audio.prompt,
+        model: audio.model,
+        kind: audio.kind,
+        startTimeSeconds: audio.startTimeSeconds ?? null,
+        segmentIndex: audio.segmentIndex ?? null,
+        segmentCount: audio.segmentCount ?? null,
+        actualDurationSeconds: audio.actualDurationSeconds ?? null,
+        targetDurationSeconds: audio.targetDurationSeconds ?? null,
+        volume: audio.volume ?? null,
+      })),
+      tasks: tasks.map((task) => ({
+        id: task.id,
+        index: task.index,
+        status: task.status,
+        type: task.type,
+        prompt: task.prompt,
+        model: task.model,
+        durationSeconds: task.durationSeconds ?? null,
+        transition: task.transition ?? null,
+        url: task.url ?? null,
+        error: task.error ?? null,
+        backendTaskId: task.backendTaskId ?? null,
+        providerTaskId: task.providerTaskId ?? null,
+        statusDetail: task.statusDetail ?? null,
+        source: task.source ?? null,
+        aspectRatio: task.aspectRatio ?? null,
+        storyboardContext: task.storyboardContext ?? null,
+        transportMetadata: task.transportMetadata ?? null,
+        marketplaceProduct: task.marketplaceProduct ?? null,
+        productionContext: task.productionContext ?? null,
+      })),
+    });
+  } catch {
+    return [
+      draft.reviewId ?? "",
+      draft.taskIds?.length ?? 0,
+      draft.selectedTaskIds?.length ?? 0,
+      tasks.length,
+      companionAudio.length,
+      draft.renderJobId ?? "",
+    ].join("|");
+  }
+}
+
+function storyboardDraftContentMatches(
+  a: StoryboardReviewDraft | null | undefined,
+  b: StoryboardReviewDraft | null | undefined,
+): boolean {
+  if (!a || !b) return false;
+  return getStoryboardDraftContentSignature(a) === getStoryboardDraftContentSignature(b);
+}
+
 function preferCanonicalServerCompanionAudio(
   localDraft: StoryboardReviewDraft | null | undefined,
   serverDraft: StoryboardReviewDraft | null | undefined,
@@ -2380,24 +2775,90 @@ function createImportedAudioTrack(input: {
   };
 }
 
+function createManualStoryboardReviewDraft(locale: string): StoryboardReviewDraft {
+  const now = Date.now();
+  const suffix = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+  const name = locale === "th" ? "Manual Storyboard Project" : "Manual Storyboard Project";
+  const taskIds = Array.from({ length: 6 }, (_, index) => `manual-shot-${index + 1}-${suffix}`);
+  const tasks: StoryboardGenerationTask[] = taskIds.map((id, index) => ({
+    id,
+    index,
+    status: "queued",
+    type: "video",
+    prompt: locale === "th"
+      ? `Shot ${index + 1}: ลากวิดีโอหรือภาพมาวาง แล้วเขียน prompt เอง`
+      : `Shot ${index + 1}: drag in video or image media, then write the prompt manually.`,
+    model: "Manual storyboard",
+    durationSeconds: DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+    aspectRatio: "9:16",
+    createdAt: now,
+    updatedAt: now,
+    source: "imported",
+    statusDetail: locale === "th" ? "รอเพิ่ม media" : "Waiting for media",
+  }));
+
+  return {
+    version: 1,
+    reviewId: null,
+    name,
+    updatedAt: now,
+    taskIds,
+    selectedTaskIds: taskIds,
+    tasks,
+    companionAudio: [],
+    companionAudioUpdatedAt: null,
+    compoundStatus: null,
+    projectLink: null,
+    renderJobId: null,
+    marketplaceContext: null,
+    manualHyperframesProductId: `manual_storyboard_product_${suffix}`,
+    manualHyperframesRunId: `manual_storyboard_run_${suffix}`,
+    productionContext: {
+      productionRunId: `manual_storyboard_run_${suffix}`,
+      productionProjectTitle: name,
+      productionStoryConceptTitle: name,
+      videoConcept: locale === "th"
+        ? "Manual Storyboard Review workspace สำหรับลาก media เองและ render ด้วย HyperFrames"
+        : "Manual Storyboard Review workspace for user-managed media and HyperFrames rendering.",
+    },
+    conceptDetails: "",
+    storyboardGuide: "",
+    voiceoverFullScript: "",
+    useVoiceoverScriptAsConcept: false,
+  };
+}
+
 export default function StoryboardReviewPage() {
   const [location, setLocation] = useLocation();
   const { t, locale } = useScopedTranslation(["media", "common"]);
   const [, routeParams] = useRoute("/storyboard-review/:reviewId");
   const search = useSearch();
   const queryReviewId = parseReviewIdFromSearch(search);
+  const pathReviewId = typeof window === "undefined"
+    ? null
+    : parseReviewIdFromPathname(window.location.pathname);
   const parsedReviewId = routeParams?.reviewId ? Number(routeParams.reviewId) : null;
   const reviewId = typeof parsedReviewId === "number" && Number.isFinite(parsedReviewId) && parsedReviewId > 0
     ? parsedReviewId
+    : pathReviewId
+      ? pathReviewId
     : queryReviewId;
   const trpcUtils = trpc.useUtils();
 
-  const [draft, setDraft] = useState<StoryboardReviewDraft | null>(() => reviewId ? null : readStoryboardReviewDraft());
+  const [draft, setDraft] = useState<StoryboardReviewDraft | null>(() => {
+    if (!reviewId) return null;
+    const storedDraft = readStoryboardReviewDraft();
+    return storedDraft?.reviewId === reviewId ? storedDraft : null;
+  });
   const [regeneratingTaskId, setRegeneratingTaskId] = useState<string | null>(null);
+  const [regeneratingVideoSegmentPromptTaskId, setRegeneratingVideoSegmentPromptTaskId] = useState<string | null>(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isCreatingManualReviewProject, setIsCreatingManualReviewProject] = useState(false);
   const [isCompounding, setIsCompounding] = useState(false);
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [rightPanelTab, setRightPanelTab] = useState<StoryboardRightPanelTab>("history_gallery");
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(readStoredStoryboardReviewPanelCollapsed);
+  const [rightPanelWidth, setRightPanelWidth] = useState(readStoredStoryboardReviewPanelWidth);
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
   const [audioSourceTab, setAudioSourceTab] = useState<StoryboardAudioSourceTab>("library");
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
@@ -2437,9 +2898,11 @@ export default function StoryboardReviewPage() {
   const [videoPreview, setVideoPreview] = useState<StoryboardVideoPreview | null>(null);
   const [videoPreviewError, setVideoPreviewError] = useState("");
   const [videoPreviewPlaybackReady, setVideoPreviewPlaybackReady] = useState(false);
+  const [videoPreviewOverlayReplayKey, setVideoPreviewOverlayReplayKey] = useState(0);
   const [isImageToolsPanelOpen, setIsImageToolsPanelOpen] = useState(false);
   const [historyGalleryProductFilterEnabled, setHistoryGalleryProductFilterEnabled] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<StoryboardReviewDeleteTarget | null>(null);
+  const [splitFallbackTarget, setSplitFallbackTarget] = useState<StoryboardReviewSplitFallbackTarget | null>(null);
   const [hyperframesFinalFont, setHyperframesFinalFont] = useState<HyperframesFinalCompositeConfig["fontFamily"]>("Prompt");
   const [hyperframesFinalTextMode, setHyperframesFinalTextMode] = useState<HyperframesFinalCompositeConfig["textMode"]>("hook_and_per_shot");
   const [hyperframesFinalTextMotionPreset, setHyperframesFinalTextMotionPreset] = useState<HyperframesFinalTextMotionPreset>("slide_right_to_left");
@@ -2492,7 +2955,12 @@ export default function StoryboardReviewPage() {
   const hyperframesFinalAutosaveNeedsFlushRef = useRef(false);
   const hyperframesFinalAutosaveFlushRef = useRef<() => Promise<void>>(async () => undefined);
   const hyperframesFinalAutosaveSkipNextRef = useRef(false);
+  const hyperframesFinalAutosaveFlushAfterSnapshotRef = useRef(false);
   const hyperframesFinalSelectedShotVideoRef = useRef<HTMLVideoElement | null>(null);
+  const videoPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const videoPreviewOverlayReplayLastAtRef = useRef(0);
+  const videoPreviewEndedRef = useRef(false);
+  const storyboardReviewQueryRedirectRef = useRef("");
   const imageToolsPanelRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<StoryboardReviewDraft | null>(draft);
   const lastLocalResyncAtRef = useRef(0);
@@ -2506,19 +2974,57 @@ export default function StoryboardReviewPage() {
   const recordingStartedAtRef = useRef<number | null>(null);
   const renderLibraryMetadataRef = useRef<Record<string, { title?: string; metadata: Record<string, unknown> }>>({});
   const hyperframesRenderLibrarySessionKeyRef = useRef<string | null>(null);
-  const storedDraftReviewId = typeof draft?.reviewId === "number" && Number.isFinite(draft.reviewId) && draft.reviewId > 0
-    ? draft.reviewId
-    : null;
-  const canonicalReviewId = reviewId ?? storedDraftReviewId;
+  const canonicalReviewId = reviewId;
   const hyperframesSearchParams = useMemo(
     () => new URLSearchParams(search),
     [search],
   );
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      STORYBOARD_REVIEW_RIGHT_PANEL_WIDTH_KEY,
+      String(rightPanelWidth),
+    );
+  }, [rightPanelWidth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      STORYBOARD_REVIEW_RIGHT_PANEL_COLLAPSED_KEY,
+      String(isRightPanelCollapsed),
+    );
+  }, [isRightPanelCollapsed]);
+
+  useEffect(() => {
     setVideoPreviewError("");
     setVideoPreviewPlaybackReady(false);
+    videoPreviewOverlayReplayLastAtRef.current = 0;
+    videoPreviewEndedRef.current = false;
+    setVideoPreviewOverlayReplayKey(current => current + 1);
   }, [videoPreview?.url]);
+
+  const restartVideoPreviewOverlayAnimation = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && now - videoPreviewOverlayReplayLastAtRef.current < 250) return;
+    videoPreviewOverlayReplayLastAtRef.current = now;
+    setVideoPreviewOverlayReplayKey(current => current + 1);
+  }, []);
+
+  const replayVideoPreview = useCallback(() => {
+    restartVideoPreviewOverlayAnimation(true);
+    const video = videoPreviewVideoRef.current;
+    if (!video) return;
+    try {
+      video.currentTime = 0;
+    } catch {
+      // Some browser/media combinations can reject seeking before metadata is ready.
+    }
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      void playPromise.catch(() => undefined);
+    }
+  }, [restartVideoPreviewOverlayAnimation]);
 
   useEffect(() => {
     if (hyperframesFinalSelectedShotPreviewMode !== "video") {
@@ -2536,11 +3042,22 @@ export default function StoryboardReviewPage() {
     ? hyperframesRenderJobId
     : null;
 
-  const { data: review, isLoading: isReviewLoading } = trpc.videoEditorProjects.getStoryboardReview.useQuery(
+  const {
+    data: review,
+    error: reviewLoadError,
+    isError: isReviewError,
+    isFetching: isReviewFetching,
+    isLoading: isReviewLoading,
+    refetch: refetchStoryboardReview,
+  } = trpc.videoEditorProjects.getStoryboardReview.useQuery(
     { id: canonicalReviewId ?? 0 },
-    { enabled: typeof canonicalReviewId === "number" && Number.isFinite(canonicalReviewId) },
+    {
+      enabled: typeof canonicalReviewId === "number" && Number.isFinite(canonicalReviewId),
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
   );
-  const reviewRecord = review as any;
+  const reviewRecord = (review as any) as Record<string, any> | null;
   const reviewRecordMatchesRoute = Boolean(
     !canonicalReviewId || (reviewRecord && Number(reviewRecord.id) === canonicalReviewId)
   );
@@ -2548,6 +3065,10 @@ export default function StoryboardReviewPage() {
     reviewRecordMatchesRoute && reviewRecord?.reviewData && typeof reviewRecord.reviewData === "object"
       ? (reviewRecord.reviewData as Record<string, any>)
       : {};
+  const serverReviewDraft = useMemo(() => {
+    if (!canonicalReviewId || !reviewRecordMatchesRoute || !reviewRecord) return null;
+    return normalizeServerStoryboardReviewDraft(reviewRecord, canonicalReviewId);
+  }, [canonicalReviewId, reviewRecord, reviewRecordMatchesRoute]);
   const reviewMarketplaceContext =
     reviewDataRecord.marketplaceContext &&
     typeof reviewDataRecord.marketplaceContext === "object"
@@ -2571,6 +3092,10 @@ export default function StoryboardReviewPage() {
     ) || undefined;
   const draftHyperframesProductId = getStoryboardReviewProductIdFromDraft(draft) || undefined;
   const draftHyperframesRunId = getStoryboardReviewAutoReviewRunIdFromDraft(draft) || undefined;
+  const draftManualHyperframesProductId =
+    compactStoryboardText(draft?.manualHyperframesProductId ?? "") || undefined;
+  const draftManualHyperframesRunId =
+    compactStoryboardText(draft?.manualHyperframesRunId ?? "") || undefined;
   const canUseHyperframesQueryContext =
     reviewRecordMatchesRoute &&
     (!canonicalReviewId || Boolean(reviewRecord)) &&
@@ -2580,6 +3105,7 @@ export default function StoryboardReviewPage() {
   const effectiveHyperframesProductId =
     reviewHyperframesProductId ??
     draftHyperframesProductId ??
+    draftManualHyperframesProductId ??
     (canUseHyperframesQueryContext ? hyperframesProductId : undefined);
   const effectiveHyperframesRunId =
     compactStoryboardText(
@@ -2591,6 +3117,7 @@ export default function StoryboardReviewPage() {
         reviewMarketplaceContext.marketplaceAutoReviewRunId
     ) ||
     draftHyperframesRunId ||
+    draftManualHyperframesRunId ||
     (canUseHyperframesQueryContext ? hyperframesRunId : undefined);
   const hyperframesFinalIdentityKey = useMemo(
     () =>
@@ -2704,7 +3231,20 @@ export default function StoryboardReviewPage() {
       },
       onError: error => toast.error(error.message),
     });
-  const { data: reviewProjectsData, refetch: refetchReviews } = trpc.videoEditorProjects.listStoryboardReviews.useQuery({ limit: 50, offset: 0 });
+  const {
+    data: reviewProjectsData,
+    error: reviewProjectsError,
+    isError: isReviewProjectsError,
+    isFetching: isReviewProjectsFetching,
+    isLoading: isReviewProjectsLoading,
+    refetch: refetchReviews,
+  } = trpc.videoEditorProjects.listStoryboardReviews.useQuery(
+    { limit: 50, offset: 0 },
+    {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  );
   const saveReviewMutation = trpc.videoEditorProjects.saveStoryboardReview.useMutation();
   const deleteReviewMutation = trpc.videoEditorProjects.deleteStoryboardReview.useMutation();
   const saveProjectMutation = trpc.videoEditorProjects.save.useMutation();
@@ -2714,6 +3254,7 @@ export default function StoryboardReviewPage() {
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
   const planStoryboardVideoPromptsMutation = trpc.skills.planStoryboardVideoPrompts.useMutation();
+  const regenerateVideoSegmentPromptMutation = trpc.videoEditorProjects.regenerateVideoSegmentPrompt.useMutation();
   const { mutate: writeStoryboardReviewClientDebug } = trpc.videoEditorProjects.debugStoryboardReviewClient.useMutation();
   const {
     data: librarySearchData,
@@ -2873,7 +3414,10 @@ export default function StoryboardReviewPage() {
     if (!queryReviewId || routeParams?.reviewId) return;
     const canonicalPath = `/storyboard-review/${queryReviewId}`;
     if (location === canonicalPath) return;
+    const redirectKey = `${queryReviewId}:${canonicalPath}`;
+    if (storyboardReviewQueryRedirectRef.current === redirectKey) return;
     if (location.startsWith("/storyboard-review?")) {
+      storyboardReviewQueryRedirectRef.current = redirectKey;
       setLocation(canonicalPath);
     }
   }, [queryReviewId, location, routeParams?.reviewId, setLocation]);
@@ -2953,15 +3497,30 @@ export default function StoryboardReviewPage() {
     stopMicrophoneStream();
   }, [stopMicrophoneStream]);
 
+  const writeStoryboardReviewClientDebugRef = useRef(writeStoryboardReviewClientDebug);
+  const storyboardReviewRouteIdRef = useRef<number | null>(reviewId);
+  const storyboardReviewRouteResetRef = useRef("");
+  const storyboardReviewQueryDebugSignatureRef = useRef("");
+  const storyboardReviewServerResponseDebugSignatureRef = useRef("");
+
+  useEffect(() => {
+    writeStoryboardReviewClientDebugRef.current = writeStoryboardReviewClientDebug;
+  }, [writeStoryboardReviewClientDebug]);
+
+  useEffect(() => {
+    storyboardReviewRouteIdRef.current = reviewId;
+  }, [reviewId]);
+
   const emitStoryboardReviewClientDebug = useCallback((event: string, payload?: Record<string, unknown>) => {
-    const currentReviewId = reviewId ?? draftRef.current?.reviewId ?? null;
-    writeStoryboardReviewClientDebug({
+    const routeReviewId = storyboardReviewRouteIdRef.current;
+    const currentReviewId = routeReviewId ?? draftRef.current?.reviewId ?? null;
+    writeStoryboardReviewClientDebugRef.current({
       event,
       reviewId: currentReviewId,
       pageBuild: STORYBOARD_REVIEW_PAGE_DEBUG_BUILD,
       route: typeof window === "undefined" ? null : `${window.location.pathname}${window.location.search}`,
       payload: {
-        routeReviewId: reviewId,
+        routeReviewId,
         canonicalReviewId: currentReviewId,
         currentDraft: summarizeStoryboardDraftForDebug(draftRef.current),
         ...payload,
@@ -2969,9 +3528,163 @@ export default function StoryboardReviewPage() {
     }, {
       onError: () => undefined,
     });
-  }, [reviewId, writeStoryboardReviewClientDebug]);
+  }, []);
 
-  const activeDraft = reviewId && draft?.reviewId !== reviewId ? null : draft;
+  const listBackedReviewRecord = useMemo(() => {
+    if (!canonicalReviewId) return null;
+    const reviews = (reviewProjectsData?.reviews ?? []) as any[];
+    return reviews.find((item) => Number(item?.id) === canonicalReviewId) ?? null;
+  }, [canonicalReviewId, reviewProjectsData?.reviews]);
+  const serverBackedDraft =
+    serverReviewDraft?.reviewId === canonicalReviewId ? serverReviewDraft : null;
+  const reviewRecordFound = Boolean(canonicalReviewId && reviewRecordMatchesRoute && reviewRecord);
+  const refBackedDraft =
+    draftRef.current?.reviewId === canonicalReviewId ? draftRef.current : null;
+  const activeDraft = canonicalReviewId
+    ? (draft?.reviewId === canonicalReviewId ? draft : refBackedDraft ?? serverBackedDraft)
+    : draft;
+
+  useEffect(() => {
+    if (!canonicalReviewId) return;
+    const signature = [
+      canonicalReviewId,
+      reviewRecord?.id ?? "",
+      reviewRecordFound ? "record-found" : "record-missing",
+      serverBackedDraft?.reviewId ?? "",
+      serverBackedDraft?.updatedAt ?? "",
+      serverBackedDraft?.taskIds?.length ?? 0,
+      isReviewProjectsLoading ? "list-loading" : "list-not-loading",
+      isReviewProjectsFetching ? "list-fetching" : "list-not-fetching",
+      isReviewProjectsError ? "list-error" : "list-ok",
+      draft?.reviewId ?? "",
+      activeDraft?.reviewId ?? "",
+      isReviewLoading ? "loading" : "not-loading",
+      isReviewFetching ? "fetching" : "not-fetching",
+      isReviewError ? "error" : "ok",
+    ].join("|");
+    if (storyboardReviewServerResponseDebugSignatureRef.current === signature) return;
+    storyboardReviewServerResponseDebugSignatureRef.current = signature;
+    emitStoryboardReviewClientDebug("serverReview.responseState", {
+      queryReviewId,
+      routeReviewId: reviewId,
+      canonicalReviewId,
+      isReviewLoading,
+      isReviewFetching,
+      isReviewError,
+      reviewRecordFound,
+      reviewRecordId: reviewRecord?.id ?? null,
+      reviewRecordMatchesRoute,
+      reviewError: reviewLoadError?.message ?? null,
+      reviewProjectsLoading: isReviewProjectsLoading,
+      reviewProjectsFetching: isReviewProjectsFetching,
+      reviewProjectsError: reviewProjectsError?.message ?? null,
+      listBackedReviewRecordFound: Boolean(listBackedReviewRecord),
+      serverBackedDraft: summarizeStoryboardDraftForDebug(serverBackedDraft),
+      draft: summarizeStoryboardDraftForDebug(draft),
+      activeDraft: summarizeStoryboardDraftForDebug(activeDraft),
+    });
+  }, [
+    activeDraft,
+    canonicalReviewId,
+    draft,
+    emitStoryboardReviewClientDebug,
+    isReviewError,
+    isReviewFetching,
+    isReviewLoading,
+    isReviewProjectsError,
+    isReviewProjectsFetching,
+    isReviewProjectsLoading,
+    queryReviewId,
+    reviewId,
+    reviewLoadError?.message,
+    reviewProjectsError?.message,
+    reviewRecord?.id,
+    reviewRecordFound,
+    reviewRecordMatchesRoute,
+    listBackedReviewRecord,
+    serverBackedDraft,
+  ]);
+
+  useEffect(() => {
+    if (!canonicalReviewId || !serverBackedDraft) return;
+    if (draft?.reviewId === canonicalReviewId) return;
+    emitStoryboardReviewClientDebug("serverReview.promoteServerBackedDraft", {
+      reviewRecordFound,
+      serverBackedDraft: summarizeStoryboardDraftForDebug(serverBackedDraft),
+      previousDraft: summarizeStoryboardDraftForDebug(draft),
+    });
+    draftRef.current = serverBackedDraft;
+    writeStoryboardReviewDraft(serverBackedDraft);
+    setDraft(serverBackedDraft);
+    setRenderJobId(serverBackedDraft.renderJobId ?? null);
+  }, [
+    canonicalReviewId,
+    draft,
+    emitStoryboardReviewClientDebug,
+    reviewRecordFound,
+    serverBackedDraft,
+  ]);
+
+  useEffect(() => {
+    if (!canonicalReviewId) return;
+    const reviewState =
+      review === null ? "null" : review ? "record" : "undefined";
+    const signature = [
+      canonicalReviewId,
+      reviewId ?? "",
+      isReviewLoading ? "loading" : "not-loading",
+      isReviewFetching ? "fetching" : "not-fetching",
+      isReviewError ? "error" : "ok",
+      isReviewProjectsLoading ? "list-loading" : "list-not-loading",
+      isReviewProjectsFetching ? "list-fetching" : "list-not-fetching",
+      isReviewProjectsError ? "list-error" : "list-ok",
+      reviewState,
+      listBackedReviewRecord ? "list-record" : "list-no-record",
+      draft?.reviewId ?? "",
+      activeDraft?.reviewId ?? "",
+      reviewLoadError?.message ?? "",
+      reviewProjectsError?.message ?? "",
+    ].join("|");
+    if (storyboardReviewQueryDebugSignatureRef.current === signature) return;
+    storyboardReviewQueryDebugSignatureRef.current = signature;
+    emitStoryboardReviewClientDebug("route.queryState", {
+      queryReviewId,
+      routeReviewId: reviewId,
+      canonicalReviewId,
+      isReviewLoading,
+      isReviewFetching,
+      isReviewError,
+      isReviewProjectsLoading,
+      isReviewProjectsFetching,
+      isReviewProjectsError,
+      reviewState,
+      reviewError: reviewLoadError?.message ?? null,
+      reviewProjectsError: reviewProjectsError?.message ?? null,
+      listBackedReviewRecordFound: Boolean(listBackedReviewRecord),
+      draft: summarizeStoryboardDraftForDebug(draft),
+      serverBackedDraft: summarizeStoryboardDraftForDebug(serverBackedDraft),
+      activeDraft: summarizeStoryboardDraftForDebug(activeDraft),
+    });
+  }, [
+    activeDraft,
+    canonicalReviewId,
+    draft,
+    emitStoryboardReviewClientDebug,
+    isReviewError,
+    isReviewFetching,
+    isReviewLoading,
+    isReviewProjectsError,
+    isReviewProjectsFetching,
+    isReviewProjectsLoading,
+    queryReviewId,
+    review,
+    reviewId,
+    reviewLoadError?.message,
+    reviewProjectsError?.message,
+    listBackedReviewRecord,
+    serverBackedDraft,
+  ]);
+
   const historyGalleryProductFilter = useMemo(
     () => getStoryboardHistoryProductFilter(activeDraft),
     [activeDraft],
@@ -2987,12 +3700,12 @@ export default function StoryboardReviewPage() {
       limit: 20,
       offset: 0,
       daysAgo: 30,
-    },
-    {
-      enabled: Boolean(draft),
-      refetchOnWindowFocus: true,
-    },
-  );
+	    },
+	    {
+	      enabled: Boolean(activeDraft),
+	      refetchOnWindowFocus: true,
+	    },
+	  );
   const { data: imageHistoryData, isLoading: isImageHistoryLoading } = trpc.media.listTasks.useQuery(
     {
       mediaType: "image",
@@ -3000,52 +3713,95 @@ export default function StoryboardReviewPage() {
       limit: isHistoryGalleryProductFilterActive ? 100 : 36,
       offset: 0,
       daysAgo: 30,
-    },
-    {
-      enabled: Boolean(draft) && rightPanelTab === "history_gallery",
-      refetchOnWindowFocus: true,
+	    },
+	    {
+	      enabled: Boolean(activeDraft) && rightPanelTab === "history_gallery",
+	      refetchOnWindowFocus: true,
+	    },
+	  );
+  const storyboardVideoMediaModelsQuery = trpc.mediaModels.list.useQuery(
+	    { type: "video" },
+	    {
+	      enabled: Boolean(activeDraft),
+	      staleTime: 60_000,
+	      refetchOnWindowFocus: false,
+	    },
+  );
+  const storyboardMcpConnectionsQuery = trpc.mcpConnections.listConnections.useQuery(
+	    undefined,
+	    {
+	      enabled: Boolean(activeDraft),
+	      retry: false,
+	      staleTime: 30_000,
+	      refetchOnWindowFocus: true,
     },
   );
 
   useEffect(() => {
-    if (reviewId) {
-      emitStoryboardReviewClientDebug("route.localDraftLoaded", {
-        localDraft: null,
-        matchingLocalDraft: null,
-        routeReviewId: reviewId,
-        source: "server_canonical_route",
-      });
+    if (!reviewId) return;
+    const resetKey = `server:${reviewId}`;
+    if (storyboardReviewRouteResetRef.current === resetKey) return;
+    storyboardReviewRouteResetRef.current = resetKey;
+    const matchingCurrentDraft =
+      draftRef.current?.reviewId === reviewId ? draftRef.current : null;
+    const hasMismatchedCurrentDraft =
+      Boolean(draftRef.current?.reviewId && draftRef.current.reviewId !== reviewId);
+    emitStoryboardReviewClientDebug("route.localDraftLoaded", {
+      localDraft: matchingCurrentDraft
+        ? summarizeStoryboardDraftForDebug(matchingCurrentDraft)
+        : null,
+      matchingLocalDraft: summarizeStoryboardDraftForDebug(matchingCurrentDraft),
+      matchingServerDraft: null,
+      hasMismatchedCurrentDraft,
+      routeReviewId: reviewId,
+      source: "server_canonical_route",
+    });
+
+    if (matchingCurrentDraft) {
+      draftRef.current = matchingCurrentDraft;
+      setDraft(matchingCurrentDraft);
+      setRenderJobId(matchingCurrentDraft.renderJobId ?? null);
+    } else if (hasMismatchedCurrentDraft) {
+      // On a canonical server route, wait for getStoryboardReview to hydrate the draft.
+      // Clearing only mismatched local data prevents showing the previous project while
+      // avoiding the stale null state that made direct Auto Storyboard links spin forever.
       draftRef.current = null;
       setDraft(null);
       setRenderJobId(null);
-      setRegeneratingTaskId(null);
-      setSelectedLibraryItemId(null);
-      setLibrarySearchQuery("");
-      setReplacingReferenceFrameKey(null);
-      setUploadingVideoSlotKey(null);
-      setVideoPreview(null);
-      setGalleryLightbox(null);
-      return;
     }
-
-    const localDraft = readStoryboardReviewDraft();
-    emitStoryboardReviewClientDebug("route.localDraftLoaded", {
-      localDraft: summarizeStoryboardDraftForDebug(localDraft),
-      matchingLocalDraft: summarizeStoryboardDraftForDebug(localDraft),
-    });
-    draftRef.current = localDraft;
-    setDraft(localDraft);
-    setRenderJobId(localDraft?.renderJobId ?? null);
     setRegeneratingTaskId(null);
+    setSelectedLibraryItemId(null);
+    setLibrarySearchQuery("");
+    setReplacingReferenceFrameKey(null);
+    setUploadingVideoSlotKey(null);
+    setVideoPreview(null);
+    setGalleryLightbox(null);
   }, [emitStoryboardReviewClientDebug, reviewId]);
 
   useEffect(() => {
-    const reviewRecord = review as any;
+    if (reviewId) return;
+    if (storyboardReviewRouteResetRef.current === "project-list") return;
+    storyboardReviewRouteResetRef.current = "project-list";
+    emitStoryboardReviewClientDebug("route.projectListLoaded", {
+      previousDraft: summarizeStoryboardDraftForDebug(draftRef.current),
+      source: "project_list_route",
+    });
+    draftRef.current = null;
+    setDraft(null);
+    setRenderJobId(null);
+    setRegeneratingTaskId(null);
+    setSelectedLibraryItemId(null);
+    setLibrarySearchQuery("");
+    setReplacingReferenceFrameKey(null);
+    setUploadingVideoSlotKey(null);
+    setVideoPreview(null);
+    setGalleryLightbox(null);
+  }, [emitStoryboardReviewClientDebug, reviewId]);
+
+  useEffect(() => {
     if (!canonicalReviewId || !reviewRecord || Number(reviewRecord.id) !== canonicalReviewId) return;
 
-    const parsedLegacyData = normalizeLegacyReviewData(reviewRecord.reviewData);
-    const nextDraft = normalizeStoryboardReviewDraft(reviewRecord.reviewData)
-      ?? (parsedLegacyData ? normalizeLegacyStoryboardReviewDraft(parsedLegacyData, canonicalReviewId) : null);
+    const nextDraft = normalizeServerStoryboardReviewDraft(reviewRecord, canonicalReviewId);
     const rawIncoming = nextDraft ? {
       ...nextDraft,
       reviewId: canonicalReviewId,
@@ -3082,6 +3838,10 @@ export default function StoryboardReviewPage() {
         mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
         appliedDraft: summarizeStoryboardDraftForDebug(mergedCurrent),
       });
+      if (storyboardDraftContentMatches(current, mergedCurrent)) {
+        lastLocalResyncAtRef.current = current.updatedAt;
+        return;
+      }
       draftRef.current = mergedCurrent;
       writeStoryboardReviewDraft(mergedCurrent);
       setDraft(mergedCurrent);
@@ -3091,24 +3851,132 @@ export default function StoryboardReviewPage() {
     const incomingWithMarketplaceContext = incoming && rawIncoming?.marketplaceContext && !getStoryboardHistoryProductFilter(incoming)
       ? { ...incoming, marketplaceContext: rawIncoming.marketplaceContext }
       : incoming;
-    if (incomingWithMarketplaceContext) {
-      emitStoryboardReviewClientDebug("serverReview.appliedIncoming", {
+    if (!incomingWithMarketplaceContext) return;
+    if (storyboardDraftContentMatches(current, incomingWithMarketplaceContext)) {
+      emitStoryboardReviewClientDebug("serverReview.skippedEquivalentIncoming", {
         reviewRecordFound: true,
-        serverCompanionAudioIsCanonical,
-        serverCompanionAudioUpdatedAt,
-        currentCompanionAudioUpdatedAt,
         rawIncoming: summarizeStoryboardDraftForDebug(rawIncoming),
-        mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
-        appliedDraft: summarizeStoryboardDraftForDebug(incomingWithMarketplaceContext),
+        currentDraft: summarizeStoryboardDraftForDebug(current),
       });
-      draftRef.current = incomingWithMarketplaceContext;
-      writeStoryboardReviewDraft(incomingWithMarketplaceContext);
+      lastLocalResyncAtRef.current = current?.updatedAt ?? incomingWithMarketplaceContext.updatedAt;
+      return;
     }
+    emitStoryboardReviewClientDebug("serverReview.appliedIncoming", {
+      reviewRecordFound: true,
+      serverCompanionAudioIsCanonical,
+      serverCompanionAudioUpdatedAt,
+      currentCompanionAudioUpdatedAt,
+      rawIncoming: summarizeStoryboardDraftForDebug(rawIncoming),
+      mergedIncoming: summarizeStoryboardDraftForDebug(mergedIncoming),
+      appliedDraft: summarizeStoryboardDraftForDebug(incomingWithMarketplaceContext),
+    });
+    lastLocalResyncAtRef.current = incomingWithMarketplaceContext.updatedAt;
+    draftRef.current = incomingWithMarketplaceContext;
+    writeStoryboardReviewDraft(incomingWithMarketplaceContext);
     setDraft(incomingWithMarketplaceContext);
-    setRenderJobId(incomingWithMarketplaceContext?.renderJobId ?? null);
-  }, [canonicalReviewId, emitStoryboardReviewClientDebug, review]);
+    setRenderJobId(incomingWithMarketplaceContext.renderJobId ?? null);
+  }, [canonicalReviewId, emitStoryboardReviewClientDebug, reviewRecord, reviewId]);
 
   const tasks = useMemo(() => storyboardDraftToReviewTasks(activeDraft), [activeDraft]);
+  const storyboardReviewVideoOptions = useMemo(
+    () => getStoryboardReviewVideoOptionValues(activeDraft, locale),
+    [activeDraft, locale],
+  );
+  const storyboardReviewVideoModelRecords = useMemo(
+    () => ((storyboardVideoMediaModelsQuery.data?.models as any[] | undefined) ?? []),
+    [storyboardVideoMediaModelsQuery.data?.models],
+  );
+  const storyboardReviewVideoModelById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const model of storyboardReviewVideoModelRecords) {
+      const modelId = String(model?.modelId ?? "").trim();
+      if (modelId) map.set(modelId, model);
+    }
+    return map;
+  }, [storyboardReviewVideoModelRecords]);
+  const eligibleStoryboardVideoMcpConnections = useMemo(
+    () =>
+      ((storyboardMcpConnectionsQuery.data ?? []) as any[]).filter(connection => {
+        if (connection?.status !== "connected") return false;
+        return (
+          !connection?.allowedAssetTypes?.length ||
+          connection.allowedAssetTypes.includes("video")
+        );
+      }),
+    [storyboardMcpConnectionsQuery.data],
+  );
+  const eligibleStoryboardVideoMcpProviderKeys = useMemo(
+    () =>
+      new Set(
+        eligibleStoryboardVideoMcpConnections
+          .map(connection => String(connection?.providerKey ?? "").trim())
+          .filter(Boolean),
+      ),
+    [eligibleStoryboardVideoMcpConnections],
+  );
+  const storyboardReviewVideoModelOptions = useMemo((): StoryboardReviewVideoModelOption[] => {
+    const currentModel = storyboardReviewVideoOptions.videoModel;
+    const options = storyboardReviewVideoModelRecords
+      .map(model => {
+        const modelId = String(model?.modelId ?? "").trim();
+        if (!modelId) return null;
+        const transport = resolveMediaModelTransportConfig({
+          provider: model?.provider,
+          modelId,
+          configJson: model?.configJson,
+        });
+        if (
+          transport.transport === "mcp" &&
+          (!transport.providerKey || !eligibleStoryboardVideoMcpProviderKeys.has(transport.providerKey))
+        ) {
+          return null;
+        }
+        const provider = String(model?.provider ?? transport.providerKey ?? "").trim();
+        return {
+          value: modelId,
+          label: `${String(model?.name ?? modelId)} (${transport.transport === "mcp" ? "MCP" : "API"}${provider ? ` • ${provider}` : ""})`,
+          provider,
+          transport: transport.transport,
+          providerKey: transport.providerKey ?? null,
+          providerModelId: transport.providerModelId ?? null,
+          toolName: transport.toolName ?? null,
+          argumentShape: transport.argumentShape ?? null,
+        };
+      })
+      .filter(Boolean) as StoryboardReviewVideoModelOption[];
+    for (const fallback of STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS) {
+      if (!options.some(option => option.value === fallback.value)) {
+        options.push({
+          value: fallback.value,
+          label: fallback.label,
+          provider: "kie.ai",
+          transport: "gateway_api",
+          providerKey: null,
+        });
+      }
+    }
+    if (currentModel && !options.some(option => option.value === currentModel)) {
+      const model = storyboardReviewVideoModelById.get(currentModel);
+      const currentOption = buildStoryboardReviewCurrentVideoModelOption({
+        draft: activeDraft,
+        model,
+        modelId: currentModel,
+      });
+      if (currentOption) options.unshift(currentOption);
+    }
+    return options;
+  }, [
+    activeDraft,
+    eligibleStoryboardVideoMcpProviderKeys,
+    storyboardReviewVideoModelById,
+    storyboardReviewVideoModelRecords,
+    storyboardReviewVideoOptions.videoModel,
+  ]);
+  const storyboardReviewVideoModelOptionById = useMemo(() => {
+    const map = new Map<string, StoryboardReviewVideoModelOption>();
+    storyboardReviewVideoModelOptions.forEach(option => map.set(option.value, option));
+    return map;
+  }, [storyboardReviewVideoModelOptions]);
   const selectedTaskIds = activeDraft?.selectedTaskIds ?? [];
   const completedCount = tasks.filter((task) => task.status === "completed" && task.url).length;
   const selectedReviewId = reviewId ?? activeDraft?.reviewId ?? null;
@@ -3258,6 +4126,158 @@ export default function StoryboardReviewPage() {
     });
   }, [persistDraftUpdate, t]);
 
+  const resolveStoryboardReviewVideoModelRoute = useCallback((modelId: string) => {
+    const normalizedModelId = normalizeStoryboardReviewVideoModelId(modelId) ?? modelId;
+    const option = storyboardReviewVideoModelOptionById.get(normalizedModelId);
+    const model = storyboardReviewVideoModelById.get(normalizedModelId);
+    const resolvedTransport = resolveMediaModelTransportConfig({
+      provider: model?.provider ?? option?.provider,
+      modelId: normalizedModelId,
+      configJson: model?.configJson,
+    });
+    const transport = {
+      transport: resolvedTransport.transport === "mcp" || option?.transport === "mcp"
+        ? "mcp" as const
+        : "gateway_api" as const,
+      providerKey: resolvedTransport.providerKey ?? option?.providerKey ?? undefined,
+      providerModelId: resolvedTransport.providerModelId ?? option?.providerModelId ?? undefined,
+      toolName: resolvedTransport.toolName ?? option?.toolName ?? undefined,
+      argumentShape: resolvedTransport.argumentShape ?? option?.argumentShape ?? undefined,
+    };
+    const provider = option?.provider || String(model?.provider ?? transport.providerKey ?? "").trim();
+    if (transport.transport !== "mcp") {
+      return {
+        provider,
+        transport: "gateway_api" as const,
+        transportMetadata: null,
+      };
+    }
+    const connection = eligibleStoryboardVideoMcpConnections.find(item => {
+      const providerKey = String(item?.providerKey ?? "").trim();
+      return providerKey && providerKey === transport.providerKey;
+    });
+    return {
+      provider: provider || transport.providerKey,
+      transport: "mcp" as const,
+      transportMetadata: connection
+        ? {
+            transport: "mcp" as const,
+            connectionId: String(connection.id ?? connection.connectionId ?? ""),
+            sharedGroupId:
+              typeof connection.sharedGroupId === "number"
+                ? connection.sharedGroupId
+                : undefined,
+            providerKey: transport.providerKey,
+            providerModelId: transport.providerModelId,
+            toolName: transport.toolName,
+            argumentShape: transport.argumentShape,
+            originSurface: "storyboard_review" as const,
+          }
+        : null,
+    };
+  }, [
+    eligibleStoryboardVideoMcpConnections,
+    storyboardReviewVideoModelById,
+    storyboardReviewVideoModelOptionById,
+  ]);
+
+  const updateStoryboardReviewVideoOptions = useCallback((patch: {
+    videoModel?: string;
+    videoStructureMode?: VideoSegmentStructureMode;
+    manualVideoGroupSize?: number;
+    plannerOptions?: Partial<StoryboardPromptPlannerOptions>;
+  }) => {
+    setAndSaveDraft((current) => {
+      const currentOptions = getStoryboardReviewVideoOptionValues(current, locale);
+      const nextPlannerOptions = {
+        ...currentOptions.plannerOptions,
+        ...(patch.plannerOptions ?? {}),
+      };
+      const nextVideoModel = patch.videoModel ?? currentOptions.videoModel;
+      const nextVideoStructureMode = patch.videoStructureMode ?? currentOptions.videoStructureMode;
+      const nextManualVideoGroupSize = patch.manualVideoGroupSize ?? currentOptions.manualVideoGroupSize;
+      if (
+        nextVideoModel === currentOptions.videoModel &&
+        nextVideoStructureMode === currentOptions.videoStructureMode &&
+        nextManualVideoGroupSize === currentOptions.manualVideoGroupSize &&
+        areStoryboardPromptPlannerOptionsEqual(nextPlannerOptions, currentOptions.plannerOptions)
+      ) {
+        return current;
+      }
+      const modelRoute = resolveStoryboardReviewVideoModelRoute(nextVideoModel);
+      return applyStoryboardReviewVideoOptionsToDraft(current, {
+        videoModel: nextVideoModel,
+        videoStructureMode: nextVideoStructureMode,
+        manualVideoGroupSize: nextManualVideoGroupSize,
+        provider: modelRoute.provider,
+        transport: modelRoute.transport,
+        transportMetadata: modelRoute.transportMetadata,
+        includeVoiceover: Boolean(nextPlannerOptions.includeVoiceover),
+        speechMode: nextPlannerOptions.speechMode,
+        speechLanguage: nextPlannerOptions.speechLanguage,
+        includeSound: nextPlannerOptions.includeSound,
+        promptTone: nextPlannerOptions.tone,
+        promptLanguage: nextPlannerOptions.language,
+        creativeBrief: null,
+      });
+    });
+  }, [locale, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft]);
+
+  const updateStoryboardPromptPlannerOptions = useCallback((options: StoryboardPromptPlannerOptions) => {
+    updateStoryboardReviewVideoOptions({ plannerOptions: options });
+  }, [updateStoryboardReviewVideoOptions]);
+
+  const createManualStoryboardReviewProject = useCallback(async () => {
+    if (isCreatingManualReviewProject) return;
+    const manualDraft = createManualStoryboardReviewDraft(locale);
+    setIsCreatingManualReviewProject(true);
+    try {
+      const result = await saveReviewMutation.mutateAsync({
+        name: getStoryboardReviewName(manualDraft),
+        reviewData: manualDraft,
+        clipCount: manualDraft.tasks.length,
+        completedClipCount: 0,
+        thumbnailUrl: null,
+        debugSource: buildStoryboardReviewDebugSource("StoryboardReviewPage.createManualStoryboardReviewProject", manualDraft),
+      });
+      const returnedDraft = normalizeStoryboardReviewDraft(
+        (result as { reviewData?: Partial<StoryboardReviewDraft> | null }).reviewData,
+      );
+      const savedDraft: StoryboardReviewDraft = {
+        ...(returnedDraft ?? manualDraft),
+        reviewId: result.id,
+        name: returnedDraft?.name ?? manualDraft.name ?? null,
+        manualHyperframesProductId:
+          returnedDraft?.manualHyperframesProductId ?? manualDraft.manualHyperframesProductId ?? null,
+        manualHyperframesRunId:
+          returnedDraft?.manualHyperframesRunId ?? manualDraft.manualHyperframesRunId ?? null,
+      };
+      draftRef.current = savedDraft;
+      writeStoryboardReviewDraft(savedDraft);
+      setDraft(savedDraft);
+      setRenderJobId(null);
+      setSelectedLibraryItemId(null);
+      setGalleryLightbox(null);
+      setVideoPreview(null);
+      setRightPanelTab("history_gallery");
+      void trpcUtils.videoEditorProjects.getStoryboardReview.invalidate({ id: result.id });
+      void refetchReviews();
+      setLocation(`/storyboard-review/${result.id}`);
+      toast.success(locale === "th" ? "สร้าง Manual Storyboard Project แล้ว" : "Manual Storyboard Project created.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (locale === "th" ? "สร้าง Manual Storyboard Project ไม่สำเร็จ" : "Could not create Manual Storyboard Project."));
+    } finally {
+      setIsCreatingManualReviewProject(false);
+    }
+  }, [
+    isCreatingManualReviewProject,
+    locale,
+    refetchReviews,
+    saveReviewMutation,
+    setLocation,
+    trpcUtils.videoEditorProjects.getStoryboardReview,
+  ]);
+
   const saveProjectName = useCallback(() => {
     const name = projectNameDraft.trim();
     if (!activeDraft || !name) return;
@@ -3269,17 +4289,34 @@ export default function StoryboardReviewPage() {
     }));
   }, [activeDraft, projectNameDraft, setAndSaveDraft]);
 
-  useEffect(() => {
-    if (!reviewId || !activeDraft || activeDraft.reviewId !== reviewId) return;
-    const serverDraft = normalizeStoryboardReviewDraft((review as any)?.reviewData);
-    if (!isDraftNewerThan(activeDraft, serverDraft)) return;
-    if (lastLocalResyncAtRef.current === activeDraft.updatedAt) return;
+		  useEffect(() => {
+		    if (!reviewId || !activeDraft || activeDraft.reviewId !== reviewId) return;
+		    if (isReviewLoading || isReviewFetching) return;
+		    if (!serverBackedDraft || serverBackedDraft.reviewId !== reviewId) return;
+		    if (serverBackedDraft.updatedAt === activeDraft.updatedAt) {
+		      lastLocalResyncAtRef.current = activeDraft.updatedAt;
+		      return;
+		    }
+		    if (storyboardDraftContentMatches(activeDraft, serverBackedDraft)) {
+		      lastLocalResyncAtRef.current = activeDraft.updatedAt;
+		      return;
+		    }
+		    if (!isDraftNewerThan(activeDraft, serverBackedDraft)) return;
+		    if (lastLocalResyncAtRef.current === activeDraft.updatedAt) return;
 
-    lastLocalResyncAtRef.current = activeDraft.updatedAt;
-    void saveCurrentDraft(activeDraft).catch((error) => {
-      toast.error(error instanceof Error ? error.message : t("mediaStudio.storyboardReviewSaveFailed"));
-    });
-  }, [activeDraft, review, reviewId, saveCurrentDraft, t]);
+		    lastLocalResyncAtRef.current = activeDraft.updatedAt;
+		    void saveCurrentDraft(activeDraft).catch((error) => {
+		      toast.error(error instanceof Error ? error.message : t("mediaStudio.storyboardReviewSaveFailed"));
+		    });
+		  }, [
+		    activeDraft,
+		    isReviewFetching,
+		    isReviewLoading,
+		    reviewId,
+		    saveCurrentDraft,
+		    serverBackedDraft,
+		    t,
+		  ]);
 
   const uploadReferenceFrameDataUrl = useCallback(async (
     dataUrl: string,
@@ -4312,6 +5349,7 @@ export default function StoryboardReviewPage() {
       if (playPromise && typeof playPromise.catch === "function") {
         void playPromise.catch((error: unknown) => {
           if (cancelled) return;
+          if (error instanceof DOMException && error.name === "AbortError") return;
           setHyperframesFinalSelectedShotVideoLoadState("error");
           setHyperframesFinalSelectedShotVideoError(
             error instanceof Error && error.message
@@ -4437,6 +5475,7 @@ export default function StoryboardReviewPage() {
     hyperframesFinalAutosaveSnapshotRef.current = null;
     hyperframesFinalAutosaveNeedsFlushRef.current = false;
     hyperframesFinalAutosaveSkipNextRef.current = false;
+    hyperframesFinalAutosaveFlushAfterSnapshotRef.current = false;
     setHyperframesFinalAutosaveStatus("idle");
   }, []);
 
@@ -4630,6 +5669,7 @@ export default function StoryboardReviewPage() {
     setHyperframesFinalSupportingText(current => current.trim() || draftedSupportingText);
     setHyperframesFinalShotTextById(current => {
       const next = { ...current };
+      let changed = false;
       const hookText = didResetForCurrentIdentity
         ? draftedHookText
         : hyperframesFinalHookText.trim() || draftedHookText;
@@ -4639,9 +5679,12 @@ export default function StoryboardReviewPage() {
       hyperframesFinalSourceClips.forEach((clip, index) => {
         const existing = sanitizeHyperframesShotOverlayText(next[clip.id] ?? "");
         if (existing) {
-          next[clip.id] = existing;
+          if (next[clip.id] !== existing) {
+            next[clip.id] = existing;
+            changed = true;
+          }
         } else {
-          next[clip.id] = buildHyperframesShotOverlayDraft({
+          const draftedText = buildHyperframesShotOverlayDraft({
             preset: hyperframesFinalOverlayPreset,
             productContext,
             productTitle: productTitle || getStoryboardReviewName(draft),
@@ -4652,16 +5695,24 @@ export default function StoryboardReviewPage() {
             index,
             total: hyperframesFinalSourceClips.length,
           });
+          if (next[clip.id] !== draftedText) {
+            next[clip.id] = draftedText;
+            changed = true;
+          }
         }
       });
-      return next;
+      return changed ? next : current;
     });
     setHyperframesFinalSubtitleById(current => {
       const next = { ...current };
+      let changed = false;
       hyperframesFinalSourceClips.forEach(clip => {
-        if (!next[clip.id]) next[clip.id] = defaultHyperframesSubtitleText(clip);
+        if (!next[clip.id]) {
+          next[clip.id] = defaultHyperframesSubtitleText(clip);
+          changed = true;
+        }
       });
-      return next;
+      return changed ? next : current;
     });
     if (didResetForCurrentIdentity) {
       hyperframesFinalResetIdentityKeyRef.current = null;
@@ -4737,10 +5788,7 @@ export default function StoryboardReviewPage() {
   ]);
 
   const flushHyperframesFinalAutosaveSoon = useCallback(() => {
-    if (typeof window === "undefined") return;
-    window.setTimeout(() => {
-      void hyperframesFinalAutosaveFlushRef.current();
-    }, 0);
+    hyperframesFinalAutosaveFlushAfterSnapshotRef.current = true;
   }, []);
 
   const regenerateHyperframesFinalSubtitleMap = useCallback(() => {
@@ -5305,6 +6353,10 @@ export default function StoryboardReviewPage() {
 
   useEffect(() => {
     hyperframesFinalAutosaveSnapshotRef.current = hyperframesFinalAutosaveSnapshot;
+    if (hyperframesFinalAutosaveFlushAfterSnapshotRef.current) {
+      hyperframesFinalAutosaveFlushAfterSnapshotRef.current = false;
+      void hyperframesFinalAutosaveFlushRef.current();
+    }
   }, [hyperframesFinalAutosaveSnapshot]);
 
   const flushHyperframesFinalCompositeAutosave = useCallback(async () => {
@@ -5460,14 +6512,21 @@ export default function StoryboardReviewPage() {
         });
         const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
         const editableOverlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
-        const overlayLines = uniqueHyperframesOverlayLines(removeHyperframesVideoPromptOverlayText(editableOverlayText)
-          .split(/\n+/)
-          .map(line => expandLegacyEllipsizedHyperframesText(
-            compactStoryboardText(line),
-            [productDescription, productTitle, renderHookText, renderSupportingText].filter(Boolean),
-            180,
-          )))
-          .slice(0, 4);
+        const shotOverlayPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedOverlayPreset;
+        const normalizedOverlayText = removeHyperframesVideoPromptOverlayText(editableOverlayText);
+        const overlayLines = isHyperframesSpecOverlayPreset(shotOverlayPreset)
+          ? uniqueHyperframesOverlayLines(normalizedOverlayText
+            .split(/\n+/)
+            .map(line => compactStoryboardText(line))
+            .filter(Boolean))
+          : uniqueHyperframesOverlayLines(normalizedOverlayText
+            .split(/\n+/)
+            .map(line => expandLegacyEllipsizedHyperframesText(
+              compactStoryboardText(line),
+              [productDescription, productTitle, renderHookText, renderSupportingText].filter(Boolean),
+              180,
+            )))
+            .slice(0, getHyperframesOverlayLineLimit(shotOverlayPreset));
         const resolvedShotOverlayLines = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, index)
           ? overlayLines
           : [];
@@ -5482,7 +6541,7 @@ export default function StoryboardReviewPage() {
           durationSec,
           onScreenText: resolvedShotOverlayLines,
           subtitleCues: subtitleCuesFromEditableText(subtitleText, cursor, durationSec),
-          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedOverlayPreset,
+          overlayPreset: shotOverlayPreset,
           animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
           transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
           textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
@@ -5749,24 +6808,114 @@ export default function StoryboardReviewPage() {
     if (!draft) return;
     const reviewTasks = storyboardDraftToReviewTasks(draft);
     const selectedIds = draft.selectedTaskIds.length > 0 ? new Set(draft.selectedTaskIds) : new Set(draft.taskIds);
-    const candidateTasks = reviewTasks.filter((task) => {
-      const refs = task.referenceUrls?.map((url) => String(url || "").trim()).filter(Boolean) ?? [];
-      return (targetTaskId ? task.id === targetTaskId : selectedIds.has(task.id)) && refs.length >= 2 && task.canRegenerate !== false;
-    });
-    if (candidateTasks.length === 0) {
+    const orderedDraftTasks = draft.taskIds
+      .map((taskId) => draft.tasks.find((task) => task.id === taskId))
+      .filter((task): task is StoryboardGenerationTask => Boolean(task));
+    const draftTaskById = new Map(orderedDraftTasks.map((task) => [task.id, task]));
+    const targetTask = targetTaskId
+      ? orderedDraftTasks.find((task) => task.id === targetTaskId) ?? null
+      : null;
+    const selectedDraftTasks = orderedDraftTasks.filter((task) =>
+      targetTaskId ? task.id === targetTaskId : selectedIds.has(task.id)
+    );
+    const segmentPlan = draft.videoSegmentState?.videoSegmentPlan ?? null;
+    const selectedSegmentIds = new Set(
+      selectedDraftTasks.map(getStoryboardTaskVideoSegmentId).filter(Boolean)
+    );
+    const shouldPlanBySegment = Boolean(segmentPlan && selectedSegmentIds.size > 0);
+
+    const slotTaskIdsBySlotId = new Map<string, string[]>();
+    const slotAnchorTaskBySlotId = new Map<string, StoryboardGenerationTask>();
+    const slots = shouldPlanBySegment && segmentPlan
+      ? segmentPlan.segments
+          .filter((segment) => selectedSegmentIds.has(segment.segmentId))
+          .map((segment) => {
+            const segmentTasks = orderedDraftTasks.filter((task, index) =>
+              storyboardTaskBelongsToSegment(task, segment, index)
+            );
+            const targetSegmentTasks = targetTaskId
+              ? segmentTasks.filter((task) => task.id === targetTaskId)
+              : segmentTasks;
+            if (targetTaskId && targetSegmentTasks.length === 0) return null;
+            const anchorTask = targetSegmentTasks[0] ?? segmentTasks[0];
+            if (!anchorTask) return null;
+            const anchorRefs = anchorTask.storyboardContext?.referenceImages
+              ?.map((image) => String(image?.url ?? "").trim())
+              .filter(Boolean) ?? [];
+            const segmentRefs = segment.referenceImageUrls
+              .map((url) => String(url || "").trim())
+              .filter(Boolean);
+            const refs = targetTaskId && anchorRefs.length > 0
+              ? anchorRefs
+              : segmentRefs.length > 0 ? segmentRefs : anchorRefs;
+            const startFrameUrl = refs[0] ?? "";
+            const endFrameUrl = refs[refs.length - 1] ?? refs[0] ?? "";
+            if (!startFrameUrl || !endFrameUrl) return null;
+            slotTaskIdsBySlotId.set(segment.segmentId, targetSegmentTasks.map((task) => task.id));
+            slotAnchorTaskBySlotId.set(segment.segmentId, anchorTask);
+            return {
+              id: segment.segmentId,
+              index: segment.index,
+              currentPrompt: targetTaskId ? anchorTask.prompt : buildSegmentPromptPlanningCurrentPrompt(segment),
+              startFrameUrl,
+              endFrameUrl,
+              frameRoles: segment.referenceMode === "single_storyboard_frame"
+                ? ["reference", "reference"] as StoryboardReferenceFrameRole[]
+                : ["start", "stop"] as StoryboardReferenceFrameRole[],
+              conceptDetails: undefined,
+              storyboardGuide: undefined,
+              aspectRatio: anchorTask.storyboardContext?.aspectRatio ?? undefined,
+              durationSeconds: targetTaskId
+                ? anchorTask.storyboardContext?.duration ?? segment.durationSeconds
+                : segment.durationSeconds,
+              model: segmentPlan.videoModelId,
+              voiceoverFullScript: undefined,
+            };
+          })
+          .filter((slot): slot is NonNullable<typeof slot> => Boolean(slot))
+      : reviewTasks
+          .filter((task) => {
+            const refs = task.referenceUrls?.map((url) => String(url || "").trim()).filter(Boolean) ?? [];
+            return (targetTaskId ? task.id === targetTaskId : selectedIds.has(task.id)) && refs.length >= 2 && task.canRegenerate !== false;
+          })
+          .map((task) => {
+            slotTaskIdsBySlotId.set(task.id, [task.id]);
+            const sourceTask = draftTaskById.get(task.id);
+            if (sourceTask) slotAnchorTaskBySlotId.set(task.id, sourceTask);
+            return {
+              id: task.id,
+              index: task.index,
+              currentPrompt: task.prompt,
+              startFrameUrl: task.referenceUrls?.[0] || "",
+              endFrameUrl: task.referenceUrls?.[1] || "",
+              frameRoles: sourceTask ? [...getTaskReferenceFrameRoles(sourceTask)] : ["start", "stop"] as StoryboardReferenceFrameRole[],
+              conceptDetails: undefined,
+              storyboardGuide: undefined,
+              aspectRatio: task.generationAspectRatio,
+              durationSeconds: task.durationSeconds,
+              model: task.generationModelId || task.model,
+              voiceoverFullScript: undefined,
+            };
+          });
+    if (slots.length === 0) {
       toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
       return;
     }
 
+    const slotAnchorTasks = Array.from(slotAnchorTaskBySlotId.values());
     const productMetadata = draft.marketplaceContext
-      ?? candidateTasks.find((task) => task.marketplaceProduct)?.marketplaceProduct
-      ?? candidateTasks
-        .map((task) => task.generationExtraParams?.marketplaceContext)
+      ?? slotAnchorTasks.find((task) => task.marketplaceProduct)?.marketplaceProduct
+      ?? slotAnchorTasks
+        .map((task) => task.storyboardContext?.extraParams?.marketplaceContext)
         .find((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object")
       ?? null;
 
-    const planningStatus = locale === "th" ? "กำลังสร้าง prompt ทุกฉาก..." : "Planning prompts for every scene...";
-    const plannedStatusLabel = locale === "th" ? "สร้าง prompt ทุกฉากแล้ว" : "Scene prompts planned";
+    const planningStatus = shouldPlanBySegment
+      ? locale === "th" ? "กำลังให้ skill สร้าง prompt ตาม segment plan..." : "Planning prompts from the segment plan..."
+      : locale === "th" ? "กำลังสร้าง prompt ทุกฉาก..." : "Planning prompts for every scene...";
+    const plannedStatusLabel = shouldPlanBySegment
+      ? locale === "th" ? "สร้าง prompt ตาม segment แล้ว" : "Segment prompts planned"
+      : locale === "th" ? "สร้าง prompt ทุกฉากแล้ว" : "Scene prompts planned";
     const shouldIncludeVoiceover = options.speechMode !== "none";
 
     setAndSaveDraft((current) => ({
@@ -5775,14 +6924,7 @@ export default function StoryboardReviewPage() {
     }));
 
     try {
-      const orderedDraftTasks = draft.taskIds
-        .map((taskId) => draft.tasks.find((task) => task.id === taskId))
-        .filter((task): task is StoryboardGenerationTask => Boolean(task));
       const draftTaskPositionById = new Map(orderedDraftTasks.map((task, index) => [task.id, index]));
-      const draftTaskById = new Map(orderedDraftTasks.map((task) => [task.id, task]));
-      const targetTask = targetTaskId
-        ? orderedDraftTasks.find((task) => task.id === targetTaskId) ?? null
-        : null;
       const firstTaskProductionContext = orderedDraftTasks
         .map((task) => getTaskEmbeddedProductionContext(task))
         .find((context): context is StoryboardProductionContext => Boolean(context)) ?? null;
@@ -5794,6 +6936,7 @@ export default function StoryboardReviewPage() {
           const productionContext = getTaskEmbeddedProductionContext(task);
           return firstStoryboardText(
             task.storyboardContext?.extraParams?.productionConceptDetails,
+            task.storyboardContext?.extraParams?.creativePresetDirective,
             productionContext?.productionStoryConceptDetails,
             productionContext?.videoConcept,
           );
@@ -5847,114 +6990,108 @@ export default function StoryboardReviewPage() {
         storyboardGuide: effectiveStoryboardGuide || undefined,
         voiceoverFullScript: voiceoverFullScript || undefined,
         useVoiceoverScriptAsConcept,
-        slots: candidateTasks.map((task) => {
-          const sourceTask = draft.tasks.find((item) => item.id === task.id);
+        slots: slots.map((slot) => {
+          const sourceTask = slotAnchorTaskBySlotId.get(slot.id);
           const sourceTaskPosition = sourceTask ? draftTaskPositionById.get(sourceTask.id) : undefined;
           const previousTask = typeof sourceTaskPosition === "number" ? orderedDraftTasks[sourceTaskPosition - 1] : undefined;
           const nextTask = typeof sourceTaskPosition === "number" ? orderedDraftTasks[sourceTaskPosition + 1] : undefined;
           const previousVoiceContext = getStoryboardPlannerVoiceContext(previousTask);
           const nextVoiceContext = getStoryboardPlannerVoiceContext(nextTask);
           return {
-            id: task.id,
-            index: task.index,
-            currentPrompt: task.prompt,
-            startFrameUrl: task.referenceUrls?.[0] || "",
-            endFrameUrl: task.referenceUrls?.[1] || "",
-            frameRoles: sourceTask ? getTaskReferenceFrameRoles(sourceTask) : ["start", "stop"],
+            id: slot.id,
+            index: slot.index,
+            currentPrompt: compactStoryboardPromptPlannerContext(slot.currentPrompt),
+            startFrameUrl: slot.startFrameUrl,
+            endFrameUrl: slot.endFrameUrl,
+            frameRoles: slot.frameRoles,
             conceptDetails: effectiveConceptDetails || undefined,
             storyboardGuide: effectiveStoryboardGuide || undefined,
-            aspectRatio: task.generationAspectRatio,
-            durationSeconds: task.durationSeconds,
-            model: task.generationModelId || task.model,
+            aspectRatio: slot.aspectRatio,
+            durationSeconds: slot.durationSeconds,
+            model: slot.model,
             voiceoverFullScript: voiceoverFullScript || undefined,
             ...(targetTaskId ? {
-              previousVoiceoverScript: previousVoiceContext.voiceoverScript || undefined,
-              nextVoiceoverScript: nextVoiceContext.voiceoverScript || undefined,
+              previousVoiceoverScript: compactStoryboardPromptPlannerContext(
+                previousVoiceContext.voiceoverScript,
+                STORYBOARD_REVIEW_VOICEOVER_CONTINUITY_CONTEXT_MAX_CHARS,
+              ),
+              nextVoiceoverScript: compactStoryboardPromptPlannerContext(
+                nextVoiceContext.voiceoverScript,
+                STORYBOARD_REVIEW_VOICEOVER_CONTINUITY_CONTEXT_MAX_CHARS,
+              ),
               previousJourneyStage: previousVoiceContext.journeyStage || undefined,
               nextJourneyStage: nextVoiceContext.journeyStage || undefined,
-              previousPrompt: previousTask?.prompt,
-              nextPrompt: nextTask?.prompt,
+              previousPrompt: compactStoryboardPromptPlannerContext(previousTask?.prompt),
+              nextPrompt: compactStoryboardPromptPlannerContext(nextTask?.prompt),
             } : {}),
           };
         }),
       });
       const plannedById = new Map(result.slots.map((slot) => [slot.id, slot]));
-      const nextStatus = `${plannedStatusLabel} ${result.slots.length}/${candidateTasks.length}`;
+      const nextStatus = `${plannedStatusLabel} ${result.slots.length}/${slots.length}`;
       const plannedVoiceoverFullScript = firstStoryboardText(result.voiceoverFullScript, voiceoverFullScript);
-      const voiceoverSegmentationSource = firstStoryboardText(
-        useVoiceoverScriptAsConcept ? voiceoverFullScript : "",
-        plannedVoiceoverFullScript,
-        voiceoverFullScript,
-      );
-      const voiceoverSegments = splitStoryboardVoiceoverScriptByShot(
-        voiceoverSegmentationSource,
-        orderedDraftTasks.length,
-      );
-      const voiceoverSegmentsByTaskId = new Map(
-        orderedDraftTasks.map((task, index) => [task.id, voiceoverSegments[index] ?? ""] as const),
-      );
       const resolvedVoiceoverByTaskId = new Map<string, string>();
       if (shouldIncludeVoiceover) {
-        for (const task of candidateTasks) {
-          const planned = plannedById.get(task.id);
+        for (const slot of slots) {
+          const planned = plannedById.get(slot.id);
           if (!planned) continue;
-          const scriptSegment = voiceoverSegmentsByTaskId.get(task.id) ?? "";
           const resolvedVoiceoverScript = firstStoryboardText(
-            useVoiceoverScriptAsConcept ? scriptSegment : "",
             planned.voiceoverScript,
             extractStoryboardNativeSpeechText(planned.videoPrompt),
-            scriptSegment,
-            getStoryboardPlannerVoiceContext(draftTaskById.get(task.id)).voiceoverScript,
           );
-          resolvedVoiceoverByTaskId.set(task.id, resolvedVoiceoverScript);
+          for (const taskId of slotTaskIdsBySlotId.get(slot.id) ?? [slot.id]) {
+            resolvedVoiceoverByTaskId.set(taskId, resolvedVoiceoverScript);
+          }
         }
-        const missingVoiceoverTaskIds = candidateTasks
-          .filter((task) => plannedById.has(task.id) && !resolvedVoiceoverByTaskId.get(task.id))
-          .map((task) => task.id);
+        const missingVoiceoverTaskIds = slots
+          .filter((slot) => plannedById.has(slot.id) && !(slotTaskIdsBySlotId.get(slot.id) ?? [slot.id]).some((taskId) => resolvedVoiceoverByTaskId.get(taskId)))
+          .map((slot) => slot.id);
         if (missingVoiceoverTaskIds.length > 0) {
           throw new Error(
             locale === "th"
-              ? `สร้าง prompt ไม่ครบ: เปิดโหมดบทพูดอยู่ แต่ไม่มีบทพูดสำหรับ shot ${missingVoiceoverTaskIds.join(", ")}`
-              : `Prompt planning incomplete: speech mode is enabled but no dialogue was resolved for shot(s) ${missingVoiceoverTaskIds.join(", ")}.`,
+              ? `สร้าง prompt ไม่ครบ: เปิดโหมดบทพูดอยู่ แต่ไม่มีบทพูดสำหรับ segment ${missingVoiceoverTaskIds.join(", ")}`
+              : `Prompt planning incomplete: speech mode is enabled but no dialogue was resolved for segment(s) ${missingVoiceoverTaskIds.join(", ")}.`,
           );
         }
       }
       const plannedPromptByTaskId = new Map<string, string>();
-      for (const task of candidateTasks) {
-        const planned = plannedById.get(task.id);
+      for (const slot of slots) {
+        const planned = plannedById.get(slot.id);
         if (!planned) continue;
-        const sourceTask = draftTaskById.get(task.id);
-        const prompt = buildStoryboardPlannedPrompt({
-          basePrompt: planned.videoPrompt || task.prompt,
-          durationSeconds: sourceTask?.storyboardContext?.duration ?? task.durationSeconds,
-          aspectRatio: sourceTask?.storyboardContext?.aspectRatio ?? task.generationAspectRatio ?? null,
-          frameRoles: sourceTask ? getTaskReferenceFrameRoles(sourceTask) : ["start", "stop"],
-          includeVoiceover: shouldIncludeVoiceover,
-          speechMode: options.speechMode,
-          speechLanguage: options.speechLanguage,
-          voiceoverScript: resolvedVoiceoverByTaskId.get(task.id) ?? planned.voiceoverScript,
-          includeSound: options.includeSound,
-          soundBrief: planned.soundBrief,
-        });
+        const prompt = (planned.videoPrompt || slot.currentPrompt).trim();
+        if (prompt.length > STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
+          throw new Error(
+            locale === "th"
+              ? `สร้าง prompt ไม่สำเร็จ: prompt ของ segment ${slot.id} ยังยาว ${prompt.length.toLocaleString("th-TH")} ตัวอักษร เกิน ${STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS.toLocaleString("th-TH")} ตัวอักษรหลัง optimize`
+              : `Prompt planning failed: segment ${slot.id} is still ${prompt.length.toLocaleString("en-US")} chars after optimization, above the ${STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS.toLocaleString("en-US")} char limit.`,
+          );
+        }
         if (shouldIncludeVoiceover && !extractStoryboardNativeSpeechText(prompt)) {
           throw new Error(
             locale === "th"
-              ? `สร้าง prompt ไม่ครบ: prompt ของ shot ${task.id} ยังไม่มีบทพูดหลังประกอบ prompt`
-              : `Prompt planning incomplete: shot ${task.id} prompt still has no dialogue after composition.`,
+              ? `สร้าง prompt ไม่ครบ: prompt ของ segment ${slot.id} ยังไม่มีบทพูดจาก skill`
+              : `Prompt planning incomplete: segment ${slot.id} prompt still has no skill dialogue.`,
           );
         }
-        plannedPromptByTaskId.set(task.id, prompt);
+        for (const taskId of slotTaskIdsBySlotId.get(slot.id) ?? [slot.id]) {
+          plannedPromptByTaskId.set(taskId, prompt);
+        }
+      }
+      const plannedSlotIdByTaskId = new Map<string, string>();
+      for (const [slotId, taskIds] of slotTaskIdsBySlotId) {
+        for (const taskId of taskIds) plannedSlotIdByTaskId.set(taskId, slotId);
       }
       setAndSaveDraft((current) => ({
         ...current,
         updatedAt: Date.now(),
         compoundStatus: nextStatus,
         tasks: current.tasks.map((task) => {
-          const planned = plannedById.get(task.id);
-          if (!planned) return task;
+          const slotId = plannedSlotIdByTaskId.get(task.id) ?? task.id;
+          const planned = plannedById.get(slotId);
+          const prompt = plannedPromptByTaskId.get(task.id);
+          if (!planned || !prompt) return task;
           const taskProductionContext = getTaskEmbeddedProductionContext(task) ?? effectiveProductionContext;
           const productionExtraParams = buildReviewProductionExtraParams(taskProductionContext);
-          const prompt = plannedPromptByTaskId.get(task.id) ?? task.prompt;
           return {
             ...task,
             prompt,
@@ -5974,6 +7111,10 @@ export default function StoryboardReviewPage() {
                     ...(effectiveStoryboardGuide ? { storyboardGuide: effectiveStoryboardGuide } : {}),
                     ...(plannedVoiceoverFullScript ? { voiceoverFullScript: plannedVoiceoverFullScript } : {}),
                     ...productionExtraParams,
+                    promptSource: "skill_generated",
+                    videoSegmentPrompt: prompt,
+                    videoSegmentPromptStale: false,
+                    videoSegmentPromptGeneratedAt: new Date().toISOString(),
                     storyboardPromptPlanner: {
                       ...(task.storyboardContext.extraParams?.storyboardPromptPlanner ?? {}),
                       skillId: "storyboard-video-customer-journey-prompt",
@@ -5993,6 +7134,21 @@ export default function StoryboardReviewPage() {
               : task.storyboardContext,
           };
         }),
+        videoSegmentState: current.videoSegmentState
+          ? {
+              ...current.videoSegmentState,
+              promptSource: "regenerated",
+              lastPromptGeneratedAt: new Date().toISOString(),
+              staleTaskIds: (current.videoSegmentState.staleTaskIds ?? []).filter(
+                (taskId) => !plannedPromptByTaskId.has(taskId),
+              ),
+              staleReason: (current.videoSegmentState.staleTaskIds ?? []).some(
+                (taskId) => !plannedPromptByTaskId.has(taskId),
+              )
+                ? current.videoSegmentState.staleReason ?? null
+                : null,
+            }
+          : current.videoSegmentState,
         productionContext: current.productionContext ?? effectiveProductionContext ?? null,
         conceptDetails: current.conceptDetails ?? (!useVoiceoverScriptAsConcept && effectiveConceptDetails ? effectiveConceptDetails : null),
         storyboardGuide: current.storyboardGuide ?? (effectiveStoryboardGuide || null),
@@ -6334,16 +7490,175 @@ export default function StoryboardReviewPage() {
     }
   }, [cancelMediaTaskMutation, regeneratingTaskId, setAndSaveDraft, t]);
 
+  const requestSplitVideoSegmentToPerShot = useCallback((taskId: string, segmentId: string) => {
+    const task = draft?.tasks.find((item) => item.id === taskId);
+    const shotIds = Array.isArray(task?.storyboardContext?.extraParams?.videoSegmentShotIds)
+      ? task?.storyboardContext?.extraParams?.videoSegmentShotIds
+          .map((value: unknown) => typeof value === "string" ? value.trim() : "")
+          .filter(Boolean)
+      : [];
+    setSplitFallbackTarget({
+      taskId,
+      segmentId,
+      shotCount: Math.max(shotIds.length, 2),
+      error: task?.error ?? null,
+    });
+    if (task?.storyboardContext) {
+      setAndSaveDraft((current) => splitStoryboardVideoSegmentTaskToPerShotFallback(current, {
+        taskId,
+        confirmed: false,
+      }));
+    }
+  }, [draft?.tasks, setAndSaveDraft]);
+
+  const confirmSplitVideoSegmentToPerShot = useCallback(() => {
+    const target = splitFallbackTarget;
+    if (!target) return;
+    setAndSaveDraft((current) => splitStoryboardVideoSegmentTaskToPerShotFallback(current, {
+      taskId: target.taskId,
+      confirmed: true,
+    }));
+    setSplitFallbackTarget(null);
+    toast.success(locale === "th"
+      ? "แยก segment เป็น per-shot แล้ว ตรวจ prompt และกดสร้างใหม่ด้วยตัวเองเมื่อพร้อม"
+      : "Segment split to per-shot. Review the prompts and generate manually when ready.");
+  }, [locale, setAndSaveDraft, splitFallbackTarget]);
+
+  const regenerateVideoSegmentPromptForTask = useCallback(async (taskId: string, segmentId: string) => {
+    if (!draft) return;
+    const storyboardReviewId = draft.reviewId ?? reviewId ?? null;
+    if (!storyboardReviewId) {
+      toast.error(locale === "th"
+        ? "ต้องบันทึกหรือเปิด Storyboard Review project ก่อน regenerate segment prompt"
+        : "Save or open a Storyboard Review project before regenerating a segment prompt.");
+      return;
+    }
+    setRegeneratingVideoSegmentPromptTaskId(taskId);
+    try {
+      const result = await regenerateVideoSegmentPromptMutation.mutateAsync({
+        storyboardReviewId,
+        segmentId,
+        targetTaskId: taskId,
+        creativeBrief: null,
+      });
+      const resultPrompt = result.prompt.trim();
+      if (resultPrompt.length > STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
+        throw new Error(locale === "th"
+          ? `Regenerate segment prompt ไม่สำเร็จ: prompt ยังยาว ${resultPrompt.length.toLocaleString("th-TH")} ตัวอักษร เกิน ${STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS.toLocaleString("th-TH")} ตัวอักษร`
+          : `Segment prompt regeneration failed: prompt is still ${resultPrompt.length.toLocaleString("en-US")} chars, above the ${STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS.toLocaleString("en-US")} char limit.`);
+      }
+      setAndSaveDraft((current) => applyRegeneratedVideoSegmentPromptToDraft(current, {
+        segmentId: result.segmentId,
+        prompt: resultPrompt,
+        taskIds: result.staleTaskIds.length > 0 ? result.staleTaskIds : [taskId],
+        creativeBriefHash: result.creativeBriefHash,
+      }));
+      toast.success(locale === "th" ? "Regenerate segment prompt แล้ว" : "Segment prompt regenerated.");
+      void trpcUtils.videoEditorProjects.getStoryboardReview.invalidate({ id: storyboardReviewId });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (locale === "th" ? "Regenerate segment prompt ไม่สำเร็จ" : "Failed to regenerate segment prompt."));
+    } finally {
+      setRegeneratingVideoSegmentPromptTaskId(null);
+    }
+  }, [
+    draft,
+    locale,
+    regenerateVideoSegmentPromptMutation,
+    reviewId,
+    setAndSaveDraft,
+    trpcUtils.videoEditorProjects.getStoryboardReview,
+  ]);
+
   const regenerateTask = useCallback(async (taskId: string, prompt: string): Promise<boolean> => {
-    if (!draft || generationCancelRequestedRef.current) return false;
-    const task = draft.tasks.find((item) => item.id === taskId);
+    const currentDraft = draftRef.current ?? draft;
+    if (!currentDraft || generationCancelRequestedRef.current) return false;
+    const task = currentDraft.tasks.find((item) => item.id === taskId);
     if (!task?.storyboardContext) {
       toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
       return true;
     }
+    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft);
+    const effectiveModel = optionalStoryboardRouteString(effectiveContext?.model);
+    if (!effectiveContext || !effectiveModel) {
+      toast.error(
+        locale === "th"
+          ? "ไม่พบโมเดลวิดีโอสำหรับ shot นี้ กรุณาเลือกโมเดลวิดีโออีกครั้ง"
+          : "No video model is selected for this shot. Re-select a video model and try again."
+      );
+      return true;
+    }
+    const modelRoute = resolveStoryboardReviewVideoModelRoute(effectiveModel);
+    const existingTransportMetadata = effectiveContext.transportMetadata ?? null;
+    const existingTransportRecord =
+      existingTransportMetadata &&
+      typeof existingTransportMetadata === "object" &&
+      !Array.isArray(existingTransportMetadata)
+        ? existingTransportMetadata as Record<string, unknown>
+        : {};
+    const routeProviderKey =
+      optionalStoryboardRouteString(modelRoute.transportMetadata?.providerKey) ??
+      optionalStoryboardRouteString(modelRoute.provider);
+    const existingProviderKey = optionalStoryboardRouteString(existingTransportRecord.providerKey);
+    const reusableExistingMcpMetadata =
+      modelRoute.transport === "mcp" &&
+      existingTransportMetadata?.transport === "mcp" &&
+      (!routeProviderKey || existingProviderKey === routeProviderKey)
+        ? existingTransportMetadata
+        : null;
+    const transportMetadata =
+      modelRoute.transport === "mcp"
+        ? modelRoute.transportMetadata ?? reusableExistingMcpMetadata
+        : null;
+    const transportRecord =
+      transportMetadata && typeof transportMetadata === "object" && !Array.isArray(transportMetadata)
+        ? transportMetadata as Record<string, unknown>
+        : {};
+    if (modelRoute.transport === "mcp") {
+      const missingRouteFields = [
+        ["providerKey", optionalStoryboardRouteString(transportRecord.providerKey)],
+        ["providerModelId", optionalStoryboardRouteString(transportRecord.providerModelId)],
+        ["toolName", optionalStoryboardRouteString(transportRecord.toolName)],
+        ["argumentShape", optionalStoryboardRouteString(transportRecord.argumentShape)],
+      ]
+        .filter(([, value]) => !value)
+        .map(([field]) => field);
+      if (missingRouteFields.length > 0) {
+        toast.error(
+          locale === "th"
+            ? `ข้อมูล MCP route ของโมเดล "${effectiveModel}" ไม่ครบ (${missingRouteFields.join(", ")}) กรุณาเลือกโมเดล MCP ใหม่หรือ reconnect provider`
+            : `MCP route metadata is incomplete for model "${effectiveModel}" (${missingRouteFields.join(", ")}). Re-select the MCP model or reconnect the provider.`
+        );
+        return true;
+      }
+    }
+    const context = {
+      ...effectiveContext,
+      model: effectiveModel,
+      transportMetadata,
+    };
+    const effectiveTask: StoryboardGenerationTask = {
+      ...task,
+      model: effectiveModel,
+      transportMetadata,
+      storyboardContext: context,
+    };
     const normalizedPrompt = prompt.trim();
     if (!normalizedPrompt) {
       toast.error(t("mediaStudio.storyboardReviewPromptRequired"));
+      return true;
+    }
+    const videoSegmentPromptGate =
+      evaluateStoryboardVideoSegmentPromptGenerationGate({
+        taskId,
+        taskExtraParams: context.extraParams,
+        videoSegmentState: currentDraft.videoSegmentState,
+      });
+    if (!videoSegmentPromptGate.allowed) {
+      toast.error(
+        locale === "th"
+          ? "พรอมต์วิดีโอของ segment นี้ล้าสมัย กรุณา regenerate prompt หรือยืนยันใช้พรอมต์เดิมก่อนสร้างแบบเสียเครดิต"
+          : videoSegmentPromptGate.message
+      );
       return true;
     }
 
@@ -6353,6 +7668,9 @@ export default function StoryboardReviewPage() {
     setAndSaveDraft((current) => updateDraftTask(current, taskId, {
       status: "generating",
       prompt: normalizedPrompt,
+      model: effectiveModel,
+      transportMetadata,
+      storyboardContext: context,
       error: undefined,
       backendTaskId: undefined,
       providerTaskId: undefined,
@@ -6362,23 +7680,23 @@ export default function StoryboardReviewPage() {
       if (generationCancelRequestedRef.current) {
         return false;
       }
-      const context = task.storyboardContext;
-      const frameRoles = getTaskReferenceFrameRoles(task);
+      const frameRoles = getTaskReferenceFrameRoles(effectiveTask);
       const generationType = generationTypeForFrameRoles(frameRoles);
-      const productionContext = getReviewProductionContext(draft, task);
+      const productionContext = getReviewProductionContext(currentDraft, effectiveTask);
       const effectiveVoiceoverFullScript = firstStoryboardText(
-        draft.voiceoverFullScript,
+        currentDraft.voiceoverFullScript,
         productionContext?.voiceoverFullScript,
-        getStoryboardDraftVoiceoverFullScript(draft),
+        getStoryboardDraftVoiceoverFullScript(currentDraft),
       );
       const effectiveConceptDetails = firstStoryboardText(
-        draft.conceptDetails,
+        currentDraft.conceptDetails,
         productionContext?.productionStoryConceptDetails,
         productionContext?.videoConcept,
         context.extraParams?.productionConceptDetails,
+        context.extraParams?.creativePresetDirective,
       );
       const effectiveStoryboardGuide = firstStoryboardText(
-        draft.storyboardGuide,
+        currentDraft.storyboardGuide,
         productionContext?.storyboardGuide,
         context.extraParams?.storyboardGuide,
       );
@@ -6394,9 +7712,9 @@ export default function StoryboardReviewPage() {
           storyboardGuide: effectiveStoryboardGuide || undefined,
           voiceoverFullScript: effectiveVoiceoverFullScript || undefined,
           aspectRatio: context.aspectRatio,
-          durationSeconds: context.duration ?? task.durationSeconds,
-          model: context.model,
-          marketplaceContext: (context.extraParams?.marketplaceContext ?? task.marketplaceProduct ?? draft.marketplaceContext) as any,
+          durationSeconds: context.duration ?? effectiveTask.durationSeconds,
+          model: effectiveModel,
+          marketplaceContext: (context.extraParams?.marketplaceContext ?? effectiveTask.marketplaceProduct ?? currentDraft.marketplaceContext) as any,
         })).prompt)
         : normalizedPrompt;
       if (generationPrompt !== normalizedPrompt) {
@@ -6407,7 +7725,7 @@ export default function StoryboardReviewPage() {
       }
       const payload = buildMediaStudioCommonPayload({
         prompt: prepareVeoPromptForGenerationType(generationPrompt, generationType),
-        model: context.model,
+        model: effectiveModel,
         aspectRatio: context.aspectRatio,
         referenceImages: context.referenceImages as any,
         referenceVideos: context.referenceVideos as any,
@@ -6423,8 +7741,32 @@ export default function StoryboardReviewPage() {
         apiConfig: context.apiConfig,
         resolution: context.resolution,
       });
+      const transportPayload =
+        transportMetadata?.transport === "mcp"
+          ? {
+              transport: "mcp" as const,
+              mcpConnectionId:
+                optionalStoryboardRouteString(transportRecord.mcpConnectionId) ??
+                optionalStoryboardRouteString(transportRecord.connectionId) ??
+                undefined,
+              sharedGroupId: transportMetadata.sharedGroupId,
+              mcpApprovalId:
+                optionalStoryboardRouteString(transportRecord.mcpApprovalId) ??
+                optionalStoryboardRouteString(transportRecord.approvalId),
+              mcpProviderKey: optionalStoryboardRouteString(transportRecord.providerKey),
+              mcpProviderModelId: optionalStoryboardRouteString(transportRecord.providerModelId),
+              mcpToolName: optionalStoryboardRouteString(transportRecord.toolName),
+              mcpArgumentShape: optionalStoryboardRouteString(transportRecord.argumentShape),
+              originSurface: "storyboard_review" as const,
+              idempotencyKey: `storyboard-review-${taskId}-${Date.now()}`,
+            }
+          : {
+              transport: "gateway_api" as const,
+              originSurface: "storyboard_review" as const,
+            };
       const taskResult = await generateVideoAsyncMutation.mutateAsync({
         ...payload,
+        ...transportPayload,
         ...(context.duration !== undefined ? { duration: context.duration } : {}),
         ...(context.useReferenceVideoUrlFallback && context.referenceVideoUrl ? { referenceVideoUrl: context.referenceVideoUrl } : {}),
       } as any);
@@ -6472,7 +7814,7 @@ export default function StoryboardReviewPage() {
       setRegeneratingTaskId(null);
       setIsCancellingGeneration(false);
     }
-  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, pollStoryboardGenerationTask, setAndSaveDraft, t]);
+  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, locale, pollStoryboardGenerationTask, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
     try {
@@ -6508,8 +7850,36 @@ export default function StoryboardReviewPage() {
     }
   }, [deleteReview, deleteTarget, setLocation, t]);
 
-  const reviewNotFound = !!canonicalReviewId && !isReviewLoading && review === null;
-  const isLoading = !!canonicalReviewId && !reviewNotFound && (isReviewLoading || !activeDraft);
+	  const reviewQuerySettledWithoutDraft =
+	    !!canonicalReviewId &&
+	    !isReviewLoading &&
+	    !isReviewFetching &&
+	    !activeDraft;
+  const reviewNotFound = reviewQuerySettledWithoutDraft && review === null;
+  const reviewDataNormalizationFailed =
+    reviewQuerySettledWithoutDraft &&
+    reviewRecordFound &&
+    !serverBackedDraft;
+  const reviewUnavailable =
+    !activeDraft &&
+    (
+      reviewQuerySettledWithoutDraft &&
+      (review === null || isReviewError || review === undefined || reviewDataNormalizationFailed)
+    );
+  const reviewUnavailableMessage = isReviewError
+    ? (reviewLoadError?.message || (locale === "th" ? "โหลด Storyboard Review ไม่สำเร็จ" : "Could not load Storyboard Review."))
+    : reviewDataNormalizationFailed
+      ? (locale === "th"
+        ? "โหลดข้อมูลจากเซิร์ฟเวอร์ได้แล้ว แต่แปลง reviewData เป็น Storyboard draft ไม่สำเร็จ กรุณาตรวจสอบรูปแบบข้อมูล reviewData ของรายการนี้"
+        : "The server returned this review, but its reviewData could not be converted into a Storyboard draft. Check this reviewData payload.")
+    : review === null
+      ? (locale === "th" ? "ไม่พบ Storyboard Review นี้ หรือบัญชีนี้ไม่มีสิทธิ์เปิดรายการนี้" : "Storyboard Review was not found, or this account cannot access it.")
+      : (locale === "th" ? "ยังไม่ได้รับข้อมูล Storyboard Review จากเซิร์ฟเวอร์" : "The server did not return this Storyboard Review.");
+	  const isLoading =
+	    !!canonicalReviewId &&
+	    !activeDraft &&
+	    !reviewUnavailable &&
+	    (isReviewLoading || isReviewFetching);
 
   return (
     <div
@@ -6614,6 +7984,20 @@ export default function StoryboardReviewPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LocaleToggle className="hidden sm:inline-flex" />
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 w-full px-2 text-xs sm:w-auto"
+              onClick={createManualStoryboardReviewProject}
+              disabled={isCreatingManualReviewProject}
+            >
+              {isCreatingManualReviewProject ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {locale === "th" ? "New Project" : "New Project"}
+            </Button>
             <Button variant="outline" size="sm" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/media-studio")}>
               {t("mediaStudio.title")}
             </Button>
@@ -6856,8 +8240,11 @@ export default function StoryboardReviewPage() {
                 <select
                   value={hyperframesFinalOverlayPreset}
                   onChange={event => {
-                    setHyperframesFinalOverlayPreset(event.target.value as HyperframesFinalOverlayPreset);
-                    setHyperframesFinalShotTextById({});
+                    const nextPreset = event.target.value as HyperframesFinalOverlayPreset;
+                    setHyperframesFinalOverlayPreset(nextPreset);
+                    setHyperframesFinalShotOverlayPresetById(
+                      Object.fromEntries(hyperframesFinalSourceClips.map(clip => [clip.id, nextPreset])),
+                    );
                   }}
                   className="h-9 rounded-md border bg-white px-2 text-sm"
                 >
@@ -7118,26 +8505,28 @@ export default function StoryboardReviewPage() {
 	                      const overlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
 	                      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
 	                      const shotPreviewPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
+	                      const shotPreviewLineLimit = getHyperframesOverlayLineLimit(shotPreviewPreset);
 	                      const shotTextMotion = hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
 	                      const shotPresetMeta = getHyperframesOverlayPresetMeta(shotPreviewPreset);
 	                      const shotPosterUrl = getStoryboardClipPosterUrl(clip);
 		                      const shotPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
 		                        textMode: hyperframesFinalTextMode,
 		                        shotIndex: index,
+		                        overlayPreset: shotPreviewPreset,
 		                        overlayText,
 		                        hookText: hyperframesFinalHookText,
 		                        supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-		                        maxLines: 3,
+		                        maxLines: shotPreviewLineLimit,
 		                        maxLength: 34,
 		                      });
 		                      const shotHasOverlayLayer = shotPreviewLines.length > 0;
 		                      const shotHasSubtitleLayer = hyperframesFinalBurnInSubtitles && subtitleText.trim().length > 0;
 		                      const shotSubtitleLine = firstThaiProductLine(subtitleText, 34);
-		                      const shotPreviewTitle = firstThaiProductLine(shotPreviewLines[0] ?? "", 26);
-		                      const shotPreviewHook = firstThaiProductLine(shotPreviewLines[1] ?? "", 28) || shotSubtitleLine;
+		                      const shotPreviewTitle = formatHyperframesPreviewLineForPreset(shotPreviewLines[0] ?? "", shotPreviewPreset, 26);
+		                      const shotPreviewHook = formatHyperframesPreviewLineForPreset(shotPreviewLines[1] ?? "", shotPreviewPreset, 28) || shotSubtitleLine;
 		                      const shotPreviewChips = shotPreviewLines
 	                        .slice(2)
-	                        .map(line => firstThaiProductLine(line, 24))
+	                        .map(line => formatHyperframesPreviewLineForPreset(line, shotPreviewPreset, 24))
 	                        .filter(Boolean);
 	                      const isSelected = index === hyperframesFinalPreviewShotIndex;
 	                      return (
@@ -7248,16 +8637,34 @@ export default function StoryboardReviewPage() {
                     const selectedVideoIsReady =
                       hyperframesFinalSelectedShotPreviewMode === "video" &&
                       hyperframesFinalSelectedShotVideoLoadState === "ready";
+                    const selectedPreviewLineLimit = getHyperframesOverlayLineLimit(selectedOverlayPreset);
                     const selectedPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
 	                      textMode: hyperframesFinalTextMode,
 	                      shotIndex: selectedIndex,
+	                      overlayPreset: selectedOverlayPreset,
 	                      overlayText: selectedShotOverlay,
 	                      hookText: hyperframesFinalHookText,
 	                      supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-	                      maxLines: 3,
+	                      maxLines: selectedPreviewLineLimit,
 	                      maxLength: 42,
 	                    });
 		                    const selectedShouldRenderShotOverlay = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, selectedIndex);
+		                    const selectedCanEditOverlayText =
+		                      selectedShouldRenderShotOverlay ||
+		                      (hyperframesFinalTextMode === "hook_only" && selectedIndex === 0);
+		                    const selectedOverlayEditorValue =
+		                      hyperframesFinalTextMode === "hook_only" && selectedIndex === 0
+		                        ? [hyperframesFinalHookText, hyperframesFinalSupportingText].filter(Boolean).join("\n")
+		                        : selectedShotOverlay;
+		                    const updateSelectedOverlayEditorValue = (value: string) => {
+		                      if (hyperframesFinalTextMode === "hook_only" && selectedIndex === 0) {
+		                        const lines = value.split(/\r?\n/);
+		                        setHyperframesFinalHookText(lines.shift() ?? "");
+		                        setHyperframesFinalSupportingText(lines.join("\n"));
+		                        return;
+		                      }
+		                      setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: value }));
+		                    };
 		                    const selectedHasOverlayLayer = selectedPreviewLines.length > 0;
 		                    const selectedHasSubtitleLayer = hyperframesFinalBurnInSubtitles && selectedSubtitlePreviewText.length > 0;
 		                    const selectedSubtitleLine = selectedSubtitlePreviewText;
@@ -7270,11 +8677,11 @@ export default function StoryboardReviewPage() {
 		                        : selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
 		                          ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
 		                          : locale === "th" ? "Overlay text" : "Overlay text";
-		                    const selectedPreviewTitle = firstThaiProductLine(selectedPreviewLines[0] ?? "", 34, { ellipsis: false });
-	                    const selectedPreviewHook = firstThaiProductLine(selectedPreviewLines[1] ?? "", 38, { ellipsis: false });
+		                    const selectedPreviewTitle = formatHyperframesPreviewLineForPreset(selectedPreviewLines[0] ?? "", selectedOverlayPreset, 34, { ellipsis: false });
+	                    const selectedPreviewHook = formatHyperframesPreviewLineForPreset(selectedPreviewLines[1] ?? "", selectedOverlayPreset, 38, { ellipsis: false });
                     const selectedPreviewChips = selectedPreviewLines
                       .slice(2)
-                      .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
+                      .map(line => formatHyperframesPreviewLineForPreset(line, selectedOverlayPreset, 32, { ellipsis: false }))
                       .filter(Boolean);
                     const selectedPriceText = firstThaiProductLine(
                       selectedPreviewChips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? selectedPreviewHook,
@@ -7548,7 +8955,7 @@ export default function StoryboardReviewPage() {
 	                                    selectedPresetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
 	                                    selectedPresetMeta.kind === "cards" ? "grid-cols-2" : "",
 	                                  )}>
-		                                    {selectedPreviewChips.filter(Boolean).slice(0, 3).map((line, index) => (
+		                                    {selectedPreviewChips.filter(Boolean).slice(0, Math.max(0, selectedPreviewLineLimit - 2)).map((line, index) => (
 	                                      <div
 	                                        key={`${line}-${index}`}
 	                                        className={cn(
@@ -7677,33 +9084,37 @@ export default function StoryboardReviewPage() {
 	                                variant="outline"
 	                                className={cn(
 	                                  "rounded-full px-2 py-0 text-[10px] font-medium",
-	                                  selectedShouldRenderShotOverlay
+	                                  selectedCanEditOverlayText
 	                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
 	                                    : "border-slate-200 bg-slate-50 text-slate-500",
 	                                )}
 		                              >
-		                                {selectedShouldRenderShotOverlay
+		                                {selectedCanEditOverlayText
 		                                  ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
 		                                    ? locale === "th" ? "ใช้หลัง Hook" : "after hook"
+		                                    : selectedIndex === 0 && hyperframesFinalTextMode === "hook_only"
+		                                      ? locale === "th" ? "แก้ Hook" : "edit hook"
 		                                    : locale === "th" ? "ใช้ตอน render" : "rendered"
 		                                  : locale === "th" ? "ไม่ใช้ในโหมดนี้" : "not used in this mode"}
 		                              </Badge>
 		                            </span>
 	                            <Textarea
-	                              value={hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex)}
-	                              onChange={event => setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: event.target.value }))}
+	                              value={selectedOverlayEditorValue}
+	                              onChange={event => updateSelectedOverlayEditorValue(event.target.value)}
 	                              onBlur={() => void hyperframesFinalAutosaveFlushRef.current()}
-	                              disabled={!selectedShouldRenderShotOverlay}
+	                              disabled={!selectedCanEditOverlayText}
 	                              className={cn(
 	                                "min-h-[76px] text-xs",
-	                                selectedShouldRenderShotOverlay ? "bg-white" : "bg-slate-50 text-slate-400",
+	                                selectedCanEditOverlayText ? "bg-white" : "bg-slate-50 text-slate-400",
 	                              )}
 	                              placeholder={locale === "th" ? "ข้อความบนจอเฉพาะ shot นี้" : "On-screen text for this shot"}
 	                            />
 		                            <span className="text-[10px] font-normal leading-relaxed text-slate-500">
-		                              {selectedShouldRenderShotOverlay
+		                              {selectedCanEditOverlayText
 		                                ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
 		                                  ? locale === "th" ? "ช่องนี้คือ Overlay text ของ shot 1 หลัง Hook 0-3s; Hook แก้ที่ช่อง Hook text ด้านบน" : "This is shot 1 overlay after the 0-3s hook; edit the hook in Hook text above."
+		                                  : selectedIndex === 0 && hyperframesFinalTextMode === "hook_only"
+		                                    ? locale === "th" ? "โหมดนี้ใช้เฉพาะ Hook ของ shot 1: บรรทัดแรกคือ Hook text และบรรทัดถัดไปคือ Supporting text" : "This mode uses only the shot 1 hook: first line edits Hook text, following lines edit Supporting text."
 		                                  : locale === "th" ? "ข้อความช่องนี้จะแสดงใน preview และ final render ของ shot นี้" : "This text appears in this shot preview and final render."
 		                                : locale === "th" ? "โหมดข้อความบนภาพปัจจุบันไม่ render overlay ของ shot นี้" : "The current text-layer mode does not render this shot overlay."}
 		                            </span>
@@ -7849,6 +9260,7 @@ export default function StoryboardReviewPage() {
 	                            const railPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
 	                              textMode: hyperframesFinalTextMode,
 	                              shotIndex: railIndex,
+	                              overlayPreset: hyperframesFinalShotOverlayPresetById[railClip.id] ?? hyperframesFinalOverlayPreset,
 	                              overlayText: railOverlayText,
 	                              hookText: hyperframesFinalHookText,
 	                              supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
@@ -8347,10 +9759,14 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="electronics_spec_stack"]::before { background: linear-gradient(90deg, rgba(2,6,23,.08), rgba(2,6,23,.72)); }
                 .hf-preview-stage[data-preset="split_product_specs"]::before { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
                 .hf-preview-stage[data-preset="neon_gaming_specs"]::before { background: radial-gradient(circle at 70% 20%, rgba(34,211,238,.28), transparent 30%), linear-gradient(135deg, #020617, #172554 45%, #111827); }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"]::before { background: linear-gradient(180deg, rgba(248,250,252,.9), rgba(226,232,240,.78)); }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"]::before { background: linear-gradient(90deg, rgba(2,6,23,.88) 0 64%, rgba(2,6,23,.22)); }
+                .hf-preview-stage[data-preset="spec_lines_12_light"]::before { background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(241,245,249,.9)); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"]::before { background: radial-gradient(circle at 80% 14%, rgba(34,211,238,.28), transparent 26%), radial-gradient(circle at 18% 76%, rgba(168,85,247,.26), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.9), rgba(15,23,42,.78)); }
                 .hf-preview-stage[data-preset="feature_cards"]::before { background: linear-gradient(180deg, rgba(15,23,42,.5), rgba(15,23,42,.24)); }
                 .hf-preview-stage[data-preset="badge_cascade"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.3), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.5), rgba(2,6,23,.16)); }
-                .hf-preview-stage[data-preset="hero_price_billboard"]::before,
-                .hf-preview-stage[data-preset="price_impact"]::before { background: linear-gradient(160deg, #f8fafc 0 48%, #111827 49% 100%); }
+                .hf-preview-stage[data-preset="hero_price_billboard"]::before { background: linear-gradient(160deg, #f8fafc 0 48%, #111827 49% 100%); }
+                .hf-preview-stage[data-preset="price_impact"]::before { background: radial-gradient(circle at 74% 22%, rgba(250,204,21,.3), transparent 30%), linear-gradient(180deg, rgba(2,6,23,.08), rgba(2,6,23,.42) 48%, rgba(2,6,23,.86)); }
                 .hf-preview-stage[data-preset="lower_third_review"]::before { background: linear-gradient(180deg, rgba(15,23,42,.1), rgba(15,23,42,.55)), linear-gradient(135deg, #e0f2fe, #f8fafc); }
                 .hf-preview-stage[data-has-media="true"][data-preset="auto"]::before { background: linear-gradient(180deg, rgba(14,165,233,.22), rgba(2,6,23,.2) 48%, rgba(250,204,21,.2)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 18%, rgba(255,255,255,.42), transparent 32%), linear-gradient(180deg, rgba(255,255,255,.18), rgba(15,23,42,.32)); }
@@ -8368,10 +9784,14 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-has-media="true"][data-preset="electronics_spec_stack"]::before { background: linear-gradient(90deg, rgba(2,6,23,.08), rgba(2,6,23,.74)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="split_product_specs"]::before { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
                 .hf-preview-stage[data-has-media="true"][data-preset="neon_gaming_specs"]::before { background: radial-gradient(circle at 70% 20%, rgba(34,211,238,.32), transparent 30%), linear-gradient(180deg, rgba(2,6,23,.72), rgba(23,37,84,.52)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="spec_lines_6_clean"]::before { background: linear-gradient(180deg, rgba(248,250,252,.26), rgba(248,250,252,.58)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="spec_lines_10_dark"]::before { background: linear-gradient(90deg, rgba(2,6,23,.86) 0 66%, rgba(2,6,23,.28)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="spec_lines_12_light"]::before { background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(248,250,252,.78)); }
+                .hf-preview-stage[data-has-media="true"][data-preset="spec_lines_15_neon"]::before { background: radial-gradient(circle at 80% 14%, rgba(34,211,238,.24), transparent 26%), radial-gradient(circle at 18% 76%, rgba(168,85,247,.2), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.76), rgba(15,23,42,.6)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="feature_cards"]::before { background: linear-gradient(180deg, rgba(15,23,42,.48), rgba(15,23,42,.22)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="badge_cascade"]::before { background: radial-gradient(circle at 18% 18%, rgba(14,165,233,.34), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.58), rgba(2,6,23,.14)); }
-                .hf-preview-stage[data-has-media="true"][data-preset="hero_price_billboard"]::before,
-                .hf-preview-stage[data-has-media="true"][data-preset="price_impact"]::before { background: linear-gradient(160deg, rgba(248,250,252,.78) 0 44%, rgba(17,24,39,.74) 45% 100%); }
+                .hf-preview-stage[data-has-media="true"][data-preset="hero_price_billboard"]::before { background: linear-gradient(160deg, rgba(248,250,252,.78) 0 44%, rgba(17,24,39,.74) 45% 100%); }
+                .hf-preview-stage[data-has-media="true"][data-preset="price_impact"]::before { background: radial-gradient(circle at 76% 26%, rgba(250,204,21,.24), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.04), rgba(2,6,23,.34) 50%, rgba(2,6,23,.82)); }
                 .hf-preview-stage[data-has-media="true"][data-preset="lower_third_review"]::before { background: linear-gradient(180deg, rgba(15,23,42,.12), rgba(15,23,42,.64)); }
                 .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
                 .hf-preview-stage[data-preview-mode="video"] .hf-preview-media--interactive { z-index: 8; }
@@ -8382,6 +9802,15 @@ export default function StoryboardReviewPage() {
                 .hf-preview-chip:nth-child(2) { animation-delay: .76s; }
                 .hf-preview-chip:nth-child(3) { animation-delay: .94s; }
                 .hf-preview-chip:nth-child(4) { animation-delay: 1.12s; }
+                .hf-preview-chip:nth-child(5) { animation-delay: 1.30s; }
+                .hf-preview-chip:nth-child(6) { animation-delay: 1.48s; }
+                .hf-preview-chip:nth-child(7) { animation-delay: 1.66s; }
+                .hf-preview-chip:nth-child(8) { animation-delay: 1.84s; }
+                .hf-preview-chip:nth-child(9) { animation-delay: 2.02s; }
+                .hf-preview-chip:nth-child(10) { animation-delay: 2.20s; }
+                .hf-preview-chip:nth-child(11) { animation-delay: 2.38s; }
+                .hf-preview-chip:nth-child(12) { animation-delay: 2.56s; }
+                .hf-preview-chip:nth-child(13) { animation-delay: 2.74s; }
                 .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-title,
                 .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-hook,
                 .hf-preview-stage[data-text-motion="slide_right_to_left"] .hf-preview-chip { animation-name: hfPreviewSlideRightToLeft; animation-duration: .68s; animation-timing-function: cubic-bezier(.18,.9,.24,1); animation-fill-mode: both; }
@@ -8469,6 +9898,70 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook { border-radius: 999px; background: #facc15; padding: 8px 12px; color: #020617; transform: translateX(16px); }
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip-list { margin-left: 16px !important; width: 44% !important; }
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip { border-radius: 999px; background: #facc15; color: #020617; }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-overlay-copy { justify-content: flex-start; gap: 4px; padding-bottom: 0; }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip-list { box-sizing: border-box; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-title,
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-hook,
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip { display: block; max-width: 100% !important; overflow: visible; white-space: pre-wrap; overflow-wrap: normal; word-break: keep-all; -webkit-line-clamp: unset; -webkit-box-orient: initial; text-wrap: pretty; }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip-list { grid-template-columns: 1fr !important; gap: 2px !important; }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-overlay-copy { justify-content: flex-end; padding-bottom: 22%; }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-title { border-radius: 16px; background: rgba(255,255,255,.94); padding: 10px 12px; color: #0f172a; font-size: 22px; line-height: 1.12; box-shadow: 0 14px 30px rgba(15,23,42,.18); }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-chip { border-left: 4px solid #0ea5e9; border-radius: 12px; background: rgba(255,255,255,.9); padding: 7px 10px; color: #0f172a; font-size: 13px; line-height: 1.22; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-overlay-copy { width: 72%; justify-content: center; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-chip-list { border: 1px solid rgba(148,163,184,.24); background: rgba(2,6,23,.72); padding: 10px; color: #f8fafc; backdrop-filter: blur(8px); }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-copy-top { border-radius: 16px 16px 8px 8px; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-chip-list { border-top: 0; border-radius: 8px 8px 16px 16px; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-title { color: #38bdf8; font-size: 19px; line-height: 1.12; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-chip { border-radius: 9px; background: rgba(255,255,255,.1); padding: 6px 8px; color: #f8fafc; font-size: 10.5px; line-height: 1.2; }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-chip-list { border-radius: 14px; background: rgba(255,255,255,.86); padding: 9px 11px; color: #0f172a; box-shadow: 0 16px 36px rgba(15,23,42,.16); backdrop-filter: blur(10px); }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-title { color: #111827; font-size: 18px; line-height: 1.08; }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-hook { color: #0369a1; font-size: 12px; line-height: 1.18; }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-chip { border-radius: 0; background: transparent; border-bottom: 1px solid rgba(148,163,184,.32); padding: 4px 0 5px; color: #0f172a; font-size: 9.5px; line-height: 1.16; box-shadow: none; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-chip-list { border: 1px solid rgba(34,211,238,.32); background: rgba(2,6,23,.66); padding: 8px 10px; color: #cffafe; box-shadow: 0 0 24px rgba(34,211,238,.16); backdrop-filter: blur(10px); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-copy-top { border-radius: 14px 14px 6px 6px; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-chip-list { border-top: 0; border-radius: 6px 6px 14px 14px; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-title { color: #67e8f9; font-size: 16px; line-height: 1.08; text-shadow: 0 0 14px rgba(34,211,238,.45); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-hook { color: #f0abfc; font-size: 10.5px; line-height: 1.14; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-chip { border-left: 2px solid rgba(34,211,238,.72); border-radius: 7px; background: rgba(15,23,42,.78); padding: 3px 6px; color: #f8fafc; font-size: 8.4px; line-height: 1.12; box-shadow: none; }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip-list {
+                  border: 0 !important;
+                  background: transparent !important;
+                  box-shadow: none !important;
+                  backdrop-filter: none !important;
+                  padding: 0 !important;
+                }
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-hook,
+                .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip {
+                  border: 0 !important;
+                  border-radius: 0 !important;
+                  background: transparent !important;
+                  box-shadow: none !important;
+                  padding: 1px 0 !important;
+                  text-shadow: 0 2px 0 rgba(255,255,255,.82), 0 10px 24px rgba(15,23,42,.24);
+                }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-title { color: #0f172a; font-size: 23px; }
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="spec_lines_6_clean"] .hf-preview-chip { color: #0f172a; font-size: 14px; line-height: 1.14; }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-title { color: #67e8f9; font-size: 18px; text-shadow: 0 0 14px rgba(34,211,238,.34), 0 6px 18px rgba(2,6,23,.72); }
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="spec_lines_10_dark"] .hf-preview-chip { color: #f8fafc; font-size: 10.5px; line-height: 1.12; text-shadow: 0 2px 0 rgba(2,6,23,.82), 0 8px 18px rgba(2,6,23,.58); }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-copy-top { border-radius: 14px !important; background: rgba(255,255,255,.76) !important; padding: 7px 10px !important; box-shadow: 0 14px 34px rgba(15,23,42,.18) !important; backdrop-filter: blur(8px) !important; }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-title { color: #07111f; font-size: 20px; line-height: 1.08; text-shadow: 0 1px 0 rgba(255,255,255,.92), 0 8px 18px rgba(15,23,42,.18); }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-hook { color: #075985; font-size: 13px; line-height: 1.13; text-shadow: 0 1px 0 rgba(255,255,255,.9), 0 7px 16px rgba(15,23,42,.2); }
+                .hf-preview-stage[data-preset="spec_lines_12_light"] .hf-preview-chip { color: #07111f; font-size: 10.8px; font-weight: 900; line-height: 1.12; text-shadow: 0 1px 0 rgba(255,255,255,.95), 0 7px 16px rgba(15,23,42,.28); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-copy-top { border-radius: 14px !important; background: rgba(2,6,23,.54) !important; padding: 7px 10px !important; box-shadow: 0 0 22px rgba(34,211,238,.2), 0 14px 32px rgba(2,6,23,.36) !important; backdrop-filter: blur(8px) !important; }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-title { color: #5eead4; font-size: 18px; line-height: 1.08; text-shadow: 0 0 14px rgba(34,211,238,.7), 0 2px 0 rgba(2,6,23,.95), 0 8px 18px rgba(2,6,23,.72); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-hook { color: #fde68a; font-size: 12px; line-height: 1.1; text-shadow: 0 0 10px rgba(251,191,36,.48), 0 2px 0 rgba(2,6,23,.95), 0 8px 18px rgba(2,6,23,.72); }
+                .hf-preview-stage[data-preset="spec_lines_15_neon"] .hf-preview-chip { color: #ffffff; font-size: 9.6px; font-weight: 900; line-height: 1.08; text-shadow: 0 0 10px rgba(34,211,238,.5), 0 2px 0 rgba(2,6,23,.95), 0 8px 18px rgba(2,6,23,.78); }
                 .hf-preview-stage[data-preset="feature_cards"] .hf-preview-overlay-copy { justify-content: flex-start; gap: 10px; padding-bottom: 0; }
                 .hf-preview-stage[data-preset="feature_cards"] .hf-preview-title { border-radius: 14px; background: rgba(2,6,23,.86); padding: 10px 12px; color: #fff; font-size: 22px; }
                 .hf-preview-stage[data-preset="feature_cards"] .hf-preview-hook { display: none; }
@@ -8485,6 +9978,12 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="lower_third_review"] .hf-preview-chip-list { display: none; }
                 .hf-preview-stage[data-preset="price_impact"] .hf-preview-overlay-copy,
                 .hf-preview-stage[data-preset="hero_price_billboard"] .hf-preview-overlay-copy { justify-content: flex-end; padding-bottom: 25%; }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-copy-top { max-width: 94%; border-left: 5px solid #facc15; border-radius: 16px; background: rgba(2,6,23,.76); padding: 10px 12px; box-shadow: 0 18px 38px rgba(2,6,23,.34); backdrop-filter: blur(8px); }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-title { color: #f8fafc; font-size: 22px; line-height: 1.08; text-shadow: 0 2px 0 rgba(2,6,23,.88), 0 8px 18px rgba(2,6,23,.58); }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-price { color: #facc15 !important; font-size: 34px; line-height: .98; text-shadow: 0 2px 0 rgba(2,6,23,.9), 0 0 22px rgba(250,204,21,.42); }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-chip-list { width: 94% !important; margin-top: 8px !important; margin-left: 0 !important; grid-template-columns: 1fr !important; gap: 6px !important; }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-chip { border-left: 4px solid rgba(250,204,21,.95); border-radius: 12px; background: rgba(2,6,23,.74); padding: 7px 10px; color: #f8fafc; font-size: 12px; line-height: 1.18; box-shadow: 0 12px 24px rgba(2,6,23,.28); text-shadow: 0 1px 0 rgba(2,6,23,.72); }
+                .hf-preview-stage[data-preset="price_impact"] .hf-preview-chip:nth-child(1) { background: rgba(250,204,21,.95); color: #111827; text-shadow: none; }
                 .hf-preview-stage--modal { padding: clamp(16px, 3.7cqw, 36px) !important; }
                 .hf-preview-stage--modal .hf-preview-overlay-copy { padding: clamp(16px, 3.7cqw, 36px) !important; }
                 .hf-preview-stage--modal .hf-preview-layer-tag { font-size: clamp(10px, 2.3cqw, 18px) !important; padding: clamp(4px, .9cqw, 8px) clamp(8px, 1.8cqw, 16px) !important; }
@@ -8493,6 +9992,24 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage--modal .hf-preview-price { font-size: clamp(34px, 7.8cqw, 76px) !important; }
                 .hf-preview-stage--modal .hf-preview-chip { font-size: clamp(13px, 3cqw, 28px) !important; padding: clamp(8px, 1.85cqw, 18px) clamp(12px, 2.8cqw, 26px) !important; }
                 .hf-preview-stage--modal .hf-preview-chip-list { gap: clamp(8px, 1.85cqw, 18px) !important; margin-top: clamp(16px, 3.7cqw, 36px) !important; }
+                .hf-preview-stage--modal[data-preset^="spec_lines_"] .hf-preview-title { font-size: clamp(18px, 4.2cqw, 46px) !important; line-height: 1.1 !important; }
+                .hf-preview-stage--modal[data-preset^="spec_lines_"] .hf-preview-hook { font-size: clamp(12px, 2.7cqw, 28px) !important; line-height: 1.16 !important; }
+                .hf-preview-stage--modal[data-preset^="spec_lines_"] .hf-preview-chip { font-size: clamp(10px, 2.1cqw, 22px) !important; line-height: 1.14 !important; padding: clamp(5px, 1cqw, 10px) clamp(8px, 1.6cqw, 16px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_6_clean"] .hf-preview-title { font-size: clamp(28px, 5.8cqw, 58px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_6_clean"] .hf-preview-hook,
+                .hf-preview-stage--modal[data-preset="spec_lines_6_clean"] .hf-preview-chip { font-size: clamp(17px, 3.4cqw, 34px) !important; line-height: 1.14 !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_10_dark"] .hf-preview-title { font-size: clamp(22px, 4.4cqw, 44px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_10_dark"] .hf-preview-hook,
+                .hf-preview-stage--modal[data-preset="spec_lines_10_dark"] .hf-preview-chip { font-size: clamp(13px, 2.55cqw, 25px) !important; line-height: 1.12 !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_12_light"] .hf-preview-title { font-size: clamp(24px, 4.4cqw, 46px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_12_light"] .hf-preview-hook,
+                .hf-preview-stage--modal[data-preset="spec_lines_12_light"] .hf-preview-chip { font-size: clamp(14px, 2.45cqw, 26px) !important; line-height: 1.12 !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_15_neon"] .hf-preview-title { font-size: clamp(22px, 3.9cqw, 42px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_15_neon"] .hf-preview-hook { font-size: clamp(13px, 2.25cqw, 24px) !important; }
+                .hf-preview-stage--modal[data-preset="spec_lines_15_neon"] .hf-preview-hook,
+                .hf-preview-stage--modal[data-preset="spec_lines_15_neon"] .hf-preview-chip { font-size: clamp(11px, 1.9cqw, 20px) !important; line-height: 1.08 !important; }
+                .hf-preview-stage--modal[data-preset^="spec_lines_"] .hf-preview-hook,
+                .hf-preview-stage--modal[data-preset^="spec_lines_"] .hf-preview-chip { padding: 1px 0 !important; }
                 .hf-preview-stage--modal .hf-sub-preview-inline .hf-sub-line { line-height: 1.22 !important; }
                 .hf-preview-stage--modal .hf-preview-layer-tag--subtitle { margin-bottom: clamp(6px, 1.4cqw, 13px) !important; }
                 .hf-preview-stage--thumb .hf-preview-overlay-copy { min-height: 0 !important; padding-bottom: 8% !important; }
@@ -8615,6 +10132,7 @@ export default function StoryboardReviewPage() {
                     ? hyperframesFinalShotTextMotionById[selectedPreviewClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedPreviewIndex)
                     : hyperframesFinalTextMotionPreset;
                   const presetMeta = getHyperframesOverlayPresetMeta(previewPreset);
+                  const previewLineLimit = getHyperframesOverlayLineLimit(previewPreset);
                   const selectedShotOverlay = selectedPreviewClip
                     ? hyperframesFinalShotTextById[selectedPreviewClip.id] ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex)
                     : "";
@@ -8622,13 +10140,14 @@ export default function StoryboardReviewPage() {
                     ? hyperframesFinalSubtitleById[selectedPreviewClip.id] ?? defaultHyperframesSubtitleText(selectedPreviewClip)
                     : "";
                   const selectedPreviewPosterUrl = getStoryboardClipPosterUrl(selectedPreviewClip);
-		                  const previewLines = resolveHyperframesFinalPreviewOverlayLines({
+	                  const previewLines = resolveHyperframesFinalPreviewOverlayLines({
 	                    textMode: hyperframesFinalTextMode,
 	                    shotIndex: selectedPreviewIndex,
+	                    overlayPreset: previewPreset,
 	                    overlayText: selectedShotOverlay,
 	                    hookText: hyperframesFinalHookText,
 	                    supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-	                    maxLines: 3,
+	                    maxLines: previewLineLimit,
 	                    maxLength: 42,
 	                  });
 		                  const hasPreviewOverlayLayer = previewLines.length > 0;
@@ -8640,11 +10159,11 @@ export default function StoryboardReviewPage() {
 		                      : selectedPreviewIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
 		                        ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
 		                        : locale === "th" ? "Overlay text" : "Overlay text";
-		                  const title = firstThaiProductLine(previewLines[0] ?? "", 34, { ellipsis: false });
-	                  const hook = firstThaiProductLine(previewLines[1] ?? "", 38, { ellipsis: false });
+		                  const title = formatHyperframesPreviewLineForPreset(previewLines[0] ?? "", previewPreset, 34, { ellipsis: false });
+	                  const hook = formatHyperframesPreviewLineForPreset(previewLines[1] ?? "", previewPreset, 38, { ellipsis: false });
                   const chips = previewLines
                     .slice(2)
-                    .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
+                    .map(line => formatHyperframesPreviewLineForPreset(line, previewPreset, 32, { ellipsis: false }))
                     .filter(Boolean);
                   const priceText = firstThaiProductLine(
                     chips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? hook,
@@ -8709,7 +10228,7 @@ export default function StoryboardReviewPage() {
 	                              presetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
 	                              presetMeta.kind === "cards" ? "grid-cols-2" : "",
 	                            )}>
-		                              {chips.filter(Boolean).slice(0, 3).map((line, index) => (
+		                              {chips.filter(Boolean).slice(0, Math.max(0, previewLineLimit - 2)).map((line, index) => (
 	                                <div
 	                                  key={`${line}-${index}`}
 	                                  className={cn(
@@ -8819,6 +10338,7 @@ export default function StoryboardReviewPage() {
                         hyperframesFinalSourceClips[0]!;
                       const modalIndex = Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === modalClip.id));
                       const modalOverlayPreset = hyperframesFinalShotOverlayPresetById[modalClip.id] ?? hyperframesFinalOverlayPreset;
+                      const modalPreviewLineLimit = getHyperframesOverlayLineLimit(modalOverlayPreset);
                       const modalPresetMeta = getHyperframesOverlayPresetMeta(modalOverlayPreset);
                       const modalTextMotion = hyperframesFinalShotTextMotionById[modalClip.id] ?? defaultHyperframesFinalTextMotionPreset(modalIndex);
                       const modalOverlayText = hyperframesFinalShotTextById[modalClip.id] ?? defaultHyperframesShotText(modalClip, modalIndex);
@@ -8826,17 +10346,18 @@ export default function StoryboardReviewPage() {
                       const modalPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
                         textMode: hyperframesFinalTextMode,
                         shotIndex: modalIndex,
+                        overlayPreset: modalOverlayPreset,
                         overlayText: modalOverlayText,
                         hookText: hyperframesFinalHookText,
                         supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
-                        maxLines: 3,
+                        maxLines: modalPreviewLineLimit,
                         maxLength: 42,
                       });
-                      const modalPreviewTitle = firstThaiProductLine(modalPreviewLines[0] ?? "", 34, { ellipsis: false });
-                      const modalPreviewHook = firstThaiProductLine(modalPreviewLines[1] ?? "", 38, { ellipsis: false });
+                      const modalPreviewTitle = formatHyperframesPreviewLineForPreset(modalPreviewLines[0] ?? "", modalOverlayPreset, 34, { ellipsis: false });
+                      const modalPreviewHook = formatHyperframesPreviewLineForPreset(modalPreviewLines[1] ?? "", modalOverlayPreset, 38, { ellipsis: false });
                       const modalPreviewChips = modalPreviewLines
                         .slice(2)
-                        .map(line => firstThaiProductLine(line, 32, { ellipsis: false }))
+                        .map(line => formatHyperframesPreviewLineForPreset(line, modalOverlayPreset, 32, { ellipsis: false }))
                         .filter(Boolean);
                       const modalPriceText = firstThaiProductLine(
                         modalPreviewChips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? modalPreviewHook,
@@ -8933,13 +10454,9 @@ export default function StoryboardReviewPage() {
         className={cn(
           "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2",
           !isHyperframesFinalPanelExpanded ? "xl:overflow-hidden" : "",
-          rightPanelTab === "history_gallery" && imageToolsSourceUrl && isImageToolsPanelOpen
-            ? isProjectSidebarCollapsed
-              ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_50rem] 2xl:grid-cols-[3.25rem_minmax(0,1fr)_56rem]"
-              : "xl:grid-cols-[18rem_minmax(0,1fr)_50rem] 2xl:grid-cols-[20rem_minmax(0,1fr)_56rem]"
-            : isProjectSidebarCollapsed
-              ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_26rem] 2xl:grid-cols-[3.25rem_minmax(0,1fr)_30rem]"
-              : "xl:grid-cols-[18rem_minmax(0,1fr)_26rem] 2xl:grid-cols-[20rem_minmax(0,1fr)_30rem]",
+          isProjectSidebarCollapsed
+            ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_auto]"
+            : "xl:grid-cols-[18rem_minmax(0,1fr)_auto] 2xl:grid-cols-[20rem_minmax(0,1fr)_auto]",
         )}
       >
         <aside
@@ -8990,6 +10507,20 @@ export default function StoryboardReviewPage() {
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={createManualStoryboardReviewProject}
+                    disabled={isCreatingManualReviewProject}
+                  >
+                    {isCreatingManualReviewProject ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {locale === "th" ? "New Project" : "New Project"}
+                  </Button>
                 </div>
                 <div className="relative mt-3">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -9051,10 +10582,25 @@ export default function StoryboardReviewPage() {
                             <Button
                               size="sm"
                               onClick={() => {
+                                const nextReviewId = Number(item.id);
+                                if (!Number.isFinite(nextReviewId) || nextReviewId <= 0) {
+                                  emitStoryboardReviewClientDebug("route.openProjectInvalidId", {
+                                    itemId: item.id ?? null,
+                                  });
+                                  return;
+                                }
+                                emitStoryboardReviewClientDebug("route.openProjectClick", {
+                                  nextReviewId,
+                                  previousDraft: summarizeStoryboardDraftForDebug(draftRef.current),
+                                  itemHasReviewData: Boolean(item?.reviewData),
+                                });
+                                draftRef.current = null;
+                                setDraft(null);
+                                setRenderJobId(null);
                                 setSelectedLibraryItemId(null);
                                 setVideoPreview(null);
                                 setGalleryLightbox(null);
-                                setLocation(`/storyboard-review/${item.id}`);
+                                setLocation(`/storyboard-review/${nextReviewId}`);
                               }}
                             >
                               {t("mediaStudio.storyboardReviewOpen")}
@@ -9085,7 +10631,49 @@ export default function StoryboardReviewPage() {
           )}
         </aside>
         <section className="min-h-[72dvh] overflow-hidden rounded-lg border bg-white sm:min-h-[calc(100dvh-6rem)] xl:h-full xl:min-h-0">
-          {isLoading ? (
+          {reviewUnavailable ? (
+            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center p-6 text-center">
+              <Video className="mb-3 h-10 w-10 text-slate-400" />
+              <h1 className="text-lg font-semibold text-slate-950">
+                {locale === "th" ? "เปิด Storyboard Review ไม่ได้" : "Could not open Storyboard Review"}
+              </h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                {reviewUnavailableMessage}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void refetchStoryboardReview()}
+                  disabled={isReviewFetching}
+                >
+                  {isReviewFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {locale === "th" ? "ลองโหลดใหม่" : "Retry"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setLocation("/storyboard-review")}
+                >
+                  {locale === "th" ? "กลับไปรายการโปรเจกต์" : "Back to projects"}
+                </Button>
+              </div>
+              {canonicalReviewId ? (
+                <div className="mt-3 max-w-2xl rounded-md bg-slate-50 px-3 py-2 text-left text-xs leading-5 text-slate-500">
+                  <div>reviewId={canonicalReviewId}</div>
+                  <div>
+                    detail={isReviewLoading ? "loading" : isReviewFetching ? "fetching" : isReviewError ? "error" : reviewRecordFound ? "record" : review === null ? "null" : "undefined"}
+                    {" "}list={isReviewProjectsLoading ? "loading" : isReviewProjectsFetching ? "fetching" : isReviewProjectsError ? "error" : listBackedReviewRecord ? "record" : "missing"}
+                  </div>
+                  <div>
+                    serverDraft={serverBackedDraft?.taskIds.length ?? 0}
+                    {" "}localDraft={draft?.reviewId === canonicalReviewId ? draft.taskIds.length : 0}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : isLoading ? (
             <div className="flex h-full min-h-[24rem] items-center justify-center text-slate-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               {t("mediaStudio.storyboardReviewLoading")}
@@ -9103,6 +10691,8 @@ export default function StoryboardReviewPage() {
               onSelectAll={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: current.taskIds }))}
               onSelectNone={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: [] }))}
               onRegenerateTask={regenerateTask}
+              onRegenerateVideoSegmentPrompt={regenerateVideoSegmentPromptForTask}
+              onSplitVideoSegmentToPerShot={requestSplitVideoSegmentToPerShot}
               onUpdateTaskPrompt={updateTaskPrompt}
               onUpdateTaskDuration={updateTaskDuration}
               onUpdateTaskTransition={updateStoryboardTaskTransition}
@@ -9115,6 +10705,8 @@ export default function StoryboardReviewPage() {
               useVoiceoverScriptAsConcept={Boolean(activeDraft.useVoiceoverScriptAsConcept && getStoryboardDraftVoiceoverFullScript(activeDraft).trim())}
               onUseVoiceoverScriptAsConceptChange={updateUseVoiceoverScriptAsConcept}
               onPlanScenePrompts={planScenePrompts}
+              plannerOptions={storyboardReviewVideoOptions.plannerOptions}
+              onPlannerOptionsChange={updateStoryboardPromptPlannerOptions}
               isPlanningScenePrompts={planStoryboardVideoPromptsMutation.isPending}
               onStartGenerationBatch={startStoryboardGenerationBatch}
               onCancelGeneration={cancelStoryboardGeneration}
@@ -9136,6 +10728,7 @@ export default function StoryboardReviewPage() {
               hyperframesFinalCompositeStatus={hyperframesFinalCompositeStatusText}
               isCancellingGeneration={isCancellingGeneration}
               regeneratingTaskId={regeneratingTaskId}
+              regeneratingVideoSegmentPromptTaskId={regeneratingVideoSegmentPromptTaskId}
               compoundStatus={activeDraft.compoundStatus}
               projectLink={activeDraft.projectLink}
               companionAudio={activeDraft.companionAudio}
@@ -9161,8 +10754,144 @@ export default function StoryboardReviewPage() {
           )}
         </section>
 
-        <aside className="flex max-h-[calc(100dvh-1rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0 xl:max-h-none">
+        <ResizableCollapsiblePanel
+          side="right"
+          collapsed={isRightPanelCollapsed}
+          onCollapsedChange={setIsRightPanelCollapsed}
+          width={rightPanelWidth}
+          onWidthChange={setRightPanelWidth}
+          minWidth={STORYBOARD_REVIEW_RIGHT_PANEL_MIN_WIDTH}
+          maxWidth={STORYBOARD_REVIEW_RIGHT_PANEL_MAX_WIDTH}
+          className="max-h-[calc(100dvh-1rem)] xl:max-h-none"
+          collapsedContent={locale === "th" ? "สื่อและตัวเลือก" : "Media and options"}
+          collapseLabel={locale === "th" ? "ยุบ panel ด้านขวา" : "Collapse right panel"}
+          expandLabel={locale === "th" ? "เปิด panel ด้านขวา" : "Open right panel"}
+          resizeLabel={locale === "th" ? "ปรับขนาด panel ด้านขวา" : "Resize right panel"}
+          testId="storyboard-review-right-panel"
+        >
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-2.5 sm:p-3">
+            <div className="rounded-lg border bg-white p-3 shadow-sm">
+              <div className="mb-3 flex items-start justify-between gap-8 pr-9">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold text-slate-950">
+                    {locale === "th" ? "ตัวเลือกสร้างวิดีโอ" : "Video generation options"}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {locale === "th"
+                      ? "จำค่าจาก Auto Storyboard review และใช้กับ prompt/generation ในหน้านี้"
+                      : "Uses the Auto Storyboard review settings for prompts and generation on this page."}
+                  </p>
+                </div>
+                {activeDraft?.videoSegmentState?.videoSegmentPlan.effectiveMode ? (
+                  <Badge variant="outline" className="shrink-0 rounded-full px-2 text-[11px]">
+                    {activeDraft.videoSegmentState.videoSegmentPlan.effectiveMode === "per_shot"
+                      ? locale === "th" ? "Per-shot" : "Per-shot"
+                      : activeDraft.videoSegmentState.videoSegmentPlan.effectiveMode}
+                  </Badge>
+                ) : null}
+              </div>
+              <div className="grid gap-3 2xl:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-slate-500">
+                    {locale === "th" ? "โมเดลวิดีโอ" : "Video model"}
+                  </span>
+                  <select
+                    value={storyboardReviewVideoOptions.videoModel}
+                    disabled={!activeDraft}
+                    onChange={(event) => updateStoryboardReviewVideoOptions({ videoModel: event.target.value })}
+                    className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    aria-label={locale === "th" ? "โมเดลวิดีโอ" : "Video model"}
+                  >
+                    {storyboardReviewVideoModelOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-slate-500">
+                    {locale === "th" ? "โครงสร้างวิดีโอ" : "Video structure"}
+                  </span>
+                  <select
+                    value={storyboardReviewVideoOptions.videoStructureMode}
+                    disabled={!activeDraft}
+                    onChange={(event) => updateStoryboardReviewVideoOptions({
+                      videoStructureMode: event.target.value as VideoSegmentStructureMode,
+                    })}
+                    className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    aria-label={locale === "th" ? "โครงสร้างวิดีโอ" : "Video structure"}
+                  >
+                    <option value="per_shot">
+                      {locale === "th" ? "Per-shot: 1 ช็อตต่อ 1 วิดีโอ" : "Per-shot: 1 shot per video"}
+                    </option>
+                    <option value="adaptive_multi_shot">
+                      {locale === "th" ? "Multi-shot อัตโนมัติ: รวม sub-shot ตามโมเดล" : "Adaptive multi-shot: model groups sub-shots"}
+                    </option>
+                    <option value="compact_multi_shot">
+                      {locale === "th" ? "Compact multi-shot: รวมหลาย sub-shot ต่อวิดีโอ" : "Compact multi-shot: more sub-shots per video"}
+                    </option>
+                    <option value="manual_group_size">
+                      {locale === "th" ? "Manual multi-shot: กำหนด sub-shot ต่อวิดีโอ" : "Manual multi-shot: sub-shots per video"}
+                    </option>
+                  </select>
+                </label>
+                {storyboardReviewVideoOptions.videoStructureMode === "manual_group_size" ? (
+                  <label className="space-y-1 2xl:col-span-2">
+                    <span className="text-xs font-semibold text-slate-500">
+                      {locale === "th" ? "จำนวนช็อตต่อคลิป" : "Shots per clip"}
+                    </span>
+                    <select
+                      value={String(storyboardReviewVideoOptions.manualVideoGroupSize)}
+                      disabled={!activeDraft}
+                      onChange={(event) => updateStoryboardReviewVideoOptions({
+                        manualVideoGroupSize: Number(event.target.value),
+                      })}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      {[2, 3, 4, 5, 6].map((value) => (
+                        <option key={value} value={value}>
+                          {locale === "th" ? `${value} ช็อตต่อคลิป` : `${value} shots per clip`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <label className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-slate-700">
+                      {locale === "th" ? "สร้าง prompt แบบมีเสียงพูด" : "Include spoken dialogue in prompts"}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+                      {locale === "th"
+                        ? "เมื่อเปิด จะ sync เป็นบทพูดภาษาไทยใน prompt และใช้กับปุ่มสร้าง Prompt ทุกฉาก"
+                        : "When enabled, prompt planning uses spoken dialogue and stays synced with Plan prompts."}
+                    </span>
+                  </span>
+                  <StoryboardReviewToggleSwitch
+                    checked={storyboardReviewVideoOptions.plannerOptions.includeVoiceover}
+                    disabled={!activeDraft}
+                    onCheckedChange={(checked) => updateStoryboardReviewVideoOptions({
+                      plannerOptions: {
+                        includeVoiceover: Boolean(checked),
+                        speechMode: checked ? (locale === "th" ? "th" : "en") : "none",
+                        speechLanguage: checked ? (locale === "th" ? "Thai" : "English") : "",
+                      },
+                    })}
+                    ariaLabel={locale === "th" ? "สร้าง prompt แบบมีเสียงพูด" : "Include spoken dialogue in prompts"}
+                  />
+                </label>
+              </div>
+              {activeDraft?.videoSegmentState?.videoSegmentPlan.fallbackReason ? (
+                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                  {locale === "th"
+                    ? "โมเดลที่เลือกยังไม่รองรับ multi-shot ที่ตรวจสอบแล้ว ระบบจึง fallback เป็น per-shot"
+                    : "Selected model does not have reviewed multi-shot support, so generation falls back to per-shot."}
+                </div>
+              ) : null}
+            </div>
             <div className="rounded-xl border bg-slate-50/70 p-3">
               <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 className="text-sm font-semibold text-slate-950">{t("mediaStudio.storyboardReviewAddMedia")}</h2>
@@ -9887,9 +11616,54 @@ export default function StoryboardReviewPage() {
               ) : null}
             </div>
           </div>
-
-        </aside>
+        </ResizableCollapsiblePanel>
       </main>
+
+      <AlertDialog
+        open={Boolean(splitFallbackTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSplitFallbackTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {locale === "th" ? "แยก segment ที่ล้มเหลวกลับเป็น per-shot?" : "Split failed segment back to per-shot?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                {locale === "th"
+                  ? `ระบบจะแยก segment นี้เป็น ${splitFallbackTarget?.shotCount ?? 0} งาน per-shot ใหม่ โดยยังไม่ส่งสร้างวิดีโอและไม่หักเครดิตเพิ่มอัตโนมัติ`
+                  : `This will split the segment into ${splitFallbackTarget?.shotCount ?? 0} new per-shot jobs. It will not submit generation or spend credits automatically.`}
+              </span>
+              <span className="block">
+                {locale === "th"
+                  ? "ใช้ตัวเลือกนี้หลังตรวจสาเหตุจริงของ error แล้วเท่านั้น เพื่อไม่ให้ fallback กลบ bug ของ provider, model mapping, หรือ prompt payload"
+                  : "Use this only after reviewing the real error cause, so fallback does not hide provider, model mapping, or prompt payload bugs."}
+              </span>
+              {splitFallbackTarget?.error ? (
+                <span className="block rounded-md bg-amber-50 p-2 text-amber-900">
+                  {locale === "th" ? "Error เดิม: " : "Original error: "}
+                  {splitFallbackTarget.error}
+                </span>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                confirmSplitVideoSegmentToPerShot();
+              }}
+            >
+              {locale === "th" ? "ยืนยัน แยกเป็น per-shot" : "Confirm split to per-shot"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(deleteTarget)}
@@ -10016,6 +11790,15 @@ export default function StoryboardReviewPage() {
                   type="button"
                   size="sm"
                   variant="secondary"
+                  onClick={replayVideoPreview}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  {locale === "th" ? "Replay" : "Replay"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
                   onClick={() => downloadStoryboardMedia(videoPreview.url, videoPreview.title, "mp4")}
                 >
                   <Download className="mr-2 h-4 w-4" />
@@ -10070,6 +11853,7 @@ export default function StoryboardReviewPage() {
                     ) : null}
                     <video
                       key={videoPreview.url}
+                      ref={videoPreviewVideoRef}
                       src={videoPreview.url}
                       poster={overlay?.posterUrl ?? undefined}
                       controls
@@ -10091,14 +11875,29 @@ export default function StoryboardReviewPage() {
                         setVideoPreviewPlaybackReady(true);
                         setVideoPreviewError("");
                       }}
+                      onPlay={(event) => {
+                        if (videoPreviewEndedRef.current || event.currentTarget.currentTime <= 0.25) {
+                          videoPreviewEndedRef.current = false;
+                          restartVideoPreviewOverlayAnimation();
+                        }
+                      }}
                       onPlaying={() => {
                         setVideoPreviewPlaybackReady(true);
                         setVideoPreviewError("");
                       }}
+                      onSeeked={(event) => {
+                        if (event.currentTarget.currentTime <= 0.25) {
+                          restartVideoPreviewOverlayAnimation();
+                        }
+                      }}
                       onTimeUpdate={(event) => {
                         if (event.currentTarget.currentTime <= 0.02) return;
+                        videoPreviewEndedRef.current = false;
                         setVideoPreviewPlaybackReady(true);
                         setVideoPreviewError("");
+                      }}
+                      onEnded={() => {
+                        videoPreviewEndedRef.current = true;
                       }}
                       onError={(event) => {
                         const code = event.currentTarget.error?.code;
@@ -10120,7 +11919,10 @@ export default function StoryboardReviewPage() {
                       </div>
                     ) : null}
                     {hasOverlayCopy ? (
-                      <div className="hf-preview-overlay-copy pointer-events-none absolute inset-0 z-20 flex h-full min-h-0 flex-col justify-between p-4">
+                      <div
+                        key={`hf-video-preview-overlay-${videoPreview.url}-${videoPreviewOverlayReplayKey}`}
+                        className="hf-preview-overlay-copy pointer-events-none absolute inset-0 z-20 flex h-full min-h-0 flex-col justify-between p-4"
+                      >
                         <div className="hf-preview-copy-top">
                           {overlay?.layerLabel ? (
                             <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
@@ -10150,7 +11952,7 @@ export default function StoryboardReviewPage() {
                               overlay?.presetKind === "cards" ? "grid-cols-2" : "",
                             )}
                           >
-                            {overlay.chips.filter(Boolean).slice(0, 3).map((line, index) => (
+                            {overlay.chips.filter(Boolean).slice(0, Math.max(0, getHyperframesOverlayLineLimit(overlay.overlayPreset ?? "auto") - 2)).map((line, index) => (
                               <div
                                 key={`${line}-${index}`}
                                 className={cn(

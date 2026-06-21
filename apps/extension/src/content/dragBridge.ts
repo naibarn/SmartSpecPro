@@ -183,6 +183,11 @@ export {};
       || hostname.endsWith(".magnific.com");
   }
 
+  function isHiggsfieldHost(hostname: string) {
+    return hostname === "higgsfield.ai"
+      || hostname.endsWith(".higgsfield.ai");
+  }
+
   function canUseFileInputFallback(target: HTMLElement, files: FileList) {
     const hostname = location.hostname.toLowerCase();
     if (isGoogleFlowContext()) return Boolean(findNearestFileInput(target, files));
@@ -221,7 +226,7 @@ export {};
 
   function isBridgeTargetHost() {
     const hostname = location.hostname.toLowerCase();
-    return isGoogleFlowContext() || isMagnificHost(hostname);
+    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname);
   }
 
   function isPotentialFileDrag(event: DragEvent) {
@@ -303,6 +308,36 @@ export {};
       strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
       fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
       cleanupStep: inputSet ? "dragleave_dragend" : "drop",
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      targetTag: target.tagName,
+      targetClass: typeof target.className === "string" ? target.className : "",
+      fileInputCount: document.querySelectorAll("input[type='file']").length,
+      fileInput: inputDetails,
+    });
+    return inputSet;
+  }
+
+  async function deliverHiggsfieldFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const initial = setNearestFileInputDetailed(target, transfer.files);
+    let inputSet = initial.inputSet;
+    let inputDetails = initial.input;
+    let retryUsed = false;
+    if (!inputSet) {
+      await delay(120);
+      const retry = setNearestFileInputDetailed(target, transfer.files);
+      inputSet = retry.inputSet;
+      inputDetails = retry.input || inputDetails;
+      retryUsed = true;
+    }
+    dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    void recordDiagnosticLog("higgsfield_drag_delivery", {
+      strategy: inputSet ? "file_input_then_synthetic_drop" : "synthetic_drop_only",
+      fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
       fileName: file.name,
       fileType: file.type,
       fileSize: file.size,
@@ -415,6 +450,8 @@ export {};
       deliverMagnificFileDrop(target, file, event);
     } else if (isGoogleFlowContext()) {
       await deliverGoogleFlowFileDrop(target, file, event);
+    } else if (isHiggsfieldHost(location.hostname.toLowerCase())) {
+      await deliverHiggsfieldFileDrop(target, file, event);
     } else {
       dispatchFileDragEvents(target, file, event, ["dragenter", "dragover", "drop"]);
     }

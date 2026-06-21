@@ -11,6 +11,8 @@ const {
   mockCheckAbuseGuard,
   mockHashPrompt,
   mockDecrypt,
+  mockResolveMediaTransport,
+  mockSubmitMcpMediaGeneration,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
   mockGenerateVideoAsync: vi.fn(),
@@ -22,6 +24,8 @@ const {
   mockCheckAbuseGuard: vi.fn(),
   mockHashPrompt: vi.fn((text: string, serialized: string) => `${text}::${serialized}`),
   mockDecrypt: vi.fn(),
+  mockResolveMediaTransport: vi.fn(),
+  mockSubmitMcpMediaGeneration: vi.fn(),
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
@@ -131,6 +135,17 @@ vi.mock("../../services/mediaLibraryService", () => ({
   addMediaTaskToLibrary: vi.fn(),
 }));
 
+vi.mock("../../services/mediaTransportResolver", () => ({
+  resolveMediaTransport: (...args: unknown[]) => mockResolveMediaTransport(...args),
+}));
+
+vi.mock("../../services/mcpMediaAdapter", () => ({
+  cancelMcpMediaGeneration: vi.fn(),
+  getMcpMediaTask: vi.fn(),
+  listMcpMediaTasks: vi.fn(),
+  submitMcpMediaGeneration: (...args: unknown[]) => mockSubmitMcpMediaGeneration(...args),
+}));
+
 vi.mock("../../services/libraryFeatureFlags", () => ({
   isLibraryEnabledForTenant: vi.fn().mockResolvedValue(true),
 }));
@@ -197,6 +212,33 @@ describe("media router DB-first model contract", () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockCalculateCreditCost.mockReturnValue(22);
     mockDecrypt.mockReturnValue("uvoice-test-key");
+    mockResolveMediaTransport.mockImplementation(async (input) => ({
+      transport: "mcp",
+      tenantId: input.tenantId,
+      originSurface: input.originSurface,
+      assetType: input.assetType,
+      actorUserId: input.actorUserId,
+      ownerUserId: input.actorUserId,
+      connectionId: input.mcpConnectionId,
+      sharedGroupId: input.sharedGroupId,
+      connectionScope: input.sharedGroupId ? "shared" : "personal",
+      providerKey: input.providerKey,
+      providerModelId: input.providerModelId,
+      toolName: input.toolName,
+      argumentShape: input.argumentShape,
+      creditPolicy: "provider_credits_tracked",
+      idempotencyKey: input.idempotencyKey,
+    }));
+    mockSubmitMcpMediaGeneration.mockResolvedValue({
+      success: true,
+      taskId: "mcp-video-1",
+      id: "mcp-video-1",
+      status: "processing",
+      model: "higgsfield/seedance_2_0_fast",
+      provider: "higgsfield",
+      creditsUsed: 0,
+      data: [],
+    });
     mockGenerateImage.mockResolvedValue({
       success: true,
       taskId: "task-1",
@@ -442,6 +484,105 @@ describe("media router DB-first model contract", () => {
       }),
       "user-token",
     );
+  });
+
+  it("generateVideoAsync uses explicit MCP route metadata instead of stale DB provider hints", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 0, configJson: { pricingTiers: { default: 0 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    const result = await fn({
+      ctx: makeCtx(),
+      input: {
+        prompt: "short storyboard video prompt",
+        model: "higgsfield/seedance_2_0_fast",
+        duration: 8,
+        aspectRatio: "9:16",
+        transport: "mcp",
+        mcpConnectionId: "mcp_conn_higgsfield",
+        sharedGroupId: 42,
+        mcpProviderKey: "higgsfield",
+        mcpProviderModelId: "seedance_2_0_fast",
+        mcpToolName: "generate_video",
+        mcpArgumentShape: "higgsfield.generate_video",
+        originSurface: "storyboard_review",
+        idempotencyKey: "storyboard-review-task-1",
+      },
+    });
+
+    expect(result).toMatchObject({ taskId: "mcp-video-1" });
+    expect(mockResolveMediaTransport).toHaveBeenCalledWith(expect.objectContaining({
+      requestedTransport: "mcp",
+      assetType: "video",
+      mcpConnectionId: "mcp_conn_higgsfield",
+      sharedGroupId: 42,
+      providerKey: "higgsfield",
+      providerModelId: "seedance_2_0_fast",
+      model: "seedance_2_0_fast",
+      toolName: "generate_video",
+      argumentShape: "higgsfield.generate_video",
+      originSurface: "storyboard_review",
+    }));
+    expect(mockSubmitMcpMediaGeneration).toHaveBeenCalledWith(expect.objectContaining({
+      model: "higgsfield/seedance_2_0_fast",
+      metadata: expect.objectContaining({
+        providerKey: "higgsfield",
+        providerModelId: "seedance_2_0_fast",
+      }),
+      parameters: expect.objectContaining({
+        duration: 8,
+        aspectRatio: "9:16",
+      }),
+    }));
+    expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+  });
+
+  it("generateVideoAsync derives MCP route metadata from provider-prefixed model ids before stale DB provider fallbacks", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 0, configJson: { transport: "mcp", pricingTiers: { default: 0 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateVideoAsync as Function;
+    const result = await fn({
+      ctx: makeCtx(),
+      input: {
+        prompt: "short storyboard video prompt",
+        model: "higgsfield/seedance_2_0_fast",
+        duration: 8,
+        aspectRatio: "9:16",
+        transport: "mcp",
+        mcpConnectionId: "mcp_conn_higgsfield",
+        sharedGroupId: 42,
+        originSurface: "storyboard_review",
+        idempotencyKey: "storyboard-review-task-missing-route",
+      },
+    });
+
+    expect(result).toMatchObject({ taskId: "mcp-video-1" });
+    expect(mockResolveMediaTransport).toHaveBeenCalledWith(expect.objectContaining({
+      requestedTransport: "mcp",
+      assetType: "video",
+      mcpConnectionId: "mcp_conn_higgsfield",
+      sharedGroupId: 42,
+      providerKey: "higgsfield",
+      providerModelId: "seedance_2_0_fast",
+      model: "seedance_2_0_fast",
+      argumentShape: "higgsfield.generate_video",
+      originSurface: "storyboard_review",
+    }));
+    expect(mockSubmitMcpMediaGeneration).toHaveBeenCalledWith(expect.objectContaining({
+      model: "higgsfield/seedance_2_0_fast",
+      metadata: expect.objectContaining({
+        providerKey: "higgsfield",
+        providerModelId: "seedance_2_0_fast",
+      }),
+    }));
+    expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
   });
 
   it("generateVideoAsync rejects a fifth reference image only for the WaveSpeed launch model", async () => {

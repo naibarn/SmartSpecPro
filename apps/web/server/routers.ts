@@ -105,6 +105,7 @@ import { workOsRouter } from "./routers/workOs";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
+import { mcpConnectionsRouter } from "./routers/mcpConnections";
 import { hybridOrchestrationRouter } from "./routers/hybridOrchestration";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
@@ -1993,6 +1994,7 @@ type AppRouterShape = {
   scopedMemory: typeof scopedMemoryRouter;
   monitoring: typeof monitoringRouter;
   mcpServers: typeof mcpServersRouter;
+  mcpConnections: typeof mcpConnectionsRouter;
   hybridOrchestration: typeof hybridOrchestrationRouter;
   help: typeof helpRouter;
 };
@@ -2179,6 +2181,7 @@ const appRouterInternal = router<AppRouterShape>({
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,
+  mcpConnections: mcpConnectionsRouter,
   hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
 });

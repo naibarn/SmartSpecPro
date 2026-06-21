@@ -19,9 +19,14 @@ import {
   HyperframesAutoPlanOverrideInputSchema,
   HyperframesAutoStoryboardReviewPlanSchema,
 } from "./autoPlan";
+import { AutoReviewCreativePresetSelectionSchema } from "./autoReviewCreativePresets";
 import { HyperframesFeatureAccessProjectionSchema } from "./featureAccess";
 import { HyperframesTemplateDescriptorSchema } from "./contracts";
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
+import {
+  VideoSegmentPlanSchema,
+  VideoSegmentPlanWarningSchema,
+} from "../videoSegmentPlanner";
 
 const ProductIdInputSchema = z.object({
   productId: z.string().min(1).max(64),
@@ -60,10 +65,82 @@ export const GetAutoStoryboardReviewPlanOutputSchema = z
   })
   .strict();
 
+const HyperframesAutoReviewTransportMetadataSchema = z
+  .object({
+    transport: z.enum(["gateway_api", "mcp"]),
+    connectionId: z.string().max(64).optional(),
+    mcpConnectionId: z.string().max(64).optional(),
+    sharedGroupId: z.number().int().optional(),
+    approvalId: z.string().max(128).optional(),
+    mcpApprovalId: z.string().max(128).optional(),
+    idempotencyKey: z.string().max(128).optional(),
+  })
+  .optional()
+  .nullable();
+
+export const GetVideoSegmentPlanPreviewInputSchema =
+  ProductIdInputSchema.extend({
+    overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+    transportMetadata: HyperframesAutoReviewTransportMetadataSchema,
+    referenceAnchors: z
+      .object({
+        schemaVersion: z.number().int().positive().optional(),
+        creationIntent: z
+          .enum(["storyboard", "video", "auto_review_video"])
+          .optional()
+          .nullable(),
+        creativePresets: z
+          .array(AutoReviewCreativePresetSelectionSchema)
+          .max(8)
+          .optional(),
+        productImageUrl: z.string().min(1).max(4096).optional(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
+  }).strict();
+
+export const GetVideoSegmentPlanPreviewOutputSchema = z
+  .object({
+    contractVersion: z.literal(HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION),
+    videoSegmentPlan: VideoSegmentPlanSchema,
+    accessDecision: z
+      .object({
+        allowed: z.boolean(),
+        reasonCode: z.string().max(160).optional(),
+        message: z.string().max(600).optional(),
+        transport: z.enum(["gateway_api", "mcp"]).optional(),
+        provider: z.string().max(120).optional(),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().optional(),
+      })
+      .strict(),
+    creditEstimate: z
+      .object({
+        mode: z.enum(["per_shot", "segment_duration"]),
+        estimatedCredits: z.number().nonnegative(),
+        basis: z.enum(["jobs", "segments", "seconds"]),
+        creditSource: z.enum(["gateway_api", "mcp_provider_account"]),
+        notes: z.array(z.string().max(400)).default([]),
+      })
+      .strict(),
+    warnings: z.array(VideoSegmentPlanWarningSchema).default([]),
+    fallbackReason: z.string().min(1).optional(),
+  })
+  .strict();
+
+export type GetVideoSegmentPlanPreviewInput = z.infer<
+  typeof GetVideoSegmentPlanPreviewInputSchema
+>;
+export type GetVideoSegmentPlanPreviewOutput = z.infer<
+  typeof GetVideoSegmentPlanPreviewOutputSchema
+>;
+
 export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend({
   expectedPlanHash: z.string().min(6).max(128).optional(),
   idempotencyKey: z.string().min(1).max(192).optional(),
   overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+  transportMetadata: HyperframesAutoReviewTransportMetadataSchema,
   referenceAnchors: z
     .object({
       schemaVersion: z.number().int().positive().optional(),
@@ -112,6 +189,10 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
         ])
         .optional()
         .nullable(),
+      creativePresets: z
+        .array(AutoReviewCreativePresetSelectionSchema)
+        .max(8)
+        .optional(),
       requiredRoles: z
         .array(z.enum(["product", "character", "environment"]))
         .optional(),
@@ -196,6 +277,10 @@ export const HyperframesFinalCompositeOverlayPresetSchema = z.enum([
   "badge_cascade",
   "lower_third_review",
   "neon_gaming_specs",
+  "spec_lines_6_clean",
+  "spec_lines_10_dark",
+  "spec_lines_12_light",
+  "spec_lines_15_neon",
   "clean_subtitle",
 ]);
 
@@ -241,7 +326,7 @@ export const HyperframesFinalCompositeShotInputSchema = z
     sourceVideoRef: z.string().trim().max(1024).optional().nullable(),
     startSec: z.number().min(0).max(120),
     durationSec: z.number().min(0.5).max(30),
-    onScreenText: z.array(z.string().trim().max(120)).max(4).default([]),
+    onScreenText: z.array(z.string().trim().max(600)).max(15).default([]),
     subtitleCues: z
       .array(HyperframesFinalCompositeSubtitleCueSchema)
       .max(12)

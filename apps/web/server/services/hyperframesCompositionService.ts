@@ -22,7 +22,7 @@ import {
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
-  "hyperframes_final_composite_builder_v15";
+  "hyperframes_final_composite_builder_v16";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -446,7 +446,7 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
     startSec: shot.startSec,
     durationSec: shot.durationSec,
     endSec: shot.startSec + shot.durationSec,
-    onScreenText: shot.onScreenText.map(line => sanitizeHyperframesText(line, 120)),
+    onScreenText: shot.onScreenText.map(line => sanitizeHyperframesText(line, 600)),
     subtitleCues: shot.subtitleCues.map(cue => ({
       startSec: cue.startSec,
       endSec: cue.endSec,
@@ -874,6 +874,39 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="neon_gaming_specs"] .shot-copy { top: 9%; left: 7%; right: 7%; gap: 12px; }
       [data-overlay-preset="neon_gaming_specs"] .shot-line:first-child { border: 1px solid rgba(34,211,238,.62); background: rgba(2,6,23,.76); color: #cffafe; font-size: 58px; box-shadow: 0 0 42px rgba(34,211,238,.32); }
       [data-overlay-preset="neon_gaming_specs"] .shot-line + .shot-line { border: 1px solid rgba(217,70,239,.58); background: rgba(76,29,149,.54); color: #fdf4ff; font-size: 34px; box-shadow: 0 0 34px rgba(217,70,239,.22); }
+      [data-overlay-preset^="spec_lines_"] .shot-line { display: block; width: auto; max-width: 100%; white-space: pre-wrap; overflow-wrap: normal; word-break: keep-all; text-wrap: pretty; }
+      [data-overlay-preset^="spec_lines_"] .shot-copy { gap: 10px; text-align: left; text-shadow: none; }
+      [data-overlay-preset="spec_lines_6_clean"] .shade { background: linear-gradient(180deg, rgba(248,250,252,.18), rgba(248,250,252,.62)); }
+      [data-overlay-preset="spec_lines_6_clean"] .shot-copy { top: auto; bottom: 24%; left: 7%; right: 7%; }
+      [data-overlay-preset="spec_lines_6_clean"] .shot-line:first-child { border-radius: 26px; background: rgba(255,255,255,.94); color: #0f172a; font-size: 46px; box-shadow: 0 20px 54px rgba(15,23,42,.22); }
+      [data-overlay-preset="spec_lines_6_clean"] .shot-line + .shot-line { border-left: 8px solid #0ea5e9; border-radius: 18px; background: rgba(255,255,255,.9); color: #0f172a; font-size: 30px; box-shadow: 0 12px 30px rgba(15,23,42,.14); }
+      [data-overlay-preset="spec_lines_10_dark"] .shade { background: linear-gradient(90deg, rgba(2,6,23,.88) 0 66%, rgba(2,6,23,.24)); }
+      [data-overlay-preset="spec_lines_10_dark"] .shot-copy { top: 11%; right: auto; left: 6%; width: 64%; max-width: 64%; box-sizing: border-box; border: 1px solid rgba(148,163,184,.24); border-radius: 30px; background: rgba(2,6,23,.74); padding: 24px; backdrop-filter: blur(10px); }
+      [data-overlay-preset="spec_lines_10_dark"] .shot-line:first-child { padding: 0 0 8px; border-radius: 0; border-bottom: 1px solid rgba(56,189,248,.38); background: transparent; color: #38bdf8; font-size: 38px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_10_dark"] .shot-line + .shot-line { border-radius: 14px; background: rgba(255,255,255,.11); color: #f8fafc; font-size: 24px; padding: 11px 14px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_12_light"] .shade { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(248,250,252,.76)); }
+      [data-overlay-preset="spec_lines_12_light"] .shot-copy { top: auto; bottom: 23%; left: 6%; right: 6%; border-radius: 28px; background: rgba(255,255,255,.88); padding: 24px 26px; color: #0f172a; box-shadow: 0 24px 60px rgba(15,23,42,.2); backdrop-filter: blur(12px); }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:first-child { padding: 0 0 10px; border-radius: 0; border-bottom: 2px solid rgba(14,165,233,.38); background: transparent; color: #111827; font-size: 34px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:nth-child(2) { background: transparent; color: #0369a1; font-size: 26px; padding: 0 0 8px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:nth-child(n+3) { border-radius: 0; border-bottom: 1px solid rgba(148,163,184,.34); background: transparent; color: #0f172a; font-size: 22px; padding: 6px 0 7px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_15_neon"] .shade { background: radial-gradient(circle at 80% 14%, rgba(34,211,238,.24), transparent 26%), radial-gradient(circle at 18% 76%, rgba(168,85,247,.2), transparent 28%), linear-gradient(180deg, rgba(2,6,23,.76), rgba(15,23,42,.6)); }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-copy { top: 7%; left: 5%; right: 5%; box-sizing: border-box; border: 1px solid rgba(34,211,238,.34); border-radius: 28px; background: rgba(2,6,23,.7); padding: 22px; box-shadow: 0 0 52px rgba(34,211,238,.18); backdrop-filter: blur(12px); }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:first-child { padding: 0 0 8px; border-radius: 0; border-bottom: 1px solid rgba(34,211,238,.34); background: transparent; color: #67e8f9; font-size: 31px; text-shadow: 0 0 20px rgba(34,211,238,.5); box-shadow: none; }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:nth-child(2) { background: transparent; color: #f0abfc; font-size: 23px; padding: 0 0 8px; box-shadow: none; }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:nth-child(n+3) { border-left: 4px solid rgba(34,211,238,.72); border-radius: 12px; background: rgba(15,23,42,.78); color: #f8fafc; font-size: 18px; padding: 6px 10px; box-shadow: none; }
+      [data-overlay-preset^="spec_lines_"] .shot-copy { border: 0 !important; background: transparent !important; box-shadow: none !important; backdrop-filter: none !important; padding: 0 !important; }
+      [data-overlay-preset^="spec_lines_"] .shot-line { border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; text-shadow: 0 2px 0 rgba(255,255,255,.82), 0 10px 24px rgba(15,23,42,.24); }
+      [data-overlay-preset^="spec_lines_"] .shot-line:first-child { width: fit-content; max-width: 100%; border-radius: 22px !important; padding: 12px 18px !important; font-weight: 950; }
+      [data-overlay-preset="spec_lines_6_clean"] .shot-line:first-child { background: rgba(255,255,255,.94) !important; color: #0f172a; font-size: 56px; box-shadow: 0 20px 54px rgba(15,23,42,.22) !important; }
+      [data-overlay-preset="spec_lines_6_clean"] .shot-line:nth-child(n+2) { color: #0f172a; font-size: 38px; line-height: 1.12; }
+      [data-overlay-preset="spec_lines_10_dark"] .shot-line:first-child { border: 1px solid rgba(56,189,248,.45) !important; background: rgba(2,6,23,.66) !important; color: #67e8f9; font-size: 44px; text-shadow: 0 0 18px rgba(34,211,238,.42), 0 6px 18px rgba(2,6,23,.72); }
+      [data-overlay-preset="spec_lines_10_dark"] .shot-line:nth-child(n+2) { color: #f8fafc; font-size: 28px; line-height: 1.12; text-shadow: 0 2px 0 rgba(2,6,23,.82), 0 8px 18px rgba(2,6,23,.58); }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:first-child { background: rgba(255,255,255,.9) !important; color: #111827; font-size: 38px; box-shadow: 0 18px 48px rgba(15,23,42,.18) !important; }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:nth-child(2) { color: #0369a1; font-size: 24px; line-height: 1.1; }
+      [data-overlay-preset="spec_lines_12_light"] .shot-line:nth-child(n+3) { color: #0f172a; font-size: 22px; line-height: 1.08; }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:first-child { border: 1px solid rgba(34,211,238,.48) !important; background: rgba(2,6,23,.64) !important; color: #67e8f9; font-size: 32px; text-shadow: 0 0 20px rgba(34,211,238,.5); }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:nth-child(2) { color: #f0abfc; font-size: 24px; line-height: 1.08; text-shadow: 0 0 16px rgba(217,70,239,.34), 0 6px 16px rgba(2,6,23,.72); }
+      [data-overlay-preset="spec_lines_15_neon"] .shot-line:nth-child(n+3) { color: #f8fafc; font-size: 18px; line-height: 1.06; text-shadow: 0 0 12px rgba(34,211,238,.34), 0 6px 16px rgba(2,6,23,.72); }
       [data-overlay-preset="feature_cards"] .shot-copy { top: 19%; right: auto; left: 6%; max-width: 88%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; text-shadow: none; }
       [data-overlay-preset="feature_cards"] .shot-line { width: auto; min-height: 150px; border-radius: 22px; background: rgba(255,255,255,.92); color: #0f172a; border: 1px solid rgba(255,255,255,.42); font-size: 34px; box-shadow: 0 18px 44px rgba(2,6,23,.24); }
       [data-overlay-preset="feature_cards"] .shot-line:first-child { grid-column: span 2; min-height: auto; background: rgba(2,6,23,.86); color: #fff; font-size: 48px; }

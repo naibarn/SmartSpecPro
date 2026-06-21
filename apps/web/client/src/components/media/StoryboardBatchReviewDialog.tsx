@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Upload, Video, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Scissors, Trash2, Upload, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,6 +75,20 @@ export interface StoryboardPromptPlannerOptions {
   language: "auto" | "th" | "en";
 }
 
+function getStoryboardPromptPlannerOptionsSignature(
+  options: StoryboardPromptPlannerOptions | null | undefined,
+): string {
+  if (!options) return "";
+  return [
+    options.includeVoiceover ? "voice" : "silent",
+    options.speechMode,
+    String(options.speechLanguage ?? "").trim(),
+    options.includeSound ? "sound" : "no-sound",
+    options.tone,
+    options.language,
+  ].join("|");
+}
+
 interface StoryboardBatchReviewDialogProps {
   open: boolean;
   tasks: StoryboardReviewTask[];
@@ -96,7 +110,11 @@ interface StoryboardBatchReviewDialogProps {
   useVoiceoverScriptAsConcept?: boolean;
   onUseVoiceoverScriptAsConceptChange?: (value: boolean) => void | Promise<void>;
   onPlanScenePrompts?: (options: StoryboardPromptPlannerOptions, taskId?: string) => void | Promise<void>;
+  plannerOptions?: StoryboardPromptPlannerOptions;
+  onPlannerOptionsChange?: (options: StoryboardPromptPlannerOptions) => void;
   isPlanningScenePrompts?: boolean;
+  onRegenerateVideoSegmentPrompt?: (taskId: string, segmentId: string) => void | Promise<void>;
+  onSplitVideoSegmentToPerShot?: (taskId: string, segmentId: string) => void | Promise<void>;
   onStartGenerationBatch?: () => void;
   onCancelGeneration?: () => void | Promise<void>;
   onReplaceReferenceFrame?: (taskId: string, frameIndex: 0 | 1, imageUrl: string) => void | Promise<void>;
@@ -121,6 +139,7 @@ interface StoryboardBatchReviewDialogProps {
   hyperframesFinalCompositeStatus?: string | null;
   isCancellingGeneration?: boolean;
   regeneratingTaskId?: string | null;
+  regeneratingVideoSegmentPromptTaskId?: string | null;
   compoundStatus?: string | null;
   projectLink?: string | null;
   companionAudio?: StoryboardCompanionAudioCandidate[];
@@ -209,6 +228,12 @@ function isStoryboardMediaFile(file: File): boolean {
     || /\.(mp4|webm|mov|avi|mkv|jpg|jpeg|png|webp|gif|avif|bmp|tiff|svg)$/i.test(file.name);
 }
 
+function getTaskVideoSegmentId(task: StoryboardReviewTask): string {
+  return typeof task.generationExtraParams?.videoSegmentId === "string"
+    ? task.generationExtraParams.videoSegmentId.trim()
+    : "";
+}
+
 function getTransitionLabel(name: StoryboardClipTransitionName, locale: string): string {
   const option = STORYBOARD_RENDER_TRANSITION_OPTIONS.find((item) => item.name === name);
   if (!option) return name;
@@ -235,7 +260,10 @@ export function StoryboardBatchReviewPanel({
   useVoiceoverScriptAsConcept = false,
   onUseVoiceoverScriptAsConceptChange,
   onPlanScenePrompts,
+  plannerOptions,
+  onPlannerOptionsChange,
   isPlanningScenePrompts = false,
+  onSplitVideoSegmentToPerShot,
   onStartGenerationBatch,
   onCancelGeneration,
   onReplaceReferenceFrame,
@@ -281,11 +309,19 @@ export function StoryboardBatchReviewPanel({
   const [expandedMetadataTaskId, setExpandedMetadataTaskId] = useState<string | null>(null);
   const [expandedFrameTaskId, setExpandedFrameTaskId] = useState<string | null>(null);
   const [isGuidanceExpanded, setIsGuidanceExpanded] = useState(false);
-  const [plannerSpeechMode, setPlannerSpeechMode] = useState<StoryboardPromptPlannerOptions["speechMode"]>("none");
-  const [plannerOtherSpeechLanguage, setPlannerOtherSpeechLanguage] = useState("");
-  const [plannerIncludeSound, setPlannerIncludeSound] = useState(false);
-  const [plannerTone, setPlannerTone] = useState<StoryboardPromptPlannerOptions["tone"]>("sales");
-  const [plannerLanguage, setPlannerLanguage] = useState<StoryboardPromptPlannerOptions["language"]>(locale === "th" ? "th" : "auto");
+  const [plannerSpeechMode, setPlannerSpeechMode] = useState<StoryboardPromptPlannerOptions["speechMode"]>(
+    plannerOptions?.speechMode ?? "none",
+  );
+  const [plannerOtherSpeechLanguage, setPlannerOtherSpeechLanguage] = useState(
+    plannerOptions?.speechMode === "other" ? plannerOptions.speechLanguage ?? "" : "",
+  );
+  const [plannerIncludeSound, setPlannerIncludeSound] = useState(Boolean(plannerOptions?.includeSound));
+  const [plannerTone, setPlannerTone] = useState<StoryboardPromptPlannerOptions["tone"]>(
+    plannerOptions?.tone ?? "sales",
+  );
+  const [plannerLanguage, setPlannerLanguage] = useState<StoryboardPromptPlannerOptions["language"]>(
+    plannerOptions?.language ?? (locale === "th" ? "th" : "auto"),
+  );
   const [isEditingVoiceoverFullScript, setIsEditingVoiceoverFullScript] = useState(false);
   const [voiceoverFullScriptDraft, setVoiceoverFullScriptDraft] = useState(voiceoverFullScript ?? "");
   const [confirmAction, setConfirmAction] = useState<StoryboardConfirmAction | null>(null);
@@ -300,12 +336,73 @@ export function StoryboardBatchReviewPanel({
       : plannerSpeechMode === "other"
         ? plannerOtherSpeechLanguage.trim()
         : "";
+  const currentPlannerOptions = useMemo<StoryboardPromptPlannerOptions>(() => ({
+    includeVoiceover: plannerSpeechMode !== "none",
+    speechMode: plannerSpeechMode,
+    speechLanguage: plannerSpeechLanguage,
+    includeSound: plannerIncludeSound,
+    tone: plannerTone,
+    language: plannerLanguage,
+  }), [
+    plannerIncludeSound,
+    plannerLanguage,
+    plannerSpeechLanguage,
+    plannerSpeechMode,
+    plannerTone,
+  ]);
+  const plannerOptionsSignature = useMemo(
+    () => getStoryboardPromptPlannerOptionsSignature(plannerOptions),
+    [
+      plannerOptions?.includeSound,
+      plannerOptions?.includeVoiceover,
+      plannerOptions?.language,
+      plannerOptions?.speechLanguage,
+      plannerOptions?.speechMode,
+      plannerOptions?.tone,
+    ],
+  );
+  const currentPlannerOptionsSignature = useMemo(
+    () => getStoryboardPromptPlannerOptionsSignature(currentPlannerOptions),
+    [currentPlannerOptions],
+  );
+  const didMountPlannerOptionsRef = useRef(false);
+  const lastSyncedPlannerOptionsSignatureRef = useRef(plannerOptionsSignature);
 
   useEffect(() => {
     if (!isEditingVoiceoverFullScript) {
       setVoiceoverFullScriptDraft(voiceoverFullScript ?? "");
     }
   }, [isEditingVoiceoverFullScript, voiceoverFullScript]);
+
+  useEffect(() => {
+    if (!plannerOptions) return;
+    lastSyncedPlannerOptionsSignatureRef.current = plannerOptionsSignature;
+    setPlannerSpeechMode(plannerOptions.speechMode);
+    setPlannerOtherSpeechLanguage(
+      plannerOptions.speechMode === "other" ? plannerOptions.speechLanguage ?? "" : "",
+    );
+    setPlannerIncludeSound(Boolean(plannerOptions.includeSound));
+    setPlannerTone(plannerOptions.tone);
+    setPlannerLanguage(plannerOptions.language);
+  }, [
+    plannerOptions?.includeSound,
+    plannerOptions?.language,
+    plannerOptions?.speechLanguage,
+    plannerOptions?.speechMode,
+    plannerOptions?.tone,
+    plannerOptionsSignature,
+  ]);
+
+  useEffect(() => {
+    if (!onPlannerOptionsChange) return;
+    if (!didMountPlannerOptionsRef.current) {
+      didMountPlannerOptionsRef.current = true;
+      return;
+    }
+    if (currentPlannerOptionsSignature === lastSyncedPlannerOptionsSignatureRef.current) return;
+    lastSyncedPlannerOptionsSignatureRef.current = currentPlannerOptionsSignature;
+    onPlannerOptionsChange(currentPlannerOptions);
+  }, [currentPlannerOptions, currentPlannerOptionsSignature, onPlannerOptionsChange]);
 
   useEffect(() => {
     const clearDragState = () => setDraggingVideoTaskId(null);
@@ -353,6 +450,20 @@ export function StoryboardBatchReviewPanel({
     ),
     [selectedTaskIds, tasks],
   );
+  const promptTargetTasks = useMemo(() => {
+    const selected = selectedTaskIds.length > 0
+      ? tasks.filter((task) => selectedTaskIds.includes(task.id))
+      : tasks;
+    return selected.filter((task) => task.canRegenerate !== false && task.status !== "generating");
+  }, [selectedTaskIds, tasks]);
+  const segmentPromptTargetTasks = useMemo(
+    () => promptTargetTasks.filter((task) => getTaskVideoSegmentId(task)),
+    [promptTargetTasks],
+  );
+  const shouldUseSegmentPromptPlanning =
+    Boolean(onPlanScenePrompts) &&
+    segmentPromptTargetTasks.length > 0 &&
+    segmentPromptTargetTasks.length === promptTargetTasks.length;
   const generationCancelRequestedRef = useRef(false);
   const handleCopyTaskPrompt = async (taskId: string, prompt: string) => {
     const text = prompt.trim();
@@ -866,7 +977,26 @@ export function StoryboardBatchReviewPanel({
 
         <div className="mx-3 mt-2 flex shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 px-2 py-2 text-sm sm:mx-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            {onPlanScenePrompts ? (
+            {shouldUseSegmentPromptPlanning ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-2 text-xs"
+                onClick={() => void onPlanScenePrompts?.(currentPlannerOptions)}
+                disabled={
+                  segmentPromptTargetTasks.length === 0 ||
+                  isPlanningScenePrompts ||
+                  Boolean(regeneratingTaskId) ||
+                  isGeneratingSelected
+                }
+                title={locale === "th"
+                  ? "ให้ skill วิเคราะห์ภาพและสร้าง prompt ตาม video segment plan ปัจจุบัน"
+                  : "Use the skill to plan prompts from the current video segment plan"}
+              >
+                {isPlanningScenePrompts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic2 className="h-4 w-4" />}
+                {locale === "th" ? "สร้าง Prompt ตาม segment" : "Plan segment prompts"}
+              </Button>
+            ) : onPlanScenePrompts ? (
               <>
                 <select
                   value={plannerSpeechMode}
@@ -919,14 +1049,7 @@ export function StoryboardBatchReviewPanel({
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1.5 px-2 text-xs"
-                  onClick={() => void onPlanScenePrompts({
-                    includeVoiceover: plannerSpeechMode !== "none",
-                    speechMode: plannerSpeechMode,
-                    speechLanguage: plannerSpeechLanguage,
-                    includeSound: plannerIncludeSound,
-                    tone: plannerTone,
-                    language: plannerLanguage,
-                  })}
+                  onClick={() => void onPlanScenePrompts(currentPlannerOptions)}
                   disabled={tasks.length === 0 || isPlanningScenePrompts || Boolean(regeneratingTaskId) || isGeneratingSelected}
                   title={locale === "th" ? "สร้าง prompt พร้อม customer journey สำหรับทุกฉาก" : "Plan scene prompts with customer journey"}
                 >
@@ -1082,6 +1205,27 @@ export function StoryboardBatchReviewPanel({
                 ?? (task.generationExtraParams?.marketplaceContext && typeof task.generationExtraParams.marketplaceContext === "object"
                   ? task.generationExtraParams.marketplaceContext as NonNullable<StoryboardReviewTask["marketplaceProduct"]>
                   : null);
+              const videoSegmentId = getTaskVideoSegmentId(task);
+              const videoSegmentShotIds = Array.isArray(task.generationExtraParams?.videoSegmentShotIds)
+                ? task.generationExtraParams.videoSegmentShotIds
+                    .map((value) => typeof value === "string" ? value.trim() : "")
+                    .filter(Boolean)
+                : [];
+              const videoSegmentPromptStale = task.generationExtraParams?.videoSegmentPromptStale === true;
+              const videoSegmentEffectiveMode = typeof task.generationExtraParams?.videoSegmentEffectiveMode === "string"
+                ? task.generationExtraParams.videoSegmentEffectiveMode
+                : "";
+              const segmentLabel = videoSegmentShotIds.length > 1
+                ? (locale === "th" ? `Segment ${videoSegmentShotIds.length} ช็อต` : `Segment ${videoSegmentShotIds.length} shots`)
+                : videoSegmentId
+                  ? (locale === "th" ? "Segment 1 ช็อต" : "Segment 1 shot")
+                  : "";
+              const canSplitVideoSegment = Boolean(
+                onSplitVideoSegmentToPerShot &&
+                videoSegmentId &&
+                videoSegmentShotIds.length > 1 &&
+                task.status === "error"
+              );
               const hasAffiliateUrl = Boolean(marketplaceMetadata?.affiliateUrl);
               const selectedShotDuration = STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS.includes(task.durationSeconds as typeof STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS[number])
                 ? Number(task.durationSeconds)
@@ -1230,6 +1374,16 @@ export function StoryboardBatchReviewPanel({
                           {taskStatusLabel(task.status)}
                         </Badge>
                         {task.model ? <Badge variant="secondary">{task.model}</Badge> : null}
+                        {segmentLabel ? (
+                          <Badge variant={videoSegmentPromptStale ? "destructive" : "outline"}>
+                            {segmentLabel}{videoSegmentEffectiveMode ? ` · ${videoSegmentEffectiveMode}` : ""}
+                          </Badge>
+                        ) : null}
+                        {videoSegmentPromptStale ? (
+                          <Badge variant="destructive">
+                            {locale === "th" ? "Prompt ล้าสมัย" : "Prompt stale"}
+                          </Badge>
+                        ) : null}
                         {task.isImported ? <Badge variant="outline">{t("mediaStudio.storyboardReviewImported")}</Badge> : null}
                         {hasMedia ? (
                           <Badge variant="outline">
@@ -1321,9 +1475,21 @@ export function StoryboardBatchReviewPanel({
                         ) : null}
                       </div>
 
-                      <p className="mt-1.5 line-clamp-2 text-sm font-medium leading-5">
-                        {isEditing ? t("mediaStudio.storyboardReviewEditPromptLead") : summarizePrompt(task.prompt)}
-                      </p>
+                      {isEditing ? (
+                        <p className="mt-1.5 text-sm font-medium leading-5">
+                          {t("mediaStudio.storyboardReviewEditPromptLead")}
+                        </p>
+                      ) : (
+                        <div className="mt-2 rounded-lg border bg-slate-50/70 p-3">
+                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium uppercase text-muted-foreground">
+                            <span>Prompt</span>
+                            <span>{task.prompt.length.toLocaleString(locale === "th" ? "th-TH" : "en-US")} chars</span>
+                          </div>
+                          <p className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words pr-2 text-sm leading-6 text-slate-700">
+                            {task.prompt}
+                          </p>
+                        </div>
+                      )}
 
                       {expandedMetadataTaskId === task.id ? renderMarketplaceMetadataPanel(task) : null}
 
@@ -1493,18 +1659,35 @@ export function StoryboardBatchReviewPanel({
                             variant="outline"
                             className="h-8 px-2 text-xs"
                             disabled={isPlanningScenePrompts || task.status === "generating" || Boolean(regeneratingTaskId)}
-                            onClick={() => void onPlanScenePrompts({
-                              includeVoiceover: plannerSpeechMode !== "none",
-                              speechMode: plannerSpeechMode,
-                              speechLanguage: plannerSpeechLanguage,
-                              includeSound: plannerIncludeSound,
-                              tone: plannerTone,
-                              language: plannerLanguage,
-                            }, task.id)}
-                            title={locale === "th" ? "สร้าง prompt เฉพาะฉากนี้ พร้อมส่งบทบาทภาพแนบและแนวคิด" : "Plan only this scene with frame roles and concept guidance"}
+                            onClick={() => void onPlanScenePrompts(currentPlannerOptions, task.id)}
+                            title={videoSegmentId
+                              ? locale === "th"
+                                ? "ให้ skill สร้าง prompt ใหม่ตาม segment plan ของฉากนี้"
+                                : "Use the skill to plan this task from its segment plan"
+                              : locale === "th"
+                                ? "สร้าง prompt เฉพาะฉากนี้ พร้อมส่งบทบาทภาพแนบและแนวคิด"
+                                : "Plan only this scene with frame roles and concept guidance"}
                           >
                             {isPlanningScenePrompts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic2 className="mr-2 h-4 w-4" />}
-                            {locale === "th" ? "สร้าง Prompt ฉากนี้" : "Plan this scene"}
+                            {videoSegmentId
+                              ? locale === "th" ? "สร้าง Prompt segment นี้" : "Plan this segment"
+                              : locale === "th" ? "สร้าง Prompt ฉากนี้" : "Plan this scene"}
+                          </Button>
+                        ) : null}
+                        {canSplitVideoSegment ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2 text-xs"
+                            disabled={task.status === "generating" || Boolean(regeneratingTaskId)}
+                            onClick={() => void onSplitVideoSegmentToPerShot?.(task.id, videoSegmentId)}
+                            title={locale === "th"
+                              ? "แตก segment ที่ล้มเหลวกลับเป็น per-shot หลังตรวจสาเหตุแล้ว"
+                              : "Split the failed segment back to per-shot after reviewing the root cause"}
+                          >
+                            <Scissors className="mr-2 h-4 w-4" />
+                            {locale === "th" ? "แยกกลับเป็น per-shot" : "Split to per-shot"}
                           </Button>
                         ) : null}
                         {onUploadVideoSlot ? (
