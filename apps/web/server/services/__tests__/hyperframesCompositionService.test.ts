@@ -118,6 +118,7 @@ describe("hyperframesCompositionService", () => {
         absoluteStartSec: 0,
         absoluteEndSec: 8,
         durationSec: 8,
+        mediaStartSec: 0,
         sourceMediaRef: "storage://shot-1",
       },
       {
@@ -126,6 +127,7 @@ describe("hyperframesCompositionService", () => {
         absoluteStartSec: 8,
         absoluteEndSec: 16,
         durationSec: 8,
+        mediaStartSec: 0,
         sourceMediaRef: "storage://shot-2",
       },
     ]);
@@ -267,6 +269,62 @@ describe("hyperframesCompositionService", () => {
     ).toThrow(/source media ref/i);
   });
 
+  it("keeps source media offsets for split final composite shots", () => {
+    const timeline = normalizeHyperframesFinalCompositeTimeline({
+      finalVideoLengthSec: 60,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      textMode: "hook_and_per_shot",
+      overlayPreset: "spec_highlight",
+      includeHookText: true,
+      includeShotText: true,
+      burnInSubtitles: true,
+      subtitlePreset: "classic_box",
+      fontFamily: "Prompt",
+      styleBrief: "",
+      hookText: "",
+      supportingText: "",
+      subtitlePlacement: "bottom",
+      safeZonePercent: 8,
+      cssAnimationEnabled: true,
+      gsapCompatibleTimeline: true,
+      shots: [
+        {
+          id: "shot_1",
+          index: 0,
+          sourceVideoUrl: "/api/storage/files/long.mp4",
+          sourceVideoRef: "storage://long",
+          mediaStartSec: 0,
+          startSec: 0,
+          durationSec: 30,
+          onScreenText: [],
+          subtitleCues: [],
+          animationPreset: "smooth_reveal",
+          transition: "fade",
+        },
+        {
+          id: "shot_2",
+          index: 1,
+          sourceVideoUrl: "/api/storage/files/long.mp4",
+          sourceVideoRef: "storage://long",
+          mediaStartSec: 30,
+          startSec: 30,
+          durationSec: 30,
+          onScreenText: [],
+          subtitleCues: [],
+          animationPreset: "smooth_reveal",
+          transition: "fade",
+        },
+      ],
+    });
+
+    expect(timeline.entries[1]?.mediaStartSec).toBe(30);
+    expect(timeline.entries[0]?.sourceMediaHash).not.toBe(
+      timeline.entries[1]?.sourceMediaHash
+    );
+  });
+
   it("builds final composite HTML with timeline data attributes and fallback report", () => {
     const composition = buildHyperframesFinalCompositeCompositionInput({
       tenantId: "tenant_1",
@@ -337,6 +395,7 @@ describe("hyperframesCompositionService", () => {
             title: "Shot 1",
             sourceVideoUrl: "/api/storage/files/shot-1.mp4",
             sourceVideoRef: "storage://shot-1",
+            mediaStartSec: 12,
             startSec: 0,
             durationSec: 8,
             overlayPreset: "price_impact",
@@ -354,7 +413,7 @@ describe("hyperframesCompositionService", () => {
       timelineVersion: 1,
     });
     expect(composition.provenance.builderVersion).toBe(
-      "hyperframes_final_composite_builder_v15"
+      "hyperframes_final_composite_builder_v17"
     );
     expect(composition.compositionHtml).toContain('data-shot-id="shot_1"');
     expect(composition.compositionHtml).toContain(
@@ -366,7 +425,7 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).not.toContain('data-shot-start=');
     expect(composition.compositionHtml).not.toContain('data-shot-duration=');
     expect(composition.compositionHtml).toContain('data-overlay-preset="price_impact"');
-    expect(composition.compositionHtml).toContain('data-media-start="0"');
+    expect(composition.compositionHtml).toContain('data-media-start="12"');
     expect(composition.compositionHtml).toContain('data-hf-auto-start="true"');
     expect(composition.compositionHtml).toContain('data-has-audio="true"');
     expect(composition.compositionHtml).toContain('data-native-audio="true"');
@@ -436,7 +495,15 @@ describe("hyperframesCompositionService", () => {
       '[data-overlay-preset="white_intro_card"] .overlay-copy-layer { z-index: 10; }'
     );
     expect(composition.compositionHtml).toContain(
-      '[data-overlay-preset="tech_signal_map"] .shot-copy { left: 6%; right: 6%; top: 6%;'
+      '[data-overlay-preset="tech_signal_map"] .shot-copy { left: 7%; right: 7%; top: 6%;'
+    );
+    expect(composition.compositionHtml).toContain(
+      '[data-overlay-preset="tech_signal_map"] .shot-line { position: relative; z-index: 1; display: block; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; white-space: nowrap;'
+    );
+    expect(composition.compositionHtml).toContain('data-has-subtitles="true"');
+    expect(composition.compositionHtml).toContain('[data-has-subtitles="true"] .shot-copy { bottom: 25% !important;');
+    expect(composition.compositionHtml).toContain(
+      '[data-has-subtitles="true"] [data-overlay-preset="badge_cascade"] .shot-line { max-width: calc(100% - 80px) !important; }'
     );
     expect(composition.compositionHtml).toContain(
       '[data-overlay-preset="kinetic_bold_hook"].hook-layer::before'
@@ -723,6 +790,88 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).toContain(
       "คุณเคยชงกาแฟตอนเช้า แบบชงเท่าไหร่ก็ยังได้กาแฟติดเปรี้ยวจนหมดอารมณ์ไหม"
     );
+  });
+
+  it("enables FFmpeg/ASS fallback capability for manual Storyboard Review final composites", () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "manual_storyboard_product_1",
+      runId: "manual_storyboard_run_1",
+      productState: {
+        product: {
+          title: "Manual Storyboard Project",
+          platformRawJson: { manualStoryboardReview: true },
+        },
+      },
+      runState: {
+        launchMode: "manual_storyboard_review",
+        metadataJson: { manualStoryboardReview: true },
+      },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        textMode: "per_shot",
+        overlayPreset: "premium_product_hero",
+        includeHookText: false,
+        includeShotText: true,
+        burnInSubtitles: true,
+        subtitlePreset: "highlight_bar",
+        preserveNativeAudio: true,
+        audioPackPresetId: "hf_audio_pack_ecommerce_fast_cut_v1",
+        musicPresetId: "none",
+        sfxPresetIds: [],
+        audioEvents: [],
+        audioAssetValidation: {
+          stagedAssetsRequired: true,
+          allowSyntheticFallback: false,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+        },
+        fontFamily: "Prompt",
+        styleBrief: "",
+        hookText: "พัฒนาการเด็กแตกต่างกัน",
+        supportingText: "การเลี้ยงดูมีผลอย่างมาก",
+        subtitlePlacement: "bottom",
+        safeZonePercent: 8,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "storage://shot-1",
+            startSec: 0,
+            durationSec: 8,
+            overlayPreset: "premium_product_hero",
+            onScreenText: ["พัฒนาการเด็กแตกต่างกัน"],
+            subtitleCues: [
+              { startSec: 0, endSec: 3, text: "คุณแม่ทราบกันไหมเรื่องพัฒนาการเด็ก" },
+            ],
+            animationPreset: "smooth_reveal",
+            transition: "fade",
+          },
+        ],
+      },
+    });
+
+    expect(composition.finalCompositeConfig.fallbackCapability).toMatchObject({
+      ffmpegAssFallback: true,
+      fallbackQuality: "partial",
+      unsupportedFeatures: expect.arrayContaining([
+        "rich_css_gsap_timeline",
+        "kinetic_typography",
+      ]),
+    });
+    expect(
+      (composition.finalCompositeConfig.fallbackCapability as { unsupportedFeatures: string[] })
+        .unsupportedFeatures
+    ).not.toContain("official_html_css_browser_runtime_required");
   });
 
   it("does not emit audio tags for final composite audio refs that were not validated for staging", () => {

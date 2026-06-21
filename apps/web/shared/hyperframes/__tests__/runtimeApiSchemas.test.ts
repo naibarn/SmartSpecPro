@@ -274,6 +274,63 @@ describe("HyperFrames runtime API schemas", () => {
     expect(input.config.shots[0]?.subtitleCues[0]?.endSec).toBe(2);
   });
 
+  it("accepts five-minute final composites split into thirty-second shots", () => {
+    const shots = Array.from({ length: 10 }, (_, index) => {
+      const startSec = index * 30;
+      return {
+        id: `shot_${index + 1}`,
+        index,
+        sourceVideoUrl: "https://cdn.example.test/long-source.mp4",
+        sourceVideoRef: "storage://long-source",
+        mediaStartSec: startSec,
+        startSec,
+        durationSec: 30,
+        subtitleCues: [
+          {
+            startSec,
+            endSec: startSec + 5,
+            text: `ช่วงที่ ${index + 1}`,
+          },
+        ],
+      };
+    });
+
+    const input = CreateHyperframesFinalCompositeInputSchema.parse({
+      productId: "product_1",
+      runId: "mar_1",
+      config: {
+        finalVideoLengthSec: 300,
+        shots,
+      },
+    });
+
+    expect(input.config.finalVideoLengthSec).toBe(300);
+    expect(input.config.shots).toHaveLength(10);
+    expect(input.config.shots.at(-1)?.startSec).toBe(270);
+    expect(input.config.shots.at(-1)?.mediaStartSec).toBe(270);
+  });
+
+  it("keeps individual final composite shots capped at thirty seconds", () => {
+    expect(() =>
+      CreateHyperframesFinalCompositeInputSchema.parse({
+        productId: "product_1",
+        runId: "mar_1",
+        config: {
+          finalVideoLengthSec: 31,
+          shots: [
+            {
+              id: "shot_1",
+              index: 0,
+              sourceVideoUrl: "https://cdn.example.test/shot-1.mp4",
+              startSec: 0,
+              durationSec: 31,
+            },
+          ],
+        },
+      })
+    ).toThrow();
+  });
+
   it("accepts the expanded final composite overlay preset set", () => {
     for (const overlayPreset of [
       "creator_top_punch",

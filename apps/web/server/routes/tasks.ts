@@ -13,6 +13,10 @@ import { Router, Request, Response, NextFunction } from "express";
 import { deliverScheduledMessage, sweepUndeliveredMessages } from "../services/scheduler";
 import { runLibraryKnowledgeRefreshWorker } from "../services/libraryKnowledgeRefreshWorker";
 import { runProductionExecutionReconciliationJob } from "../jobs/productionExecutionReconciliationJob";
+import {
+  startDetachedHyperframesRenderWorker,
+  startDetachedStoryboardReviewTranscribeWorker,
+} from "../services/backgroundWorkerProcess";
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
@@ -224,6 +228,72 @@ export function createTasksRouter(): Router {
       console.error("[Tasks] execute-skill-step failed:", err);
       await recordCloudTaskEvent(req, "failed", err?.message);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * POST /tasks/storyboard-review-transcribe
+   *
+   * Runs a Storyboard Review HyperFrames shot transcription job.
+   * The user-facing page starts the job via tRPC and polls Redis-backed status.
+   */
+  router.post("/storyboard-review-transcribe", async (req: Request, res: Response) => {
+    try {
+      const jobId = typeof req.body?.jobId === "string" ? req.body.jobId.trim() : "";
+      if (!jobId) {
+        res.status(400).json({ error: "jobId is required" });
+        return;
+      }
+      const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+      await recordCloudTaskEvent(req, "completed");
+      res.status(202).json({
+        success: true,
+        accepted: true,
+        jobId,
+        workerPid: worker.pid,
+      });
+    } catch (err: any) {
+      console.error("[Tasks] storyboard-review-transcribe failed:", err);
+      await recordCloudTaskEvent(req, "failed", err?.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * POST /tasks/hyperframes-render-worker
+   *
+   * Runs the HyperFrames render worker outside the user-facing tRPC request.
+   * The render job itself remains durable in marketplace_auto_review_outbox_jobs.
+   */
+  router.post("/hyperframes-render-worker", async (req: Request, res: Response) => {
+    try {
+      const renderJobId =
+        typeof req.body?.renderJobId === "string" && req.body.renderJobId.trim().length > 0
+          ? req.body.renderJobId.trim()
+          : undefined;
+      const limit = req.body?.limit === undefined
+        ? undefined
+        : parseOptionalPositiveInt(req.body.limit);
+      const worker = startDetachedHyperframesRenderWorker({
+        renderJobId,
+        limit,
+      });
+      await recordCloudTaskEvent(req, "completed");
+      res.status(202).json({
+        success: true,
+        accepted: true,
+        renderJobId: renderJobId ?? null,
+        workerPid: worker.pid,
+      });
+    } catch (err: any) {
+      const message = err?.message || "Failed to run HyperFrames render worker";
+      console.error("[Tasks] hyperframes-render-worker failed:", err);
+      await recordCloudTaskEvent(req, "failed", message);
+      if (message === "Expected a positive integer") {
+        res.status(400).json({ error: "limit must be a positive integer when provided" });
+        return;
+      }
+      res.status(500).json({ error: message });
     }
   });
 

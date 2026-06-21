@@ -19,6 +19,11 @@ import {
   buildHyperframesFinalCompositeCompositionInput,
 } from "../hyperframesCompositionService";
 import {
+  marketplaceAutoReviewOutboxJobs,
+  marketplaceAutoReviewRuns,
+  marketplaceProducts,
+} from "../../../drizzle/schema";
+import {
   buildHyperframesRenderJobPayload,
   buildHyperframesRenderProjection,
   cancelHyperframesRenderJob,
@@ -89,6 +94,26 @@ function createOutboxInsertConflictDb(job: Record<string, unknown> | null) {
     }),
     returning,
     updatedSets,
+  };
+}
+
+function createManualStoryboardQueueDb() {
+  const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
+  return {
+    inserts,
+    insert: (table: unknown) => ({
+      values: (values: Record<string, unknown>) => {
+        inserts.push({ table, values });
+        return {
+          onConflictDoNothing: () => {
+            if (table === marketplaceAutoReviewOutboxJobs) {
+              return { returning: vi.fn(async () => [{ id: "hf_manual_render" }]) };
+            }
+            return undefined;
+          },
+        };
+      },
+    }),
   };
 }
 
@@ -229,6 +254,82 @@ describe("hyperframesRenderService", () => {
     expect(db.updatedSets).toHaveLength(0);
   });
 
+  it("creates manual Storyboard Review product and run parents before queueing a custom final render", async () => {
+    const composition = buildHyperframesFinalCompositeCompositionInput({
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "manual_storyboard_product_123",
+      runId: "manual_storyboard_run_123",
+      productState: {
+        product: {
+          id: "manual_storyboard_product_123",
+          title: "Manual Storyboard Project",
+          productName: "Manual Storyboard Project",
+          platformRawJson: { manualStoryboardReview: true },
+        },
+      },
+      runState: {
+        id: "manual_storyboard_run_123",
+        productId: "manual_storyboard_product_123",
+        launchMode: "manual_storyboard_review",
+        metadataJson: { manualStoryboardReview: true },
+      },
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        overlayPreset: "premium_product_hero",
+        subtitlePreset: "highlight_bar",
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+            onScreenText: ["Manual hook"],
+          },
+        ],
+      },
+    });
+    const db = createManualStoryboardQueueDb();
+    mockGetDb.mockResolvedValue(db);
+
+    const projection = await queueHyperframesRenderJob({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      composition,
+      priority: 82,
+      maxAttempts: 3,
+    });
+
+    expect(projection.status).toBe("queued");
+    expect(db.inserts.map(insert => insert.table)).toEqual([
+      marketplaceProducts,
+      marketplaceAutoReviewRuns,
+      marketplaceAutoReviewOutboxJobs,
+    ]);
+    expect(db.inserts[0].values).toMatchObject({
+      id: "manual_storyboard_product_123",
+      userId: 1,
+      tenantId: "tenant_1",
+      productName: "Manual Storyboard Project",
+    });
+    expect(db.inserts[1].values).toMatchObject({
+      id: "manual_storyboard_run_123",
+      userId: 1,
+      tenantId: "tenant_1",
+      productId: "manual_storyboard_product_123",
+      productionRunId: "manual_storyboard_run_123",
+      status: "completed",
+      currentStage: "storyboard_review",
+    });
+    expect(db.inserts[2].values).toMatchObject({
+      runId: "manual_storyboard_run_123",
+      tenantId: "tenant_1",
+      userId: 1,
+      jobType: "hyperframes_render",
+      status: "queued",
+    });
+  });
+
   it("projects final composite creative and audio metadata into outbox payload", () => {
     const composition = buildHyperframesFinalCompositeCompositionInput({
       tenantId: "tenant_1",
@@ -324,6 +425,54 @@ describe("hyperframesRenderService", () => {
     expect(secondPayload.compositionHtmlHash).toMatch(/^hf_/);
     expect(firstPayload.compositionHtmlHash).not.toBe(
       secondPayload.compositionHtmlHash
+    );
+  });
+
+  it("changes the final composite input hash when the full render prompt changes", () => {
+    const baseInput = {
+      tenantId: "tenant_1",
+      userId: 1,
+      productId: "product_1",
+      runId: "mar_1",
+      finalComposite: {
+        finalVideoLengthSec: 8,
+        overlayPreset: "premium_product_hero" as const,
+        subtitlePreset: "highlight_bar" as const,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            startSec: 0,
+            durationSec: 8,
+            onScreenText: ["จุดเด่นสินค้า"],
+          },
+        ],
+      },
+    };
+    const firstPayload = buildHyperframesRenderJobPayload({
+      composition: buildHyperframesFinalCompositeCompositionInput({
+        ...baseInput,
+        finalComposite: {
+          ...baseInput.finalComposite,
+          styleBrief: "Prompt version A: calm Thai ecommerce edit.",
+        },
+      }),
+    });
+    const secondPayload = buildHyperframesRenderJobPayload({
+      composition: buildHyperframesFinalCompositeCompositionInput({
+        ...baseInput,
+        finalComposite: {
+          ...baseInput.finalComposite,
+          styleBrief: "Prompt version B: faster pacing with stronger CTA.",
+        },
+      }),
+    });
+
+    expect(firstPayload.compositionInputHash).toMatch(/^hf_/);
+    expect(secondPayload.compositionInputHash).toMatch(/^hf_/);
+    expect(firstPayload.compositionInputHash).not.toBe(
+      secondPayload.compositionInputHash
     );
   });
 

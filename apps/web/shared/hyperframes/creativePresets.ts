@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC } from "./limits";
 
 import {
   HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -119,8 +120,8 @@ export type HyperframesPresetVariable = z.infer<
 
 export const HyperframesPresetTimingPolicySchema = z
   .object({
-    minDurationSec: z.number().min(0).max(120).optional(),
-    maxDurationSec: z.number().min(0).max(120).optional(),
+    minDurationSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional(),
+    maxDurationSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional(),
     supportsWordTiming: z.boolean().default(false),
     supportsPhraseFallback: z.boolean().default(true),
     requiresVisualTrigger: z.boolean().default(false),
@@ -507,6 +508,7 @@ export const HyperframesShotMediaAssignmentSchema = z
   .object({
     storyboardReviewProjectId: z.union([z.string(), z.number()]),
     shotId: SafeIdSchema,
+    sourceShotId: SafeIdSchema.optional(),
     shotIndex: z.number().int().min(0).max(99),
     source: z.enum([
       "storyboard_generated_clip",
@@ -522,6 +524,7 @@ export const HyperframesShotMediaAssignmentSchema = z
     sourceUrl: z.string().trim().max(2048).optional(),
     storageRef: z.string().trim().max(1024).optional(),
     contentHash: SafeHashSchema.optional(),
+    mediaStartSec: z.number().min(0).max(600).optional(),
     durationSec: z.number().min(0).max(600).optional(),
     width: z.number().int().min(1).max(8192).optional(),
     height: z.number().int().min(1).max(8192).optional(),

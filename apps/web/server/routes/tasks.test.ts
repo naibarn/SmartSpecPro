@@ -15,6 +15,11 @@ const productionReconcilerMocks = vi.hoisted(() => ({
   runProductionExecutionReconciliationJob: vi.fn(),
 }));
 
+const backgroundWorkerMocks = vi.hoisted(() => ({
+  startDetachedStoryboardReviewTranscribeWorker: vi.fn(),
+  startDetachedHyperframesRenderWorker: vi.fn(),
+}));
+
 const dbMocks = vi.hoisted(() => ({
   getDb: vi.fn(),
 }));
@@ -30,6 +35,13 @@ vi.mock("../services/libraryKnowledgeRefreshWorker", () => ({
 
 vi.mock("../jobs/productionExecutionReconciliationJob", () => ({
   runProductionExecutionReconciliationJob: productionReconcilerMocks.runProductionExecutionReconciliationJob,
+}));
+
+vi.mock("../services/backgroundWorkerProcess", () => ({
+  startDetachedStoryboardReviewTranscribeWorker:
+    backgroundWorkerMocks.startDetachedStoryboardReviewTranscribeWorker,
+  startDetachedHyperframesRenderWorker:
+    backgroundWorkerMocks.startDetachedHyperframesRenderWorker,
 }));
 
 vi.mock("../db", () => ({
@@ -60,6 +72,85 @@ describe("createTasksRouter", () => {
       alerts: [],
       tenantErrors: [],
     });
+    backgroundWorkerMocks.startDetachedStoryboardReviewTranscribeWorker.mockReturnValue({
+      pid: 456,
+      scriptPath: "/tmp/transcribe-worker.ts",
+    });
+    backgroundWorkerMocks.startDetachedHyperframesRenderWorker.mockReturnValue({
+      pid: 123,
+      scriptPath: "/tmp/render-worker.ts",
+    });
+  });
+
+  it("starts storyboard review transcribe jobs out-of-process for authenticated task requests", async () => {
+    const response = await request(makeApp())
+      .post("/_internal/tasks/storyboard-review-transcribe")
+      .set("x-cloud-tasks-secret", "test-secret")
+      .send({
+        jobId: "hf_transcribe_test",
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({
+      success: true,
+      accepted: true,
+      jobId: "hf_transcribe_test",
+      workerPid: 456,
+    });
+    expect(backgroundWorkerMocks.startDetachedStoryboardReviewTranscribeWorker).toHaveBeenCalledWith({
+      jobId: "hf_transcribe_test",
+    });
+  });
+
+  it("rejects storyboard review transcribe tasks without a job id", async () => {
+    const response = await request(makeApp())
+      .post("/_internal/tasks/storyboard-review-transcribe")
+      .set("x-cloud-tasks-secret", "test-secret")
+      .send({});
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: "jobId is required" });
+    expect(backgroundWorkerMocks.startDetachedStoryboardReviewTranscribeWorker).not.toHaveBeenCalled();
+  });
+
+  it("starts the HyperFrames render worker out-of-process for authenticated task requests", async () => {
+    const response = await request(makeApp())
+      .post("/_internal/tasks/hyperframes-render-worker")
+      .set("x-cloud-tasks-secret", "test-secret")
+      .send({
+        renderJobId: "hf_render_test",
+        limit: 1,
+      });
+
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({
+      success: true,
+      accepted: true,
+      renderJobId: "hf_render_test",
+      workerPid: 123,
+    });
+    expect(backgroundWorkerMocks.startDetachedHyperframesRenderWorker).toHaveBeenCalledWith({
+      renderJobId: "hf_render_test",
+      limit: 1,
+    });
+  });
+
+  it("rejects invalid HyperFrames render worker limits before running the worker", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await request(makeApp())
+      .post("/_internal/tasks/hyperframes-render-worker")
+      .set("x-cloud-tasks-secret", "test-secret")
+      .send({
+        limit: "bad-limit",
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: "limit must be a positive integer when provided",
+    });
+    expect(backgroundWorkerMocks.startDetachedHyperframesRenderWorker).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("runs the library knowledge refresh worker for authenticated task requests", async () => {

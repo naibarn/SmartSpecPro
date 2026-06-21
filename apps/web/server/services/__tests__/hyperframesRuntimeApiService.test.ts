@@ -6,9 +6,11 @@ import {
 } from "@shared/hyperframes/contracts";
 import {
   buildHyperframesFinalizeInputFromCompletedRender,
+  buildManualStoryboardProductState,
   getHyperframesFinalCompositeRuntimeBlockReason,
   buildHyperframesLibrarySaveChargeSummary,
   isHyperframesRunEligibleForPreview,
+  isManualStoryboardHyperframesIdentity,
   validateHyperframesFinalCompositeAudioAssets,
 } from "../hyperframesRuntimeApiService";
 import { buildHyperframesRenderProjection } from "../hyperframesRenderService";
@@ -102,6 +104,98 @@ describe("hyperframesRuntimeApiService", () => {
         HYPERFRAMES_RUNTIME_MODE: "producer",
       })
     ).toMatch(/blocked until production rollout gates pass/i);
+  });
+
+  it("recognizes manual Storyboard Review HyperFrames identities", () => {
+    expect(
+      isManualStoryboardHyperframesIdentity({
+        productId: "manual_storyboard_product_123",
+        runId: "manual_storyboard_run_123",
+      })
+    ).toBe(true);
+    expect(
+      isManualStoryboardHyperframesIdentity({
+        productId: "manual_product_1",
+        runId: "manual_run_1",
+      })
+    ).toBe(true);
+    expect(
+      isManualStoryboardHyperframesIdentity({
+        productId: "real_product_1",
+        runId: "mar_1",
+      })
+    ).toBe(false);
+  });
+
+  it("builds a fallback product state for manual Storyboard Review final renders", () => {
+    const state = buildManualStoryboardProductState({
+      productId: "manual_storyboard_product_123",
+      runId: "manual_storyboard_run_123",
+      runState: {
+        productionContext: {
+          productionProjectTitle: "Manual Storyboard Project",
+          videoConcept: "Custom storyboard workspace",
+        },
+      },
+      config: {
+        finalVideoLengthSec: 8,
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        aspectRatio: "9:16",
+        styleBrief: "Manual render",
+        hookText: "Manual hook",
+        supportingText: "Manual support",
+        overlayPreset: "premium_product_hero",
+        textMode: "hook_overlay_all_shots",
+        textMotionPreset: "slide_right_to_left",
+        fontFamily: "Prompt",
+        subtitleFontSizePx: 34,
+        subtitlePreset: "highlight_bar",
+        burnInSubtitles: true,
+        subtitlePlacement: "bottom",
+        audioPackPresetId: "ecommerce_fast_cut",
+        musicPresetId: "upbeat_ecommerce_social",
+        sfxPresetIds: [],
+        preserveNativeAudio: true,
+        allowSyntheticAudioFallback: true,
+        cssAnimationEnabled: true,
+        gsapCompatibleTimeline: true,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            title: "Shot 1",
+            sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+            sourceVideoRef: "/api/storage/files/shot-1.mp4",
+            mediaStartSec: 0,
+            startSec: 0,
+            durationSec: 8,
+            onScreenText: [],
+            subtitleCues: [],
+            overlayPreset: "premium_product_hero",
+            animationPreset: "smooth_reveal",
+            transition: "fade",
+            textMotionPreset: "slide_right_to_left",
+          },
+        ],
+        audioEvents: [],
+        audioAssetValidation: {
+          stagedAssetsRequired: false,
+          allowSyntheticFallback: true,
+          missingAssetRefs: [],
+          validatedAssetRefs: [],
+          validatedAssets: [],
+        },
+      },
+    });
+
+    expect(state.product).toMatchObject({
+      id: "manual_storyboard_product_123",
+      title: "Manual Storyboard Project",
+      accessType: "owner",
+    });
+    expect(state.health.status).toBe("manual_storyboard_review");
   });
 
   it("blocks final composite music/SFX when staged licensed assets are missing and fallback is disabled", () => {

@@ -26,8 +26,11 @@ const baseInput = {
     shotMediaAssignments: [
       {
         storyboardReviewProjectId: 55,
-        shotId: "shot_1",
-        shotIndex: 0,
+        shotId: "shot_1__hfseg_2",
+        sourceShotId: "shot_1",
+        mediaStartSec: 30,
+        durationSec: 30,
+        shotIndex: 1,
         source: "media_library" as const,
         mediaKind: "video" as const,
         libraryItemId: "lib_1",
@@ -91,6 +94,8 @@ describe("Storyboard Review HyperFrames final composite state", () => {
     expect(second.state.revision).toBe(2);
     expect(second.state.shotMediaAssignments).toHaveLength(1);
     expect(second.state.shotMediaAssignments[0]?.sourceUrl).toContain("clip-1.mp4");
+    expect(second.state.shotMediaAssignments[0]?.sourceShotId).toBe("shot_1");
+    expect(second.state.shotMediaAssignments[0]?.mediaStartSec).toBe(30);
     expect(second.state.textVariables.hookText).toBe("แก้ Hook แล้ว");
     expect(second.state.textVariables.musicPresetId).toBe(
       "hf_audio_music_upbeat_ecommerce_social_v1"
@@ -98,6 +103,50 @@ describe("Storyboard Review HyperFrames final composite state", () => {
     expect(second.state.textVariables.sfxPresetIds).toEqual([
       "hf_audio_sfx_whoosh_scene_transition_v1",
     ]);
+  });
+
+  it("does not carry an old output URL onto a newly queued final render job", () => {
+    const completed = mergeStoryboardReviewHyperframesFinalCompositeState({
+      reviewData: {},
+      input: {
+        ...baseInput,
+        patch: {
+          latestRenderJobRef: {
+            renderJobId: "hf_old_completed",
+            status: "completed",
+            outputUrl: "/api/storage/files/old-final.mp4",
+            createdAt: "2026-06-12T00:00:00.000Z",
+            updatedAt: "2026-06-12T00:00:00.000Z",
+          },
+        },
+      },
+      nowIso: "2026-06-12T00:00:00.000Z",
+    });
+    const queued = mergeStoryboardReviewHyperframesFinalCompositeState({
+      reviewData: completed.reviewData,
+      input: {
+        ...baseInput,
+        expectedRevision: 1,
+        patch: {
+          latestRenderJobRef: {
+            renderJobId: "hf_new_queued",
+            status: "queued",
+            createdAt: "2026-06-12T00:05:00.000Z",
+            updatedAt: "2026-06-12T00:05:00.000Z",
+          },
+        },
+      },
+      nowIso: "2026-06-12T00:05:00.000Z",
+    });
+
+    expect(queued.state.latestRenderJobRef).toMatchObject({
+      renderJobId: "hf_new_queued",
+      status: "queued",
+    });
+    expect(queued.state.latestRenderJobRef?.outputUrl).toBeUndefined();
+    expect(queued.state.renderJobRefs).toHaveLength(2);
+    expect(queued.state.renderJobRefs[0]?.outputUrl).toBe("/api/storage/files/old-final.mp4");
+    expect(queued.state.renderJobRefs[1]?.outputUrl).toBeUndefined();
   });
 
   it("accepts the Storyboard Review final composite UI variables used before render", () => {

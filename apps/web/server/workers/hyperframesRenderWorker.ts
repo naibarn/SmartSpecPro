@@ -1,12 +1,12 @@
 import { getDb } from "../db";
 import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
-import { storagePutFromPath } from "../storage";
+import { extname, join } from "node:path";
+import { storageCopyToPath, storagePutFromPath } from "../storage";
 import {
   executeHyperframesCliRender,
   executeHyperframesProducerRender,
@@ -27,11 +27,15 @@ const HYPERFRAMES_WORKER_JOB_TYPES = [
   "hyperframes_finalize",
 ] as const;
 
+export const HYPERFRAMES_RENDER_WORKER_LOCK_MS = 45 * 60_000;
+const HYPERFRAMES_RENDER_WORKER_HEARTBEAT_MS = 60_000;
+
 type HyperframesWorkerJobType = (typeof HYPERFRAMES_WORKER_JOB_TYPES)[number];
 
 export interface HyperframesWorkerRunOptions {
   workerId?: string;
   limit?: number;
+  renderJobId?: string;
   now?: Date;
   runtimeReady?: boolean;
 }
@@ -40,6 +44,48 @@ export interface HyperframesWorkerRunResult {
   processed: number;
   disabled: boolean;
   runtimeDeferred: boolean;
+}
+
+export function isHyperframesWorkerJobRunnable(input: {
+  status: string | null | undefined;
+  lockedUntil?: Date | string | null;
+  scheduledAt?: Date | string | null;
+  now: Date;
+}): boolean {
+  const status = String(input.status ?? "").trim();
+  const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt).getTime() : 0;
+  if (Number.isFinite(scheduledAt) && scheduledAt > input.now.getTime()) {
+    return false;
+  }
+  if (status === "queued" || status === "retry") return true;
+  if (status !== "running") return false;
+  const lockedUntil = input.lockedUntil ? new Date(input.lockedUntil).getTime() : 0;
+  return Number.isFinite(lockedUntil) && lockedUntil > 0 && lockedUntil <= input.now.getTime();
+}
+
+export function parseHyperframesWorkerPid(lockedBy: string | null | undefined): number | null {
+  const match = String(lockedBy ?? "").match(/^hyperframes-worker-(\d+)$/);
+  if (!match) return null;
+  const pid = Number(match[1]);
+  return Number.isInteger(pid) && pid > 0 ? pid : null;
+}
+
+export function isHyperframesWorkerLockOwnedByDeadLocalProcess(input: {
+  lockedBy: string | null | undefined;
+  currentPid?: number;
+}): boolean {
+  const pid = parseHyperframesWorkerPid(input.lockedBy);
+  if (!pid) return false;
+  if (pid === (input.currentPid ?? process.pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    const code = typeof error === "object" && error && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+    return code === "ESRCH";
+  }
 }
 
 export function isHyperframesWorkerEnabled(): boolean {
@@ -88,9 +134,114 @@ function resolveHyperframesFfprobeBinary(): string {
   return "ffprobe";
 }
 
+async function releaseDeadLocalHyperframesWorkerLocks(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  now: Date;
+  renderJobId?: string;
+  limit?: number;
+}): Promise<void> {
+  if (!input.db) return;
+  const filters = [
+    eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+    inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+      ...HYPERFRAMES_WORKER_JOB_TYPES,
+    ]),
+  ];
+  if (input.renderJobId) {
+    filters.push(eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId));
+  }
+  const runningJobs = await input.db
+    .select({
+      id: marketplaceAutoReviewOutboxJobs.id,
+      lockedBy: marketplaceAutoReviewOutboxJobs.lockedBy,
+    })
+    .from(marketplaceAutoReviewOutboxJobs)
+    .where(and(...filters))
+    .orderBy(asc(marketplaceAutoReviewOutboxJobs.updatedAt))
+    .limit(input.renderJobId ? 1 : input.limit ?? 25);
+
+  for (const job of runningJobs) {
+    const lockedBy = job.lockedBy;
+    if (
+      !lockedBy ||
+      !isHyperframesWorkerLockOwnedByDeadLocalProcess({ lockedBy })
+    ) {
+      continue;
+    }
+    await input.db
+      .update(marketplaceAutoReviewOutboxJobs)
+      .set({
+        status: "retry",
+        lockedBy: null,
+        lockedUntil: null,
+        completedAt: null,
+        scheduledAt: input.now,
+        updatedAt: input.now,
+        lastError: `Released stale HyperFrames lock from dead worker ${lockedBy}; retrying automatically.`,
+      })
+      .where(
+        and(
+          eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+          eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+          eq(marketplaceAutoReviewOutboxJobs.lockedBy, lockedBy),
+        )
+      );
+  }
+}
+
+export async function heartbeatHyperframesRenderJobLock(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  jobId: string;
+  workerId: string;
+  now?: Date;
+}): Promise<boolean> {
+  const now = input.now ?? new Date();
+  const lockedUntil = new Date(now.getTime() + HYPERFRAMES_RENDER_WORKER_LOCK_MS);
+  const rows = await input.db
+    .update(marketplaceAutoReviewOutboxJobs)
+    .set({
+      lockedUntil,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(marketplaceAutoReviewOutboxJobs.id, input.jobId),
+        eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+        eq(marketplaceAutoReviewOutboxJobs.lockedBy, input.workerId)
+      )
+    )
+    .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+  return rows.length > 0;
+}
+
+function startHyperframesRenderJobLockHeartbeat(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  jobId: string;
+  workerId: string;
+}): () => void {
+  let stopped = false;
+  const timer = setInterval(() => {
+    if (stopped) return;
+    void heartbeatHyperframesRenderJobLock(input).catch((error) => {
+      console.warn("[HyperFramesRenderWorker] failed to heartbeat render job lock", {
+        jobId: input.jobId,
+        workerId: input.workerId,
+        error: runtimeErrorMessage(error),
+      });
+    });
+  }, HYPERFRAMES_RENDER_WORKER_HEARTBEAT_MS);
+  timer.unref?.();
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+  };
+}
+
 type HyperframesShotPayload = {
   index?: number;
   durationSec?: number;
+  mediaStartSec?: number;
+  sourceMediaRef?: string;
   sourceVideoUrl?: string;
   sourceVideoRef?: string;
   onScreenText?: string[];
@@ -159,6 +310,20 @@ function isFinalCompositeRenderPayload(payload: Record<string, unknown>): boolea
   );
 }
 
+export function isFinalCompositeFfmpegAssFallbackAllowed(
+  payload: Record<string, unknown>
+): boolean {
+  if (!isFinalCompositeRenderPayload(payload)) return false;
+  const finalConfig = getFinalCompositeConfig(payload);
+  const capability =
+    finalConfig.fallbackCapability &&
+    typeof finalConfig.fallbackCapability === "object" &&
+    !Array.isArray(finalConfig.fallbackCapability)
+      ? finalConfig.fallbackCapability as Record<string, unknown>
+      : {};
+  return capability.ffmpegAssFallback === true;
+}
+
 function getFinalCompositeAudioValidation(payload: Record<string, unknown>): {
   missingAssetRefs: string[];
   validatedAssetRefs: string[];
@@ -193,7 +358,8 @@ function getNativeAudioInputCandidateCount(payload: Record<string, unknown>): nu
   return getFinalCompositeShots(payload).filter(shot =>
     Boolean(
       String(shot.sourceVideoUrl ?? "").trim() ||
-        String(shot.sourceVideoRef ?? "").trim()
+        String(shot.sourceVideoRef ?? "").trim() ||
+        String(shot.sourceMediaRef ?? "").trim()
     )
   ).length;
 }
@@ -268,6 +434,15 @@ export function isNonRetryableHyperframesRuntimeError(message: string): boolean 
   return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i.test(message);
 }
 
+function isHyperframesRuntimeCaptureFallbackEligible(message: string): boolean {
+  if (
+    /missing render media asset|NoSuchKey|ENOENT|not found|404|requires Node >=22\.22|runtime package\/binary is not available|blocked by explicit runtime readiness env/i.test(message)
+  ) {
+    return false;
+  }
+  return /FrameCapture|Sub-composition timelines not registered|video elements did not decode|Runtime\.callFunctionOn timed out|protocolTimeout|timed out|ETIMEDOUT|SIGTERM|SIGKILL|process signal/i.test(message);
+}
+
 function commandBufferText(value: unknown): string {
   if (Buffer.isBuffer(value)) return value.toString("utf8");
   if (value instanceof Uint8Array) return Buffer.from(value).toString("utf8");
@@ -289,13 +464,19 @@ function runtimeErrorMessage(error: unknown): string {
     error instanceof Error ? error.message : "HyperFrames runtime failed.";
   const record =
     error && typeof error === "object"
-      ? (error as { stdout?: unknown; stderr?: unknown })
+      ? (error as { stdout?: unknown; stderr?: unknown; signal?: unknown; code?: unknown; killed?: unknown })
       : {};
   const stdout = compactRuntimeLog(commandBufferText(record.stdout));
   const stderr = compactRuntimeLog(commandBufferText(record.stderr));
+  const processStatus = [
+    record.killed === true ? "process killed" : "",
+    record.signal ? `process signal ${String(record.signal)}` : "",
+    record.code ? `process code ${String(record.code)}` : "",
+  ].filter(Boolean).join("; ");
   return redactHyperframesDiagnostics(
     [
       base,
+      processStatus,
       stdout ? `stdout tail: ${stdout}` : "",
       stderr ? `stderr tail: ${stderr}` : "",
     ]
@@ -846,6 +1027,28 @@ function buildTimedOverlayEvents(input: {
   return events;
 }
 
+function shouldRenderShotOverlayForFinalTextMode(
+  mode: unknown,
+): boolean {
+  return mode === "per_shot" || mode === "hook_and_per_shot";
+}
+
+function buildSubtitleFallbackOverlayLines(input: {
+  shot: HyperframesShotPayload;
+  preset: HyperframesFinalOverlayPreset;
+  maxLines: number;
+}): string[] {
+  const limit = getLongSpecOverlayLineLimit(input.preset) ?? input.maxLines;
+  return uniqueOverlayLines(
+    (input.shot.subtitleCues ?? [])
+      .map(cue => cleanOverlayAssText(cue.text))
+      .filter(Boolean)
+  )
+    .map(line => firstOverlayAssSentence(line, 96))
+    .filter(Boolean)
+    .slice(0, Math.max(1, limit));
+}
+
 export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload: Record<string, unknown>): string {
   const overlayPreset = getFinalCompositeOverlayPreset(payload);
   const finalConfig = getFinalCompositeConfig(payload);
@@ -869,6 +1072,15 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
       .map(text => expandLegacyEllipsizedAssText(text, expansionSources, 180))
       .filter(Boolean)
       .slice(0, getLongSpecOverlayLineLimit(shotOverlayPreset) ?? 4);
+    const subtitleFallbackOverlay = textConfig.includeShotText &&
+      onScreen.length === 0 &&
+      shouldRenderShotOverlayForFinalTextMode(finalConfig.textMode)
+      ? buildSubtitleFallbackOverlayLines({
+          shot,
+          preset: shotOverlayPreset,
+          maxLines: 2,
+        })
+      : [];
     const firstShotHook = Number(shot.index ?? 0) === 0 && textConfig.includeHookText
       ? [textConfig.supportingText, textConfig.hookText]
         .map(text => cleanOverlayAssText(text))
@@ -876,7 +1088,7 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
         .slice(0, 4)
       : [];
     events.push(...buildTimedOverlayEvents({
-      lines: onScreen.length > 0 ? onScreen : firstShotHook,
+      lines: onScreen.length > 0 ? onScreen : subtitleFallbackOverlay.length > 0 ? subtitleFallbackOverlay : firstShotHook,
       shotStart,
       shotEnd,
       preset: shotOverlayPreset,
@@ -996,6 +1208,190 @@ function probeRenderedMp4(path: string): {
   }
 }
 
+function storageKeyFromMediaRef(ref: string): string | null {
+  const clean = ref.trim();
+  if (!clean) return null;
+  if (/^https?:\/\//i.test(clean)) {
+    try {
+      const pathname = new URL(clean).pathname;
+      const key = storageKeyFromMediaRef(pathname);
+      if (key) return key;
+    } catch {
+      return null;
+    }
+  }
+  const prefixes = [
+    "/api/storage/files/",
+    "/uploads/",
+    "storage://",
+  ];
+  for (const prefix of prefixes) {
+    if (!clean.startsWith(prefix)) continue;
+    const key = clean.slice(prefix.length);
+    try {
+      return decodeURIComponent(key).replace(/^\/+/, "");
+    } catch {
+      return key.replace(/^\/+/, "");
+    }
+  }
+  return null;
+}
+
+function safeMediaExtension(ref: string): string {
+  const extension = extname(ref.split(/[?#]/)[0] ?? "").toLowerCase();
+  return /^\.m(?:p4|ov|4v)$|^\.webm$|^\.mkv$/.test(extension)
+    ? extension
+    : ".mp4";
+}
+
+async function stageFinalCompositeSourceMedia(input: {
+  workspace: string;
+  shot: HyperframesShotPayload;
+  index: number;
+}): Promise<string> {
+  const ref = String(
+    input.shot.sourceVideoUrl ||
+      input.shot.sourceVideoRef ||
+      input.shot.sourceMediaRef ||
+      ""
+  ).trim();
+  if (!ref) {
+    throw new Error(`HyperFrames missing render media asset: shot ${input.index + 1}`);
+  }
+  const targetPath = join(
+    input.workspace,
+    `source-${String(input.index + 1).padStart(2, "0")}${safeMediaExtension(ref)}`
+  );
+  const storageKey = storageKeyFromMediaRef(ref);
+  if (storageKey) {
+    await storageCopyToPath(storageKey, targetPath);
+    return targetPath;
+  }
+  if (/^https?:\/\//i.test(ref)) return ref;
+  if (existsSync(ref)) {
+    copyFileSync(ref, targetPath);
+    return targetPath;
+  }
+  throw new Error(`HyperFrames missing render media asset: ${ref}`);
+}
+
+function escapeFfmpegFilterPath(path: string): string {
+  return path.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
+}
+
+async function executeFfmpegAssFinalCompositeFallback(input: {
+  tenantId?: string | null;
+  runId: string;
+  renderJobId: string;
+  payload: Record<string, unknown>;
+  workspace: string;
+  outputPath: string;
+}): Promise<{
+  renderer: string;
+  runtimeDiagnostics: Record<string, unknown>;
+}> {
+  const shots = getFinalCompositeShots(input.payload);
+  if (shots.length === 0) {
+    throw new Error("HyperFrames final composite fallback requires at least one shot.");
+  }
+  const finalConfig = getFinalCompositeConfig(input.payload);
+  const fps = Math.max(1, Math.min(60, Math.round(Number(finalConfig.fps ?? 30) || 30)));
+  const width = Math.max(320, Math.min(3840, Math.round(Number(finalConfig.width ?? 1080) || 1080)));
+  const height = Math.max(320, Math.min(3840, Math.round(Number(finalConfig.height ?? 1920) || 1920)));
+  const preserveNativeAudio = finalConfig.preserveNativeAudio !== false;
+  const assPath = join(input.workspace, "final-composite.ass");
+  writeFileSync(assPath, buildFinalCompositeAss(shots, input.payload), "utf8");
+
+  const stagedSources = await Promise.all(
+    shots.map((shot, index) =>
+      stageFinalCompositeSourceMedia({
+        workspace: input.workspace,
+        shot,
+        index,
+      })
+    )
+  );
+  const ffmpegArgs = ["-y", "-hide_banner", "-loglevel", "warning"];
+  const inputAudio = stagedSources.map(source => {
+    if (/^https?:\/\//i.test(source)) return preserveNativeAudio;
+    return preserveNativeAudio && probeRenderedMp4(source).hasAudio;
+  });
+  stagedSources.forEach((source, index) => {
+    const shot = shots[index]!;
+    const mediaStartSec = Math.max(0, Number(shot.mediaStartSec ?? 0) || 0);
+    const durationSec = Math.max(0.1, Number(shot.durationSec ?? 8) || 8);
+    if (mediaStartSec > 0) ffmpegArgs.push("-ss", String(mediaStartSec));
+    ffmpegArgs.push("-t", String(durationSec), "-i", source);
+  });
+  const filterParts: string[] = [];
+  shots.forEach((shot, index) => {
+    const durationSec = Math.max(0.1, Number(shot.durationSec ?? 8) || 8);
+    filterParts.push(
+      `[${index}:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},setsar=1,fps=${fps},format=yuv420p[v${index}]`
+    );
+    if (inputAudio[index]) {
+      filterParts.push(
+        `[${index}:a]atrim=0:${durationSec},asetpts=PTS-STARTPTS,aformat=sample_rates=48000:channel_layouts=stereo[a${index}]`
+      );
+    } else {
+      filterParts.push(
+        `anullsrc=channel_layout=stereo:sample_rate=48000,atrim=0:${durationSec},asetpts=PTS-STARTPTS[a${index}]`
+      );
+    }
+  });
+  const concatInputs = shots
+    .map((_, index) => `[v${index}][a${index}]`)
+    .join("");
+  filterParts.push(
+    `${concatInputs}concat=n=${shots.length}:v=1:a=1[vcat][acat]`
+  );
+  filterParts.push(
+    `[vcat]ass='${escapeFfmpegFilterPath(assPath)}'[vout]`
+  );
+  ffmpegArgs.push(
+    "-filter_complex",
+    filterParts.join(";"),
+    "-map",
+    "[vout]",
+    "-map",
+    "[acat]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "23",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-movflags",
+    "+faststart",
+    input.outputPath
+  );
+  execFileSync(resolveHyperframesFfmpegBinary(), ffmpegArgs, {
+    cwd: input.workspace,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return {
+    renderer: "ffmpeg_ass_final_composite_fallback",
+    runtimeDiagnostics: {
+      officialRuntime: false,
+      fallbackRenderer: "ffmpeg_ass",
+      fallbackQuality: String(
+        (finalConfig.fallbackCapability as Record<string, unknown> | undefined)
+          ?.fallbackQuality ?? "partial"
+      ),
+      shotCount: shots.length,
+      preserveNativeAudio,
+      nativeAudioInputCount: inputAudio.filter(Boolean).length,
+      ignoredAudioEventCount: getFinalCompositeAudioEvents(input.payload).length,
+    },
+  };
+}
+
 async function isHyperframesWorkerEnabledForTenant(
   tenantId?: string | null
 ): Promise<boolean> {
@@ -1063,27 +1459,114 @@ export async function executeLocalHyperframesSmokeRender(input: {
   try {
     const outputPath = join(workspace, "output.mp4");
     const runtimeMode = getHyperframesRuntimeMode(input.runtimeEnv);
-    const runtimeRender =
-      runtimeMode === "producer"
-        ? await executeHyperframesProducerRender({
-            workspace,
-            outputPath,
-            payload: input.payload,
-            env: input.runtimeEnv,
-          })
-        : runtimeMode === "cli"
-          ? await executeHyperframesCliRender({
+    let runtimeFailureMessage: string | null = null;
+    let runtimeRender = null as Awaited<ReturnType<typeof executeHyperframesCliRender>> | null;
+    try {
+      runtimeRender =
+        runtimeMode === "producer"
+          ? await executeHyperframesProducerRender({
               workspace,
               outputPath,
               payload: input.payload,
               env: input.runtimeEnv,
             })
-        : null;
+          : runtimeMode === "cli"
+            ? await executeHyperframesCliRender({
+                workspace,
+                outputPath,
+                payload: input.payload,
+                env: input.runtimeEnv,
+              })
+          : null;
+    } catch (error) {
+      runtimeFailureMessage = runtimeErrorMessage(error);
+      if (
+        !isFinalCompositeRenderPayload(input.payload) ||
+        !isFinalCompositeFfmpegAssFallbackAllowed(input.payload) ||
+        !isHyperframesRuntimeCaptureFallbackEligible(runtimeFailureMessage)
+      ) {
+        throw error;
+      }
+    }
     if (!runtimeRender) {
       if (isFinalCompositeRenderPayload(input.payload)) {
-        throw new Error(
-          "Official HyperFrames HTML/CSS/browser runtime is required for final composite renders; FFmpeg/ASS fallback is disabled to prevent preview/render mismatch."
-        );
+        if (!isFinalCompositeFfmpegAssFallbackAllowed(input.payload)) {
+          throw new Error(
+            "Official HyperFrames HTML/CSS/browser runtime is required for final composite renders; FFmpeg/ASS fallback is disabled to prevent preview/render mismatch."
+          );
+        }
+        const fallbackRender = await executeFfmpegAssFinalCompositeFallback({
+          tenantId: input.tenantId,
+          runId: input.runId,
+          renderJobId: input.renderJobId,
+          payload: input.payload,
+          workspace,
+          outputPath,
+        });
+        const playableProbe = probeRenderedMp4(outputPath);
+        if (!playableProbe.passed) {
+          throw new Error(
+            `HyperFrames fallback output probe failed: ${
+              playableProbe.errorMessage ?? "missing playable video stream"
+            }`
+          );
+        }
+        const fileBuffer = readFileSync(outputPath);
+        const contentHash = sha256Hash(fileBuffer);
+        const storageKey = [
+          "marketplace-auto-review",
+          input.tenantId ?? "default",
+          input.runId,
+          "hyperframes",
+          input.renderJobId,
+          "output.mp4",
+        ].join("/");
+        const stored = await storagePutFromPath(storageKey, outputPath, "video/mp4");
+        return {
+          ...input.payload,
+          outputArtifactRef: {
+            artifactId: `${input.renderJobId}_output`,
+            kind: "hyperframes_render_mp4",
+            storageRef: stored.key,
+            contentHash,
+            mimeType: "video/mp4",
+            sizeBytes: fileBuffer.byteLength,
+            retentionClass: "library",
+            redacted: true,
+          },
+          outputUrl: stored.url,
+          thumbnailUrl: null,
+          qaStatus: "passed",
+          playableProbe,
+          audioMixReport: {
+            ...buildOfficialRuntimeAudioMixReport(input.payload, playableProbe),
+            outputAudioPolicy: "ffmpeg_ass_final_composite_fallback",
+            nativeInputWithAudioCount:
+              Number(fallbackRender.runtimeDiagnostics.nativeAudioInputCount ?? 0) || 0,
+            syntheticFallbackAudio:
+              Number(fallbackRender.runtimeDiagnostics.nativeAudioInputCount ?? 0) === 0,
+          },
+          officialHyperframesRuntime: {
+            renderer: "not_used",
+            runtimeDiagnostics: {
+              reason: runtimeFailureMessage
+                ? "official_runtime_capture_failed_fallback_used"
+                : "official_runtime_unavailable",
+              ...(runtimeFailureMessage ? { error: runtimeFailureMessage } : {}),
+            },
+            officialRuntime: false,
+            generatedAt: new Date().toISOString(),
+            noRawHtmlExposed: true,
+          },
+          runtimeDiagnosticRender: {
+            renderer: fallbackRender.renderer,
+            runtimeDiagnostics: fallbackRender.runtimeDiagnostics,
+            generatedAt: new Date().toISOString(),
+            diagnosticOnly: false,
+            fallbackDisabled: false,
+            noRawHtmlExposed: true,
+          },
+        };
       }
       throw new Error(
         "Official HyperFrames runtime is not ready. Diagnostic fallback output cannot complete user-facing render jobs."
@@ -1194,18 +1677,32 @@ export async function runHyperframesRenderWorkerOnce(
   const workerId = options.workerId ?? `hyperframes-worker-${process.pid}`;
   const now = options.now ?? new Date();
   const nowIso = now.toISOString();
+  await releaseDeadLocalHyperframesWorkerLocks({
+    db,
+    now,
+    renderJobId: options.renderJobId,
+    limit: Math.max(options.limit ?? 5, 25),
+  });
+  const jobFilters = [
+    or(
+      inArray(marketplaceAutoReviewOutboxJobs.status, ["queued", "retry"]),
+      and(
+        eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+        sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+      )
+    ),
+    inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+      ...HYPERFRAMES_WORKER_JOB_TYPES,
+    ]),
+    sql`${marketplaceAutoReviewOutboxJobs.scheduledAt} <= ${nowIso}`,
+  ];
+  if (options.renderJobId) {
+    jobFilters.unshift(eq(marketplaceAutoReviewOutboxJobs.id, options.renderJobId));
+  }
   const jobs = await db
     .select()
     .from(marketplaceAutoReviewOutboxJobs)
-    .where(
-      and(
-        inArray(marketplaceAutoReviewOutboxJobs.status, ["queued", "retry"]),
-        inArray(marketplaceAutoReviewOutboxJobs.jobType, [
-          ...HYPERFRAMES_WORKER_JOB_TYPES,
-        ]),
-        sql`${marketplaceAutoReviewOutboxJobs.scheduledAt} <= ${nowIso}`
-      )
-    )
+    .where(and(...jobFilters))
     .orderBy(
       asc(marketplaceAutoReviewOutboxJobs.priority),
       asc(marketplaceAutoReviewOutboxJobs.scheduledAt)
@@ -1215,14 +1712,29 @@ export async function runHyperframesRenderWorkerOnce(
   let processed = 0;
   let runtimeDeferred = false;
   for (const job of jobs) {
-    if (!(await isHyperframesWorkerEnabledForTenant(job.tenantId))) continue;
     const payload = (job.payloadJson ?? {}) as Record<string, unknown>;
+    if (
+      !isFinalCompositeFfmpegAssFallbackAllowed(payload) &&
+      !(await isHyperframesWorkerEnabledForTenant(job.tenantId))
+    ) {
+      continue;
+    }
+    if (
+      !isHyperframesWorkerJobRunnable({
+        status: job.status,
+        lockedUntil: job.lockedUntil,
+        scheduledAt: job.scheduledAt,
+        now,
+      })
+    ) {
+      continue;
+    }
     if (!runtimeReady && !isFinalCompositeRenderPayload(payload)) {
       runtimeDeferred = true;
       continue;
     }
-    const lockedUntil = new Date(now.getTime() + 15 * 60_000);
-    await db
+    const lockedUntil = new Date(now.getTime() + HYPERFRAMES_RENDER_WORKER_LOCK_MS);
+    const claimedRows = await db
       .update(marketplaceAutoReviewOutboxJobs)
       .set({
         status: "running",
@@ -1235,7 +1747,14 @@ export async function runHyperframesRenderWorkerOnce(
           eq(marketplaceAutoReviewOutboxJobs.id, job.id),
           eq(marketplaceAutoReviewOutboxJobs.status, job.status)
         )
-      );
+      )
+      .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+    if (claimedRows.length === 0) continue;
+    const stopHeartbeat = startHyperframesRenderJobLockHeartbeat({
+      db,
+      jobId: job.id,
+      workerId,
+    });
     try {
       const nextPayload = await executeHyperframesWorkerJob({
         jobType: job.jobType,
@@ -1244,6 +1763,8 @@ export async function runHyperframesRenderWorkerOnce(
         renderJobId: job.id,
         payload,
       });
+      stopHeartbeat();
+      const completedAt = new Date();
       await db
         .update(marketplaceAutoReviewOutboxJobs)
         .set({
@@ -1253,8 +1774,8 @@ export async function runHyperframesRenderWorkerOnce(
           attempts: job.attempts + 1,
           payloadJson: nextPayload,
           lastError: null,
-          completedAt: now,
-          updatedAt: now,
+          completedAt,
+          updatedAt: completedAt,
         })
         .where(
           and(
@@ -1265,6 +1786,8 @@ export async function runHyperframesRenderWorkerOnce(
       processed += 1;
       continue;
     } catch (error) {
+      stopHeartbeat();
+      const failedAt = new Date();
       const attempts = Number(job.attempts ?? 0) + 1;
       const message = runtimeErrorMessage(error);
       const nonRetryableRuntimeError = isNonRetryableHyperframesRuntimeError(message);
@@ -1284,9 +1807,9 @@ export async function runHyperframesRenderWorkerOnce(
           )}`,
           completedAt: null,
           scheduledAt: exhausted
-            ? now
-            : new Date(now.getTime() + Math.min(30 * 60_000, attempts * 60_000)),
-          updatedAt: now,
+            ? failedAt
+            : new Date(failedAt.getTime() + Math.min(30 * 60_000, attempts * 60_000)),
+          updatedAt: failedAt,
         })
         .where(
           and(

@@ -22,7 +22,7 @@ import {
 import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "@shared/hyperframes/limits";
 
 const HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION =
-  "hyperframes_final_composite_builder_v16";
+  "hyperframes_final_composite_builder_v17";
 
 export interface HyperframesCreativeTimelineEntry {
   shotId: string;
@@ -30,6 +30,7 @@ export interface HyperframesCreativeTimelineEntry {
   absoluteStartSec: number;
   absoluteEndSec: number;
   durationSec: number;
+  mediaStartSec: number;
   sourceMediaRef: string;
   sourceMediaHash: string;
   timelineHash: string;
@@ -211,10 +212,12 @@ export function normalizeHyperframesFinalCompositeTimeline(
       absoluteStartSec,
       absoluteEndSec,
       durationSec,
+      mediaStartSec: roundTimelineSecond(shot.mediaStartSec ?? 0),
       sourceMediaRef,
       sourceMediaHash: stableHash({
         sourceMediaRef,
         sourceVideoUrl: shot.sourceVideoUrl,
+        mediaStartSec: roundTimelineSecond(shot.mediaStartSec ?? 0),
         durationSec,
       }),
       subtitleCues: shot.subtitleCues,
@@ -248,7 +251,10 @@ export function getHyperframesFinalCompositeFallbackCapability(
   config: Pick<
     HyperframesFinalCompositeConfig,
     "overlayPreset" | "subtitlePreset" | "cssAnimationEnabled" | "gsapCompatibleTimeline"
-  >
+  > & {
+    allowFfmpegAssFallback?: boolean;
+    audioEvents?: unknown[];
+  }
 ): {
   ffmpegAssFallback: boolean;
   fallbackQuality: "full" | "partial" | "not_supported";
@@ -268,6 +274,16 @@ export function getHyperframesFinalCompositeFallbackCapability(
   if (config.subtitlePreset === "karaoke_word") {
     unsupportedFeatures.push("word_level_karaoke_timing");
   }
+  if (Array.isArray(config.audioEvents) && config.audioEvents.length > 0) {
+    unsupportedFeatures.push("audio_event_map_runtime_mix");
+  }
+  if (config.allowFfmpegAssFallback) {
+    return {
+      ffmpegAssFallback: true,
+      fallbackQuality: unsupportedFeatures.length > 0 ? "partial" : "full",
+      unsupportedFeatures,
+    };
+  }
   return {
     ffmpegAssFallback: false,
     fallbackQuality: "not_supported",
@@ -276,6 +292,34 @@ export function getHyperframesFinalCompositeFallbackCapability(
       "official_html_css_browser_runtime_required",
     ],
   };
+}
+
+function isManualStoryboardFinalCompositeInput(input: {
+  productId: string;
+  runId: string;
+  productState?: unknown;
+  runState?: unknown;
+}): boolean {
+  const productId = cleanId(input.productId, "");
+  const runId = cleanId(input.runId, "");
+  if (
+    /^manual(?:_storyboard)?_product_/i.test(productId) ||
+    /^manual(?:_storyboard)?_run_/i.test(runId)
+  ) {
+    return true;
+  }
+  const product = productRecordFromState(input.productState);
+  const platformRawJson = isRecord(product.platformRawJson) ? product.platformRawJson : {};
+  if (platformRawJson.manualStoryboardReview === true) return true;
+  const run = isRecord(input.runState) ? input.runState : {};
+  const metadataJson = isRecord(run.metadataJson) ? run.metadataJson : {};
+  const resultJson = isRecord(run.resultJson) ? run.resultJson : {};
+  return (
+    run.launchMode === "manual_storyboard_review" ||
+    run.status === "manual_storyboard_review" ||
+    metadataJson.manualStoryboardReview === true ||
+    resultJson.manualStoryboardReview === true
+  );
 }
 
 export function buildHyperframesCompositionInput(input: {
@@ -437,12 +481,14 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
   const finalCompositeInput = HyperframesFinalCompositeConfigSchema.parse(
     input.finalComposite
   );
+  const allowFfmpegAssFallback = isManualStoryboardFinalCompositeInput(input);
   const sanitizedShots = finalCompositeInput.shots.map((shot, index) => ({
     id: sanitizeHyperframesText(shot.id, 160) || `shot_${index + 1}`,
     index: shot.index,
     title: sanitizeHyperframesText(shot.title ?? "", 180),
     sourceVideoUrl: sanitizeHyperframesAssetRef(shot.sourceVideoUrl),
     sourceVideoRef: sanitizeHyperframesText(shot.sourceVideoRef ?? "", 512),
+    mediaStartSec: shot.mediaStartSec,
     startSec: shot.startSec,
     durationSec: shot.durationSec,
     endSec: shot.startSec + shot.durationSec,
@@ -505,13 +551,23 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
     finalCompositeBase as HyperframesFinalCompositeConfig
   );
   const fallbackCapability = getHyperframesFinalCompositeFallbackCapability(
-    finalCompositeBase as HyperframesFinalCompositeConfig
+    {
+      ...(finalCompositeBase as HyperframesFinalCompositeConfig),
+      allowFfmpegAssFallback,
+    }
   );
   const finalComposite = {
     ...finalCompositeBase,
     creativeTimeline,
     fallbackCapability,
     audioEventMapHash,
+    fallbackPolicy: allowFfmpegAssFallback
+      ? {
+          source: "manual_storyboard_review",
+          renderer: "ffmpeg_ass",
+          quality: fallbackCapability.fallbackQuality,
+        }
+      : undefined,
   };
   const compositionSeed = {
     builderVersion: HYPERFRAMES_FINAL_COMPOSITE_BUILDER_VERSION,
@@ -731,7 +787,7 @@ function buildHyperframesFinalCompositeHtml(input: {
       const shouldDeferShotCopyAfterHook =
         Boolean(config.includeHookText && hasShotOverlayCopy && (index === 0 || shot.index === 0));
       return `
-      <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="0" preload="auto" ${sourceVideoAudioAttributes} playsinline></video>
+      <video id="video-${escapeHtml(shot.id)}" class="clip scene source-video" src="${escapeHtml(shot.sourceVideoUrl)}" data-hf-auto-start="true" data-shot-id="${escapeHtml(shot.id)}" data-track-index="${videoTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-media-start="${shot.mediaStartSec ?? 0}" preload="auto" ${sourceVideoAudioAttributes} playsinline></video>
       <section id="shot-${escapeHtml(shot.id)}" class="clip shot shot-${escapeHtml(shot.animationPreset)}" data-overlay-preset="${escapeHtml(shotOverlayPreset)}" data-text-motion-preset="${escapeHtml(shotTextMotionPreset)}" data-shot-id="${escapeHtml(shot.id)}" data-shot-index="${shot.index}" data-track-index="${overlayTrackIndex}" data-start="${shot.startSec}" data-duration="${shot.durationSec}" data-timeline-hash="${escapeHtml(timelineEntry?.timelineHash ?? timeline.timelineHash)}"${shouldDeferShotCopyAfterHook ? ' data-shot-copy-deferred="after-hook"' : ""} data-has-shot-copy="${hasShotOverlayCopy ? "true" : "false"}">
         ${hasShotOverlayCopy ? `<div class="overlay-copy-layer">
           <div class="shade"></div>
@@ -851,12 +907,12 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="white_intro_card"] .shot-line { display: block; width: auto; max-width: 92%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #111827; font-size: 76px; line-height: 1.04; font-weight: 950; }
       [data-overlay-preset="white_intro_card"] .shot-line + .shot-line { color: #334155; font-size: 48px; transform: none; }
       [data-overlay-preset="tech_signal_map"] .shade { background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.34), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.2), transparent 24%), linear-gradient(180deg, rgba(2,6,23,.92), rgba(15,23,42,.8)); }
-      [data-overlay-preset="tech_signal_map"] .shot-copy { left: 6%; right: 6%; top: 6%; bottom: 12%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; text-align: center; }
-      [data-overlay-preset="tech_signal_map"] .shot-copy::before { content: ""; position: absolute; left: 10%; right: 10%; top: 38%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
-      [data-overlay-preset="tech_signal_map"] .shot-line { position: relative; z-index: 1; display: block; width: auto; max-width: 94%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #f8fafc; font-size: 60px; line-height: 1.04; font-weight: 950; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
-      [data-overlay-preset="tech_signal_map"] .shot-line:first-child { color: #22d3ee; font-size: 76px; }
-      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(2) { color: #fb923c; font-size: 72px; }
-      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(n+3) { margin-top: auto; border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 34px; box-shadow: 0 0 24px rgba(34,211,238,.18); }
+      [data-overlay-preset="tech_signal_map"] .shot-copy { left: 7%; right: 7%; top: 6%; bottom: 12%; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 12px; text-align: center; overflow: hidden; }
+      [data-overlay-preset="tech_signal_map"] .shot-copy::before { content: ""; position: absolute; left: 8%; right: 8%; top: 38%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
+      [data-overlay-preset="tech_signal_map"] .shot-line { position: relative; z-index: 1; display: block; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; padding: 0; border-radius: 0; background: transparent; box-shadow: none; color: #f8fafc; font-size: 52px; line-height: 1.04; font-weight: 950; letter-spacing: 0; text-align: center; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
+      [data-overlay-preset="tech_signal_map"] .shot-line:first-child { color: #22d3ee; font-size: 54px; }
+      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(2) { color: #fb923c; font-size: 48px; }
+      [data-overlay-preset="tech_signal_map"] .shot-line:nth-child(n+3) { margin: auto auto 0; width: min(78%, 720px); border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 30px; box-shadow: 0 0 24px rgba(34,211,238,.18); }
       [data-overlay-preset="spec_highlight"] .shade { background: linear-gradient(180deg, rgba(2,6,23,.2), rgba(2,6,23,.02) 46%, rgba(2,6,23,.48)); }
       [data-overlay-preset="spec_highlight"] .shot-copy { left: 8%; right: 8%; top: 4%; justify-items: center; gap: 2px; text-align: center; text-shadow: 0 4px 0 #020617, 0 8px 18px rgba(2,6,23,.55); }
       [data-overlay-preset="spec_highlight"] .shot-line { display: block; width: auto; max-width: 92%; padding: 0; border-radius: 0; background: transparent; box-shadow: none; font-size: 66px; line-height: 1.04; font-weight: 950; color: #fff; -webkit-text-stroke: 2px #020617; text-stroke: 2px #020617; }
@@ -937,6 +993,20 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-subtitle-preset="neon_glow"] .subtitle-cue { border: 1px solid rgba(34,211,238,.55); background: rgba(2,6,23,.78); color: #cffafe; box-shadow: 0 0 30px rgba(34,211,238,.32); }
       [data-subtitle-preset="review_bubble"] .subtitle-cue { border-radius: 24px 24px 24px 6px; background: rgba(255,255,255,.94); color: #0f172a; }
       [data-subtitle-preset="no_subtitle_style"] .subtitle-stack { display: none; }
+      [data-has-subtitles="true"] .shot-copy { bottom: 25% !important; max-height: 66% !important; overflow: hidden !important; }
+      [data-has-subtitles="true"] .hook-layer { bottom: 26% !important; overflow: hidden !important; }
+      [data-has-subtitles="true"][data-subtitle-preset="lower_third"] .shot-copy { bottom: 34% !important; max-height: 55% !important; }
+      [data-has-subtitles="true"][data-subtitle-preset="lower_third"] .hook-layer { bottom: 36% !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="ugc_center_stack"] .shot-copy { top: 14% !important; transform: none !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="white_intro_card"] .shot-copy { inset: 6% 7% 25% !important; justify-content: center !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="feature_cards"] .shot-copy,
+      [data-has-subtitles="true"] [data-overlay-preset="badge_cascade"] .shot-copy { top: 8% !important; left: 7% !important; right: 7% !important; width: auto !important; max-width: none !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="badge_cascade"] .shot-line { max-width: calc(100% - 80px) !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="badge_cascade"] .shot-line:nth-child(2) { transform: translateX(32px) !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="badge_cascade"] .shot-line:nth-child(n+3) { transform: translateX(64px) !important; }
+      [data-has-subtitles="true"] [data-overlay-preset="price_impact"] .shot-copy,
+      [data-has-subtitles="true"] [data-overlay-preset="hero_price_billboard"] .shot-copy,
+      [data-has-subtitles="true"] [data-overlay-preset="lower_third_review"] .shot-copy { bottom: 33% !important; }
       .hook-layer { position: absolute; left: ${safeInset}; right: ${safeInset}; top: 8%; bottom: 20%; z-index: 20; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; text-align: left; text-shadow: 0 5px 24px rgba(0,0,0,.5); pointer-events: none; }
       .hook-stack, .hook-chip { position: relative; z-index: 1; }
       .hook-stack { display: grid; justify-items: start; gap: 14px; }
@@ -976,16 +1046,16 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="white_intro_card"] .hook-main { font-size: 76px; }
       [data-overlay-preset="white_intro_card"] .hook-sub { color: #334155; font-size: 48px; }
       [data-overlay-preset="white_intro_card"] .hook-chip { display: none; }
-      [data-overlay-preset="tech_signal_map"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: flex-start; align-items: center; padding: 6% 6% 18%; text-align: center; }
+      [data-overlay-preset="tech_signal_map"].hook-layer { left: 0; right: 0; top: 0; bottom: 0; box-sizing: border-box; justify-content: flex-start; align-items: stretch; overflow: hidden; padding: 6% 7% 18%; text-align: center; }
       [data-overlay-preset="tech_signal_map"].hook-layer::before { content: ""; position: absolute; inset: 0; z-index: 0; background: radial-gradient(circle at 50% 36%, rgba(34,211,238,.34), transparent 22%), radial-gradient(circle at 24% 70%, rgba(251,146,60,.2), transparent 24%), linear-gradient(180deg, rgba(2,6,23,.92), rgba(15,23,42,.8)); pointer-events: none; }
-      [data-overlay-preset="tech_signal_map"].hook-layer::after { content: ""; position: absolute; left: 14%; right: 14%; top: 42%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
+      [data-overlay-preset="tech_signal_map"].hook-layer::after { content: ""; position: absolute; left: 8%; right: 8%; top: 42%; height: 2px; background: linear-gradient(90deg, transparent, rgba(34,211,238,.9), rgba(251,146,60,.9), transparent); box-shadow: 0 0 34px rgba(34,211,238,.42); }
       [data-overlay-preset="tech_signal_map"] .hook-stack { justify-items: center; gap: 0; }
       [data-overlay-preset="tech_signal_map"] .hook-main,
       [data-overlay-preset="tech_signal_map"] .hook-sub,
-      [data-overlay-preset="tech_signal_map"] .hook-chip { max-width: 94%; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #f8fafc; font-weight: 950; line-height: 1.04; text-align: center; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
-      [data-overlay-preset="tech_signal_map"] .hook-main { color: #22d3ee; font-size: 76px; }
-      [data-overlay-preset="tech_signal_map"] .hook-sub { color: #fb923c; font-size: 72px; }
-      [data-overlay-preset="tech_signal_map"] .hook-chip { margin-top: 34%; border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 34px; }
+      [data-overlay-preset="tech_signal_map"] .hook-chip { box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; border-radius: 0; background: transparent; padding: 0; box-shadow: none; color: #f8fafc; font-weight: 950; line-height: 1.04; letter-spacing: 0; text-align: center; text-shadow: 0 0 28px rgba(34,211,238,.48), 0 4px 0 rgba(2,6,23,.95); }
+      [data-overlay-preset="tech_signal_map"] .hook-main { color: #22d3ee; font-size: 54px; }
+      [data-overlay-preset="tech_signal_map"] .hook-sub { color: #fb923c; font-size: 48px; }
+      [data-overlay-preset="tech_signal_map"] .hook-chip { margin: 34% auto 0; width: min(78%, 720px); border: 1px solid rgba(34,211,238,.42); border-radius: 16px; background: rgba(2,6,23,.58); padding: 12px 16px; color: #cffafe; font-size: 30px; }
       @keyframes overlayCopyLifetime { 0%, 88% { opacity: 1; } 100% { opacity: 0; } }
       @keyframes shotIn { from { opacity: 0; transform: scale(1.035); } to { opacity: 1; transform: scale(1); } }
       @keyframes lineIn { from { opacity: 0; transform: translateY(28px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -1021,7 +1091,7 @@ function buildHyperframesFinalCompositeHtml(input: {
     </style>
   </head>
   <body>
-    <div id="stage" data-composition-id="ssp-marketplace-captioned-final-composite" data-overlay-preset="${escapeHtml(config.overlayPreset)}" data-subtitle-preset="${escapeHtml(config.subtitlePreset)}"
+    <div id="stage" data-composition-id="ssp-marketplace-captioned-final-composite" data-overlay-preset="${escapeHtml(config.overlayPreset)}" data-subtitle-preset="${escapeHtml(config.subtitlePreset)}" data-has-subtitles="${config.burnInSubtitles && config.subtitlePreset !== "no_subtitle_style" ? "true" : "false"}"
       data-start="0" data-width="${config.width}" data-height="${config.height}" data-duration="${config.finalVideoLengthSec}" data-timeline-hash="${escapeHtml(timeline.timelineHash)}" data-audio-event-map-hash="${escapeHtml(String(config.audioEventMapHash ?? ""))}">
       ${shotHtml}
       ${hook}

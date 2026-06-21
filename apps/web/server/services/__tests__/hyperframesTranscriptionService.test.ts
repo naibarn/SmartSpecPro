@@ -143,6 +143,39 @@ describe("hyperframesTranscriptionService", () => {
     );
   });
 
+  it("extracts only the requested split-shot segment before transcribing", async () => {
+    const extractAudioFromVideo = vi.fn();
+    const runCommand = vi.fn(async (_command, _args, options) => {
+      await writeFile(
+        `${options.cwd}/transcript.json`,
+        JSON.stringify([{ id: "w1", text: "เสียงเฉพาะช็อตนี้", start: 0, end: 1.25 }]),
+        "utf8",
+      );
+      return { stdout: "", stderr: "" };
+    });
+
+    const result = await transcribeHyperframesStoryboardShot({
+      sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_1/source.mp4",
+      mediaStartSec: 60,
+      durationSec: 30,
+      language: "th",
+      model: "large-v3",
+      deps: {
+        copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/source.mp4" }),
+        extractAudioFromVideo,
+        resolveModelPath: model => `/tmp/${model}.bin`,
+        runCommand,
+      },
+    });
+
+    expect(result.text).toContain("เสียงเฉพาะช็อตนี้");
+    expect(extractAudioFromVideo).toHaveBeenCalledTimes(1);
+    expect(extractAudioFromVideo.mock.calls[0]?.[3]).toEqual({
+      mediaStartSec: 60,
+      durationSec: 30,
+    });
+  });
+
   it("fails closed for Thai when an English-only model or remote URL is used", async () => {
     await expect(
       transcribeHyperframesStoryboardShot({

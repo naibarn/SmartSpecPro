@@ -267,16 +267,19 @@ describe("HyperFrames creative preset registry", () => {
     expect(
       HyperframesShotMediaAssignmentSchema.parse({
         storyboardReviewProjectId: 55,
-        shotId: "shot_1",
-        shotIndex: 0,
+        shotId: "shot_1__hfseg_2",
+        sourceShotId: "shot_1",
+        shotIndex: 1,
         source: "media_library",
         mediaKind: "video",
         libraryItemId: "lib_1",
         contentHash: "hash_123456",
+        mediaStartSec: 30,
+        durationSec: 30,
         assignedByUserId: 109,
         assignedAt: "2026-06-12T00:00:00.000Z",
-      }).source
-    ).toBe("media_library");
+      }).mediaStartSec
+    ).toBe(30);
 
     const plan = HyperframesCreativePlanSchema.parse({
       schemaVersion: 1,

@@ -4,6 +4,7 @@
  */
 
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -21,9 +22,18 @@ import {
   mergeStoryboardReviewHyperframesFinalCompositeState,
 } from "../../shared/hyperframes/storyboardReviewState";
 import {
+  HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
+  HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+} from "../../shared/hyperframes/limits";
+import {
   storageKeyFromManagedHyperframesMediaUrl,
   transcribeHyperframesStoryboardShot,
 } from "../services/hyperframesTranscriptionService";
+import {
+  getStoryboardReviewTranscribeJob,
+  setStoryboardReviewTranscribeJob,
+} from "../services/storyboardReviewTranscriptionJobs";
+import { startDetachedStoryboardReviewTranscribeWorker } from "../services/backgroundWorkerProcess";
 import {
   buildVideoSegmentPrompt,
   normalizeVideoSegmentCreativeBrief,
@@ -1554,6 +1564,8 @@ export const videoEditorProjectsRouter = router({
         runId: z.string().trim().min(1).max(180),
         shotId: z.string().trim().min(1).max(180),
         sourceVideoUrl: z.string().trim().min(1).max(4096),
+        mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional(),
+        durationSec: z.number().min(0.5).max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC).optional(),
         language: z.string().trim().min(2).max(12).default("th"),
         model: z.string().trim().min(1).max(80).optional(),
       }).strict(),
@@ -1614,6 +1626,8 @@ export const videoEditorProjectsRouter = router({
       try {
         const result = await transcribeHyperframesStoryboardShot({
           sourceVideoUrl: input.sourceVideoUrl,
+          mediaStartSec: input.mediaStartSec,
+          durationSec: input.durationSec,
           language: input.language,
           model: input.model,
         });
@@ -1630,6 +1644,161 @@ export const videoEditorProjectsRouter = router({
           message,
         });
       }
+    }),
+
+  /** Start shot subtitle transcription as a background job to avoid proxy timeouts. */
+  startStoryboardReviewShotSubtitleTranscription: protectedProcedure
+    .input(
+      z.object({
+        storyboardReviewProjectId: z.number().int().positive(),
+        productId: z.string().trim().min(1).max(180),
+        runId: z.string().trim().min(1).max(180),
+        shotId: z.string().trim().min(1).max(180),
+        sourceVideoUrl: z.string().trim().min(1).max(4096),
+        mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional(),
+        durationSec: z.number().min(0.5).max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC).optional(),
+        language: z.string().trim().min(2).max(12).default("th"),
+        model: z.string().trim().min(1).max(80).optional(),
+      }).strict(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const [existing] = await db
+        .select({
+          id: mediaStudioStoryboardReviews.id,
+          reviewData: mediaStudioStoryboardReviews.reviewData,
+        })
+        .from(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Storyboard Review project was not found.",
+        });
+      }
+
+      const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
+        db,
+        userId: ctx.user.id,
+        reviewData: existing.reviewData,
+      });
+      const canonicalProductId =
+        getStoryboardReviewHyperframesProductId(normalizedReviewData);
+      const canonicalRunId = getStoryboardReviewHyperframesRunId(normalizedReviewData);
+      if (canonicalProductId !== input.productId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review product does not match HyperFrames transcribe input.",
+        });
+      }
+      if (canonicalRunId !== input.runId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Storyboard Review Auto Review run does not match HyperFrames transcribe input.",
+        });
+      }
+      if (!storyboardReviewContainsManagedVideoUrl(normalizedReviewData, input.sourceVideoUrl)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "HyperFrames transcribe source video is not a managed clip in this Storyboard Review.",
+        });
+      }
+
+      const now = Date.now();
+      const jobId = `hf_transcribe_${randomUUID()}`;
+      await setStoryboardReviewTranscribeJob({
+        jobId,
+        userId: String(ctx.user.id),
+        status: "queued",
+        submittedAt: now,
+        updatedAt: now,
+        input: {
+          shotId: input.shotId,
+          sourceVideoUrl: input.sourceVideoUrl,
+          mediaStartSec: input.mediaStartSec,
+          durationSec: input.durationSec,
+          language: input.language,
+          model: input.model,
+        },
+      });
+
+      let dispatchedToCloudTasks = false;
+      try {
+        const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
+        const config = getCloudTasksConfigStatus("node");
+        if (config.configured) {
+          await enqueueTask({
+            queueName: "media-jobs",
+            handlerPath: "/_internal/tasks/storyboard-review-transcribe",
+            targetService: "node",
+            payload: {
+              jobId,
+            },
+            taskId: `storyboard-review-transcribe-${jobId}`,
+          });
+          dispatchedToCloudTasks = true;
+        } else {
+          console.warn(
+            `[StoryboardReview] Node Cloud Tasks config is incomplete; starting detached transcribe worker. Missing: ${config.missingKeys.join(", ")}`
+          );
+        }
+      } catch (error) {
+        console.warn("[StoryboardReview] Failed to enqueue transcribe Cloud Task; starting detached worker.", error);
+      }
+
+      if (!dispatchedToCloudTasks) {
+        const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+        console.info("[StoryboardReview] Started detached transcribe worker.", {
+          jobId,
+          pid: worker.pid,
+        });
+      }
+
+      return {
+        jobId,
+        status: "queued" as const,
+      };
+    }),
+
+  /** Poll a background shot subtitle transcription job. */
+  getStoryboardReviewShotSubtitleTranscriptionJob: protectedProcedure
+    .input(
+      z.object({
+        jobId: z.string().trim().min(1).max(120),
+      }).strict(),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getStoryboardReviewTranscribeJob(input.jobId);
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "HyperFrames transcribe job was not found or has expired.",
+        });
+      }
+      if (job.userId !== String(ctx.user.id)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Access denied.",
+        });
+      }
+      return {
+        jobId: job.jobId,
+        status: job.status,
+        submittedAt: job.submittedAt,
+        updatedAt: job.updatedAt,
+        result: job.result ?? null,
+        errorMessage: job.errorMessage ?? null,
+      };
     }),
 
   /** Save a Media Studio storyboard review workspace */

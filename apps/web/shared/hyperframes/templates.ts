@@ -8,6 +8,7 @@ import {
   type MarketplaceAutoReviewCompositionMode,
   type MarketplaceAutoReviewLaunchMode,
 } from "./contracts";
+import { HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC } from "./limits";
 
 export const HYPERFRAMES_TEMPLATE_COMPATIBILITY_VERSION =
   "hyperframes_template_compat_v1";
@@ -201,10 +202,10 @@ export const HYPERFRAMES_BUILT_IN_TEMPLATES = [
     ],
     requiredAssetSlots: ["generated_clip", "audio", "subtitle"],
     requiredCopySlots: ["caption", "cta", "disclosure"],
-    maxAssets: 24,
+    maxAssets: 40,
     minShots: 0,
-    maxShots: 9,
-    durationRangeSeconds: [15, 120],
+    maxShots: 12,
+    durationRangeSeconds: [15, HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC],
     safeAreaRequired: true,
     disclosureRequiredWhenClaimed: true,
     compatibilitySchemaVersion: HYPERFRAMES_TEMPLATE_COMPATIBILITY_VERSION,

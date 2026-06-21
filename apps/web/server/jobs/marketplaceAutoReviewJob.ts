@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { signBearerToken } from "../_core/tokens";
 import { getDb } from "../db";
@@ -17,6 +17,7 @@ import {
   type HyperframesWorkerRunOptions,
   type HyperframesWorkerRunResult,
 } from "../workers/hyperframesRenderWorker";
+import { startDetachedHyperframesRenderWorker } from "../services/backgroundWorkerProcess";
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_RUN_LIMIT = 12;
@@ -28,6 +29,14 @@ const ACTIVE_STATUSES: MarketplaceAutoReviewStatus[] = [
   "waiting_provider",
 ];
 const READY_OUTBOX_STATUSES = ["queued", "retry"] as const;
+const HYPERFRAMES_OUTBOX_JOB_TYPES = [
+  "hyperframes_asset_stage",
+  "hyperframes_lint",
+  "hyperframes_snapshot",
+  "hyperframes_render",
+  "hyperframes_inspect",
+  "hyperframes_finalize",
+] as const;
 export const MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES = [
   "advance_run",
   "provider_reconciliation_recovery",
@@ -314,21 +323,51 @@ export async function runMarketplaceAutoReviewJob(
     }
 
     try {
-      const hyperframesWorker =
-        options.runHyperframesWorker ?? runHyperframesRenderWorkerOnce;
-      const hyperframesResult = await hyperframesWorker({
-        limit: Math.min(
-          Math.max(
-            options.hyperframesWorkerLimit ?? DEFAULT_HYPERFRAMES_WORKER_LIMIT,
-            1
-          ),
-          25
+      const hyperframesLimit = Math.min(
+        Math.max(
+          options.hyperframesWorkerLimit ?? DEFAULT_HYPERFRAMES_WORKER_LIMIT,
+          1
         ),
-        now,
-      });
-      processedHyperframesJobs = hyperframesResult.processed;
-      hyperframesRuntimeDeferred = hyperframesResult.runtimeDeferred;
-      hyperframesWorkerDisabled = hyperframesResult.disabled;
+        25
+      );
+      if (options.runHyperframesWorker) {
+        const hyperframesResult = await options.runHyperframesWorker({
+          limit: hyperframesLimit,
+          now,
+        });
+        processedHyperframesJobs = hyperframesResult.processed;
+        hyperframesRuntimeDeferred = hyperframesResult.runtimeDeferred;
+        hyperframesWorkerDisabled = hyperframesResult.disabled;
+      } else {
+        const dueHyperframesJobs = await db
+          .select({ id: marketplaceAutoReviewOutboxJobs.id })
+          .from(marketplaceAutoReviewOutboxJobs)
+          .where(
+            and(
+              inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+                ...HYPERFRAMES_OUTBOX_JOB_TYPES,
+              ]),
+              or(
+                inArray(marketplaceAutoReviewOutboxJobs.status, [
+                  ...READY_OUTBOX_STATUSES,
+                ]),
+                and(
+                  eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+                  sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+                )
+              ),
+              sql`${marketplaceAutoReviewOutboxJobs.scheduledAt} <= ${nowIso}`
+            )
+          )
+          .orderBy(
+            asc(marketplaceAutoReviewOutboxJobs.priority),
+            asc(marketplaceAutoReviewOutboxJobs.scheduledAt)
+          )
+          .limit(1);
+        if (dueHyperframesJobs.length > 0) {
+          startDetachedHyperframesRenderWorker({ limit: hyperframesLimit });
+        }
+      }
     } catch (error) {
       errors.push({
         runId: "hyperframes_worker",

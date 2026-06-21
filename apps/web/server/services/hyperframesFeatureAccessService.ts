@@ -13,6 +13,7 @@ import {
   type HyperframesFeatureAccessProjection,
   type HyperframesFeatureFlagState,
 } from "@shared/hyperframes/featureAccess";
+import { HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC } from "@shared/hyperframes/limits";
 import { getHyperframesBlockerCopy } from "@shared/hyperframes/statusCopy";
 import { getHyperframesPlatformPreset } from "@shared/hyperframes/templates";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
@@ -150,7 +151,7 @@ export function buildHyperframesCreditEstimate(input: {
     input.renderIntent === "preview"
       ? Math.min(15, preset.durationSeconds)
       : input.renderIntent === "final"
-        ? Math.min(60, preset.maxDurationSeconds)
+        ? Math.min(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC, preset.maxDurationSeconds)
         : Math.min(30, preset.maxDurationSeconds);
   const fps = input.renderIntent === "final" ? Math.min(preset.fps, 30) : Math.min(preset.fps, 24);
   const estimatedFrameCount = Math.ceil(durationSeconds * fps);

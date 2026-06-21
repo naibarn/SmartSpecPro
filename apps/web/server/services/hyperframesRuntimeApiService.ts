@@ -61,7 +61,7 @@ import {
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
-import { runHyperframesRenderWorkerOnce } from "../workers/hyperframesRenderWorker";
+import { startDetachedHyperframesRenderWorker } from "./backgroundWorkerProcess";
 import {
   normalizeVideoSegmentCreativeBrief,
   planVideoSegments,
@@ -90,18 +90,170 @@ function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function scheduleHyperframesFinalCompositeWorkerKick(): void {
+export function isManualStoryboardHyperframesIdentity(input: {
+  productId: string;
+  runId: string;
+}): boolean {
+  const productId = cleanText(input.productId);
+  const runId = cleanText(input.runId);
+  return (
+    /^manual(?:_storyboard)?_product_/i.test(productId) ||
+    /^manual(?:_storyboard)?_run_/i.test(runId)
+  );
+}
+
+export function buildManualStoryboardProductState(input: {
+  productId: string;
+  runId: string;
+  runState: Record<string, unknown>;
+  config: CreateHyperframesFinalCompositeInput["config"];
+}) {
+  const productionContext = isRecord(input.runState.productionContext)
+    ? input.runState.productionContext
+    : {};
+  const resultJson = isRecord(input.runState.resultJson) ? input.runState.resultJson : {};
+  const title =
+    cleanText(productionContext.productionProjectTitle) ||
+    cleanText(productionContext.productionStoryConceptTitle) ||
+    cleanText(resultJson.title) ||
+    cleanText(input.config.hookText) ||
+    "Manual Storyboard Project";
+  const description =
+    cleanText(productionContext.videoConcept) ||
+    cleanText(resultJson.description) ||
+    cleanText(input.config.supportingText) ||
+    "User-managed Storyboard Review project.";
+  return {
+    product: {
+      id: input.productId,
+      userId: 0,
+      title,
+      name: title,
+      productName: title,
+      description,
+      descriptionText: description,
+      shortSummary: description,
+      cta: "ดูรายละเอียด",
+      accessType: "owner",
+      groupShare: null,
+      platformRawJson: {
+        manualStoryboardReview: true,
+        runId: input.runId,
+      },
+    },
+    images: [],
+    history: [],
+    shares: [],
+    health: {
+      status: "manual_storyboard_review",
+      blockers: [],
+      warnings: [],
+    },
+  };
+}
+
+async function getHyperframesFinalCompositeProductState(input: {
+  productId: string;
+  runId: string;
+  auth: HyperframesAuthContext;
+  runState: Record<string, unknown>;
+  config: CreateHyperframesFinalCompositeInput["config"];
+}) {
+  try {
+    return await getMarketplaceProductWithAccess(input.productId, input.auth);
+  } catch (error) {
+    if (!isManualStoryboardHyperframesIdentity(input)) throw error;
+    return buildManualStoryboardProductState(input);
+  }
+}
+
+function isMarketplaceAutoReviewRunNotFound(error: unknown): boolean {
+  return (
+    error instanceof TRPCError &&
+    error.code === "NOT_FOUND" &&
+    /auto review run not found/i.test(error.message)
+  );
+}
+
+async function getMarketplaceAutoReviewRunOrManualFallback(
+  input: {
+    productId: string;
+    runId: string;
+    auth: HyperframesAuthContext;
+  }
+): Promise<Record<string, unknown>> {
+  try {
+    return (await getMarketplaceAutoReviewRun(input.runId, input.auth)) as Record<string, unknown>;
+  } catch (error) {
+    if (!isMarketplaceAutoReviewRunNotFound(error)) throw error;
+    return {
+      id: input.runId,
+      productId: input.productId,
+      launchMode: "manual_storyboard_review",
+      status: "manual_storyboard_review",
+      resultJson: {
+        storyboardReviewId: input.runId,
+        manualStoryboardReview: true,
+      },
+      metadataJson: {
+        manualStoryboardReview: true,
+        fallbackReason: "auto_review_run_not_found",
+      },
+      timeline: { items: [] },
+      stages: [],
+    };
+  }
+}
+
+function scheduleHyperframesFinalCompositeWorkerKick(renderJobId?: string): void {
   const timer = setTimeout(() => {
-    void runHyperframesRenderWorkerOnce({ limit: 1 }).catch(error => {
+    try {
+      const worker = startDetachedHyperframesRenderWorker({ limit: 1, renderJobId });
+      console.info("[HyperFrames] Started detached render worker.", {
+        renderJobId: renderJobId ?? null,
+        pid: worker.pid,
+      });
+    } catch (error) {
       console.warn(
         "HyperFrames final composite worker kick failed.",
         error instanceof Error ? error.message : error,
       );
-    });
+    }
   }, 250);
   if (typeof timer === "object" && timer && "unref" in timer) {
     timer.unref();
   }
+}
+
+async function dispatchHyperframesFinalCompositeWorker(input: {
+  renderJobId: string;
+}): Promise<void> {
+  try {
+    const { enqueueTask, getCloudTasksConfigStatus } = await import("./cloudTasks");
+    const config = getCloudTasksConfigStatus("node");
+    if (config.configured) {
+      await enqueueTask({
+        queueName: "media-jobs",
+        handlerPath: "/_internal/tasks/hyperframes-render-worker",
+        targetService: "node",
+        payload: {
+          renderJobId: input.renderJobId,
+          limit: 1,
+        },
+        taskId: `hyperframes-render-${input.renderJobId}`,
+      });
+      return;
+    }
+    console.warn(
+      `[HyperFrames] Node Cloud Tasks config is incomplete; starting detached render worker. Missing: ${config.missingKeys.join(", ")}`
+    );
+  } catch (error) {
+    console.warn(
+      "[HyperFrames] Failed to enqueue render worker task; starting detached render worker.",
+      error instanceof Error ? error.message : error,
+    );
+  }
+  scheduleHyperframesFinalCompositeWorkerKick(input.renderJobId);
 }
 
 export function getHyperframesFinalCompositeRuntimeBlockReason(
@@ -1302,10 +1454,18 @@ export async function createHyperframesFinalCompositeForApi(
     });
   }
   validateHyperframesFinalCompositeAudioAssets(input.config);
-  const [productBundle, runRecord] = await Promise.all([
-    getMarketplaceProductWithAccess(input.productId, input.auth),
-    getMarketplaceAutoReviewRun(input.runId, input.auth),
-  ]);
+  const runRecord = await getMarketplaceAutoReviewRunOrManualFallback({
+    productId: input.productId,
+    runId: input.runId,
+    auth: input.auth,
+  });
+  const productBundle = await getHyperframesFinalCompositeProductState({
+    productId: input.productId,
+    runId: input.runId,
+    auth: input.auth,
+    runState: runRecord,
+    config: input.config,
+  });
   const runProductId = cleanText((runRecord as Record<string, unknown>).productId);
   if (runProductId && runProductId !== input.productId) {
     throw new TRPCError({
@@ -1361,8 +1521,21 @@ export async function createHyperframesFinalCompositeForApi(
     };
   }
   const runtimeBlockReason = getHyperframesFinalCompositeRuntimeBlockReason();
-  if (runtimeBlockReason) {
-    const payload = buildHyperframesRenderJobPayload({ composition });
+  const payload = buildHyperframesRenderJobPayload({ composition });
+  const finalCompositeConfig =
+    payload.finalCompositeConfig &&
+    typeof payload.finalCompositeConfig === "object" &&
+    !Array.isArray(payload.finalCompositeConfig)
+      ? payload.finalCompositeConfig as Record<string, unknown>
+      : {};
+  const fallbackCapability =
+    finalCompositeConfig.fallbackCapability &&
+    typeof finalCompositeConfig.fallbackCapability === "object" &&
+    !Array.isArray(finalCompositeConfig.fallbackCapability)
+      ? finalCompositeConfig.fallbackCapability as Record<string, unknown>
+      : {};
+  const allowFfmpegAssFallback = fallbackCapability.ffmpegAssFallback === true;
+  if (runtimeBlockReason && !allowFfmpegAssFallback) {
     const render = buildHyperframesRenderProjection({
       tenantId: input.auth.tenantId ?? "default",
       productId: input.productId,
@@ -1401,7 +1574,9 @@ export async function createHyperframesFinalCompositeForApi(
     priority: 82,
     maxAttempts: 3,
   });
-  scheduleHyperframesFinalCompositeWorkerKick();
+  void dispatchHyperframesFinalCompositeWorker({
+    renderJobId: render.renderJobId,
+  });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -1430,7 +1605,7 @@ export async function createHyperframesFinalCompositeForApi(
 
 export async function getHyperframesRenderJobForApi(input: {
   auth: HyperframesAuthContext;
-  renderJobId: string;
+  renderJobId?: string;
   productId?: string;
   runId?: string;
 }) {

@@ -3,6 +3,7 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import zlib from "zlib";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
@@ -12,6 +13,15 @@ const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?
 const HTML_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=86400";
 const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const STATIC_NOT_FOUND_CACHE_CONTROL = "public, max-age=60";
+const COMPRESSIBLE_STATIC_EXTENSIONS = new Set([
+  ".css",
+  ".js",
+  ".mjs",
+  ".json",
+  ".map",
+  ".svg",
+  ".wasm",
+]);
 
 function isStaticAssetRequest(url: string): boolean {
   return STATIC_ASSET_REQUEST.test(url);
@@ -52,6 +62,53 @@ export function cacheControlForStaticFile(filePath: string): string | null {
   }
 
   return null;
+}
+
+function isCompressibleStaticFile(filePath: string): boolean {
+  return COMPRESSIBLE_STATIC_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+}
+
+function registerCompressedStaticAssets(app: Express, distPath: string): void {
+  app.get("*", (req, res, next) => {
+    if (!req.acceptsEncodings("gzip")) {
+      return next();
+    }
+
+    if (req.headers.range || !isStaticAssetRequest(req.path)) {
+      return next();
+    }
+
+    let requestedPath: string;
+    try {
+      requestedPath = decodeURIComponent(req.path);
+    } catch {
+      return next();
+    }
+    const filePath = path.resolve(distPath, `.${requestedPath}`);
+    if (!filePath.startsWith(`${distPath}${path.sep}`) || !isCompressibleStaticFile(filePath)) {
+      return next();
+    }
+
+    fs.stat(filePath, (error, stat) => {
+      if (error || !stat.isFile()) {
+        return next();
+      }
+
+      const cacheControl = cacheControlForStaticFile(filePath);
+      if (cacheControl) {
+        res.setHeader("Cache-Control", cacheControl);
+      }
+      res.setHeader("Content-Encoding", "gzip");
+      res.setHeader("Vary", "Accept-Encoding");
+      res.type(path.extname(filePath));
+
+      fs.createReadStream(filePath)
+        .on("error", next)
+        .pipe(zlib.createGzip())
+        .on("error", next)
+        .pipe(res);
+    });
+  });
 }
 
 function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (header: string) => string | undefined }): string {
@@ -135,6 +192,8 @@ export function serveStatic(app: Express) {
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
+
+  registerCompressedStaticAssets(app, distPath);
 
   app.use(
     express.static(distPath, {

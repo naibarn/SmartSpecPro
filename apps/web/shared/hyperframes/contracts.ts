@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC } from "./limits";
 
 export const HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION =
   "hyperframes_marketplace_auto_review_v1" as const;
@@ -208,8 +209,8 @@ export const HyperframesPlatformPresetSchema = z
     width: z.number().int().min(320).max(4096),
     height: z.number().int().min(320).max(4096),
     fps: z.number().int().min(12).max(60),
-    durationSeconds: z.number().min(1).max(120),
-    maxDurationSeconds: z.number().min(1).max(120),
+    durationSeconds: z.number().min(1).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    maxDurationSeconds: z.number().min(1).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
     safeArea: HyperframesSafeAreaSchema,
     avoidZones: z.array(HyperframesSafeAreaSchema).default([]),
     subtitlePolicy: z
@@ -264,8 +265,8 @@ export const HyperframesTemplateDescriptorSchema = z
     minShots: z.number().int().min(0).max(12),
     maxShots: z.number().int().min(0).max(12),
     durationRangeSeconds: z.tuple([
-      z.number().min(0).max(120),
-      z.number().min(0).max(120),
+      z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+      z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
     ]),
     safeAreaRequired: z.boolean(),
     disclosureRequiredWhenClaimed: z.boolean(),

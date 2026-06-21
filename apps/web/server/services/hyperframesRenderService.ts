@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -16,7 +16,11 @@ import {
 } from "@shared/hyperframes/contracts";
 import { getHyperframesStatusCopy } from "@shared/hyperframes/statusCopy";
 import { getDb } from "../db";
-import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
+import {
+  marketplaceAutoReviewOutboxJobs,
+  marketplaceAutoReviewRuns,
+  marketplaceProducts,
+} from "../../drizzle/schema";
 import type { HyperframesAuthContext } from "./hyperframesFeatureAccessService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import { redactHyperframesDiagnostics } from "./hyperframesCompositionSanitizer";
@@ -92,6 +96,100 @@ export interface HyperframesRenderJobPayload {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function isManualStoryboardHyperframesIdentity(input: {
+  productId?: string | null;
+  runId?: string | null;
+}): boolean {
+  const productId = typeof input.productId === "string" ? input.productId.trim() : "";
+  const runId = typeof input.runId === "string" ? input.runId.trim() : "";
+  return (
+    /^manual(?:_storyboard)?_product_/i.test(productId) ||
+    /^manual(?:_storyboard)?_run_/i.test(runId)
+  );
+}
+
+async function ensureManualStoryboardOutboxParents(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  auth: HyperframesAuthContext;
+  productId: string;
+  runId: string;
+  payload: HyperframesRenderJobPayload;
+  now: Date;
+}): Promise<void> {
+  if (!input.db || !isManualStoryboardHyperframesIdentity(input)) return;
+
+  const productTitle =
+    typeof input.payload.productTitle === "string" && input.payload.productTitle.trim()
+      ? input.payload.productTitle.trim()
+      : "Manual Storyboard Project";
+  const sourceUrl = `manual-storyboard://${input.runId}`;
+  const idempotencyKey = `manual-storyboard:${input.runId}`;
+
+  await input.db
+    .insert(marketplaceProducts)
+    .values({
+      id: input.productId,
+      captureId: null,
+      userId: input.auth.userId,
+      tenantId: input.auth.tenantId ?? null,
+      platform: "shopee",
+      sourceUrl,
+      externalProductId: null,
+      externalShopId: null,
+      productName: productTitle,
+      descriptionText: "User-managed Storyboard Review project.",
+      descriptionJson: {
+        manualStoryboardReview: true,
+        runId: input.runId,
+      },
+      specsJson: {},
+      platformRawJson: {
+        manualStoryboardReview: true,
+        runId: input.runId,
+        hyperframesRenderOnly: true,
+      },
+      status: "active",
+      createdAt: input.now,
+      updatedAt: input.now,
+    })
+    .onConflictDoNothing();
+
+  await input.db
+    .insert(marketplaceAutoReviewRuns)
+    .values({
+      id: input.runId,
+      tenantId: input.auth.tenantId ?? null,
+      userId: input.auth.userId,
+      productId: input.productId,
+      productionRunId: input.runId,
+      outputMode: "storyboard_video",
+      frameStrategy: "manual_storyboard",
+      status: "completed",
+      currentStage: "storyboard_review",
+      stageIndex: 1,
+      stageCount: 1,
+      selectedConceptId: null,
+      storyboardReviewId: input.runId,
+      videoEditorProjectId: null,
+      renderJobId: null,
+      resultLibraryItemId: null,
+      resultJson: {
+        storyboardReviewId: input.runId,
+        manualStoryboardReview: true,
+      },
+      metadataJson: {
+        manualStoryboardReview: true,
+        source: "hyperframes_final_composite",
+      },
+      errorMessage: null,
+      idempotencyKey,
+      createdAt: input.now,
+      updatedAt: input.now,
+      completedAt: input.now,
+    })
+    .onConflictDoNothing();
 }
 
 function isHyperframesRuntimeReadyForProjection(): boolean {
@@ -690,6 +788,14 @@ export async function queueHyperframesRenderJob(input: {
   const jobType = input.jobType ?? "hyperframes_render";
   const now = new Date();
   if (db) {
+    await ensureManualStoryboardOutboxParents({
+      db,
+      auth: input.auth,
+      productId: input.composition.provenance.productId,
+      runId,
+      payload,
+      now,
+    });
     const insertedRows = await db
       .insert(marketplaceAutoReviewOutboxJobs)
       .values({
@@ -774,30 +880,59 @@ export async function queueHyperframesRenderJob(input: {
 
 export async function getHyperframesRenderProjection(input: {
   auth: HyperframesAuthContext;
-  renderJobId: string;
+  renderJobId?: string;
   productId?: string;
   runId?: string;
   operatorTenantAccess?: boolean;
 }): Promise<HyperframesRenderStatusProjection> {
   const tenantId = input.auth.tenantId ?? "default";
   const db = await getDb();
+  let renderJobId = input.renderJobId?.trim() || "";
   if (db) {
+    if (!renderJobId && input.runId) {
+      const filters = [
+        eq(marketplaceAutoReviewOutboxJobs.runId, input.runId),
+        inArray(marketplaceAutoReviewOutboxJobs.jobType, [
+          "hyperframes_render",
+          "hyperframes_finalize",
+        ]),
+        sql`${marketplaceAutoReviewOutboxJobs.payloadJson}->>'renderIntent' = 'final'`,
+      ];
+      if (input.operatorTenantAccess || input.auth.tenantId) {
+        filters.push(eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId));
+      } else {
+        filters.push(eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId));
+      }
+      if (input.productId) {
+        filters.push(sql`${marketplaceAutoReviewOutboxJobs.payloadJson}->>'productId' = ${input.productId}`);
+      }
+      const [latestJob] = await db
+        .select({ id: marketplaceAutoReviewOutboxJobs.id })
+        .from(marketplaceAutoReviewOutboxJobs)
+        .where(and(...filters))
+        .orderBy(
+          desc(marketplaceAutoReviewOutboxJobs.updatedAt),
+          desc(marketplaceAutoReviewOutboxJobs.createdAt)
+        )
+        .limit(1);
+      renderJobId = latestJob?.id ?? "";
+    }
     const [job] = await db
       .select()
       .from(marketplaceAutoReviewOutboxJobs)
       .where(
         input.operatorTenantAccess
           ? and(
-              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+              eq(marketplaceAutoReviewOutboxJobs.id, renderJobId),
               eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
             )
           : input.productId && input.auth.tenantId
             ? and(
-                eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+                eq(marketplaceAutoReviewOutboxJobs.id, renderJobId),
                 eq(marketplaceAutoReviewOutboxJobs.tenantId, tenantId)
               )
           : and(
-              eq(marketplaceAutoReviewOutboxJobs.id, input.renderJobId),
+              eq(marketplaceAutoReviewOutboxJobs.id, renderJobId),
               eq(marketplaceAutoReviewOutboxJobs.userId, input.auth.userId)
             )
       )
@@ -820,7 +955,7 @@ export async function getHyperframesRenderProjection(input: {
             tenantId,
             productId: requestedProductId,
             runId: input.runId ?? job.runId,
-            renderJobId: input.renderJobId,
+            renderJobId,
             status: "not_available",
           });
         }
@@ -830,7 +965,7 @@ export async function getHyperframesRenderProjection(input: {
           tenantId,
           productId: input.productId ?? "unknown_product",
           runId: input.runId,
-          renderJobId: input.renderJobId,
+          renderJobId,
           status: "not_available",
         });
       }
@@ -839,7 +974,7 @@ export async function getHyperframesRenderProjection(input: {
           tenantId,
           productId: input.productId ?? "unknown_product",
           runId: input.runId ?? job.runId,
-          renderJobId: input.renderJobId,
+          renderJobId,
           status: "not_available",
         });
       }
@@ -848,7 +983,7 @@ export async function getHyperframesRenderProjection(input: {
           tenantId,
           productId: requestedProductId,
           runId: input.runId ?? job.runId,
-          renderJobId: input.renderJobId,
+          renderJobId,
           status: "not_available",
         });
       }
@@ -944,7 +1079,11 @@ export async function getHyperframesRenderProjection(input: {
     tenantId,
     productId: input.productId ?? "unknown_product",
     runId: input.runId ?? "unknown_run",
-    renderJobId: input.renderJobId,
+    renderJobId: renderJobId || `hf_latest_${stableHash({
+      tenantId,
+      productId: input.productId ?? "",
+      runId: input.runId ?? "",
+    }).slice(0, 24)}`,
     status: "not_available",
   });
 }

@@ -22,7 +22,11 @@ import {
 import { AutoReviewCreativePresetSelectionSchema } from "./autoReviewCreativePresets";
 import { HyperframesFeatureAccessProjectionSchema } from "./featureAccess";
 import { HyperframesTemplateDescriptorSchema } from "./contracts";
-import { HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS } from "./limits";
+import {
+  HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
+  HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+  HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS,
+} from "./limits";
 import {
   VideoSegmentPlanSchema,
   VideoSegmentPlanWarningSchema,
@@ -308,8 +312,8 @@ export const HyperframesFinalCompositeTextMotionPresetSchema = z.enum([
 
 export const HyperframesFinalCompositeSubtitleCueSchema = z
   .object({
-    startSec: z.number().min(0).max(120),
-    endSec: z.number().min(0.1).max(120),
+    startSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    endSec: z.number().min(0.1).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
     text: z.string().trim().max(360),
   })
   .strict()
@@ -324,8 +328,9 @@ export const HyperframesFinalCompositeShotInputSchema = z
     title: z.string().trim().max(180).optional().default(""),
     sourceVideoUrl: z.string().trim().min(1).max(4096),
     sourceVideoRef: z.string().trim().max(1024).optional().nullable(),
-    startSec: z.number().min(0).max(120),
-    durationSec: z.number().min(0.5).max(30),
+    mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional().default(0),
+    startSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    durationSec: z.number().min(0.5).max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
     onScreenText: z.array(z.string().trim().max(600)).max(15).default([]),
     subtitleCues: z
       .array(HyperframesFinalCompositeSubtitleCueSchema)
@@ -356,7 +361,7 @@ export const HyperframesFinalCompositeShotInputSchema = z
 
 export const HyperframesFinalCompositeConfigSchema = z
   .object({
-    finalVideoLengthSec: z.number().min(1).max(120),
+    finalVideoLengthSec: z.number().min(1).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
     width: z.number().int().min(320).max(4096).optional().default(1080),
     height: z.number().int().min(320).max(4096).optional().default(1920),
     fps: z.number().int().min(12).max(60).optional().default(30),
@@ -437,12 +442,16 @@ export const CreateHyperframesFinalCompositeOutputSchema = z
 
 export const GetHyperframesRenderJobInputSchema = z
   .object({
-    renderJobId: z.string().min(1).max(128),
+    renderJobId: z.string().trim().max(128).optional(),
     productId: z.string().min(1).max(64).optional(),
     runId: z.string().min(1).max(64).optional(),
     etag: z.string().min(1).max(160).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    input => Boolean(input.renderJobId?.trim() || input.runId?.trim()),
+    "renderJobId or runId is required",
+  );
 
 export const GetHyperframesRenderJobOutputSchema = z
   .object({

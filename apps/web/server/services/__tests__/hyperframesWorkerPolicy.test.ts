@@ -5,8 +5,12 @@ import {
   buildOfficialRuntimeAudioMixReport,
   buildFinalCompositeAss,
   executeLocalHyperframesSmokeRender,
+  HYPERFRAMES_RENDER_WORKER_LOCK_MS,
   isHyperframesRuntimeExecutionReady,
+  isFinalCompositeFfmpegAssFallbackAllowed,
+  isHyperframesWorkerLockOwnedByDeadLocalProcess,
   isHyperframesWorkerEnabled,
+  isHyperframesWorkerJobRunnable,
   isNonRetryableHyperframesRuntimeError,
   resolveHyperframesFfmpegBinary,
   runHyperframesRenderWorkerOnce,
@@ -105,6 +109,58 @@ describe("hyperframesWorkerPolicy", () => {
     });
   });
 
+  it("treats expired running locks as runnable while preserving active locks", () => {
+    const now = new Date("2026-06-21T10:00:00.000Z");
+    expect(
+      isHyperframesWorkerJobRunnable({
+        status: "queued",
+        scheduledAt: now,
+        now,
+      })
+    ).toBe(true);
+    expect(
+      isHyperframesWorkerJobRunnable({
+        status: "retry",
+        scheduledAt: new Date(now.getTime() + 60_000),
+        now,
+      })
+    ).toBe(false);
+    expect(
+      isHyperframesWorkerJobRunnable({
+        status: "running",
+        lockedUntil: new Date(now.getTime() - 1),
+        scheduledAt: now,
+        now,
+      })
+    ).toBe(true);
+    expect(
+      isHyperframesWorkerJobRunnable({
+        status: "running",
+        lockedUntil: new Date(now.getTime() + HYPERFRAMES_RENDER_WORKER_LOCK_MS),
+        scheduledAt: now,
+        now,
+      })
+    ).toBe(false);
+  });
+
+  it("detects dead local HyperFrames worker locks without touching external lock formats", () => {
+    expect(
+      isHyperframesWorkerLockOwnedByDeadLocalProcess({
+        lockedBy: `hyperframes-worker-${process.pid}`,
+      })
+    ).toBe(false);
+    expect(
+      isHyperframesWorkerLockOwnedByDeadLocalProcess({
+        lockedBy: "cloud-run-worker-abc",
+      })
+    ).toBe(false);
+    expect(
+      isHyperframesWorkerLockOwnedByDeadLocalProcess({
+        lockedBy: "hyperframes-worker-999999999",
+      })
+    ).toBe(true);
+  });
+
   it("builds job-type specific completion payloads before render execution", () => {
     expect(
       buildCompletedHyperframesStagePayload({
@@ -165,6 +221,39 @@ describe("hyperframesWorkerPolicy", () => {
         },
       })
     ).rejects.toThrow(/HTML\/CSS\/browser runtime is required/);
+  });
+
+  it("allows FFmpeg/ASS fallback only when final composite capability explicitly opts in", () => {
+    const basePayload = {
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      finalCompositeConfig: {
+        width: 1080,
+        height: 1920,
+        shots: [
+          {
+            id: "shot_1",
+            index: 0,
+            durationSec: 8,
+            sourceVideoUrl: "/api/storage/files/tenant/run/shot-1.mp4",
+          },
+        ],
+      },
+    };
+
+    expect(isFinalCompositeFfmpegAssFallbackAllowed(basePayload)).toBe(false);
+    expect(
+      isFinalCompositeFfmpegAssFallbackAllowed({
+        ...basePayload,
+        finalCompositeConfig: {
+          ...basePayload.finalCompositeConfig,
+          fallbackCapability: {
+            ffmpegAssFallback: true,
+            fallbackQuality: "partial",
+          },
+        },
+      })
+    ).toBe(true);
   });
 
   it("treats HyperFrames media audio contract violations as non-retryable runtime configuration failures", () => {
@@ -310,6 +399,59 @@ describe("hyperframesWorkerPolicy", () => {
 
     expect(ass).toContain("{\\an1\\pos(90,1330)");
     expect(ass).not.toContain("{\\an8\\pos(540,170)");
+  });
+
+  it("falls back to per-shot subtitle text for hook plus overlay mode when shot overlay text is empty", () => {
+    const ass = buildFinalCompositeAss(
+      [
+        {
+          index: 0,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v001.mp4",
+          onScreenText: ["เปิดเรื่องด้วย Hook"],
+          subtitleCues: [{ startSec: 0, endSec: 2.5, text: "ซับ shot หนึ่ง" }],
+          overlayPreset: "premium_product_hero",
+          animationPreset: "glow_feature",
+        },
+        {
+          index: 1,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v002.mp4",
+          onScreenText: [],
+          subtitleCues: [{ startSec: 8, endSec: 11, text: "overlay shot สอง" }],
+          overlayPreset: "premium_product_hero",
+          animationPreset: "smooth_reveal",
+        },
+        {
+          index: 2,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v003.mp4",
+          onScreenText: [],
+          subtitleCues: [{ startSec: 16, endSec: 19, text: "overlay shot สาม" }],
+          overlayPreset: "split_product_specs",
+          animationPreset: "smooth_reveal",
+        },
+      ],
+      {
+        finalCompositeConfig: {
+          overlayPreset: "premium_product_hero",
+          subtitlePreset: "highlight_bar",
+          textMode: "hook_and_per_shot",
+          includeShotText: true,
+          includeHookText: true,
+          burnInSubtitles: true,
+          hookText: "Hook หลัก",
+          supportingText: "Supporting หลัก",
+        },
+      }
+    );
+
+    const overlayDialogues = ass
+      .split("\n")
+      .filter(line => line.startsWith("Dialogue: 0,"));
+    expect(overlayDialogues.join("\n")).toContain("เปิดเรื่องด้วย Hook");
+    expect(overlayDialogues.join("\n")).toContain("overlay shot สอง");
+    expect(overlayDialogues.join("\n")).toContain("overlay shot สาม");
   });
 
   it("renders kinetic overlay copy with preview-style left panel instead of centered text", () => {

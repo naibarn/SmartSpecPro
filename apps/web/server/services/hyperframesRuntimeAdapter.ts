@@ -1,6 +1,7 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
+import { promisify } from "node:util";
 import {
   accessSync,
   constants as fsConstants,
@@ -37,6 +38,7 @@ export interface HyperframesRuntimeAdapterEnv {
   HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME?: string;
   HYPERFRAMES_PLAYER_READY_TIMEOUT_MS?: string;
   HYPERFRAMES_PAGE_NAVIGATION_TIMEOUT_SEC?: string;
+  HYPERFRAMES_CLI_RENDER_HARD_TIMEOUT_MS?: string;
   HYPERFRAMES_THAI_FONT_PATH?: string;
 }
 
@@ -46,7 +48,7 @@ export interface HyperframesRuntimeRenderInput {
   payload: Record<string, unknown>;
   env?: HyperframesRuntimeAdapterEnv;
   importer?: (specifier: string) => Promise<unknown>;
-  commandRunner?: (command: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv }) => unknown | Promise<unknown>;
+  commandRunner?: (command: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv; timeout?: number; maxBuffer?: number }) => unknown | Promise<unknown>;
   storageCopier?: (relKey: string, targetPath: string) => Promise<{ key: string }>;
 }
 
@@ -68,6 +70,7 @@ export interface HyperframesRuntimeDiagnostics {
   packageNames: ["hyperframes", "@hyperframes/producer"];
   fontAssetStaged: boolean;
   playerReadyTimeoutMs: number;
+  pageNavigationTimeoutSec: number;
 }
 
 function truthy(value: unknown): boolean {
@@ -421,10 +424,72 @@ async function importHyperframesProducer(
 }
 
 const requireForRuntime = createRequire(import.meta.url);
+const execFileAsync = promisify(execFile);
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function numberFromUnknown(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getFinalCompositeDurationSec(payload: Record<string, unknown>): number {
+  const config = payload.finalCompositeConfig && typeof payload.finalCompositeConfig === "object"
+    ? payload.finalCompositeConfig as Record<string, unknown>
+    : {};
+  const directDuration =
+    numberFromUnknown(config.finalVideoLengthSec) ??
+    numberFromUnknown(payload.finalVideoLengthSec) ??
+    numberFromUnknown(config.durationSec) ??
+    numberFromUnknown(payload.durationSec);
+  if (directDuration) return directDuration;
+  const shots = Array.isArray(config.shots) ? config.shots : Array.isArray(payload.shots) ? payload.shots : [];
+  return shots.reduce((sum, shot) => {
+    if (!shot || typeof shot !== "object") return sum;
+    return sum + (numberFromUnknown((shot as Record<string, unknown>).durationSec) ?? 0);
+  }, 0);
+}
+
+export function resolveHyperframesCliRenderTimeouts(
+  payload: Record<string, unknown>,
+  env?: HyperframesRuntimeAdapterEnv
+): { playerReadyTimeoutMs: number; pageNavigationTimeoutSec: number } {
+  const durationSec = getFinalCompositeDurationSec(payload);
+  const shotCount = (() => {
+    const config = payload.finalCompositeConfig && typeof payload.finalCompositeConfig === "object"
+      ? payload.finalCompositeConfig as Record<string, unknown>
+      : {};
+    const shots = Array.isArray(config.shots) ? config.shots : Array.isArray(payload.shots) ? payload.shots : [];
+    return shots.length;
+  })();
+  const longCompositePlayerTimeoutMs =
+    durationSec >= 120 || shotCount >= 6 ? 30_000 : durationSec >= 60 || shotCount >= 3 ? 15_000 : 5_000;
+  const longCompositeBrowserTimeoutSec =
+    durationSec >= 180 || shotCount >= 6 ? 240 : durationSec >= 60 || shotCount >= 3 ? 120 : 60;
+  return {
+    playerReadyTimeoutMs: parsePositiveInt(
+      env?.HYPERFRAMES_PLAYER_READY_TIMEOUT_MS,
+      longCompositePlayerTimeoutMs,
+    ),
+    pageNavigationTimeoutSec: parsePositiveInt(
+      env?.HYPERFRAMES_PAGE_NAVIGATION_TIMEOUT_SEC,
+      longCompositeBrowserTimeoutSec,
+    ),
+  };
+}
+
+export function resolveHyperframesCliRenderHardTimeoutMs(
+  payload: Record<string, unknown>,
+  env?: HyperframesRuntimeAdapterEnv
+): number {
+  const explicit = parsePositiveInt(env?.HYPERFRAMES_CLI_RENDER_HARD_TIMEOUT_MS, 0);
+  if (explicit > 0) return explicit;
+  const durationSec = getFinalCompositeDurationSec(payload);
+  const estimatedMs = Math.max(5 * 60_000, Math.ceil(durationSec * 2_500));
+  return Math.min(12 * 60_000, estimatedMs);
 }
 
 function resolveThaiFontPath(env?: HyperframesRuntimeAdapterEnv): string | null {
@@ -482,7 +547,8 @@ function readPackageVersion(packageName: string): string | null {
 export function getHyperframesRuntimeDiagnostics(
   mode: "official_cli_ready" | "official_producer_ready",
   runtimeAssets: { fontAssetStaged?: boolean } = {},
-  env?: HyperframesRuntimeAdapterEnv
+  env?: HyperframesRuntimeAdapterEnv,
+  timeouts?: { playerReadyTimeoutMs: number; pageNavigationTimeoutSec: number }
 ): HyperframesRuntimeDiagnostics {
   return {
     runtimeMode: mode,
@@ -491,10 +557,12 @@ export function getHyperframesRuntimeDiagnostics(
     hyperframesProducerVersion: readPackageVersion("@hyperframes/producer"),
     packageNames: ["hyperframes", "@hyperframes/producer"],
     fontAssetStaged: runtimeAssets.fontAssetStaged === true,
-    playerReadyTimeoutMs: parsePositiveInt(
-      env?.HYPERFRAMES_PLAYER_READY_TIMEOUT_MS,
-      5000
-    ),
+    playerReadyTimeoutMs:
+      timeouts?.playerReadyTimeoutMs ??
+      parsePositiveInt(env?.HYPERFRAMES_PLAYER_READY_TIMEOUT_MS, 5000),
+    pageNavigationTimeoutSec:
+      timeouts?.pageNavigationTimeoutSec ??
+      parsePositiveInt(env?.HYPERFRAMES_PAGE_NAVIGATION_TIMEOUT_SEC, 60),
   };
 }
 
@@ -587,14 +655,8 @@ export async function executeHyperframesCliRender(
   writeFileSync(htmlPath, compositionHtml, "utf8");
   const runtimeAssets = stageHyperframesRuntimeAssets(input.workspace, input.env);
   const command = resolveHyperframesCliBinary(input.env);
-  const playerReadyTimeoutMs = parsePositiveInt(
-    input.env?.HYPERFRAMES_PLAYER_READY_TIMEOUT_MS,
-    5000
-  );
-  const pageNavigationTimeoutSec = parsePositiveInt(
-    input.env?.HYPERFRAMES_PAGE_NAVIGATION_TIMEOUT_SEC,
-    60
-  );
+  const { playerReadyTimeoutMs, pageNavigationTimeoutSec } =
+    resolveHyperframesCliRenderTimeouts(input.payload, input.env);
   const args = [
     "render",
     input.workspace,
@@ -621,15 +683,22 @@ export async function executeHyperframesCliRender(
     args.push("--variables", JSON.stringify(variables), "--strict-variables");
   }
   const processEnv = buildHyperframesCliProcessEnv(input.env);
+  const hardTimeoutMs = resolveHyperframesCliRenderHardTimeoutMs(
+    input.payload,
+    input.env,
+  );
   const result = await (input.commandRunner
     ? input.commandRunner(command, args, {
         cwd: input.workspace,
         env: processEnv,
+        timeout: hardTimeoutMs,
+        maxBuffer: 20 * 1024 * 1024,
       })
-    : execFileSync(command, args, {
+    : execFileAsync(command, args, {
         cwd: input.workspace,
         env: processEnv,
-        stdio: "pipe",
+        timeout: hardTimeoutMs,
+        maxBuffer: 20 * 1024 * 1024,
       }));
   if (!existsSync(input.outputPath)) {
     throw new Error("HyperFrames CLI completed without creating output.mp4.");
@@ -644,7 +713,8 @@ export async function executeHyperframesCliRender(
     runtimeDiagnostics: getHyperframesRuntimeDiagnostics(
       "official_cli_ready",
       runtimeAssets,
-      input.env
+      input.env,
+      { playerReadyTimeoutMs, pageNavigationTimeoutSec },
     ),
   };
 }

@@ -14,6 +14,7 @@ import {
   getHyperframesRuntimeMode,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
+  resolveHyperframesCliRenderTimeouts,
 } from "../hyperframesRuntimeAdapter";
 
 describe("hyperframesRuntimeAdapter", () => {
@@ -201,6 +202,25 @@ describe("hyperframesRuntimeAdapter", () => {
       "@hyperframes/producer",
     ]);
     expect(result.runtimeDiagnostics.playerReadyTimeoutMs).toBe(6500);
+  });
+
+  it("scales CLI readiness and browser timeouts for long final composite renders", async () => {
+    const timeouts = resolveHyperframesCliRenderTimeouts({
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      finalCompositeConfig: {
+        finalVideoLengthSec: 238,
+        shots: Array.from({ length: 8 }, (_, index) => ({
+          id: `shot_${index + 1}`,
+          durationSec: index === 7 ? 28 : 30,
+        })),
+      },
+    });
+
+    expect(timeouts).toEqual({
+      playerReadyTimeoutMs: 30_000,
+      pageNavigationTimeoutSec: 240,
+    });
   });
 
   it("stages storage media refs into the HyperFrames project before CLI render", async () => {

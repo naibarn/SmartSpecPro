@@ -10,6 +10,10 @@ import {
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
 import { storageCopyToPath } from "../storage";
+import {
+  HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
+  HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+} from "../../shared/hyperframes/limits";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,9 +40,19 @@ export interface HyperframesStoryboardShotTranscription {
   language: string;
 }
 
+export interface HyperframesTranscriptionSegment {
+  mediaStartSec: number;
+  durationSec?: number;
+}
+
 export interface HyperframesTranscriptionDeps {
   copyStorageToPath?: typeof storageCopyToPath;
-  extractAudioFromVideo?: (inputPath: string, outputPath: string, env?: HyperframesRuntimeAdapterEnv) => void | Promise<void>;
+  extractAudioFromVideo?: (
+    inputPath: string,
+    outputPath: string,
+    env?: HyperframesRuntimeAdapterEnv,
+    segment?: HyperframesTranscriptionSegment,
+  ) => void | Promise<void>;
   resolveModelPath?: (model: string) => string;
   runCommand?: (
     command: string,
@@ -130,10 +144,40 @@ function resolveFfmpegExecutable(env?: HyperframesRuntimeAdapterEnv): string {
   return resolveBinaryFromPath("ffmpeg", env) ?? "ffmpeg";
 }
 
-function extractMono16kAudioFromVideo(inputPath: string, outputPath: string, env?: HyperframesRuntimeAdapterEnv): void {
+function normalizeTranscriptionSegment(input: {
+  mediaStartSec?: number;
+  durationSec?: number;
+}): HyperframesTranscriptionSegment | undefined {
+  const mediaStartSec = Number(input.mediaStartSec ?? 0);
+  const durationSec = Number(input.durationSec);
+  const safeStartSec = Number.isFinite(mediaStartSec)
+    ? Math.min(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC, Math.max(0, mediaStartSec))
+    : 0;
+  const safeDurationSec = Number.isFinite(durationSec)
+    ? Math.min(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC, Math.max(0.5, durationSec))
+    : undefined;
+  if (safeStartSec <= 0 && safeDurationSec === undefined) return undefined;
+  return {
+    mediaStartSec: Number(safeStartSec.toFixed(3)),
+    durationSec: safeDurationSec === undefined ? undefined : Number(safeDurationSec.toFixed(3)),
+  };
+}
+
+function extractMono16kAudioFromVideo(
+  inputPath: string,
+  outputPath: string,
+  env?: HyperframesRuntimeAdapterEnv,
+  segment?: HyperframesTranscriptionSegment,
+): void {
+  const segmentArgs = [
+    ...(segment && segment.mediaStartSec > 0 ? ["-ss", String(segment.mediaStartSec)] : []),
+    "-i",
+    inputPath,
+    ...(segment?.durationSec ? ["-t", String(segment.durationSec)] : []),
+  ];
   execFileSync(
     resolveFfmpegExecutable(env),
-    ["-i", inputPath, "-vn", "-ar", "16000", "-ac", "1", "-f", "wav", "-y", outputPath],
+    [...segmentArgs, "-vn", "-ar", "16000", "-ac", "1", "-f", "wav", "-y", outputPath],
     {
       stdio: "ignore",
       timeout: 2 * 60 * 1000,
@@ -297,6 +341,8 @@ export function renderTranscriptCuesAsSrt(cues: HyperframesTranscriptCue[]): str
 
 export async function transcribeHyperframesStoryboardShot(input: {
   sourceVideoUrl: string;
+  mediaStartSec?: number;
+  durationSec?: number;
   language?: string;
   model?: string;
   deps?: HyperframesTranscriptionDeps;
@@ -320,6 +366,10 @@ export async function transcribeHyperframesStoryboardShot(input: {
   const env = buildHyperframesCliProcessEnv(input.deps?.env ?? process.env);
   const whisperExecutable = resolveWhisperExecutable(input.deps?.env ?? process.env);
   const whisperModelPath = (input.deps?.resolveModelPath ?? resolveWhisperModelPath)(model);
+  const segment = normalizeTranscriptionSegment({
+    mediaStartSec: input.mediaStartSec,
+    durationSec: input.durationSec,
+  });
   try {
     await (input.deps?.copyStorageToPath ?? storageCopyToPath)(storageKey, sourcePath);
     if (!input.deps?.resolveModelPath && !existsSync(whisperModelPath)) {
@@ -331,6 +381,7 @@ export async function transcribeHyperframesStoryboardShot(input: {
       sourcePath,
       audioPath,
       input.deps?.env ?? process.env,
+      segment,
     );
     await runCommand(
       whisperExecutable,
