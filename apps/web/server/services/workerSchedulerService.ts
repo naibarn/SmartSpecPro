@@ -5,6 +5,7 @@ import { workerJobs, workers } from "../../drizzle/schema";
 import type {
   ComfyImageGenerationJobContract,
   ComfyWorkflowRunJobContract,
+  HyperframesFinalCompositeWorkerInput,
   LocalFolderIngestJobContract,
   WorkerResourceProfile,
   WorkerRuntimeType,
@@ -13,9 +14,12 @@ import type {
 import {
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
+  HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
   getWorkerRuntimeDefinition,
+  hyperframesFinalCompositeWorkerInputSchema,
   isWorkerPathWithinAllowedRoots,
   isWorkerLoopbackUrl,
   localFolderIngestJobContractSchema,
@@ -114,6 +118,7 @@ export interface QueueOpenClawWorkerJobInput {
 export interface WorkerSchedulerFeatureFlags {
   openClawExternalRuntime: boolean;
   desktopZeroClawWorker: boolean;
+  hyperframesWorkerFinalComposite?: boolean;
   nemoClawSecureWorkerPool: boolean;
   hiClawClusterRuntime: boolean;
   hermesAgentRuntime: boolean;
@@ -434,6 +439,21 @@ export interface QueueDesktopComfyWorkflowRunJobInput extends ComfyWorkflowRunJo
   reservedCredits?: number | null;
 }
 
+export interface QueueDesktopHyperframesFinalCompositeJobInput
+  extends HyperframesFinalCompositeWorkerInput {
+  tenantId: string;
+  teamId?: string | null;
+  workflowRunId?: string | null;
+  requestedByUserId?: number | null;
+  requestedByPersonaId?: string | null;
+  requestedBySystemComponent?: string | null;
+  priority?: number;
+  timeoutSeconds?: number;
+  idempotencyKey?: string | null;
+  preferredWorkerId?: string | null;
+  reservedCredits?: number | null;
+}
+
 export interface QueueNemoClawWorkerJobInput {
   tenantId: string;
   teamId?: string | null;
@@ -517,6 +537,10 @@ export type QueueWorkerJobByRuntimeInput =
       runtimeType: "desktop_zeroclaw_managed";
       jobType: "comfy_workflow_run";
     } & QueueDesktopComfyWorkflowRunJobInput)
+  | ({
+      runtimeType: "desktop_zeroclaw_managed";
+      jobType: "hyperframes_final_composite";
+    } & QueueDesktopHyperframesFinalCompositeJobInput)
   | ({
       runtimeType: "nemoclaw_sandbox";
     } & QueueNemoClawWorkerJobInput)
@@ -674,6 +698,26 @@ function buildDesktopComfyWorkflowRunCapabilityFamilies(
     families.add("gpu-nvidia");
   }
   return Array.from(families);
+}
+
+function buildDesktopHyperframesFinalCompositeCapabilityFamilies(): string[] {
+  return [...HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES];
+}
+
+function normalizeWorkerWorkflowRunId(value: string | null | undefined): string | null {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length <= 36) {
+    return trimmed;
+  }
+  let hash = 2166136261;
+  for (let index = 0; index < trimmed.length; index += 1) {
+    hash ^= trimmed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `hfw_${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 function assertPreferredWorkerCompatible(
@@ -1365,6 +1409,139 @@ async function queueFeatureGatedExternalRuntimeJob(
   }
 }
 
+export async function queueDesktopHyperframesFinalCompositeJob(
+  rawInput: QueueDesktopHyperframesFinalCompositeJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  const input = hyperframesFinalCompositeWorkerInputSchema.parse(rawInput);
+  const repo = deps.repo ?? defaultRepo;
+  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+
+  if (!isDesktopWorkerDispatchEnabled()) {
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
+    );
+  }
+
+  const tenantFlags = await getFeatureFlags(rawInput.tenantId);
+  if (!tenantFlags.desktopZeroClawWorker || tenantFlags.hyperframesWorkerFinalComposite !== true) {
+    throw new WorkerSchedulerError(
+      "feature_disabled",
+      403,
+      "HyperFrames final composite worker rendering is not enabled for this tenant",
+    );
+  }
+
+  if (rawInput.idempotencyKey) {
+    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    if (existing) {
+      return { created: false, job: existing };
+    }
+  }
+
+  if (rawInput.preferredWorkerId) {
+    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    assertPreferredWorkerCompatible(
+      worker,
+      rawInput.preferredWorkerId,
+      DESKTOP_RUNTIME_TYPE,
+      "a Smart AI Hub Worker App desktop worker",
+    );
+  }
+
+  const capabilityFamilies = buildDesktopHyperframesFinalCompositeCapabilityFamilies();
+  const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
+  const billing = rawInput.requestedByUserId
+    ? await reserveCredits({
+        userId: rawInput.requestedByUserId,
+        tenantId: rawInput.tenantId,
+        requestedCredits: rawInput.reservedCredits,
+        metadata: {
+          teamId: rawInput.teamId ?? null,
+          workflowRunId: rawInput.workflowRunId ?? null,
+          jobType: "hyperframes_final_composite",
+          capabilityFamilies,
+          finalVideoLengthSec: input.finalVideoLengthSec,
+          shotCount: input.shots.length,
+          compositionHash: input.compositionHash,
+          finalCompositeConfigHash: input.finalCompositeConfigHash,
+        },
+      })
+    : null;
+
+  try {
+    const job = await repo.insertJob({
+      tenantId: rawInput.tenantId,
+      teamId: rawInput.teamId ?? null,
+      workerId: null,
+      runtimeType: DESKTOP_RUNTIME_TYPE,
+      workflowRunId: normalizeWorkerWorkflowRunId(rawInput.workflowRunId ?? input.source.runId),
+      requestedByUserId: rawInput.requestedByUserId ?? null,
+      requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
+      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "hyperframes_worker_scheduler",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      statusReason: "hyperframes_final_composite_worker",
+      priority: rawInput.priority ?? 30,
+      resourceProfile: "cpu_heavy",
+      capabilityRequirementsJson: {
+        capabilityFamilies,
+        preferredWorkerId: rawInput.preferredWorkerId ?? null,
+        runtimeProfileId: input.runtimeProfileId,
+        requireOfficialRuntime: input.outputRequirements.requireOfficialRuntime,
+        requireCssBrowserRuntime: input.outputRequirements.requireCssBrowserRuntime,
+        rejectFallbackRender: input.outputRequirements.rejectFallbackRender,
+      },
+      inputJson: input,
+      instructionsJson: {
+        intent: "hyperframes_final_composite",
+        workerBilling: buildWorkerBillingMetadata(billing),
+        requiredProgressStages: [...HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES],
+        outputPolicy: {
+          format: input.outputRequirements.format,
+          aspectRatio: input.outputRequirements.aspectRatio,
+          width: input.outputRequirements.width,
+          height: input.outputRequirements.height,
+          fps: input.outputRequirements.fps,
+          requireOfficialRuntime: input.outputRequirements.requireOfficialRuntime,
+          rejectFallbackRender: input.outputRequirements.rejectFallbackRender,
+          requireCssBrowserRuntime: input.outputRequirements.requireCssBrowserRuntime,
+          requireServerVerification: input.outputRequirements.requireServerVerification,
+          publishToLibrary: input.outputRequirements.publishToLibrary,
+        },
+        verificationPolicy: {
+          serverVerifiedBeforePublish: input.outputRequirements.requireServerVerification,
+          expectedDurationSec: input.finalVideoLengthSec,
+          compositionHash: input.compositionHash,
+          timelineHash: input.timelineHash,
+          finalCompositeConfigHash: input.finalCompositeConfigHash,
+        },
+        source: input.source,
+      },
+      timeoutSeconds: rawInput.timeoutSeconds ?? 7200,
+      retryPolicyJson: {
+        maxAttempts: 2,
+        backoffSeconds: 120,
+        reassignmentPolicy: "worker_lease_watchdog",
+      },
+      idempotencyKey: rawInput.idempotencyKey ?? null,
+    });
+
+    return { created: true, job };
+  } catch (error) {
+    if (billing?.reservationId) {
+      await refundReservation(billing.reservationId).catch(() => {});
+    }
+    throw error;
+  }
+}
+
 export async function queueNemoClawWorkerJob(
   input: QueueNemoClawWorkerJobInput,
   deps: {
@@ -1571,6 +1748,9 @@ export async function queueWorkerJobByRuntime(
     }
     if (input.jobType === "comfy_workflow_run") {
       return queueDesktopComfyWorkflowRunJob(input, deps);
+    }
+    if (input.jobType === "hyperframes_final_composite") {
+      return queueDesktopHyperframesFinalCompositeJob(input, deps);
     }
     return queueDesktopVideoAssemblyJob(input, deps);
   }

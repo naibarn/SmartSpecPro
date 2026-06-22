@@ -3,6 +3,7 @@ import {
   HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
   buildHyperframesLibraryIdempotencyKey,
   createDefaultHyperframesPollingGuidance,
+  stableHash,
   type HyperframesArtifactRef,
   type HyperframesChargeSummary,
   type HyperframesRenderStatusProjection,
@@ -24,9 +25,7 @@ import {
   type HyperframesCreativePreset,
 } from "@shared/hyperframes/creativePresets";
 import { listHyperframesTemplateRegistry } from "./hyperframesTemplateRegistry";
-import {
-  getHyperframesAutoStoryboardReviewPlan,
-} from "./hyperframesAutoPlanService";
+import { getHyperframesAutoStoryboardReviewPlan } from "./hyperframesAutoPlanService";
 import {
   buildHyperframesCreditEstimate,
   resolveHyperframesFeatureAccessForTenant,
@@ -42,6 +41,7 @@ import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import {
   buildHyperframesCompositionInput,
   buildHyperframesFinalCompositeCompositionInput,
+  normalizeHyperframesFinalCompositeTimeline,
 } from "./hyperframesCompositionService";
 import {
   buildHyperframesRenderJobPayload,
@@ -53,13 +53,15 @@ import {
   retryHyperframesRenderJob,
 } from "./hyperframesRenderService";
 import {
-  assertHyperframesCliRuntimeAllowed,
-  assertHyperframesProducerRuntimeAllowed,
+  getHyperframesCliRuntimeReadinessIssues,
+  getHyperframesProducerRuntimeReadinessIssues,
   getHyperframesRuntimeMode,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
+import { queueDesktopHyperframesFinalCompositeJob } from "./workerSchedulerService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
 import { startDetachedHyperframesRenderWorker } from "./backgroundWorkerProcess";
 import {
@@ -111,7 +113,9 @@ export function buildManualStoryboardProductState(input: {
   const productionContext = isRecord(input.runState.productionContext)
     ? input.runState.productionContext
     : {};
-  const resultJson = isRecord(input.runState.resultJson) ? input.runState.resultJson : {};
+  const resultJson = isRecord(input.runState.resultJson)
+    ? input.runState.resultJson
+    : {};
   const title =
     cleanText(productionContext.productionProjectTitle) ||
     cleanText(productionContext.productionStoryConceptTitle) ||
@@ -175,15 +179,16 @@ function isMarketplaceAutoReviewRunNotFound(error: unknown): boolean {
   );
 }
 
-async function getMarketplaceAutoReviewRunOrManualFallback(
-  input: {
-    productId: string;
-    runId: string;
-    auth: HyperframesAuthContext;
-  }
-): Promise<Record<string, unknown>> {
+async function getMarketplaceAutoReviewRunOrManualFallback(input: {
+  productId: string;
+  runId: string;
+  auth: HyperframesAuthContext;
+}): Promise<Record<string, unknown>> {
   try {
-    return (await getMarketplaceAutoReviewRun(input.runId, input.auth)) as Record<string, unknown>;
+    return (await getMarketplaceAutoReviewRun(
+      input.runId,
+      input.auth
+    )) as Record<string, unknown>;
   } catch (error) {
     if (!isMarketplaceAutoReviewRunNotFound(error)) throw error;
     return {
@@ -205,10 +210,15 @@ async function getMarketplaceAutoReviewRunOrManualFallback(
   }
 }
 
-function scheduleHyperframesFinalCompositeWorkerKick(renderJobId?: string): void {
+function scheduleHyperframesFinalCompositeWorkerKick(
+  renderJobId?: string
+): void {
   const timer = setTimeout(() => {
     try {
-      const worker = startDetachedHyperframesRenderWorker({ limit: 1, renderJobId });
+      const worker = startDetachedHyperframesRenderWorker({
+        limit: 1,
+        renderJobId,
+      });
       console.info("[HyperFrames] Started detached render worker.", {
         renderJobId: renderJobId ?? null,
         pid: worker.pid,
@@ -216,7 +226,7 @@ function scheduleHyperframesFinalCompositeWorkerKick(renderJobId?: string): void
     } catch (error) {
       console.warn(
         "HyperFrames final composite worker kick failed.",
-        error instanceof Error ? error.message : error,
+        error instanceof Error ? error.message : error
       );
     }
   }, 250);
@@ -229,7 +239,8 @@ async function dispatchHyperframesFinalCompositeWorker(input: {
   renderJobId: string;
 }): Promise<void> {
   try {
-    const { enqueueTask, getCloudTasksConfigStatus } = await import("./cloudTasks");
+    const { enqueueTask, getCloudTasksConfigStatus } =
+      await import("./cloudTasks");
     const config = getCloudTasksConfigStatus("node");
     if (config.configured) {
       await enqueueTask({
@@ -250,7 +261,7 @@ async function dispatchHyperframesFinalCompositeWorker(input: {
   } catch (error) {
     console.warn(
       "[HyperFrames] Failed to enqueue render worker task; starting detached render worker.",
-      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.message : error
     );
   }
   scheduleHyperframesFinalCompositeWorkerKick(input.renderJobId);
@@ -260,19 +271,13 @@ export function getHyperframesFinalCompositeRuntimeBlockReason(
   env?: HyperframesRuntimeAdapterEnv
 ): string | null {
   const runtimeMode = getHyperframesRuntimeMode(env);
-  try {
-    if (runtimeMode === "producer") {
-      assertHyperframesProducerRuntimeAllowed(env);
-      return null;
-    }
-    if (runtimeMode === "cli") {
-      assertHyperframesCliRuntimeAllowed(env);
-      return null;
-    }
-  } catch (error) {
-    return error instanceof Error
-      ? error.message
-      : "HyperFrames official runtime is not ready.";
+  if (runtimeMode === "producer") {
+    const issues = getHyperframesProducerRuntimeReadinessIssues(env);
+    return issues.length > 0 ? issues.join(" ") : null;
+  }
+  if (runtimeMode === "cli") {
+    const issues = getHyperframesCliRuntimeReadinessIssues(env);
+    return issues.length > 0 ? issues.join(" ") : null;
   }
   return "HyperFrames official HTML/CSS/browser runtime is not ready. Enable the tenant HyperFrames worker in Admin Tenant Feature Flags and verify the official HyperFrames runtime package.";
 }
@@ -302,7 +307,9 @@ function isCompleteValidatedAudioAsset(value: {
 }
 
 function isSfxAudioRole(role: string): boolean {
-  return role === "transition_sfx" || role === "ui_sfx" || role === "accent_sfx";
+  return (
+    role === "transition_sfx" || role === "ui_sfx" || role === "accent_sfx"
+  );
 }
 
 function sfxPresetFamily(presetId?: string): string {
@@ -419,7 +426,9 @@ function validateHyperframesAudioVolumePolicy(input: {
     volume: number;
   }>;
 }): void {
-  const hasVoiceover = input.audioEvents.some(event => event.role === "voiceover");
+  const hasVoiceover = input.audioEvents.some(
+    event => event.role === "voiceover"
+  );
   for (const event of input.audioEvents) {
     const policy = audioVolumePolicyForEvent({
       role: event.role,
@@ -447,7 +456,9 @@ function validateHyperframesSfxPolicy(input: {
   }>;
   shotCount: number;
 }): void {
-  const sfxEvents = input.audioEvents.filter(event => isSfxAudioRole(event.role));
+  const sfxEvents = input.audioEvents.filter(event =>
+    isSfxAudioRole(event.role)
+  );
   const maxPerPreset = Math.max(4, input.shotCount + 2);
   const byPreset = new Map<string, typeof sfxEvents>();
   for (const event of sfxEvents) {
@@ -475,7 +486,9 @@ function validateHyperframesSfxPolicy(input: {
         message: `SFX preset ${presetId} repeats too often for the final composite.`,
       });
     }
-    const sorted = [...events].sort((a, b) => Number(a.startSec) - Number(b.startSec));
+    const sorted = [...events].sort(
+      (a, b) => Number(a.startSec) - Number(b.startSec)
+    );
     for (let index = 1; index < sorted.length; index += 1) {
       const previous = sorted[index - 1];
       const current = sorted[index];
@@ -504,18 +517,20 @@ function validateHyperframesSfxShotBounds(input: {
   }>;
 }): void {
   const ranges = storyboardShotRanges(input.shots);
-  for (const event of input.audioEvents.filter(item => isSfxAudioRole(item.role))) {
+  for (const event of input.audioEvents.filter(item =>
+    isSfxAudioRole(item.role)
+  )) {
     const eventStart = Number(event.startSec);
     const eventEnd = eventStart + Number(event.durationSec ?? 0);
     const ownerShot = ranges.find(
       range =>
-        eventStart >= range.startSec - 0.05 &&
-        eventEnd <= range.endSec + 0.05
+        eventStart >= range.startSec - 0.05 && eventEnd <= range.endSec + 0.05
     );
     if (!ownerShot || eventEnd > ownerShot.endSec + 0.05) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "SFX event timing must stay within a single storyboard shot range.",
+        message:
+          "SFX event timing must stay within a single storyboard shot range.",
       });
     }
   }
@@ -537,7 +552,9 @@ function validateHyperframesSfxTriggerPolicy(input: {
   }>;
 }): void {
   const ranges = storyboardShotRanges(input.shots);
-  for (const event of input.audioEvents.filter(item => isSfxAudioRole(item.role))) {
+  for (const event of input.audioEvents.filter(item =>
+    isSfxAudioRole(item.role)
+  )) {
     const family = sfxPresetFamily(event.presetId);
     const visualTrigger = cleanText(event.visualTrigger);
     if (!visualTrigger || visualTrigger === "video_start") {
@@ -571,13 +588,15 @@ function validateHyperframesSfxTriggerPolicy(input: {
     if (family === "whoosh" && offsetToNearestBoundary > 0.25) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Whoosh SFX must be timed near a storyboard scene cut boundary.",
+        message:
+          "Whoosh SFX must be timed near a storyboard scene cut boundary.",
       });
     }
     if (family === "cash" && offsetFromShotStart < 0.5) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Cash register SFX must fire after the price/sales lock, not at sentence start.",
+        message:
+          "Cash register SFX must fire after the price/sales lock, not at sentence start.",
       });
     }
     if (family === "riser" && offsetFromShotStart > 1.2) {
@@ -593,7 +612,9 @@ export function validateHyperframesFinalCompositeAudioAssets(
   rawConfig: unknown
 ): void {
   const config = HyperframesFinalCompositeConfigSchema.parse(rawConfig);
-  const audioEvents = Array.isArray(config.audioEvents) ? config.audioEvents : [];
+  const audioEvents = Array.isArray(config.audioEvents)
+    ? config.audioEvents
+    : [];
   if (audioEvents.length === 0) return;
   const validation = config.audioAssetValidation ?? {
     stagedAssetsRequired: true,
@@ -602,10 +623,14 @@ export function validateHyperframesFinalCompositeAudioAssets(
     validatedAssetRefs: [],
   };
   const missingAssetRefs = new Set(
-    (validation.missingAssetRefs ?? []).map(ref => cleanText(ref)).filter(Boolean)
+    (validation.missingAssetRefs ?? [])
+      .map(ref => cleanText(ref))
+      .filter(Boolean)
   );
   const validatedAssetRefs = new Set(
-    (validation.validatedAssetRefs ?? []).map(ref => cleanText(ref)).filter(Boolean)
+    (validation.validatedAssetRefs ?? [])
+      .map(ref => cleanText(ref))
+      .filter(Boolean)
   );
   const validatedAssets = new Map(
     (validation.validatedAssets ?? [])
@@ -624,8 +649,13 @@ export function validateHyperframesFinalCompositeAudioAssets(
   });
   for (const event of audioEvents) {
     const assetRef = cleanText(event.assetRef);
-    const eventEnd = Number(event.startSec ?? 0) + Number(event.durationSec ?? 0);
-    if (Number.isFinite(finalDuration) && finalDuration > 0 && eventEnd > finalDuration + 0.5) {
+    const eventEnd =
+      Number(event.startSec ?? 0) + Number(event.durationSec ?? 0);
+    if (
+      Number.isFinite(finalDuration) &&
+      finalDuration > 0 &&
+      eventEnd > finalDuration + 0.5
+    ) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "Audio/SFX event timing exceeds the final composite timeline.",
@@ -663,12 +693,181 @@ export function validateHyperframesFinalCompositeAudioAssets(
   }
 }
 
+function hyperframesAspectRatioForOutput(width: number, height: number): "9:16" | "16:9" | "1:1" | "4:5" {
+  if (Math.abs(width - height) <= 2) return "1:1";
+  const ratio = width / height;
+  if (Math.abs(ratio - 16 / 9) < 0.05) return "16:9";
+  if (Math.abs(ratio - 4 / 5) < 0.05) return "4:5";
+  return "9:16";
+}
+
+function buildHyperframesFinalCompositeWorkerInput(input: {
+  apiInput: CreateHyperframesFinalCompositeInput;
+  payload: ReturnType<typeof buildHyperframesRenderJobPayload>;
+}) {
+  const config = HyperframesFinalCompositeConfigSchema.parse(input.apiInput.config);
+  const timeline = normalizeHyperframesFinalCompositeTimeline(config);
+  const timelineByShotId = new Map(timeline.entries.map(entry => [entry.shotId, entry]));
+  const finalCompositeConfig =
+    input.payload.finalCompositeConfig &&
+    typeof input.payload.finalCompositeConfig === "object" &&
+    !Array.isArray(input.payload.finalCompositeConfig)
+      ? input.payload.finalCompositeConfig
+      : {};
+  const finalCompositeConfigHash = stableHash({
+    compositionInputHash: input.payload.compositionInputHash,
+    compositionHtmlHash: input.payload.compositionHtmlHash,
+    creativePlanHash: input.payload.creativePlanHash,
+    finalCompositeConfig,
+  });
+
+  return {
+    renderIntent: "hyperframes_final_composite" as const,
+    compositionHash: input.payload.compositionInputHash,
+    timelineHash: timeline.timelineHash,
+    finalCompositeConfigHash,
+    templateVersion: input.payload.templateVersion,
+    platformContractVersion: HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+    rendererPolicyVersion:
+      input.payload.rendererPolicyVersion ??
+      "official_html_css_browser_final_composite_v1",
+    runtimeProfileId: input.payload.runtimeProfileHash,
+    source: {
+      storyboardReviewId: null,
+      productId: input.apiInput.productId,
+      manualProjectName: input.payload.productTitle ?? null,
+      runId: input.apiInput.runId,
+    },
+    finalVideoLengthSec: timeline.durationSec,
+    shots: config.shots.map(shot => {
+      const timelineEntry = timelineByShotId.get(shot.id);
+      return {
+        shotId: shot.id,
+        shotIndex: shot.index,
+        absoluteStartSec: timelineEntry?.absoluteStartSec ?? shot.startSec,
+        absoluteEndSec:
+          timelineEntry?.absoluteEndSec ?? shot.startSec + shot.durationSec,
+        durationSec: timelineEntry?.durationSec ?? shot.durationSec,
+        mediaStartSec: timelineEntry?.mediaStartSec ?? shot.mediaStartSec ?? 0,
+        overlayText: shot.onScreenText.join("\n") || null,
+        subtitleText: shot.subtitleCues.map(cue => cue.text).join("\n") || null,
+        stylePresetId: shot.overlayPreset,
+        transitionPresetId: shot.transition,
+        textMotionPresetId: shot.textMotionPreset,
+      };
+    }),
+    assetManifest: {
+      sourceVideos: timeline.entries.map(entry => ({
+        shotId: entry.shotId,
+        storageRef: entry.sourceMediaRef,
+        mediaStartSec: entry.mediaStartSec,
+        durationSec: entry.durationSec,
+        contentType: "video/mp4",
+        checksumSha256: entry.sourceMediaHash,
+      })),
+      audioRefs: config.audioEvents.map(event => ({
+        role:
+          event.role === "voiceover"
+            ? ("voiceover" as const)
+            : event.role === "music"
+              ? ("music_bed" as const)
+              : ("sfx" as const),
+        storageRef: event.assetRef,
+        checksumSha256: null,
+      })),
+      subtitleRefs: [],
+      fontRefs: [
+        {
+          family: config.fontFamily,
+          storageRef: null,
+          required: true,
+        },
+      ],
+      runtimeAssets: {
+        compositionHtmlHash: input.payload.compositionHtmlHash,
+        templateContentHash: input.payload.templateContentHash,
+      },
+    },
+    outputRequirements: {
+      format: "mp4" as const,
+      aspectRatio: hyperframesAspectRatioForOutput(config.width, config.height),
+      width: config.width,
+      height: config.height,
+      fps: config.fps,
+      requireOfficialRuntime: true,
+      rejectFallbackRender: true,
+      requireCssBrowserRuntime: true,
+      requireServerVerification: true,
+      publishToLibrary: true,
+    },
+    renderConfig: {
+      ...finalCompositeConfig,
+      compositionHtml: input.payload.compositionHtml,
+      platformPresetId: input.payload.platformPresetId,
+      platformPresetVersion: input.payload.platformPresetVersion,
+      creativePlanHash: input.payload.creativePlanHash,
+      presetManifestHash: input.payload.presetManifestHash,
+      audioEventMapHash: input.payload.audioEventMapHash,
+      renderPayload: {
+        productId: input.payload.productId,
+        productTitle: input.payload.productTitle,
+        compositionInputHash: input.payload.compositionInputHash,
+        compositionHtmlHash: input.payload.compositionHtmlHash,
+        templateId: input.payload.templateId,
+        templateVersion: input.payload.templateVersion,
+        templateContentHash: input.payload.templateContentHash,
+        platformPresetId: input.payload.platformPresetId,
+        platformPresetVersion: input.payload.platformPresetVersion,
+        renderIntent: input.payload.renderIntent,
+        compositionMode: input.payload.compositionMode,
+        runtimeProfileHash: input.payload.runtimeProfileHash,
+        launchMode: input.payload.launchMode,
+        traceId: input.payload.traceId,
+        correlationId: input.payload.correlationId,
+        fps: input.payload.fps,
+        quality: input.payload.quality,
+        creativePlanHash: input.payload.creativePlanHash,
+        presetManifestHash: input.payload.presetManifestHash,
+        audioEventMapHash: input.payload.audioEventMapHash,
+        overlayPresetId: input.payload.overlayPresetId,
+        subtitlePresetId: input.payload.subtitlePresetId,
+        audioPackPresetId: input.payload.audioPackPresetId,
+        musicPresetId: input.payload.musicPresetId,
+        sfxPresetIds: input.payload.sfxPresetIds,
+        presetVersions: input.payload.presetVersions,
+        rendererPolicyVersion: input.payload.rendererPolicyVersion,
+      },
+    },
+  };
+}
+
+function buildHyperframesFinalCompositeWorkerIdempotencyKey(input: {
+  tenantId: string;
+  runId: string;
+  payload: ReturnType<typeof buildHyperframesRenderJobPayload>;
+  finalCompositeConfigHash: string;
+}): string {
+  return `hf_worker_final_${stableHash({
+    tenantId: input.tenantId,
+    runId: input.runId,
+    renderIntent: input.payload.renderIntent,
+    compositionInputHash: input.payload.compositionInputHash,
+    templateVersion: input.payload.templateVersion,
+    platformPresetId: input.payload.platformPresetId,
+    runtimeProfileHash: input.payload.runtimeProfileHash,
+    creativePlanHash: input.payload.creativePlanHash,
+    finalCompositeConfigHash: input.finalCompositeConfigHash,
+  })}`;
+}
+
 function buildAutoStoryboardProductReferenceAnchors(
   productBundle: unknown
 ): MarketplaceAutoReviewReferenceAnchorsInput | null {
   const bundle = isRecord(productBundle) ? productBundle : {};
   const images = Array.isArray(bundle.images) ? bundle.images : [];
-  const image = images.find(item => cleanText((item as Record<string, unknown>)?.url));
+  const image = images.find(item =>
+    cleanText((item as Record<string, unknown>)?.url)
+  );
   if (!isRecord(image)) return null;
   const url = cleanText(image.url);
   if (!url) return null;
@@ -820,7 +1019,8 @@ function findLibraryOutputPair(render: HyperframesRenderStatusProjection): {
 
   for (const output of libraryOutputCandidates) {
     const artifact = render.artifactRefs.find(
-      ref => ref.contentHash === output.contentHash && isLibraryVideoArtifact(ref)
+      ref =>
+        ref.contentHash === output.contentHash && isLibraryVideoArtifact(ref)
     );
     if (artifact) {
       return { output, artifact };
@@ -848,7 +1048,8 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
   if (render.renderIntent === "preview" || render.renderIntent === "snapshot") {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Preview-only HyperFrames outputs cannot be saved as durable Library videos.",
+      message:
+        "Preview-only HyperFrames outputs cannot be saved as durable Library videos.",
     });
   }
   const libraryOutput = findLibraryOutputPair(render);
@@ -873,10 +1074,14 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
   ) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "HyperFrames render metadata is incomplete for Library finalization.",
+      message:
+        "HyperFrames render metadata is incomplete for Library finalization.",
     });
   }
-  if (render.qaStatus !== "passed" && render.qaStatus !== "passed_with_warnings") {
+  if (
+    render.qaStatus !== "passed" &&
+    render.qaStatus !== "passed_with_warnings"
+  ) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "HyperFrames render QA must pass before saving to Library.",
@@ -892,7 +1097,8 @@ export function buildHyperframesFinalizeInputFromCompletedRender(input: {
   if (input.idempotencyKey !== expectedKey) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "HyperFrames Library idempotency key does not match the completed output.",
+      message:
+        "HyperFrames Library idempotency key does not match the completed output.",
     });
   }
   return {
@@ -981,16 +1187,14 @@ function hyperframesVideoSegmentPlannerShots(input: {
   }));
 }
 
-function normalizeVideoSegmentPreviewWarning(
-  warning: {
-    code: string;
-    message: string;
-    severity?: "info" | "warning" | "error";
-    source?: string;
-    segmentId?: string;
-    shotIds?: string[];
-  }
-): VideoSegmentPlanWarning {
+function normalizeVideoSegmentPreviewWarning(warning: {
+  code: string;
+  message: string;
+  severity?: "info" | "warning" | "error";
+  source?: string;
+  segmentId?: string;
+  shotIds?: string[];
+}): VideoSegmentPlanWarning {
   return {
     code: warning.code,
     message: warning.message,
@@ -1015,7 +1219,8 @@ export async function getVideoSegmentPlanPreviewForApi(input: {
   });
   const transport: VideoSegmentTransport =
     input.transportMetadata?.transport === "mcp" ? "mcp" : "gateway_api";
-  const audioStrategy = plan.defaults.audioStrategy as VideoSegmentAudioStrategy;
+  const audioStrategy = plan.defaults
+    .audioStrategy as VideoSegmentAudioStrategy;
   const referenceImageUrl =
     cleanText(input.referenceAnchors?.productImageUrl) || null;
   const videoSegmentPlan = planVideoSegments({
@@ -1136,7 +1341,8 @@ async function buildStartAutoStoryboardReviewResumeResponse(input: {
       noChargeReason: "not_applicable" as const,
     },
     polling:
-      render?.polling ?? createDefaultHyperframesPollingGuidance("not_available"),
+      render?.polling ??
+      createDefaultHyperframesPollingGuidance("not_available"),
     invalidates: INVALIDATES,
   };
 }
@@ -1169,7 +1375,8 @@ export async function startAutoStoryboardReviewForApi(input: {
     if (resumeResponse) return resumeResponse;
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Auto Storyboard Review plan is stale. Refresh the plan and try again.",
+      message:
+        "Auto Storyboard Review plan is stale. Refresh the plan and try again.",
     });
   }
   if (
@@ -1222,8 +1429,11 @@ export async function startAutoStoryboardReviewForApi(input: {
       videoModel: plan.defaults.videoModel,
       videoStructureMode: plan.defaults.videoStructureMode,
       manualVideoGroupSize: plan.defaults.manualVideoGroupSize,
+      speechLanguage: plan.defaults.speechLanguage,
       creativeBrief: plan.defaults.creativeBrief,
-      qualityMode: toMarketplaceAutoReviewQualityMode(plan.defaults.qualityMode),
+      qualityMode: toMarketplaceAutoReviewQualityMode(
+        plan.defaults.qualityMode
+      ),
       referenceAnchors,
       transportMetadata: input.transportMetadata,
     },
@@ -1319,7 +1529,9 @@ export async function createHyperframesPreviewForApi(input: {
     getMarketplaceProductWithAccess(input.productId, input.auth),
     getMarketplaceAutoReviewRun(input.runId, input.auth),
   ]);
-  const runProductId = cleanText((runRecord as Record<string, unknown>).productId);
+  const runProductId = cleanText(
+    (runRecord as Record<string, unknown>).productId
+  );
   if (runProductId && runProductId !== input.productId) {
     throw new TRPCError({
       code: "NOT_FOUND",
@@ -1385,7 +1597,10 @@ export async function createHyperframesPreviewForApi(input: {
       invalidates: [],
     };
   }
-  const render = await queueHyperframesRenderJob({ auth: input.auth, composition });
+  const render = await queueHyperframesRenderJob({
+    auth: input.auth,
+    composition,
+  });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -1450,7 +1665,8 @@ export async function createHyperframesFinalCompositeForApi(
   if (sourceVideos.length === 0) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Final composite requires at least one Storyboard Review MP4 source.",
+      message:
+        "Final composite requires at least one Storyboard Review MP4 source.",
     });
   }
   validateHyperframesFinalCompositeAudioAssets(input.config);
@@ -1466,14 +1682,18 @@ export async function createHyperframesFinalCompositeForApi(
     runState: runRecord,
     config: input.config,
   });
-  const runProductId = cleanText((runRecord as Record<string, unknown>).productId);
+  const runProductId = cleanText(
+    (runRecord as Record<string, unknown>).productId
+  );
   if (runProductId && runProductId !== input.productId) {
     throw new TRPCError({
       code: "NOT_FOUND",
       message: "Auto review run was not found for this product.",
     });
   }
-  let composition: ReturnType<typeof buildHyperframesFinalCompositeCompositionInput>;
+  let composition: ReturnType<
+    typeof buildHyperframesFinalCompositeCompositionInput
+  >;
   try {
     composition = buildHyperframesFinalCompositeCompositionInput({
       tenantId: input.auth.tenantId ?? "default",
@@ -1522,17 +1742,129 @@ export async function createHyperframesFinalCompositeForApi(
   }
   const runtimeBlockReason = getHyperframesFinalCompositeRuntimeBlockReason();
   const payload = buildHyperframesRenderJobPayload({ composition });
+  const tenantFlags = await getTenantFeatureFlags(input.auth.tenantId ?? "default");
+  if (tenantFlags.hyperframesWorkerFinalComposite === true) {
+    const workerInput = buildHyperframesFinalCompositeWorkerInput({
+      apiInput: input,
+      payload,
+    });
+    const creditEstimate = buildHyperframesCreditEstimate({
+      tenantId: input.auth.tenantId ?? "default",
+      userId: input.auth.userId,
+      runId: input.runId,
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      costClass: "composition_render",
+      compositionInputHash: composition.provenance.compositionInputHash,
+      templateVersion: composition.template.templateVersion,
+      platformPreset: {
+        ...composition.platformPreset,
+        durationSeconds: workerInput.finalVideoLengthSec,
+        maxDurationSeconds: workerInput.finalVideoLengthSec,
+      },
+      workerComplexityMultiplier: Math.max(1, input.config.shots.length / 6),
+    });
+    try {
+      const queued = await queueDesktopHyperframesFinalCompositeJob({
+        ...workerInput,
+        tenantId: input.auth.tenantId ?? "default",
+        teamId: null,
+        workflowRunId: input.runId,
+        requestedByUserId: input.auth.userId,
+        requestedBySystemComponent: "hyperframes_final_composite_api",
+        priority: 82,
+        timeoutSeconds: 7200,
+        idempotencyKey: buildHyperframesFinalCompositeWorkerIdempotencyKey({
+          tenantId: input.auth.tenantId ?? "default",
+          runId: input.runId,
+          payload,
+          finalCompositeConfigHash: workerInput.finalCompositeConfigHash,
+        }),
+        reservedCredits: creditEstimate.estimatedCredits,
+      });
+      const render = buildHyperframesRenderProjection({
+        tenantId: input.auth.tenantId ?? "default",
+        productId: input.productId,
+        runId: input.runId,
+        renderJobId: String(queued.job.id),
+        status: "queued",
+        payload,
+        safeMessage: queued.created
+          ? "ส่งงาน Final Composite เข้า Smart AI Hub Worker App แล้ว กำลังรอ worker รับงาน"
+          : "พบงาน Final Composite ชุดเดียวกันในคิวแล้ว ระบบจะติดตามงานเดิมต่อ",
+        safeDiagnostics: [
+          queued.created
+            ? "Queued as worker_jobs.hyperframes_final_composite; no server render was started."
+            : "Reused existing worker job with the same composition/config hash.",
+        ],
+        canMutate: true,
+      });
+      return {
+        contractVersion:
+          HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+        render,
+        chargeSummary: {
+          chargeRequired: true,
+          creditEstimate,
+          quotaDecision: access.creditAndQuota.quotaDecision,
+        },
+        polling: render.polling,
+        invalidates: INVALIDATES,
+      };
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (Reflect.get(error, "code") === "feature_disabled" ||
+          Reflect.get(error, "code") === "dispatch_disabled")
+      ) {
+        const render = buildHyperframesRenderProjection({
+          tenantId: input.auth.tenantId ?? "default",
+          productId: input.productId,
+          runId: input.runId,
+          renderJobId: `hf_final_worker_blocked_${input.runId}`,
+          status: "blocked_needs_user",
+          payload,
+          safeMessage:
+            "ยังไม่ได้เปิด Smart AI Hub Worker App สำหรับ Final Composite จึงไม่สามารถ render งานคุณภาพจริงได้",
+          safeDiagnostics: [
+            error instanceof Error ? error.message : "Worker dispatch is not enabled.",
+            "Enable desktopZeroClawWorker and hyperframesWorkerFinalComposite for this tenant, then render again.",
+          ],
+          permissions: {
+            canCancel: false,
+            canRepair: false,
+          },
+          canMutate: false,
+        });
+        return {
+          contractVersion:
+            HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+          render,
+          chargeSummary: {
+            chargeRequired: false,
+            quotaDecision: "no_charge" as const,
+            noChargeReason: "not_applicable" as const,
+          },
+          polling: render.polling,
+          invalidates: [],
+        };
+      }
+      throw error;
+    }
+  }
   const finalCompositeConfig =
     payload.finalCompositeConfig &&
     typeof payload.finalCompositeConfig === "object" &&
     !Array.isArray(payload.finalCompositeConfig)
-      ? payload.finalCompositeConfig as Record<string, unknown>
+      ? (payload.finalCompositeConfig as Record<string, unknown>)
       : {};
   const fallbackCapability =
     finalCompositeConfig.fallbackCapability &&
     typeof finalCompositeConfig.fallbackCapability === "object" &&
     !Array.isArray(finalCompositeConfig.fallbackCapability)
-      ? finalCompositeConfig.fallbackCapability as Record<string, unknown>
+      ? (finalCompositeConfig.fallbackCapability as Record<string, unknown>)
       : {};
   const allowFfmpegAssFallback = fallbackCapability.ffmpegAssFallback === true;
   if (runtimeBlockReason && !allowFfmpegAssFallback) {
@@ -1544,10 +1876,10 @@ export async function createHyperframesFinalCompositeForApi(
       status: "blocked_needs_user",
       payload,
       safeMessage:
-        "HyperFrames Final Composite ยังไม่พร้อม render เพราะ official HTML/CSS/browser runtime ยังไม่พร้อม",
+        "Final Composite ต้องใช้ official HyperFrames HTML/CSS/browser runtime เท่านั้น ระบบปิด ASS fallback แล้วเพื่อให้ผลลัพธ์ตรงกับ preview",
       safeDiagnostics: [
         runtimeBlockReason,
-        "No render job was queued and no credits were reserved. Configure the official HyperFrames runtime, then render again.",
+        "No render job was queued and no credits were reserved. Configure the official HyperFrames CSS/browser runtime, then render again.",
       ],
       permissions: {
         canCancel: false,
@@ -1649,7 +1981,8 @@ export async function repairHyperframesRenderJobForApi(input: {
   if (!action) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "HyperFrames repair action is no longer available. Refresh status and try again.",
+      message:
+        "HyperFrames repair action is no longer available. Refresh status and try again.",
     });
   }
   if (action.requiresOperator) {
@@ -1700,7 +2033,8 @@ export async function repairHyperframesRenderJobForApi(input: {
 
   throw new TRPCError({
     code: "BAD_REQUEST",
-    message: "This HyperFrames repair action is not supported for self-service repair yet.",
+    message:
+      "This HyperFrames repair action is not supported for self-service repair yet.",
   });
 }
 
@@ -1710,7 +2044,9 @@ export async function listHyperframesTemplatesForApi(input: {
   compositionMode?: MarketplaceAutoReviewCompositionMode;
   renderIntent?: HyperframesRenderIntent;
 }) {
-  const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
+  const access = await resolveHyperframesFeatureAccessForTenant({
+    auth: input.auth,
+  });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -1729,7 +2065,9 @@ export async function listHyperframesCreativePresetsForApi(
     auth: HyperframesAuthContext;
   }
 ) {
-  const access = await resolveHyperframesFeatureAccessForTenant({ auth: input.auth });
+  const access = await resolveHyperframesFeatureAccessForTenant({
+    auth: input.auth,
+  });
   const producerRuntimeReady = isHyperframesProducerRuntimeAllowed();
   const cliRuntimeReady = isHyperframesCliRuntimeAllowed();
   const officialCliReady =
@@ -1741,10 +2079,10 @@ export async function listHyperframesCreativePresetsForApi(
     | "official_runtime_blocked"
     | "official_cli_ready"
     | "official_producer_ready" = officialCliReady
-      ? hyperframesProducer
-        ? "official_producer_ready"
-        : "official_cli_ready"
-      : "official_runtime_blocked";
+    ? hyperframesProducer
+      ? "official_producer_ready"
+      : "official_cli_ready"
+    : "official_runtime_blocked";
   const runtimeCapabilities = {
     diagnosticFallbackOnly: !officialCliReady,
     hyperframesCli: officialCliReady,
@@ -1768,10 +2106,23 @@ export async function listHyperframesCreativePresetsForApi(
       preset.capabilityState === "official_producer_ready" ||
       preset.runtimeSupport.hyperframesCli ||
       preset.runtimeSupport.hyperframesProducer;
-    return !requiresOfficialRuntime || officialCliReady || input.includeDisabled;
+    return (
+      !requiresOfficialRuntime || officialCliReady || input.includeDisabled
+    );
   });
   const presetAvailability = presets.reduce<
-    Record<string, { selectable: boolean; reason: string | null; fallbackMode: "official_producer" | "official_cli" | "diagnostic_only" | "not_available" }>
+    Record<
+      string,
+      {
+        selectable: boolean;
+        reason: string | null;
+        fallbackMode:
+          | "official_producer"
+          | "official_cli"
+          | "diagnostic_only"
+          | "not_available";
+      }
+    >
   >((availability, preset: HyperframesCreativePreset) => {
     const producerOnly =
       preset.capabilityState === "producer_ready" ||
@@ -1788,7 +2139,11 @@ export async function listHyperframesCreativePresetsForApi(
       preset.runtimeSupport.ffmpegAssFallback;
     const selectable =
       access.capabilities.canAccessAuto &&
-      (producerOnly ? hyperframesProducer : officialRuntimeRequired ? officialCliReady : false);
+      (producerOnly
+        ? hyperframesProducer
+        : officialRuntimeRequired
+          ? officialCliReady
+          : false);
     availability[preset.id] = {
       selectable,
       reason: selectable
@@ -1882,7 +2237,9 @@ export async function saveHyperframesRenderToLibraryForApi(input: {
     render: renderJob,
   });
   const finalized = await finalizeHyperframesRenderToLibrary(finalizeInput);
-  const publicRender = redactHyperframesRenderProjectionForUser(finalized.render);
+  const publicRender = redactHyperframesRenderProjectionForUser(
+    finalized.render
+  );
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,

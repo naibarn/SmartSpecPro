@@ -98,6 +98,7 @@ export interface TenantFeatureFlags {
   mediaProductionLangGraphBatchEnabled: boolean; // F90 — Optional LangGraph checkpointed batch runtime
   marketplaceHyperframesEnabled: boolean; // F91 — Marketplace Capture Auto Storyboard Review HyperFrames adapter
   marketplaceHyperframesWorkerEnabled: boolean; // F92 — Tenant-scoped HyperFrames worker queueing
+  hyperframesWorkerFinalComposite: boolean; // F92A — Worker-only HyperFrames final composite rendering
   marketplaceHyperframesLibrarySaveEnabled: boolean; // F93 — Save completed HyperFrames renders to Library
   marketplaceHyperframesOperatorEnabled: boolean; // F94 — Delegated HyperFrames operator controls
   mcpConnectEnabled: boolean; // F95 — MCP Connect master rollout gate
@@ -228,6 +229,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "mediaProductionLangGraphBatchEnabled",
   "marketplaceHyperframesEnabled",
   "marketplaceHyperframesWorkerEnabled",
+  "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
   "mcpConnectEnabled",
@@ -357,6 +359,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   mediaProductionLangGraphBatchEnabled: false,
   marketplaceHyperframesEnabled: false,
   marketplaceHyperframesWorkerEnabled: false,
+  hyperframesWorkerFinalComposite: false,
   marketplaceHyperframesLibrarySaveEnabled: false,
   marketplaceHyperframesOperatorEnabled: false,
   mcpConnectEnabled: false,

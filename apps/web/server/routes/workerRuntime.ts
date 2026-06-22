@@ -17,7 +17,10 @@ import { sendApiError } from "../middleware/publicApiHeaders";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
 import {
   WorkerAuthError,
+  extractWorkerDeviceProofFromRequest,
   extractBearerTokenFromRequest,
+  refreshWorkerAccessTokens,
+  type VerifyWorkerAccessTokenOptions,
   verifyWorkerAccessToken,
   verifyWorkerRegistrationToken,
 } from "../services/workerAuthService";
@@ -97,6 +100,17 @@ function requireBearerToken(req: Request): string {
   return token;
 }
 
+async function verifyWorkerRouteAccessToken(
+  req: Request,
+  token: string,
+  opts: VerifyWorkerAccessTokenOptions = {},
+) {
+  return await verifyWorkerAccessToken(token, {
+    ...opts,
+    requestProof: extractWorkerDeviceProofFromRequest(req),
+  });
+}
+
 export function registerWorkerRuntimeRoutes(
   app: Express,
   deps: WorkerRuntimeRouteDeps = {},
@@ -129,6 +143,23 @@ export function registerWorkerRuntimeRoutes(
   const callbackLimiter = rateLimit("worker-job-callbacks", { rpm: 60 });
 
   app.post(
+    "/api/workers/connect/refresh",
+    registrationLimiter,
+    enforceJsonBodyMaxBytes(8 * 1024),
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const tokens = await refreshWorkerAccessTokens(token, {
+          requestProof: extractWorkerDeviceProofFromRequest(req),
+        });
+        res.json({ tokens });
+      } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    },
+  );
+
+  app.post(
     "/api/workers/register",
     registrationLimiter,
     enforceJsonBodyMaxBytes(64 * 1024),
@@ -155,7 +186,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerHeartbeatPayloadSchema.parse(req.body);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:heartbeat"],
           runtimeType: parsed.runtimeType,
@@ -180,7 +211,7 @@ export function registerWorkerRuntimeRoutes(
   app.get("/api/workers/:workerId/policy", async (req, res) => {
     try {
       const token = requireBearerToken(req);
-      const auth = await verifyWorkerAccessToken(token, {
+      const auth = await verifyWorkerRouteAccessToken(req, token, {
         allowedTokenUses: ["worker_execution"],
         requiredScopes: ["workers:heartbeat"],
         workerId: req.params.workerId,
@@ -203,7 +234,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerClaimRequestSchema.parse(req.body ?? {});
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:claim"],
           workerId: req.params.workerId,
@@ -228,7 +259,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = delegatedSessionRequestSchema.parse(req.body ?? {});
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:claim"],
         });
@@ -249,7 +280,7 @@ export function registerWorkerRuntimeRoutes(
     async (req, res) => {
       try {
         const token = requireBearerToken(req);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:claim"],
         });
@@ -272,7 +303,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = delegatedWorkerCallbackPayloadSchema.parse(req.body ?? {});
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:report"],
         });
@@ -299,7 +330,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = delegatedWorkerCallbackPayloadSchema.parse(req.body ?? {});
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:report"],
         });
@@ -326,7 +357,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = delegatedWorkerCallbackPayloadSchema.parse(req.body ?? {});
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:report"],
         });
@@ -353,7 +384,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerJobEventPayloadSchema.parse(req.body);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:report"],
         });
@@ -377,7 +408,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerArtifactInitPayloadSchema.parse(req.body);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_upload"],
           requiredScopes: ["workers:report"],
         });
@@ -401,7 +432,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerArtifactCompletePayloadSchema.parse(req.body);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_upload"],
           requiredScopes: ["workers:report"],
         });
@@ -425,7 +456,7 @@ export function registerWorkerRuntimeRoutes(
       try {
         const token = requireBearerToken(req);
         const parsed = workerDiagnosticsPayloadSchema.parse(req.body);
-        const auth = await verifyWorkerAccessToken(token, {
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
           allowedTokenUses: ["worker_execution"],
           requiredScopes: ["workers:diagnostics"],
           workerId: req.params.workerId,

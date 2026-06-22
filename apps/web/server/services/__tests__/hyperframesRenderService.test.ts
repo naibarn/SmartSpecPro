@@ -704,7 +704,7 @@ describe("hyperframesRenderService", () => {
     );
   });
 
-  it("stops projecting old queued render jobs as active forever", async () => {
+  it("projects old queued render jobs as transient worker failures instead of blockers", async () => {
     mockGetDb.mockResolvedValue(
       createOutboxSelectDb({
         id: "hf_render_old_queued",
@@ -738,10 +738,10 @@ describe("hyperframesRenderService", () => {
     });
 
     expect(projection).toMatchObject({
-      status: "blocked_needs_user",
+      status: "failed_transient",
       safeMessage:
-        "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก",
-      progressPercent: 0,
+        "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ ระบบจะให้ retry งาน worker ได้โดยไม่ต้องแก้ blocker",
+      progressPercent: 60,
     });
     expect(projection.safeDiagnostics[0]).toContain(
       "stayed queued longer than expected"
@@ -1251,6 +1251,18 @@ describe("hyperframesRenderService", () => {
       mapOutboxStatusToRenderStatus(
         "failed",
         "HyperFrames runtime transient failure: Command failed: hyperframes render /tmp/work --strict | stdout tail: audio_src_not_found: <audio> element references file(s) not found in the project"
+      )
+    ).toBe("failed_transient");
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime configuration failure: Command failed: hyperframes render /tmp/work --browser-timeout 240 | process signal SIGTERM | stderr tail: Runtime.callFunctionOn timed out"
+      )
+    ).toBe("failed_transient");
+    expect(
+      mapOutboxStatusToRenderStatus(
+        "failed",
+        "HyperFrames runtime configuration failure: Command failed: hyperframes render /tmp/work --player-ready-timeout 30000 | stderr tail: [FrameCapture] Some video elements did not decode within 30000ms"
       )
     ).toBe("failed_transient");
     expect(

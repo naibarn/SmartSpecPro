@@ -109,6 +109,7 @@ const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
+const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
 const MediaHistory = lazy(() => import("./pages/MediaHistory"));
@@ -484,6 +485,7 @@ function Router() {
         <Route path="/content-composer"><RequireAuth><ContentComposer /></RequireAuth></Route>
         <Route path="/storyboard-review/:reviewId"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/storyboard-review"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
+        <Route path="/render-jobs"><RequireAuth><RenderJobsPage /></RequireAuth></Route>
         <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>
         <Route path="/billing/invoices/:invoiceId"><RequireAuth><BillingCenter /></RequireAuth></Route>
         <Route path="/billing"><RequireAuth><BillingCenter /></RequireAuth></Route>

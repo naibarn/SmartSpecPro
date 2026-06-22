@@ -4,9 +4,10 @@ import request from "supertest";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
 
-const { mockGetTenantFeatureFlags, mockIsJtiRevoked } = vi.hoisted(() => ({
+const { mockGetTenantFeatureFlags, mockIsJtiRevoked, mockRevokeJti } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
   mockIsJtiRevoked: vi.fn(),
+  mockRevokeJti: vi.fn(),
 }));
 
 vi.mock("../../services/tenantFeatureFlagService", () => ({
@@ -15,6 +16,7 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 
 vi.mock("../../_core/revocation", () => ({
   isJtiRevoked: mockIsJtiRevoked,
+  revokeJti: mockRevokeJti,
 }));
 
 describe("workerRuntime routes", () => {
@@ -27,6 +29,7 @@ describe("workerRuntime routes", () => {
       hiClawClusterRuntime: false,
     });
     mockIsJtiRevoked.mockResolvedValue(false);
+    mockRevokeJti.mockResolvedValue(undefined);
   });
 
   async function makeApp(overrides: Partial<{
@@ -292,6 +295,35 @@ describe("workerRuntime routes", () => {
     expect(res.body.error.code).toBe("worker_auth_invalid");
   });
 
+  it("rejects marketplace extension tokens on worker routes", async () => {
+    const { signBearerToken } = await import("../../_core/tokens");
+    const app = await makeApp();
+
+    const token = signBearerToken({
+      sub: "extension-connection-1",
+      type: "marketplace_extension",
+      aud: "marketplace-capture-extension",
+      tokenUse: "marketplace_extension",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      scopes: ["workers:heartbeat", "marketplace:capture"],
+      jti: "marketplace-extension-worker-route",
+    } as any, "15m");
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+      });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("worker_auth_invalid");
+  });
+
   it("registers a worker with a valid bootstrap token and returns worker-bound tokens", async () => {
     const { createWorkerRegistrationToken } = await import("../../services/workerAuthService");
     const app = await makeApp();
@@ -318,6 +350,66 @@ describe("workerRuntime routes", () => {
     expect(res.body.worker.id).toBe("worker-1");
     expect(res.body.tokens.executionToken).toBeTruthy();
     expect(res.body.tokens.uploadToken).toBeTruthy();
+  });
+
+  it("rejects a device-bound worker token replayed from another machine", async () => {
+    const {
+      issueWorkerAccessTokens,
+      signWorkerDeviceProofForTest,
+      resetWorkerDeviceBindingStateForTest,
+    } = await import("../../services/workerAuthService");
+    resetWorkerDeviceBindingStateForTest();
+    const app = await makeApp();
+
+    const originalKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const otherKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const originalPublicKey = await crypto.subtle.exportKey("spki", originalKey.publicKey);
+    const otherPublicKey = await crypto.subtle.exportKey("spki", otherKey.publicKey);
+    const originalPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(originalPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const otherPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(otherPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      deviceBinding: {
+        deviceId: "worker-app-install-1",
+        machineFingerprint: "machine-a",
+        publicKey: originalPublicKeyPem,
+      },
+    });
+    const proof = await signWorkerDeviceProofForTest({
+      token: tokens.executionToken,
+      method: "POST",
+      path: "/api/workers/worker-1/heartbeat",
+      nonce: "route-replay-1",
+      privateKey: otherKey.privateKey,
+      publicKey: otherPublicKeyPem,
+    });
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .set("X-Worker-Device-Id", proof.deviceId)
+      .set("X-Worker-Device-Public-Key", proof.publicKey.replace(/\n/g, "\\n"))
+      .set("X-Worker-Device-Nonce", proof.nonce)
+      .set("X-Worker-Device-Timestamp", proof.timestamp)
+      .set("X-Worker-Device-Signature", proof.signature)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+      });
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("worker_device_mismatch");
   });
 
   it("registers desktop workers when the desktop runtime rollout is enabled", async () => {

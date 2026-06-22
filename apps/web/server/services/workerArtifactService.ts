@@ -9,7 +9,11 @@ import {
   type LibraryActor,
 } from "./libraryService";
 import { auditLogger } from "./auditLogger";
-import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
+import {
+  HyperframesWorkerVerificationError,
+  verifyHyperframesWorkerArtifacts,
+} from "./hyperframesWorkerVerificationService";
+import { isPlainObject, sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 
 type WorkerJobRecord = Record<string, any>;
 type WorkerArtifactRecord = Record<string, any>;
@@ -199,6 +203,25 @@ function validateArtifactForPublication(
   };
 }
 
+function prepareArtifactsForPublication(
+  job: WorkerJobRecord,
+  artifacts: WorkerArtifactRecord[],
+): {
+  artifacts: WorkerArtifactRecord[];
+  hyperframesVerificationReport: Record<string, unknown> | null;
+} {
+  if (job.jobType !== "hyperframes_final_composite") {
+    return { artifacts, hyperframesVerificationReport: null };
+  }
+
+  const report = verifyHyperframesWorkerArtifacts({ job, artifacts });
+  const publishableIds = new Set(report.publishableArtifactIds);
+  return {
+    artifacts: artifacts.filter((artifact) => publishableIds.has(artifact.id)),
+    hyperframesVerificationReport: report as unknown as Record<string, unknown>,
+  };
+}
+
 export async function publishWorkerArtifacts(
   input: {
     tenantId: string;
@@ -234,7 +257,27 @@ export async function publishWorkerArtifacts(
     role: input.actorRole ?? "user",
   };
 
-  const artifacts = await repo.listArtifactsByJobId(job.id);
+  const allArtifacts = await repo.listArtifactsByJobId(job.id);
+  let artifacts: WorkerArtifactRecord[];
+  let hyperframesVerificationReport: Record<string, unknown> | null;
+  try {
+    const prepared = prepareArtifactsForPublication(job, allArtifacts);
+    artifacts = prepared.artifacts;
+    hyperframesVerificationReport = prepared.hyperframesVerificationReport;
+  } catch (error) {
+    if (error instanceof HyperframesWorkerVerificationError) {
+      await repo.updateJobOutput(job.id, {
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+        hyperframesWorkerVerification: error.report as unknown as Record<string, unknown>,
+      });
+      throw new WorkerArtifactValidationError(
+        error.code,
+        409,
+        error.message,
+      );
+    }
+    throw error;
+  }
   const results: WorkerArtifactPublicationResult[] = [];
 
   for (const artifact of artifacts) {
@@ -333,7 +376,10 @@ export async function publishWorkerArtifacts(
   }
 
   await repo.updateJobOutput(job.id, {
-    ...(job.outputJson ?? {}),
+    ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+    ...(hyperframesVerificationReport
+      ? { hyperframesWorkerVerification: hyperframesVerificationReport }
+      : {}),
     publishedArtifacts: results.map((result) => ({
       artifactId: result.artifactId,
       publishedItemId: result.publishedItemId,

@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync } from "node:fs";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   HyperframesArtifactRefSchema,
@@ -15,8 +19,42 @@ import {
 } from "../hyperframesRuntimeApiService";
 import { buildHyperframesRenderProjection } from "../hyperframesRenderService";
 import { CreateHyperframesPreviewInputSchema } from "@shared/hyperframes/runtimeApiSchemas";
+import type { HyperframesRuntimeAdapterEnv } from "../hyperframesRuntimeAdapter";
 
 describe("hyperframesRuntimeApiService", () => {
+  const workspaces: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      workspaces.map(workspace => rm(workspace, { recursive: true, force: true }))
+    );
+    workspaces.length = 0;
+  });
+
+  async function createRuntimeToolEnv(): Promise<HyperframesRuntimeAdapterEnv> {
+    const dir = mkdtempSync(join(tmpdir(), "ssp-hyperframes-runtime-api-"));
+    workspaces.push(dir);
+    const toolsDir = join(dir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+    const cliPath = join(toolsDir, "hyperframes");
+    const ffmpegPath = join(toolsDir, "ffmpeg");
+    const ffprobePath = join(toolsDir, "ffprobe");
+    const browserPath = join(toolsDir, "chromium");
+    const fontPath = join(toolsDir, "thai-font.ttf");
+    for (const path of [cliPath, ffmpegPath, ffprobePath, browserPath]) {
+      await writeFile(path, "#!/bin/sh\nexit 0\n");
+      await chmod(path, 0o755);
+    }
+    await writeFile(fontPath, "font");
+    return {
+      HYPERFRAMES_CLI_BINARY: cliPath,
+      HYPERFRAMES_FFMPEG_BINARY: ffmpegPath,
+      HYPERFRAMES_FFPROBE_BINARY: ffprobePath,
+      HYPERFRAMES_BROWSER_BINARY: browserPath,
+      HYPERFRAMES_THAI_FONT_PATH: fontPath,
+    };
+  }
+
   it("blocks preview queueing until Storyboard Review evidence exists", () => {
     expect(
       isHyperframesRunEligibleForPreview({
@@ -86,10 +124,19 @@ describe("hyperframesRuntimeApiService", () => {
     ).toThrow();
   });
 
-  it("allows final composite queueing with the detected official CLI runtime", () => {
+  it("allows final composite queueing only when the official CLI runtime is doctor-ready", async () => {
+    const runtimeTools = await createRuntimeToolEnv();
     expect(
       getHyperframesFinalCompositeRuntimeBlockReason({
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toMatch(/readiness flag is not enabled/i);
+    expect(
+      getHyperframesFinalCompositeRuntimeBlockReason({
+        HYPERFRAMES_RUNTIME_MODE: "cli",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       })
     ).toBeNull();
     expect(
@@ -97,13 +144,14 @@ describe("hyperframesRuntimeApiService", () => {
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "0",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       })
-    ).toMatch(/blocked by explicit runtime readiness env/i);
+    ).toMatch(/readiness flag is not enabled/i);
     expect(
       getHyperframesFinalCompositeRuntimeBlockReason({
         HYPERFRAMES_RUNTIME_MODE: "producer",
       })
-    ).toMatch(/blocked until production rollout gates pass/i);
+    ).toMatch(/readiness flag is not enabled/i);
   });
 
   it("recognizes manual Storyboard Review HyperFrames identities", () => {

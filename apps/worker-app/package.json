@@ -1,0 +1,29 @@
+{
+  "name": "@smartspec/worker-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "runtime:pack": "node scripts/prepare-runtime-pack.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "@types/react": "^19.2.1",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.5.4",
+    "vite": "^7.1.7"
+  }
+}

@@ -430,6 +430,49 @@ type TenantWorkerMcpOverview = {
   workerMetrics: TenantWorkerMcpOverviewWorkerMetric[];
   recentEvents: TenantWorkerMcpOverviewRecentEvent[];
 };
+type WorkerQueueOverview = {
+  tenantId: string;
+  generatedAt: string;
+  hours: number;
+  totalJobs: number;
+  queuedJobCount: number;
+  activeJobCount: number;
+  stalledJobCount: number;
+  reassignableJobCount: number;
+  completedJobCount: number;
+  failedJobCount: number;
+  canceledJobCount: number;
+  oldestQueuedAt: string | null;
+  oldestQueuedAgeMs: number | null;
+  verificationFailureCount: number;
+  staleUploadRejectionCount: number;
+  reassignmentCount: number;
+  securityWarningCounts: {
+    tokenReplay: number;
+    deviceProofMismatch: number;
+    refreshTokenReuse: number;
+    autoBlockedConnection: number;
+  };
+  runtimeVersionDistribution: Array<{
+    runtimeType: string;
+    runtimeVersion: string;
+    count: number;
+  }>;
+  recentJobs: Array<{
+    id: string;
+    workerId: string | null;
+    workerDisplayName: string | null;
+    runtimeType: string;
+    jobType: string;
+    status: string;
+    statusReason: string | null;
+    failureReason: string | null;
+    createdAt: string;
+    startedAt: string | null;
+    finishedAt: string | null;
+    leaseExpiresAt: string | null;
+  }>;
+};
 type WorkerBudgetWindowSummary = {
   label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
   capCredits: number | null;
@@ -1975,6 +2018,13 @@ export default function AdminMonitoring() {
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
   });
+  const workerQueueOverviewQuery = trpc.monitoring.getWorkerQueueOverview.useQuery(
+    { hours: 24 },
+    {
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  );
   const tenantWorkerMcpOverviewQuery = trpc.monitoring.getTenantWorkerMcpOverview.useQuery(
     { hours: 24 },
     {
@@ -2013,6 +2063,7 @@ export default function AdminMonitoring() {
     onSuccess: async () => {
       await Promise.all([
         utils.monitoring.listWorkers.invalidate(),
+        utils.monitoring.getWorkerQueueOverview.invalidate({ hours: 24 }),
         utils.monitoring.getTenantWorkerMcpOverview.invalidate(),
         selectedWorkerId ? utils.monitoring.getWorkerDiagnostics.invalidate({ workerId: selectedWorkerId }) : Promise.resolve(),
         selectedWorkerId ? utils.monitoring.getWorkerMcpInsights.invalidate({ workerId: selectedWorkerId, hours: 24 }) : Promise.resolve(),
@@ -2135,7 +2186,14 @@ export default function AdminMonitoring() {
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
   const workOsOverview = (workOsOverviewQuery.data as WorkOsOverview | undefined) ?? null;
   const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
+  const workerQueueOverview = (workerQueueOverviewQuery.data as WorkerQueueOverview | undefined) ?? null;
   const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
+  const workerQueueSecurityWarningCount = workerQueueOverview
+    ? workerQueueOverview.securityWarningCounts.tokenReplay
+      + workerQueueOverview.securityWarningCounts.deviceProofMismatch
+      + workerQueueOverview.securityWarningCounts.refreshTokenReuse
+      + workerQueueOverview.securityWarningCounts.autoBlockedConnection
+    : 0;
   const selectedWorkerDiagnostics = (workerDiagnosticsQuery.data as WorkerDiagnosticsSnapshot | undefined) ?? null;
   const selectedWorkerMcpInsights = (workerMcpInsightsQuery.data as WorkerMcpInsights | undefined) ?? null;
   const selectedWorkerBudgetDraft = selectedWorkerId
@@ -2755,6 +2813,145 @@ export default function AdminMonitoring() {
           )}
         >
           <div className="space-y-3">
+            <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">
+                    {locale === "th" ? "Render worker queue" : "Render worker queue"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {locale === "th"
+                      ? "ภาพรวมงาน worker 24 ชั่วโมงล่าสุด รวมงานรอคิว งานติดค้าง และผลตรวจ artifact"
+                      : "Last 24 hours of worker jobs, stalled leases, and artifact verification health."}
+                  </p>
+                </div>
+                {workerQueueOverview ? (
+                  <Badge variant="outline">
+                    Updated {timeAgo(workerQueueOverview.generatedAt)}
+                  </Badge>
+                ) : null}
+              </div>
+
+              {workerQueueOverviewQuery.isLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading worker queue…
+                </div>
+              ) : workerQueueOverview ? (
+                <div className="space-y-3">
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {locale === "th" ? "รอ worker" : "Queued"}
+                      </p>
+                      <p className="mt-1 text-sm font-medium">{workerQueueOverview.queuedJobCount}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {workerQueueOverview.oldestQueuedAt
+                          ? `${locale === "th" ? "คิวเก่าสุด" : "Oldest"} ${timeAgo(workerQueueOverview.oldestQueuedAt)}`
+                          : (locale === "th" ? "ไม่มีงานรอคิว" : "No queued jobs")}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {locale === "th" ? "กำลังทำ / ติดค้าง" : "Active / stalled"}
+                      </p>
+                      <p className="mt-1 text-sm font-medium">
+                        {workerQueueOverview.activeJobCount} / {workerQueueOverview.stalledJobCount}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {workerQueueOverview.reassignableJobCount} {locale === "th" ? "งานเปลี่ยน worker ได้แล้ว" : "eligible for reassignment"}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {locale === "th" ? "Verification" : "Verification"}
+                      </p>
+                      <p className={cn(
+                        "mt-1 text-sm font-medium",
+                        workerQueueOverview.verificationFailureCount > 0 ? "text-red-600" : "text-emerald-700",
+                      )}>
+                        {workerQueueOverview.verificationFailureCount}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {workerQueueOverview.staleUploadRejectionCount} {locale === "th" ? "stale upload ถูกปฏิเสธ" : "stale uploads rejected"}
+                      </p>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {locale === "th" ? "Security warnings" : "Security warnings"}
+                      </p>
+                      <p className={cn(
+                        "mt-1 text-sm font-medium",
+                        workerQueueSecurityWarningCount > 0 ? "text-amber-700" : "text-emerald-700",
+                      )}>
+                        {workerQueueSecurityWarningCount}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {workerQueueOverview.securityWarningCounts.deviceProofMismatch} device, {workerQueueOverview.securityWarningCounts.refreshTokenReuse} refresh reuse
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-xs font-medium text-slate-700">
+                        {locale === "th" ? "งานล่าสุด" : "Recent jobs"}
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        {workerQueueOverview.recentJobs.slice(0, 6).map((job) => (
+                          <div key={job.id} className="grid gap-2 rounded-md border border-dashed px-3 py-2 text-xs md:grid-cols-[minmax(0,1fr)_120px_160px]">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">{job.jobType}</div>
+                              <div className="truncate text-muted-foreground">
+                                {job.workerDisplayName ?? (locale === "th" ? "ยังไม่มี worker รับงาน" : "Waiting for worker")} · {job.runtimeType}
+                              </div>
+                            </div>
+                            <Badge variant={job.status === "failed" ? "destructive" : "outline"} className="w-fit">
+                              {humanizeMachineLabel(job.status)}
+                            </Badge>
+                            <div className="text-muted-foreground md:text-right">
+                              {formatAbsoluteDateTime(job.createdAt)}
+                            </div>
+                          </div>
+                        ))}
+                        {workerQueueOverview.recentJobs.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            {locale === "th" ? "ยังไม่มีงาน worker ในช่วงนี้" : "No worker jobs in this window yet."}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="rounded-md border bg-white p-3">
+                      <p className="text-xs font-medium text-slate-700">
+                        {locale === "th" ? "Runtime versions" : "Runtime versions"}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {workerQueueOverview.runtimeVersionDistribution.map((entry) => (
+                          <Badge key={`${entry.runtimeType}:${entry.runtimeVersion}`} variant="outline" className="max-w-full truncate">
+                            {entry.runtimeType} {entry.runtimeVersion} · {entry.count}
+                          </Badge>
+                        ))}
+                        {workerQueueOverview.runtimeVersionDistribution.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">
+                            {locale === "th" ? "ยังไม่มี worker connect" : "No connected workers yet."}
+                          </p>
+                        ) : null}
+                      </div>
+                      {workerQueueOverview.reassignmentCount > 0 ? (
+                        <p className="mt-3 text-xs text-amber-700">
+                          {workerQueueOverview.reassignmentCount} {locale === "th" ? "ครั้งมีการส่งต่องานไป worker อื่น" : "job reassignment events recorded"}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {locale === "th" ? "ยังไม่มีข้อมูล worker queue" : "No worker queue overview is available yet."}
+                </p>
+              )}
+            </div>
+
             <div className="rounded-xl border bg-slate-50 p-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>

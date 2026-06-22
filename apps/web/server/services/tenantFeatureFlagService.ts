@@ -86,6 +86,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "voiceAgents",
   "marketplaceHyperframesEnabled",
   "marketplaceHyperframesWorkerEnabled",
+  "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
   "mcpConnectEnabled",

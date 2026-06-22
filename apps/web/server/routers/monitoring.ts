@@ -492,6 +492,17 @@ export const monitoringRouter = router({
       return workerFleetService.listWorkerFleet(tenantId);
     }),
 
+  getWorkerQueueOverview: adminProcedure
+    .input(z.object({
+      hours: z.number().int().min(1).max(168).default(24),
+    }).optional())
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return workerFleetService.getWorkerQueueOverview(tenantId, {
+        hours: input?.hours ?? 24,
+      });
+    }),
+
   getWorkerDiagnostics: adminProcedure
     .input(z.object({ workerId: z.string().min(1) }))
     .query(async ({ input, ctx }) => {

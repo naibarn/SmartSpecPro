@@ -6,13 +6,25 @@ import {
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
   DEFAULT_CLAW_GATEWAY_COMPATIBILITY,
+  HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
+  HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES,
+  HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
+  SMARTAIHUB_WORKER_MCP_TOOL_NAMES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
   VIDEO_ASSEMBLY_PROGRESS_STAGES,
   WORKER_RUNTIME_DEFINITIONS,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
+  hyperframesFinalCompositeFailurePayloadSchema,
+  hyperframesFinalCompositeProgressPayloadSchema,
+  hyperframesFinalCompositeWorkerInputSchema,
+  localAiProviderConfigSchema,
+  localAiWorkerJobContractSchema,
+  localAiWorkerJobFamilyValues,
+  mcpWorkerCompletionPayloadSchema,
+  mcpWorkerToolNameSchema,
   WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
   WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
   WORKER_RUNTIME_PROTOCOL_VERSION,
@@ -209,6 +221,235 @@ describe("workerRuntime shared contracts", () => {
       registrationSupport: "feature_gated",
       dispatchSupport: "limited",
     }));
+  });
+
+  it("defines HyperFrames final composite worker capability and status vocabulary", () => {
+    expect(HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES).toEqual(expect.arrayContaining([
+      "hyperframes-final-composite",
+      "official-hyperframes-runtime",
+      "browser-render",
+      "thai-fonts",
+      "ffmpeg-probe",
+    ]));
+    expect(HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES).toEqual(expect.arrayContaining([
+      "render_browser_css",
+      "server_verify_artifacts",
+    ]));
+    expect(HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES).toEqual(expect.arrayContaining([
+      "browser_runtime_unavailable",
+      "server_verification_failed",
+    ]));
+
+    expect(() => hyperframesFinalCompositeProgressPayloadSchema.parse({
+      stage: "render_browser_css",
+      percent: 42,
+    })).not.toThrow();
+    expect(() => hyperframesFinalCompositeProgressPayloadSchema.parse({
+      stage: "ass_fallback_render",
+      percent: 42,
+    })).toThrow();
+    expect(() => hyperframesFinalCompositeFailurePayloadSchema.parse({
+      code: "server_verification_failed",
+      message: "MP4 duration mismatch",
+    })).not.toThrow();
+    expect(() => hyperframesFinalCompositeFailurePayloadSchema.parse({
+      code: "unknown_fallback",
+      message: "Bad code",
+    })).toThrow();
+  });
+
+  it("validates HyperFrames final composite worker input with fail-closed output policy", () => {
+    const parsed = hyperframesFinalCompositeWorkerInputSchema.parse({
+      compositionHash: "hf_composition_123",
+      timelineHash: "hf_timeline_123",
+      finalCompositeConfigHash: "hf_config_123",
+      templateVersion: "official_html_css_browser_final_composite_v1",
+      platformContractVersion: "2026-06-21",
+      rendererPolicyVersion: "official_html_css_browser_final_composite_v1",
+      runtimeProfileId: "smart-ai-hub-worker-app/windows/hyperframes",
+      source: {
+        storyboardReviewId: 94,
+        productId: null,
+        manualProjectName: "Manual Storyboard Project",
+        runId: "run-123",
+      },
+      finalVideoLengthSec: 300,
+      shots: [
+        {
+          shotId: "shot-1",
+          shotIndex: 0,
+          absoluteStartSec: 0,
+          absoluteEndSec: 30,
+          durationSec: 30,
+          overlayText: "Opening hook",
+        },
+      ],
+      assetManifest: {
+        sourceVideos: [
+          {
+            shotId: "shot-1",
+            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            durationSec: 30,
+          },
+        ],
+        fontRefs: [
+          {
+            family: "Noto Sans Thai",
+            required: true,
+          },
+        ],
+      },
+      outputRequirements: {
+        format: "mp4",
+        aspectRatio: "9:16",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        requireOfficialRuntime: true,
+        rejectFallbackRender: true,
+        requireCssBrowserRuntime: true,
+        requireServerVerification: true,
+        publishToLibrary: true,
+      },
+      renderConfig: {
+        presetId: "premium_product_hero",
+      },
+    });
+
+    expect(parsed.renderIntent).toBe("hyperframes_final_composite");
+    expect(parsed.outputRequirements.rejectFallbackRender).toBe(true);
+    expect(parsed.source.productId).toBeNull();
+  });
+
+  it("rejects overlong HyperFrames final composite inputs", () => {
+    const baseInput = {
+      compositionHash: "hf_composition_123",
+      timelineHash: "hf_timeline_123",
+      finalCompositeConfigHash: "hf_config_123",
+      templateVersion: "official_html_css_browser_final_composite_v1",
+      platformContractVersion: "2026-06-21",
+      rendererPolicyVersion: "official_html_css_browser_final_composite_v1",
+      runtimeProfileId: "smart-ai-hub-worker-app/windows/hyperframes",
+      finalVideoLengthSec: 301,
+      shots: [
+        {
+          shotId: "shot-1",
+          shotIndex: 0,
+          absoluteStartSec: 0,
+          absoluteEndSec: 31,
+          durationSec: 31,
+        },
+      ],
+      assetManifest: {
+        sourceVideos: [
+          {
+            shotId: "shot-1",
+            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            durationSec: 31,
+          },
+        ],
+      },
+      outputRequirements: {
+        requireOfficialRuntime: true,
+        rejectFallbackRender: true,
+      },
+    };
+
+    expect(() => hyperframesFinalCompositeWorkerInputSchema.parse(baseInput)).toThrow();
+    expect(() => hyperframesFinalCompositeWorkerInputSchema.parse({
+      ...baseInput,
+      finalVideoLengthSec: 300,
+      shots: [
+        {
+          shotId: "shot-1",
+          shotIndex: 0,
+          absoluteStartSec: 0,
+          absoluteEndSec: 30,
+          durationSec: 30,
+        },
+      ],
+      assetManifest: {
+        sourceVideos: [
+          {
+            shotId: "shot-1",
+            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            durationSec: 30,
+          },
+        ],
+      },
+      outputRequirements: {
+        requireOfficialRuntime: false,
+        rejectFallbackRender: true,
+      },
+    })).toThrow(/official runtime/i);
+  });
+
+  it("reserves local AI worker contracts with loopback-only providers by default", () => {
+    expect(localAiWorkerJobFamilyValues).toEqual([
+      "local_ai_text",
+      "local_ai_vision",
+      "local_ai_multimodal",
+    ]);
+
+    const parsed = localAiWorkerJobContractSchema.parse({
+      family: "local_ai_multimodal",
+      provider: {
+        providerId: "ollama",
+        baseUrl: "http://127.0.0.1:11434",
+        model: "llava:latest",
+      },
+      input: {
+        prompt: "Summarize these product frames",
+        imageRefs: [
+          {
+            storageRef: "/api/storage/files/library/local-ai/frame-1.png",
+            mimeType: "image/png",
+          },
+        ],
+      },
+      outputTargets: {
+        publishTextResult: true,
+      },
+    });
+
+    expect(parsed.provider.localOnly).toBe(true);
+    expect(parsed.family).toBe("local_ai_multimodal");
+    expect(() => localAiProviderConfigSchema.parse({
+      providerId: "lm_studio",
+      baseUrl: "http://192.168.1.12:1234",
+      model: "qwen2.5",
+    })).toThrow(/loopback/i);
+  });
+
+  it("reserves branded MCP worker tool contracts and requires assignment attempt completion identity", () => {
+    expect(SMARTAIHUB_WORKER_MCP_TOOL_NAMES).toEqual([
+      "smartaihub.worker.get_capabilities",
+      "smartaihub.worker.register_capabilities",
+      "smartaihub.worker.claim_job",
+      "smartaihub.worker.get_job_manifest",
+      "smartaihub.worker.report_progress",
+      "smartaihub.worker.init_artifact_upload",
+      "smartaihub.worker.complete_artifact_upload",
+      "smartaihub.worker.complete_job",
+      "smartaihub.worker.fail_job",
+      "smartaihub.worker.release_job",
+    ]);
+    expect(mcpWorkerToolNameSchema.parse("smartaihub.worker.claim_job")).toBe("smartaihub.worker.claim_job");
+
+    expect(() => mcpWorkerCompletionPayloadSchema.parse({
+      workerJobId: "job-1",
+      leaseOwnerToken: "lease-token",
+      assignmentAttempt: "attempt-1",
+      status: "completed",
+      outputJson: {
+        answer: "done",
+      },
+    })).not.toThrow();
+    expect(() => mcpWorkerCompletionPayloadSchema.parse({
+      workerJobId: "job-1",
+      leaseOwnerToken: "lease-token",
+      status: "completed",
+    })).toThrow(/assignmentAttempt/i);
   });
 
   it("validates Hermes bridge runtime metadata requirements", () => {

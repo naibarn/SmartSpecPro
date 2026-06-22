@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/124-smart-ai-hub-worker-app/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/124-smart-ai-hub-worker-app/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-flags",
+    "section-02-worker-queue-scheduler",
+    "section-03-lease-attempt-watchdog",
+    "section-04-artifact-verification",
+    "section-05-hyperframes-projection-storyboard",
+    "section-06-worker-connect-auth",
+    "section-07-worker-app-runtime-pack",
+    "section-08-tauri-hyperframes-executor",
+    "section-09-user-job-monitor-ui",
+    "section-10-admin-worker-monitor-ui",
+    "section-11-future-local-ai-mcp-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-06-22T13:09:47.173848+00:00"
+}

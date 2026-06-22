@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.JWT_SECRET ??= "worker-auth-service-test-secret-0123456789";
 
-const { mockGetTenantFeatureFlags, mockIsJtiRevoked } = vi.hoisted(() => ({
+const { mockGetTenantFeatureFlags, mockIsJtiRevoked, mockRevokeJti } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
   mockIsJtiRevoked: vi.fn(),
+  mockRevokeJti: vi.fn(),
 }));
 
 vi.mock("../tenantFeatureFlagService", () => ({
@@ -13,6 +14,7 @@ vi.mock("../tenantFeatureFlagService", () => ({
 
 vi.mock("../../_core/revocation", () => ({
   isJtiRevoked: mockIsJtiRevoked,
+  revokeJti: mockRevokeJti,
 }));
 
 import { signBearerToken } from "../../_core/tokens";
@@ -28,6 +30,7 @@ describe("workerAuthService", () => {
       hermesAgentRuntime: true,
     });
     mockIsJtiRevoked.mockResolvedValue(false);
+    mockRevokeJti.mockResolvedValue(undefined);
   });
 
   it("rejects generic bearer tokens for registration flows", async () => {
@@ -313,6 +316,177 @@ describe("workerAuthService", () => {
       }),
     ).rejects.toMatchObject({
       code: "worker_auth_invalid",
+      statusCode: 401,
+    });
+  });
+
+  it("binds worker token sets to the first approved device and accepts the same device proof", async () => {
+    const {
+      issueWorkerAccessTokens,
+      signWorkerDeviceProofForTest,
+      verifyWorkerAccessToken,
+      resetWorkerDeviceBindingStateForTest,
+    } = await import("../workerAuthService");
+    resetWorkerDeviceBindingStateForTest();
+
+    const deviceKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const publicKey = await crypto.subtle.exportKey("spki", deviceKey.publicKey);
+    const publicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(publicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      deviceBinding: {
+        deviceId: "worker-app-install-1",
+        machineFingerprint: "machine-a",
+        publicKey: publicKeyPem,
+      },
+    });
+    const proof = await signWorkerDeviceProofForTest({
+      token: tokens.executionToken,
+      method: "POST",
+      path: "/api/workers/worker-1/heartbeat",
+      nonce: "nonce-1",
+      privateKey: deviceKey.privateKey,
+    });
+
+    const auth = await verifyWorkerAccessToken(tokens.executionToken, {
+      workerId: "worker-1",
+      allowedTokenUses: ["worker_execution"],
+      requiredScopes: ["workers:heartbeat"],
+      requestProof: proof,
+    });
+
+    expect(auth.deviceId).toBe("worker-app-install-1");
+    expect(auth.workerConnectionId).toBeTruthy();
+  });
+
+  it("rejects and revokes a copied worker token signed by a different device", async () => {
+    const {
+      issueWorkerAccessTokens,
+      signWorkerDeviceProofForTest,
+      verifyWorkerAccessToken,
+      resetWorkerDeviceBindingStateForTest,
+    } = await import("../workerAuthService");
+    resetWorkerDeviceBindingStateForTest();
+
+    const originalKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const otherKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const originalPublicKey = await crypto.subtle.exportKey("spki", originalKey.publicKey);
+    const otherPublicKey = await crypto.subtle.exportKey("spki", otherKey.publicKey);
+    const originalPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(originalPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const otherPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(otherPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      deviceBinding: {
+        deviceId: "worker-app-install-1",
+        machineFingerprint: "machine-a",
+        publicKey: originalPublicKeyPem,
+      },
+    });
+    const proof = await signWorkerDeviceProofForTest({
+      token: tokens.executionToken,
+      method: "POST",
+      path: "/api/workers/worker-1/heartbeat",
+      nonce: "nonce-2",
+      privateKey: otherKey.privateKey,
+      publicKey: otherPublicKeyPem,
+    });
+
+    await expect(
+      verifyWorkerAccessToken(tokens.executionToken, {
+        workerId: "worker-1",
+        allowedTokenUses: ["worker_execution"],
+        requiredScopes: ["workers:heartbeat"],
+        requestProof: proof,
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_device_mismatch",
+      statusCode: 401,
+    });
+    expect(mockRevokeJti).toHaveBeenCalled();
+  });
+
+  it("rejects refresh replay from a different device and blocks the worker connection", async () => {
+    const {
+      issueWorkerAccessTokens,
+      refreshWorkerAccessTokens,
+      signWorkerDeviceProofForTest,
+      verifyWorkerAccessToken,
+      resetWorkerDeviceBindingStateForTest,
+    } = await import("../workerAuthService");
+    resetWorkerDeviceBindingStateForTest();
+
+    const originalKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const otherKey = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    );
+    const originalPublicKey = await crypto.subtle.exportKey("spki", originalKey.publicKey);
+    const otherPublicKey = await crypto.subtle.exportKey("spki", otherKey.publicKey);
+    const originalPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(originalPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const otherPublicKeyPem = `-----BEGIN PUBLIC KEY-----\n${Buffer.from(otherPublicKey).toString("base64").match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+      deviceBinding: {
+        deviceId: "worker-app-install-1",
+        machineFingerprint: "machine-a",
+        publicKey: originalPublicKeyPem,
+      },
+    });
+    const replayProof = await signWorkerDeviceProofForTest({
+      token: tokens.refreshToken,
+      method: "POST",
+      path: "/api/workers/connect/refresh",
+      nonce: "refresh-replay-1",
+      privateKey: otherKey.privateKey,
+      publicKey: otherPublicKeyPem,
+    });
+
+    await expect(
+      refreshWorkerAccessTokens(tokens.refreshToken, {
+        requestProof: replayProof,
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_device_mismatch",
+      statusCode: 401,
+    });
+
+    const originalProofAfterBlock = await signWorkerDeviceProofForTest({
+      token: tokens.executionToken,
+      method: "POST",
+      path: "/api/workers/worker-1/heartbeat",
+      nonce: "after-block-1",
+      privateKey: originalKey.privateKey,
+    });
+    await expect(
+      verifyWorkerAccessToken(tokens.executionToken, {
+        workerId: "worker-1",
+        requestProof: originalProofAfterBlock,
+      }),
+    ).rejects.toMatchObject({
+      code: "worker_connection_blocked",
       statusCode: 401,
     });
   });

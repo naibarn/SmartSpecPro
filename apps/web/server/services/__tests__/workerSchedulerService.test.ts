@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   HERMES_SUPPORTED_CAPABILITY_FAMILIES,
+  queueDesktopHyperframesFinalCompositeJob,
   queueDesktopComfyImageGenerationJob,
   queueDesktopComfyWorkflowRunJob,
   queueDesktopLocalFolderIngestJob,
@@ -550,6 +551,259 @@ describe("workerSchedulerService", () => {
         }),
       }),
     }));
+  });
+
+  it("queues HyperFrames final composite jobs through the desktop worker lane without a product binding", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      hyperframesWorkerFinalComposite: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+    });
+
+    const result = await queueDesktopHyperframesFinalCompositeJob(
+      {
+        tenantId: "tenant-1",
+        teamId: "team-video",
+        requestedByUserId: 7,
+        idempotencyKey: "hf-final:hf_config_123",
+        compositionHash: "hf_composition_123",
+        timelineHash: "hf_timeline_123",
+        finalCompositeConfigHash: "hf_config_123",
+        templateVersion: "official_html_css_browser_final_composite_v1",
+        platformContractVersion: "2026-06-21",
+        rendererPolicyVersion: "official_html_css_browser_final_composite_v1",
+        runtimeProfileId: "smart-ai-hub-worker-app/windows/hyperframes",
+        source: {
+          storyboardReviewId: 94,
+          productId: null,
+          manualProjectName: "Manual Storyboard Project",
+          runId: "run-123",
+        },
+        finalVideoLengthSec: 238,
+        shots: [
+          {
+            shotId: "shot-1",
+            shotIndex: 0,
+            absoluteStartSec: 0,
+            absoluteEndSec: 30,
+            durationSec: 30,
+            overlayText: "Opening hook",
+          },
+        ],
+        assetManifest: {
+          sourceVideos: [
+            {
+              shotId: "shot-1",
+              storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+              durationSec: 30,
+            },
+          ],
+        },
+        outputRequirements: {
+          requireOfficialRuntime: true,
+          rejectFallbackRender: true,
+          requireCssBrowserRuntime: true,
+          requireServerVerification: true,
+          publishToLibrary: true,
+        },
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      resourceProfile: "cpu_heavy",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: null,
+        capabilityFamilies: expect.arrayContaining([
+          "hyperframes-final-composite",
+          "official-hyperframes-runtime",
+          "browser-render",
+          "thai-fonts",
+          "ffmpeg-probe",
+        ]),
+      }),
+      inputJson: expect.objectContaining({
+        renderIntent: "hyperframes_final_composite",
+        finalCompositeConfigHash: "hf_config_123",
+        source: expect.objectContaining({
+          productId: null,
+          manualProjectName: "Manual Storyboard Project",
+        }),
+      }),
+      instructionsJson: expect.objectContaining({
+        intent: "hyperframes_final_composite",
+        outputPolicy: expect.objectContaining({
+          rejectFallbackRender: true,
+          requireCssBrowserRuntime: true,
+          requireServerVerification: true,
+        }),
+      }),
+    }));
+  });
+
+  it("reuses only the same active HyperFrames final composite idempotency key", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      hyperframesWorkerFinalComposite: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+    });
+    repo.findJobByIdempotencyKey.mockResolvedValueOnce({
+      id: "existing-job",
+      status: "queued",
+      jobType: "hyperframes_final_composite",
+    });
+
+    const commonInput = {
+      tenantId: "tenant-1",
+      compositionHash: "hf_composition_123",
+      timelineHash: "hf_timeline_123",
+      finalCompositeConfigHash: "hf_config_123",
+      templateVersion: "official_html_css_browser_final_composite_v1",
+      platformContractVersion: "2026-06-21",
+      rendererPolicyVersion: "official_html_css_browser_final_composite_v1",
+      runtimeProfileId: "smart-ai-hub-worker-app/windows/hyperframes",
+      finalVideoLengthSec: 30,
+      shots: [
+        {
+          shotId: "shot-1",
+          shotIndex: 0,
+          absoluteStartSec: 0,
+          absoluteEndSec: 30,
+          durationSec: 30,
+        },
+      ],
+      assetManifest: {
+        sourceVideos: [
+          {
+            shotId: "shot-1",
+            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            durationSec: 30,
+          },
+        ],
+      },
+      outputRequirements: {
+        requireOfficialRuntime: true,
+        rejectFallbackRender: true,
+      },
+    };
+
+    const first = await queueDesktopHyperframesFinalCompositeJob(
+      {
+        ...commonInput,
+        idempotencyKey: "hf-final:hf_config_123",
+      },
+      { repo: repo as any, reserveCredits, getFeatureFlags },
+    );
+
+    expect(first.created).toBe(false);
+    expect(first.job.id).toBe("existing-job");
+
+    repo.findJobByIdempotencyKey.mockResolvedValueOnce(null);
+    const second = await queueDesktopHyperframesFinalCompositeJob(
+      {
+        ...commonInput,
+        finalCompositeConfigHash: "hf_config_regenerated_456",
+        idempotencyKey: "hf-final:hf_config_regenerated_456",
+      },
+      { repo: repo as any, reserveCredits, getFeatureFlags },
+    );
+
+    expect(second.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      idempotencyKey: "hf-final:hf_config_regenerated_456",
+    }));
+  });
+
+  it("rejects HyperFrames final composite queueing when the worker flag is off or the preferred worker is draining", async () => {
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      hyperframesWorkerFinalComposite: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+    });
+
+    const input = {
+      tenantId: "tenant-1",
+      compositionHash: "hf_composition_123",
+      timelineHash: "hf_timeline_123",
+      finalCompositeConfigHash: "hf_config_123",
+      templateVersion: "official_html_css_browser_final_composite_v1",
+      platformContractVersion: "2026-06-21",
+      rendererPolicyVersion: "official_html_css_browser_final_composite_v1",
+      runtimeProfileId: "smart-ai-hub-worker-app/windows/hyperframes",
+      finalVideoLengthSec: 30,
+      shots: [
+        {
+          shotId: "shot-1",
+          shotIndex: 0,
+          absoluteStartSec: 0,
+          absoluteEndSec: 30,
+          durationSec: 30,
+        },
+      ],
+      assetManifest: {
+        sourceVideos: [
+          {
+            shotId: "shot-1",
+            storageRef: "/api/storage/files/media-jobs/assets/final-1.mp4",
+            durationSec: 30,
+          },
+        ],
+      },
+      outputRequirements: {
+        requireOfficialRuntime: true,
+        rejectFallbackRender: true,
+      },
+    };
+
+    await expect(queueDesktopHyperframesFinalCompositeJob(
+      input,
+      { repo: repo as any, reserveCredits, getFeatureFlags },
+    )).rejects.toMatchObject({
+      code: "feature_disabled",
+      statusCode: 403,
+    });
+
+    getFeatureFlags.mockResolvedValue({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: true,
+      hyperframesWorkerFinalComposite: true,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+    });
+    repo.findWorkerById.mockResolvedValue({
+      id: "desktop-worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "draining",
+    });
+
+    await expect(queueDesktopHyperframesFinalCompositeJob(
+      {
+        ...input,
+        preferredWorkerId: "desktop-worker-1",
+      },
+      { repo: repo as any, reserveCredits, getFeatureFlags },
+    )).rejects.toMatchObject({
+      code: "worker_state_invalid",
+      statusCode: 409,
+    });
   });
 
   it("rejects desktop video_assembly jobs when local paths fall outside the approved workspace roots", async () => {

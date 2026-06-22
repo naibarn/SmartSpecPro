@@ -8,6 +8,7 @@ import {
 const MARKETPLACE_HYPERFRAMES_FLAGS: (keyof TenantFeatureFlags)[] = [
   "marketplaceHyperframesEnabled",
   "marketplaceHyperframesWorkerEnabled",
+  "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
 ];

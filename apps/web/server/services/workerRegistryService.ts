@@ -30,6 +30,8 @@ import {
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES,
+  HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
@@ -422,6 +424,37 @@ function ensureLease(job: WorkerJobRecord, leaseOwnerToken: string): void {
   }
 }
 
+function buildAssignmentAttempt(jobId: string, workerId: string, leaseOwnerToken: string): string {
+  const hash = crypto
+    .createHash("sha256")
+    .update(`${jobId}:${workerId}:${leaseOwnerToken}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `attempt_${hash}`;
+}
+
+function readAssignmentAttempt(job: WorkerJobRecord): string | null {
+  const output = isPlainObject(job.outputJson) ? job.outputJson : {};
+  const assignmentAttempt = output.assignmentAttempt;
+  return typeof assignmentAttempt === "string" && assignmentAttempt.trim()
+    ? assignmentAttempt.trim()
+    : null;
+}
+
+function ensureAssignmentAttempt(job: WorkerJobRecord, assignmentAttempt: string | null | undefined): void {
+  if (job.jobType !== "hyperframes_final_composite") {
+    return;
+  }
+  const activeAttempt = readAssignmentAttempt(job);
+  if (!activeAttempt || !assignmentAttempt || assignmentAttempt !== activeAttempt) {
+    throw new WorkerRuntimeServiceError(
+      "stale_assignment_attempt",
+      409,
+      "Worker assignment attempt is stale or invalid",
+    );
+  }
+}
+
 function resolveEventStatus(eventType: string): WorkerJobStatus | null {
   return JOB_EVENT_STATUS_MAP[eventType] ?? null;
 }
@@ -454,8 +487,10 @@ function assertRuntimeSpecificJobEventContract(
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_PROGRESS_STAGES
         : job.jobType === "comfy_workflow_run"
-          ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
-      : null;
+        ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
+        : job.jobType === "hyperframes_final_composite"
+          ? HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES
+          : null;
   const failureCodes = job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_FAILURE_CODES
     : job.jobType === "local_folder_ingest"
@@ -463,8 +498,10 @@ function assertRuntimeSpecificJobEventContract(
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_FAILURE_CODES
         : job.jobType === "comfy_workflow_run"
-          ? COMFY_WORKFLOW_RUN_FAILURE_CODES
-      : null;
+        ? COMFY_WORKFLOW_RUN_FAILURE_CODES
+        : job.jobType === "hyperframes_final_composite"
+          ? HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES
+          : null;
 
   if (!progressStages || !failureCodes) {
     return;
@@ -997,22 +1034,45 @@ export async function claimWorkerJob(
     const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
     const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);
     if (claimed) {
+      const assignmentAttempt = buildAssignmentAttempt(claimed.id, worker.id, claimed.leaseOwnerToken ?? leaseOwnerToken);
+      const outputJson = {
+        ...(isPlainObject(claimed.outputJson) ? claimed.outputJson : {}),
+        assignmentAttempt,
+        assignmentWorkerId: worker.id,
+        assignmentLeaseExpiresAt: (claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString?.()
+          ?? new Date(claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString(),
+        assignedAt: new Date().toISOString(),
+        assignmentStatus: "active",
+      };
+      let claimedWithAttempt: WorkerJobRecord & { assignmentAttempt: string } = {
+        ...claimed,
+        outputJson,
+        assignmentAttempt,
+      };
+      if (typeof repo.updateJob === "function") {
+        claimedWithAttempt = {
+          ...await repo.updateJob(claimed.id, { outputJson }),
+          assignmentAttempt,
+        };
+      }
       auditLogger.log({
         eventType: "worker_job_claimed",
-        userId: claimed.requestedByUserId ?? null,
+        userId: claimedWithAttempt.requestedByUserId ?? null,
         metadata: {
-          tenantId: claimed.tenantId,
+          tenantId: claimedWithAttempt.tenantId,
           workerId: worker.id,
-          jobId: claimed.id,
-          runtimeType: claimed.runtimeType,
-          jobType: claimed.jobType,
+          jobId: claimedWithAttempt.id,
+          runtimeType: claimedWithAttempt.runtimeType,
+          jobType: claimedWithAttempt.jobType,
+          assignmentAttempt,
         },
       });
       return {
         job: {
-          ...claimed,
-          leaseOwnerToken: claimed.leaseOwnerToken ?? leaseOwnerToken,
-          leaseExpiresAt: claimed.leaseExpiresAt ?? leaseExpiresAt,
+          ...claimedWithAttempt,
+          leaseOwnerToken: claimedWithAttempt.leaseOwnerToken ?? leaseOwnerToken,
+          leaseExpiresAt: claimedWithAttempt.leaseExpiresAt ?? leaseExpiresAt,
+          assignmentAttempt,
         },
       };
     }
@@ -1036,6 +1096,7 @@ export async function recordWorkerJobEvent(
   );
   ensureJobScopedAccess(input.auth, job);
   ensureLease(job, input.payload.leaseOwnerToken);
+  ensureAssignmentAttempt(job, input.payload.assignmentAttempt);
   assertRuntimeSpecificJobEventContract(job, input.payload);
 
   const sequenceNumber = input.payload.sequenceNumber;
@@ -1063,10 +1124,11 @@ export async function recordWorkerJobEvent(
     nextJob = await repo.updateJob(job.id, {
       status: nextStatus,
       outputJson: {
-        ...(job.outputJson ?? {}),
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
         lastEventType: input.payload.eventType,
         lastEventPayload: sanitizedPayloadJson,
         lastSequenceNumber: sequenceNumber,
+        lastAssignmentAttempt: input.payload.assignmentAttempt ?? readAssignmentAttempt(job),
       },
       startedAt:
         nextStatus === "running" && !job.startedAt
@@ -1083,6 +1145,7 @@ export async function recordWorkerJobEvent(
   await repo.insertJobEvent(job.id, input.payload.eventType, {
     ...sanitizedPayloadJson,
     leaseOwnerToken: input.payload.leaseOwnerToken,
+    assignmentAttempt: input.payload.assignmentAttempt ?? null,
     sequenceNumber,
   });
 
@@ -1185,6 +1248,7 @@ export async function initWorkerArtifactUpload(
   );
   ensureJobScopedAccess(input.auth, job);
   ensureLease(job, input.payload.leaseOwnerToken);
+  ensureAssignmentAttempt(job, input.payload.assignmentAttempt);
 
   const storageRef = buildArtifactStorageRef(input.jobId, input.auth, input.payload);
   const presigned = await storagePresignPut(
@@ -1216,6 +1280,7 @@ export async function completeWorkerArtifact(
   );
   ensureJobScopedAccess(input.auth, job);
   ensureLease(job, input.payload.leaseOwnerToken);
+  ensureAssignmentAttempt(job, input.payload.assignmentAttempt);
 
   const existing = await repo.findArtifact(job.id, input.payload.storageRef);
   if (existing) {
@@ -1239,6 +1304,7 @@ export async function completeWorkerArtifact(
       checksumSha256: input.payload.checksumSha256,
       contentType: input.payload.contentType ?? null,
       sizeBytes: input.payload.sizeBytes,
+      assignmentAttempt: input.payload.assignmentAttempt ?? readAssignmentAttempt(job),
     },
     publishedItemId: null,
   });
@@ -1247,10 +1313,11 @@ export async function completeWorkerArtifact(
     await repo.updateJob(job.id, {
       status: "publishing",
       outputJson: {
-        ...(job.outputJson ?? {}),
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
         lastArtifactId: artifact.id,
         lastArtifactType: artifact.artifactType,
         lastArtifactStorageRef: artifact.storageRef,
+        lastAssignmentAttempt: input.payload.assignmentAttempt ?? readAssignmentAttempt(job),
       },
     });
   }

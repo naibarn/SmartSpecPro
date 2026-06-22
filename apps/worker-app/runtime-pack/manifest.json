@@ -1,0 +1,23 @@
+{
+  "runtimeId": "hyperframes-windows-x64",
+  "version": "0.0.0-placeholder",
+  "hyperframesVersion": "not-bundled",
+  "browserVersion": "not-bundled",
+  "ffmpegVersion": "not-bundled",
+  "ffprobeVersion": "not-bundled",
+  "thaiFontFamily": "Noto Sans Thai",
+  "sidecarPath": "hyperframes-render.exe",
+  "sidecarSha256": "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
+  "checksumFile": "SHA256SUMS",
+  "signatureFile": "SHA256SUMS.sig",
+  "licenseNotices": [
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "supportedContractVersions": [
+    "2026-06-22"
+  ],
+  "runtimeProfileHash": "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
+  "allowed": false,
+  "denyReason": "Placeholder runtime pack is not claimable.",
+  "rollbackToVersion": null
+}

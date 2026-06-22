@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
+  HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+} from "./hyperframes/limits";
 
 export const WORKER_RUNTIME_PROTOCOL_VERSION = "2026-04-06";
 export const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION = "2026-04-08";
@@ -215,6 +219,72 @@ export const comfyWorkflowRunFailureCodeValues = [
 export const COMFY_WORKFLOW_RUN_PROGRESS_STAGES = [...comfyWorkflowRunProgressStageValues];
 export const COMFY_WORKFLOW_RUN_FAILURE_CODES = [...comfyWorkflowRunFailureCodeValues];
 
+export const hyperframesFinalCompositeProgressStageValues = [
+  "resolve_inputs",
+  "stage_assets",
+  "doctor_runtime",
+  "build_composition",
+  "render_browser_css",
+  "verify_outputs",
+  "upload_artifacts",
+  "server_verify_artifacts",
+  "publish_artifacts",
+] as const;
+
+export const hyperframesFinalCompositeFailureCodeValues = [
+  "runtime_not_ready",
+  "runtime_contract_mismatch",
+  "unsupported_template",
+  "unsupported_css_runtime",
+  "browser_runtime_unavailable",
+  "thai_font_unavailable",
+  "input_fetch_failed",
+  "timeline_contract_invalid",
+  "render_failed",
+  "artifact_upload_failed",
+  "server_verification_failed",
+  "artifact_publish_failed",
+] as const;
+
+export const HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES = [
+  ...hyperframesFinalCompositeProgressStageValues,
+];
+export const HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES = [
+  ...hyperframesFinalCompositeFailureCodeValues,
+];
+
+export const HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES = [
+  "hyperframes-final-composite",
+  "official-hyperframes-runtime",
+  "browser-render",
+  "thai-fonts",
+  "ffmpeg-probe",
+] as const;
+
+export const localAiWorkerJobFamilyValues = [
+  "local_ai_text",
+  "local_ai_vision",
+  "local_ai_multimodal",
+] as const;
+
+export const localAiProviderValues = [
+  "ollama",
+  "lm_studio",
+] as const;
+
+export const SMARTAIHUB_WORKER_MCP_TOOL_NAMES = [
+  "smartaihub.worker.get_capabilities",
+  "smartaihub.worker.register_capabilities",
+  "smartaihub.worker.claim_job",
+  "smartaihub.worker.get_job_manifest",
+  "smartaihub.worker.report_progress",
+  "smartaihub.worker.init_artifact_upload",
+  "smartaihub.worker.complete_artifact_upload",
+  "smartaihub.worker.complete_job",
+  "smartaihub.worker.fail_job",
+  "smartaihub.worker.release_job",
+] as const;
+
 export type WorkerRuntimeType = (typeof workerRuntimeTypeValues)[number];
 export type WorkerStatus = (typeof workerStatusValues)[number];
 export type WorkerJobStatus = (typeof workerJobStatusValues)[number];
@@ -240,6 +310,15 @@ export type ComfyWorkflowRunProgressStage =
   (typeof comfyWorkflowRunProgressStageValues)[number];
 export type ComfyWorkflowRunFailureCode =
   (typeof comfyWorkflowRunFailureCodeValues)[number];
+export type HyperframesFinalCompositeProgressStage =
+  (typeof hyperframesFinalCompositeProgressStageValues)[number];
+export type HyperframesFinalCompositeFailureCode =
+  (typeof hyperframesFinalCompositeFailureCodeValues)[number];
+export type HyperframesFinalCompositeCapabilityFamily =
+  (typeof HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES)[number];
+export type LocalAiWorkerJobFamily = (typeof localAiWorkerJobFamilyValues)[number];
+export type LocalAiProvider = (typeof localAiProviderValues)[number];
+export type SmartAiHubWorkerMcpToolName = (typeof SMARTAIHUB_WORKER_MCP_TOOL_NAMES)[number];
 
 export const workerRuntimeTypeSchema = z.enum(workerRuntimeTypeValues);
 export const workerStatusSchema = z.enum(workerStatusValues);
@@ -262,6 +341,18 @@ export const comfyImageGenerationProgressStageSchema = z.enum(comfyImageGenerati
 export const comfyImageGenerationFailureCodeSchema = z.enum(comfyImageGenerationFailureCodeValues);
 export const comfyWorkflowRunProgressStageSchema = z.enum(comfyWorkflowRunProgressStageValues);
 export const comfyWorkflowRunFailureCodeSchema = z.enum(comfyWorkflowRunFailureCodeValues);
+export const hyperframesFinalCompositeProgressStageSchema = z.enum(
+  hyperframesFinalCompositeProgressStageValues,
+);
+export const hyperframesFinalCompositeFailureCodeSchema = z.enum(
+  hyperframesFinalCompositeFailureCodeValues,
+);
+export const localAiWorkerJobFamilySchema = z.enum(localAiWorkerJobFamilyValues);
+export const localAiProviderSchema = z.enum(localAiProviderValues);
+export const mcpWorkerToolNameSchema = z.enum(SMARTAIHUB_WORKER_MCP_TOOL_NAMES);
+export const hyperframesFinalCompositeCapabilityFamilySchema = z.enum(
+  HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
+);
 
 export const workerProtocolCompatibilitySchema = z.object({
   protocolVersion: z.string().min(1).default(WORKER_RUNTIME_PROTOCOL_VERSION),
@@ -687,6 +778,7 @@ export const workerJobEventPayloadSchema = z.object({
   payloadJson: z.record(z.string(), z.unknown()).default({}),
   sequenceNumber: z.number().int().positive().nullable().optional().default(null),
   leaseOwnerToken: z.string().min(1),
+  assignmentAttempt: z.string().min(1).nullable().optional().default(null),
 });
 
 export const workerArtifactInitPayloadSchema = z.object({
@@ -696,6 +788,7 @@ export const workerArtifactInitPayloadSchema = z.object({
   sizeBytes: z.number().int().nonnegative(),
   checksumSha256: z.string().min(1).nullable().optional().default(null),
   leaseOwnerToken: z.string().min(1),
+  assignmentAttempt: z.string().min(1).nullable().optional().default(null),
 });
 
 export const workerArtifactCompletePayloadSchema = z.object({
@@ -706,6 +799,7 @@ export const workerArtifactCompletePayloadSchema = z.object({
   contentType: z.string().min(1).nullable().optional().default(null),
   metadataJson: z.record(z.string(), z.unknown()).default({}),
   leaseOwnerToken: z.string().min(1),
+  assignmentAttempt: z.string().min(1).nullable().optional().default(null),
 });
 
 export const workerDiagnosticsPayloadSchema = z.object({
@@ -1035,6 +1129,248 @@ export function isWorkerPathWithinAllowedRoots(
       || normalizedCandidate.startsWith(`${normalizedRoot}\\`);
   });
 }
+
+const workerStableHashSchema = z.string().trim().min(8).max(256);
+const workerStorageRefSchema = z.string().trim().min(1).max(2_000);
+
+export const hyperframesFinalCompositeAssetManifestSchema = z.object({
+  sourceVideos: z.array(
+    z.object({
+      shotId: z.string().trim().min(1),
+      storageRef: workerStorageRefSchema,
+      mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).default(0),
+      durationSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
+      contentType: z.string().trim().min(1).default("video/mp4"),
+      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
+    }),
+  ).min(1),
+  audioRefs: z.array(
+    z.object({
+      role: z.enum(["source_audio", "music_bed", "sfx", "voiceover"]),
+      storageRef: workerStorageRefSchema,
+      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
+    }),
+  ).default([]),
+  subtitleRefs: z.array(
+    z.object({
+      shotId: z.string().trim().min(1),
+      kind: z.enum(["vtt", "srt", "json"]),
+      storageRef: workerStorageRefSchema,
+      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
+    }),
+  ).default([]),
+  fontRefs: z.array(
+    z.object({
+      family: z.string().trim().min(1),
+      storageRef: workerStorageRefSchema.nullable().optional().default(null),
+      required: z.boolean().default(true),
+    }),
+  ).default([]),
+  runtimeAssets: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const hyperframesFinalCompositeShotSchema = z.object({
+  shotId: z.string().trim().min(1),
+  shotIndex: z.number().int().min(0),
+  absoluteStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+  absoluteEndSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+  durationSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
+  mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).default(0),
+  overlayText: z.string().trim().max(2_000).nullable().optional().default(null),
+  subtitleText: z.string().trim().max(8_000).nullable().optional().default(null),
+  stylePresetId: z.string().trim().min(1).nullable().optional().default(null),
+  transitionPresetId: z.string().trim().min(1).nullable().optional().default(null),
+  textMotionPresetId: z.string().trim().min(1).nullable().optional().default(null),
+}).superRefine((shot, ctx) => {
+  if (shot.absoluteEndSec <= shot.absoluteStartSec) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["absoluteEndSec"],
+      message: "shot absoluteEndSec must be greater than absoluteStartSec",
+    });
+  }
+
+  const computedDuration = shot.absoluteEndSec - shot.absoluteStartSec;
+  if (computedDuration - HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC > 0.01) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["durationSec"],
+      message: `HyperFrames shots must not exceed ${HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC}s`,
+    });
+  }
+});
+
+export const hyperframesFinalCompositeOutputRequirementsSchema = z.object({
+  format: z.literal("mp4").default("mp4"),
+  aspectRatio: z.enum(["9:16", "16:9", "1:1", "4:5"]).default("9:16"),
+  width: z.number().int().min(360).max(3840).default(1080),
+  height: z.number().int().min(360).max(3840).default(1920),
+  fps: z.number().int().min(24).max(60).default(30),
+  requireOfficialRuntime: z.boolean().default(true),
+  rejectFallbackRender: z.boolean().default(true),
+  requireCssBrowserRuntime: z.boolean().default(true),
+  requireServerVerification: z.boolean().default(true),
+  publishToLibrary: z.boolean().default(true),
+});
+
+export const hyperframesFinalCompositeWorkerInputSchema = z.object({
+  renderIntent: z.literal("hyperframes_final_composite").default("hyperframes_final_composite"),
+  compositionHash: workerStableHashSchema,
+  timelineHash: workerStableHashSchema,
+  finalCompositeConfigHash: workerStableHashSchema,
+  templateVersion: z.string().trim().min(1).max(120),
+  platformContractVersion: z.string().trim().min(1).max(120),
+  rendererPolicyVersion: z.string().trim().min(1).max(120),
+  runtimeProfileId: z.string().trim().min(1).max(120),
+  source: z.object({
+    storyboardReviewId: z.number().int().positive().nullable().optional().default(null),
+    productId: z.union([
+      z.string().trim().min(1).max(160),
+      z.number().int().positive(),
+    ]).nullable().optional().default(null),
+    manualProjectName: z.string().trim().min(1).max(240).nullable().optional().default(null),
+    runId: z.string().trim().min(1).max(180).nullable().optional().default(null),
+  }).default({}),
+  finalVideoLengthSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+  shots: z.array(hyperframesFinalCompositeShotSchema).min(1).max(60),
+  assetManifest: hyperframesFinalCompositeAssetManifestSchema,
+  outputRequirements: hyperframesFinalCompositeOutputRequirementsSchema,
+  renderConfig: z.record(z.string(), z.unknown()).default({}),
+}).superRefine((payload, ctx) => {
+  const assetShotIds = new Set(payload.assetManifest.sourceVideos.map((video) => video.shotId));
+  payload.shots.forEach((shot, index) => {
+    if (!assetShotIds.has(shot.shotId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["shots", index, "shotId"],
+        message: "each HyperFrames shot must have a matching source video asset",
+      });
+    }
+    if (shot.absoluteEndSec - payload.finalVideoLengthSec > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["shots", index, "absoluteEndSec"],
+        message: "shot end time must not exceed finalVideoLengthSec",
+      });
+    }
+  });
+
+  if (!payload.outputRequirements.requireOfficialRuntime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputRequirements", "requireOfficialRuntime"],
+      message: "HyperFrames final composite worker jobs must require the official runtime",
+    });
+  }
+  if (!payload.outputRequirements.rejectFallbackRender) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputRequirements", "rejectFallbackRender"],
+      message: "HyperFrames final composite worker jobs must reject fallback renders",
+    });
+  }
+});
+
+export const hyperframesFinalCompositeProgressPayloadSchema = z.object({
+  stage: hyperframesFinalCompositeProgressStageSchema,
+  percent: z.number().min(0).max(100),
+  message: z.string().trim().max(1_000).nullable().optional().default(null),
+  diagnosticsJson: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const hyperframesFinalCompositeFailurePayloadSchema = z.object({
+  code: hyperframesFinalCompositeFailureCodeSchema,
+  message: z.string().trim().min(1).max(2_000),
+  recoverable: z.boolean().default(false),
+  diagnosticsJson: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const localAiProviderConfigSchema = z.object({
+  providerId: localAiProviderSchema,
+  baseUrl: z.string().url(),
+  model: z.string().trim().min(1).max(240),
+  localOnly: z.boolean().default(true),
+  readiness: z.enum(["unknown", "ready", "blocked", "unavailable"]).default("unknown"),
+  timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
+  metadataJson: z.record(z.string(), z.unknown()).default({}),
+}).superRefine((payload, ctx) => {
+  if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["baseUrl"],
+      message: "Local AI worker providers must use a loopback baseUrl unless localOnly is explicitly disabled by a future policy gate",
+    });
+  }
+});
+
+export const localAiWorkerJobContractSchema = z.object({
+  family: localAiWorkerJobFamilySchema,
+  provider: localAiProviderConfigSchema,
+  input: z.object({
+    prompt: z.string().trim().min(1).max(24_000),
+    textContext: z.string().trim().max(24_000).nullable().optional().default(null),
+    imageRefs: z.array(
+      z.object({
+        storageRef: workerStorageRefSchema,
+        mimeType: z.string().trim().min(1).max(120).default("image/png"),
+        checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
+      }),
+    ).default([]),
+    metadataJson: z.record(z.string(), z.unknown()).default({}),
+  }),
+  outputTargets: z.object({
+    publishTextResult: z.boolean().default(true),
+    publishJsonResult: z.boolean().default(true),
+    publishArtifactsToLibrary: z.boolean().default(false),
+    requireServerVerification: z.boolean().default(true),
+  }).default({}),
+  safety: z.object({
+    moderationRequired: z.boolean().default(false),
+    allowLocalModelWithoutCloudModeration: z.boolean().default(false),
+    safetyMetadataRequired: z.boolean().default(false),
+  }).default({}),
+}).superRefine((payload, ctx) => {
+  if ((payload.family === "local_ai_vision" || payload.family === "local_ai_multimodal")
+    && payload.input.imageRefs.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["input", "imageRefs"],
+      message: `${payload.family} jobs require at least one imageRef`,
+    });
+  }
+  if (!payload.outputTargets.publishTextResult
+    && !payload.outputTargets.publishJsonResult
+    && !payload.outputTargets.publishArtifactsToLibrary) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputTargets"],
+      message: "local AI worker jobs must publish at least one output target",
+    });
+  }
+});
+
+export const mcpWorkerCompletionPayloadSchema = z.object({
+  workerJobId: z.string().trim().min(1),
+  leaseOwnerToken: z.string().trim().min(1),
+  assignmentAttempt: z.string({
+    required_error: "assignmentAttempt is required for MCP worker completion",
+  }).trim().min(1, "assignmentAttempt is required for MCP worker completion"),
+  status: z.enum(["completed", "failed", "canceled"]).default("completed"),
+  outputJson: z.record(z.string(), z.unknown()).default({}),
+  failure: z.object({
+    code: z.string().trim().min(1).max(160),
+    message: z.string().trim().min(1).max(2_000),
+    recoverable: z.boolean().default(false),
+  }).nullable().optional().default(null),
+  artifacts: z.array(
+    z.object({
+      artifactType: z.string().trim().min(1).max(120),
+      storageRef: workerStorageRefSchema,
+      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
+      metadataJson: z.record(z.string(), z.unknown()).default({}),
+    }),
+  ).default([]),
+});
 
 export const videoAssemblyJobContractSchema = z.object({
   inputRefs: z.array(
@@ -1425,7 +1761,18 @@ export type WorkerArtifactInitPayload = z.infer<typeof workerArtifactInitPayload
 export type WorkerArtifactCompletePayload = z.infer<typeof workerArtifactCompletePayloadSchema>;
 export type WorkerDiagnosticsPayload = z.infer<typeof workerDiagnosticsPayloadSchema>;
 export type WorkerGatewayCompatibilityMetadata = z.infer<typeof workerGatewayCompatibilityMetadataSchema>;
+export type HyperframesFinalCompositeAssetManifest =
+  z.infer<typeof hyperframesFinalCompositeAssetManifestSchema>;
+export type HyperframesFinalCompositeWorkerInput =
+  z.infer<typeof hyperframesFinalCompositeWorkerInputSchema>;
+export type HyperframesFinalCompositeProgressPayload =
+  z.infer<typeof hyperframesFinalCompositeProgressPayloadSchema>;
+export type HyperframesFinalCompositeFailurePayload =
+  z.infer<typeof hyperframesFinalCompositeFailurePayloadSchema>;
 export type VideoAssemblyJobContract = z.infer<typeof videoAssemblyJobContractSchema>;
 export type LocalFolderIngestJobContract = z.infer<typeof localFolderIngestJobContractSchema>;
 export type ComfyImageGenerationJobContract = z.infer<typeof comfyImageGenerationJobContractSchema>;
 export type ComfyWorkflowRunJobContract = z.infer<typeof comfyWorkflowRunJobContractSchema>;
+export type LocalAiProviderConfig = z.infer<typeof localAiProviderConfigSchema>;
+export type LocalAiWorkerJobContract = z.infer<typeof localAiWorkerJobContractSchema>;
+export type McpWorkerCompletionPayload = z.infer<typeof mcpWorkerCompletionPayloadSchema>;

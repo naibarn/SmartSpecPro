@@ -31,6 +31,12 @@ export interface TokenClaims {
   scopeProfile?: string;
   registeredByUserId?: number;
   externalReference?: string;
+  workerConnectionId?: string;
+  workerTokenSetId?: string;
+  deviceId?: string;
+  machineFingerprintHash?: string;
+  devicePublicKey?: string;
+  devicePublicKeyFingerprint?: string;
   deviceIdHash?: string;
   origin?: string;
   extensionId?: string;

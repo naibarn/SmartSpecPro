@@ -28,6 +28,7 @@ vi.mock("../../services/tenantContext", () => ({
 
 const {
   mockListWorkerFleet,
+  mockGetWorkerQueueOverview,
   mockGetWorkerDiagnosticsSnapshot,
   mockGetWorkerMcpInsights,
   mockGetTenantWorkerMcpOverview,
@@ -40,6 +41,7 @@ const {
   mockRedactLegacyWorkerData,
 } = vi.hoisted(() => ({
   mockListWorkerFleet: vi.fn(),
+  mockGetWorkerQueueOverview: vi.fn(),
   mockGetWorkerDiagnosticsSnapshot: vi.fn(),
   mockGetWorkerMcpInsights: vi.fn(),
   mockGetTenantWorkerMcpOverview: vi.fn(),
@@ -54,6 +56,7 @@ const {
 
 vi.mock("../../services/workerFleetService", () => ({
   listWorkerFleet: mockListWorkerFleet,
+  getWorkerQueueOverview: mockGetWorkerQueueOverview,
   getWorkerDiagnosticsSnapshot: mockGetWorkerDiagnosticsSnapshot,
   getWorkerMcpInsights: mockGetWorkerMcpInsights,
   getTenantWorkerMcpOverview: mockGetTenantWorkerMcpOverview,
@@ -287,6 +290,53 @@ describe("monitoringRouter worker fleet", () => {
     expect(result).toEqual([
       expect.objectContaining({ id: "worker-1" }),
     ]);
+  });
+
+  it("returns worker queue overview for admins", async () => {
+    mockGetWorkerQueueOverview.mockResolvedValue({
+      tenantId: "tenant-1",
+      generatedAt: "2026-06-22T12:00:00.000Z",
+      hours: 24,
+      totalJobs: 4,
+      queuedJobCount: 1,
+      activeJobCount: 2,
+      stalledJobCount: 1,
+      reassignableJobCount: 1,
+      completedJobCount: 1,
+      failedJobCount: 0,
+      canceledJobCount: 0,
+      oldestQueuedAt: "2026-06-22T11:30:00.000Z",
+      oldestQueuedAgeMs: 1_800_000,
+      verificationFailureCount: 1,
+      staleUploadRejectionCount: 1,
+      reassignmentCount: 1,
+      securityWarningCounts: {
+        tokenReplay: 0,
+        deviceProofMismatch: 1,
+        refreshTokenReuse: 0,
+        autoBlockedConnection: 0,
+      },
+      runtimeVersionDistribution: [],
+      recentJobs: [],
+    });
+
+    const result = await monitoringRouter.getWorkerQueueOverview({
+      input: { hours: 24 },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 7, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockGetWorkerQueueOverview).toHaveBeenCalledWith("tenant-1", {
+      hours: 24,
+    });
+    expect(result).toEqual(expect.objectContaining({
+      tenantId: "tenant-1",
+      queuedJobCount: 1,
+      stalledJobCount: 1,
+      verificationFailureCount: 1,
+    }));
   });
 
   it("returns worker diagnostics snapshots for admins", async () => {

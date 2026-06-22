@@ -325,6 +325,143 @@ describe("workerFleetService", () => {
     });
   });
 
+  it("summarizes worker queue health and safe warning counts for admins", async () => {
+    const { getWorkerQueueOverview } = await import("../workerFleetService");
+    const now = new Date("2026-06-22T12:00:00.000Z");
+
+    const result = await getWorkerQueueOverview("tenant-1", { now, hours: 24 }, {
+      repo: {
+        listWorkersByTenant: vi.fn().mockResolvedValue([
+          {
+            id: "worker-1",
+            displayName: "Worker Alpha",
+            runtimeType: "desktop_zeroclaw_managed",
+            runtimeVersion: "1.2.0",
+            status: "online",
+            lastSeenAt: now,
+            healthSummaryJson: {},
+            capabilitiesJson: {},
+            warningFlagsJson: [],
+          },
+          {
+            id: "worker-2",
+            displayName: "Worker Beta",
+            runtimeType: "desktop_zeroclaw_managed",
+            runtimeVersion: "1.3.0",
+            status: "draining",
+            lastSeenAt: now,
+            healthSummaryJson: {},
+            capabilitiesJson: {},
+            warningFlagsJson: [],
+          },
+        ]),
+        listQueueOverviewJobs: vi.fn().mockResolvedValue([
+          {
+            id: "job-queued",
+            workerId: null,
+            runtimeType: "desktop_zeroclaw_managed",
+            jobType: "hyperframes_final_composite",
+            status: "queued",
+            statusReason: null,
+            failureReason: null,
+            createdAt: new Date("2026-06-22T11:30:00.000Z"),
+            startedAt: null,
+            finishedAt: null,
+            leaseExpiresAt: null,
+            outputJson: null,
+          },
+          {
+            id: "job-stalled",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+            jobType: "hyperframes_final_composite",
+            status: "running",
+            statusReason: null,
+            failureReason: null,
+            createdAt: new Date("2026-06-22T10:50:00.000Z"),
+            startedAt: new Date("2026-06-22T11:00:00.000Z"),
+            finishedAt: null,
+            leaseExpiresAt: new Date("2026-06-22T11:20:00.000Z"),
+            outputJson: {
+              assignmentAttempt: "attempt-1",
+              hyperframesWorkerVerification: {
+                status: "failed",
+                failureCode: "server_verification_failed",
+              },
+            },
+          },
+          {
+            id: "job-done",
+            workerId: "worker-2",
+            runtimeType: "desktop_zeroclaw_managed",
+            jobType: "hyperframes_final_composite",
+            status: "completed",
+            statusReason: null,
+            failureReason: null,
+            createdAt: new Date("2026-06-22T09:00:00.000Z"),
+            startedAt: new Date("2026-06-22T09:01:00.000Z"),
+            finishedAt: new Date("2026-06-22T09:20:00.000Z"),
+            leaseExpiresAt: null,
+            outputJson: {},
+          },
+        ]),
+        listQueueOverviewEvents: vi.fn().mockResolvedValue([
+          {
+            workerJobId: "job-stalled",
+            eventType: "job.requeued",
+            payloadJson: { reason: "worker_stalled" },
+            createdAt: new Date("2026-06-22T11:40:00.000Z"),
+          },
+          {
+            workerJobId: "job-stalled",
+            eventType: "artifact.upload.rejected",
+            payloadJson: { code: "stale_assignment_attempt" },
+            createdAt: new Date("2026-06-22T11:41:00.000Z"),
+          },
+          {
+            workerJobId: "job-stalled",
+            eventType: "worker.auth.warning",
+            payloadJson: { code: "worker_device_mismatch" },
+            createdAt: new Date("2026-06-22T11:42:00.000Z"),
+          },
+        ]),
+      } as any,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      tenantId: "tenant-1",
+      queuedJobCount: 1,
+      activeJobCount: 1,
+      stalledJobCount: 1,
+      reassignableJobCount: 1,
+      completedJobCount: 1,
+      verificationFailureCount: 1,
+      staleUploadRejectionCount: 1,
+      reassignmentCount: 1,
+      oldestQueuedAt: "2026-06-22T11:30:00.000Z",
+      securityWarningCounts: expect.objectContaining({
+        deviceProofMismatch: 1,
+      }),
+    }));
+    expect(result.runtimeVersionDistribution).toEqual([
+      {
+        runtimeType: "desktop_zeroclaw_managed",
+        runtimeVersion: "1.2.0",
+        count: 1,
+      },
+      {
+        runtimeType: "desktop_zeroclaw_managed",
+        runtimeVersion: "1.3.0",
+        count: 1,
+      },
+    ]);
+    expect(result.recentJobs[0]).toEqual(expect.objectContaining({
+      id: "job-queued",
+      workerDisplayName: null,
+    }));
+    expect(JSON.stringify(result)).not.toContain("attempt-1");
+  });
+
   it("redacts legacy worker diagnostics and artifact metadata idempotently", async () => {
     const { redactLegacyWorkerData } = await import("../workerFleetService");
 

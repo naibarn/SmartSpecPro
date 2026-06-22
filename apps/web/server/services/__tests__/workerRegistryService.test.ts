@@ -782,6 +782,224 @@ describe("workerRegistryService", () => {
     expect(second.job).toBeNull();
   });
 
+  it("returns and persists assignmentAttempt for HyperFrames claims", async () => {
+    const { claimWorkerJob } = await import("../workerRegistryService");
+
+    const job = {
+      id: "job-hf-1",
+      tenantId: "tenant-1",
+      teamId: null,
+      workerId: null,
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      priority: 30,
+      capabilityRequirementsJson: {},
+      inputJson: {},
+      instructionsJson: {},
+      outputJson: null,
+      failureReason: null,
+      timeoutSeconds: 7200,
+      retryPolicyJson: {},
+      idempotencyKey: null,
+      leaseOwnerToken: null,
+      leaseExpiresAt: null,
+      createdAt: new Date("2026-04-06T00:00:00.000Z"),
+      startedAt: null,
+      finishedAt: null,
+    };
+
+    const claimedJob = {
+      ...job,
+      workerId: "worker-1",
+      status: "claimed",
+      leaseOwnerToken: "lease-hf-1",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+    };
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue({
+        id: "worker-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        capabilitiesJson: {},
+      }),
+      listClaimableJobs: vi.fn().mockResolvedValue([job]),
+      tryClaimJob: vi.fn().mockResolvedValue(claimedJob),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...claimedJob,
+        ...values,
+      })),
+    };
+
+    const result = await claimWorkerJob({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-1",
+      payload: { maxJobs: 1, capabilityHints: [] },
+    }, { repo } as any);
+
+    expect(result.job?.assignmentAttempt).toMatch(/^attempt_[a-f0-9]{16}$/);
+    expect(repo.updateJob).toHaveBeenCalledWith("job-hf-1", {
+      outputJson: expect.objectContaining({
+        assignmentAttempt: result.job?.assignmentAttempt,
+        assignmentWorkerId: "worker-1",
+        assignmentStatus: "active",
+      }),
+    });
+  });
+
+  it("requires matching assignmentAttempt for HyperFrames progress events", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const baseJob = {
+      id: "job-hf-1",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "running",
+      outputJson: {
+        assignmentAttempt: "attempt_active",
+      },
+      leaseOwnerToken: "lease-1",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+    };
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue(baseJob),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn().mockResolvedValue({ id: "event-1" }),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-hf-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          stage: "render_browser_css",
+          percent: 35,
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      } as any,
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "stale_assignment_attempt",
+      statusCode: 409,
+    });
+
+    await recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-hf-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          stage: "render_browser_css",
+          percent: 35,
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+        assignmentAttempt: "attempt_active",
+      },
+    }, { repo } as any);
+
+    expect(repo.insertJobEvent).toHaveBeenCalledWith("job-hf-1", "job.progress", expect.objectContaining({
+      assignmentAttempt: "attempt_active",
+      sequenceNumber: 1,
+    }));
+  });
+
+  it("rejects stale HyperFrames artifact uploads after reassignment", async () => {
+    const { completeWorkerArtifact, initWorkerArtifactUpload } = await import("../workerRegistryService");
+
+    const baseJob = {
+      id: "job-hf-1",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "uploading",
+      outputJson: {
+        assignmentAttempt: "attempt_new",
+      },
+      leaseOwnerToken: "lease-new",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+    };
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue(baseJob),
+      findArtifact: vi.fn().mockResolvedValue(null),
+      insertArtifact: vi.fn().mockResolvedValue({
+        id: "artifact-1",
+        workerJobId: "job-hf-1",
+        artifactType: "hyperframes_final_video",
+        storageRef: "worker-artifacts/tenant-1/job-hf-1/final.mp4",
+        metadataJson: {},
+      }),
+      updateJob: vi.fn().mockResolvedValue(baseJob),
+    };
+
+    await expect(initWorkerArtifactUpload({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-hf-1",
+      payload: {
+        artifactType: "hyperframes_final_video",
+        fileName: "final.mp4",
+        contentType: "video/mp4",
+        sizeBytes: 1024,
+        checksumSha256: "a".repeat(64),
+        leaseOwnerToken: "lease-new",
+        assignmentAttempt: "attempt_old",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "stale_assignment_attempt",
+    });
+
+    await completeWorkerArtifact({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-hf-1",
+      payload: {
+        artifactType: "hyperframes_final_video",
+        storageRef: "worker-artifacts/tenant-1/job-hf-1/final.mp4",
+        checksumSha256: "b".repeat(64),
+        sizeBytes: 1024,
+        contentType: "video/mp4",
+        metadataJson: {},
+        leaseOwnerToken: "lease-new",
+        assignmentAttempt: "attempt_new",
+      },
+    }, { repo } as any);
+
+    expect(repo.insertArtifact).toHaveBeenCalledWith(expect.objectContaining({
+      metadataJson: expect.objectContaining({
+        assignmentAttempt: "attempt_new",
+      }),
+    }));
+  });
+
   it("rejects replayed or illegal out-of-order worker job events", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 

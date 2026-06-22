@@ -20,15 +20,12 @@ import {
   marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
   marketplaceProducts,
+  workerArtifacts,
+  workerJobs,
 } from "../../drizzle/schema";
 import type { HyperframesAuthContext } from "./hyperframesFeatureAccessService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import { redactHyperframesDiagnostics } from "./hyperframesCompositionSanitizer";
-import {
-  getHyperframesRuntimeMode,
-  isHyperframesCliRuntimeAllowed,
-  isHyperframesProducerRuntimeAllowed,
-} from "./hyperframesRuntimeAdapter";
 
 export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -192,13 +189,6 @@ async function ensureManualStoryboardOutboxParents(input: {
     .onConflictDoNothing();
 }
 
-function isHyperframesRuntimeReadyForProjection(): boolean {
-  const runtimeMode = getHyperframesRuntimeMode();
-  if (runtimeMode === "producer") return isHyperframesProducerRuntimeAllowed();
-  if (runtimeMode === "cli") return isHyperframesCliRuntimeAllowed();
-  return false;
-}
-
 const DEFAULT_HYPERFRAMES_QUEUED_STALE_MS = 2 * 60 * 1000;
 
 function hyperframesQueuedStaleMs(): number {
@@ -230,6 +220,12 @@ const HYPERFRAMES_USER_RETRYABLE_RENDER_STATUSES = new Set([
 ]);
 
 const HYPERFRAMES_USER_RETRYABLE_OUTBOX_STATUSES = ["failed"] as const;
+
+const HYPERFRAMES_RUNTIME_CONFIGURATION_BLOCKER_RE =
+  /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|readiness flag is not enabled|Chrome\/headless browser runtime is not available|Thai-capable render font is not available|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|FFmpeg binary is not available|FFprobe binary is not available|official runtime mode is not configured|missing render media asset|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i;
+
+const HYPERFRAMES_RUNTIME_TRANSIENT_FAILURE_RE =
+  /runtime configuration failure:\s*Command failed|runtime transient failure|runtime execution is not implemented|runtime.*not ready|dependency\/runtime|dependency.*deferred|runtime rollout|FrameCapture|Sub-composition timelines not registered|video elements did not decode|Runtime\.callFunctionOn timed out|protocolTimeout|browser-timeout|player-ready-timeout|timed out waiting for local HyperFrames render slot|timed out|ETIMEDOUT|SIGTERM|SIGKILL|process signal|process killed|Command failed/i;
 
 const HYPERFRAMES_CANCELLABLE_RENDER_STATUSES = new Set<HyperframesRenderStatus>([
   "queued",
@@ -280,18 +276,10 @@ export function mapOutboxStatusToRenderStatus(
   if (status === "dead_lettered") return "dead_lettered";
   if (status === "failed") {
     const error = lastError ?? "";
-    if (
-      /runtime configuration failure|HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|official runtime mode is not configured|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i.test(
-        error
-      )
-    ) {
+    if (HYPERFRAMES_RUNTIME_CONFIGURATION_BLOCKER_RE.test(error)) {
       return "blocked_needs_user";
     }
-    if (
-      /runtime execution is not implemented|runtime.*not ready|dependency\/runtime|dependency.*deferred|runtime rollout/i.test(
-        error
-      )
-    ) {
+    if (HYPERFRAMES_RUNTIME_TRANSIENT_FAILURE_RE.test(error)) {
       return "failed_transient";
     }
     return /stale|template|policy|tenant|qa/i.test(error)
@@ -375,14 +363,17 @@ function safeMessageForRenderError(
 ): string | undefined {
   const error = lastError ?? "";
   if (status === "blocked_needs_user") {
-    if (/FFmpeg not found|FFprobe not found/i.test(error)) {
+    if (/FFmpeg not found|FFprobe not found|FFmpeg binary is not available|FFprobe binary is not available/i.test(error)) {
       return "HyperFrames render ไม่พร้อม เพราะ worker หา ffmpeg/ffprobe ไม่เจอ ให้ตรวจ runtime PATH หรือ binary config แล้วกด Render ใหม่";
+    }
+    if (/readiness flag is not enabled|Chrome\/headless browser runtime is not available|Thai-capable render font is not available/i.test(error)) {
+      return "Final Composite ยัง render ไม่ได้เพราะ official HTML/CSS/browser runtime ใน worker ไม่พร้อม ให้รัน hyperframes:doctor ใน worker image ตรวจ Chrome, ffmpeg/ffprobe, font ไทย แล้วตั้ง HYPERFRAMES_OFFICIAL_RUNTIME_READY=1 เมื่อ doctor ผ่าน";
     }
     if (/missing render media asset/i.test(error)) {
       return "HyperFrames render ไม่พร้อม เพราะไฟล์วิดีโอหรือ asset ที่อ้างอิงหายไป ให้ตรวจคลิปของแต่ละ shot แล้วกด Render ใหม่";
     }
     if (/HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready/i.test(error)) {
-      return "HyperFrames Final Composite ยังไม่พร้อม เพราะ official HTML/CSS/browser runtime ยังไม่พร้อม";
+      return "Final Composite ต้องใช้ official HyperFrames HTML/CSS/browser runtime เท่านั้น ระบบปิด ASS fallback แล้วเพื่อให้ผลลัพธ์ตรงกับ preview ให้ตรวจ Chrome/producer runtime แล้วกด Render ใหม่";
     }
   }
   return undefined;
@@ -588,6 +579,7 @@ export function buildHyperframesRenderProjection(input: {
     canRepair: boolean;
   }>;
   canMutate?: boolean;
+  createdAt?: string;
   updatedAt?: string;
 }): HyperframesRenderStatusProjection {
   const outputRefs = input.outputRefs ?? (input.outputUrl
@@ -678,6 +670,7 @@ export function buildHyperframesRenderProjection(input: {
     qaStatus: input.payload?.qaStatus ?? undefined,
     outputRefs,
     artifactRefs: input.artifactRefs ?? [],
+    createdAt: input.createdAt,
     updatedAt: input.updatedAt ?? nowIso(),
   });
 }
@@ -748,6 +741,138 @@ function hasCompletedHyperframesOutput(
   outputRefs: HyperframesOutputRef[]
 ): boolean {
   return outputRefs.some(ref => Boolean(ref.url) && Boolean(ref.contentHash));
+}
+
+function mapWorkerJobStatusToHyperframesRenderStatus(
+  status: string,
+  failureReason?: string | null,
+): HyperframesRenderStatus {
+  if (status === "queued") return "queued";
+  if (status === "claimed" || status === "preparing" || status === "running") {
+    return "rendering";
+  }
+  if (status === "uploading" || status === "publishing") {
+    return "saving_to_library";
+  }
+  if (status === "indexing") return "qa_checking";
+  if (status === "completed") return "completed";
+  if (status === "canceled") return "cancelled";
+  if (status === "expired") return "failed_transient";
+  if (status === "failed") {
+    const reason = failureReason ?? "";
+    if (HYPERFRAMES_RUNTIME_CONFIGURATION_BLOCKER_RE.test(reason)) {
+      return "blocked_needs_user";
+    }
+    return HYPERFRAMES_RUNTIME_TRANSIENT_FAILURE_RE.test(reason)
+      ? "failed_transient"
+      : "failed_permanent";
+  }
+  return "failed_transient";
+}
+
+function payloadFromWorkerJobInput(inputJson: Record<string, unknown> | null | undefined): Partial<HyperframesRenderJobPayload> {
+  const renderConfig =
+    inputJson &&
+    typeof inputJson.renderConfig === "object" &&
+    inputJson.renderConfig &&
+    !Array.isArray(inputJson.renderConfig)
+      ? inputJson.renderConfig as Record<string, unknown>
+      : {};
+  const renderPayload =
+    renderConfig.renderPayload &&
+    typeof renderConfig.renderPayload === "object" &&
+    !Array.isArray(renderConfig.renderPayload)
+      ? renderConfig.renderPayload as Partial<HyperframesRenderJobPayload>
+      : {};
+  return {
+    ...renderPayload,
+    renderIntent: renderPayload.renderIntent ?? "final",
+    compositionMode: renderPayload.compositionMode ?? "captioned_final_composite",
+    launchMode: "auto_storyboard_review",
+  };
+}
+
+function sourceRunIdFromWorkerJobInput(inputJson: Record<string, unknown> | null | undefined): string {
+  const source =
+    inputJson &&
+    typeof inputJson.source === "object" &&
+    inputJson.source &&
+    !Array.isArray(inputJson.source)
+      ? inputJson.source as Record<string, unknown>
+      : {};
+  return typeof source.runId === "string" ? source.runId.trim() : "";
+}
+
+function outputRefsFromWorkerArtifacts(input: {
+  renderJobId: string;
+  payload: Partial<HyperframesRenderJobPayload>;
+  artifacts: Array<Record<string, any>>;
+}): {
+  outputRefs: HyperframesOutputRef[];
+  artifactRefs: HyperframesArtifactRef[];
+} {
+  const refs: HyperframesOutputRef[] = [];
+  const artifacts: HyperframesArtifactRef[] = [];
+  for (const artifact of input.artifacts) {
+    const metadata = artifact.metadataJson && typeof artifact.metadataJson === "object"
+      ? artifact.metadataJson as Record<string, unknown>
+      : {};
+    const contentHash =
+      typeof metadata.contentHash === "string"
+        ? metadata.contentHash
+        : typeof metadata.checksumSha256 === "string"
+          ? metadata.checksumSha256
+          : undefined;
+    const url =
+      typeof metadata.url === "string"
+        ? metadata.url
+        : typeof metadata.downloadUrl === "string"
+          ? metadata.downloadUrl
+          : null;
+    const artifactRef = HyperframesArtifactRefSchema.safeParse({
+      artifactId: artifact.id,
+      kind:
+        artifact.artifactType === "final_video" ||
+        artifact.artifactType === "hyperframes_final_composite"
+          ? "hyperframes_render_mp4"
+          : artifact.artifactType,
+      storageRef: artifact.storageRef,
+      contentHash,
+      mimeType:
+        typeof metadata.contentType === "string"
+          ? metadata.contentType
+          : "video/mp4",
+      sizeBytes:
+        typeof metadata.sizeBytes === "number"
+          ? metadata.sizeBytes
+          : undefined,
+      retentionClass:
+        artifact.publishedItemId != null ? "library" : "review",
+      redacted: true,
+    });
+    if (artifactRef.success) {
+      artifacts.push(artifactRef.data);
+    }
+    refs.push({
+      outputId: artifact.id ?? `${input.renderJobId}_output`,
+      kind:
+        artifact.publishedItemId != null
+          ? "library_item"
+          : input.payload.renderIntent === "final"
+            ? "final_video"
+            : "preview_video",
+      url,
+      storageRef: artifact.storageRef ?? null,
+      thumbnailUrl:
+        typeof metadata.thumbnailUrl === "string"
+          ? metadata.thumbnailUrl
+          : null,
+      contentHash,
+      libraryItemId: artifact.publishedItemId ?? null,
+      accessibleLabel: "HyperFrames worker rendered output",
+    });
+  }
+  return { outputRefs: refs, artifactRefs: artifacts };
 }
 
 function hasMarketplaceProductMutationAccess(
@@ -890,6 +1015,130 @@ export async function getHyperframesRenderProjection(input: {
   let renderJobId = input.renderJobId?.trim() || "";
   if (db) {
     if (!renderJobId && input.runId) {
+      const workerFilters = [
+        sql`(${workerJobs.workflowRunId} = ${input.runId} OR ${workerJobs.inputJson}->'source'->>'runId' = ${input.runId})`,
+        eq(workerJobs.jobType, "hyperframes_final_composite"),
+      ];
+      if (input.operatorTenantAccess || input.auth.tenantId) {
+        workerFilters.push(eq(workerJobs.tenantId, tenantId));
+      } else {
+        workerFilters.push(eq(workerJobs.requestedByUserId, input.auth.userId));
+      }
+      const [latestWorkerJob] = await db
+        .select({ id: workerJobs.id })
+        .from(workerJobs)
+        .where(and(...workerFilters))
+        .orderBy(desc(workerJobs.createdAt))
+        .limit(1);
+      renderJobId = latestWorkerJob?.id ?? renderJobId;
+    }
+
+    if (renderJobId) {
+      const workerFilters = [
+        eq(workerJobs.id, renderJobId),
+        eq(workerJobs.jobType, "hyperframes_final_composite"),
+      ];
+      if (input.operatorTenantAccess || input.auth.tenantId) {
+        workerFilters.push(eq(workerJobs.tenantId, tenantId));
+      } else {
+        workerFilters.push(eq(workerJobs.requestedByUserId, input.auth.userId));
+      }
+      const [workerJob] = await db
+        .select()
+        .from(workerJobs)
+        .where(and(...workerFilters))
+        .limit(1);
+      if (
+        workerJob &&
+        workerJob.jobType === "hyperframes_final_composite" &&
+        workerJob.runtimeType === "desktop_zeroclaw_managed"
+      ) {
+        const payload = payloadFromWorkerJobInput(workerJob.inputJson);
+        const sourceRunId = sourceRunIdFromWorkerJobInput(workerJob.inputJson);
+        const requestedProductId = input.productId?.trim();
+        const payloadProductId =
+          typeof payload.productId === "string" ? payload.productId.trim() : "";
+        if (
+          input.runId &&
+          input.runId !== workerJob.workflowRunId &&
+          input.runId !== sourceRunId
+        ) {
+          return buildHyperframesRenderProjection({
+            tenantId,
+            productId: input.productId ?? "unknown_product",
+            runId: input.runId,
+            renderJobId,
+            status: "not_available",
+          });
+        }
+        if (requestedProductId && payloadProductId && requestedProductId !== payloadProductId) {
+          return buildHyperframesRenderProjection({
+            tenantId,
+            productId: requestedProductId,
+            runId: input.runId ?? workerJob.workflowRunId ?? "unknown_run",
+            renderJobId,
+            status: "not_available",
+          });
+        }
+        const artifacts = await db
+          .select()
+          .from(workerArtifacts)
+          .where(eq(workerArtifacts.workerJobId, workerJob.id))
+          .orderBy(desc(workerArtifacts.createdAt));
+        const outputRefs = outputRefsFromWorkerArtifacts({
+          renderJobId: workerJob.id,
+          payload,
+          artifacts,
+        });
+        const renderStatus = mapWorkerJobStatusToHyperframesRenderStatus(
+          workerJob.status,
+          workerJob.failureReason,
+        );
+        const queuedAgeMs = dateAgeMs(workerJob.createdAt);
+        const queuedStale =
+          renderStatus === "queued" &&
+          !workerJob.workerId &&
+          queuedAgeMs != null &&
+          queuedAgeMs >= hyperframesQueuedStaleMs();
+        const projectedStatus = queuedStale ? "failed_transient" : renderStatus;
+        const safeDiagnostics = [
+          "HyperFrames Final Composite is tracked by worker_jobs.hyperframes_final_composite.",
+          ...(workerJob.workerId ? [`Claimed by worker ${workerJob.workerId}.`] : []),
+          ...(queuedStale
+            ? [
+                "Worker job has stayed queued longer than expected without being claimed.",
+              ]
+            : []),
+          ...(workerJob.failureReason ? [workerJob.failureReason.slice(0, 240)] : []),
+        ];
+        const canMutate =
+          Boolean(input.operatorTenantAccess) ||
+          workerJob.requestedByUserId === input.auth.userId;
+        return buildHyperframesRenderProjection({
+          tenantId: workerJob.tenantId ?? tenantId,
+          productId: requestedProductId || payloadProductId || input.productId || "unknown_product",
+          runId: sourceRunId || workerJob.workflowRunId || input.runId || "unknown_run",
+          renderJobId: workerJob.id,
+          status: projectedStatus,
+          payload,
+          safeMessage: queuedStale
+            ? "HyperFrames Final Composite ยังรอ worker นานกว่าปกติ สามารถเปลี่ยน worker หรือ retry ได้"
+            : safeMessageForRenderError(projectedStatus, workerJob.failureReason),
+          safeDiagnostics,
+          outputRefs: outputRefs.outputRefs,
+          artifactRefs: outputRefs.artifactRefs,
+          canMutate,
+          createdAt: workerJob.createdAt?.toISOString?.() ?? undefined,
+          updatedAt:
+            workerJob.finishedAt?.toISOString?.() ??
+            workerJob.startedAt?.toISOString?.() ??
+            workerJob.createdAt?.toISOString?.() ??
+            nowIso(),
+        });
+      }
+    }
+
+    if (!renderJobId && input.runId) {
       const filters = [
         eq(marketplaceAutoReviewOutboxJobs.runId, input.runId),
         inArray(marketplaceAutoReviewOutboxJobs.jobType, [
@@ -1020,15 +1269,10 @@ export async function getHyperframesRenderProjection(input: {
         !job.lockedBy &&
         queuedAgeMs != null &&
         queuedAgeMs >= hyperframesQueuedStaleMs();
-      const runtimeDeferred =
-        effectiveRenderStatus === "queued" &&
-        Number(job.attempts ?? 0) === 0 &&
-        !job.lockedBy &&
-        !isHyperframesRuntimeReadyForProjection();
       const projectedStatus = completedFinalMissingPlayableOutput
         ? "failed_permanent"
-        : runtimeDeferred || queuedStale
-        ? "blocked_needs_user"
+        : queuedStale
+        ? "failed_transient"
         : effectiveRenderStatus;
       const safeDiagnostics = [
         ...(completedFinalMissingPlayableOutput
@@ -1039,11 +1283,6 @@ export async function getHyperframesRenderProjection(input: {
         ...(hasCompletedOutput && renderStatus !== "completed"
           ? [
               "HyperFrames output artifact exists even though the worker queue status is stale; projection is closed as completed.",
-            ]
-          : []),
-        ...(runtimeDeferred
-          ? [
-              "HyperFrames runtime is not ready; this job is queued and has not started rendering.",
             ]
           : []),
         ...(queuedStale
@@ -1060,17 +1299,16 @@ export async function getHyperframesRenderProjection(input: {
         renderJobId: job.id,
         status: projectedStatus,
         payload,
-        safeMessage: runtimeDeferred
-          ? "รอ HyperFrames runtime: งานเข้าคิวแล้ว แต่ยังไม่ได้เริ่ม render"
-          : queuedStale
+        safeMessage: queuedStale
           ? payload.renderIntent === "final"
-            ? "HyperFrames Final Composite ยังไม่เริ่มหลังรอนานกว่าปกติ ตรวจสอบ worker queue หรือกด render ใหม่เพื่อสร้างงานล่าสุด"
-            : "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ งาน Storyboard ที่สร้างแล้วไม่ถูกบล็อก"
+            ? "HyperFrames Final Composite ยังไม่เริ่มหลังรอนานกว่าปกติ ระบบจะให้ retry งาน worker ได้โดยไม่ต้องแก้ blocker"
+            : "HyperFrames preview ยังไม่เริ่มหลังรอนานกว่าปกติ ระบบจะให้ retry งาน worker ได้โดยไม่ต้องแก้ blocker"
           : safeMessageForRenderError(projectedStatus, job.lastError),
         safeDiagnostics,
         outputRefs: outputRefs.outputRefs,
         artifactRefs: outputRefs.artifactRefs,
         canMutate,
+        createdAt: job.createdAt?.toISOString?.() ?? undefined,
         updatedAt: job.updatedAt?.toISOString?.() ?? nowIso(),
       });
     }

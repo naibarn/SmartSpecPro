@@ -164,6 +164,8 @@ export type AuditEventType =
   | "worker_job_completed"
   | "worker_job_failed"
   | "worker_job_canceled"
+  | "worker_job_requeued"
+  | "worker_job_watchdog_dead_letter"
   | "worker_diagnostics_received"
   | "worker_artifact_published"
   | "worker_fleet_action"

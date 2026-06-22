@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNotNull, lt, isNull } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, lt, isNull } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
@@ -34,6 +34,10 @@ type WorkerArtifactRecord = Record<string, any>;
 type WorkerDelegatedSessionRecord = Record<string, any>;
 
 const STALE_WORKER_THRESHOLD_MS = 10 * 60 * 1000;
+const WORKER_QUEUE_REASSIGNABLE_THRESHOLD_MS = 15 * 60 * 1000;
+const WORKER_QUEUE_STALLED_THRESHOLD_MS = 30 * 60 * 1000;
+const WORKER_QUEUE_OVERVIEW_JOB_LIMIT = 1_000;
+const WORKER_QUEUE_OVERVIEW_EVENT_LIMIT = 2_000;
 const TERMINAL_JOB_STATUSES = new Set(["completed", "failed", "canceled", "expired"]);
 const RECLAIMABLE_JOB_STATUSES = [
   "claimed",
@@ -255,6 +259,75 @@ export interface WorkerLegacyRedactionResult {
   updatedArtifacts: number;
 }
 
+type WorkerQueueOverviewJobRecord = Pick<
+  WorkerRecord,
+  | "id"
+  | "workerId"
+  | "runtimeType"
+  | "jobType"
+  | "status"
+  | "statusReason"
+  | "failureReason"
+  | "createdAt"
+  | "startedAt"
+  | "finishedAt"
+  | "leaseExpiresAt"
+  | "outputJson"
+>;
+
+interface WorkerQueueOverviewEventRecord {
+  workerJobId: string;
+  eventType: string;
+  payloadJson: Record<string, unknown>;
+  createdAt: Date;
+}
+
+export interface WorkerQueueOverviewRecentJob {
+  id: string;
+  workerId: string | null;
+  workerDisplayName: string | null;
+  runtimeType: string;
+  jobType: string;
+  status: string;
+  statusReason: string | null;
+  failureReason: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  leaseExpiresAt: string | null;
+}
+
+export interface WorkerQueueOverview {
+  tenantId: string;
+  generatedAt: string;
+  hours: number;
+  totalJobs: number;
+  queuedJobCount: number;
+  activeJobCount: number;
+  stalledJobCount: number;
+  reassignableJobCount: number;
+  completedJobCount: number;
+  failedJobCount: number;
+  canceledJobCount: number;
+  oldestQueuedAt: string | null;
+  oldestQueuedAgeMs: number | null;
+  verificationFailureCount: number;
+  staleUploadRejectionCount: number;
+  reassignmentCount: number;
+  securityWarningCounts: {
+    tokenReplay: number;
+    deviceProofMismatch: number;
+    refreshTokenReuse: number;
+    autoBlockedConnection: number;
+  };
+  runtimeVersionDistribution: Array<{
+    runtimeType: string;
+    runtimeVersion: string;
+    count: number;
+  }>;
+  recentJobs: WorkerQueueOverviewRecentJob[];
+}
+
 interface WorkerFleetRepository {
   cleanupHeartbeatsBefore: (tenantId: string, cutoff: Date) => Promise<number>;
   cleanupJobEventsBefore: (tenantId: string, cutoff: Date) => Promise<number>;
@@ -268,6 +341,8 @@ interface WorkerFleetRepository {
   listArtifactsByTenant: (tenantId: string) => Promise<WorkerArtifactRecord[]>;
   listActiveJobCounts: (tenantId: string) => Promise<Array<{ workerId: string | null; activeJobCount: number }>>;
   listBindingCounts: (tenantId: string) => Promise<Array<{ workerId: string | null; boundProfileCount: number }>>;
+  listQueueOverviewEvents: (tenantId: string, since: Date) => Promise<WorkerQueueOverviewEventRecord[]>;
+  listQueueOverviewJobs: (tenantId: string) => Promise<WorkerQueueOverviewJobRecord[]>;
   listWorkersByTenant: (tenantId: string) => Promise<WorkerRecord[]>;
   updateArtifact: (artifactId: string, values: Record<string, unknown>) => Promise<WorkerArtifactRecord>;
   updateWorker: (workerId: string, values: Record<string, unknown>) => Promise<WorkerRecord>;
@@ -441,6 +516,43 @@ function readAffectedRowCount(result: unknown): number {
     return typeof rowCount === "number" ? rowCount : 0;
   }
   return 0;
+}
+
+function toDateOrNull(value: unknown): Date | null {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function toIsoOrNull(value: unknown): string | null {
+  return toDateOrNull(value)?.toISOString() ?? null;
+}
+
+function eventSearchText(event: WorkerQueueOverviewEventRecord): string {
+  return `${event.eventType} ${JSON.stringify(event.payloadJson ?? {})}`.toLowerCase();
+}
+
+function eventIncludesAny(event: WorkerQueueOverviewEventRecord, tokens: string[]): boolean {
+  const text = eventSearchText(event);
+  return tokens.some((token) => text.includes(token.toLowerCase()));
+}
+
+function readJobAssignmentStartedAtMs(job: WorkerQueueOverviewJobRecord): number | null {
+  const output = asRecord(job.outputJson);
+  const assignedAt = output
+    ? toDateOrNull(output.assignedAt ?? output.assignmentStartedAt ?? output.assignmentClaimedAt)
+    : null;
+  const startedAt = toDateOrNull(job.startedAt);
+  const createdAt = toDateOrNull(job.createdAt);
+  return (assignedAt ?? startedAt ?? createdAt)?.getTime() ?? null;
+}
+
+function jobHasFailedVerification(job: WorkerQueueOverviewJobRecord): boolean {
+  const output = asRecord(job.outputJson);
+  const report = output ? asRecord(output.hyperframesWorkerVerification) : null;
+  return report?.status === "failed" || Boolean(report?.failureCode);
 }
 
 function enumerateDatesBetween(start: Date, end: Date): Date[] {
@@ -705,6 +817,43 @@ const defaultRepo: WorkerFleetRepository = {
       )
       .groupBy(assistantProfiles.externalWorkerId);
   },
+  async listQueueOverviewJobs(tenantId) {
+    const db = await getDb();
+    return db
+      .select({
+        id: workerJobs.id,
+        workerId: workerJobs.workerId,
+        runtimeType: workerJobs.runtimeType,
+        jobType: workerJobs.jobType,
+        status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
+        failureReason: workerJobs.failureReason,
+        createdAt: workerJobs.createdAt,
+        startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt,
+        leaseExpiresAt: workerJobs.leaseExpiresAt,
+        outputJson: workerJobs.outputJson,
+      })
+      .from(workerJobs)
+      .where(eq(workerJobs.tenantId, tenantId))
+      .orderBy(desc(workerJobs.createdAt))
+      .limit(WORKER_QUEUE_OVERVIEW_JOB_LIMIT);
+  },
+  async listQueueOverviewEvents(tenantId, since) {
+    const db = await getDb();
+    return db
+      .select({
+        workerJobId: workerJobEvents.workerJobId,
+        eventType: workerJobEvents.eventType,
+        payloadJson: workerJobEvents.payloadJson,
+        createdAt: workerJobEvents.createdAt,
+      })
+      .from(workerJobEvents)
+      .innerJoin(workerJobs, eq(workerJobs.id, workerJobEvents.workerJobId))
+      .where(and(eq(workerJobs.tenantId, tenantId), gte(workerJobEvents.createdAt, since)))
+      .orderBy(desc(workerJobEvents.createdAt))
+      .limit(WORKER_QUEUE_OVERVIEW_EVENT_LIMIT);
+  },
   async listWorkersByTenant(tenantId) {
     const db = await getDb();
     return db
@@ -818,6 +967,172 @@ export async function listWorkerFleet(
       workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
     };
   });
+}
+
+export async function getWorkerQueueOverview(
+  tenantId: string,
+  input: {
+    hours?: number;
+    now?: Date;
+  } = {},
+  deps: { repo?: WorkerFleetRepository } = {},
+): Promise<WorkerQueueOverview> {
+  const repo = deps.repo ?? defaultRepo;
+  const now = input.now ?? new Date();
+  const hours = Math.min(168, Math.max(1, Math.floor(input.hours ?? 24)));
+  const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  const [workerRows, jobRows, eventRows] = await Promise.all([
+    repo.listWorkersByTenant(tenantId),
+    repo.listQueueOverviewJobs(tenantId),
+    repo.listQueueOverviewEvents(tenantId, since),
+  ]);
+
+  const workerNameById = new Map(
+    workerRows.map((worker) => [String(worker.id), String(worker.displayName ?? worker.id)]),
+  );
+  const runtimeVersionCounts = new Map<string, {
+    runtimeType: string;
+    runtimeVersion: string;
+    count: number;
+  }>();
+  for (const worker of workerRows) {
+    const runtimeType = String(worker.runtimeType ?? "unknown");
+    const runtimeVersion = String(worker.runtimeVersion ?? "unknown");
+    const key = `${runtimeType}\u0000${runtimeVersion}`;
+    const existing = runtimeVersionCounts.get(key) ?? { runtimeType, runtimeVersion, count: 0 };
+    existing.count += 1;
+    runtimeVersionCounts.set(key, existing);
+  }
+
+  let queuedJobCount = 0;
+  let activeJobCount = 0;
+  let stalledJobCount = 0;
+  let reassignableJobCount = 0;
+  let completedJobCount = 0;
+  let failedJobCount = 0;
+  let canceledJobCount = 0;
+  let oldestQueuedAtMs: number | null = null;
+  let verificationFailureCount = 0;
+
+  for (const job of jobRows) {
+    const status = String(job.status ?? "");
+    if (status === "queued") {
+      queuedJobCount += 1;
+      const createdAtMs = toDateOrNull(job.createdAt)?.getTime() ?? null;
+      if (createdAtMs !== null && (oldestQueuedAtMs === null || createdAtMs < oldestQueuedAtMs)) {
+        oldestQueuedAtMs = createdAtMs;
+      }
+    }
+    if (!TERMINAL_JOB_STATUSES.has(status) && status !== "queued") {
+      activeJobCount += 1;
+      const activeSinceMs = readJobAssignmentStartedAtMs(job);
+      const leaseExpiresAtMs = toDateOrNull(job.leaseExpiresAt)?.getTime() ?? null;
+      const activeAgeMs = activeSinceMs === null ? null : now.getTime() - activeSinceMs;
+      if (
+        (leaseExpiresAtMs !== null && leaseExpiresAtMs < now.getTime())
+        || (activeAgeMs !== null && activeAgeMs >= WORKER_QUEUE_STALLED_THRESHOLD_MS)
+      ) {
+        stalledJobCount += 1;
+      }
+      if (activeAgeMs !== null && activeAgeMs >= WORKER_QUEUE_REASSIGNABLE_THRESHOLD_MS) {
+        reassignableJobCount += 1;
+      }
+    }
+    if (status === "completed") completedJobCount += 1;
+    if (status === "failed") failedJobCount += 1;
+    if (status === "canceled") canceledJobCount += 1;
+    if (jobHasFailedVerification(job)) {
+      verificationFailureCount += 1;
+    }
+  }
+
+  let staleUploadRejectionCount = 0;
+  let reassignmentCount = 0;
+  const securityWarningCounts: WorkerQueueOverview["securityWarningCounts"] = {
+    tokenReplay: 0,
+    deviceProofMismatch: 0,
+    refreshTokenReuse: 0,
+    autoBlockedConnection: 0,
+  };
+
+  for (const event of eventRows) {
+    if (eventIncludesAny(event, [
+      "server_verification_failed",
+      "verification_failed",
+      "artifact_publish_failed",
+    ])) {
+      verificationFailureCount += 1;
+    }
+    if (eventIncludesAny(event, [
+      "stale_assignment_attempt",
+      "stale_worker_lease",
+      "stale artifact upload",
+      "stale upload",
+    ])) {
+      staleUploadRejectionCount += 1;
+    }
+    if (event.eventType === "job.requeued" || eventIncludesAny(event, ["worker_job_requeued", "reassign", "requeued"])) {
+      reassignmentCount += 1;
+    }
+    if (eventIncludesAny(event, ["token_replay", "worker_token_replay", "worker_device_proof_replay"])) {
+      securityWarningCounts.tokenReplay += 1;
+    }
+    if (eventIncludesAny(event, ["worker_device_mismatch", "device proof mismatch", "device_proof_mismatch"])) {
+      securityWarningCounts.deviceProofMismatch += 1;
+    }
+    if (eventIncludesAny(event, ["refresh_token_reuse", "worker_refresh_reuse", "refresh token reuse"])) {
+      securityWarningCounts.refreshTokenReuse += 1;
+    }
+    if (eventIncludesAny(event, ["worker_connection_blocked", "auto_blocked_connection", "connection blocked"])) {
+      securityWarningCounts.autoBlockedConnection += 1;
+    }
+  }
+
+  const oldestQueuedAt = oldestQueuedAtMs === null ? null : new Date(oldestQueuedAtMs).toISOString();
+  const sortedJobs = [...jobRows].sort((left, right) => {
+    const leftMs = toDateOrNull(left.createdAt)?.getTime() ?? 0;
+    const rightMs = toDateOrNull(right.createdAt)?.getTime() ?? 0;
+    return rightMs - leftMs;
+  });
+
+  return {
+    tenantId,
+    generatedAt: now.toISOString(),
+    hours,
+    totalJobs: jobRows.length,
+    queuedJobCount,
+    activeJobCount,
+    stalledJobCount,
+    reassignableJobCount,
+    completedJobCount,
+    failedJobCount,
+    canceledJobCount,
+    oldestQueuedAt,
+    oldestQueuedAgeMs: oldestQueuedAtMs === null ? null : Math.max(0, now.getTime() - oldestQueuedAtMs),
+    verificationFailureCount,
+    staleUploadRejectionCount,
+    reassignmentCount,
+    securityWarningCounts,
+    runtimeVersionDistribution: [...runtimeVersionCounts.values()].sort((left, right) =>
+      left.runtimeType.localeCompare(right.runtimeType)
+      || left.runtimeVersion.localeCompare(right.runtimeVersion)),
+    recentJobs: sortedJobs.slice(0, 20).map((job) => ({
+      id: String(job.id),
+      workerId: typeof job.workerId === "string" && job.workerId.trim() ? job.workerId : null,
+      workerDisplayName: typeof job.workerId === "string" && workerNameById.has(job.workerId)
+        ? workerNameById.get(job.workerId)!
+        : null,
+      runtimeType: String(job.runtimeType ?? "unknown"),
+      jobType: String(job.jobType ?? "unknown"),
+      status: String(job.status ?? "unknown"),
+      statusReason: typeof job.statusReason === "string" ? job.statusReason : null,
+      failureReason: typeof job.failureReason === "string" ? job.failureReason : null,
+      createdAt: toDateOrNull(job.createdAt)?.toISOString() ?? now.toISOString(),
+      startedAt: toIsoOrNull(job.startedAt),
+      finishedAt: toIsoOrNull(job.finishedAt),
+      leaseExpiresAt: toIsoOrNull(job.leaseExpiresAt),
+    })),
+  };
 }
 
 export async function getWorkerDiagnosticsSnapshot(
