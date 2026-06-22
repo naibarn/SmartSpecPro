@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "fixtureId": "agency.malformed-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "agency_chat",
+    "source": "agency",
+    "scenario": "malformed-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": [],
+    "expectedDroppedReasons": ["unsupported_event", "malformed"],
+    "relatedRequirement": "Agency malformed path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "event": "unknown_event", "id": "bad-1", "ts": "2026-06-22T00:03:00.000Z", "data": {} },
+    { "event": "text_delta", "id": "bad-2", "ts": "2026-06-22T00:03:01.000Z", "data": null }
+  ]
+}

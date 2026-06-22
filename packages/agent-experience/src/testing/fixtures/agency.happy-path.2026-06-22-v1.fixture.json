@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "fixtureId": "agency.happy-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "agency_chat",
+    "source": "agency",
+    "scenario": "happy-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["session.started", "message.delta", "tool.start", "tool.progress", "tool.done", "workflow.step"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Agency happy path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "event": "meta", "id": "1", "ts": "2026-06-22T00:00:00.000Z", "data": { "runId": "run-demo", "agencyId": "agency-demo" } },
+    { "event": "text_delta", "id": "2", "ts": "2026-06-22T00:00:01.000Z", "data": { "agentName": "Researcher", "delta": "Synthetic summary" } },
+    { "event": "tool_start", "id": "3", "ts": "2026-06-22T00:00:02.000Z", "data": { "agentName": "Researcher", "toolName": "synthetic-search", "toolCallId": "tc-demo" } },
+    { "event": "tool_progress", "id": "4", "ts": "2026-06-22T00:00:03.000Z", "data": { "toolCallId": "tc-demo", "message": "Searching synthetic index" } },
+    { "event": "tool_end", "id": "5", "ts": "2026-06-22T00:00:04.000Z", "data": { "toolCallId": "tc-demo", "status": "success", "result": "Synthetic result" } },
+    { "event": "run_complete", "id": "6", "ts": "2026-06-22T00:00:05.000Z", "data": { "runId": "run-demo", "usage": { "tokens": 100, "cost": 0.01 } } }
+  ]
+}

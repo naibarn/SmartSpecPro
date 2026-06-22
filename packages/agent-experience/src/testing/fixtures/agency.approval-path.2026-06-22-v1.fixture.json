@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "fixtureId": "agency.approval-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "agency_chat",
+    "source": "agency",
+    "scenario": "approval-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["approval.request"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Agency approval path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "event": "approval_required", "id": "approval-evt-1", "ts": "2026-06-22T00:02:00.000Z", "data": { "approvalKey": "approval-demo", "step": "Review", "summary": "Synthetic approval request", "agentName": "Reviewer" } }
+  ]
+}

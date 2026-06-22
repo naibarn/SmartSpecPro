@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "fixtureId": "approval.rejected-to-denied.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "agency_chat",
+    "source": "approval",
+    "scenario": "rejected-to-denied",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["approval.decision"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Approval decision normalization fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "approvalId": "approval-demo", "decision": "rejected", "tenantId": "tenant-demo", "runId": "run-demo", "ts": "2026-06-22T00:07:00.000Z" }
+  ]
+}

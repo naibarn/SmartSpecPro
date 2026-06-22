@@ -85,6 +85,28 @@ describe("tenantFeatureFlagGroups", () => {
     );
   });
 
+  it("groups Agent Experience controls without Persona naming", () => {
+    const agentExperienceGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Agent Experience"
+    );
+
+    expect(agentExperienceGroup?.flags.map((flag) => flag.key)).toEqual(
+      expect.arrayContaining([
+        "agentExperienceLayer",
+        "agentExperienceShadowMode",
+        "agentExperienceAgencyPreview",
+        "agentExperienceTeamPreview",
+        "agentExperienceChatPreview",
+        "agentExperienceRuntypeRenderer",
+        "agentExperienceDebugInspector",
+        "agentExperienceForceRollback",
+        "agentExperienceWebsiteWidget",
+        "agentExperiencePageActions",
+      ])
+    );
+    expect(agentExperienceGroup?.flags.some((flag) => /persona/i.test(flag.label))).toBe(false);
+  });
+
   it("covers every declared tenant feature flag", () => {
     const groupedKeys = new Set(
       buildTenantFeatureFlagGroups().flatMap((group) => group.flags.map((flag) => flag.key)),

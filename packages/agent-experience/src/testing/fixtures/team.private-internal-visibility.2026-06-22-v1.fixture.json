@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "fixtureId": "team.private-internal-visibility.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "team_room",
+    "source": "team",
+    "scenario": "private-internal-visibility",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": [],
+    "expectedDroppedReasons": ["private_internal"],
+    "relatedRequirement": "Team private/internal fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "eventId": "private-1", "eventType": "workflow.step.started", "tenantId": "tenant-demo", "teamId": "team-demo", "roomId": "room-demo", "runId": "run-demo", "ts": "2026-06-22T00:05:00.000Z", "actorType": "system", "actorId": "system", "visibility": "private_internal", "data": { "stepId": "private" } }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "fixtureId": "artifact.pointer-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "artifact_panel",
+    "source": "agency",
+    "scenario": "artifact-pointer-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["artifact.created"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Artifact pointer path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "event": "preview_ready", "id": "artifact-event-1", "ts": "2026-06-22T00:06:00.000Z", "data": { "artifactId": "artifact-demo", "title": "Synthetic preview", "summary": "Pointer only" } }
+  ]
+}

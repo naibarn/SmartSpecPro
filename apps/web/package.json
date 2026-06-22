@@ -106,6 +106,7 @@
     "@sentry/react": "^10.38.0",
     "@sentry/vite-plugin": "^4.9.1",
     "@smartspec/db": "file:../../packages/db",
+    "@smartspec/agent-experience": "file:../../packages/agent-experience",
     "@smartspec/local-ai-core": "file:../../packages/local-ai-core",
     "@smartspec/shared": "file:../../packages/shared",
     "@smartspec/skills": "file:../../packages/skills",

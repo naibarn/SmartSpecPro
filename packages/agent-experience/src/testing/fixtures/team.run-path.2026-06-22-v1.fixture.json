@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "fixtureId": "team.run-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "team_room",
+    "source": "team",
+    "scenario": "run-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["workflow.step", "message.delta", "tool.start"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Team run path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "eventId": "team-1", "eventType": "workflow.step.started", "tenantId": "tenant-demo", "teamId": "team-demo", "roomId": "room-demo", "runId": "run-demo", "ts": "2026-06-22T00:04:00.000Z", "actorType": "assistant", "actorId": "agent-demo", "visibility": "transparent", "data": { "stepId": "research", "label": "Research" } },
+    { "eventId": "team-2", "eventType": "message_delta", "tenantId": "tenant-demo", "teamId": "team-demo", "roomId": "room-demo", "runId": "run-demo", "ts": "2026-06-22T00:04:01.000Z", "actorType": "assistant", "actorId": "agent-demo", "visibility": "transparent", "data": { "delta": "Synthetic update" } },
+    { "eventId": "team-3", "eventType": "tool_start", "tenantId": "tenant-demo", "teamId": "team-demo", "roomId": "room-demo", "runId": "run-demo", "ts": "2026-06-22T00:04:02.000Z", "actorType": "assistant", "actorId": "agent-demo", "visibility": "transparent", "data": { "toolCallId": "tc-team", "toolName": "planner" } }
+  ]
+}

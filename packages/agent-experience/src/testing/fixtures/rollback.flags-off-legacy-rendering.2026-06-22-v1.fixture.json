@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "fixtureId": "rollback.flags-off-legacy-rendering.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "fixture_preview",
+    "source": "fixture",
+    "scenario": "flags-off-legacy-rendering",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": [],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Rollback path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": []
+}

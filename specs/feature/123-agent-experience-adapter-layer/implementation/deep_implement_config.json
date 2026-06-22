@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/123-agent-experience-adapter-layer/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/123-agent-experience-adapter-layer/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "npm run typecheck",
+  "sections": [
+    "section-01-shared-contracts-and-flags",
+    "section-02-agency-and-team-adapters",
+    "section-03-golden-fixtures-and-negative-tests",
+    "section-04-preview-renderer-and-intents",
+    "section-05-artifact-approval-cost-adapters",
+    "section-06-debug-inspector-and-redaction",
+    "section-07-runtype-renderer-spike",
+    "section-08-rollout-metrics-and-release-gates"
+  ],
+  "sections_state": {
+    "section-01-shared-contracts-and-flags": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-02-agency-and-team-adapters": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-03-golden-fixtures-and-negative-tests": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-04-preview-renderer-and-intents": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-05-artifact-approval-cost-adapters": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-06-debug-inspector-and-redaction": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-07-runtype-renderer-spike": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    },
+    "section-08-rollout-metrics-and-release-gates": {
+      "status": "complete",
+      "commit_hash": "54261c89"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-06-22T06:35:16.328801+00:00"
+}

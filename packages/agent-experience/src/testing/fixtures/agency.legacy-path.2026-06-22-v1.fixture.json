@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "fixtureId": "agency.legacy-path.2026-06-22-v1",
+    "schemaVersion": "2026-06-22-v1",
+    "adapterVersion": "2026-06-22-v1",
+    "surface": "agency_chat",
+    "source": "agency",
+    "scenario": "legacy-path",
+    "synthetic": true,
+    "redactionReviewed": true,
+    "expectedEventTypes": ["message.delta", "tool.start", "tool.done"],
+    "expectedDroppedReasons": [],
+    "relatedRequirement": "Agency legacy path fixture",
+    "privacy": { "sourceKind": "synthetic", "reviewer": "agent-experience-plan", "removalCriteria": "replace on schema version change", "noSensitiveSamples": true }
+  },
+  "sourceEvents": [
+    { "event": "token", "id": "legacy-1", "ts": "2026-06-22T00:01:00.000Z", "data": { "token": "Synthetic token" } },
+    { "event": "tool_call", "id": "legacy-2", "ts": "2026-06-22T00:01:01.000Z", "data": { "toolCallId": "tc-legacy", "toolName": "legacy-tool" } },
+    { "event": "tool_result", "id": "legacy-3", "ts": "2026-06-22T00:01:02.000Z", "data": { "toolCallId": "tc-legacy", "result": "Synthetic legacy result" } }
+  ]
+}

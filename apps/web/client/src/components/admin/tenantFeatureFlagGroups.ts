@@ -78,6 +78,22 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Agent Experience",
+    icon: "✨",
+    flags: [
+      { key: "agentExperienceLayer", label: "Agent Experience Layer", description: "Enable the canonical Agent Experience adapter layer" },
+      { key: "agentExperienceShadowMode", label: "Shadow Mode", description: "Observe adapter behavior without visible UI changes" },
+      { key: "agentExperienceAgencyPreview", label: "Agency Preview", description: "Enable gated Agent Experience previews for Agency flows" },
+      { key: "agentExperienceTeamPreview", label: "Team Preview", description: "Enable gated Agent Experience previews for Team Room flows" },
+      { key: "agentExperienceChatPreview", label: "Chat Preview", description: "Enable gated Agent Experience previews for Chat flows" },
+      { key: "agentExperienceRuntypeRenderer", label: "Runtype Renderer Bridge", description: "Enable the optional renderer bridge only after dependency gates pass" },
+      { key: "agentExperienceDebugInspector", label: "Debug Inspector", description: "Enable permission-gated redacted diagnostics" },
+      { key: "agentExperienceForceRollback", label: "Force Rollback", description: "Disable all Agent Experience behavior immediately" },
+      { key: "agentExperienceWebsiteWidget", label: "Website Widget", description: "Reserved future customer widget gate" },
+      { key: "agentExperiencePageActions", label: "Page Actions", description: "Reserved future customer page action gate" },
+    ],
+  },
+  {
     title: "Gemini Omni",
     icon: "✨",
     flags: [
@@ -95,6 +111,25 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "mcpServerRegistry", label: "MCP Server Registry", description: "Centralized MCP tool server management" },
       { key: "mcpStdio", label: "MCP stdio Transport", description: "MCP via OpenSandbox containers" },
       { key: "mcpOAuth", label: "MCP OAuth 2.1", description: "OAuth for MCP server connections" },
+    ],
+  },
+  {
+    title: "MCP Connect",
+    icon: "🔌",
+    flags: [
+      { key: "mcpConnectEnabled", label: "MCP Connect", description: "Master rollout gate for MCP Connect surfaces" },
+      { key: "mcpConnectMagnificEnabled", label: "Magnific Provider", description: "Enable Magnific MCP provider access" },
+      { key: "mcpConnectHiggsfieldEnabled", label: "Higgsfield Provider", description: "Enable Higgsfield MCP provider access" },
+      { key: "mcpConnectGroupSharingEnabled", label: "Group Sharing", description: "Enable group sharing for MCP Connect" },
+      { key: "mcpMediaStudioEnabled", label: "Media Studio MCP", description: "Enable MCP transport in Media Studio" },
+      { key: "mcpAutoStoryboardReviewEnabled", label: "Auto Storyboard Review MCP", description: "Enable MCP transport for Auto Storyboard Review" },
+      { key: "mcpMarketplaceCaptureEnabled", label: "Marketplace Capture MCP", description: "Enable MCP transport for Marketplace Capture" },
+      { key: "mcpStoryboardReviewEnabled", label: "Storyboard Review MCP", description: "Enable MCP transport for Storyboard Review" },
+      { key: "mcpMediaImageEnabled", label: "MCP Image Generation", description: "Enable MCP-backed image generation assets" },
+      { key: "mcpMediaVideoEnabled", label: "MCP Video Generation", description: "Enable MCP-backed video generation assets" },
+      { key: "mcpToolSchemaCacheEnabled", label: "Tool Schema Cache", description: "Enable MCP tools/list schema caching" },
+      { key: "mcpAutoFallbackToGatewayApiEnabled", label: "Gateway API Fallback", description: "Allow explicit MCP fallback to Gateway API" },
+      { key: "mcpProviderCreditsTrackedEnabled", label: "Provider Credit Tracking", description: "Track MCP provider-credit usage" },
     ],
   },
   {
@@ -184,6 +219,16 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "marketplaceHyperframesWorkerEnabled", label: "HyperFrames Worker Queue", description: "Allow this tenant to queue HyperFrames preview/render worker jobs" },
       { key: "marketplaceHyperframesLibrarySaveEnabled", label: "HyperFrames Library Save", description: "Allow completed HyperFrames renders to be saved to Library" },
       { key: "marketplaceHyperframesOperatorEnabled", label: "HyperFrames Operator Controls", description: "Allow delegated tenant operators to inspect, replay, and manage HyperFrames renders" },
+    ],
+  },
+  {
+    title: "Video Segment Planner",
+    icon: "🎞️",
+    flags: [
+      { key: "videoSegmentPlannerShadow", label: "Segment Planner Shadow", description: "Record video segment planner metadata without changing user flow" },
+      { key: "videoSegmentPlannerPerShot", label: "Per-Shot Planning", description: "Enable per-shot segment planner handoff" },
+      { key: "videoSegmentPlannerPreview", label: "Segment Preview", description: "Enable backend video segment preview summaries" },
+      { key: "videoSegmentPlannerMultiShotBeta", label: "Multi-Shot Beta", description: "Enable tenant/model gated multi-shot video segments" },
     ],
   },
 ];

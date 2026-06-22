@@ -117,6 +117,16 @@ export interface TenantFeatureFlags {
   videoSegmentPlannerPerShot: boolean; // F109 — Per-shot segment planner handoff
   videoSegmentPlannerPreview: boolean; // F110 — Backend video segment preview summaries
   videoSegmentPlannerMultiShotBeta: boolean; // F111 — Tenant/model gated multi-shot video segments
+  agentExperienceLayer: boolean; // F112 — Agent Experience canonical protocol and adapter layer
+  agentExperienceShadowMode: boolean; // F113 — Observe Agent Experience adapters without visible UI changes
+  agentExperienceAgencyPreview: boolean; // F114 — Fixture/live-gated Agency Agent Experience preview
+  agentExperienceTeamPreview: boolean; // F115 — Fixture/live-gated Team Agent Experience preview
+  agentExperienceChatPreview: boolean; // F116 — Fixture/live-gated Chat Agent Experience preview
+  agentExperienceRuntypeRenderer: boolean; // F117 — Optional Runtype renderer bridge after dependency gate
+  agentExperienceDebugInspector: boolean; // F118 — Permission-gated Agent Experience debug inspector
+  agentExperienceForceRollback: boolean; // F119 — Force-disable all Agent Experience behavior
+  agentExperienceWebsiteWidget: boolean; // F120 — Future customer website widget gate
+  agentExperiencePageActions: boolean; // F121 — Future customer page action tools gate
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -237,6 +247,16 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "videoSegmentPlannerPerShot",
   "videoSegmentPlannerPreview",
   "videoSegmentPlannerMultiShotBeta",
+  "agentExperienceLayer",
+  "agentExperienceShadowMode",
+  "agentExperienceAgencyPreview",
+  "agentExperienceTeamPreview",
+  "agentExperienceChatPreview",
+  "agentExperienceRuntypeRenderer",
+  "agentExperienceDebugInspector",
+  "agentExperienceForceRollback",
+  "agentExperienceWebsiteWidget",
+  "agentExperiencePageActions",
 ]);
 
 /**
@@ -356,6 +376,16 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   videoSegmentPlannerPerShot: true,
   videoSegmentPlannerPreview: false,
   videoSegmentPlannerMultiShotBeta: false,
+  agentExperienceLayer: false,
+  agentExperienceShadowMode: false,
+  agentExperienceAgencyPreview: false,
+  agentExperienceTeamPreview: false,
+  agentExperienceChatPreview: false,
+  agentExperienceRuntypeRenderer: false,
+  agentExperienceDebugInspector: false,
+  agentExperienceForceRollback: false,
+  agentExperienceWebsiteWidget: false,
+  agentExperiencePageActions: false,
 };
 
 export type HermesRolloutSurface =
