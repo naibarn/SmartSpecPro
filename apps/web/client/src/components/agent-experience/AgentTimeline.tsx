@@ -27,11 +27,14 @@ function eventLabel(event: SmartSpecAgentEvent): string {
 
 export function AgentTimeline({ events }: AgentTimelineProps) {
   return (
-    <ol aria-label="Agent event timeline">
+    <ol aria-label="Agent event timeline" className="space-y-3">
       {events.map((event) => (
-        <li key={event.id}>
-          <span>{event.type}</span>
-          <p>{eventLabel(event)}</p>
+        <li className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" key={event.id}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-semibold uppercase text-slate-500">{event.type}</span>
+            <span className="text-xs text-slate-500">{new Date(event.timestamp).toLocaleTimeString()}</span>
+          </div>
+          <p className="mt-1 text-sm text-slate-900">{eventLabel(event)}</p>
         </li>
       ))}
     </ol>

@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/worker-app",
-  "version": "0.1.0",
+  "version": "0.1.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,9 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "runtime:pack": "node scripts/prepare-runtime-pack.mjs"
+    "runtime:pack": "node scripts/prepare-runtime-pack.mjs",
+    "runtime:release": "node scripts/package-runtime-release.mjs",
+    "release:windows": "node scripts/package-windows-release.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",

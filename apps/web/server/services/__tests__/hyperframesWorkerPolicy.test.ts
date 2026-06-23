@@ -93,12 +93,12 @@ describe("hyperframesWorkerPolicy", () => {
     expect(resolveHyperframesFfmpegBinary()).toMatch(/ffmpeg$/);
   });
 
-  it("keeps runtime execution gated separately from worker enablement", () => {
+  it("keeps runtime execution gated off until the official runtime is ready", () => {
     process.env.MARKETPLACE_HYPERFRAMES_RUNTIME_READY = "false";
     process.env.HYPERFRAMES_RUNTIME_MODE = "diagnostic";
     process.env.HYPERFRAMES_OFFICIAL_RUNTIME_READY = "0";
     process.env.HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME = "1";
-    expect(isHyperframesRuntimeExecutionReady()).toBe(true);
+    expect(isHyperframesRuntimeExecutionReady()).toBe(false);
   });
 
   it("defers jobs when worker is enabled but runtime execution is not ready", async () => {
@@ -262,6 +262,24 @@ describe("hyperframesWorkerPolicy", () => {
         'video_missing_muted [video-shot-1]: has data-start but is not muted. Mark audible videos with data-has-audio="true"; otherwise keep video muted.'
       )
     ).toBe(true);
+  });
+
+  it("treats official final composite capture timeouts as retryable background render failures", () => {
+    expect(
+      isNonRetryableHyperframesRuntimeError(
+        "[FrameCapture] Sub-composition timelines not registered after 30000ms: ssp-marketplace-captioned-final-composite."
+      )
+    ).toBe(false);
+    expect(
+      isNonRetryableHyperframesRuntimeError(
+        "[FrameCapture] Some video elements did not decode within 30000ms: assets/media/source.mp4"
+      )
+    ).toBe(false);
+    expect(
+      isNonRetryableHyperframesRuntimeError(
+        "Command failed: hyperframes render --browser-timeout 240 | process signal SIGTERM | Runtime.callFunctionOn timed out"
+      )
+    ).toBe(false);
   });
 
   it("requires an audio stream when final composite preserves native source audio", () => {
@@ -449,9 +467,87 @@ describe("hyperframesWorkerPolicy", () => {
     const overlayDialogues = ass
       .split("\n")
       .filter(line => line.startsWith("Dialogue: 0,"));
-    expect(overlayDialogues.join("\n")).toContain("เปิดเรื่องด้วย Hook");
-    expect(overlayDialogues.join("\n")).toContain("overlay shot สอง");
-    expect(overlayDialogues.join("\n")).toContain("overlay shot สาม");
+    const plainOverlayDialogues = overlayDialogues.join("\n").replace(/\\N/g, " ");
+    expect(plainOverlayDialogues).toContain("Hook หลัก");
+    expect(plainOverlayDialogues).toContain("Supporting หลัก");
+    expect(plainOverlayDialogues).toContain("เปิดเรื่องด้วย Hook");
+    expect(plainOverlayDialogues).toContain("overlay shot สอง");
+    expect(plainOverlayDialogues).toContain("overlay shot สาม");
+    expect(overlayDialogues.join("\n")).toContain("Dialogue: 0,0:00:00.15,0:00:03.00");
+    expect(overlayDialogues.join("\n")).toMatch(/Dialogue: 0,0:00:03\.1[45],0:00:06\.20/);
+  });
+
+  it("renders split product specs overlays with preview-like left stacked panels", () => {
+    const ass = buildFinalCompositeAss(
+      [
+        {
+          index: 0,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v001.mp4",
+          onScreenText: [
+            "พัฒนาการเด็กแต่ละบ้านแตกต่างกัน",
+            "เราต้องปรับที่การเลี้ยงดู",
+            "หากต้องการให้พัฒนาเด็กดีขึ้น",
+          ],
+          overlayPreset: "split_product_specs",
+          animationPreset: "glow_feature",
+        },
+      ],
+      {
+        finalCompositeConfig: {
+          overlayPreset: "split_product_specs",
+          subtitlePreset: "highlight_bar",
+          textMode: "per_shot",
+          includeShotText: true,
+          includeHookText: false,
+          burnInSubtitles: true,
+        },
+      }
+    );
+    const overlayDialogues = ass
+      .split("\n")
+      .filter(line => line.startsWith("Dialogue: 0,"));
+
+    expect(ass).toContain("Style: SplitTitle,Prompt,52");
+    expect(ass).toContain("Style: SplitHook,Noto Sans Thai,38");
+    expect(ass).toContain("Style: SplitChip,Noto Sans Thai,30");
+    expect(overlayDialogues.join("\n")).toContain("SplitTitle");
+    expect(overlayDialogues.join("\n")).toContain("{\\an7\\pos(80,220)");
+    expect(overlayDialogues.join("\n")).toContain("{\\an7\\pos(110,560)");
+    expect(overlayDialogues.join("\n")).not.toContain("{\\an6\\pos(985,650)");
+  });
+
+  it("renders relative subtitle cues for split shots on the final composite timeline", () => {
+    const ass = buildFinalCompositeAss(
+      [
+        {
+          index: 0,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v001.mp4",
+          subtitleCues: [{ startSec: 0, endSec: 2.5, text: "ซับ shot หนึ่ง" }],
+        },
+        {
+          index: 1,
+          durationSec: 8,
+          sourceVideoUrl: "/api/storage/files/tenant_1/run_1/v002.mp4",
+          subtitleCues: [{ startSec: 0, endSec: 3, text: "ซับ shot สอง แบบ relative" }],
+        },
+      ],
+      {
+        finalCompositeConfig: {
+          overlayPreset: "premium_product_hero",
+          subtitlePreset: "highlight_bar",
+          textMode: "per_shot",
+          includeShotText: false,
+          includeHookText: false,
+          burnInSubtitles: true,
+        },
+      }
+    );
+
+    expect(ass).toContain("Style: SubHighlight,Noto Sans Thai,58");
+    expect(ass).toContain("Dialogue: 1,0:00:08.00,0:00:11.00,SubHighlight");
+    expect(ass).toContain("ซับ shot สอง แบบ relative");
   });
 
   it("renders kinetic overlay copy with preview-style left panel instead of centered text", () => {

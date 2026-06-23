@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   agencyStreamToAgentEvents,
-  listAgentExperienceFixtures,
-  loadAgentExperienceFixture,
   runStreamToAgentEvents,
   type AgencyStreamLikeEvent,
   type RunStreamLikeEvent,
 } from "../index";
+import {
+  listAgentExperienceFixtures,
+  loadAgentExperienceFixture,
+} from "../testing/fixtures";
 
 const REQUIRED_FIXTURES = [
   "agency.happy-path.2026-06-22-v1.fixture.json",

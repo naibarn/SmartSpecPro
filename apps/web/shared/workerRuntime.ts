@@ -367,6 +367,12 @@ export const workerProtocolCompatibilitySchema = z.object({
   maxRuntimeProfileSchemaVersion: z.string().min(1).nullable().optional().default(null),
 });
 
+export const workerDeviceBindingSchema = z.object({
+  deviceId: z.string().min(1),
+  machineFingerprint: z.string().min(1),
+  publicKey: z.string().min(1),
+});
+
 export const workerDesktopExecutionIdentitySchema = z.object({
   mode: workerExecutionIdentityModeSchema,
   approvalMode: workerApprovalModeSchema,
@@ -725,6 +731,7 @@ const workerRegistrationPayloadBaseSchema = z.object({
   fileScopeMode: workerFileScopeModeSchema.default("workspace_scoped"),
   runtimeProfileName: z.string().min(1).nullable().optional().default(null),
   policyProfileName: z.string().min(1).nullable().optional().default(null),
+  deviceBinding: workerDeviceBindingSchema.nullable().optional().default(null),
 });
 
 export const workerRegistrationPayloadSchema = workerRegistrationPayloadBaseSchema.superRefine(

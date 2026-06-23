@@ -8,12 +8,16 @@ import { render, screen } from "@testing-library/react";
 const invalidateMock = vi.fn();
 const createMutationMock = vi.fn();
 const revokeMutationMock = vi.fn();
+const updateConnectedWorkerSharingMock = vi.fn();
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       users: {
         getPreferences: {
+          invalidate: invalidateMock,
+        },
+        listConnectedWorkers: {
           invalidate: invalidateMock,
         },
       },
@@ -41,6 +45,60 @@ vi.mock("@/lib/trpc", () => ({
           mutate: revokeMutationMock,
           mutateAsync: vi.fn(),
           isPending: false,
+        }),
+      },
+      listConnectedWorkers: {
+        useQuery: () => ({
+          data: {
+            workers: [
+              {
+                workerId: "worker_1",
+                displayName: "Render worker 01",
+                externalReference: "worker-app://machine-01",
+                runtimeType: "desktop_zeroclaw_managed",
+                runtimeLabel: "ZeroClaw Desktop",
+                runtimeFamily: "desktop",
+                workerTypeKey: "smart_ai_hub_worker_app",
+                workerTypeLabel: "Smart AI Hub Worker App",
+                workerMode: "per_user",
+                status: "online",
+                machineId: "machine-01",
+                machineName: "NAIBARN-PC",
+                runtimeVersion: "0.1.5",
+                lastSeenAt: "2026-06-23T01:02:03.000Z",
+                teamId: null,
+                sharingMode: "private",
+                sharedGroups: [],
+                preferredProviderName: "SmartSpecPro Gateway",
+                permissionPreset: "operator_basic",
+                permissionScopeCount: 5,
+                quotaDisplayLabel: "Unlimited",
+              },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      updateConnectedWorkerSharing: {
+        useMutation: () => ({
+          mutate: updateConnectedWorkerSharingMock,
+          mutateAsync: vi.fn(),
+          isPending: false,
+          variables: undefined,
+        }),
+      },
+    },
+    groups: {
+      list: {
+        useQuery: () => ({
+          data: [
+            { id: 101, name: "Video Team", role: "member" },
+          ],
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
         }),
       },
     },
@@ -94,6 +152,29 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "settings.workers.connect.nemoclaw.step2": "Paste the token into the sandbox registration field.",
         "settings.workers.connect.nemoclaw.step3": "Confirm the worker enters the expected pool.",
         "settings.workers.permissions.presets.readonly": "Read-only assistant",
+        "settings.workers.connectedWorkers.title": "Connected workers (1)",
+        "settings.workers.connectedWorkers.description": "View registered workers, confirm the runtime type, and control who may use each worker from this page.",
+        "settings.workers.connectedWorkers.identityTitle": "Connected worker details",
+        "settings.workers.connectedWorkers.shareTitle": "Sharing and access",
+        "settings.workers.connectedWorkers.type": "Worker type:",
+        "settings.workers.connectedWorkers.runtime": "Runtime:",
+        "settings.workers.connectedWorkers.family": "Family:",
+        "settings.workers.connectedWorkers.externalRef": "External reference:",
+        "settings.workers.connectedWorkers.scopeCount": "Allowed scopes:",
+        "settings.workers.connectedWorkers.machine": "Machine",
+        "settings.workers.connectedWorkers.version": "Version",
+        "settings.workers.connectedWorkers.lastSeen": "Last seen",
+        "settings.workers.connectedWorkers.notSeenYet": "Not seen yet",
+        "settings.workers.connectedWorkers.currentShare.private": "Private to you only",
+        "settings.workers.connectedWorkers.status.online": "Online",
+        "settings.workers.connectedWorkers.shareModes.private.label": "Private",
+        "settings.workers.connectedWorkers.shareModes.private.description": "Only you can claim jobs on this worker.",
+        "settings.workers.connectedWorkers.shareModes.groups.label": "Selected groups",
+        "settings.workers.connectedWorkers.shareModes.groups.description": "Only members of the chosen groups may use this worker.",
+        "settings.workers.connectedWorkers.shareModes.tenant.label": "Whole tenant",
+        "settings.workers.connectedWorkers.shareModes.tenant.description": "Any allowed user in this tenant may use this worker.",
+        "settings.workers.connectedWorkers.reset": "Reset",
+        "settings.workers.connectedWorkers.save": "Save sharing",
         "settings.workers.unlimited": "Unlimited",
         "settings.workers.permissions.scopesSelected": "scopes selected",
         "common.copy": "Copy",
@@ -123,8 +204,10 @@ vi.mock("lucide-react", () => ({
   Key: () => <span />,
   Loader2: () => <span />,
   RotateCcw: () => <span />,
+  Save: () => <span />,
   Shield: () => <span />,
   Trash2: () => <span />,
+  Users: () => <span />,
 }));
 
 import { WorkerAccessKeysPanel } from "../WorkerAccessKeysPanel";
@@ -139,5 +222,8 @@ describe("WorkerAccessKeysPanel", () => {
     expect(screen.getByText("How to use")).toBeTruthy();
     expect(screen.getByText("Safety checklist")).toBeTruthy();
     expect(screen.getByText("How to connect the worker")).toBeTruthy();
+    expect(screen.getByText("Connected workers (1)")).toBeTruthy();
+    expect(screen.getByText("Render worker 01")).toBeTruthy();
+    expect(screen.getByText("Smart AI Hub Worker App")).toBeTruthy();
   });
 });

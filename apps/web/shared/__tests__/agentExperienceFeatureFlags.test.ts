@@ -41,4 +41,11 @@ describe("Agent Experience tenant feature flags", () => {
     expect(ALLOWED_FEATURE_FLAGS.has("agentExperience")).toBe(false);
     expect(ALLOWED_FEATURE_FLAGS.has("agentPersonaUi")).toBe(false);
   });
+
+  it("keeps the checked-in JavaScript feature flag artifact in sync", async () => {
+    const runtimeFlags = await import("../featureFlags.js");
+
+    expect(runtimeFlags.ALLOWED_FEATURE_FLAGS.has("agentExperienceLayer")).toBe(true);
+    expect(runtimeFlags.FEATURE_FLAG_DEFAULTS.agentExperienceLayer).toBe(false);
+  });
 });

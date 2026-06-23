@@ -54,6 +54,7 @@ describe("HyperFrames auto plan contract", () => {
       videoModel: defaults.videoModel,
       videoStructureMode: defaults.videoStructureMode,
       manualVideoGroupSize: String(defaults.manualVideoGroupSize),
+      speechLanguage: defaults.speechLanguage,
       creativeBrief: defaults.creativeBrief,
       qualityMode: defaults.qualityMode,
     });
@@ -101,6 +102,7 @@ describe("HyperFrames auto plan contract", () => {
         imageModel: "google-banana-2",
         videoModel: "kling3/generate-kling-3-video",
         videoStructureMode: "adaptive_multi_shot",
+        speechLanguage: "th",
         creativeBrief: "Make it concise and proof-first.",
         platformPresetId: "tiktok_reels_shorts_9_16",
         renderEngine: "existing_ffmpeg_timeline",
@@ -113,6 +115,7 @@ describe("HyperFrames auto plan contract", () => {
       imageModel: "google-banana-2",
       videoModel: "kling3/generate-kling-3-video",
       videoStructureMode: "adaptive_multi_shot",
+      speechLanguage: "th",
       creativeBrief: "Make it concise and proof-first.",
       renderEngine: "hyperframes_composition",
       templateId: "marketplace_storyboard_motion_9x9_v1",
@@ -136,6 +139,7 @@ describe("HyperFrames auto plan contract", () => {
     const normalized = normalizeHyperframesAutoPlanOverrides({
       videoStructureMode: "manual_group_size",
       manualVideoGroupSize: 4,
+      speechLanguage: "zh",
       creativeBrief: "Warm proof-first review.",
       invalidVideoStructure: "nope",
     });
@@ -143,6 +147,7 @@ describe("HyperFrames auto plan contract", () => {
     expect(normalized).toMatchObject({
       videoStructureMode: "manual_group_size",
       manualVideoGroupSize: 4,
+      speechLanguage: "zh",
       creativeBrief: "Warm proof-first review.",
     });
 
@@ -151,5 +156,10 @@ describe("HyperFrames auto plan contract", () => {
         manualVideoGroupSize: 99,
       })
     ).not.toHaveProperty("manualVideoGroupSize");
+    expect(
+      normalizeHyperframesAutoPlanOverrides({
+        speechLanguage: "klingon",
+      })
+    ).not.toHaveProperty("speechLanguage");
   });
 });

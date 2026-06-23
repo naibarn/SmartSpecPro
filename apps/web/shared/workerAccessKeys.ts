@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { workerRuntimeTypeSchema } from "./workerRuntime";
+import {
+  workerModeSchema,
+  workerRuntimeTypeSchema,
+  workerStatusSchema,
+} from "./workerRuntime";
 
 export const workerLlmRoutingModeValues = ["auto", "pinned_provider"] as const;
 export type WorkerLlmRoutingMode = (typeof workerLlmRoutingModeValues)[number];
@@ -51,6 +55,44 @@ export const workerAccessQuotaPolicySchema = z.object({
 });
 
 export type WorkerAccessQuotaPolicy = z.infer<typeof workerAccessQuotaPolicySchema>;
+
+export const connectedWorkerSharingModeValues = ["private", "groups", "tenant"] as const;
+export type ConnectedWorkerSharingMode =
+  (typeof connectedWorkerSharingModeValues)[number];
+export const connectedWorkerSharingModeSchema = z.enum(connectedWorkerSharingModeValues);
+
+export const connectedWorkerShareGroupSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(128),
+});
+
+export type ConnectedWorkerShareGroup = z.infer<typeof connectedWorkerShareGroupSchema>;
+
+export const connectedWorkerRecordSchema = z.object({
+  workerId: z.string().min(1),
+  displayName: z.string().min(1),
+  externalReference: z.string().min(1),
+  runtimeType: workerRuntimeTypeSchema,
+  runtimeLabel: z.string().min(1),
+  runtimeFamily: z.string().min(1),
+  workerTypeKey: z.string().min(1),
+  workerTypeLabel: z.string().min(1),
+  workerMode: workerModeSchema,
+  status: workerStatusSchema,
+  machineId: z.string().min(1).nullable().optional().default(null),
+  machineName: z.string().min(1).nullable().optional().default(null),
+  runtimeVersion: z.string().min(1).nullable().optional().default(null),
+  lastSeenAt: z.string().datetime().or(z.string().min(1)).nullable().optional().default(null),
+  teamId: z.string().min(1).nullable().optional().default(null),
+  sharingMode: connectedWorkerSharingModeSchema.default("private"),
+  sharedGroups: z.array(connectedWorkerShareGroupSchema).default([]),
+  preferredProviderName: z.string().min(1).nullable().optional().default(null),
+  permissionPreset: z.string().min(1).nullable().optional().default(null),
+  permissionScopeCount: z.number().int().nonnegative().default(0),
+  quotaDisplayLabel: z.string().min(1).nullable().optional().default(null),
+});
+
+export type ConnectedWorkerRecord = z.infer<typeof connectedWorkerRecordSchema>;
 
 const READONLY_PERMISSION_SCOPES: WorkerAccessPermissionScope[] = [
   "workers:register",

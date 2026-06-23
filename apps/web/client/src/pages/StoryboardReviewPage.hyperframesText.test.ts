@@ -60,4 +60,50 @@ describe("StoryboardReviewPage HyperFrames text helpers", () => {
     expect(map["shot-1"]).toContain("แก้วแรกก็ได้ครีม่านุ่มสวย");
     expect(map["shot-2"]).toBe("");
   });
+
+  it("resolves render overlay lines from the same preset fallback used by final composite", () => {
+    const lines = __STORYBOARD_REVIEW_HYPERFRAMES_TEXT_TESTS.resolveHyperframesFinalShotOverlayLines({
+      textMode: "hook_and_per_shot",
+      shotIndex: 0,
+      overlayPreset: "badge_cascade",
+      productContext: null,
+      productTitle: "Manual Storyboard Project",
+      productDescription: "พัฒนาการเด็กแต่ละบ้านแตกต่างกัน",
+      storyboardName: "Manual Storyboard Project",
+      hookText: "พัฒนาการเด็กแต่ละบ้านแตกต่างกัน",
+      supportingText: "การเลี้ยงดูมีผลอย่างมาก",
+      clip: {
+        id: "shot-1",
+        prompt: 'Dialogue: Presenter พูดเป็นภาษาไทยว่า "คุณแม่ทราบกันไหมเรื่องพัฒนาการเด็ก"',
+      } as any,
+      clipCount: 8,
+      savedOverlayText: "",
+    });
+
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.join("\n")).toContain("พัฒนาการเด็ก");
+    expect(lines.join("\n")).not.toContain("Dialogue:");
+  });
+
+  it("does not resolve per-shot overlay lines when the selected text mode is hook-only", () => {
+    const lines = __STORYBOARD_REVIEW_HYPERFRAMES_TEXT_TESTS.resolveHyperframesFinalShotOverlayLines({
+      textMode: "hook_only",
+      shotIndex: 1,
+      overlayPreset: "badge_cascade",
+      productContext: null,
+      productTitle: "Manual Storyboard Project",
+      productDescription: "พัฒนาการเด็กแต่ละบ้านแตกต่างกัน",
+      storyboardName: "Manual Storyboard Project",
+      hookText: "พัฒนาการเด็กแต่ละบ้านแตกต่างกัน",
+      supportingText: "การเลี้ยงดูมีผลอย่างมาก",
+      clip: {
+        id: "shot-2",
+        prompt: 'Dialogue: Presenter พูดเป็นภาษาไทยว่า "เพื่อพัฒนาการลูกน้อย"',
+      } as any,
+      clipCount: 8,
+      savedOverlayText: "เพื่อพัฒนาการลูกน้อย",
+    });
+
+    expect(lines).toEqual([]);
+  });
 });

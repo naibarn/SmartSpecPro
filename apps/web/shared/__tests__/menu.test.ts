@@ -41,4 +41,19 @@ describe("Private Files menu entry", () => {
     expect(storyboardItem?.icon).toBe("Film");
     expect(storyboardIndex).toBeGreaterThan(mediaIndex);
   });
+
+  it("exposes Agent Experience Preview in the admin dashboard menu only", () => {
+    const adminItems = getMenuItemsByGroup("web", "admin", "admin");
+    const adminItem = adminItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview");
+    const userAdminItems = getMenuItemsByGroup("web", "user", "admin");
+    const userMainItems = getMenuItemsByGroup("web", "user", "main");
+
+    expect(adminItem).toBeDefined();
+    expect(adminItem?.label).toBe("Agent Experience Preview");
+    expect(adminItem?.labelTh).toBe("ตัวอย่าง Agent Experience");
+    expect(adminItem?.path).toBe("/admin/agent-experience-preview");
+    expect(adminItem?.roles).toEqual(["admin"]);
+    expect(userAdminItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
+    expect(userMainItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
+  });
 });

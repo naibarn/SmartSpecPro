@@ -33,7 +33,11 @@ interface AutoStoryboardAdvancedOverridesProps {
       durationSeconds?: number | null;
       referenceMode?: string | null;
     }>;
-    warnings?: ReadonlyArray<{ code?: string; message: string; source?: string }>;
+    warnings?: ReadonlyArray<{
+      code?: string;
+      message: string;
+      source?: string;
+    }>;
   } | null;
 }
 
@@ -67,7 +71,10 @@ function overridesEqual(
   if (leftKeys.length !== rightKeys.length) return false;
   return leftKeys.every(key => {
     const typedKey = key as OverrideKey;
-    return overrideValueString(left[typedKey]) === overrideValueString(right[typedKey]);
+    return (
+      overrideValueString(left[typedKey]) ===
+      overrideValueString(right[typedKey])
+    );
   });
 }
 
@@ -100,6 +107,7 @@ export function AutoStoryboardAdvancedOverrides({
     videoModel: thai ? "โมเดลวิดีโอ" : "Video model",
     videoStructure: thai ? "โครงสร้างวิดีโอ" : "Video structure",
     manualGroupSize: thai ? "กำหนดจำนวนช็อตต่อคลิป" : "Manual group size",
+    speechLanguage: thai ? "ภาษาพูด" : "Spoken language",
     creativeBrief: thai ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม" : "Creative brief",
   };
   const fieldLabels: Record<string, string> = {
@@ -114,6 +122,7 @@ export function AutoStoryboardAdvancedOverrides({
     videoModel: labels.videoModel,
     videoStructureMode: labels.videoStructure,
     manualVideoGroupSize: labels.manualGroupSize,
+    speechLanguage: labels.speechLanguage,
     creativeBrief: labels.creativeBrief,
   };
   const describeFields = (fieldNames: string[]) =>
@@ -173,45 +182,74 @@ export function AutoStoryboardAdvancedOverrides({
     },
   ] as const;
   const videoStructureOptions = [
-    { value: "per_shot", label: thai ? "Per-shot: 1 ช็อตต่อ 1 วิดีโอ" : "Per-shot: 1 shot per video" },
+    {
+      value: "per_shot",
+      label: thai
+        ? "Per-shot: 1 ช็อตต่อ 1 วิดีโอ"
+        : "Per-shot: 1 shot per video",
+    },
     {
       value: "adaptive_multi_shot",
-      label: thai ? "Multi-shot อัตโนมัติ: รวม sub-shot ตามโมเดล" : "Adaptive multi-shot: model groups sub-shots",
+      label: thai
+        ? "Multi-shot อัตโนมัติ: รวม sub-shot ตามโมเดล"
+        : "Adaptive multi-shot: model groups sub-shots",
     },
     {
       value: "compact_multi_shot",
-      label: thai ? "Compact multi-shot: รวมหลาย sub-shot ต่อวิดีโอ" : "Compact multi-shot: more sub-shots per video",
+      label: thai
+        ? "Compact multi-shot: รวมหลาย sub-shot ต่อวิดีโอ"
+        : "Compact multi-shot: more sub-shots per video",
     },
     {
       value: "manual_group_size",
-      label: thai ? "Manual multi-shot: กำหนด sub-shot ต่อวิดีโอ" : "Manual multi-shot: sub-shots per video",
+      label: thai
+        ? "Manual multi-shot: กำหนด sub-shot ต่อวิดีโอ"
+        : "Manual multi-shot: sub-shots per video",
     },
   ] as const;
   const manualGroupSizeOptions = ["2", "3", "4", "5", "6"].map(value => ({
     value,
     label: thai ? `${value} ช็อตต่อคลิป` : `${value} shots per clip`,
   }));
+  const speechLanguageOptions = [
+    { value: "en", label: thai ? "อังกฤษ (ค่าเริ่มต้น)" : "English (default)" },
+    { value: "th", label: thai ? "ไทย" : "Thai" },
+    { value: "zh", label: thai ? "จีน" : "Chinese" },
+    { value: "ja", label: thai ? "ญี่ปุ่น" : "Japanese" },
+    { value: "ko", label: thai ? "เกาหลี" : "Korean" },
+    { value: "es", label: thai ? "สเปน" : "Spanish" },
+    { value: "fr", label: thai ? "ฝรั่งเศส" : "French" },
+    { value: "de", label: thai ? "เยอรมัน" : "German" },
+    { value: "vi", label: thai ? "เวียดนาม" : "Vietnamese" },
+    { value: "id", label: thai ? "อินโดนีเซีย" : "Indonesian" },
+    { value: "ms", label: thai ? "มาเลย์" : "Malay" },
+    { value: "hi", label: thai ? "ฮินดี" : "Hindi" },
+    { value: "ar", label: thai ? "อาหรับ" : "Arabic" },
+    { value: "pt", label: thai ? "โปรตุเกส" : "Portuguese" },
+    { value: "it", label: thai ? "อิตาลี" : "Italian" },
+  ] as const;
   const imageModelOptions = providedImageModelOptions?.length
     ? providedImageModelOptions
-    : [
-    {
-      value: "google-nano-banana-pro",
-      label: thai ? "Nano Banana Pro" : "Nano Banana Pro",
-    },
-    {
-      value: "google-banana-2",
-      label: thai ? "Banana 2" : "Banana 2",
-    },
-  ] as const;
+    : ([
+        {
+          value: "google-nano-banana-pro",
+          label: thai ? "Nano Banana Pro" : "Nano Banana Pro",
+        },
+        {
+          value: "google-banana-2",
+          label: thai ? "Banana 2" : "Banana 2",
+        },
+      ] as const);
   const videoModelOptions = providedVideoModelOptions?.length
     ? providedVideoModelOptions
-    : [
-    {
-      value: "veo3/generate-veo-3-video-lite",
-      label: thai ? "Veo 3 Lite" : "Veo 3 Lite",
-    },
-  ] as const;
-  const defaultValueFor = (key: OverrideKey): string => baseAutoDefaultValues[key];
+    : ([
+        {
+          value: "veo3/generate-veo-3-video-lite",
+          label: thai ? "Veo 3 Lite" : "Veo 3 Lite",
+        },
+      ] as const);
+  const defaultValueFor = (key: OverrideKey): string =>
+    baseAutoDefaultValues[key];
   const selectedValueFor = (key: OverrideKey): string =>
     overrideValueString(effectiveValue[key] ?? defaultValueFor(key));
   const update = (key: OverrideKey, nextValue: string) => {
@@ -222,11 +260,13 @@ export function AutoStoryboardAdvancedOverrides({
     ) {
       delete next[key];
     } else if (key === "shotCount" || key === "manualVideoGroupSize") {
-      next.shotCount =
-        Number(nextValue) as HyperframesAutoPlanOverrideInput["shotCount"];
+      next.shotCount = Number(
+        nextValue
+      ) as HyperframesAutoPlanOverrideInput["shotCount"];
       if (key === "manualVideoGroupSize") {
-        next.manualVideoGroupSize =
-          Number(nextValue) as HyperframesAutoPlanOverrideInput["manualVideoGroupSize"];
+        next.manualVideoGroupSize = Number(
+          nextValue
+        ) as HyperframesAutoPlanOverrideInput["manualVideoGroupSize"];
         delete next.shotCount;
       }
     } else {
@@ -243,8 +283,7 @@ export function AutoStoryboardAdvancedOverrides({
 
   const fieldClass =
     "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
-  const labelClass =
-    "text-xs font-semibold text-slate-500 dark:text-slate-400";
+  const labelClass = "text-xs font-semibold text-slate-500 dark:text-slate-400";
   const selectedVideoStructure = selectedValueFor("videoStructureMode");
   const previewSegments = videoSegmentPreview?.segments ?? [];
   const previewTotalShots = previewSegments.reduce(
@@ -268,7 +307,12 @@ export function AutoStoryboardAdvancedOverrides({
           {copy.advancedOverrides}
         </button>
         {showResetToAuto ? (
-          <Button type="button" variant="outline" size="sm" onClick={onResetToAuto}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetToAuto}
+          >
             <RotateCcw className="mr-2 h-4 w-4" />
             {copy.useAutoPlan}
           </Button>
@@ -284,7 +328,9 @@ export function AutoStoryboardAdvancedOverrides({
                 aria-label={labels.format}
                 className={fieldClass}
                 value={selectedValueFor("platformPresetId")}
-                onChange={event => update("platformPresetId", event.target.value)}
+                onChange={event =>
+                  update("platformPresetId", event.target.value)
+                }
               >
                 {platformPresetOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -329,7 +375,9 @@ export function AutoStoryboardAdvancedOverrides({
                 aria-label={labels.textPolicy}
                 className={fieldClass}
                 value={selectedValueFor("overlayTextMode")}
-                onChange={event => update("overlayTextMode", event.target.value)}
+                onChange={event =>
+                  update("overlayTextMode", event.target.value)
+                }
               >
                 {overlayTextModeOptions.map(option => (
                   <option key={option.value} value={option.value}>
@@ -434,6 +482,21 @@ export function AutoStoryboardAdvancedOverrides({
                 </select>
               </label>
             ) : null}
+            <label className="space-y-1">
+              <span className={labelClass}>{labels.speechLanguage}</span>
+              <select
+                aria-label={labels.speechLanguage}
+                className={fieldClass}
+                value={selectedValueFor("speechLanguage")}
+                onChange={event => update("speechLanguage", event.target.value)}
+              >
+                {speechLanguageOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <label className="block space-y-1">
             <span className={labelClass}>{labels.creativeBrief}</span>
@@ -452,7 +515,11 @@ export function AutoStoryboardAdvancedOverrides({
           {videoSegmentPreview ? (
             <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-slate-700 dark:border-sky-900 dark:bg-sky-950 dark:text-slate-200">
               {videoSegmentPreview.loading ? (
-                <p>{thai ? "กำลังดูตัวอย่างโครงสร้างวิดีโอ..." : "Loading video structure preview..."}</p>
+                <p>
+                  {thai
+                    ? "กำลังดูตัวอย่างโครงสร้างวิดีโอ..."
+                    : "Loading video structure preview..."}
+                </p>
               ) : videoSegmentPreview.error ? (
                 <p className="text-rose-700 dark:text-rose-300">
                   {videoSegmentPreview.error}
@@ -461,7 +528,8 @@ export function AutoStoryboardAdvancedOverrides({
                 <div className="space-y-1">
                   <p>
                     {thai ? "ตัวอย่างจากระบบ:" : "Backend preview:"}{" "}
-                    {videoSegmentPreview.effectiveMode || selectedVideoStructure}
+                    {videoSegmentPreview.effectiveMode ||
+                      selectedVideoStructure}
                     {videoSegmentPreview.creditSource
                       ? ` · ${videoSegmentPreview.creditSource}`
                       : ""}
@@ -475,13 +543,23 @@ export function AutoStoryboardAdvancedOverrides({
                       </p>
                       <ol className="mt-1 space-y-1">
                         {previewSegments.slice(0, 12).map((segment, index) => (
-                          <li key={segment.segmentId ?? `${index}-${segment.shotIds.join("-")}`} className="text-slate-700 dark:text-slate-200">
-                            {thai ? `วิดีโอ ${index + 1}: ` : `Video ${index + 1}: `}
+                          <li
+                            key={
+                              segment.segmentId ??
+                              `${index}-${segment.shotIds.join("-")}`
+                            }
+                            className="text-slate-700 dark:text-slate-200"
+                          >
+                            {thai
+                              ? `วิดีโอ ${index + 1}: `
+                              : `Video ${index + 1}: `}
                             {segment.shotIds.length > 1
-                              ? (thai
-                                  ? `รวม ${segment.shotIds.length} sub-shot`
-                                  : `${segment.shotIds.length} sub-shots`)
-                              : (thai ? "1 sub-shot" : "1 sub-shot")}
+                              ? thai
+                                ? `รวม ${segment.shotIds.length} sub-shot`
+                                : `${segment.shotIds.length} sub-shots`
+                              : thai
+                                ? "1 sub-shot"
+                                : "1 sub-shot"}
                             {" · "}
                             {segment.shotIds.join(" → ")}
                             {segment.durationSeconds

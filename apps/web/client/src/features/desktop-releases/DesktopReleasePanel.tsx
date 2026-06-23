@@ -65,25 +65,32 @@ type DesktopReleaseBuildSessionState = {
 const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.build-session.v1";
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
 const CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/marketplace-extension/download";
+const WORKER_APP_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download";
 
-type MarketplaceExtensionRelease = {
+type PublicDashboardRelease = {
   version: string;
   fileName: string;
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
+  installerFormat?: "exe" | "msi" | "zip";
 };
 
-type MarketplaceExtensionReleaseState = {
-  release: MarketplaceExtensionRelease | null;
+type PublicDashboardReleaseState = {
+  release: PublicDashboardRelease | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
 };
 
-function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionReleaseState {
+function usePublicDashboardRelease(options: {
+  enabled: boolean;
+  latestUrl: string;
+  unavailableError: string;
+}): PublicDashboardReleaseState {
+  const { enabled, latestUrl, unavailableError } = options;
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const [state, setState] = useState<Omit<MarketplaceExtensionReleaseState, "refresh">>({
+  const [state, setState] = useState<Omit<PublicDashboardReleaseState, "refresh">>({
     release: null,
     isLoading: enabled,
     error: null,
@@ -103,7 +110,7 @@ function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionR
       error: null,
     }));
 
-    void fetch("/api/desktop-releases/marketplace-extension/latest", {
+    void fetch(latestUrl, {
       credentials: "include",
       cache: "no-store",
       signal: controller.signal,
@@ -114,7 +121,7 @@ function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionR
           throw new Error(
             typeof payload?.error === "string"
               ? payload.error
-              : "marketplace_extension_release_unavailable",
+              : unavailableError,
           );
         }
         return payload?.release ?? null;
@@ -129,7 +136,7 @@ function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionR
           setState((previous) => ({
             release: previous.release,
             isLoading: false,
-            error: error instanceof Error ? error.message : "marketplace_extension_release_unavailable",
+            error: error instanceof Error ? error.message : unavailableError,
           }));
         }
       });
@@ -138,7 +145,7 @@ function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionR
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, refreshNonce]);
+  }, [enabled, latestUrl, refreshNonce, unavailableError]);
 
   return {
     ...state,
@@ -662,7 +669,21 @@ export function DesktopReleasePanel(props: {
     isLoading: marketplaceExtensionLoading,
     error: marketplaceExtensionError,
     refresh: refreshMarketplaceExtensionRelease,
-  } = useMarketplaceExtensionRelease(variant === "dashboard" && enabled);
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/marketplace-extension/latest",
+    unavailableError: "marketplace_extension_release_unavailable",
+  });
+  const {
+    release: workerAppRelease,
+    isLoading: workerAppLoading,
+    error: workerAppError,
+    refresh: refreshWorkerAppRelease,
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/worker-app/latest",
+    unavailableError: "worker_app_release_unavailable",
+  });
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -746,6 +767,7 @@ export function DesktopReleasePanel(props: {
     triggerCatalogRefresh(true);
     triggerBuildHistoryRefresh(true);
     refreshMarketplaceExtensionRelease();
+    refreshWorkerAppRelease();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -1634,6 +1656,73 @@ export function DesktopReleasePanel(props: {
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </a>
               </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-sky-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerApp.title")}
+                  </p>
+                  {workerAppRelease ? (
+                    <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                      {t("dashboard:desktopReleases.version", { version: workerAppRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {workerAppLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    {workerAppRelease?.installerFormat
+                      ? formatInstallerLabel(t, workerAppRelease.installerFormat)
+                      : "EXE"}
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerApp.description")}
+                </p>
+                {workerAppRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {workerAppRelease.fileName} · {formatBytes(workerAppRelease.fileSizeBytes)}
+                  </p>
+                ) : workerAppError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {workerAppError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerApp.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {workerAppRelease ? (
+                <Button asChild className="bg-sky-700 text-white hover:bg-sky-800">
+                  <a href={workerAppRelease.downloadUrl || WORKER_APP_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerApp.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {workerAppLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerApp.download")}
+                </Button>
+              )}
             </div>
           </div>
         </div>

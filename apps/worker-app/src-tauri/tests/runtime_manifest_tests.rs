@@ -22,6 +22,9 @@ fn manifest(sidecar_sha256: String) -> RuntimePackManifest {
         allowed: true,
         deny_reason: None,
         rollback_to_version: None,
+        archive_url: None,
+        archive_sha256: None,
+        archive_size_bytes: None,
     }
 }
 
@@ -73,6 +76,8 @@ fn doctor_reports_runtime_versions_when_manifest_and_sidecar_are_valid() {
     let dir = tempfile::tempdir().unwrap();
     let sidecar = dir.path().join("hyperframes-render.exe");
     fs::write(&sidecar, b"fake-sidecar").unwrap();
+    fs::write(dir.path().join("SHA256SUMS"), b"fake checksums").unwrap();
+    fs::write(dir.path().join("SHA256SUMS.sig"), b"fake signature").unwrap();
 
     let summary = doctor_from_manifest(&manifest(file_sha256(&sidecar).unwrap()), dir.path());
 
@@ -88,12 +93,33 @@ fn doctor_reports_runtime_versions_when_manifest_and_sidecar_are_valid() {
 }
 
 #[test]
-fn missing_manifest_recommends_runtime_download() {
+fn missing_manifest_recommends_official_runtime_install() {
     let dir = tempfile::tempdir().unwrap();
     let summary = doctor_from_manifest_path(&dir.path().join("manifest.json"), dir.path());
 
     assert_eq!(summary.status, "blocked");
     assert!(summary
         .recommended_actions
-        .contains(&"Download render runtime".to_string()));
+        .contains(&"Install official HyperFrames runtime pack".to_string()));
+}
+
+#[test]
+fn placeholder_runtime_bundle_is_blocked_even_if_manifest_exists() {
+    let dir = tempfile::tempdir().unwrap();
+    let sidecar = dir.path().join("hyperframes-render.exe");
+    fs::write(&sidecar, b"fake-sidecar").unwrap();
+    let mut bundle_manifest = manifest(file_sha256(&sidecar).unwrap());
+    bundle_manifest.version = "0.0.0-placeholder".into();
+    bundle_manifest.hyperframes_version = "not-bundled".into();
+    bundle_manifest.browser_version = "not-bundled".into();
+    bundle_manifest.ffmpeg_version = "not-bundled".into();
+    bundle_manifest.ffprobe_version = "not-bundled".into();
+
+    let summary = doctor_from_manifest(&bundle_manifest, dir.path());
+
+    assert_eq!(summary.status, "blocked");
+    assert!(summary
+        .checks
+        .iter()
+        .any(|check| check.id == "runtime_bundle" && check.status == "error"));
 }

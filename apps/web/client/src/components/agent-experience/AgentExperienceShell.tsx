@@ -45,32 +45,32 @@ export function AgentExperienceShell({
   const debugEvents = events.filter((event) => event.payload.kind === "debug");
 
   if (disabled) {
-    return <section aria-label="Agent Experience preview">{copy.disabled}</section>;
+    return <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600" aria-label="Agent Experience preview">{copy.disabled}</section>;
   }
 
   if (loading) {
-    return <section aria-label="Agent Experience preview" aria-busy="true">{copy.loading}</section>;
+    return <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600" aria-label="Agent Experience preview" aria-busy="true">{copy.loading}</section>;
   }
 
   if (error) {
-    return <section aria-label="Agent Experience preview" role="alert">{copy.error}: {error}</section>;
+    return <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700" aria-label="Agent Experience preview" role="alert">{copy.error}: {error}</section>;
   }
 
   return (
-    <section className="agent-experience-shell" aria-label="Agent Experience preview">
-      <div className="agent-experience-shell__timeline">
-        {events.length === 0 ? copy.empty : <AgentTimeline events={events} />}
+    <section className="agent-experience-shell grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]" aria-label="Agent Experience preview">
+      <div className="agent-experience-shell__timeline min-h-64 rounded-lg border border-slate-200 bg-white p-3">
+        {events.length === 0 ? <p className="text-sm text-slate-500">{copy.empty}</p> : <AgentTimeline events={events} />}
       </div>
-      <aside className="agent-experience-shell__side" aria-label="Agent Experience details">
+      <aside className="agent-experience-shell__side space-y-3" aria-label="Agent Experience details">
         {approvalEvents.map((event) => (
           <AgentApprovalCard key={event.id} event={event} onIntent={onIntent} />
         ))}
         <AgentArtifactPane events={artifactEvents} onIntent={onIntent} />
         {debugEvents.length > 0 && (
-          <details>
-            <summary>{debugAllowed ? "Debug" : copy.debugDenied}</summary>
+          <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+            <summary className="cursor-pointer font-medium text-slate-800">{debugAllowed ? "Debug" : copy.debugDenied}</summary>
             {debugAllowed && (
-              <ul>
+              <ul className="mt-2 space-y-1 text-slate-600">
                 {debugEvents.map((event) => (
                   <li key={event.id}>{event.payload.kind === "debug" ? event.payload.debug.reason : event.type}</li>
                 ))}

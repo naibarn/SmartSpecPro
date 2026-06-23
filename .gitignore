@@ -166,6 +166,7 @@ nginx/ssl/*.pfx
 *.so
 *.dll
 *.exe
+!apps/web/client/public/releases/smart-ai-hub-worker-app-*-x64-setup.exe
 *.out
 *.class
 

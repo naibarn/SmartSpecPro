@@ -33,6 +33,7 @@ export interface HyperframesRuntimeAdapterEnv {
   HYPERFRAMES_PRODUCTION_RUNTIME_READY?: string;
   HYPERFRAMES_OFFICIAL_RUNTIME_READY?: string;
   HYPERFRAMES_CLI_BINARY?: string;
+  HYPERFRAMES_BROWSER_BINARY?: string;
   HYPERFRAMES_FFMPEG_BINARY?: string;
   HYPERFRAMES_FFPROBE_BINARY?: string;
   HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME?: string;
@@ -81,10 +82,16 @@ function falsey(value: unknown): boolean {
   return /^(0|false|no|off|disabled)$/i.test(String(value ?? "").trim());
 }
 
+function runtimeEnv(
+  env?: HyperframesRuntimeAdapterEnv
+): HyperframesRuntimeAdapterEnv {
+  return (env ?? process.env) as HyperframesRuntimeAdapterEnv;
+}
+
 export function getHyperframesRuntimeMode(
   env?: HyperframesRuntimeAdapterEnv
 ): HyperframesRuntimeMode {
-  const mode = String(env?.HYPERFRAMES_RUNTIME_MODE ?? "").trim().toLowerCase();
+  const mode = String(runtimeEnv(env).HYPERFRAMES_RUNTIME_MODE ?? "").trim().toLowerCase();
   if (!mode) return "cli";
   if (mode === "producer") return "producer";
   if (mode === "cli" || mode === "official_cli") return "cli";
@@ -94,9 +101,10 @@ export function getHyperframesRuntimeMode(
 function isNodeVersionAllowedForOfficialRuntime(
   env?: HyperframesRuntimeAdapterEnv
 ): boolean {
+  const resolvedEnv = runtimeEnv(env);
   if (
     process.env.NODE_ENV === "test" &&
-    truthy(env?.HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME)
+    truthy(resolvedEnv.HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME)
   ) {
     return true;
   }
@@ -108,17 +116,17 @@ function isNodeVersionAllowedForOfficialRuntime(
 }
 
 function officialRuntimeGatePassed(env?: HyperframesRuntimeAdapterEnv): boolean {
-  if (!env) return true;
-  return truthy(env.HYPERFRAMES_OFFICIAL_RUNTIME_READY) ||
-    truthy(env.HYPERFRAMES_PRODUCTION_RUNTIME_READY);
+  const resolvedEnv = runtimeEnv(env);
+  return truthy(resolvedEnv.HYPERFRAMES_OFFICIAL_RUNTIME_READY) ||
+    truthy(resolvedEnv.HYPERFRAMES_PRODUCTION_RUNTIME_READY);
 }
 
 function officialRuntimeExplicitlyBlocked(
   env?: HyperframesRuntimeAdapterEnv
 ): boolean {
-  if (!env) return false;
-  return falsey(env.HYPERFRAMES_OFFICIAL_RUNTIME_READY) ||
-    falsey(env.HYPERFRAMES_PRODUCTION_RUNTIME_READY);
+  const resolvedEnv = runtimeEnv(env);
+  return falsey(resolvedEnv.HYPERFRAMES_OFFICIAL_RUNTIME_READY) ||
+    falsey(resolvedEnv.HYPERFRAMES_PRODUCTION_RUNTIME_READY);
 }
 
 function isHyperframesPackageAvailable(packageName: string): boolean {
@@ -128,80 +136,89 @@ function isHyperframesPackageAvailable(packageName: string): boolean {
 function isHyperframesCliBinaryAvailable(
   env?: HyperframesRuntimeAdapterEnv
 ): boolean {
-  const explicit = String(env?.HYPERFRAMES_CLI_BINARY ?? "").trim();
-  if (explicit) {
-    return explicit.includes("/") || explicit.includes("\\")
-      ? existsSync(explicit)
-      : true;
+  return resolveHyperframesCliBinaryPath(env) != null;
+}
+
+function commonOfficialRuntimeReadinessIssues(
+  env?: HyperframesRuntimeAdapterEnv
+): string[] {
+  const resolvedEnv = runtimeEnv(env);
+  const issues: string[] = [];
+  if (!officialRuntimeGatePassed(resolvedEnv) || officialRuntimeExplicitlyBlocked(resolvedEnv)) {
+    issues.push(
+      "HyperFrames official runtime is blocked: readiness flag is not enabled. Run `npm --prefix apps/web run hyperframes:doctor` in the target worker image, confirm `official_runtime_ready`, then set `HYPERFRAMES_OFFICIAL_RUNTIME_READY=1`."
+    );
   }
-  const candidates = [
-    join(process.cwd(), "node_modules", ".bin", "hyperframes"),
-    join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
-    join(process.cwd(), "..", "..", "node_modules", ".bin", "hyperframes"),
-  ];
-  return candidates.some(candidate => existsSync(candidate)) ||
-    isHyperframesPackageAvailable("hyperframes");
+  if (!isNodeVersionAllowedForOfficialRuntime(resolvedEnv)) {
+    issues.push("HyperFrames official runtime requires Node >=22.22 in the worker image.");
+  }
+  if (!resolveRuntimeExecutable("ffmpeg", resolvedEnv.HYPERFRAMES_FFMPEG_BINARY)) {
+    issues.push("FFmpeg binary is not available. Install ffmpeg or set `HYPERFRAMES_FFMPEG_BINARY` to an executable path.");
+  }
+  if (!resolveRuntimeExecutable("ffprobe", resolvedEnv.HYPERFRAMES_FFPROBE_BINARY)) {
+    issues.push("FFprobe binary is not available. Install ffprobe or set `HYPERFRAMES_FFPROBE_BINARY` to an executable path.");
+  }
+  if (!resolveThaiFontPath(resolvedEnv)) {
+    issues.push("Thai-capable render font is not available. Install Prompt/Noto Sans Thai/Kanit/Sarabun/Loma or set `HYPERFRAMES_THAI_FONT_PATH`.");
+  }
+  if (!resolveBrowserExecutable(resolvedEnv)) {
+    issues.push("Chrome/headless browser runtime is not available. Install Playwright Chromium/Chrome or set `HYPERFRAMES_BROWSER_BINARY`.");
+  }
+  return issues;
+}
+
+export function getHyperframesProducerRuntimeReadinessIssues(
+  env?: HyperframesRuntimeAdapterEnv
+): string[] {
+  const issues: string[] = [];
+  if (getHyperframesRuntimeMode(env) !== "producer") {
+    issues.push("HyperFrames producer runtime was not requested.");
+  }
+  issues.push(...commonOfficialRuntimeReadinessIssues(env));
+  if (!isHyperframesPackageAvailable("@hyperframes/producer")) {
+    issues.push("HyperFrames producer runtime package @hyperframes/producer is not installed.");
+  }
+  return issues;
+}
+
+export function getHyperframesCliRuntimeReadinessIssues(
+  env?: HyperframesRuntimeAdapterEnv
+): string[] {
+  const issues: string[] = [];
+  if (getHyperframesRuntimeMode(env) !== "cli") {
+    issues.push("HyperFrames CLI runtime was not requested.");
+  }
+  issues.push(...commonOfficialRuntimeReadinessIssues(env));
+  if (!isHyperframesCliBinaryAvailable(env)) {
+    issues.push("HyperFrames CLI runtime package/binary is not available. Install the pinned HyperFrames CLI or set `HYPERFRAMES_CLI_BINARY`.");
+  }
+  return issues;
 }
 
 export function isHyperframesProducerRuntimeAllowed(
   env?: HyperframesRuntimeAdapterEnv
 ): boolean {
-  return (
-    getHyperframesRuntimeMode(env) === "producer" &&
-    officialRuntimeGatePassed(env) &&
-    !officialRuntimeExplicitlyBlocked(env) &&
-    isNodeVersionAllowedForOfficialRuntime(env) &&
-    isHyperframesPackageAvailable("@hyperframes/producer")
-  );
+  return getHyperframesProducerRuntimeReadinessIssues(env).length === 0;
 }
 
 export function isHyperframesCliRuntimeAllowed(
   env?: HyperframesRuntimeAdapterEnv
 ): boolean {
-  return (
-    getHyperframesRuntimeMode(env) === "cli" &&
-    !officialRuntimeExplicitlyBlocked(env) &&
-    isNodeVersionAllowedForOfficialRuntime(env) &&
-    isHyperframesCliBinaryAvailable(env)
-  );
+  return getHyperframesCliRuntimeReadinessIssues(env).length === 0;
 }
 
 export function assertHyperframesProducerRuntimeAllowed(
   env?: HyperframesRuntimeAdapterEnv
 ): void {
-  if (getHyperframesRuntimeMode(env) !== "producer") {
-    throw new Error("HyperFrames producer runtime was not requested.");
-  }
-  if (!officialRuntimeGatePassed(env) || officialRuntimeExplicitlyBlocked(env)) {
-    throw new Error(
-      "HyperFrames producer runtime is blocked until production rollout gates pass."
-    );
-  }
-  if (!isNodeVersionAllowedForOfficialRuntime(env)) {
-    throw new Error("HyperFrames producer runtime requires Node >=22.22 in the worker image.");
-  }
-  if (!isHyperframesPackageAvailable("@hyperframes/producer")) {
-    throw new Error("HyperFrames producer runtime package @hyperframes/producer is not installed.");
-  }
+  const issues = getHyperframesProducerRuntimeReadinessIssues(env);
+  if (issues.length > 0) throw new Error(issues.join(" "));
 }
 
 export function assertHyperframesCliRuntimeAllowed(
   env?: HyperframesRuntimeAdapterEnv
 ): void {
-  if (getHyperframesRuntimeMode(env) !== "cli") {
-    throw new Error("HyperFrames CLI runtime was not requested.");
-  }
-  if (officialRuntimeExplicitlyBlocked(env)) {
-    throw new Error(
-      "HyperFrames CLI runtime is blocked by explicit runtime readiness env."
-    );
-  }
-  if (!isNodeVersionAllowedForOfficialRuntime(env)) {
-    throw new Error("HyperFrames CLI runtime requires Node >=22.22 in the worker image.");
-  }
-  if (!isHyperframesCliBinaryAvailable(env)) {
-    throw new Error("HyperFrames CLI runtime package/binary is not available.");
-  }
+  const issues = getHyperframesCliRuntimeReadinessIssues(env);
+  if (issues.length > 0) throw new Error(issues.join(" "));
 }
 
 function escapeHtml(value: unknown): string {
@@ -466,9 +483,9 @@ export function resolveHyperframesCliRenderTimeouts(
     return shots.length;
   })();
   const longCompositePlayerTimeoutMs =
-    durationSec >= 120 || shotCount >= 6 ? 30_000 : durationSec >= 60 || shotCount >= 3 ? 15_000 : 5_000;
+    durationSec >= 180 || shotCount >= 6 ? 180_000 : durationSec >= 60 || shotCount >= 3 ? 120_000 : 60_000;
   const longCompositeBrowserTimeoutSec =
-    durationSec >= 180 || shotCount >= 6 ? 240 : durationSec >= 60 || shotCount >= 3 ? 120 : 60;
+    durationSec >= 180 || shotCount >= 6 ? 900 : durationSec >= 60 || shotCount >= 3 ? 420 : 180;
   return {
     playerReadyTimeoutMs: parsePositiveInt(
       env?.HYPERFRAMES_PLAYER_READY_TIMEOUT_MS,
@@ -488,13 +505,29 @@ export function resolveHyperframesCliRenderHardTimeoutMs(
   const explicit = parsePositiveInt(env?.HYPERFRAMES_CLI_RENDER_HARD_TIMEOUT_MS, 0);
   if (explicit > 0) return explicit;
   const durationSec = getFinalCompositeDurationSec(payload);
-  const estimatedMs = Math.max(5 * 60_000, Math.ceil(durationSec * 2_500));
-  return Math.min(12 * 60_000, estimatedMs);
+  const config = payload.finalCompositeConfig && typeof payload.finalCompositeConfig === "object"
+    ? payload.finalCompositeConfig as Record<string, unknown>
+    : {};
+  const shots = Array.isArray(config.shots) ? config.shots : Array.isArray(payload.shots) ? payload.shots : [];
+  const shotCount = shots.length;
+  const isFinalComposite =
+    payload.renderIntent === "final" ||
+    payload.compositionMode === "captioned_final_composite" ||
+    (payload.finalCompositeConfig && typeof payload.finalCompositeConfig === "object");
+  if (isFinalComposite) {
+    const estimatedMs = Math.max(
+      60 * 60_000,
+      Math.ceil(durationSec * 15_000) + shotCount * 5 * 60_000,
+    );
+    return Math.min(6 * 60 * 60_000, estimatedMs);
+  }
+  const estimatedMs = Math.max(15 * 60_000, Math.ceil(durationSec * 5_000));
+  return Math.min(60 * 60_000, estimatedMs);
 }
 
 function resolveThaiFontPath(env?: HyperframesRuntimeAdapterEnv): string | null {
-  const explicit = String(env?.HYPERFRAMES_THAI_FONT_PATH ?? "").trim();
-  if (explicit && existsSync(explicit)) return explicit;
+  const explicit = String(runtimeEnv(env).HYPERFRAMES_THAI_FONT_PATH ?? "").trim();
+  if (explicit) return existsSync(explicit) ? explicit : null;
   try {
     const output = execFileSync(
       "fc-match",
@@ -567,7 +600,9 @@ export function getHyperframesRuntimeDiagnostics(
 }
 
 export function resolveHyperframesCliBinary(env?: HyperframesRuntimeAdapterEnv): string {
-  const explicit = String(env?.HYPERFRAMES_CLI_BINARY ?? "").trim();
+  const resolved = resolveHyperframesCliBinaryPath(env);
+  if (resolved) return resolved;
+  const explicit = String(runtimeEnv(env).HYPERFRAMES_CLI_BINARY ?? "").trim();
   if (explicit) return explicit;
   const candidates = [
     join(process.cwd(), "node_modules", ".bin", "hyperframes"),
@@ -609,12 +644,81 @@ function runtimeToolSearchDirs(): string[] {
   ]);
 }
 
+function resolveConfiguredExecutable(value?: string): string | null {
+  const configured = String(value ?? "").trim();
+  if (!configured) return null;
+  if (configured.includes("/") || configured.includes("\\")) {
+    return executableExists(configured) ? configured : null;
+  }
+  return resolveCommandExecutable(configured);
+}
+
+function resolveCommandExecutable(binaryName: string): string | null {
+  const command = binaryName.trim();
+  if (!command) return null;
+  for (const dir of runtimeToolSearchDirs()) {
+    const candidate = join(dir, command);
+    if (executableExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+function resolveHyperframesCliBinaryPath(
+  env?: HyperframesRuntimeAdapterEnv
+): string | null {
+  const configured = String(runtimeEnv(env).HYPERFRAMES_CLI_BINARY ?? "").trim();
+  if (configured) return resolveConfiguredExecutable(configured);
+  const candidates = [
+    join(process.cwd(), "node_modules", ".bin", "hyperframes"),
+    join(process.cwd(), "apps", "web", "node_modules", ".bin", "hyperframes"),
+    join(process.cwd(), "..", "..", "node_modules", ".bin", "hyperframes"),
+  ];
+  const localBinary = candidates.find(candidate => executableExists(candidate));
+  return localBinary ?? resolveCommandExecutable("hyperframes");
+}
+
+function resolveBrowserExecutable(
+  env?: HyperframesRuntimeAdapterEnv
+): string | null {
+  const resolvedEnv = runtimeEnv(env);
+  for (const configured of [
+    resolvedEnv.HYPERFRAMES_BROWSER_BINARY,
+    resolvedEnv.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    resolvedEnv.CHROME_PATH,
+    resolvedEnv.PUPPETEER_EXECUTABLE_PATH,
+  ]) {
+    const value = String(configured ?? "").trim();
+    if (value) return resolveConfiguredExecutable(value);
+  }
+
+  for (const command of [
+    "google-chrome",
+    "chrome",
+    "chromium",
+    "chromium-browser",
+    "chrome-headless-shell",
+  ]) {
+    const executable = resolveCommandExecutable(command);
+    if (executable) return executable;
+  }
+
+  try {
+    const playwright = requireForRuntime("playwright") as {
+      chromium?: { executablePath?: () => string };
+    };
+    const executable = playwright.chromium?.executablePath?.();
+    return executable && executableExists(executable) ? executable : null;
+  } catch {
+    return null;
+  }
+}
+
 function resolveRuntimeExecutable(
   binaryName: "ffmpeg" | "ffprobe",
   explicitPath?: string
 ): string | null {
   const explicit = String(explicitPath ?? "").trim();
-  if (explicit) return executableExists(explicit) ? explicit : null;
+  if (explicit) return resolveConfiguredExecutable(explicit);
   for (const dir of runtimeToolSearchDirs()) {
     const candidate = join(dir, binaryName);
     if (executableExists(candidate)) return candidate;
@@ -625,11 +729,14 @@ function resolveRuntimeExecutable(
 export function buildHyperframesCliProcessEnv(
   env?: HyperframesRuntimeAdapterEnv
 ): NodeJS.ProcessEnv {
-  const ffmpegPath = resolveRuntimeExecutable("ffmpeg", env?.HYPERFRAMES_FFMPEG_BINARY);
-  const ffprobePath = resolveRuntimeExecutable("ffprobe", env?.HYPERFRAMES_FFPROBE_BINARY);
+  const resolvedEnv = runtimeEnv(env);
+  const ffmpegPath = resolveRuntimeExecutable("ffmpeg", resolvedEnv.HYPERFRAMES_FFMPEG_BINARY);
+  const ffprobePath = resolveRuntimeExecutable("ffprobe", resolvedEnv.HYPERFRAMES_FFPROBE_BINARY);
+  const browserPath = resolveBrowserExecutable(resolvedEnv);
   const toolDirs = [
     ffmpegPath ? dirname(ffmpegPath) : "",
     ffprobePath ? dirname(ffprobePath) : "",
+    browserPath ? dirname(browserPath) : "",
   ];
   return {
     ...process.env,
@@ -639,6 +746,12 @@ export function buildHyperframesCliProcessEnv(
     ]).join(delimiter),
     ...(ffmpegPath ? { FFMPEG_PATH: ffmpegPath } : {}),
     ...(ffprobePath ? { FFPROBE_PATH: ffprobePath } : {}),
+    ...(browserPath
+      ? {
+          CHROME_PATH: browserPath,
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: browserPath,
+        }
+      : {}),
   };
 }
 

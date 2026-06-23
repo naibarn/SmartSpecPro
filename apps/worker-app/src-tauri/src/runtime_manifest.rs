@@ -24,6 +24,12 @@ pub struct RuntimePackManifest {
     pub allowed: bool,
     pub deny_reason: Option<String>,
     pub rollback_to_version: Option<String>,
+    #[serde(default)]
+    pub archive_url: Option<String>,
+    #[serde(default)]
+    pub archive_sha256: Option<String>,
+    #[serde(default)]
+    pub archive_size_bytes: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -51,11 +57,27 @@ pub fn doctor_from_default_paths(resource_dir: &Path) -> DoctorSummary {
     doctor_from_manifest_path(&manifest_path, &sidecar_root)
 }
 
+pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf, PathBuf) {
+    let installed_manifest_path = app_data_dir.join("runtime-pack").join("manifest.json");
+    if installed_manifest_path.is_file() {
+        return (installed_manifest_path, app_data_dir.join("sidecars"));
+    }
+    (
+        resource_dir.join("runtime-pack").join("manifest.json"),
+        resource_dir.join("sidecars"),
+    )
+}
+
+pub fn doctor_from_installed_or_default_paths(
+    resource_dir: &Path,
+    app_data_dir: &Path,
+) -> DoctorSummary {
+    let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, app_data_dir);
+    doctor_from_manifest_path(&manifest_path, &sidecar_root)
+}
+
 pub fn doctor_from_manifest_path(manifest_path: &Path, sidecar_root: &Path) -> DoctorSummary {
-    let manifest = match fs::read_to_string(manifest_path)
-        .map_err(|error| error.to_string())
-        .and_then(|contents| serde_json::from_str::<RuntimePackManifest>(&contents).map_err(|error| error.to_string()))
-    {
+    let manifest = match read_runtime_pack_manifest(manifest_path) {
         Ok(manifest) => manifest,
         Err(error) => {
             return DoctorSummary {
@@ -66,7 +88,7 @@ pub fn doctor_from_manifest_path(manifest_path: &Path, sidecar_root: &Path) -> D
                     message: format!("Runtime manifest is unavailable: {error}"),
                     details_json: json!({ "path": manifest_path.to_string_lossy() }),
                 }],
-                recommended_actions: vec!["Download render runtime".into()],
+                recommended_actions: vec!["Install official HyperFrames runtime pack".into()],
             };
         }
     };
@@ -74,11 +96,36 @@ pub fn doctor_from_manifest_path(manifest_path: &Path, sidecar_root: &Path) -> D
     doctor_from_manifest(&manifest, sidecar_root)
 }
 
+pub fn read_runtime_pack_manifest(manifest_path: &Path) -> Result<RuntimePackManifest, String> {
+    fs::read_to_string(manifest_path)
+        .map_err(|error| error.to_string())
+        .and_then(|contents| {
+            serde_json::from_str::<RuntimePackManifest>(&contents)
+                .map_err(|error| error.to_string())
+        })
+}
+
+pub fn sidecar_path_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path) -> PathBuf {
+    safe_join(sidecar_root, &manifest.sidecar_path)
+}
+
 pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path) -> DoctorSummary {
     let mut checks = Vec::new();
     let mut recommended_actions = Vec::new();
     let sidecar_path = safe_join(sidecar_root, &manifest.sidecar_path);
+    let runtime_root = runtime_pack_root_for_sidecars(sidecar_root);
+    let checksum_path = safe_join(&runtime_root, &manifest.checksum_file);
+    let signature_path = safe_join(&runtime_root, &manifest.signature_file);
     let sidecar_exists = sidecar_path.exists();
+    let runtime_bundled = ![
+        manifest.version.as_str(),
+        manifest.hyperframes_version.as_str(),
+        manifest.browser_version.as_str(),
+        manifest.ffmpeg_version.as_str(),
+        manifest.ffprobe_version.as_str(),
+    ]
+    .iter()
+    .any(|value| *value == "0.0.0-placeholder" || *value == "not-bundled");
 
     checks.push(DoctorCheck {
         id: "runtime_manifest".into(),
@@ -103,6 +150,27 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     }
 
     checks.push(DoctorCheck {
+        id: "runtime_bundle".into(),
+        status: if runtime_bundled { "ok" } else { "error" }.into(),
+        message: if runtime_bundled {
+            "Official HyperFrames runtime bundle is present.".into()
+        } else {
+            "This Worker App build does not bundle the official HyperFrames runtime yet.".into()
+        },
+        details_json: json!({
+            "hyperframesVersion": manifest.hyperframes_version,
+            "browserVersion": manifest.browser_version,
+            "ffmpegVersion": manifest.ffmpeg_version,
+            "ffprobeVersion": manifest.ffprobe_version,
+        }),
+    });
+    if !runtime_bundled {
+        recommended_actions.push(
+            "Install a signed Smart AI Hub Worker runtime build that includes HyperFrames, browser, FFmpeg, ffprobe, and Thai fonts.".into(),
+        );
+    }
+
+    checks.push(DoctorCheck {
         id: "hyperframes_sidecar".into(),
         status: if sidecar_exists { "ok" } else { "error" }.into(),
         message: if sidecar_exists {
@@ -113,7 +181,7 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         details_json: json!({ "path": sidecar_path.to_string_lossy() }),
     });
     if !sidecar_exists {
-        recommended_actions.push("Download render runtime".into());
+        recommended_actions.push("Install official HyperFrames runtime pack".into());
     }
 
     let hash_ok = sidecar_exists
@@ -138,6 +206,33 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         recommended_actions.push("Verify or reinstall render runtime".into());
     }
 
+    let checksum_exists = checksum_path.is_file();
+    let signature_exists = signature_path.is_file();
+    checks.push(DoctorCheck {
+        id: "runtime_signature_bundle".into(),
+        status: if checksum_exists && signature_exists {
+            "ok"
+        } else {
+            "error"
+        }
+        .into(),
+        message: if checksum_exists && signature_exists {
+            "Runtime checksum and signature files are present.".into()
+        } else {
+            "Runtime checksum or signature file is missing.".into()
+        },
+        details_json: json!({
+            "checksumFile": checksum_path.to_string_lossy(),
+            "signatureFile": signature_path.to_string_lossy(),
+            "cryptographicVerification": "pending_official_public_key",
+        }),
+    });
+    if !(checksum_exists && signature_exists) {
+        recommended_actions.push(
+            "Install the signed official runtime pack with checksum and signature files".into(),
+        );
+    }
+
     let thai_font_ok = !manifest.thai_font_family.trim().is_empty();
     checks.push(DoctorCheck {
         id: "thai_font".into(),
@@ -155,8 +250,17 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
 
     checks.push(DoctorCheck {
         id: "tool_versions".into(),
-        status: "ok".into(),
-        message: "Runtime tool versions are declared.".into(),
+        status: if manifest.license_notices.is_empty() {
+            "error"
+        } else {
+            "ok"
+        }
+        .into(),
+        message: if manifest.license_notices.is_empty() {
+            "Runtime license notices are missing.".into()
+        } else {
+            "Runtime tool versions and license notices are declared.".into()
+        },
         details_json: json!({
             "hyperframes": manifest.hyperframes_version,
             "browser": manifest.browser_version,
@@ -166,6 +270,9 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             "licenseNotices": manifest.license_notices,
         }),
     });
+    if manifest.license_notices.is_empty() {
+        recommended_actions.push("Install a license-complete official runtime pack".into());
+    }
 
     let has_error = checks.iter().any(|check| check.status == "error");
     let has_warn = checks.iter().any(|check| check.status == "warn");
@@ -196,4 +303,17 @@ fn safe_join(root: &Path, relative: &str) -> PathBuf {
         return relative_path.to_path_buf();
     }
     root.join(relative_path)
+}
+
+fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
+    if sidecar_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "sidecars")
+    {
+        if let Some(parent) = sidecar_root.parent() {
+            return parent.join("runtime-pack");
+        }
+    }
+    sidecar_root.to_path_buf()
 }

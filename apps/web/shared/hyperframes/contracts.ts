@@ -586,6 +586,7 @@ export const HyperframesRenderStatusProjectionSchema = z
         workerLogsHidden: true,
         storageKeysHidden: true,
       }),
+    createdAt: SafeTextSchema.optional(),
     updatedAt: SafeTextSchema,
   })
   .strict();

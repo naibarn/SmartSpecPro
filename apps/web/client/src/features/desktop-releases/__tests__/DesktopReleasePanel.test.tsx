@@ -60,6 +60,28 @@ import { DesktopReleasePanel } from "../DesktopReleasePanel";
 
 const BUILD_SESSION_KEY = "smartaihub.desktop-release.build-session.v1";
 
+function maybeHandleDashboardReleaseRequest(href: string): Response | null {
+  if (href.includes("/marketplace-extension/latest")) {
+    return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  if (href.includes("/worker-app/latest")) {
+    return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  return null;
+}
+
 describe("DesktopReleasePanel", () => {
   beforeEach(() => {
     sessionStorage.clear();
@@ -101,6 +123,11 @@ describe("DesktopReleasePanel", () => {
 
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+
       if (href.includes("/builds/123/status")) {
         return new Response(
           JSON.stringify({
@@ -157,6 +184,9 @@ describe("DesktopReleasePanel", () => {
   });
 
   it("shows background portal sync guidance and retries when publishing stalls", async () => {
+    const queuedAt = new Date(Date.now() - 4 * 60_000).toISOString();
+    const workflowRunUpdatedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+    const portalSyncUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     const storedBuildResult: DesktopReleaseBuildResponse = {
       repository: "naibarn/SmartSpecPro",
       workflow: "desktop-release.yml",
@@ -165,7 +195,7 @@ describe("DesktopReleasePanel", () => {
       platform: "windows",
       bundleMode: "on-demand",
       releaseNotes: "Ship portal sync fixes",
-      queuedAt: "2026-04-10T10:00:00.000Z",
+      queuedAt,
       workflowRunId: "456",
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/456",
       workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
@@ -175,9 +205,9 @@ describe("DesktopReleasePanel", () => {
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/456",
       workflowRunStatus: "completed",
       workflowRunConclusion: "success",
-      workflowRunUpdatedAt: "2026-04-10T10:05:00.000Z",
+      workflowRunUpdatedAt,
       portalSyncStatus: "syncing",
-      portalSyncUpdatedAt: "2026-04-10T10:06:00.000Z",
+      portalSyncUpdatedAt,
       portalSyncError: "desktop_release_github_asset_not_found_windows",
       portalSyncAttempts: 2,
     };
@@ -192,6 +222,11 @@ describe("DesktopReleasePanel", () => {
 
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+
       if (href.includes("/builds/456/status")) {
         return new Response(
           JSON.stringify({
@@ -261,6 +296,11 @@ describe("DesktopReleasePanel", () => {
 
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+
       if (href.includes("/builds/777/status")) {
         return new Response(
           JSON.stringify({
@@ -325,6 +365,11 @@ describe("DesktopReleasePanel", () => {
 
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+
       if (href.includes("/builds/999/status")) {
         return new Response(
           JSON.stringify({
@@ -350,6 +395,55 @@ describe("DesktopReleasePanel", () => {
     expect(
       screen.getByText("dashboard:desktopReleases.admin.build.progress.stalledNote"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the Smart AI Hub Worker App dashboard download when a Windows installer is available", async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/marketplace-extension/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
+      if (href.includes("/worker-app/latest")) {
+        return new Response(
+          JSON.stringify({
+            generatedAt: "2026-04-10T10:00:00.000Z",
+            release: {
+              version: "0.1.0",
+              fileName: "smart-ai-hub-worker-app-0.1.0-x64-setup.exe",
+              fileSizeBytes: 2_100_000,
+              updatedAt: "2026-04-10T10:00:00.000Z",
+              downloadUrl: "/api/desktop-releases/worker-app/download",
+              installerFormat: "exe",
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    expect(await screen.findByText("dashboard:desktopReleases.workerApp.title")).toBeInTheDocument();
+    expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.0-x64-setup\.exe/)).toBeInTheDocument();
+    const downloadLink = screen.getByRole("link", {
+      name: /dashboard:desktopReleases\.workerApp\.download/,
+    });
+    expect(downloadLink).toHaveAttribute("href", "/api/desktop-releases/worker-app/download");
+    expect(
+      screen.queryByRole("link", { name: /dashboard:desktopReleases\.workerApp\.openJobs/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a collapsible build history with persisted run details", async () => {

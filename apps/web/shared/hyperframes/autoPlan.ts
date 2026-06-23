@@ -16,10 +16,36 @@ import {
   getHyperframesPlatformPreset,
 } from "./templates";
 
+export const HyperframesSpokenLanguageSchema = z.enum([
+  "en",
+  "th",
+  "zh",
+  "ja",
+  "ko",
+  "es",
+  "fr",
+  "de",
+  "vi",
+  "id",
+  "ms",
+  "hi",
+  "ar",
+  "pt",
+  "it",
+]);
+
+export type HyperframesSpokenLanguage = z.infer<
+  typeof HyperframesSpokenLanguageSchema
+>;
+
 export const HyperframesAutoPlanDefaultsSchema = z
   .object({
     outputMode: z.enum(["storyboard_images", "full_video"]),
-    frameStrategy: z.enum(["auto", "storyboard_3x3_split", "video_shot_start_stop"]),
+    frameStrategy: z.enum([
+      "auto",
+      "storyboard_3x3_split",
+      "video_shot_start_stop",
+    ]),
     audioStrategy: z.enum([
       "auto",
       "native_video_audio",
@@ -39,6 +65,7 @@ export const HyperframesAutoPlanDefaultsSchema = z
       ])
       .default("per_shot"),
     manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
+    speechLanguage: HyperframesSpokenLanguageSchema.default("en"),
     creativeBrief: z.string().trim().max(2000).optional().default(""),
     qualityMode: z.enum(["fast", "balanced", "high"]),
     renderEngine: MarketplaceAutoReviewRenderEngineSchema,
@@ -144,12 +171,12 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
     ])
     .optional(),
   manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
+  speechLanguage: HyperframesSpokenLanguageSchema.optional(),
   creativeBrief: z.string().trim().max(2000).optional(),
   qualityMode: z.enum(["fast", "balanced", "high"]).optional(),
-  platformPresetId: z.enum([
-    "generic_vertical_9_16",
-    "tiktok_reels_shorts_9_16",
-  ]).optional(),
+  platformPresetId: z
+    .enum(["generic_vertical_9_16", "tiktok_reels_shorts_9_16"])
+    .optional(),
 };
 
 export const HyperframesAutoPlanOverrideInputSchema = z
@@ -170,15 +197,18 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   videoModel: "veo3/generate-veo-3-video-lite",
   videoStructureMode: "per_shot",
   manualVideoGroupSize: "3",
+  speechLanguage: "en",
   creativeBrief: "",
   qualityMode: "balanced",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
 
-export function buildDefaultHyperframesAutoPlanDefaults(input: {
-  compositionMode?: HyperframesAutoPlanDefaults["compositionMode"];
-  renderIntent?: HyperframesAutoPlanDefaults["renderIntent"];
-  platformPresetId?: HyperframesAutoPlanDefaults["platformPreset"]["presetId"];
-} = {}): HyperframesAutoPlanDefaults {
+export function buildDefaultHyperframesAutoPlanDefaults(
+  input: {
+    compositionMode?: HyperframesAutoPlanDefaults["compositionMode"];
+    renderIntent?: HyperframesAutoPlanDefaults["renderIntent"];
+    platformPresetId?: HyperframesAutoPlanDefaults["platformPreset"]["presetId"];
+  } = {}
+): HyperframesAutoPlanDefaults {
   const compositionMode = input.compositionMode ?? "storyboard_motion_preview";
   const renderIntent = input.renderIntent ?? "preview";
   const platformPresetId =
@@ -202,6 +232,7 @@ export function buildDefaultHyperframesAutoPlanDefaults(input: {
     manualVideoGroupSize: Number(
       HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.manualVideoGroupSize
     ),
+    speechLanguage: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.speechLanguage,
     creativeBrief: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.creativeBrief,
     qualityMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.qualityMode,
     renderEngine: "hyperframes_composition",
@@ -234,11 +265,11 @@ export function normalizeHyperframesAutoPlanOverrides(
   if (audioStrategy.success && audioStrategy.data) {
     normalized.audioStrategy = audioStrategy.data;
   }
-  const shotCount =
-    HyperframesAutoPlanOverrideFieldSchemas.shotCount.safeParse(
-      overrides.shotCount
-    );
-  if (shotCount.success && shotCount.data) normalized.shotCount = shotCount.data;
+  const shotCount = HyperframesAutoPlanOverrideFieldSchemas.shotCount.safeParse(
+    overrides.shotCount
+  );
+  if (shotCount.success && shotCount.data)
+    normalized.shotCount = shotCount.data;
   const overlayTextMode =
     HyperframesAutoPlanOverrideFieldSchemas.overlayTextMode.safeParse(
       overrides.overlayTextMode
@@ -273,6 +304,13 @@ export function normalizeHyperframesAutoPlanOverrides(
     );
   if (manualVideoGroupSize.success && manualVideoGroupSize.data) {
     normalized.manualVideoGroupSize = manualVideoGroupSize.data;
+  }
+  const speechLanguage =
+    HyperframesAutoPlanOverrideFieldSchemas.speechLanguage.safeParse(
+      overrides.speechLanguage
+    );
+  if (speechLanguage.success && speechLanguage.data) {
+    normalized.speechLanguage = speechLanguage.data;
   }
   const creativeBrief =
     HyperframesAutoPlanOverrideFieldSchemas.creativeBrief.safeParse(
@@ -369,7 +407,8 @@ export function buildHyperframesAutoStoryboardReviewPlan(input: {
   now?: Date;
 }): HyperframesAutoStoryboardReviewPlan {
   const now = input.now ?? new Date();
-  const autoDefaults = input.defaults ?? buildDefaultHyperframesAutoPlanDefaults();
+  const autoDefaults =
+    input.defaults ?? buildDefaultHyperframesAutoPlanDefaults();
   const defaults = applyHyperframesAutoPlanOverrides({
     defaults: autoDefaults,
     overrides: input.overrides,
@@ -386,26 +425,27 @@ export function buildHyperframesAutoStoryboardReviewPlan(input: {
     defaults: autoDefaults,
     overrides: input.overrides,
   });
-  const canStart = input.access.capabilities.canStartAuto && blockers.length === 0;
+  const canStart =
+    input.access.capabilities.canStartAuto && blockers.length === 0;
   const primaryAction = canStart
-      ? {
-          actionId: "start_auto_storyboard_review" as const,
-          label: "Create Auto Storyboard Review",
-          disabled: false,
-          copyId: "hyperframes.action.start_auto_storyboard_review",
-        }
-      : {
-          actionId: input.access.standardOrderAvailable
-            ? ("use_standard_order" as const)
-            : ("review_blockers" as const),
-          label: input.access.standardOrderAvailable
-            ? "Use Standard Order"
-            : "Review blockers",
-          disabled: false,
-          copyId: input.access.standardOrderAvailable
-            ? "hyperframes.action.use_standard_order"
-            : "hyperframes.action.review_blockers",
-        };
+    ? {
+        actionId: "start_auto_storyboard_review" as const,
+        label: "Create Auto Storyboard Review",
+        disabled: false,
+        copyId: "hyperframes.action.start_auto_storyboard_review",
+      }
+    : {
+        actionId: input.access.standardOrderAvailable
+          ? ("use_standard_order" as const)
+          : ("review_blockers" as const),
+        label: input.access.standardOrderAvailable
+          ? "Use Standard Order"
+          : "Review blockers",
+        disabled: false,
+        copyId: input.access.standardOrderAvailable
+          ? "hyperframes.action.use_standard_order"
+          : "hyperframes.action.review_blockers",
+      };
   const planFingerprint = {
     productId: input.productId,
     tenantId: input.tenantId || "default",
@@ -441,7 +481,8 @@ export function buildHyperframesAutoStoryboardReviewPlan(input: {
     expiresAt: new Date(now.getTime() + 60_000).toISOString(),
     display: {
       title: "Auto Storyboard Review",
-      summary: "Backend-selected template, platform, render engine, and defaults.",
+      summary:
+        "Backend-selected template, platform, render engine, and defaults.",
       statusCopyId:
         blockers.length > 0
           ? "hyperframes.status.blocked_needs_user"

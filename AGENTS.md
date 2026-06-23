@@ -52,11 +52,11 @@ SocratiCode is active.
 ## Sub-Agent Model Routing
 
 When spawning Codex sub-agents for bounded, routine, or non-deep work, pass the
-actual tool override `model: "gpt-5.3-codex-spark"`. Task-packet metadata alone
+actual tool override `model: "gpt-5.5"`. Task-packet metadata alone
 is not enough.
 
 Use the inherited/default model instead when the user explicitly requests another
-model, the work is deep/high-risk/performance-critical, a Spark attempt fails or
+model, the work is deep/high-risk/performance-critical, a GPT 5.5 attempt fails or
 blocks, or a gate retry needs broader reasoning.
 
 ## Communication Style

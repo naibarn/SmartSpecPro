@@ -7,13 +7,15 @@ import crypto from "crypto";
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure, domainAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { llmProviders, users, creditTransactions } from "../../drizzle/schema";
-import { eq, desc, like, or, sql, and } from "drizzle-orm";
+import { creditTransactions, groupMembers, llmProviders, userGroups, users, workers } from "../../drizzle/schema";
+import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
 import { SUPPORTED_LANGUAGES } from "../../shared/i18n";
 import {
+  connectedWorkerRecordSchema,
+  connectedWorkerSharingModeSchema,
   getWorkerAccessPermissionScopesForPreset,
   normalizeWorkerAccessKeysPreferences,
   normalizeWorkerAccessPermissionScopes,
@@ -22,8 +24,13 @@ import {
   workerAccessPermissionScopeSchema,
   workerAccessQuotaPolicySchema,
   workerLlmRoutingModeSchema,
+  type ConnectedWorkerRecord,
+  type ConnectedWorkerSharingMode,
 } from "../../shared/workerAccessKeys";
-import { workerRuntimeTypeSchema } from "../../shared/workerRuntime";
+import {
+  getWorkerRuntimeDefinition,
+  workerRuntimeTypeSchema,
+} from "../../shared/workerRuntime";
 import {
   resolveEffectiveUserAutomationPolicy,
   updateUserBrowserPolicyProfile,
@@ -109,6 +116,12 @@ const revokeWorkerAccessKeySchema = z.object({
   keyId: z.string().min(1),
 });
 
+const updateConnectedWorkerSharingSchema = z.object({
+  workerId: z.string().min(1),
+  sharingMode: connectedWorkerSharingModeSchema,
+  groupIds: z.array(z.number().int().positive()).max(50).default([]),
+});
+
 const userPreferencesOutputSchema = z
   .object({
     translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
@@ -125,6 +138,102 @@ const userPreferencesOutputSchema = z
     localAi: localAiPreferencesSchema.optional(),
   })
   .passthrough();
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function deriveConnectedWorkerType(worker: {
+  externalReference: string;
+  runtimeType: z.infer<typeof workerRuntimeTypeSchema>;
+}): { workerTypeKey: string; workerTypeLabel: string } {
+  if (worker.externalReference.startsWith("worker-app://") || worker.runtimeType === "desktop_zeroclaw_managed") {
+    return {
+      workerTypeKey: "smart_ai_hub_worker_app",
+      workerTypeLabel: "Smart AI Hub Worker App",
+    };
+  }
+  if (worker.runtimeType === "hermes_agent_gateway") {
+    return {
+      workerTypeKey: "hermes_gateway_worker",
+      workerTypeLabel: "Hermes Gateway Worker",
+    };
+  }
+  if (worker.runtimeType === "openclaw_gateway") {
+    return {
+      workerTypeKey: "openclaw_gateway_worker",
+      workerTypeLabel: "OpenClaw Gateway Worker",
+    };
+  }
+  if (worker.runtimeType === "nemoclaw_sandbox") {
+    return {
+      workerTypeKey: "nemoclaw_sandbox_worker",
+      workerTypeLabel: "NemoClaw Sandbox Worker",
+    };
+  }
+  return {
+    workerTypeKey: "hiclaw_cluster_worker",
+    workerTypeLabel: "HiClaw Cluster Worker",
+  };
+}
+
+function normalizeConnectedWorkerSharing(
+  worker: {
+    workerMode: string;
+    capabilitiesJson: unknown;
+  },
+  groupNameById: Map<number, string>,
+): Pick<ConnectedWorkerRecord, "sharingMode" | "sharedGroups"> {
+  const capabilities = asObject(worker.capabilitiesJson);
+  const workerApp = asObject(capabilities.workerApp);
+  const runtimeMetadata = asObject(capabilities.runtimeMetadata);
+  const sharingPolicy = asObject(runtimeMetadata.workerSharingPolicy);
+  const rawMode = [
+    sharingPolicy.mode,
+    workerApp.ownerSharingMode,
+    workerApp.sharingMode,
+  ].find((value) => typeof value === "string" && value.trim().length > 0);
+
+  let sharingMode: ConnectedWorkerSharingMode = "private";
+  switch (String(rawMode ?? "").trim().toLowerCase()) {
+    case "group":
+    case "groups":
+    case "group_pool":
+      sharingMode = "groups";
+      break;
+    case "tenant":
+    case "tenant_pool":
+      sharingMode = "tenant";
+      break;
+    case "private":
+    case "private_owner":
+      sharingMode = "private";
+      break;
+    default:
+      sharingMode = worker.workerMode === "per_user" ? "private" : "tenant";
+      break;
+  }
+
+  const rawGroupIds = Array.isArray(sharingPolicy.groupIds)
+    ? sharingPolicy.groupIds
+    : Array.isArray(workerApp.sharedGroupIds)
+      ? workerApp.sharedGroupIds
+      : [];
+  const sharedGroups = rawGroupIds
+    .map((value) => Number(value))
+    .filter((value, index, list) => Number.isInteger(value) && value > 0 && list.indexOf(value) === index)
+    .map((id) => ({
+      id,
+      name: groupNameById.get(id) ?? `Group ${id}`,
+    }));
+
+  return {
+    sharingMode,
+    sharedGroups,
+  };
+}
 
 export const usersRouter = router({
   /**
@@ -864,6 +973,252 @@ export const usersRouter = router({
         workerAccessKeys: ((row?.userPreferences as Record<string, unknown> | null | undefined)?.workerAccessKeys as unknown[]) ?? [],
       });
       return { keys: workerPrefs.workerAccessKeys };
+    }),
+
+  listConnectedWorkers: protectedProcedure
+    .output(z.object({
+      workers: z.array(connectedWorkerRecordSchema),
+    }))
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      if (!tenantId) {
+        throw new Error("Tenant context is required");
+      }
+
+      const [workerRows, activeGroups] = await Promise.all([
+        db
+          .select({
+            id: workers.id,
+            displayName: workers.displayName,
+            externalReference: workers.externalReference,
+            runtimeType: workers.runtimeType,
+            workerMode: workers.workerMode,
+            status: workers.status,
+            machineId: workers.machineId,
+            machineName: workers.machineName,
+            runtimeVersion: workers.runtimeVersion,
+            lastSeenAt: workers.lastSeenAt,
+            teamId: workers.teamId,
+            capabilitiesJson: workers.capabilitiesJson,
+          })
+          .from(workers)
+          .where(and(eq(workers.tenantId, tenantId), eq(workers.registeredByUserId, ctx.user.id)))
+          .orderBy(desc(workers.lastSeenAt), desc(workers.updatedAt)),
+        db
+          .select({
+            id: userGroups.id,
+            name: userGroups.name,
+          })
+          .from(userGroups)
+          .leftJoin(
+            groupMembers,
+            and(
+              eq(groupMembers.groupId, userGroups.id),
+              eq(groupMembers.userId, ctx.user.id),
+              eq(groupMembers.status, "active"),
+            ),
+          )
+          .where(and(
+            eq(userGroups.tenantId, tenantId),
+            isNull(userGroups.deletedAt),
+            or(eq(userGroups.ownerId, ctx.user.id), sql`${groupMembers.id} is not null`),
+          )),
+      ]);
+
+      const groupNameById = new Map(activeGroups.map((group) => [group.id, group.name]));
+      const connectedWorkers = workerRows.map((worker) => {
+        const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
+        const workerType = deriveConnectedWorkerType(worker);
+        const sharing = normalizeConnectedWorkerSharing(worker, groupNameById);
+        const runtimeMetadata = asObject(asObject(worker.capabilitiesJson).runtimeMetadata);
+        const accessPolicy = asObject(runtimeMetadata.workerAccessPolicy);
+        const preferredProviderName = typeof runtimeMetadata.preferredProviderName === "string"
+          && runtimeMetadata.preferredProviderName.trim().length > 0
+          ? runtimeMetadata.preferredProviderName.trim()
+          : null;
+        const permissionPreset = typeof accessPolicy.permissionPreset === "string"
+          && accessPolicy.permissionPreset.trim().length > 0
+          ? accessPolicy.permissionPreset.trim()
+          : null;
+        const permissionScopeCount = normalizeWorkerAccessPermissionScopes(accessPolicy.permissionScopes).length;
+        const quotaParts = [
+          typeof accessPolicy.quotaHourly === "number" && accessPolicy.quotaHourly > 0 ? `H${Math.floor(accessPolicy.quotaHourly)}` : null,
+          typeof accessPolicy.quotaDaily === "number" && accessPolicy.quotaDaily > 0 ? `D${Math.floor(accessPolicy.quotaDaily)}` : null,
+          typeof accessPolicy.quotaWeekly === "number" && accessPolicy.quotaWeekly > 0 ? `W${Math.floor(accessPolicy.quotaWeekly)}` : null,
+          typeof accessPolicy.quotaMonthly === "number" && accessPolicy.quotaMonthly > 0 ? `M${Math.floor(accessPolicy.quotaMonthly)}` : null,
+        ].filter((value): value is string => Boolean(value));
+
+        return connectedWorkerRecordSchema.parse({
+          workerId: worker.id,
+          displayName: worker.displayName,
+          externalReference: worker.externalReference,
+          runtimeType: worker.runtimeType,
+          runtimeLabel: runtimeDefinition.displayName,
+          runtimeFamily: runtimeDefinition.familyName,
+          workerTypeKey: workerType.workerTypeKey,
+          workerTypeLabel: workerType.workerTypeLabel,
+          workerMode: worker.workerMode,
+          status: worker.status,
+          machineId: worker.machineId ?? null,
+          machineName: worker.machineName ?? null,
+          runtimeVersion: worker.runtimeVersion ?? null,
+          lastSeenAt: worker.lastSeenAt?.toISOString() ?? null,
+          teamId: worker.teamId ?? null,
+          sharingMode: sharing.sharingMode,
+          sharedGroups: sharing.sharedGroups,
+          preferredProviderName,
+          permissionPreset,
+          permissionScopeCount,
+          quotaDisplayLabel: quotaParts.length > 0 ? quotaParts.join(" / ") : null,
+        });
+      });
+
+      return { workers: connectedWorkers };
+    }),
+
+  updateConnectedWorkerSharing: protectedProcedure
+    .input(updateConnectedWorkerSharingSchema)
+    .output(z.object({
+      worker: connectedWorkerRecordSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      if (!tenantId) {
+        throw new Error("Tenant context is required");
+      }
+      if (input.sharingMode === "groups" && input.groupIds.length === 0) {
+        throw new Error("Select at least one group before enabling group sharing");
+      }
+
+      const [workerRow] = await db
+        .select({
+          id: workers.id,
+          displayName: workers.displayName,
+          externalReference: workers.externalReference,
+          runtimeType: workers.runtimeType,
+          workerMode: workers.workerMode,
+          status: workers.status,
+          machineId: workers.machineId,
+          machineName: workers.machineName,
+          runtimeVersion: workers.runtimeVersion,
+          lastSeenAt: workers.lastSeenAt,
+          teamId: workers.teamId,
+          capabilitiesJson: workers.capabilitiesJson,
+        })
+        .from(workers)
+        .where(and(
+          eq(workers.id, input.workerId),
+          eq(workers.tenantId, tenantId),
+          eq(workers.registeredByUserId, ctx.user.id),
+        ))
+        .limit(1);
+
+      if (!workerRow) {
+        throw new Error("Connected worker not found");
+      }
+
+      const normalizedGroupIds = Array.from(new Set(input.groupIds.map((value) => Math.floor(value))));
+      const allowedGroups = normalizedGroupIds.length === 0
+        ? []
+        : await db
+          .select({
+            id: userGroups.id,
+            name: userGroups.name,
+          })
+          .from(userGroups)
+          .leftJoin(
+            groupMembers,
+            and(
+              eq(groupMembers.groupId, userGroups.id),
+              eq(groupMembers.userId, ctx.user.id),
+              eq(groupMembers.status, "active"),
+            ),
+          )
+          .where(and(
+            eq(userGroups.tenantId, tenantId),
+            isNull(userGroups.deletedAt),
+            inArray(userGroups.id, normalizedGroupIds),
+            or(eq(userGroups.ownerId, ctx.user.id), sql`${groupMembers.id} is not null`),
+          ));
+
+      if (normalizedGroupIds.length !== allowedGroups.length) {
+        throw new Error("Some selected groups are unavailable for this worker");
+      }
+
+      const capabilities = asObject(workerRow.capabilitiesJson);
+      const workerApp = asObject(capabilities.workerApp);
+      const runtimeMetadata = asObject(capabilities.runtimeMetadata);
+      const nextSharingMode = input.sharingMode === "groups"
+        ? "group"
+        : input.sharingMode;
+      const nextCapabilities = {
+        ...capabilities,
+        workerApp: {
+          ...workerApp,
+          sharingMode: nextSharingMode,
+          sharedGroupIds: input.sharingMode === "groups" ? normalizedGroupIds : [],
+        },
+        runtimeMetadata: {
+          ...runtimeMetadata,
+          workerSharingPolicy: {
+            mode: input.sharingMode,
+            groupIds: input.sharingMode === "groups" ? normalizedGroupIds : [],
+            updatedAt: new Date().toISOString(),
+            updatedByUserId: ctx.user.id,
+          },
+        },
+      };
+
+      const nextWorkerMode = input.sharingMode === "private"
+        ? "per_user"
+        : "shared_department";
+
+      await db
+        .update(workers)
+        .set({
+          workerMode: nextWorkerMode,
+          capabilitiesJson: nextCapabilities,
+          updatedAt: new Date(),
+        })
+        .where(eq(workers.id, workerRow.id));
+
+      const runtimeDefinition = getWorkerRuntimeDefinition(workerRow.runtimeType);
+      const workerType = deriveConnectedWorkerType(workerRow);
+      const updatedWorker = connectedWorkerRecordSchema.parse({
+        workerId: workerRow.id,
+        displayName: workerRow.displayName,
+        externalReference: workerRow.externalReference,
+        runtimeType: workerRow.runtimeType,
+        runtimeLabel: runtimeDefinition.displayName,
+        runtimeFamily: runtimeDefinition.familyName,
+        workerTypeKey: workerType.workerTypeKey,
+        workerTypeLabel: workerType.workerTypeLabel,
+        workerMode: nextWorkerMode,
+        status: workerRow.status,
+        machineId: workerRow.machineId ?? null,
+        machineName: workerRow.machineName ?? null,
+        runtimeVersion: workerRow.runtimeVersion ?? null,
+        lastSeenAt: workerRow.lastSeenAt?.toISOString() ?? null,
+        teamId: workerRow.teamId ?? null,
+        sharingMode: input.sharingMode,
+        sharedGroups: allowedGroups,
+        preferredProviderName: typeof runtimeMetadata.preferredProviderName === "string"
+          ? runtimeMetadata.preferredProviderName
+          : null,
+        permissionPreset: typeof asObject(runtimeMetadata.workerAccessPolicy).permissionPreset === "string"
+          ? String(asObject(runtimeMetadata.workerAccessPolicy).permissionPreset)
+          : null,
+        permissionScopeCount: normalizeWorkerAccessPermissionScopes(asObject(runtimeMetadata.workerAccessPolicy).permissionScopes).length,
+        quotaDisplayLabel: null,
+      });
+
+      return { worker: updatedWorker };
     }),
 
   createWorkerAccessKey: protectedProcedure

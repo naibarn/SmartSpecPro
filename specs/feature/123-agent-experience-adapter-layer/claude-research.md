@@ -175,7 +175,7 @@ Implementation plans should replace placeholders with exact files after the pack
 
 1. The first implementation must be package/contracts/fixtures/flags only.
 2. No visible UI replacement should be part of MVP.
-3. No `@runtypelabs/persona` dependency should be installed in Phase 0.
+3. Initial Phase 0 research advised not installing `@runtypelabs/persona`; the 2026-06-22 follow-up directive supersedes this by installing `@runtypelabs/persona@4.4.0` only for gated bridge evaluation.
 4. Adapter functions should be pure and dependency-free.
 5. Golden fixtures are the central safety mechanism.
 6. Feature flag precedence must be centralized and testable.

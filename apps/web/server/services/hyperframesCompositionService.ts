@@ -294,34 +294,6 @@ export function getHyperframesFinalCompositeFallbackCapability(
   };
 }
 
-function isManualStoryboardFinalCompositeInput(input: {
-  productId: string;
-  runId: string;
-  productState?: unknown;
-  runState?: unknown;
-}): boolean {
-  const productId = cleanId(input.productId, "");
-  const runId = cleanId(input.runId, "");
-  if (
-    /^manual(?:_storyboard)?_product_/i.test(productId) ||
-    /^manual(?:_storyboard)?_run_/i.test(runId)
-  ) {
-    return true;
-  }
-  const product = productRecordFromState(input.productState);
-  const platformRawJson = isRecord(product.platformRawJson) ? product.platformRawJson : {};
-  if (platformRawJson.manualStoryboardReview === true) return true;
-  const run = isRecord(input.runState) ? input.runState : {};
-  const metadataJson = isRecord(run.metadataJson) ? run.metadataJson : {};
-  const resultJson = isRecord(run.resultJson) ? run.resultJson : {};
-  return (
-    run.launchMode === "manual_storyboard_review" ||
-    run.status === "manual_storyboard_review" ||
-    metadataJson.manualStoryboardReview === true ||
-    resultJson.manualStoryboardReview === true
-  );
-}
-
 export function buildHyperframesCompositionInput(input: {
   tenantId: string;
   userId: number | string;
@@ -481,7 +453,7 @@ export function buildHyperframesFinalCompositeCompositionInput(input: {
   const finalCompositeInput = HyperframesFinalCompositeConfigSchema.parse(
     input.finalComposite
   );
-  const allowFfmpegAssFallback = isManualStoryboardFinalCompositeInput(input);
+  const allowFfmpegAssFallback = false;
   const sanitizedShots = finalCompositeInput.shots.map((shot, index) => ({
     id: sanitizeHyperframesText(shot.id, 160) || `shot_${index + 1}`,
     index: shot.index,
@@ -923,9 +895,10 @@ function buildHyperframesFinalCompositeHtml(input: {
       [data-overlay-preset="electronics_spec_stack"] .shot-line:first-child { width: auto; border-radius: 18px; background: #38bdf8; color: #020617; font-size: 42px; box-shadow: 0 14px 32px rgba(56,189,248,.28); }
       [data-overlay-preset="electronics_spec_stack"] .shot-line + .shot-line { width: auto; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(255,255,255,.12); color: #f8fafc; font-size: 30px; box-shadow: none; }
       [data-overlay-preset="split_product_specs"] .shade { background: linear-gradient(90deg, rgba(2,6,23,.78) 0 43%, rgba(2,6,23,.08) 44% 100%); }
-      [data-overlay-preset="split_product_specs"] .shot-copy { top: 13%; right: auto; left: 6%; max-width: 40%; gap: 14px; }
-      [data-overlay-preset="split_product_specs"] .shot-line:first-child { border-radius: 0 22px 22px 0; background: #f8fafc; color: #0f172a; font-size: 48px; box-shadow: 0 14px 36px rgba(2,6,23,.26); }
-      [data-overlay-preset="split_product_specs"] .shot-line + .shot-line { border-radius: 999px; background: #facc15; color: #020617; font-size: 32px; transform: translateX(28px); }
+      [data-overlay-preset="split_product_specs"] .shot-copy { top: 13%; right: auto; left: 7%; width: min(48%, 500px); max-width: 48%; gap: 14px; overflow: hidden; }
+      [data-overlay-preset="split_product_specs"] .shot-line { display: block; box-sizing: border-box; width: 100%; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; word-break: break-word; text-wrap: balance; transform: none !important; }
+      [data-overlay-preset="split_product_specs"] .shot-line:first-child { border-radius: 0 22px 22px 0; background: #f8fafc; color: #0f172a; font-size: 38px; line-height: 1.12; box-shadow: 0 14px 36px rgba(2,6,23,.26); }
+      [data-overlay-preset="split_product_specs"] .shot-line + .shot-line { border-radius: 999px; background: #facc15; color: #020617; font-size: 25px; line-height: 1.14; }
       [data-overlay-preset="neon_gaming_specs"] .shade { background: radial-gradient(circle at 70% 16%, rgba(34,211,238,.28), transparent 28%), radial-gradient(circle at 22% 72%, rgba(217,70,239,.22), transparent 30%), linear-gradient(180deg, rgba(2,6,23,.25), rgba(2,6,23,.78)); }
       [data-overlay-preset="neon_gaming_specs"] .shot-copy { top: 9%; left: 7%; right: 7%; gap: 12px; }
       [data-overlay-preset="neon_gaming_specs"] .shot-line:first-child { border: 1px solid rgba(34,211,238,.62); background: rgba(2,6,23,.76); color: #cffafe; font-size: 58px; box-shadow: 0 0 42px rgba(34,211,238,.32); }

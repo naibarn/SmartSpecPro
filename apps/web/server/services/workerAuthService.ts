@@ -191,9 +191,12 @@ function normalizeDeviceBinding(input?: WorkerDeviceBindingInput): NormalizedWor
   if (!deviceId || !machineFingerprint || !publicKey) {
     throw new Error("deviceId, machineFingerprint, and publicKey are required for worker device binding");
   }
+  const machineFingerprintHash = /^[a-f0-9]{64}$/i.test(machineFingerprint)
+    ? machineFingerprint.toLowerCase()
+    : sha256Hex(machineFingerprint);
   return {
     deviceId,
-    machineFingerprintHash: sha256Hex(machineFingerprint),
+    machineFingerprintHash,
     publicKey,
     publicKeyFingerprint: sha256Hex(publicKey),
   };

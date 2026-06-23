@@ -102,6 +102,7 @@ import {
   normalizeAutoReviewCreativePresetSelections,
   type AutoReviewCreativePresetSelection,
 } from "../../shared/hyperframes/autoReviewCreativePresets";
+import type { HyperframesSpokenLanguage } from "../../shared/hyperframes/autoPlan";
 import {
   buildVideoSegmentPrompt,
   normalizeVideoSegmentCreativeBrief,
@@ -239,6 +240,26 @@ const DEFAULT_VIDEO_MODEL: MarketplaceAutoReviewVideoModel =
   "veo3/generate-veo-3-video-lite";
 const ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID =
   "elevenlabs-product-voiceover-dialogue";
+const MARKETPLACE_AUTO_REVIEW_SPOKEN_LANGUAGE_LABELS: Record<
+  HyperframesSpokenLanguage,
+  string
+> = {
+  en: "English",
+  th: "Thai",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  vi: "Vietnamese",
+  id: "Indonesian",
+  ms: "Malay",
+  hi: "Hindi",
+  ar: "Arabic",
+  pt: "Portuguese",
+  it: "Italian",
+};
 const MARKETPLACE_AUTO_REVIEW_VOICEOVER_SPEECH_STYLES = [
   "friendly_expert",
   "friend_to_friend",
@@ -307,6 +328,329 @@ const MARKETPLACE_AUTO_REVIEW_VIDEO_AUDIO_PROFILES = [
       "Light playful SFX from real scene actions only: soft object clicks, gentle placement, small hand movement ASMR, cozy room tone. No music.",
   },
 ] as const;
+
+function normalizeMarketplaceAutoReviewSpeechLanguage(
+  value: unknown
+): HyperframesSpokenLanguage {
+  const normalized = cleanText(value).toLowerCase();
+  if (normalized in MARKETPLACE_AUTO_REVIEW_SPOKEN_LANGUAGE_LABELS) {
+    return normalized as HyperframesSpokenLanguage;
+  }
+  return "en";
+}
+
+function marketplaceAutoReviewSpokenLanguageLabel(value: unknown): string {
+  return MARKETPLACE_AUTO_REVIEW_SPOKEN_LANGUAGE_LABELS[
+    normalizeMarketplaceAutoReviewSpeechLanguage(value)
+  ];
+}
+
+function marketplaceAutoReviewSpokenLanguageLocale(value: unknown): string {
+  switch (normalizeMarketplaceAutoReviewSpeechLanguage(value)) {
+    case "th":
+      return "th-TH";
+    case "zh":
+      return "zh-CN";
+    case "ja":
+      return "ja-JP";
+    case "ko":
+      return "ko-KR";
+    case "es":
+      return "es-ES";
+    case "fr":
+      return "fr-FR";
+    case "de":
+      return "de-DE";
+    case "vi":
+      return "vi-VN";
+    case "id":
+      return "id-ID";
+    case "ms":
+      return "ms-MY";
+    case "hi":
+      return "hi-IN";
+    case "ar":
+      return "ar-SA";
+    case "pt":
+      return "pt-BR";
+    case "it":
+      return "it-IT";
+    case "en":
+    default:
+      return "en-US";
+  }
+}
+
+function marketplaceAutoReviewSpokenLanguageAppLocale(value: unknown): string {
+  return marketplaceAutoReviewSpokenLanguageLocale(value).split("-")[0] || "en";
+}
+
+function containsMarketplaceAutoReviewNonLatinScript(value: string): boolean {
+  return /[\u0E00-\u0E7F\u3040-\u30FF\u3400-\u9FFF\uAC00-\uD7AF\u0900-\u097F\u0600-\u06FF]/u.test(
+    value
+  );
+}
+
+function containsMarketplaceAutoReviewThaiScript(value: string): boolean {
+  return /[\u0E00-\u0E7F]/u.test(value);
+}
+
+const MARKETPLACE_AUTO_REVIEW_THAI_PROMPT_TRANSLATIONS: Array<{
+  pattern: RegExp;
+  replacement: string;
+}> = [
+  { pattern: /แกนเรื่อง/g, replacement: "story arc" },
+  { pattern: /เปิดปัญหาของรก/g, replacement: "open with the clutter problem" },
+  { pattern: /เปิดปัญหา/g, replacement: "open with the customer problem" },
+  { pattern: /ปัญหาของรก/g, replacement: "clutter problem" },
+  { pattern: /ของรก/g, replacement: "cluttered items" },
+  { pattern: /โต๊ะเข้าฉาก/g, replacement: "the product enters the scene" },
+  {
+    pattern: /วางโต๊ะข้างเตียง\s*แล้วจัดของจำเป็นให้เป็นที่/g,
+    replacement:
+      "place the bedside table and organize essential items into clear spots",
+  },
+  {
+    pattern: /มือจัดโคมไฟ\s*หนังสือ\s*และแก้วน้ำบนโต๊ะ/g,
+    replacement: "hands arrange a lamp, books, and a glass of water on the table",
+  },
+  {
+    pattern: /มือหยิบของบนโต๊ะ/g,
+    replacement: "a hand reaches for cluttered items on the table",
+  },
+  {
+    pattern: /ให้เห็นปัญหา\s*แล้วค่อยโชว์สินค้า/g,
+    replacement: "show the problem first, then reveal the product",
+  },
+  {
+    pattern: /กล้องค่อย\s*ๆ\s*เคลื่อนเข้า/g,
+    replacement: "slow push-in camera movement",
+  },
+  { pattern: /มุมกล้องใกล้/g, replacement: "close camera angle" },
+  { pattern: /โชว์วิธีจัดของ/g, replacement: "show the organizing method" },
+  { pattern: /โชว์การจัดของ/g, replacement: "show the organization proof" },
+  { pattern: /จัดของจำเป็นให้เป็นที่/g, replacement: "organize essentials into clear spots" },
+  { pattern: /จัดของ/g, replacement: "organize items" },
+  { pattern: /ปิดด้วยผลลัพธ์/g, replacement: "close with the result" },
+  { pattern: /ผลลัพธ์/g, replacement: "result" },
+  { pattern: /สินค้าแม่และเด็ก/g, replacement: "mother and baby product" },
+  { pattern: /แม่และเด็ก/g, replacement: "mother and baby" },
+  { pattern: /เก้าอี้กินข้าวเด็ก/g, replacement: "baby high chair" },
+  { pattern: /เครื่องใช้ไฟฟ้าภายในบ้าน/g, replacement: "home electrical appliance" },
+  {
+    pattern: /เครื่องใช้ไฟฟ้าในครัวขนาดเล็ก/g,
+    replacement: "small kitchen appliance",
+  },
+  { pattern: /เครื่องชงกาแฟและอุปกรณ์/g, replacement: "coffee machine and accessories" },
+  { pattern: /เครื่องชงกาแฟ/g, replacement: "coffee machine" },
+  { pattern: /โต๊ะวางของข้างเตียงสีเขียว/g, replacement: "green bedside shelf" },
+  { pattern: /โต๊ะข้างเตียง/g, replacement: "bedside table" },
+  { pattern: /ข้างเตียง/g, replacement: "bedside" },
+  { pattern: /โต๊ะตัวนี้/g, replacement: "this product" },
+  { pattern: /ช่วยให้/g, replacement: "helps" },
+  { pattern: /ห้องดูเป็นระเบียบขึ้น/g, replacement: "the room look more organized" },
+  { pattern: /ของจำเป็น/g, replacement: "essential items" },
+  { pattern: /มีที่อยู่ชัดเจนขึ้น/g, replacement: "have clearer places" },
+  { pattern: /หยิบอะไรก็ไม่เจอ/g, replacement: "hard to find anything" },
+  { pattern: /มือ/g, replacement: "hands" },
+  { pattern: /หยิบ/g, replacement: "pick up" },
+  { pattern: /วาง/g, replacement: "place" },
+  { pattern: /โคมไฟ/g, replacement: "lamp" },
+  { pattern: /หนังสือ/g, replacement: "books" },
+  { pattern: /แก้วน้ำ/g, replacement: "water glass" },
+  { pattern: /บนโต๊ะ/g, replacement: "on the table" },
+  { pattern: /โต๊ะ/g, replacement: "table" },
+  { pattern: /สินค้า/g, replacement: "product" },
+  { pattern: /ภาพ/g, replacement: "image" },
+  { pattern: /ให้ตรง/g, replacement: "match" },
+  { pattern: /แก้/g, replacement: "repair" },
+  { pattern: /ปัญหา/g, replacement: "problem" },
+];
+
+function translateMarketplaceAutoReviewThaiPromptText(value: string): string {
+  let translated = stripVideoTimingTextForImagePrompt(value)
+    .replace(/->/g, " -> ")
+    .replace(/[:：]/g, ": ")
+    .replace(/\s+/g, " ")
+    .trim();
+  for (const rule of MARKETPLACE_AUTO_REVIEW_THAI_PROMPT_TRANSLATIONS) {
+    translated = translated.replace(rule.pattern, ` ${rule.replacement} `);
+  }
+  return translated
+    .replace(/[\u0E00-\u0E7F]+/gu, " ")
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/\s*->\s*/g, " -> ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function marketplaceAutoReviewEnglishMeaningText(
+  value: unknown,
+  fallback: string
+): string {
+  const text = cleanText(value);
+  if (!text) return fallback;
+  if (!containsMarketplaceAutoReviewNonLatinScript(text)) return text;
+  if (containsMarketplaceAutoReviewThaiScript(text)) {
+    const translated = translateMarketplaceAutoReviewThaiPromptText(text);
+    if (translated && !containsMarketplaceAutoReviewNonLatinScript(translated)) {
+      return translated;
+    }
+  }
+  return fallback;
+}
+
+function marketplaceAutoReviewSpeechLooksCompatible(input: {
+  text: string;
+  speechLanguage?: HyperframesSpokenLanguage | null;
+}): boolean {
+  const text = cleanText(input.text);
+  if (!text) return false;
+  const language = normalizeMarketplaceAutoReviewSpeechLanguage(
+    input.speechLanguage
+  );
+  switch (language) {
+    case "th":
+      return /[\u0E00-\u0E7F]/u.test(text);
+    case "zh":
+      return /[\u3400-\u9FFF]/u.test(text);
+    case "ja":
+      return /[\u3040-\u30FF]/u.test(text);
+    case "ko":
+      return /[\uAC00-\uD7AF]/u.test(text);
+    case "hi":
+      return /[\u0900-\u097F]/u.test(text);
+    case "ar":
+      return /[\u0600-\u06FF]/u.test(text);
+    case "es":
+      return /\b(?:el|la|los|las|un|una|que|para|con|producto|soluci[oó]n|problema|muestra|ayuda|claro|mejor)\b/i.test(
+        text
+      );
+    case "fr":
+      return /\b(?:le|la|les|un|une|que|pour|avec|produit|solution|probl[eè]me|montre|aide|clair|mieux)\b/i.test(
+        text
+      );
+    case "de":
+      return /\b(?:der|die|das|ein|eine|und|mit|produkt|l[oö]sung|problem|zeigt|hilft|klar|besser)\b/i.test(
+        text
+      );
+    case "vi":
+      return (
+        /[\u00C0-\u1EF9]/u.test(text) ||
+        /\b(?:sản phẩm|giúp|vấn đề|giải pháp|rõ|hơn|và|với)\b/i.test(text)
+      );
+    case "id":
+      return /\b(?:produk|membantu|masalah|solusi|lebih|jelas|dan|dengan|ini)\b/i.test(
+        text
+      );
+    case "ms":
+      return /\b(?:produk|membantu|masalah|penyelesaian|lebih|jelas|dan|dengan|ini)\b/i.test(
+        text
+      );
+    case "pt":
+      return /\b(?:o|a|os|as|um|uma|que|para|com|produto|solu[cç][aã]o|problema|mostra|ajuda|claro|melhor)\b/i.test(
+        text
+      );
+    case "it":
+      return /\b(?:il|lo|la|gli|le|un|una|che|per|con|prodotto|soluzione|problema|mostra|aiuta|chiaro|meglio)\b/i.test(
+        text
+      );
+    case "en":
+      return !containsMarketplaceAutoReviewNonLatinScript(text);
+    default:
+      return false;
+  }
+}
+
+function marketplaceAutoReviewEnglishPromptText(
+  value: unknown,
+  fallback: string
+): string {
+  return marketplaceAutoReviewEnglishMeaningText(value, fallback);
+}
+
+function marketplaceAutoReviewEnglishImagePromptText(
+  value: unknown,
+  fallback: string,
+  maxLength: number
+): string {
+  return compactImagePromptText(
+    marketplaceAutoReviewEnglishPromptText(value, fallback),
+    maxLength
+  );
+}
+
+function marketplaceAutoReviewEnglishVisualMeaningText(
+  value: unknown,
+  fallback: string,
+  maxLength: number
+): string {
+  const text = marketplaceAutoReviewEnglishPromptText(value, fallback)
+    .replace(/\bProp details:\s*.*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return compactImagePromptText(text || fallback, maxLength);
+}
+
+function marketplaceAutoReviewSpokenLanguageInstruction(
+  value: unknown
+): string {
+  const language = normalizeMarketplaceAutoReviewSpeechLanguage(value);
+  const label = MARKETPLACE_AUTO_REVIEW_SPOKEN_LANGUAGE_LABELS[language];
+  return [
+    `Spoken language: ${label}.`,
+    `Write all runtime instructions, storyboard/camera/visual fields, and provider prompt text in English.`,
+    `Only the exact viewer-facing spoken dialogue, voiceoverScript, and shot.voiceover values may be written in ${label}.`,
+  ].join(" ");
+}
+
+function marketplaceAutoReviewNativeSpeechFallback(params: {
+  productName?: string | null;
+  speechLanguage?: HyperframesSpokenLanguage | null;
+}): string {
+  const language = normalizeMarketplaceAutoReviewSpeechLanguage(
+    params.speechLanguage
+  );
+  const productName =
+    language === "en"
+      ? containsMarketplaceAutoReviewNonLatinScript(cleanText(params.productName))
+        ? "This product"
+        : cleanText(params.productName) || "This product"
+      : cleanText(params.productName) || "this product";
+  switch (language) {
+    case "th":
+      return `${productName} ช่วยให้เห็นปัญหาและทางออกของสินค้านี้ชัดขึ้น`;
+    case "zh":
+      return `${productName} 让问题和解决方案更清楚。`;
+    case "ja":
+      return `${productName} なら、悩みと解決策がもっとわかりやすくなります。`;
+    case "ko":
+      return `${productName}으로 문제와 해결 방법을 더 분명하게 보여줍니다.`;
+    case "es":
+      return `${productName} ayuda a mostrar mejor el problema y la solución.`;
+    case "fr":
+      return `${productName} aide à montrer clairement le problème et la solution.`;
+    case "de":
+      return `${productName} zeigt das Problem und die Lösung klarer.`;
+    case "vi":
+      return `${productName} giúp thấy rõ hơn vấn đề và cách giải quyết.`;
+    case "id":
+      return `${productName} membantu menunjukkan masalah dan solusinya dengan lebih jelas.`;
+    case "ms":
+      return `${productName} membantu menunjukkan masalah dan penyelesaiannya dengan lebih jelas.`;
+    case "hi":
+      return `${productName} समस्या और समाधान को और साफ दिखाता है।`;
+    case "ar":
+      return `${productName} يوضح المشكلة والحل بشكل أفضل.`;
+    case "pt":
+      return `${productName} ajuda a mostrar melhor o problema e a solução.`;
+    case "it":
+      return `${productName} aiuta a mostrare meglio il problema e la soluzione.`;
+    case "en":
+    default:
+      return `${productName} makes the product problem and solution clearer.`;
+  }
+}
 const MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW = 3;
 const RENDER_JOB_TTL_SECONDS = 86_400;
 const DEFAULT_RENDER_STALE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -563,6 +907,7 @@ type RunMetadata = Record<string, any> & {
   mediaArtifactInspection?: Record<string, unknown>;
   videoStructureMode?: VideoSegmentStructureMode;
   manualVideoGroupSize?: number;
+  speechLanguage?: HyperframesSpokenLanguage;
   creativeBrief?: string | null;
   videoSegmentPlan?: VideoSegmentPlan;
 };
@@ -1172,9 +1517,7 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
     "wide field of view inside a vertical portrait panel",
   ];
   if (
-    requiredFragments.every(fragment =>
-      lower.includes(fragment.toLowerCase())
-    )
+    requiredFragments.every(fragment => lower.includes(fragment.toLowerCase()))
   ) {
     return { prompt: base, applied: false };
   }
@@ -2705,11 +3048,12 @@ function compactRecord<T extends Record<string, unknown>>(value: T): T {
 
 function normalizeMarketplaceMcpTransportMetadata(
   value: unknown,
-  params: { tenantId: string; actorUserId: number },
+  params: { tenantId: string; actorUserId: number }
 ): Record<string, unknown> | undefined {
   const record = asRecord(value);
   if (record.transport !== "mcp") return undefined;
-  const connectionId = cleanText(record.connectionId) || cleanText(record.mcpConnectionId);
+  const connectionId =
+    cleanText(record.connectionId) || cleanText(record.mcpConnectionId);
   if (!connectionId) {
     return {
       transport: "mcp",
@@ -2724,8 +3068,14 @@ function normalizeMarketplaceMcpTransportMetadata(
     actorUserId: params.actorUserId,
     originSurface: "marketplace_capture",
     connectionId,
-    sharedGroupId: typeof record.sharedGroupId === "number" ? record.sharedGroupId : undefined,
-    approvalId: cleanText(record.approvalId) || cleanText(record.mcpApprovalId) || undefined,
+    sharedGroupId:
+      typeof record.sharedGroupId === "number"
+        ? record.sharedGroupId
+        : undefined,
+    approvalId:
+      cleanText(record.approvalId) ||
+      cleanText(record.mcpApprovalId) ||
+      undefined,
     providerKey: cleanText(record.providerKey) || undefined,
     providerModelId: cleanText(record.providerModelId) || undefined,
     toolName: cleanText(record.toolName) || undefined,
@@ -2740,7 +3090,7 @@ function mergeMarketplaceMcpTransportMetadataForModel(
     mediaType: MediaAssetType;
     originSurface?: string;
     modelTransport: MediaModelTransportConfig;
-  },
+  }
 ): Record<string, unknown> | undefined {
   const record = asRecord(value);
   if (record.transport !== "mcp") return undefined;
@@ -2748,9 +3098,11 @@ function mergeMarketplaceMcpTransportMetadataForModel(
     ...record,
     assetType: params.mediaType,
     originSurface: params.originSurface ?? "marketplace_capture",
-    providerKey: cleanText(record.providerKey) || params.modelTransport.providerKey,
+    providerKey:
+      cleanText(record.providerKey) || params.modelTransport.providerKey,
     providerModelId:
-      cleanText(record.providerModelId) || params.modelTransport.providerModelId,
+      cleanText(record.providerModelId) ||
+      params.modelTransport.providerModelId,
     toolName: cleanText(record.toolName) || params.modelTransport.toolName,
     argumentShape:
       cleanText(record.argumentShape) || params.modelTransport.argumentShape,
@@ -2763,7 +3115,7 @@ export function mergeMarketplaceMcpTransportMetadataForModelForTest(
     mediaType: MediaAssetType;
     originSurface?: string;
     modelTransport: MediaModelTransportConfig;
-  },
+  }
 ): Record<string, unknown> | undefined {
   return mergeMarketplaceMcpTransportMetadataForModel(value, params);
 }
@@ -2790,7 +3142,7 @@ async function resolveMarketplaceAutoReviewMediaModelTransportConfig(params: {
     .where(
       and(
         eq(mediaModels.modelId, params.modelId),
-        eq(mediaModels.modelType, params.mediaType),
+        eq(mediaModels.modelType, params.mediaType)
       )
     )
     .limit(1);
@@ -2812,12 +3164,13 @@ async function buildMarketplaceDirectMediaTransportMetadata(params: {
   const baseMetadata = asRecord(params.metadata).transportMetadata;
   if (!baseMetadata) return undefined;
   const baseRecord = asRecord(baseMetadata);
-  const modelTransport = await resolveMarketplaceAutoReviewMediaModelTransportConfig({
-    db: params.db,
-    mediaType: params.mediaType,
-    modelId: params.modelId,
-    providerKey: cleanText(baseRecord.providerKey) || undefined,
-  });
+  const modelTransport =
+    await resolveMarketplaceAutoReviewMediaModelTransportConfig({
+      db: params.db,
+      mediaType: params.mediaType,
+      modelId: params.modelId,
+      providerKey: cleanText(baseRecord.providerKey) || undefined,
+    });
   return mergeMarketplaceMcpTransportMetadataForModel(baseMetadata, {
     mediaType: params.mediaType,
     originSurface: "marketplace_capture",
@@ -3764,9 +4117,10 @@ export function creativeDirectionDirectiveForTest(input: {
   return buildMarketplaceAutoReviewCreativeDirectionDirective(
     {
       reviewTone: normalizeMarketplaceAutoReviewReviewTone(input.reviewTone),
-      storytellingStructure: normalizeMarketplaceAutoReviewStorytellingStructure(
-        input.storytellingStructure
-      ),
+      storytellingStructure:
+        normalizeMarketplaceAutoReviewStorytellingStructure(
+          input.storytellingStructure
+        ),
       creativePresets: normalizeAutoReviewCreativePresetSelections(
         input.creativePresets
       ),
@@ -4161,8 +4515,11 @@ function buildMarketplaceAutoReviewCharacterVoiceBrief(
   const videoCharacterLock =
     buildMarketplaceAutoReviewVideoCharacterLockFromPlan(plan, metadata);
   if (/uploaded character reference image/i.test(videoCharacterLock)) {
+    const speechLanguageLabel = marketplaceAutoReviewSpokenLanguageLabel(
+      metadata?.speechLanguage
+    );
     return [
-      "Uploaded character reference voice lock: infer the Thai spoken voice from the visible presenter in the uploaded character reference image and current frame references.",
+      `Uploaded character reference voice lock: infer the ${speechLanguageLabel} spoken voice from the visible presenter in the uploaded character reference image and current frame references.`,
       "Match the presenter's apparent gender presentation, age range, maturity, and reviewer persona from that image.",
       "Do not use any default demographic voice profile unless it matches the uploaded character reference.",
       `Voice style: ${sanitizeMarketplaceAutoReviewAudioProfileVoiceBrief(
@@ -6002,6 +6359,19 @@ export function buildMarketplaceAutoReviewNativeSpeechText(input: {
   isLastShot?: boolean;
   metadata?: RunMetadata | null;
 }): string {
+  if (
+    normalizeMarketplaceAutoReviewSpeechLanguage(
+      input.metadata?.speechLanguage
+    ) !== "th"
+  ) {
+    const voiceover = cleanText(input.shot.voiceover);
+    return marketplaceAutoReviewSpeechLooksCompatible({
+      text: voiceover,
+      speechLanguage: input.metadata?.speechLanguage,
+    })
+      ? voiceover
+      : "";
+  }
   return alignThaiSpeechToMarketplaceAutoReviewPresenter(
     input.shot.voiceover,
     input.plan,
@@ -7845,20 +8215,47 @@ function buildStoryboardFramePrompt(
   repairInstruction?: string,
   overlayTextMode: MarketplaceAutoReviewOverlayTextMode = "no_text"
 ): string {
+  const title = marketplaceAutoReviewEnglishPromptText(
+    shot.title,
+    `Product review shot ${shot.order}`
+  );
+  const visual = marketplaceAutoReviewEnglishPromptText(
+    shot.visual,
+    "Show practical product proof from the reference image"
+  );
+  const camera = marketplaceAutoReviewEnglishPromptText(
+    shot.camera,
+    "Stable cinematic product-review framing"
+  );
+  const movement = marketplaceAutoReviewEnglishPromptText(
+    shot.movement,
+    "Subtle product-focused motion"
+  );
+  const productRole = marketplaceAutoReviewEnglishPromptText(
+    shot.productRole,
+    "product truth proof for the selected reference product"
+  );
+  const safeRepairInstruction = repairInstruction
+    ? marketplaceAutoReviewEnglishPromptText(
+        repairInstruction,
+        "Repair the frame while preserving product truth and reference identity"
+      )
+    : "";
   const textPolicy =
     overlayTextMode === "allow_text"
-      ? "Optional overlay text is allowed only when it is short, truthful, Thai, tied to this shot's narration, and does not cover the product. No price badges, unsupported claims, logos, watermarks, or random glyphs."
-      : "No text, captions, labels, watermarks, UI, price badges, or overlaid graphics.";
+      ? `Optional overlay text is allowed only when it is short, truthful, Thai, tied to this shot's narration, and does not cover the product. No price badges, unsupported claims, logos, watermarks, random glyphs, video seconds, timecodes, frame labels, dimension text, marketplace UI, ratings, review widgets, or platform marks. ${buildMarketplaceUiSafetyText()}`
+      : `No text, captions, labels, watermarks, UI, price badges, overlaid graphics, video seconds, timecodes, frame labels, dimension text, marketplace UI, ratings, review widgets, or platform marks. ${buildMarketplaceUiSafetyText()}`;
   return [
-    `Create ONE vertical 9:16 storyboard frame for shot ${shot.order}: ${shot.title}.`,
-    `Visual: ${shot.visual}. Camera: ${shot.camera}. Movement: ${shot.movement}.`,
-    `Product role: ${shot.productRole}.`,
+    `Create ONE vertical 9:16 storyboard frame for shot ${shot.order}: ${title}.`,
+    `Visual: ${visual}. Camera: ${camera}. Movement: ${movement}.`,
+    `Product role: ${productRole}.`,
+    "Dialogue contract: align the visual beat with the separate spoken line, but never render speech as on-screen text.",
     promptReferenceSection(plan),
     textPolicy,
     "Do not invent product details, labels, accessories, colors, materials, ports, logos, or packaging not visible in the reference product images.",
     "Keep any human character face either clearly consistent with provided character references or avoid front-facing identity reveal.",
     "Advertising warning text, if needed, must be readable and not cover the product.",
-    repairInstruction ? `Repair instruction: ${repairInstruction}` : "",
+    safeRepairInstruction ? `Repair instruction: ${safeRepairInstruction}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -7885,13 +8282,20 @@ function buildImagePromptForUnit(
       repairInstruction,
       overlayTextMode
     );
+  const safeRepairInstruction = repairInstruction
+    ? marketplaceAutoReviewEnglishPromptText(
+        repairInstruction,
+        "Repair this frame while preserving product truth and reference identity"
+      )
+    : "";
   return (
     buildShotFramePrompt(
       plan,
       shot,
       unit.role === "stop_frame" ? "stop" : "start",
       overlayTextMode
-    ) + (repairInstruction ? `\nTargeted repair: ${repairInstruction}` : "")
+    ) +
+    (safeRepairInstruction ? `\nTargeted repair: ${safeRepairInstruction}` : "")
   );
 }
 
@@ -8432,16 +8836,19 @@ function buildProductReferenceStoryboardSkillInputs(input: {
   const shotMap = input.plan.shots
     .map(shot =>
       [
-        `Shot ${shot.order}: ${shot.title}`,
-        `visual=${compactImagePromptText(shot.visual, 240)}`,
-        `camera=${compactImagePromptText(shot.camera, 180)}`,
-        `movement=${compactImagePromptText(shot.movement, 160)}`,
-        `productRole=${compactImagePromptText(shot.productRole, 180)}`,
-        `spokenMeaning=${compactImagePromptText(shot.voiceover, 200)}`,
+        `Shot ${shot.order}: ${marketplaceAutoReviewEnglishPromptText(shot.title, `Product review shot ${shot.order}`)}`,
+        `visual=${marketplaceAutoReviewEnglishImagePromptText(shot.visual, "Show practical product proof from the reference image", 240)}`,
+        `camera=${marketplaceAutoReviewEnglishImagePromptText(shot.camera, "Stable cinematic product-review framing", 180)}`,
+        `movement=${marketplaceAutoReviewEnglishImagePromptText(shot.movement, "Subtle product-focused motion", 160)}`,
+        `productRole=${marketplaceAutoReviewEnglishImagePromptText(shot.productRole, "product truth proof for the selected reference product", 180)}`,
+        `spokenMeaning=${marketplaceAutoReviewEnglishImagePromptText(shot.voiceover, "match the separate spoken beat", 200)}; never render speech as text`,
       ].join(" | ")
     )
     .join("\n");
-  const repairInstruction = cleanText(input.unit.repairInstruction);
+  const repairInstruction = marketplaceAutoReviewEnglishPromptText(
+    input.unit.repairInstruction,
+    ""
+  );
   const textPolicy =
     input.overlayTextMode === "allow_text"
       ? "Allow only short truthful on-image text if it helps the story. Never include video seconds, time ranges, timecodes, frame labels, subtitles, marketplace UI, prices, ratings, review widgets, or platform logos."
@@ -8496,29 +8903,43 @@ function buildProductReferenceStoryboardSkillInputs(input: {
       `Reference image order: ${referenceImageRoleOrder}`,
       characterIdentityDirective,
       minorSafetyClothingLock,
-      input.plan.storyboardGuide,
+      marketplaceAutoReviewEnglishPromptText(
+        input.plan.storyboardGuide,
+        "Create a truth-locked marketplace product review visual story."
+      ),
       "Shot map:",
       shotMap,
     ]
       .filter(Boolean)
       .join("\n"),
-    voiceover_script: input.plan.voiceoverScript,
-    product_detail: input.plan.productDetail,
+    voiceover_script:
+      "Supplied separately as spoken-content meaning only; never render as text.",
+    product_detail: marketplaceAutoReviewEnglishPromptText(
+      input.plan.productDetail,
+      "Exact selected product from supplied reference images."
+    ),
     production_concept_details: [
-      `Concept: ${input.plan.title}`,
-      `Product: ${input.plan.productTruth.productName}`,
+      `Concept: ${marketplaceAutoReviewEnglishPromptText(input.plan.title, "Marketplace product review")}`,
+      `Product: ${marketplaceAutoReviewEnglishPromptText(input.plan.productTruth.productName, "selected product")}`,
       `Platform: ${input.plan.productTruth.platform}`,
       input.plan.productTruth.brand
-        ? `Brand: ${input.plan.productTruth.brand}`
+        ? `Brand: ${marketplaceAutoReviewEnglishPromptText(input.plan.productTruth.brand, "selected brand")}`
         : "",
       input.plan.productTruth.productCategory
-        ? `Main storyboard category: ${input.plan.productTruth.productCategory}`
+        ? `Main storyboard category: ${marketplaceAutoReviewEnglishPromptText(input.plan.productTruth.productCategory, "marketplace product")}`
         : "",
       input.plan.productTruth.categoryText
-        ? `Captured marketplace category: ${input.plan.productTruth.categoryText}`
+        ? `Captured marketplace category: ${marketplaceAutoReviewEnglishPromptText(input.plan.productTruth.categoryText, "marketplace category")}`
         : "",
       input.plan.productTruth.categoryPath.length > 0
-        ? `Marketplace category path: ${input.plan.productTruth.categoryPath.join(" > ")}`
+        ? `Marketplace category path: ${input.plan.productTruth.categoryPath
+            .map(item =>
+              marketplaceAutoReviewEnglishPromptText(
+                item,
+                "marketplace category"
+              )
+            )
+            .join(" > ")}`
         : "",
       `Overlay text policy: ${textPolicy}`,
       imageAttemptStoryLensText,
@@ -10300,8 +10721,14 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
   frameStrategy: MarketplaceAutoReviewFrameStrategy;
   resolvedAudioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
   referenceAnchors: ResolvedMarketplaceAutoReviewReferenceAnchors;
+  speechLanguage?: HyperframesSpokenLanguage | null;
 }): string {
   const { plan } = params;
+  const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
+    params.speechLanguage
+  );
+  const speechLanguageLabel =
+    marketplaceAutoReviewSpokenLanguageLabel(speechLanguage);
   const characterPreset = characterPresetRecordFromUnknown(
     params.referenceAnchors.characterPreset
   );
@@ -10317,17 +10744,17 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
     ? [
         "Presenter / voice lock:",
         "Use the uploaded character reference as the presenter source of truth.",
-        "Infer the speaker voice, Thai polite particles, age, and persona from the visible presenter in that reference.",
+        `Infer the speaker voice, age, persona, and any ${speechLanguageLabel} politeness conventions from the visible presenter in that reference.`,
         "Do not default to a mother, female host, or feminine polite particles just because the product is in the mother-baby category.",
       ].join(" ")
     : characterSubject
       ? [
           "Presenter / voice lock:",
           `Selected presenter is ${characterSubject}.`,
-          "The rewritten Thai spoken lines must match this selected gender, age range, and role.",
-          characterGender === "male"
+          `The rewritten ${speechLanguageLabel} spoken lines must match this selected gender, age range, and role.`,
+          speechLanguage === "th" && characterGender === "male"
             ? "Because the selected presenter is male/ผู้ชาย, use male-coded or neutral Thai polite particles such as ครับ when a particle is needed; do not use ค่ะ, คะ, or mother/female-host wording."
-            : characterGender === "female"
+            : speechLanguage === "th" && characterGender === "female"
               ? "Because the selected presenter is female/ผู้หญิง, keep Thai polite particles consistent with that voice."
               : "Use neutral Thai phrasing when gender is not explicitly selected.",
           "Do not infer a female/mother voice from a mother-baby product category when the selected presenter says otherwise.",
@@ -10342,18 +10769,19 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
     .sort((a, b) => a.order - b.order)
     .map(shot =>
       [
-        `${shot.order}. ${shot.startSeconds}-${shot.endSeconds}s ${shot.title}`,
-        `Storyboard intent: ${shot.storyboardGuide}`,
-        `Visual: ${shot.visual}`,
-        `Camera: ${shot.camera}`,
-        `Movement: ${shot.movement}`,
-        `Product role: ${shot.productRole}`,
+        `${shot.order}. ${shot.startSeconds}-${shot.endSeconds}s ${marketplaceAutoReviewEnglishPromptText(shot.title, `Product review shot ${shot.order}`)}`,
+        `Storyboard intent: ${marketplaceAutoReviewEnglishPromptText(shot.storyboardGuide, "Show practical product proof from the reference image")}`,
+        `Visual: ${marketplaceAutoReviewEnglishPromptText(shot.visual, "Show practical product proof from the reference image")}`,
+        `Camera: ${marketplaceAutoReviewEnglishPromptText(shot.camera, "Stable cinematic product-review framing")}`,
+        `Movement: ${marketplaceAutoReviewEnglishPromptText(shot.movement, "Subtle product-focused motion")}`,
+        `Product role: ${marketplaceAutoReviewEnglishPromptText(shot.productRole, "product truth proof for the selected reference product")}`,
         `Current spoken intent: ${shot.voiceover}`,
       ].join("\n")
     );
 
   return [
-    "งานนี้คือการเขียนบทพูด voiceover ภาษาไทยสำหรับ Marketplace Capture Auto Review หน้า Product",
+    "This is a spoken voiceover rewrite task for a Marketplace Capture Auto Review product page.",
+    marketplaceAutoReviewSpokenLanguageInstruction(speechLanguage),
     "",
     "Product detail / product truth lock:",
     plan.productDetail,
@@ -10387,10 +10815,10 @@ function buildMarketplaceAutoReviewVoiceoverSkillProductDetails(params: {
     "Shot-by-shot source. Rewrite only the spoken voiceover, not the visual/camera/product-role notes:",
     shotGuide.join("\n\n"),
     "",
-    `ต้องคืนบทพูด voiceover จริงเท่านั้น จำนวน ${plan.shots.length} บรรทัด เรียงตาม shot 1-${plan.shots.length}.`,
-    "แต่ละบรรทัดต้องเป็นคำพูดที่ผู้ชมได้ยินจริง ไม่ใช่คำบรรยายภาพ มุมกล้อง timecode storyboard label หรือคำอธิบายว่าจะถ่ายอะไร",
-    "บทพูดต้องเป็นแนวรีวิวสินค้า marketplace ที่ฟังเป็นธรรมชาติ สอดคล้องกับโครงเรื่องจริง และไม่กล่าวอ้างเกิน product truth",
-    "ห้ามพูดราคา เรตติ้ง ยอดขาย โปรโมชั่น หรือข้อความบน marketplace ที่เปลี่ยนแปลงได้ เว้นแต่ผู้ใช้ล็อกเป็น claim ที่อนุมัติไว้แล้ว",
+    `Return exactly ${plan.shots.length} real spoken voiceover lines, ordered shot 1-${plan.shots.length}.`,
+    "Each line must be words the viewer actually hears, not image description, camera direction, timecode, storyboard labels, or filming instructions.",
+    `The spoken lines must sound like natural marketplace product review narration in ${speechLanguageLabel}, stay aligned with the real story, and never exceed product truth.`,
+    "Do not mention price, rating, sales volume, promotions, or changing marketplace text unless the user explicitly locked it as an approved claim.",
   ].join("\n");
 }
 
@@ -10567,8 +10995,10 @@ function hydrateMarketplaceAutoReviewPlanForStoryboardReview(params: {
   if (!lines) {
     return { plan: params.plan, repairedFromVoiceoverRewrite: false };
   }
-  const productName =
-    cleanText(params.plan.productTruth.productName) || "สินค้า";
+  const productName = marketplaceAutoReviewEnglishPromptText(
+    params.plan.productTruth.productName,
+    "the selected product"
+  );
   const shots = params.plan.shots
     .slice()
     .sort((a, b) => a.order - b.order)
@@ -10576,18 +11006,22 @@ function hydrateMarketplaceAutoReviewPlanForStoryboardReview(params: {
       const voiceover =
         cleanMarketplaceAutoReviewVoiceoverSkillLine(lines[index]) ||
         shot.voiceover;
+      const spokenMeaning = marketplaceAutoReviewEnglishPromptText(
+        voiceover,
+        "the matching spoken beat"
+      );
       return {
         ...shot,
         title: /^Product truth slot/i.test(shot.title)
           ? `Product truth beat ${shot.order}`
           : shot.title,
-        storyboardGuide: `${shot.order}. ${shot.startSeconds}-${shot.endSeconds}s Show ${productName} proof that matches this spoken line: ${voiceover}`,
+        storyboardGuide: `${shot.order}. ${shot.startSeconds}-${shot.endSeconds}s Show ${productName} proof that matches this spoken meaning: ${spokenMeaning}`,
         voiceover,
         camera: /product_truth_scaffold_/i.test(shot.camera)
           ? "clear cinematic marketplace review framing focused on product evidence"
           : shot.camera,
         visual: /product_truth_scaffold_/i.test(shot.visual)
-          ? `Realistic product review scene that visually supports: ${voiceover}`
+          ? `Realistic product review scene that visually supports: ${spokenMeaning}`
           : shot.visual,
         movement: /product_truth_scaffold_/i.test(shot.movement)
           ? "gentle practical action or product detail motion"
@@ -10649,8 +11083,14 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
   frameStrategy: MarketplaceAutoReviewFrameStrategy;
   resolvedAudioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
   referenceAnchors: ResolvedMarketplaceAutoReviewReferenceAnchors;
+  speechLanguage?: HyperframesSpokenLanguage | null;
 }): Promise<{ plan: AutoReviewPlan; metadata: Record<string, unknown> }> {
   const targetCount = params.plan.shots.length;
+  const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
+    params.speechLanguage
+  );
+  const speechLanguageLabel =
+    marketplaceAutoReviewSpokenLanguageLabel(speechLanguage);
   if (targetCount === 0) {
     return {
       plan: params.plan,
@@ -10705,12 +11145,13 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
         frameStrategy: params.frameStrategy,
         resolvedAudioStrategy: params.resolvedAudioStrategy,
         referenceAnchors: params.referenceAnchors,
+        speechLanguage,
       }),
       product_images: referenceImages,
-      output_language: "Thai",
-      ui_locale: "th",
-      browser_locale: "th-TH",
-      app_language: "Thai",
+      output_language: speechLanguageLabel,
+      ui_locale: marketplaceAutoReviewSpokenLanguageAppLocale(speechLanguage),
+      browser_locale: marketplaceAutoReviewSpokenLanguageLocale(speechLanguage),
+      app_language: speechLanguageLabel,
       speech_style: styleSelection.speechStyle,
       persuasion_style: styleSelection.persuasionStyle,
       target_duration_seconds:
@@ -10725,7 +11166,8 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
     const systemPrompt = [
       String(skill.systemPrompt ?? skill.skillContent ?? "").trim(),
       "## Marketplace Auto Review Voiceover Rewrite Runtime Contract",
-      `Return exactly ${targetCount} short Thai spoken voiceover lines, one per storyboard shot, in order.`,
+      marketplaceAutoReviewSpokenLanguageInstruction(speechLanguage),
+      `Return exactly ${targetCount} short ${speechLanguageLabel} spoken voiceover lines, one per storyboard shot, in order.`,
       "Do not return JSON, markdown fences, headings, camera notes, visual descriptions, timecodes, product-lock notes, or storyboard labels.",
       "Each returned line must be suitable as final TTS narration for the matching marketplace product review shot.",
     ]
@@ -10775,6 +11217,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
         requiredSkill: ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID,
         selectedSkill: ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID,
         targetShotCount: targetCount,
+        speechLanguage,
         speechStyle: styleSelection.speechStyle,
         persuasionStyle: styleSelection.persuasionStyle,
       },
@@ -10860,6 +11303,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
               completionTokens: usage.completionTokens,
               speechStyle: styleSelection.speechStyle,
               persuasionStyle: styleSelection.persuasionStyle,
+              speechLanguage,
             },
           });
         }
@@ -10887,6 +11331,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
           skillId: ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID,
           speechStyle: styleSelection.speechStyle,
           persuasionStyle: styleSelection.persuasionStyle,
+          speechLanguage,
           rawOutputPreview: rawContent.slice(0, 700),
           targetShotCount: targetCount,
           runtimeStatus: execution.runtime.status,
@@ -10905,6 +11350,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
         skillId: ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID,
         speechStyle: styleSelection.speechStyle,
         persuasionStyle: styleSelection.persuasionStyle,
+        speechLanguage,
         targetShotCount: targetCount,
         lineCount: lines.length,
         modelId: execution.value.modelId,
@@ -10933,6 +11379,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
         skillId: ELEVENLABS_PRODUCT_VOICEOVER_DIALOGUE_SKILL_ID,
         speechStyle: styleSelection.speechStyle,
         persuasionStyle: styleSelection.persuasionStyle,
+        speechLanguage,
         errorMessage: error instanceof Error ? error.message : String(error),
         generatedAt: nowIso(),
       },
@@ -10946,6 +11393,7 @@ export function buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest(in
   frameStrategy?: MarketplaceAutoReviewFrameStrategy;
   resolvedAudioStrategy?: MarketplaceAutoReviewResolvedAudioStrategy;
   referenceAnchors?: ResolvedMarketplaceAutoReviewReferenceAnchors;
+  speechLanguage?: HyperframesSpokenLanguage | null;
 }): string {
   return buildMarketplaceAutoReviewVoiceoverSkillProductDetails({
     plan: input.plan,
@@ -10959,6 +11407,7 @@ export function buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest(in
         characterImageRef: null,
         environmentImageRef: null,
       } as ResolvedMarketplaceAutoReviewReferenceAnchors),
+    speechLanguage: input.speechLanguage,
   });
 }
 
@@ -11524,7 +11973,7 @@ function normalizeCreativeShot(
       `Creative planner missing fallback shot contract at index ${index}`
     );
   }
-  const fields = {
+  const rawFields = {
     title: cleanText(item.title),
     storyboardGuide: cleanText(item.storyboardGuide),
     voiceover: cleanText(item.voiceover),
@@ -11533,7 +11982,49 @@ function normalizeCreativeShot(
     movement: cleanText(item.movement),
     productRole: cleanText(item.productRole),
   };
-  const missing = Object.entries(fields)
+  const fields = {
+    title: marketplaceAutoReviewEnglishPromptText(
+      rawFields.title,
+      `Product review shot ${index + 1}`
+    ),
+    storyboardGuide: marketplaceAutoReviewEnglishPromptText(
+      rawFields.storyboardGuide,
+      marketplaceAutoReviewEnglishPromptText(
+        fallback.storyboardGuide,
+        "Show practical product proof from the reference image"
+      )
+    ),
+    voiceover: rawFields.voiceover,
+    camera: marketplaceAutoReviewEnglishPromptText(
+      rawFields.camera,
+      marketplaceAutoReviewEnglishPromptText(
+        fallback.camera,
+        "Stable cinematic product-review framing"
+      )
+    ),
+    visual: marketplaceAutoReviewEnglishPromptText(
+      rawFields.visual,
+      marketplaceAutoReviewEnglishPromptText(
+        fallback.visual,
+        "Show practical product proof from the reference image"
+      )
+    ),
+    movement: marketplaceAutoReviewEnglishPromptText(
+      rawFields.movement,
+      marketplaceAutoReviewEnglishPromptText(
+        fallback.movement,
+        "Subtle product-focused motion"
+      )
+    ),
+    productRole: marketplaceAutoReviewEnglishPromptText(
+      rawFields.productRole,
+      marketplaceAutoReviewEnglishPromptText(
+        fallback.productRole,
+        "product truth proof for the selected reference product"
+      )
+    ),
+  };
+  const missing = Object.entries(rawFields)
     .filter(([, value]) => !value)
     .map(([key]) => key);
   if (missing.length > 0) {
@@ -12462,6 +12953,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
   audioStrategy: MarketplaceAutoReviewAudioStrategyInput;
   resolvedAudioStrategy: MarketplaceAutoReviewResolvedAudioStrategy;
   overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
+  speechLanguage?: HyperframesSpokenLanguage | null;
   fallbackPlan: AutoReviewPlan;
   preflightMetadata: RunMetadata;
   referenceAnchors: ResolvedMarketplaceAutoReviewReferenceAnchors;
@@ -12474,6 +12966,11 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
   const overlayTextMode = normalizeMarketplaceAutoReviewOverlayTextMode(
     params.overlayTextMode
   );
+  const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
+    params.speechLanguage
+  );
+  const speechLanguageLabel =
+    marketplaceAutoReviewSpokenLanguageLabel(speechLanguage);
   const requestedDurationSeconds =
     durationSecondsForShotCount(requestedShotCount);
   const requestedNarrationSeconds = requestedShotCount * 10;
@@ -12579,7 +13076,10 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
     expectedMinimumConceptCount?: number;
   }) =>
     [
-      "You are a Production Director for Thai marketplace product review videos.",
+      "You are a Production Director for marketplace product review videos.",
+      marketplaceAutoReviewSpokenLanguageInstruction(speechLanguage),
+      `Language contract: conceptTitle, conceptAngle, storyboardGuide, creativeConceptSet fields, and every shot.title, shot.storyboardGuide, shot.camera, shot.visual, shot.movement, and shot.productRole must be English. Only voiceoverScript and shot.voiceover may be ${speechLanguageLabel}.`,
+      "If product/category/source text is in Thai or another language, translate its meaning into English before using it in visual, camera, storyboard, movement, productRole, concept, or rationale fields. Do not copy non-English source text into those non-speech fields.",
       "Create a fresh, imaginative, but truth-locked concept. Use only product facts and reference-image implications.",
       "Never invent product specs, labels, materials, functions, health results, discounts, guarantees, or claims.",
       "Follow Thailand and global advertising safety: honest wording, no absolute/miracle claims, and include warning/disclaimer text when needed.",
@@ -12631,7 +13131,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       `Required shot count: ${requestedShotCount}`,
       `Required shot orders: ${JSON.stringify(requiredShotOrders)}`,
       `Required total duration: ${requestedDurationSeconds} seconds`,
-      `Required Thai narration plan: first write one continuous customer-facing Thai narration arc for about ${requestedNarrationSeconds} seconds total (${requestedShotCount} shots x about 10 seconds of spoken content), then split that same continuous script into exactly ${requestedShotCount} ordered shot.voiceover lines. Do not write each shot as an isolated tagline.`,
+      `Required narration plan: first write one continuous customer-facing ${speechLanguageLabel} narration arc for about ${requestedNarrationSeconds} seconds total (${requestedShotCount} shots x about 10 seconds of spoken content), then split that same continuous script into exactly ${requestedShotCount} ordered shot.voiceover lines. Do not write each shot as an isolated tagline.`,
       "The selected product anchor is the only allowed product visual identity. Do not borrow color, shape, label, or material from unselected gallery images.",
       describedCharacterDirective
         ? "Because the user selected a described character, design shots so the described adult presenter/persona is the reviewer/parent/presenter whenever a person is important. Children may demonstrate product use only as secondary context and must not replace the selected presenter/persona as the recurring hero."
@@ -12641,8 +13141,8 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
         ? "Apply the USER-SELECTED CREATIVE DIRECTION LOCK when choosing the selected creativeConceptSet alternative, writing storyboardGuide, and writing every shot.voiceover. If it conflicts with the automatic seed, follow the user-selected tone/storytelling structure and keep the seed only for compatible camera or novelty variation."
         : "",
       `Create 3-5 distinct CreativeConceptSet alternatives with novelty fingerprints, selected/rejected rationale, then create exactly ${requestedShotCount} shots, ${DEFAULT_SHOT_DURATION_SECONDS} seconds each, strong hook, coherent story arc, and detailed visual/camera/movement/productRole per shot for the selected concept.`,
-      "voiceoverScript must be the complete continuous Thai narration script assembled from all shot.voiceover lines in order. Each shot.voiceover should be a natural segment of that same script, about 9-10 seconds when spoken in Thai, continuing from the previous shot and setting up the next shot.",
-      "voiceoverScript and every shot.voiceover must contain only the exact Thai words a viewer should hear. Do not include camera notes, visual descriptions, reference-image instructions, product-lock instructions, marketplace metadata, or phrases like 'โดยดูจากภาพจริง', 'รายละเอียดของสินค้า', 'ในช็อตนี้เป็นหลัก', or 'ให้จังหวะการพูด'. Put those details only in storyboardGuide, visual, camera, movement, or productRole.",
+      `voiceoverScript must be the complete continuous ${speechLanguageLabel} narration script assembled from all shot.voiceover lines in order. Each shot.voiceover should be a natural segment of that same script, about 9-10 seconds when spoken in ${speechLanguageLabel}, continuing from the previous shot and setting up the next shot.`,
+      `voiceoverScript and every shot.voiceover must contain only the exact ${speechLanguageLabel} words a viewer should hear. Do not include camera notes, visual descriptions, reference-image instructions, product-lock instructions, marketplace metadata, or phrases like 'based on the real image', 'product details', 'mainly in this shot', or 'speech pacing'. Put those details only in storyboardGuide, visual, camera, movement, or productRole.`,
       "Avoid ultra-short shot.voiceover lines such as one slogan, one product noun phrase, or one 3-5 second sentence. If a line is too short, rewrite the entire narration arc and split it again instead of padding one shot independently.",
       `The story arc must fit exactly ${requestedShotCount} shots: shot 1 is the hook, middle shots build problem/proof/use, and shot ${requestedShotCount} closes with confirmation or CTA. Do not return fewer or more shots.`,
       `The shots array length must be exactly ${requestedShotCount}. It must contain shotNumber values exactly ${JSON.stringify(requiredShotOrders)} in order. Before returning JSON, count the array items and fix the story if the count is not ${requestedShotCount}.`,
@@ -12962,8 +13462,16 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
         throw error;
       }
       const storyboardGuide = [
-        cleanText(parsed.storyboardGuide) ||
-          `แกนเรื่อง: ${cleanText(parsed.conceptAngle) || params.fallbackPlan.storyboardGuide}`,
+        marketplaceAutoReviewEnglishPromptText(
+          parsed.storyboardGuide,
+          `Story arc: ${marketplaceAutoReviewEnglishPromptText(
+            parsed.conceptAngle,
+            marketplaceAutoReviewEnglishPromptText(
+              params.fallbackPlan.storyboardGuide,
+              "truth-locked marketplace product review"
+            )
+          )}`
+        ),
         ...shots.map(shot => shot.storyboardGuide),
       ]
         .filter(Boolean)
@@ -14073,13 +14581,19 @@ function buildFeature117ContractMetadata(input: {
 function promptReferenceSection(plan: AutoReviewPlan): string {
   return [
     "STORYBOARD GUIDE CONTRACT:",
-    plan.storyboardGuide,
+    marketplaceAutoReviewEnglishPromptText(
+      plan.storyboardGuide,
+      "Create a truth-locked marketplace product review visual story."
+    ),
     "",
     "VOICEOVER / DIALOGUE CONTRACT:",
-    plan.voiceoverScript,
+    "Supplied separately as spoken-content meaning only; never render as text.",
     "",
     "PRODUCT DETAIL / PRODUCT FACTS LOCK:",
-    plan.productDetail,
+    marketplaceAutoReviewEnglishPromptText(
+      plan.productDetail,
+      "Exact selected product from supplied reference images."
+    ),
     "",
     "GLOBAL VISUAL QUALITY LOCK:",
     "Photorealistic cinematic commercial film stills, natural skin texture, believable human anatomy, real lens depth, grounded shadows, warm but realistic lighting, coherent camera language, no plastic skin, no waxy faces, no catalog-rendered flat product.",
@@ -14092,19 +14606,25 @@ function promptReferenceSection(plan: AutoReviewPlan): string {
 function imagePromptReferenceSection(plan: AutoReviewPlan): string {
   const spokenReferenceLines = plan.shots.map(shot =>
     [
-      `Cell ${shot.order} spoken-story reference only: ${shot.title}`,
-      `Narration meaning only, never render as text: ${shot.voiceover}`,
+      `Cell ${shot.order} spoken-story reference only: ${marketplaceAutoReviewEnglishPromptText(shot.title, `Product review shot ${shot.order}`)}`,
+      "Narration meaning only, never render speech as text.",
     ].join("\n")
   );
   return [
     "STORYBOARD GUIDE CONTRACT (visual meaning only; never render this text in the image):",
-    plan.storyboardGuide,
+    marketplaceAutoReviewEnglishPromptText(
+      plan.storyboardGuide,
+      "Create a truth-locked marketplace product review visual story."
+    ),
     "",
     "SPOKEN STORY REFERENCE (backend narration only; never render captions, subtitles, timecodes, or shot numbers):",
     spokenReferenceLines.join("\n"),
     "",
     "PRODUCT DETAIL / PRODUCT FACTS LOCK:",
-    plan.productDetail,
+    marketplaceAutoReviewEnglishPromptText(
+      plan.productDetail,
+      "Exact selected product from supplied reference images."
+    ),
     "",
     "GLOBAL VISUAL QUALITY LOCK:",
     "Photorealistic cinematic commercial film stills, natural skin texture, believable human anatomy, real lens depth, grounded shadows, warm but realistic lighting, coherent camera language, no plastic skin, no waxy faces, no catalog-rendered flat product.",
@@ -14180,7 +14700,16 @@ function build3x3StoryboardPrompt(
 ): string {
   const sharedCameraLightDepth = compactImagePromptText(
     plan.shots
-      .map(shot => sanitizeStoryboardImageBeatText(shot.camera))
+      .flatMap(shot => [
+        marketplaceAutoReviewEnglishPromptText(
+          sanitizeStoryboardImageBeatText(shot.camera),
+          "varied cinematic product-film camera"
+        ),
+        marketplaceAutoReviewEnglishPromptText(
+          sanitizeStoryboardImageBeatText(shot.movement),
+          "subtle product-focused motion"
+        ),
+      ])
       .filter(Boolean)
       .join("; ") ||
       "varied cinematic product-film camera, realistic lens/light/depth, grounded shadows, coherent color.",
@@ -14188,10 +14717,24 @@ function build3x3StoryboardPrompt(
   );
   const sharedProductVerify = compactImagePromptText(
     [
-      plan.productTruth.brand,
-      plan.productTruth.productName,
-      plan.productDetail,
-      ...plan.shots.map(shot => shot.productRole),
+      marketplaceAutoReviewEnglishPromptText(
+        plan.productTruth.brand,
+        "selected product brand"
+      ),
+      marketplaceAutoReviewEnglishPromptText(
+        plan.productTruth.productName,
+        "selected product"
+      ),
+      marketplaceAutoReviewEnglishPromptText(
+        plan.productDetail,
+        "exact selected product from reference images"
+      ),
+      ...plan.shots.map(shot =>
+        marketplaceAutoReviewEnglishPromptText(
+          shot.productRole,
+          "product truth proof"
+        )
+      ),
     ]
       .filter(Boolean)
       .join("; ") ||
@@ -14200,13 +14743,13 @@ function build3x3StoryboardPrompt(
   );
   const storyFrameLines = plan.shots.map(
     shot =>
-      `Frame ${shot.order} | VISUAL: ${compactImagePromptText(sanitizeStoryboardImageBeatText(shot.visual), 28)} | STORY MATCH: ${compactImagePromptText(shot.voiceover, 18)}`
+      `Frame ${shot.order} | VISUAL: ${marketplaceAutoReviewEnglishVisualMeaningText(sanitizeStoryboardImageBeatText(shot.visual), "show product proof", 36)} | STORY MATCH:${marketplaceAutoReviewEnglishImagePromptText(shot.voiceover, "spoken meaning", 18)}.`
   );
   const unusedFrameLines = Array.from(
     { length: Math.max(0, MAX_SHOT_COUNT - plan.shots.length) },
     (_, index) => {
       const frameNumber = plan.shots.length + index + 1;
-      return `Frame ${frameNumber} reserved | VISUAL: continuity. | STORY MATCH: reserve/no text.`;
+      return `Frame ${frameNumber} reserved | VISUAL: continuity | STORY MATCH: reserve.`;
     }
   );
   const frameLines = [...storyFrameLines, ...unusedFrameLines].join("\n");
@@ -14217,20 +14760,25 @@ function build3x3StoryboardPrompt(
       ? "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images. Optional short text only under TEXT POLICY; no video seconds/timecodes."
       : "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images.";
   const productCategoryHint =
-    plan.productTruth.productName ||
-    plan.productTruth.brand ||
-    "selected product";
+    marketplaceAutoReviewEnglishPromptText(
+      plan.productTruth.productName,
+      "selected product"
+    ) ||
+    marketplaceAutoReviewEnglishPromptText(
+      plan.productTruth.brand,
+      "selected product brand"
+    );
   return [
     "PRODUCT REFERENCE STORYBOARD SKILL CONTRACT:",
     "skill: product-reference-storyboard",
     "generation_mode: multi_frame_storyboard",
     "storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact",
     "aspect_ratio: 9:16",
-    `storyboard_guide: ${compactImagePromptText(plan.storyboardGuide, 90)}`,
-    `voiceover_script: ${compactImagePromptText(plan.voiceoverScript, 60)}`,
-    `product_detail: ${compactImagePromptText(plan.productDetail, 90)}`,
+    `storyboard_guide: ${marketplaceAutoReviewEnglishImagePromptText(plan.storyboardGuide, "create a truth-locked marketplace product review storyboard", 90)}`,
+    "voiceover_script: separate spoken contract; never render as text.",
+    `product_detail: ${marketplaceAutoReviewEnglishImagePromptText(plan.productDetail, "exact selected product from reference images", 90)}`,
     "reference_product_images: supplied separately as immutable product reference images",
-    `production_concept_details: ${compactImagePromptText(`${plan.title}; ${plan.shots.length} active shots; ${productCategoryHint}`, 55)}`,
+    `production_concept_details: ${compactImagePromptText(`${marketplaceAutoReviewEnglishPromptText(plan.title, "Marketplace product review")}; ${plan.shots.length} active shots; ${productCategoryHint}`, 55)}`,
     "",
     storyboardLayoutLock,
     outputFormat,
@@ -14269,18 +14817,42 @@ function buildShotFramePrompt(
     role === "start"
       ? "START FRAME: establish the opening visual state for this shot before motion begins."
       : "STOP FRAME: establish the natural end visual state after this shot's motion, consistent with the start frame and next shot.";
+  const shotTitle = marketplaceAutoReviewEnglishPromptText(
+    shot.title,
+    `Product review shot ${shot.order}`
+  );
+  const storyboardGuide = marketplaceAutoReviewEnglishPromptText(
+    shot.storyboardGuide,
+    "Show practical product proof from the reference image"
+  );
+  const camera = marketplaceAutoReviewEnglishPromptText(
+    shot.camera,
+    "Stable cinematic product-review framing"
+  );
+  const movement = marketplaceAutoReviewEnglishPromptText(
+    shot.movement,
+    "Subtle product-focused motion"
+  );
+  const visual = marketplaceAutoReviewEnglishPromptText(
+    shot.visual,
+    "Show the exact selected product in practical use"
+  );
+  const productRole = marketplaceAutoReviewEnglishPromptText(
+    shot.productRole,
+    "product truth proof for the selected reference product"
+  );
   return [
     "OUTPUT FORMAT LOCK: Plain prompt text only. Single 9:16 photorealistic cinematic frame.",
     imageOverlayTextPolicyPrompt(overlayTextMode),
     imagePromptReferenceSection(plan),
     "",
     roleText,
-    `Shot ${shot.order}: ${shot.title}`,
-    `Storyboard guide for this shot: ${shot.storyboardGuide}`,
-    `Voiceover/dialogue for this shot: ${shot.voiceover}`,
-    `Camera and light: ${shot.camera}; ${shot.movement}; realistic cinematic light with dimensional shadows.`,
-    `Visual content: ${shot.visual}`,
-    `Product continuity: ${shot.productRole}; product must remain exact to reference images and product facts.`,
+    `Shot ${shot.order}: ${shotTitle}`,
+    `Storyboard guide for this shot: ${storyboardGuide}`,
+    "Dialogue contract: align the visual beat with the separate spoken line, but never render speech as on-screen text.",
+    `Camera and light: ${camera}; ${movement}; realistic cinematic light with dimensional shadows.`,
+    `Visual content: ${visual}`,
+    `Product continuity: ${productRole}; product must remain exact to reference images and product facts.`,
     "Human continuity: if a person appears without an approved character identity asset pack, keep the person hands-only or face-hidden for the whole shot so there is no face drift risk. Do not rotate from back/side to a newly invented face.",
     buildMinorSafetyClothingLock(plan),
   ].join("\n");
@@ -14325,14 +14897,17 @@ function buildCompactMarketplaceAutoReviewVideoVoiceLine(
   plan: AutoReviewPlan,
   metadata?: RunMetadata | null
 ): string {
+  const speechLanguageLabel = marketplaceAutoReviewSpokenLanguageLabel(
+    metadata?.speechLanguage
+  );
   const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
   const subject = characterSubjectFromPresetRecord(preset);
   if (marketplaceAutoReviewUsesUploadedCharacterReference(plan, metadata)) {
-    return "Voice matches the visible/uploaded presenter; natural central Thai.";
+    return `Voice matches the visible/uploaded presenter; natural ${speechLanguageLabel}.`;
   }
   return subject
-    ? `Voice matches ${subject}; natural central Thai.`
-    : "Natural central Thai presenter voice.";
+    ? `Voice matches ${subject}; natural ${speechLanguageLabel}.`
+    : `Natural ${speechLanguageLabel} presenter voice.`;
 }
 
 function buildCompactMarketplaceAutoReviewVideoActionLine(input: {
@@ -14341,18 +14916,24 @@ function buildCompactMarketplaceAutoReviewVideoActionLine(input: {
   referenceMode: MarketplaceAutoReviewVideoReferenceMode;
   metadata?: RunMetadata | null;
 }): string {
-  const voiceover = alignThaiSpeechToMarketplaceAutoReviewPresenter(
-    input.shot.voiceover,
-    input.plan,
-    input.metadata
+  const title = marketplaceAutoReviewEnglishPromptText(
+    input.shot.title,
+    `Product review shot ${input.shot.order}`
   );
-  const parts =
-    input.referenceMode === "start_stop"
-      ? [input.shot.title, input.shot.movement, voiceover]
-      : [input.shot.title, input.shot.visual, input.shot.movement, voiceover];
+  const visual = marketplaceAutoReviewEnglishVisualMeaningText(
+    input.shot.visual,
+    "Show the product truth and practical use shown in the reference frame",
+    180
+  );
+  const movement = marketplaceAutoReviewEnglishPromptText(
+    input.shot.movement,
+    "Use a subtle product-focused motion"
+  );
+  const parts = [title, visual, movement];
   return compactImagePromptText(
     [
       parts.map(cleanText).filter(Boolean).join(". "),
+      "Keep the visible action aligned with the separate Dialogue line without quoting or paraphrasing the dialogue in Action.",
       input.referenceMode === "start_stop"
         ? "Animate only the visible transition/action from start frame to stop frame; do not re-describe or redesign static props, product, people, or background."
         : "Animate with a subtle product-focused motion while preserving the storyboard frame.",
@@ -14383,8 +14964,14 @@ function buildCompactMarketplaceAutoReviewVideoPrompt(input: {
   });
   const camera = compactImagePromptText(
     [
-      input.shot.camera,
-      input.shot.movement,
+      marketplaceAutoReviewEnglishPromptText(
+        input.shot.camera,
+        "Stable cinematic product-review framing"
+      ),
+      marketplaceAutoReviewEnglishPromptText(
+        input.shot.movement,
+        "Subtle product-focused motion"
+      ),
       input.referenceMode === "start_stop"
         ? "Preserve exact endpoint continuity."
         : "Preserve frame composition.",
@@ -14401,14 +14988,19 @@ function buildCompactMarketplaceAutoReviewVideoPrompt(input: {
       isLastShot: input.isLastShot,
       metadata: input.metadata,
     }) ||
-    `${input.plan.productTruth.productName} ช่วยให้เห็นปัญหาและทางออกของสินค้านี้ชัดขึ้น`;
+    marketplaceAutoReviewNativeSpeechFallback({
+      productName: input.plan.productTruth.productName,
+      speechLanguage: input.metadata?.speechLanguage,
+    });
   const hasNativeSpeech = input.audioStrategy === "native_video_audio";
   const noAudioLine =
     input.audioStrategy === "separate_tts_voiceover"
       ? "External audio workflow: visual-only footage. No audio, speech, music, subtitles, captions, or text."
       : "Silent visual-only footage. No audio, speech, music, sound, subtitles, captions, or text.";
   const dialogue = hasNativeSpeech
-    ? `Presenter พูดเป็นภาษาไทยว่า "${cleanText(timedSpeech).replace(/"/g, "'")}"`
+    ? `Presenter speaks in ${marketplaceAutoReviewSpokenLanguageLabel(
+        input.metadata?.speechLanguage
+      )}: "${cleanText(timedSpeech).replace(/"/g, "'")}"`
     : "No spoken dialogue.";
   const audio = hasNativeSpeech
     ? [
@@ -16502,6 +17094,7 @@ export async function startMarketplaceAutoReviewRun(
     videoModel?: MarketplaceAutoReviewVideoModel | null;
     videoStructureMode?: VideoSegmentStructureMode | null;
     manualVideoGroupSize?: number | null;
+    speechLanguage?: HyperframesSpokenLanguage | null;
     creativeBrief?: string | null;
     qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
     referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
@@ -16534,9 +17127,14 @@ export async function startMarketplaceAutoReviewRun(
   const imageModel = normalizeMarketplaceAutoReviewImageModel(input.imageModel);
   const videoModel = normalizeMarketplaceAutoReviewVideoModel(input.videoModel);
   const videoStructureMode = input.videoStructureMode ?? "per_shot";
-  const manualVideoGroupSize = Number.isFinite(Number(input.manualVideoGroupSize))
+  const manualVideoGroupSize = Number.isFinite(
+    Number(input.manualVideoGroupSize)
+  )
     ? Math.max(1, Math.min(12, Math.floor(Number(input.manualVideoGroupSize))))
     : undefined;
+  const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
+    input.speechLanguage
+  );
   const creativeBrief = cleanText(input.creativeBrief);
   const resolvedAudioStrategy = resolveMarketplaceAutoReviewAudioStrategy({
     outputMode,
@@ -16549,7 +17147,7 @@ export async function startMarketplaceAutoReviewRun(
   const tenantId = autoTenantId(auth);
   const transportMetadata = normalizeMarketplaceMcpTransportMetadata(
     input.transportMetadata,
-    { tenantId, actorUserId: auth.userId },
+    { tenantId, actorUserId: auth.userId }
   );
   const requestedIdempotencyKey = cleanText(input.idempotencyKey);
 
@@ -16580,6 +17178,7 @@ export async function startMarketplaceAutoReviewRun(
       videoModel,
       videoStructureMode,
       manualVideoGroupSize,
+      speechLanguage,
       creativeBrief,
       referenceAnchorHash,
       runId,
@@ -16674,6 +17273,7 @@ export async function startMarketplaceAutoReviewRun(
       videoModel,
       videoStructureMode,
       manualVideoGroupSize,
+      speechLanguage,
       creativeBrief,
       requestedShotCount: shotCountForPlan(currentPlan),
       qualityMode,
@@ -16902,6 +17502,7 @@ export async function startMarketplaceAutoReviewRun(
       audioStrategy,
       resolvedAudioStrategy,
       overlayTextMode,
+      speechLanguage,
       fallbackPlan,
       preflightMetadata,
       referenceAnchors,
@@ -16919,6 +17520,7 @@ export async function startMarketplaceAutoReviewRun(
         frameStrategy,
         resolvedAudioStrategy,
         referenceAnchors,
+        speechLanguage,
       });
     plan = voiceoverRewrite.plan;
     creativePlan = {
@@ -17485,12 +18087,13 @@ async function scheduleImageAttempt(params: {
         existingRefs,
         submittedRefs,
       });
-      const transportMetadata = await buildMarketplaceDirectMediaTransportMetadata({
-        db: params.db,
-        metadata: params.metadata,
-        mediaType: "image",
-        modelId: imageModel,
-      });
+      const transportMetadata =
+        await buildMarketplaceDirectMediaTransportMetadata({
+          db: params.db,
+          metadata: params.metadata,
+          mediaType: "image",
+          modelId: imageModel,
+        });
       const task = await mediaGenerationService.generateImageAsync(
         {
           prompt,
@@ -17517,14 +18120,12 @@ async function scheduleImageAttempt(params: {
             referenceImageRoleOrder: providerReferenceImageManifest.map(
               entry => `${entry.placeholder}=${entry.role}`
             ),
-            referenceImageRoleCounts:
-              providerReferenceImageManifest.reduce<Record<string, number>>(
-                (counts, entry) => {
-                  counts[entry.role] = (counts[entry.role] ?? 0) + 1;
-                  return counts;
-                },
-                {}
-              ),
+            referenceImageRoleCounts: providerReferenceImageManifest.reduce<
+              Record<string, number>
+            >((counts, entry) => {
+              counts[entry.role] = (counts[entry.role] ?? 0) + 1;
+              return counts;
+            }, {}),
           },
           transportMetadata,
           auditContext: {
@@ -20294,7 +20895,9 @@ function buildMarketplaceAutoReviewVideoSegmentPlannerInput(params: {
     asRecord(asRecord(params.metadata).transportMetadata).transport === "mcp"
       ? "mcp"
       : "gateway_api";
-  const transportMetadata = asRecord(asRecord(params.metadata).transportMetadata);
+  const transportMetadata = asRecord(
+    asRecord(params.metadata).transportMetadata
+  );
   const provider =
     cleanText(asRecord(params.metadata).videoProvider) ||
     cleanText(transportMetadata.providerKey) ||
@@ -20320,7 +20923,12 @@ function buildMarketplaceAutoReviewVideoSegmentPlannerInput(params: {
       shotId: shot.id,
       index,
       title: shot.title,
-      visualPrompt: [shot.storyboardGuide, shot.visual, shot.camera, shot.movement]
+      visualPrompt: [
+        shot.storyboardGuide,
+        shot.visual,
+        shot.camera,
+        shot.movement,
+      ]
         .filter(Boolean)
         .join(" "),
       voiceover: shot.voiceover,
@@ -20329,7 +20937,8 @@ function buildMarketplaceAutoReviewVideoSegmentPlannerInput(params: {
         cleanText(params.metadata.storyboardFrameUrls?.[index]) || undefined,
       startFrameUrl:
         cleanText(params.metadata.startFrameUrls?.[index]) || undefined,
-      stopFrameUrl: cleanText(params.metadata.stopFrameUrls?.[index]) || undefined,
+      stopFrameUrl:
+        cleanText(params.metadata.stopFrameUrls?.[index]) || undefined,
     })),
     capability: resolveVideoModelSegmentCapability({
       modelId: videoModel,
@@ -20430,8 +21039,8 @@ export function getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest(input: {
   metadata: RunMetadata;
 }) {
   const shotCount = input.plan.shots.length;
-  const frameStrategy =
-    input.run.frameStrategy as MarketplaceAutoReviewFrameStrategy;
+  const frameStrategy = input.run
+    .frameStrategy as MarketplaceAutoReviewFrameStrategy;
   const hasGeneratedStartStopFrameChain =
     frameStrategy === "video_shot_start_stop" &&
     hasCompleteFrameSet(input.metadata.startFrameUrls, shotCount) &&
@@ -20451,7 +21060,9 @@ export function getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest(input: {
     }),
     resolvedAudioStrategy,
   });
-  const previewTransportMetadata = asRecord(asRecord(input.metadata).transportMetadata);
+  const previewTransportMetadata = asRecord(
+    asRecord(input.metadata).transportMetadata
+  );
   const transport =
     asRecord(input.metadata).transport === "mcp" ||
     previewTransportMetadata.transport === "mcp"
@@ -20470,26 +21081,28 @@ export function getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest(input: {
         cleanText(asRecord(input.metadata).mcpConnectionId) ||
         cleanText(previewTransportMetadata.connectionId) ||
         undefined,
-      sharedGroupId: Number.isFinite(Number(asRecord(input.metadata).sharedGroupId))
+      sharedGroupId: Number.isFinite(
+        Number(asRecord(input.metadata).sharedGroupId)
+      )
         ? Number(asRecord(input.metadata).sharedGroupId)
         : Number.isFinite(Number(previewTransportMetadata.sharedGroupId))
           ? Number(previewTransportMetadata.sharedGroupId)
-        : undefined,
+          : undefined,
     },
     creditEstimate: {
       mode:
         videoSegmentPlan.effectiveMode === "per_shot"
-          ? "per_shot" as const
-          : "segment_duration" as const,
+          ? ("per_shot" as const)
+          : ("segment_duration" as const),
       estimatedCredits: videoSegmentPlan.segments.length,
       basis:
         videoSegmentPlan.effectiveMode === "per_shot"
-          ? "jobs" as const
-          : "segments" as const,
+          ? ("jobs" as const)
+          : ("segments" as const),
       creditSource:
         transport === "mcp"
-          ? "mcp_provider_account" as const
-          : "gateway_api" as const,
+          ? ("mcp_provider_account" as const)
+          : ("gateway_api" as const),
       notes: [
         "Estimate counts planned video segment submissions before provider-specific adjustments.",
       ],
@@ -20498,7 +21111,10 @@ export function getMarketplaceAutoReviewVideoSegmentPlanPreviewForTest(input: {
       code: item.code,
       message: item.message,
       severity: item.severity,
-      source: item.source === "fallback" ? "fallback" as const : "planner" as const,
+      source:
+        item.source === "fallback"
+          ? ("fallback" as const)
+          : ("planner" as const),
       shotIds: item.shotIds,
       segmentId: item.segmentId,
     })),
@@ -20759,7 +21375,8 @@ function buildMarketplaceAutoReviewStoryboardReviewTasks(params: {
           creativePresetDirective: cleanText(
             asRecord(clip.metadata).creativePresetDirective
           ),
-          videoSegmentPlanVersion: asRecord(clip.metadata).videoSegmentPlanVersion,
+          videoSegmentPlanVersion: asRecord(clip.metadata)
+            .videoSegmentPlanVersion,
           videoSegmentPlanHash: cleanText(
             asRecord(clip.metadata).videoSegmentPlanHash
           ),
@@ -21102,12 +21719,13 @@ async function scheduleVideoAttempt(params: {
         existingRefs,
         submittedRefs,
       });
-      const transportMetadata = await buildMarketplaceDirectMediaTransportMetadata({
-        db: params.db,
-        metadata: params.metadata,
-        mediaType: "video",
-        modelId: videoModel,
-      });
+      const transportMetadata =
+        await buildMarketplaceDirectMediaTransportMetadata({
+          db: params.db,
+          metadata: params.metadata,
+          mediaType: "video",
+          modelId: videoModel,
+        });
       const task = await mediaGenerationService.generateVideoAsync(
         {
           prompt,

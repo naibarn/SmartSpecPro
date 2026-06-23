@@ -854,6 +854,125 @@ describe("workerRegistryService", () => {
     });
   });
 
+  it("limits private workers to their own queued jobs", async () => {
+    const { claimWorkerJob } = await import("../workerRegistryService");
+
+    const foreignJob = {
+      id: "job-foreign",
+      tenantId: "tenant-1",
+      teamId: null,
+      workerId: null,
+      requestedByUserId: 999,
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      priority: 30,
+      capabilityRequirementsJson: {},
+      inputJson: {},
+      instructionsJson: {},
+      outputJson: null,
+      failureReason: null,
+      timeoutSeconds: 7200,
+      retryPolicyJson: {},
+      idempotencyKey: null,
+      leaseOwnerToken: null,
+      leaseExpiresAt: null,
+      createdAt: new Date("2026-04-06T00:00:00.000Z"),
+      startedAt: null,
+      finishedAt: null,
+    };
+    const ownJob = {
+      ...foreignJob,
+      id: "job-own",
+      requestedByUserId: 7,
+    };
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue({
+        id: "worker-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        registeredByUserId: 7,
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        capabilitiesJson: {
+          workerApp: {
+            sharingMode: "private",
+            acceptJobs: true,
+          },
+        },
+      }),
+      listClaimableJobs: vi.fn().mockResolvedValue([foreignJob, ownJob]),
+      tryClaimJob: vi.fn().mockResolvedValue({
+        ...ownJob,
+        workerId: "worker-1",
+        status: "claimed",
+        leaseOwnerToken: "lease-own",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...ownJob,
+        ...values,
+      })),
+    };
+
+    const result = await claimWorkerJob({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-1",
+      payload: { maxJobs: 1, capabilityHints: [] },
+    }, { repo } as any);
+
+    expect(result.job?.id).toBe("job-own");
+    expect(repo.tryClaimJob).toHaveBeenCalledWith(
+      "job-own",
+      "worker-1",
+      expect.any(String),
+      expect.any(Date),
+    );
+  });
+
+  it("rejects claims when worker queue pickup is paused", async () => {
+    const { claimWorkerJob } = await import("../workerRegistryService");
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue({
+        id: "worker-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        registeredByUserId: 7,
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        capabilitiesJson: {
+          workerApp: {
+            sharingMode: "group",
+            acceptJobs: false,
+          },
+        },
+      }),
+      listClaimableJobs: vi.fn(),
+      tryClaimJob: vi.fn(),
+    };
+
+    await expect(claimWorkerJob({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-1",
+      payload: { maxJobs: 1, capabilityHints: [] },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "worker_state_invalid",
+      statusCode: 409,
+    });
+
+    expect(repo.listClaimableJobs).not.toHaveBeenCalled();
+  });
+
   it("requires matching assignmentAttempt for HyperFrames progress events", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 

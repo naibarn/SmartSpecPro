@@ -24,7 +24,11 @@ describe("HyperFrames runtime API schemas", () => {
   it("parses page-load plan input without mutation fields", () => {
     expect(
       GetAutoStoryboardReviewPlanInputSchema.parse({ productId: "product_1" })
-    ).toEqual({ productId: "product_1", includeTemplates: false, overrides: {} });
+    ).toEqual({
+      productId: "product_1",
+      includeTemplates: false,
+      overrides: {},
+    });
   });
 
   it("allows optional plan overrides while keeping template and engine backend-selected", () => {
@@ -35,6 +39,7 @@ describe("HyperFrames runtime API schemas", () => {
         platformPresetId: "tiktok_reels_shorts_9_16",
         imageModel: "google-banana-2",
         videoModel: "kling3/generate-kling-3-video",
+        speechLanguage: "th",
       },
     });
 
@@ -43,6 +48,7 @@ describe("HyperFrames runtime API schemas", () => {
       platformPresetId: "tiktok_reels_shorts_9_16",
       imageModel: "google-banana-2",
       videoModel: "kling3/generate-kling-3-video",
+      speechLanguage: "th",
     });
     expect(() =>
       GetAutoStoryboardReviewPlanInputSchema.parse({
@@ -57,6 +63,12 @@ describe("HyperFrames runtime API schemas", () => {
       StartAutoStoryboardReviewInputSchema.parse({
         productId: "product_1",
         overrides: { shotCount: 99 },
+      })
+    ).toThrow();
+    expect(() =>
+      StartAutoStoryboardReviewInputSchema.parse({
+        productId: "product_1",
+        overrides: { speechLanguage: "klingon" },
       })
     ).toThrow();
   });
@@ -109,6 +121,7 @@ describe("HyperFrames runtime API schemas", () => {
       overrides: {
         videoModel: "magnific-mcp/imagen-nano-banana-2-flash",
         videoStructureMode: "adaptive_multi_shot",
+        speechLanguage: "zh",
         creativeBrief: "Make the review warmer but keep product facts locked.",
       },
       transportMetadata: {
@@ -125,6 +138,7 @@ describe("HyperFrames runtime API schemas", () => {
     });
 
     expect(input.overrides.videoStructureMode).toBe("adaptive_multi_shot");
+    expect(input.overrides.speechLanguage).toBe("zh");
     expect(input.transportMetadata?.transport).toBe("mcp");
     expect(input.referenceAnchors?.creativePresets).toEqual([
       { family: "tone_preset", presetId: "tone_warm_honest" },
@@ -424,7 +438,8 @@ describe("HyperFrames runtime API schemas", () => {
   it("accepts long spec overlay presets with up to fifteen user-controlled lines", () => {
     const longSpecLines = Array.from(
       { length: 15 },
-      (_, index) => `สเปกบรรทัดที่ ${index + 1} RAM 16GB SSD 1TB กล้องคมชัด ไม่ตัดคำกลางประโยค`
+      (_, index) =>
+        `สเปกบรรทัดที่ ${index + 1} RAM 16GB SSD 1TB กล้องคมชัด ไม่ตัดคำกลางประโยค`
     );
     const input = CreateHyperframesFinalCompositeInputSchema.parse({
       productId: "product_1",
@@ -449,7 +464,9 @@ describe("HyperFrames runtime API schemas", () => {
     expect(input.config.overlayPreset).toBe("spec_lines_15_neon");
     expect(input.config.shots[0]?.overlayPreset).toBe("spec_lines_15_neon");
     expect(input.config.shots[0]?.onScreenText).toHaveLength(15);
-    expect(input.config.shots[0]?.onScreenText.at(-1)).toContain("สเปกบรรทัดที่ 15");
+    expect(input.config.shots[0]?.onScreenText.at(-1)).toContain(
+      "สเปกบรรทัดที่ 15"
+    );
   });
 
   it("rejects long spec overlay text maps above the supported fifteen line maximum", () => {
@@ -500,7 +517,8 @@ describe("HyperFrames runtime API schemas", () => {
             startSec: 0,
             durationSec: 8,
             volume: 0.18,
-            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_music_upbeat_ecommerce_social_v1.wav",
           },
           {
             id: "sfx_1",
@@ -510,7 +528,8 @@ describe("HyperFrames runtime API schemas", () => {
             startSec: 0.2,
             durationSec: 0.22,
             volume: 0.22,
-            assetRef: "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
+            assetRef:
+              "/api/storage/hyperframes/audio-presets/hf_audio_sfx_whoosh_scene_transition_v1.wav",
           },
         ],
         audioAssetValidation: {
@@ -552,9 +571,9 @@ describe("HyperFrames runtime API schemas", () => {
 
     expect(input.config.audioEvents).toHaveLength(2);
     expect(input.config.audioAssetValidation.allowSyntheticFallback).toBe(true);
-    expect(input.config.audioAssetValidation.validatedAssets[0]?.licenseName).toBe(
-      "Internal licensed SFX pack"
-    );
+    expect(
+      input.config.audioAssetValidation.validatedAssets[0]?.licenseName
+    ).toBe("Internal licensed SFX pack");
     expect(input.config.sfxPresetIds).toContain(
       "hf_audio_sfx_whoosh_scene_transition_v1"
     );
@@ -632,7 +651,11 @@ describe("HyperFrames runtime API schemas", () => {
       aliases: HYPERFRAMES_CREATIVE_PRESET_ALIASES,
     });
 
-    expect(parsed.presets.some(preset => preset.id === "hf_text_spec_electronics_stack_v1")).toBe(true);
+    expect(
+      parsed.presets.some(
+        preset => preset.id === "hf_text_spec_electronics_stack_v1"
+      )
+    ).toBe(true);
     expect(parsed.aliases.spec_highlight).toBe(
       "hf_text_spec_electronics_stack_v1"
     );

@@ -431,12 +431,12 @@ export function buildOfficialRuntimeAudioMixReport(
 }
 
 export function isNonRetryableHyperframesRuntimeError(message: string): boolean {
-  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i.test(message);
+  return /HTML\/CSS\/browser runtime is required|official HTML\/CSS\/browser runtime is not ready|readiness flag is not enabled|Chrome\/headless browser runtime is not available|Thai-capable render font is not available|FFmpeg binary is not available|FFprobe binary is not available|FFmpeg\/ASS fallback is disabled|requires Node >=22\.22|blocked until production rollout gates pass|blocked by explicit runtime readiness env|runtime package\/binary is not available|runtime package @hyperframes\/producer is not installed|missing render media asset|video_missing_muted|data-has-audio|FFmpeg not found|FFprobe not found/i.test(message);
 }
 
 function isHyperframesRuntimeCaptureFallbackEligible(message: string): boolean {
   if (
-    /missing render media asset|NoSuchKey|ENOENT|not found|404|requires Node >=22\.22|runtime package\/binary is not available|blocked by explicit runtime readiness env/i.test(message)
+    /missing render media asset|NoSuchKey|ENOENT|not found|404|readiness flag is not enabled|Chrome\/headless browser runtime is not available|Thai-capable render font is not available|FFmpeg binary is not available|FFprobe binary is not available|requires Node >=22\.22|runtime package\/binary is not available|blocked by explicit runtime readiness env/i.test(message)
   ) {
     return false;
   }
@@ -799,6 +799,13 @@ function buildOverlayAssText(input: {
   if (isLongSpecOverlayPreset(input.preset)) {
     return escapeAssText(input.line);
   }
+  if (input.preset === "split_product_specs") {
+    return wrapAssText(input.line, {
+      maxChars: input.index === 0 ? 15 : 18,
+      maxLines: input.index === 0 ? 3 : 2,
+      ellipsis: false,
+    });
+  }
   if (isSpecOverlayPreset(input.preset)) {
     return wrapAssText(input.line, {
       maxChars: input.style === "HookMain" || input.style === "NeonMain" ? 20 : 22,
@@ -987,6 +994,8 @@ function buildTimedOverlayEvents(input: {
     : isSpecOverlayPreset(preset)
       ? preset === "neon_gaming_specs"
         ? ["NeonMain", "NeonSub", "NeonChip", "NeonChip"]
+        : preset === "split_product_specs"
+          ? ["SplitTitle", "SplitHook", "SplitChip", "SplitChip"]
         : ["HookMain", "HookSub", "SpecChip", "SpecChip"]
       : isCardOverlayPreset(preset)
         ? ["FeatureSmall", "FeatureSmall", "FeatureSmall", "FeatureSmall"]
@@ -997,7 +1006,7 @@ function buildTimedOverlayEvents(input: {
       : ["{\\an2\\pos(540,1320)\\fad(120,160)}", "{\\an2\\pos(540,1460)\\fad(120,220)\\t(0,280,\\fscx112\\fscy112)}", "{\\an2\\pos(540,1585)\\fad(120,180)}", "{\\an2\\pos(540,1680)\\fad(120,180)}"]
     : isSpecOverlayPreset(preset)
       ? preset === "split_product_specs"
-        ? ["{\\an7\\pos(90,185)\\fad(120,160)\\t(0,300,\\fscx106\\fscy106)}", "{\\an7\\pos(90,315)\\fad(140,160)}", "{\\an6\\pos(985,650)\\fad(120,160)}", "{\\an6\\pos(985,780)\\fad(120,160)}"]
+        ? ["{\\an7\\pos(80,220)\\fad(120,160)\\t(0,300,\\fscx106\\fscy106)}", "{\\an7\\pos(80,410)\\fad(140,160)}", "{\\an7\\pos(110,560)\\fad(120,160)}", "{\\an7\\pos(110,690)\\fad(120,160)}"]
         : ["{\\an8\\pos(540,165)\\fad(120,160)\\t(0,300,\\fscx106\\fscy106)}", "{\\an8\\pos(540,285)\\fad(140,160)}", "{\\an6\\pos(965,650)\\fad(120,160)}", "{\\an6\\pos(965,780)\\fad(120,160)}"]
       : isCardOverlayPreset(preset)
         ? preset === "lower_third_review"
@@ -1049,6 +1058,27 @@ function buildSubtitleFallbackOverlayLines(input: {
     .slice(0, Math.max(1, limit));
 }
 
+function resolveFinalCompositeCueWindow(input: {
+  cue: { startSec?: number; endSec?: number };
+  shotStart: number;
+  shotEnd: number;
+  duration: number;
+}): { start: number; end: number } | null {
+  const rawStart = Number(input.cue.startSec ?? 0);
+  const rawEnd = Number(input.cue.endSec ?? input.duration);
+  const safeStart = Number.isFinite(rawStart) ? rawStart : 0;
+  const safeEnd = Number.isFinite(rawEnd) ? rawEnd : input.duration;
+  const looksRelative =
+    safeStart < input.shotStart &&
+    safeEnd <= input.duration + 0.25 &&
+    safeEnd > safeStart;
+  const cueStart = looksRelative ? input.shotStart + safeStart : safeStart;
+  const cueEnd = looksRelative ? input.shotStart + safeEnd : safeEnd;
+  const start = Math.max(input.shotStart, cueStart);
+  const end = Math.min(input.shotEnd, cueEnd);
+  return end > start ? { start, end } : null;
+}
+
 export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload: Record<string, unknown>): string {
   const overlayPreset = getFinalCompositeOverlayPreset(payload);
   const finalConfig = getFinalCompositeConfig(payload);
@@ -1087,25 +1117,45 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
         .filter(Boolean)
         .slice(0, 4)
       : [];
-    events.push(...buildTimedOverlayEvents({
-      lines: onScreen.length > 0 ? onScreen : subtitleFallbackOverlay.length > 0 ? subtitleFallbackOverlay : firstShotHook,
-      shotStart,
-      shotEnd,
-      preset: shotOverlayPreset,
-      animationPreset: String(shot.animationPreset ?? ""),
-    }));
+    const primaryOverlayLines = onScreen.length > 0 ? onScreen : subtitleFallbackOverlay;
+    if (firstShotHook.length > 0) {
+      events.push(...buildTimedOverlayEvents({
+        lines: firstShotHook,
+        shotStart,
+        shotEnd: Math.min(shotEnd, shotStart + 3),
+        preset: shotOverlayPreset,
+        animationPreset: String(shot.animationPreset ?? ""),
+      }));
+    }
+    if (primaryOverlayLines.length > 0) {
+      const shouldDelayOverlayAfterHook =
+        firstShotHook.length > 0 &&
+        finalConfig.textMode === "hook_and_per_shot" &&
+        shotEnd - shotStart > 3.4;
+      events.push(...buildTimedOverlayEvents({
+        lines: primaryOverlayLines,
+        shotStart: shouldDelayOverlayAfterHook ? shotStart + 3 : shotStart,
+        shotEnd,
+        preset: shotOverlayPreset,
+        animationPreset: String(shot.animationPreset ?? ""),
+      }));
+    }
     for (const cue of shot.subtitleCues ?? []) {
       if (subtitlePreset === "no_subtitle_style") continue;
-      const cueStart = Math.max(shotStart, Number(cue.startSec ?? shotStart) || shotStart);
-      const cueEnd = Math.min(shotEnd, Number(cue.endSec ?? shotEnd) || shotEnd);
-      if (cueEnd <= cueStart) continue;
+      const cueWindow = resolveFinalCompositeCueWindow({
+        cue,
+        shotStart,
+        shotEnd,
+        duration,
+      });
+      if (!cueWindow) continue;
       const text = buildSubtitleAssText({
         text: cue.text,
         preset: subtitlePreset,
-        durationSec: cueEnd - cueStart,
+        durationSec: cueWindow.end - cueWindow.start,
       });
       if (!text) continue;
-      events.push(`Dialogue: 1,${assTime(cueStart)},${assTime(cueEnd)},${subtitleStyleForPreset(subtitlePreset)},,0,0,0,,${text}`);
+      events.push(`Dialogue: 1,${assTime(cueWindow.start)},${assTime(cueWindow.end)},${subtitleStyleForPreset(subtitlePreset)},,0,0,0,,${text}`);
     }
     cursor = shotEnd;
   }
@@ -1122,7 +1172,7 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
     "Style: SubMinimal,Noto Sans Thai,58,&H00FFFFFF,&H000000FF,&H95000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,96,96,168,1",
     "Style: SubPop,Prompt,58,&H00111111,&H000000FF,&H00FFFFFF,&HDCFFFFFF,1,0,0,0,100,100,0,0,3,1.5,0,2,80,80,170,1",
     "Style: SubKaraoke,Noto Sans Thai,58,&H0000D7FF,&H00FFFFFF,&H7A000000,&HA0000000,1,0,0,0,100,100,0,0,3,2,0,2,96,96,170,1",
-    "Style: SubHighlight,Noto Sans Thai,58,&H00FFFFFF,&H000000FF,&H00000000,&HA02222AA,1,0,0,0,100,100,0,0,3,0,0,2,96,96,170,1",
+    "Style: SubHighlight,Noto Sans Thai,58,&H00FFFFFF,&H000000FF,&H40111111,&H0015CCFA,1,0,0,0,100,100,0,0,3,1,0,2,96,96,170,1",
     "Style: SubLowerThird,Noto Sans Thai,54,&H00FFFFFF,&H000000FF,&H80111111,&HB0000000,1,0,0,0,100,100,0,0,3,2,0,1,92,96,300,1",
     "Style: SubCinematic,Noto Sans Thai,54,&H00F8FAFC,&H000000FF,&H7A000000,&HA0000000,0,0,0,0,100,100,0,0,3,2,0,2,64,64,126,1",
     "Style: SubNeon,Kanit,56,&H00FEE2A8,&H000000FF,&H00FF2ABF,&HB0000000,1,0,0,0,100,100,0,0,3,2,1,2,84,84,170,1",
@@ -1130,6 +1180,9 @@ export function buildFinalCompositeAss(shots: HyperframesShotPayload[], payload:
     "Style: HookMain,Prompt,64,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,4,0,8,96,96,150,1",
     "Style: HookSub,Prompt,50,&H00111111,&H000000FF,&H00FFFFFF,&H55FFFFFF,1,0,0,0,100,100,0,0,1,3,0,8,104,104,275,1",
     "Style: SpecChip,Noto Sans Thai,40,&H00111111,&H000000FF,&H00FFFFFF,&HDFFFFFFF,1,0,0,0,100,100,0,0,3,1.5,0,6,96,96,0,1",
+    "Style: SplitTitle,Prompt,52,&H00111111,&H000000FF,&H00FFFFFF,&H00FAF8F8,1,0,0,0,100,100,0,0,3,1.5,0,7,72,72,0,1",
+    "Style: SplitHook,Noto Sans Thai,38,&H00020617,&H000000FF,&H0015CCFA,&H0015CCFA,1,0,0,0,100,100,0,0,3,9,0,7,72,72,0,1",
+    "Style: SplitChip,Noto Sans Thai,30,&H00020617,&H000000FF,&H0015CCFA,&H0015CCFA,1,0,0,0,100,100,0,0,3,9,0,7,72,72,0,1",
     "Style: SpecLongCleanHook,Noto Sans Thai,56,&H00111111,&H000000FF,&H00FFFFFF,&HE8FFFFFF,1,0,0,0,100,100,0,0,3,1.2,0,7,72,72,0,1",
     "Style: SpecLongClean,Noto Sans Thai,38,&H00111111,&H000000FF,&H00FFFFFF,&H00000000,1,0,0,0,100,100,0,0,1,3,1,7,72,72,0,1",
     "Style: SpecLongDarkHook,Noto Sans Thai,44,&H00FEE2A8,&H000000FF,&H9038BDF8,&HA8020617,1,0,0,0,100,100,0,0,3,1.2,0,7,72,72,0,1",

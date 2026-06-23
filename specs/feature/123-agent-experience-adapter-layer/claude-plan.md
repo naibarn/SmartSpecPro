@@ -18,7 +18,7 @@ Sections 04-08 are planned for continuity but should not be implemented until th
 
 1. Do not rename or modify the existing SmartSpecPro persona system.
 2. Do not use `persona` in SmartSpec-owned package/module/flag names for this feature.
-3. Do not install `@runtypelabs/persona` in MVP.
+3. Initial MVP posture: do not install `@runtypelabs/persona`. Follow-up implementation directive on 2026-06-22 supersedes this by installing `@runtypelabs/persona@4.4.0` in `@smartspec/agent-experience` while keeping renderer activation dependency-gated and feature-flagged.
 4. Do not replace `ChatView`, `AgencyChat`, or `TeamRoomView` in MVP.
 5. Do not create a new durable Agent Experience ledger.
 6. Do not add a database migration in MVP.
@@ -474,7 +474,7 @@ MVP is done when:
 - renderer intent contract tests pass;
 - fixture inventory exists with redaction status;
 - schema changelog and compatibility/deprecation rules exist;
-- no `@runtypelabs/persona` dependency is installed;
+- `@runtypelabs/persona@4.4.0` is installed only for gated bridge evaluation and not imported from core Chat, Agency, or Team surfaces;
 - flag-off regression evidence exists for Chat, Agency Chat, and Team Room;
 - no database migration exists;
 - no visible UI replacement is introduced.
@@ -494,7 +494,7 @@ Before live preview or tenant beta:
 | Adapter logic duplicates source runtime semantics incorrectly | Use fixture mapping tables and preserve source IDs/timestamps. |
 | Private Team events leak | Test private/internal fixture filtering before any preview UI. |
 | Flags behave inconsistently across surfaces | Centralize flag precedence helper and test each precedence row. |
-| Runtype bridge creeps into MVP | Keep dependency gate in Section 07 only; do not install in sections 01-03. |
+| Runtype bridge creeps into MVP | Keep dependency gate in Section 07 only; installation is now allowed by follow-up directive, but renderer activation must remain gated and non-default. |
 | Fixture data leaks sensitive content | Require synthetic fixtures by default and redaction metadata. |
 | Existing UI regresses | Keep all preview flags off and run flag-off smoke evidence. |
 | `featureFlags.js` is generated or manually synced inconsistently | Inspect local convention before editing; if generated, update source and generation evidence instead of hand-editing generated output. |

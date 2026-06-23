@@ -48,6 +48,7 @@ import {
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
 const MARKETPLACE_EXTENSION_FILE_PATTERN = /^smartaihub-marketplace-capture-extension-(.+)\.zip$/i;
+const WORKER_APP_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-x64-setup\.(exe|msi)$/i;
 
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
 
@@ -176,16 +177,18 @@ function detectPlatformQuery(value: unknown): "windows" | "macos" | "linux" | nu
   return null;
 }
 
-type MarketplaceExtensionRelease = {
+type PublicDashboardRelease = {
   version: string;
   fileName: string;
   filePath: string;
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
+  installerFormat?: "exe" | "msi" | "zip";
+  contentType: string;
 };
 
-function getMarketplaceExtensionReleaseDirs(): string[] {
+function getPublicReleaseDirs(): string[] {
   const candidates = [
     path.resolve(process.cwd(), "client/public/releases"),
     path.resolve(process.cwd(), "dist/public/releases"),
@@ -197,16 +200,21 @@ function getMarketplaceExtensionReleaseDirs(): string[] {
   return Array.from(new Set(candidates));
 }
 
-function listMarketplaceExtensionReleases(): MarketplaceExtensionRelease[] {
-  const releases: MarketplaceExtensionRelease[] = [];
+function listPublicDashboardReleases(options: {
+  filePattern: RegExp;
+  downloadUrl: string;
+  resolveContentType: (fileName: string, extension: string | null) => string;
+  resolveInstallerFormat?: (fileName: string, extension: string | null) => "exe" | "msi" | "zip" | undefined;
+}): PublicDashboardRelease[] {
+  const releases: PublicDashboardRelease[] = [];
 
-  for (const releaseDir of getMarketplaceExtensionReleaseDirs()) {
+  for (const releaseDir of getPublicReleaseDirs()) {
     if (!fs.existsSync(releaseDir)) {
       continue;
     }
 
     for (const fileName of fs.readdirSync(releaseDir)) {
-      const match = fileName.match(MARKETPLACE_EXTENSION_FILE_PATTERN);
+      const match = fileName.match(options.filePattern);
       if (!match?.[1]) {
         continue;
       }
@@ -223,7 +231,9 @@ function listMarketplaceExtensionReleases(): MarketplaceExtensionRelease[] {
         filePath,
         fileSizeBytes: stat.size,
         updatedAt: stat.mtime.toISOString(),
-        downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+        downloadUrl: options.downloadUrl,
+        installerFormat: options.resolveInstallerFormat?.(fileName, match[2] ?? null),
+        contentType: options.resolveContentType(fileName, match[2] ?? null),
       });
     }
   }
@@ -237,8 +247,38 @@ function listMarketplaceExtensionReleases(): MarketplaceExtensionRelease[] {
   });
 }
 
-function getLatestMarketplaceExtensionRelease(): MarketplaceExtensionRelease | null {
-  return listMarketplaceExtensionReleases()[0] ?? null;
+function getLatestMarketplaceExtensionRelease(): PublicDashboardRelease | null {
+  return listPublicDashboardReleases({
+    filePattern: MARKETPLACE_EXTENSION_FILE_PATTERN,
+    downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+    resolveContentType: () => "application/zip",
+    resolveInstallerFormat: () => "zip",
+  })[0] ?? null;
+}
+
+function getLatestWorkerAppRelease(): PublicDashboardRelease | null {
+  return listPublicDashboardReleases({
+    filePattern: WORKER_APP_FILE_PATTERN,
+    downloadUrl: "/api/desktop-releases/worker-app/download",
+    resolveContentType: (_fileName, extension) => {
+      if (extension?.toLowerCase() === "msi") {
+        return "application/x-msi";
+      }
+      return "application/vnd.microsoft.portable-executable";
+    },
+    resolveInstallerFormat: (_fileName, extension) => {
+      const normalized = extension?.toLowerCase();
+      return normalized === "msi" ? "msi" : "exe";
+    },
+  })[0] ?? null;
+}
+
+function sendPublicDashboardRelease(res: any, release: PublicDashboardRelease): void {
+  res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
+  res.setHeader("Content-Type", release.contentType);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  fs.createReadStream(release.filePath).pipe(res);
 }
 
 export function createDesktopReleaseRouter(): Router {
@@ -326,14 +366,50 @@ export function createDesktopReleaseRouter(): Router {
         return;
       }
 
-      res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
-      res.setHeader("Content-Type", "application/zip");
-      res.setHeader("Cache-Control", "no-store");
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      fs.createReadStream(release.filePath).pipe(res);
+      sendPublicDashboardRelease(res, release);
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : "failed_to_download_marketplace_extension_release",
+      });
+    }
+  });
+
+  router.get("/worker-app/latest", (_req, res) => {
+    try {
+      const release = getLatestWorkerAppRelease();
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        generatedAt: new Date().toISOString(),
+        release: release
+          ? {
+            version: release.version,
+            fileName: release.fileName,
+            fileSizeBytes: release.fileSizeBytes,
+            updatedAt: release.updatedAt,
+            downloadUrl: release.downloadUrl,
+            installerFormat: release.installerFormat,
+          }
+          : null,
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_list_worker_app_release",
+      });
+    }
+  });
+
+  router.get("/worker-app/download", (_req, res) => {
+    try {
+      const release = getLatestWorkerAppRelease();
+      if (!release) {
+        res.status(404).json({ error: "worker_app_release_not_found" });
+        return;
+      }
+
+      sendPublicDashboardRelease(res, release);
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_download_worker_app_release",
       });
     }
   });

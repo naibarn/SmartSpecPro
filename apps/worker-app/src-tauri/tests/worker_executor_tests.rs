@@ -50,8 +50,12 @@ fn mocked_hyperframes_job_builds_ordered_event_sequence() {
     assert_eq!(events[0].payload_json["stage"], "resolve_inputs");
     assert_eq!(events[4].payload_json["stage"], "render_browser_css");
     assert_eq!(events[8].payload_json["stage"], "publish_artifacts");
-    assert!(events.iter().all(|event| event.assignment_attempt == "attempt_1"));
-    assert!(events.iter().all(|event| event.lease_owner_token == "lease-1"));
+    assert!(events
+        .iter()
+        .all(|event| event.assignment_attempt == "attempt_1"));
+    assert!(events
+        .iter()
+        .all(|event| event.lease_owner_token == "lease-1"));
 }
 
 #[test]
@@ -92,12 +96,16 @@ fn sidecar_command_uses_allowlisted_args_not_server_shell_strings() {
     let dir = tempfile::tempdir().unwrap();
     let job = claimed_job();
     let plan = prepare_hyperframes_execution_plan(&job, dir.path(), &ready_doctor()).unwrap();
-    let command = build_sidecar_command(std::path::Path::new("hyperframes-render.exe"), &plan).unwrap();
+    let command =
+        build_sidecar_command(std::path::Path::new("hyperframes-render.exe"), &plan).unwrap();
 
     assert_eq!(command.args[0], "render");
     assert!(command.args.contains(&"--manifest".to_string()));
     assert!(command.args.contains(&"--output-dir".to_string()));
-    assert!(!command.args.iter().any(|arg| arg.contains("&&") || arg.contains(';') || arg.contains('|')));
+    assert!(!command
+        .args
+        .iter()
+        .any(|arg| arg.contains("&&") || arg.contains(';') || arg.contains('|')));
 
     let manifest = build_sidecar_manifest(&job, &plan);
     assert_eq!(manifest["runtimePolicy"]["requireOfficialRuntime"], true);
@@ -111,15 +119,23 @@ fn upload_plan_contains_all_required_artifacts_and_assignment_attempt() {
     let job = claimed_job();
     let plan = prepare_hyperframes_execution_plan(&job, dir.path(), &ready_doctor()).unwrap();
     let uploads = build_required_artifact_uploads(&job, &plan);
-    let artifact_types: Vec<_> = uploads.iter().map(|upload| upload.artifact_type.as_str()).collect();
+    let artifact_types: Vec<_> = uploads
+        .iter()
+        .map(|upload| upload.artifact_type.as_str())
+        .collect();
 
-    assert_eq!(artifact_types, vec![
-        "hyperframes_final_video",
-        "hyperframes_render_manifest",
-        "hyperframes_runtime_doctor",
-        "hyperframes_probe_report",
-    ]);
-    assert!(uploads.iter().all(|upload| upload.assignment_attempt == "attempt_1"));
+    assert_eq!(
+        artifact_types,
+        vec![
+            "hyperframes_final_video",
+            "hyperframes_render_manifest",
+            "hyperframes_runtime_doctor",
+            "hyperframes_probe_report",
+        ]
+    );
+    assert!(uploads
+        .iter()
+        .all(|upload| upload.assignment_attempt == "attempt_1"));
 }
 
 #[test]

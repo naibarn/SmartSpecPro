@@ -122,6 +122,16 @@ h2 {
   padding: 10px 14px;
 }
 
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button-row .secondary-button {
+  margin-top: 12px;
+}
+
 .primary-button {
   background: #0f766e;
   color: #ffffff;
@@ -140,10 +150,87 @@ h2 {
   overflow: hidden;
 }
 
+.loop-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  margin: 14px 0 0;
+  padding: 7px 10px;
+}
+
+.loop-badge.running {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.loop-badge.stopped {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .progress-track span {
   background: #0f766e;
   display: block;
   height: 100%;
+}
+
+.connection-summary {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  color: #065f46;
+  margin: 14px 0 0;
+  padding: 10px 12px;
+}
+
+.connect-code-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 12px;
+}
+
+.connect-code-box span {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.connect-code-box strong {
+  color: #0f172a;
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.connect-code-box a {
+  color: #0369a1;
+  overflow-wrap: anywhere;
+}
+
+.connect-message {
+  border-radius: 6px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+}
+
+.connect-message.pending {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.connect-message.connected {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.connect-message.error {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .check-list {
@@ -161,6 +248,28 @@ h2 {
 .check-row p {
   color: #5f6f83;
   margin: 4px 0 0;
+}
+
+.runtime-help {
+  background: #f8fafc;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  margin-top: 18px;
+  padding: 14px 16px;
+}
+
+.runtime-help strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.runtime-help ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.runtime-help li + li {
+  margin-top: 6px;
 }
 
 .status-dot {
@@ -196,6 +305,13 @@ h2 {
   display: grid;
   gap: 7px;
   font-weight: 700;
+}
+
+.field-help {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .settings-grid input,

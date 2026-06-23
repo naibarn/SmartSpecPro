@@ -10,4 +10,4 @@ Status: baseline required before live preview.
 | Shadow mode overhead | not enabled | measure or sample before rollout |
 | Artifact preview load | pointer-only | lazy-load evidence before live preview |
 | Debug inspector expansion | redacted helper only | measure expansion when UI is added |
-| External renderer bundle impact | dependency not installed | dependency gate report |
+| External renderer bundle impact | isolated bridge bundle: 3.1KB entry plus ~914KB raw / ~219KB gzip lazy Runtype chunks; production `apps/web` bundle impact still required before default renderer adoption | dependency gate report |

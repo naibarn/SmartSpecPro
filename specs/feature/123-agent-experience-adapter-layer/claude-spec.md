@@ -37,7 +37,7 @@ MVP includes:
 
 MVP excludes:
 
-- installing or importing `@runtypelabs/persona`;
+- activating `@runtypelabs/persona` as a default renderer or importing it from core Chat, Agency Chat, or Team Room surfaces;
 - replacing `ChatView`, `AgencyChat`, or `TeamRoomView` as default UI;
 - creating a customer website widget;
 - customer page actions;
@@ -193,6 +193,6 @@ MVP is acceptable when:
 - feature flags and precedence helper are tested;
 - renderer intent contract is tested;
 - no existing Chat/Agency/Team behavior changes when flags are off;
-- no `@runtypelabs/persona` dependency is in production paths;
+- no core Chat, Agency, or Team production path imports `@runtypelabs/persona`;
 - no database migration or durable Agent Experience ledger exists;
 - evidence artifacts and section handoff are ready for the next implementation slice.

@@ -504,11 +504,25 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
         plan: reviewPlan,
       });
 
-    expect(details).toContain("Marketplace Capture Auto Review หน้า Product");
+    expect(details).toContain("Marketplace Capture Auto Review product page");
     expect(details).toContain("Selected video concept");
     expect(details).toContain("Current spoken intent");
-    expect(details).toContain("จำนวน 2 บรรทัด");
-    expect(details).toContain("ไม่ใช่คำบรรยายภาพ");
+    expect(details).toContain("Return exactly 2 real spoken voiceover lines");
+    expect(details).toContain("Spoken language: English");
+    expect(details).toContain("not image description");
+  });
+
+  it("keeps voiceover rewrite instructions in English while selecting Thai speech", () => {
+    const details =
+      buildMarketplaceAutoReviewVoiceoverSkillProductDetailsForTest({
+        plan: reviewPlan,
+        speechLanguage: "th",
+      });
+
+    expect(details).toContain("Spoken language: Thai");
+    expect(details).toContain("Only the exact viewer-facing spoken dialogue");
+    expect(details).toContain("Return exactly 2 real spoken voiceover lines");
+    expect(details).not.toContain("งานนี้คือ");
   });
 
   it("passes selected male presenter and polite-particle lock to mother-baby voiceover rewrite", () => {
@@ -545,6 +559,7 @@ describe("Marketplace Auto Review product voiceover dialogue rewrite helpers", (
           characterImageRef: null,
           environmentImageRef: null,
         } as any,
+        speechLanguage: "th",
       });
 
     expect(details).toContain("Presenter / voice lock");
@@ -729,7 +744,7 @@ describe("Marketplace Auto Review MCP transport metadata", () => {
             argumentShape: "higgsfield.generate_image",
             creditSource: "provider_account",
           },
-        },
+        }
       )
     ).toMatchObject({
       transport: "mcp",
@@ -764,7 +779,7 @@ describe("Marketplace Auto Review MCP transport metadata", () => {
             argumentShape: "higgsfield.generate_video",
             creditSource: "provider_account",
           },
-        },
+        }
       )
     ).toMatchObject({
       assetType: "video",
@@ -1318,9 +1333,7 @@ describe("marketplace auto review audio/video planning", () => {
 
   it("routes Thai audio preset to separate TTS and guards Seedance native speech", () => {
     const directive = creativeDirectionDirectiveForTest({
-      creativePresets: [
-        { family: "audio_preset", presetId: "audio_thai_tts" },
-      ],
+      creativePresets: [{ family: "audio_preset", presetId: "audio_thai_tts" }],
       videoModel: "seedance-2.0-pro",
     });
 
@@ -2760,6 +2773,7 @@ describe("marketplace auto review audio/video planning", () => {
       plan: basePlan,
       shot: baseShot,
       isLastShot: false,
+      metadata: { speechLanguage: "th" } as any,
     });
 
     expect(speech).toBe(baseShot.voiceover);
@@ -2777,9 +2791,9 @@ describe("marketplace auto review audio/video planning", () => {
     });
 
     expect(prompt).toContain("Audio:");
-    expect(prompt).toContain("พูดเป็นภาษาไทยว่า");
+    expect(prompt).toContain("Presenter speaks in English:");
     expect(prompt).toContain("Voice:");
-    expect(prompt).toMatch(/natural central Thai/i);
+    expect(prompt).toMatch(/natural English/i);
     expect(prompt).toMatch(/foley|room tone/i);
     expect(prompt).toContain("No music");
     expect(prompt).toContain("copyrighted melody");
@@ -2789,6 +2803,77 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).not.toContain("No audio.");
     expect(prompt).not.toContain("โดยดูจากภาพจริง");
     expect(prompt).not.toContain("ไม่ปล่อยท้ายช็อตเงียบ");
+    expect(prompt.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("falls back to English speech when legacy Thai voiceover is present but spoken language is default English", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: basePlan as any,
+      shot: {
+        ...baseShot,
+        title: "เปิดปัญหา",
+        visual: "มือหยิบของบนโต๊ะ",
+        movement: "กล้องค่อย ๆ เคลื่อนเข้า",
+        camera: "มุมกล้องใกล้",
+        voiceover: "โต๊ะตัวนี้ช่วยให้ห้องดูเป็นระเบียบขึ้น",
+      } as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+    });
+
+    expect(prompt).toContain("Presenter speaks in English:");
+    expect(prompt).toContain(
+      '"This product makes the product problem and solution clearer."'
+    );
+    expect(prompt).not.toContain("โต๊ะตัวนี้");
+    expect(prompt).not.toContain("เปิดปัญหา");
+    expect(prompt).not.toContain("มือหยิบของ");
+    expect(prompt).not.toContain("มุมกล้อง");
+    expect(prompt).toContain("a hand reaches for cluttered items");
+    expect(prompt).toContain("close camera angle");
+    expect(prompt).toContain("slow push-in camera movement");
+  });
+
+  it("falls back to selected Latin-language speech instead of labeling English as Spanish", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: basePlan as any,
+      shot: {
+        ...baseShot,
+        title: "Clean product demonstration",
+        visual: "Hands organize bedside items on the shelf",
+        movement: "slow push-in",
+        camera: "close product detail",
+        voiceover: "This shelf keeps the bedside area organized",
+      } as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+      metadata: { speechLanguage: "es" } as any,
+    });
+
+    expect(prompt).toContain("Presenter speaks in Spanish:");
+    expect(prompt).toContain("ayuda a mostrar mejor el problema");
+    expect(prompt).not.toContain("This shelf keeps");
+  });
+
+  it("uses selected Thai as spoken dialogue language while keeping prompt labels in English", () => {
+    const prompt = buildMarketplaceAutoReviewVideoPromptForTest({
+      plan: basePlan as any,
+      shot: baseShot as any,
+      audioStrategy: "native_video_audio",
+      isLastShot: false,
+      metadata: { speechLanguage: "th" } as any,
+    });
+
+    expect(prompt).toContain("Audio:");
+    expect(prompt).toContain("Presenter speaks in Thai:");
+    expect(prompt).toContain("Voice:");
+    expect(prompt).toMatch(/natural Thai/i);
+    expect(prompt).toContain(baseShot.voiceover);
+    expect(prompt).toContain(
+      `Dialogue: Presenter speaks in Thai: "${baseShot.voiceover}"`
+    );
+    expect(prompt).not.toContain(`Action: ${baseShot.voiceover}`);
+    expect(prompt).not.toContain("Presenter พูดเป็นภาษาไทยว่า");
     expect(prompt.length).toBeLessThanOrEqual(2000);
   });
 
@@ -2865,6 +2950,7 @@ describe("marketplace auto review audio/video planning", () => {
       } as any,
       audioStrategy: "native_video_audio",
       metadata: {
+        speechLanguage: "th",
         referenceAnchors: {
           characterMode: "described_character",
           characterBrief:
@@ -2918,6 +3004,7 @@ describe("marketplace auto review audio/video planning", () => {
       } as any,
       audioStrategy: "native_video_audio",
       metadata: {
+        speechLanguage: "th",
         referenceAnchors: {
           characterMode: "described_character",
           characterBrief:
@@ -2958,6 +3045,7 @@ describe("marketplace auto review audio/video planning", () => {
       } as any,
       audioStrategy: "native_video_audio",
       metadata: {
+        speechLanguage: "th",
         referenceAnchors: {
           characterMode: "uploaded_reference",
           characterImageUrl: "https://cdn.example.test/male-presenter.png",
@@ -3060,6 +3148,7 @@ describe("marketplace auto review audio/video planning", () => {
       isLastShot: false,
       referenceMode: "start_stop",
       metadata: {
+        speechLanguage: "th",
         referenceAnchors: {
           characterMode: "described_character",
           characterBrief:
@@ -3087,7 +3176,10 @@ describe("marketplace auto review audio/video planning", () => {
       "Use @Image1 as start frame. Use @Image2 as stop frame."
     );
     expect(prompt).toContain("Action:");
-    expect(prompt).toContain("พอใช้ BENO PRO-FLEX");
+    expect(prompt).toContain(
+      'Dialogue: Presenter speaks in Thai: "พอใช้ BENO PRO-FLEX'
+    );
+    expect(prompt).not.toContain("Action: พอใช้ BENO PRO-FLEX");
     expect(prompt).not.toContain("Prop details");
     expect(prompt).not.toContain("adorable fluffy kitten");
     expect(prompt).not.toContain("beautiful depth of field");
@@ -3104,7 +3196,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).toContain("Native audio.");
     expect(prompt).toContain("Voice:");
     expect(prompt).toContain("Dialogue:");
-    expect(prompt).toContain("พูดเป็นภาษาไทยว่า");
+    expect(prompt).toContain("Presenter speaks in English:");
     expect(prompt).not.toContain("No audio.");
     expect(prompt).not.toContain("No spoken dialogue.");
   });
@@ -3139,7 +3231,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).toContain("External audio workflow");
     expect(prompt).toContain("No audio");
     expect(prompt).toContain("No spoken dialogue.");
-    expect(prompt).not.toContain("พูดเป็นภาษาไทยว่า");
+    expect(prompt).not.toContain("Presenter speaks in Thai:");
     expect(prompt.length).toBeLessThanOrEqual(2000);
   });
 
@@ -3395,6 +3487,100 @@ describe("marketplace auto review audio/video planning", () => {
     expect(allowTextPrompt).toContain("Prohibit Shopee");
     expect(allowTextPrompt).not.toMatch(/\b0-5s\b/);
     expect(allowTextPrompt).not.toMatch(/\b5-10s\b/);
+  });
+
+  it("keeps storyboard image prompts in English without copying Thai shot text or dialogue", () => {
+    const prompt = buildMarketplaceAutoReview3x3StoryboardPromptForTest({
+      plan: {
+        ...basePlan,
+        title: "เปิดปัญหาโต๊ะรก",
+        storyboardGuide: "ให้เห็นปัญหา แล้วค่อยโชว์สินค้า",
+        productDetail: "PRODUCT FACTS LOCK: โต๊ะวางของข้างเตียงสีเขียว.",
+        voiceoverScript: "โต๊ะตัวนี้ช่วยให้ห้องดูเป็นระเบียบขึ้น",
+        shots: [
+          {
+            ...baseShot,
+            title: "เปิดปัญหา",
+            storyboardGuide: "มือหยิบของบนโต๊ะ",
+            visual: "มือหยิบของบนโต๊ะ",
+            camera: "มุมกล้องใกล้",
+            movement: "กล้องค่อย ๆ เคลื่อนเข้า",
+            productRole: "โชว์การจัดของ",
+            voiceover: "โต๊ะตัวนี้ช่วยให้ห้องดูเป็นระเบียบขึ้น",
+          },
+        ],
+      } as any,
+      overlayTextMode: "no_text",
+    });
+
+    expect(prompt).toContain("storyboard_guide:");
+    expect(prompt).toContain("voiceover_script: separate spoken contract");
+    expect(prompt).toContain(
+      "show the problem first, then reveal the product"
+    );
+    expect(prompt).toContain("a hand reaches for cluttered");
+    expect(prompt).toContain("close camera angle");
+    expect(prompt).toContain("slow push-in camera movement");
+    expect(prompt).toContain("STORY MATCH:this product");
+    for (const forbidden of [
+      "เปิดปัญหา",
+      "มือหยิบของ",
+      "มุมกล้อง",
+      "กล้องค่อย",
+      "โต๊ะตัวนี้",
+      "โชว์การจัดของ",
+    ]) {
+      expect(prompt).not.toContain(forbidden);
+    }
+  });
+
+  it("keeps single storyboard frame image prompts in English without copying Thai shot text", () => {
+    const prepared = prepareMarketplaceAutoReviewImagePromptForTest({
+      plan: {
+        ...basePlan,
+        storyboardGuide: "ให้เห็นปัญหา แล้วค่อยโชว์สินค้า",
+        productDetail: "PRODUCT FACTS LOCK: โต๊ะวางของข้างเตียงสีเขียว.",
+        shots: [
+          {
+            ...baseShot,
+            title: "เปิดปัญหา",
+            storyboardGuide: "มือหยิบของบนโต๊ะ",
+            visual: "มือหยิบของบนโต๊ะ",
+            camera: "มุมกล้องใกล้",
+            movement: "กล้องค่อย ๆ เคลื่อนเข้า",
+            productRole: "โชว์การจัดของ",
+            voiceover: "โต๊ะตัวนี้ช่วยให้ห้องดูเป็นระเบียบขึ้น",
+          },
+        ],
+      } as any,
+      unit: {
+        unitId: "shot-1-storyboard",
+        role: "storyboard_frame",
+        shotId: baseShot.id,
+        shotOrder: 1,
+        repairInstruction: "แก้ภาพให้ตรงสินค้า",
+      } as any,
+      overlayTextMode: "no_text",
+    });
+
+    expect(prepared.prompt).toContain("Dialogue contract:");
+    expect(prepared.prompt).toContain("Repair instruction:");
+    expect(prepared.prompt).toContain(
+      "a hand reaches for cluttered items on the table"
+    );
+    expect(prepared.prompt).toContain("close camera angle");
+    expect(prepared.prompt).toContain("slow push-in camera movement");
+    expect(prepared.prompt).toContain("repair image match product");
+    for (const forbidden of [
+      "เปิดปัญหา",
+      "มือหยิบของ",
+      "มุมกล้อง",
+      "กล้องค่อย",
+      "โต๊ะตัวนี้",
+      "แก้ภาพ",
+    ]) {
+      expect(prepared.prompt).not.toContain(forbidden);
+    }
   });
 
   it("requires minor clothing safety locks for mother-baby storyboard image prompts", () => {
@@ -3771,7 +3957,7 @@ describe("marketplace auto review audio/video planning", () => {
       "Main storyboard category: furniture"
     );
     expect(String(inputs.production_concept_details)).toContain(
-      "Marketplace category path: บ้านและไลฟ์สไตล์ > เฟอร์นิเจอร์"
+      "Marketplace category path: marketplace category > marketplace category"
     );
     expect(String(inputs.runtime_contract)).toContain(
       "Product reference exact recreation lock"
@@ -4319,10 +4505,10 @@ describe("marketplace auto review audio/video planning", () => {
     );
     expect(inputs.product_category).toBe("computer_laptop");
     expect(String(inputs.production_concept_details)).toContain(
-      "Captured marketplace category: คีย์บอร์ดสำหรับเล่นเกมส์"
+      "Captured marketplace category: marketplace category"
     );
     expect(String(inputs.production_concept_details)).toContain(
-      "Marketplace category path: คอมพิวเตอร์และแล็ปท็อป > อุปกรณ์สำหรับเล่นเกม > คีย์บอร์ดสำหรับเล่นเกมส์"
+      "Marketplace category path: marketplace category > marketplace category > marketplace category"
     );
   });
 
@@ -5293,7 +5479,9 @@ describe("marketplace auto review audio/video planning", () => {
       resolvedAudioStrategy: "separate_tts_voiceover",
       creativeBrief: "Make the pacing warmer without changing the product.",
       referenceAnchors: {
-        creativePresets: [{ presetId: "audio_thai_tts", family: "audio_preset" }],
+        creativePresets: [
+          { presetId: "audio_thai_tts", family: "audio_preset" },
+        ],
       },
     } as any;
     const output = buildMarketplaceAutoReviewStoryboardReviewOutputForTest({
@@ -5400,7 +5588,7 @@ describe("marketplace auto review audio/video planning", () => {
         videoStructureMode: "adaptive_multi_shot",
         storyboardFrameUrls: Array.from(
           { length: 6 },
-          (_item, index) => `https://cdn.example.test/grid-${index + 1}.png`,
+          (_item, index) => `https://cdn.example.test/grid-${index + 1}.png`
         ),
         transportMetadata: {
           transport: "mcp",
@@ -7106,6 +7294,7 @@ describe("marketplace auto review audio/video planning", () => {
         productionRunId: "prod_1",
         metadataJson: {
           resolvedAudioStrategy: "native_video_audio",
+          speechLanguage: "th",
           storyboardFrameUrls: ["https://cdn.example.test/shot-1-frame.png"],
           referenceAnchors: {
             characterMode: "described_character",

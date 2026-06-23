@@ -9,7 +9,7 @@ The source spec already answers the key business and rollout questions:
 - first live preview surface: Agency Chat
 - package location: `packages/agent-experience`
 - first implementation slice: package/contracts/fixtures/adapters/flags
-- Runtype Persona posture: optional Phase 2 bridge, no Phase 0 dependency
+- Runtype Persona posture: optional Phase 2 bridge; initially no Phase 0 dependency, later superseded by the 2026-06-22 gated `@runtypelabs/persona@4.4.0` installation directive
 - customer widget/page actions: explicitly deferred
 - rollout posture: fixture preview before shadow mode before live preview
 
@@ -28,8 +28,9 @@ The source spec already answers the key business and rollout questions:
    - Rationale: existing repo tests use Vitest and feature flag examples already follow this pattern.
 
 4. **Runtype Persona strategy**
-   - Decision: do not install `@runtypelabs/persona` during MVP implementation.
-   - Rationale: dependency gate and bridge evaluation belong to Phase 2.
+   - Initial decision: do not install `@runtypelabs/persona` during MVP implementation.
+   - Follow-up directive: install `@runtypelabs/persona@4.4.0` in `@smartspec/agent-experience` while preserving dependency-gated, non-default renderer activation.
+   - Rationale: the package is now available for bridge evaluation, but production adoption still requires evidence gates.
 
 5. **UI strategy**
    - Decision: fixture-only preview may be planned, but no default UI replacement is in MVP.

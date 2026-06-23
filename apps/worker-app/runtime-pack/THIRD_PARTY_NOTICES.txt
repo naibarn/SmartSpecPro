@@ -1,1 +1,15 @@
-Placeholder runtime pack. Add HyperFrames, browser, FFmpeg/FFprobe, and font license notices before release.
+Smart AI Hub Worker Runtime Pack
+
+Bundled components in the official runtime release:
+
+- Official HyperFrames render sidecar for Smart AI Hub Worker App
+- Google Chrome for Testing / Chromium runtime
+- FFmpeg and ffprobe binaries
+- Noto Sans Thai font
+
+The bundled Noto Sans Thai font is licensed under the SIL Open Font License 1.1.
+Its license text is included in the packaged runtime under `fonts/OFL.txt`.
+
+The bundled browser and media binaries retain their upstream redistributable
+license terms. Keep the packaged archive and manifest together when publishing
+or mirroring the runtime release.

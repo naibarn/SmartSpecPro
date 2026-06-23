@@ -64,6 +64,18 @@ describe("Agent Experience feature flag precedence", () => {
     expect(result.debugInspectorEnabled).toBe(true);
   });
 
+  it("falls back to the SmartSpec renderer when the Runtype dependency gate fails", () => {
+    const result = evaluateAgentExperienceFlags({
+      flags: { ...baseFlags, agentExperienceRuntypeRenderer: true },
+      surface: "agency",
+      dependencyGatePassed: false,
+    });
+
+    expect(result.layerEnabled).toBe(true);
+    expect(result.previewEnabled).toBe(true);
+    expect(result.externalRendererEnabled).toBe(false);
+  });
+
   it("keeps future customer flags as no-ops", () => {
     const result = evaluateAgentExperienceFlags({ flags: baseFlags, surface: "agency" });
     expect(result.websiteWidgetEnabled).toBe(false);

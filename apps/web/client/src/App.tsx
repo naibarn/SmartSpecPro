@@ -48,12 +48,14 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const MarketplaceCaptureConnect = lazy(() => import("./pages/MarketplaceCaptureConnect"));
+const WorkerAppConnect = lazy(() => import("./pages/WorkerAppConnect"));
 const MarketplaceCapturePreview = lazy(() => import("./pages/MarketplaceCapturePreview"));
 const MarketplaceCaptureProducts = lazy(() => import("./pages/MarketplaceCaptureProducts"));
 const MarketplaceCaptureProductDetail = lazy(() => import("./pages/MarketplaceCaptureProductDetail"));
 const MarketplaceCaptureCandidateBatch = lazy(() => import("./pages/MarketplaceCaptureCandidateBatch"));
 const MarketplaceCaptureInsight = lazy(() => import("./pages/MarketplaceCaptureInsight"));
 const AdminMarketplaceCapture = lazy(() => import("./pages/AdminMarketplaceCapture"));
+const AdminAgentExperiencePreview = lazy(() => import("./pages/AdminAgentExperiencePreview"));
 const DeviceAuth = lazy(() => import("./pages/DeviceAuth"));
 const AdminAgencies = lazy(() => import("./pages/AdminAgencies"));
 const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
@@ -371,6 +373,9 @@ function Router() {
         <Route path="/admin/marketplace-capture">
           <RequireAdmin><AdminMarketplaceCapture /></RequireAdmin>
         </Route>
+        <Route path="/admin/agent-experience-preview">
+          <RequireAdmin><AdminAgentExperiencePreview /></RequireAdmin>
+        </Route>
         <Route path="/admin/dashboard">
           <RequireAdmin><AdminCommandCenter /></RequireAdmin>
         </Route>
@@ -513,6 +518,7 @@ function Router() {
         <Route path="/auth/callback/onedrive" component={OneDriveCallback} />
         <Route path="/auth/callback/upload-post" component={UploadPostCallback} />
         <Route path="/auth/callback/:provider" component={AuthCallback} />
+        <Route path="/workers/connect"><RequireAuth><WorkerAppConnect /></RequireAuth></Route>
         <Route path="/auth/device" component={DeviceAuth} />
         <Route path="/factory"><RequireAuth><Factory /></RequireAuth></Route>
         <Route path="/terminal"><RequireAuth><TerminalPage /></RequireAuth></Route>

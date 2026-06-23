@@ -57,6 +57,7 @@ import type {
 import { issueWorkerAccessTokens } from "./workerAuthService";
 import { getDb } from "../db";
 import {
+  groupMembers,
   runtimeProfiles,
   workerArtifacts,
   workerHeartbeats,
@@ -413,6 +414,122 @@ function ensureWorkerCanClaim(worker: WorkerRecord): void {
       `Worker ${worker.id} cannot claim jobs while ${worker.status}`,
     );
   }
+  const workerApp = readWorkerAppCapabilities(worker);
+  if (typeof workerApp.acceptJobs === "boolean" && !workerApp.acceptJobs) {
+    throw new WorkerRuntimeServiceError(
+      "worker_state_invalid",
+      409,
+      `Worker ${worker.id} is configured to pause queue pickup`,
+    );
+  }
+}
+
+function readWorkerAppCapabilities(worker: WorkerRecord): Record<string, unknown> {
+  const capabilities = isPlainObject(worker?.capabilitiesJson) ? worker.capabilitiesJson : {};
+  const workerApp = isPlainObject(capabilities.workerApp) ? capabilities.workerApp : {};
+  return workerApp;
+}
+
+function readWorkerSharingMode(worker: WorkerRecord): "private" | "group" | "tenant" {
+  const workerApp = readWorkerAppCapabilities(worker);
+  const runtimeMetadata = isPlainObject(worker?.capabilitiesJson)
+    && isPlainObject(worker.capabilitiesJson.runtimeMetadata)
+    ? worker.capabilitiesJson.runtimeMetadata
+    : {};
+  const sharingPolicy = isPlainObject(runtimeMetadata.workerSharingPolicy)
+    ? runtimeMetadata.workerSharingPolicy
+    : {};
+  const rawMode = [
+    sharingPolicy.mode,
+    workerApp.ownerSharingMode,
+    workerApp.sharingMode,
+  ].find((value) => typeof value === "string" && value.trim().length > 0);
+  if (!rawMode) {
+    return worker.workerMode === "per_user" ? "private" : "tenant";
+  }
+  switch (String(rawMode ?? "").trim().toLowerCase()) {
+    case "group":
+    case "groups":
+    case "group_pool":
+      return "group";
+    case "tenant":
+    case "tenant_pool":
+      return "tenant";
+    default:
+      return "private";
+  }
+}
+
+function readWorkerSharedGroupIds(worker: WorkerRecord): number[] {
+  const workerApp = readWorkerAppCapabilities(worker);
+  const runtimeMetadata = isPlainObject(worker?.capabilitiesJson)
+    && isPlainObject(worker.capabilitiesJson.runtimeMetadata)
+    ? worker.capabilitiesJson.runtimeMetadata
+    : {};
+  const sharingPolicy = isPlainObject(runtimeMetadata.workerSharingPolicy)
+    ? runtimeMetadata.workerSharingPolicy
+    : {};
+  const rawGroupIds = Array.isArray(sharingPolicy.groupIds)
+    ? sharingPolicy.groupIds
+    : Array.isArray(workerApp.sharedGroupIds)
+      ? workerApp.sharedGroupIds
+      : [];
+  return rawGroupIds
+    .map((value) => Number(value))
+    .filter((value, index, list) => Number.isInteger(value) && value > 0 && list.indexOf(value) === index);
+}
+
+async function filterClaimableJobsForWorker(
+  worker: WorkerRecord,
+  candidates: WorkerJobRecord[],
+): Promise<WorkerJobRecord[]> {
+  const sharingMode = readWorkerSharingMode(worker);
+  if (sharingMode === "tenant") {
+    return candidates;
+  }
+
+  const ownerUserId = typeof worker.registeredByUserId === "number" ? worker.registeredByUserId : null;
+  if (sharingMode === "private") {
+    return ownerUserId == null
+      ? []
+      : candidates.filter((candidate) => candidate.requestedByUserId === ownerUserId);
+  }
+
+  const sharedGroupIds = readWorkerSharedGroupIds(worker);
+  if (sharedGroupIds.length === 0) {
+    return ownerUserId == null
+      ? []
+      : candidates.filter((candidate) => candidate.requestedByUserId === ownerUserId);
+  }
+
+  const requesterIds = Array.from(new Set(
+    candidates
+      .map((candidate) => candidate.requestedByUserId)
+      .filter((value): value is number => Number.isInteger(value) && value > 0),
+  ));
+
+  if (requesterIds.length === 0) {
+    return ownerUserId == null
+      ? []
+      : candidates.filter((candidate) => candidate.requestedByUserId === ownerUserId);
+  }
+
+  const db = await getDb();
+  const memberships = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(and(
+      inArray(groupMembers.groupId, sharedGroupIds),
+      inArray(groupMembers.userId, requesterIds),
+      eq(groupMembers.status, "active"),
+    ));
+  const allowedRequesterIds = new Set(memberships.map((membership) => membership.userId));
+  if (ownerUserId != null) {
+    allowedRequesterIds.add(ownerUserId);
+  }
+  return candidates.filter((candidate) =>
+    typeof candidate.requestedByUserId === "number"
+    && allowedRequesterIds.has(candidate.requestedByUserId));
 }
 
 function ensureLease(job: WorkerJobRecord, leaseOwnerToken: string): void {
@@ -808,7 +925,7 @@ export async function registerWorker(
   deps: { repo?: WorkerRuntimeRepository } = {},
 ): Promise<{
   created: boolean;
-  tokens: { executionToken: string; uploadToken: string };
+  tokens: { executionToken: string; uploadToken: string; refreshToken: string };
   worker: WorkerRecord;
 }> {
   const repo = deps.repo ?? defaultRepo;
@@ -945,6 +1062,7 @@ export async function registerWorker(
       workerId: worker.id,
       runtimeType: worker.runtimeType,
       teamId: worker.teamId ?? null,
+      deviceBinding: input.payload.deviceBinding ?? undefined,
     }),
     worker,
   };
@@ -1025,8 +1143,9 @@ export async function claimWorkerJob(
     worker.teamId ?? null,
     input.payload.capabilityHints,
   );
+  const eligibleCandidates = await filterClaimableJobsForWorker(worker, candidates);
 
-  for (const candidate of candidates) {
+  for (const candidate of eligibleCandidates) {
     if (!workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints)) {
       continue;
     }

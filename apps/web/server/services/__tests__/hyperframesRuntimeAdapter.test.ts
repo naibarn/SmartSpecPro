@@ -14,7 +14,9 @@ import {
   getHyperframesRuntimeMode,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
+  resolveHyperframesCliRenderHardTimeoutMs,
   resolveHyperframesCliRenderTimeouts,
+  type HyperframesRuntimeAdapterEnv,
 } from "../hyperframesRuntimeAdapter";
 
 describe("hyperframesRuntimeAdapter", () => {
@@ -33,7 +35,30 @@ describe("hyperframesRuntimeAdapter", () => {
     return dir;
   }
 
-  it("defaults final renders to the official CLI while keeping explicit rollout gates", () => {
+  async function createRuntimeToolEnv(dir: string): Promise<HyperframesRuntimeAdapterEnv> {
+    const toolsDir = join(dir, "tools");
+    await mkdir(toolsDir, { recursive: true });
+    const cliPath = join(toolsDir, "hyperframes");
+    const ffmpegPath = join(toolsDir, "ffmpeg");
+    const ffprobePath = join(toolsDir, "ffprobe");
+    const browserPath = join(toolsDir, "chromium");
+    const fontPath = join(toolsDir, "thai-font.ttf");
+    for (const path of [cliPath, ffmpegPath, ffprobePath, browserPath]) {
+      await writeFile(path, "#!/bin/sh\nexit 0\n");
+      await chmod(path, 0o755);
+    }
+    await writeFile(fontPath, "font");
+    return {
+      HYPERFRAMES_CLI_BINARY: cliPath,
+      HYPERFRAMES_FFMPEG_BINARY: ffmpegPath,
+      HYPERFRAMES_FFPROBE_BINARY: ffprobePath,
+      HYPERFRAMES_BROWSER_BINARY: browserPath,
+      HYPERFRAMES_THAI_FONT_PATH: fontPath,
+    };
+  }
+
+  it("defaults final renders to the official CLI while keeping explicit rollout gates", async () => {
+    const runtimeTools = await createRuntimeToolEnv(workspace());
     expect(getHyperframesRuntimeMode({})).toBe("cli");
     expect(getHyperframesRuntimeMode({ HYPERFRAMES_RUNTIME_MODE: "cli" })).toBe(
       "cli"
@@ -46,10 +71,18 @@ describe("hyperframesRuntimeAdapter", () => {
     ).toBe(false);
     expect(() =>
       assertHyperframesProducerRuntimeAllowed({ HYPERFRAMES_RUNTIME_MODE: "producer" })
-    ).toThrow(/blocked/);
+    ).toThrow(/readiness flag is not enabled/);
     expect(
       isHyperframesCliRuntimeAllowed({
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+      })
+    ).toBe(false);
+    expect(
+      isHyperframesCliRuntimeAllowed({
+        HYPERFRAMES_RUNTIME_MODE: "cli",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+        HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       })
     ).toBe(true);
     expect(
@@ -57,19 +90,24 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
+        HYPERFRAMES_BROWSER_BINARY: join(workspace(), "missing-browser"),
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(() =>
       assertHyperframesCliRuntimeAllowed({
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "0",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       })
-    ).toThrow(/blocked by explicit runtime readiness env/);
+    ).toThrow(/readiness flag is not enabled/);
     expect(
       isHyperframesCliRuntimeAllowed({
         HYPERFRAMES_RUNTIME_MODE: "diagnostic",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
+        ...runtimeTools,
       })
     ).toBe(false);
   });
@@ -89,6 +127,7 @@ describe("hyperframesRuntimeAdapter", () => {
   it("executes producer through dynamic imports when the gate is ready", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const runtimeTools = await createRuntimeToolEnv(dir);
     const createRenderJob = vi.fn((config: Record<string, unknown>) => config);
     const executeRenderJob = vi.fn(
       async (_job: unknown, projectDir: string, output: string) => {
@@ -106,6 +145,7 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
         HYPERFRAMES_PLAYER_READY_TIMEOUT_MS: "7000",
+        ...runtimeTools,
       },
       payload: {
         compositionHtml:
@@ -142,14 +182,10 @@ describe("hyperframesRuntimeAdapter", () => {
   it("executes the pinned HyperFrames CLI with an injected runner", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const runtimeTools = await createRuntimeToolEnv(dir);
+    const ffmpegPath = runtimeTools.HYPERFRAMES_FFMPEG_BINARY!;
+    const ffprobePath = runtimeTools.HYPERFRAMES_FFPROBE_BINARY!;
     const toolsDir = join(dir, "tools");
-    await mkdir(toolsDir, { recursive: true });
-    const ffmpegPath = join(toolsDir, "ffmpeg");
-    const ffprobePath = join(toolsDir, "ffprobe");
-    await writeFile(ffmpegPath, "#!/bin/sh\nexit 0\n");
-    await writeFile(ffprobePath, "#!/bin/sh\nexit 0\n");
-    await chmod(ffmpegPath, 0o755);
-    await chmod(ffprobePath, 0o755);
     const commandRunner = vi.fn(async (_command: string, args: string[]) => {
       expect(args).toContain("render");
       expect(args).toContain("--strict");
@@ -165,8 +201,7 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
         HYPERFRAMES_PLAYER_READY_TIMEOUT_MS: "6500",
-        HYPERFRAMES_FFMPEG_BINARY: ffmpegPath,
-        HYPERFRAMES_FFPROBE_BINARY: ffprobePath,
+        ...runtimeTools,
       },
       payload: {
         compositionHtml:
@@ -190,6 +225,7 @@ describe("hyperframesRuntimeAdapter", () => {
         env: expect.objectContaining({
           FFMPEG_PATH: ffmpegPath,
           FFPROBE_PATH: ffprobePath,
+          CHROME_PATH: runtimeTools.HYPERFRAMES_BROWSER_BINARY,
         }),
       })
     );
@@ -218,14 +254,32 @@ describe("hyperframesRuntimeAdapter", () => {
     });
 
     expect(timeouts).toEqual({
-      playerReadyTimeoutMs: 30_000,
-      pageNavigationTimeoutSec: 240,
+      playerReadyTimeoutMs: 180_000,
+      pageNavigationTimeoutSec: 900,
     });
+  });
+
+  it("allows long-running final composite CLI renders to wait for hours in the background", () => {
+    const hardTimeoutMs = resolveHyperframesCliRenderHardTimeoutMs({
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      finalCompositeConfig: {
+        finalVideoLengthSec: 238,
+        shots: Array.from({ length: 8 }, (_, index) => ({
+          id: `shot_${index + 1}`,
+          durationSec: index === 7 ? 28 : 30,
+        })),
+      },
+    });
+
+    expect(hardTimeoutMs).toBeGreaterThanOrEqual(90 * 60_000);
+    expect(hardTimeoutMs).toBeLessThanOrEqual(6 * 60 * 60_000);
   });
 
   it("stages storage media refs into the HyperFrames project before CLI render", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const runtimeTools = await createRuntimeToolEnv(dir);
     const copied: Array<{ key: string; targetPath: string }> = [];
     const commandRunner = vi.fn(async () => {
       await writeFile(outputPath, Buffer.from("mp4"));
@@ -239,6 +293,7 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       },
       payload: {
         compositionHtml:
@@ -267,6 +322,7 @@ describe("hyperframesRuntimeAdapter", () => {
   it("removes legacy missing audio refs before strict CLI lint sees them", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const runtimeTools = await createRuntimeToolEnv(dir);
     const commandRunner = vi.fn(async () => {
       await writeFile(outputPath, Buffer.from("mp4"));
       return { ok: true };
@@ -279,6 +335,7 @@ describe("hyperframesRuntimeAdapter", () => {
         HYPERFRAMES_RUNTIME_MODE: "cli",
         HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
         HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+        ...runtimeTools,
       },
       payload: {
         compositionHtml:
@@ -307,6 +364,7 @@ describe("hyperframesRuntimeAdapter", () => {
   it("fails before CLI render when a required staged media asset is missing", async () => {
     const dir = workspace();
     const outputPath = join(dir, "output.mp4");
+    const runtimeTools = await createRuntimeToolEnv(dir);
     const commandRunner = vi.fn();
 
     await expect(
@@ -317,6 +375,7 @@ describe("hyperframesRuntimeAdapter", () => {
           HYPERFRAMES_RUNTIME_MODE: "cli",
           HYPERFRAMES_OFFICIAL_RUNTIME_READY: "1",
           HYPERFRAMES_ALLOW_NODE20_OFFICIAL_RUNTIME: "1",
+          ...runtimeTools,
         },
         payload: {
           compositionHtml:

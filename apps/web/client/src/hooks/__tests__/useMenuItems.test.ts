@@ -47,4 +47,14 @@ describe("useMenuItems", () => {
     expect(items.find((item) => item.id === "workpack-roi")?.path).toBe("/workpacks/roi");
     expect(items.find((item) => item.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
   });
+
+  it("places Render Jobs directly after Media History in the main sidebar", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const mediaHistoryIndex = items.findIndex((item) => item.id === "media-history");
+    const renderJobsIndex = items.findIndex((item) => item.id === "render-jobs");
+
+    expect(mediaHistoryIndex).toBeGreaterThanOrEqual(0);
+    expect(renderJobsIndex).toBe(mediaHistoryIndex + 1);
+    expect(items[renderJobsIndex]?.path).toBe("/render-jobs");
+  });
 });

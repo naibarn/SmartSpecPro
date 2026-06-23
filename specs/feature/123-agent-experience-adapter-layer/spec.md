@@ -195,7 +195,7 @@ Do not modify these files in Phase 0 unless the implementation plan proves a dir
 - Do not expose public client tokens, website embeds, or customer WebMCP actions until internal behavior passes compatibility, security, and usability gates.
 - Do not introduce a second durable ledger for Team/Auto-Team runs.
 - Do not route risky actions through UI-only approval checks. Backend approval and audit remain authoritative.
-- Do not add a dependency on `@runtypelabs/persona` until the protocol spike proves useful and the version is pinned.
+- Do not enable `@runtypelabs/persona` beyond the gated bridge evaluation until the protocol spike proves useful and the exact version remains pinned.
 
 ---
 
@@ -212,7 +212,7 @@ It should **not** become the source of truth for SmartSpecPro event semantics, p
 
 Recommended production posture:
 
-- use an npm dependency only after spike approval;
+- use the installed npm dependency only through the gated bridge until spike approval;
 - pin exact version, for example `"@runtypelabs/persona": "x.y.z"`;
 - gate all usage behind `agentExperienceRuntypeRenderer`;
 - isolate all external-library imports behind `runtypePersonaBridge`;
@@ -632,7 +632,7 @@ Deliverables:
 - `packages/agent-experience` or equivalent app-local module if package extraction is premature;
 - `SmartSpecAgentEvent` schemas and test fixtures;
 - adapters for Agency and Team run streams;
-- no dependency on `@runtypelabs/persona` in production paths yet;
+- no production/core-surface import of `@runtypelabs/persona` yet;
 - evaluation note comparing existing UI vs Runtype Persona renderer capabilities;
 - dependency risk report for bundle size, security, license, extension points, and version strategy.
 
@@ -1212,7 +1212,7 @@ Threat model review is a release blocker for any tenant beta that enables live s
 
 ### 11.1 Dependency And Bundle Gates
 
-Before installing or enabling `@runtypelabs/persona`, the spike must produce a dependency gate report covering:
+Before enabling `@runtypelabs/persona` beyond gated bridge evaluation, the spike must produce or update a dependency gate report covering:
 
 - exact package version and license;
 - dependency tree and install diff;
@@ -1317,7 +1317,7 @@ Implementation plans should replace placeholders with exact file paths once test
 | Web shared feature flag tests | `npm --prefix apps/web test -- apps/web/shared/__tests__/<agent-experience-flags>.test.ts` | enabling any Agent Experience flag in code |
 | App component tests | `npm --prefix apps/web test -- <agent-experience-preview-or-renderer-tests>` | enabling preview UI for any surface |
 | Typecheck | `npm run typecheck` or narrower workspace typecheck if the repo standard supports it | merging shared TypeScript changes |
-| Bundle/dependency gate | existing bundle/dependency audit command or documented manual report | installing `@runtypelabs/persona` |
+| Bundle/dependency gate | existing bundle/dependency audit command or documented manual report | enabling `@runtypelabs/persona` beyond gated bridge evaluation |
 | Security regression gate | targeted tests for redaction, cross-tenant denial, approval routing, and artifact access | tenant beta |
 | Flag-off regression smoke | documented smoke path for Chat, Agency Chat, and Team Room with all preview flags off | every staged rollout |
 
@@ -1401,7 +1401,7 @@ Performance tests do not need to be elaborate in Phase 0. They should at minimum
 |---|---|---|
 | Parallel runtime ledger accidentally created | Team/Work OS/debug views disagree about source of truth | Keep adapter state derived only; reuse Feature 101, Team, Auto-Team, and Work OS trace/checkpoint stores. |
 | Cross-tenant or private debug payload leak | Critical data exposure | Filter by tenant, visibility, and debug permission before renderer input; add private/internal fixture tests. |
-| External renderer imports private APIs or grows bundle size unexpectedly | Upgrade fragility and performance regression | Require dependency/bundle gate before installing or enabling `@runtypelabs/persona`; isolate behind `runtypePersonaBridge`. |
+| External renderer imports private APIs or grows bundle size unexpectedly | Upgrade fragility and performance regression | Require dependency/bundle gate before enabling `@runtypelabs/persona` beyond gated bridge evaluation; isolate behind `runtypePersonaBridge`. |
 | Approval decision semantics mismatch | Risky action approved or denied incorrectly | Normalize source decisions explicitly; route all decisions through existing backend approval paths. |
 | Cost estimate treated as billing finalization | Credit/budget integrity issue | Keep estimates advisory; server remains authoritative for reservation, deduction, release, refund, and finalization. |
 | Artifact event carries trusted or oversized content | XSS, data leak, memory/performance regression | Treat artifact events as pointers; load content through permissioned artifact/media paths; bound and redact previews. |
@@ -1668,7 +1668,7 @@ These decisions should stand unless implementation research finds a hard blocker
 |---|---|---|
 | First live preview surface | Agency Chat | `useAgencyStream` already exposes the richest matching event set for streaming, tool calls, approvals, credits, reconnect, and fallback. |
 | Package location | `packages/agent-experience` | Agency and Team adapters are both first-slice deliverables, so shared package boundaries are justified. |
-| Phase 0 dependency posture | no `@runtypelabs/persona` dependency | Prevent dependency churn before the protocol proves useful. |
+| Phase 0 dependency posture | `@runtypelabs/persona@4.4.0` installed only for gated bridge evaluation | Prevent renderer churn in production paths while allowing the requested bridge spike. |
 | Renderer default | existing SmartSpec React components | External renderer is optional and gated. |
 | Trace persistence | reuse/align with Feature 101 and existing Team/Work OS stores | Prevents another runtime ledger. |
 | Customer widget/page actions | future separate rollout | Keeps internal UX stabilization first. |
@@ -1732,7 +1732,7 @@ Anything in the Follow-up column requires either a later implementation section 
 Before creating a detailed implementation plan, confirm:
 
 - Feature 101 trace/checkpoint status is understood, including whether `agent_runtime_traces` and `agent_runtime_checkpoints` already exist or remain planned.
-- The first slice will not install `@runtypelabs/persona`.
+- Initial first-slice posture was not to install `@runtypelabs/persona`; the 2026-06-22 follow-up implementation directive installs `@runtypelabs/persona@4.4.0` in `@smartspec/agent-experience` while keeping renderer activation dependency-gated and feature-flagged.
 - All feature flags default to `false`.
 - The first preview uses recorded fixtures before live streams.
 - Agency Chat is the first live preview unless the implementer finds a blocking issue.
@@ -1752,7 +1752,7 @@ The feature is ready to enter a detailed implementation plan when:
 - Open questions that block Phase 0 are either resolved or marked non-blocking with an owner.
 - Existing source event samples for Agency and Team are identified or synthetic equivalents are approved.
 - Feature flag names and precedence rules are accepted.
-- No `@runtypelabs/persona` dependency is planned for the first PR.
+- `@runtypelabs/persona@4.4.0` is installed only for gated bridge evaluation and not imported from core Chat, Agency, or Team surfaces.
 - Security-sensitive behavior for debug, artifact, approval, and cost events has testable rules.
 - The implementation plan can name exact files likely changed for section 01 and section 02.
 - The plan includes verification commands or placeholders that will be replaced once tests exist.
@@ -1807,7 +1807,7 @@ When this spec is converted into implementation sections, split work by contract
 Recommended first PR:
 
 - include only section 01 and enough fixtures to prove the package boundary;
-- do not install `@runtypelabs/persona`;
+- do not activate `@runtypelabs/persona` as a default renderer without dependency, bundle, accessibility, security, and rollback evidence;
 - do not change visible Chat, Agency Chat, or Team Room rendering.
 
 ## 19. Explicit Deferrals
@@ -1820,7 +1820,7 @@ These items are intentionally outside the first implementation slice:
 - blanket approvals or long-lived action grants;
 - durable schema migrations for a new Agent Experience ledger;
 - replacing `ChatView`, `AgencyChat`, or `TeamRoomView` as default UI;
-- installing `@runtypelabs/persona` before the dependency gate report is accepted.
+- enabling `@runtypelabs/persona` as a default or production renderer before the dependency gate report is accepted.
 
 Deferring these items protects the value of the feature: SmartSpecPro gets a stable internal protocol and adapter surface before taking on public embed, browser action, or third-party renderer risk.
 
@@ -1888,7 +1888,7 @@ The detailed implementation plan should create or reference these artifacts as t
 | `schema-changelog.md` | event schema version changes, deprecations, fixture updates | first schema change after Phase 0 |
 | `release-evidence.md` | command results, screenshots/component evidence, flag states, waivers | before live preview and beta |
 | `rollback-drill.md` | rollback steps executed, result, owner, timestamp | before tenant beta |
-| `dependency-gate-report.md` | package version, license, bundle, security, accessibility, rollback | before installing/enabling `@runtypelabs/persona` |
+| `dependency-gate-report.md` | package version, license, bundle, security, accessibility, rollback | before enabling `@runtypelabs/persona` beyond gated bridge evaluation |
 | `threat-model.md` | live stream, debug, artifact, approval, billing, bridge risks and controls | before tenant beta |
 | `fixture-inventory.md` | fixture names, source/synthetic status, coverage, redaction review | before live preview |
 | `launch-decision-log.md` | canary stage decisions, go/no-go result, signoff, next gate | before selected tenant beta and each ramp stage |

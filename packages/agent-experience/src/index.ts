@@ -32,12 +32,6 @@ export {
   type AgentExperiencePreviewSurface,
 } from "./featureFlags";
 export {
-  listAgentExperienceFixtures,
-  loadAgentExperienceFixture,
-  type AgentExperienceFixture,
-  type AgentExperienceFixtureMetadata,
-} from "./testing/fixtures";
-export {
   agencyStreamToAgentEvents,
   approvalRecordToAgentEvents,
   artifactRecordToAgentEvents,
@@ -58,7 +52,10 @@ export {
   type AgentExperienceRenderFilterResult,
 } from "./redaction";
 export {
+  RUNTYPE_PERSONA_PACKAGE_NAME,
+  RUNTYPE_PERSONA_VERSION,
   createRuntypePersonaBridge,
+  loadRuntypePersonaRenderer,
   type RuntypeBridgeInput,
   type RuntypeBridgeResult,
   type RuntypeRendererDependencyGate,

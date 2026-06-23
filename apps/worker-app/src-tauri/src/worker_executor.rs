@@ -142,7 +142,8 @@ pub fn prepare_hyperframes_execution_plan(
     if job.assignment_attempt.trim().is_empty() {
         return Err("assignmentAttempt is required before execution".into());
     }
-    if job.input_json.get("renderIntent").and_then(Value::as_str) != Some(HYPERFRAMES_RENDER_INTENT) {
+    if job.input_json.get("renderIntent").and_then(Value::as_str) != Some(HYPERFRAMES_RENDER_INTENT)
+    {
         return Err("job input is not a HyperFrames final composite render".into());
     }
 

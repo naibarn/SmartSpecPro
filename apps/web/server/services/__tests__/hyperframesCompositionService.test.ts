@@ -382,8 +382,8 @@ describe("hyperframesCompositionService", () => {
         },
         fontFamily: "Prompt",
         styleBrief: "",
-        hookText: "แท็บเล็ตจอใหญ่",
-        supportingText: "Xiaomi Pad 8",
+        hookText: "Hook หลักเปิดเรื่อง",
+        supportingText: "Supporting เปิดเรื่อง",
         subtitlePlacement: "bottom",
         safeZonePercent: 8,
         cssAnimationEnabled: true,
@@ -399,7 +399,7 @@ describe("hyperframesCompositionService", () => {
             startSec: 0,
             durationSec: 8,
             overlayPreset: "price_impact",
-            onScreenText: ["แท็บเล็ตจอใหญ่"],
+            onScreenText: ["Overlay เฉพาะ shot 1"],
             subtitleCues: [{ startSec: 0, endSec: 2, text: "กำลังมองหาแท็บเล็ตไหม" }],
             animationPreset: "glow_feature",
             transition: "fade",
@@ -440,13 +440,16 @@ describe("hyperframesCompositionService", () => {
     expect(composition.compositionHtml).not.toContain("SHOT 1");
     expect(composition.compositionHtml).not.toContain("hook-badge");
     expect(composition.compositionHtml).toContain(
-      '<div class="hook-main motion-item" style="--motion-delay:0s">แท็บเล็ตจอใหญ่</div>'
+      '<div class="hook-main motion-item" style="--motion-delay:0s">Hook หลักเปิดเรื่อง</div>'
     );
     expect(composition.compositionHtml).toContain(
-      '<div class="hook-sub motion-item" style="--motion-delay:0.14s">Xiaomi Pad 8</div>'
+      '<div class="hook-sub motion-item" style="--motion-delay:0.14s">Supporting เปิดเรื่อง</div>'
     );
     expect(composition.compositionHtml).toContain(
-      '<div class="hook-chip motion-item" style="--motion-delay:0.28s">Xiaomi Pad 8</div>'
+      '<div class="hook-chip motion-item" style="--motion-delay:0.28s">Overlay เฉพาะ shot 1</div>'
+    );
+    expect(composition.compositionHtml).toMatch(
+      /id="shot-shot_1"[\s\S]*?<div class="shot-line line-1 motion-item" style="--motion-delay:0s">Overlay เฉพาะ shot 1<\/div>/
     );
     expect(composition.compositionHtml).toContain(
       'data-shot-copy-deferred="after-hook" data-has-shot-copy="true"'
@@ -792,7 +795,7 @@ describe("hyperframesCompositionService", () => {
     );
   });
 
-  it("enables FFmpeg/ASS fallback capability for manual Storyboard Review final composites", () => {
+  it("requires the official HyperFrames runtime for manual Storyboard Review final composites", () => {
     const composition = buildHyperframesFinalCompositeCompositionInput({
       tenantId: "tenant_1",
       userId: 1,
@@ -861,17 +864,15 @@ describe("hyperframesCompositionService", () => {
     });
 
     expect(composition.finalCompositeConfig.fallbackCapability).toMatchObject({
-      ffmpegAssFallback: true,
-      fallbackQuality: "partial",
+      ffmpegAssFallback: false,
+      fallbackQuality: "not_supported",
       unsupportedFeatures: expect.arrayContaining([
         "rich_css_gsap_timeline",
         "kinetic_typography",
+        "official_html_css_browser_runtime_required",
       ]),
     });
-    expect(
-      (composition.finalCompositeConfig.fallbackCapability as { unsupportedFeatures: string[] })
-        .unsupportedFeatures
-    ).not.toContain("official_html_css_browser_runtime_required");
+    expect(composition.finalCompositeConfig.fallbackPolicy).toBeUndefined();
   });
 
   it("does not emit audio tags for final composite audio refs that were not validated for staging", () => {

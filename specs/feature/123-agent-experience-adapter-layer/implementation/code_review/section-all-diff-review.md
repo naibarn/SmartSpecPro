@@ -16,7 +16,7 @@ Pass with notes.
 ## Findings
 
 - No SmartSpec-owned package/module/flag uses `persona` as the primary feature name.
-- `@runtypelabs/persona` was not installed; references are limited to documentation and the gated bridge check.
+- `@runtypelabs/persona@4.4.0` is installed only in `@smartspec/agent-experience`; bridge use remains dependency-gated and feature-flagged.
 - Renderer components emit typed intents only and do not call backend mutations.
 - Artifact adapter rejects inline content/URLs.
 - Approval adapter requires backend confirmation before decision events.
@@ -26,5 +26,5 @@ Pass with notes.
 
 ## Notes
 
-- `featureFlags.js` was intentionally not mass-synced because it was already stale relative to `featureFlags.ts`; rewriting it would mix unrelated historical drift into this implementation.
+- Follow-up audit found `featureFlags.js` could be resolved by Node before `featureFlags.ts`; it is now regenerated as an ESM mirror with a regression test for Agent Experience flags.
 - Existing unrelated dirty HyperFrames/orchestra files were not touched or staged by this review.

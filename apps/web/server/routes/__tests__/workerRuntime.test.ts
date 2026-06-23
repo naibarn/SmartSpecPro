@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import request from "supertest";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
@@ -10,6 +13,12 @@ const { mockGetTenantFeatureFlags, mockIsJtiRevoked, mockRevokeJti } = vi.hoiste
   mockRevokeJti: vi.fn(),
 }));
 
+const { mockAuthorizeRequest, mockGetUserById, mockGetDb } = vi.hoisted(() => ({
+  mockAuthorizeRequest: vi.fn(),
+  mockGetUserById: vi.fn(),
+  mockGetDb: vi.fn(),
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
@@ -18,6 +27,23 @@ vi.mock("../../_core/revocation", () => ({
   isJtiRevoked: mockIsJtiRevoked,
   revokeJti: mockRevokeJti,
 }));
+
+vi.mock("../../_core/authz", async () => {
+  const actual = await vi.importActual<typeof import("../../_core/authz")>("../../_core/authz");
+  return {
+    ...actual,
+    authorizeRequest: mockAuthorizeRequest,
+  };
+});
+
+vi.mock("../../db", async () => {
+  const actual = await vi.importActual<typeof import("../../db")>("../../db");
+  return {
+    ...actual,
+    getUserById: mockGetUserById,
+    getDb: mockGetDb,
+  };
+});
 
 describe("workerRuntime routes", () => {
   beforeEach(() => {
@@ -30,18 +56,30 @@ describe("workerRuntime routes", () => {
     });
     mockIsJtiRevoked.mockResolvedValue(false);
     mockRevokeJti.mockResolvedValue(undefined);
+    mockAuthorizeRequest.mockResolvedValue({ ok: false, error: "Unauthorized" });
+    mockGetUserById.mockResolvedValue(undefined);
+    mockGetDb.mockReset();
   });
 
   async function makeApp(overrides: Partial<{
+    runtimePacks: Record<string, any>;
     workerCallbacks: Record<string, any>;
     workerDelegation: Record<string, any>;
     workerRegistry: Record<string, any>;
     workerPolicy: Record<string, any>;
+    tenantContext: { tenantId: string; tenant?: { id: string } };
   }> = {}) {
     const { registerWorkerRuntimeRoutes } = await import("../workerRuntime");
 
     const app = express();
     app.use(express.json());
+    if (overrides.tenantContext) {
+      app.use((req, _res, next) => {
+        (req as any).tenantId = overrides.tenantContext?.tenantId;
+        (req as any).tenant = overrides.tenantContext?.tenant ?? { id: overrides.tenantContext?.tenantId };
+        next();
+      });
+    }
     registerWorkerRuntimeRoutes(app, {
       workerCallbacks: {
         publishWorkerCallback: vi.fn().mockResolvedValue({
@@ -52,6 +90,7 @@ describe("workerRuntime routes", () => {
         }),
         ...(overrides.workerCallbacks ?? {}),
       },
+      runtimePacks: overrides.runtimePacks,
       workerDelegation: {
         createDelegatedWorkerSession: vi.fn().mockResolvedValue({
           sessionId: "session-1",
@@ -254,6 +293,52 @@ describe("workerRuntime routes", () => {
     return app;
   }
 
+  function workerConnectStartPayload() {
+    return {
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.3",
+          runtimeFamilySchemaVersion: "2026-04-08",
+          runtimeProfileSchemaVersion: "2026-04-08",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        workerMode: "per_user",
+        runtimeMode: "native_constrained",
+        displayName: "My render worker",
+        externalReference: "worker-app://desktop-1",
+        machineId: "desktop-1",
+        machineName: "DESKTOP-1",
+        dashboardUrl: "https://smartaihub.app/render-jobs",
+        maxConcurrentJobs: 1,
+        capabilitiesJson: {},
+        healthSummaryJson: {},
+        hardwareJson: {},
+        deviceBinding: {
+          deviceId: "wdev_desktop_1",
+          machineFingerprint: "machine_desktop_1",
+          publicKey: "-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----",
+        },
+        runtimeMetadataJson: {
+          desktopVersion: "0.1.3",
+          runtimeProfile: "native_constrained",
+          workspaceRootsSummary: [],
+          gpuSnapshot: {},
+          toolchainSummary: {},
+          doctorSummary: {},
+          serviceMode: "foreground",
+          executionIdentity: {
+            mode: "user_bound",
+            approvalMode: "owner_approved",
+            budgetAttributionMode: "owner_budget",
+            tokenRotationTriggers: ["manual_reissue"],
+          },
+        },
+        fileScopeMode: "workspace_scoped",
+      },
+    };
+  }
+
   it("rejects registration without a bootstrap credential", async () => {
     const app = await makeApp();
 
@@ -425,6 +510,7 @@ describe("workerRuntime routes", () => {
       tokens: {
         executionToken: "execution-token",
         uploadToken: "upload-token",
+        refreshToken: "refresh-token",
       },
     });
     const app = await makeApp({
@@ -682,5 +768,169 @@ describe("workerRuntime routes", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_request");
     expect(publishWorkerCallback).not.toHaveBeenCalled();
+  });
+
+  it("approves worker connect sessions by falling back to the user's database tenant", async () => {
+    const registerWorker = vi.fn().mockResolvedValue({
+      created: true,
+      worker: {
+        id: "desktop-worker-1",
+        displayName: "My render worker",
+        runtimeType: "desktop_zeroclaw_managed",
+        machineName: "DESKTOP-1",
+      },
+      tokens: {
+        executionToken: "execution-token",
+        uploadToken: "upload-token",
+      },
+    });
+    const app = await makeApp({
+      workerRegistry: { registerWorker },
+    });
+
+    const startRes = await request(app)
+      .post("/api/workers/connect/start")
+      .send(workerConnectStartPayload());
+
+    expect(startRes.status).toBe(201);
+    mockAuthorizeRequest.mockResolvedValue({
+      ok: true,
+      mode: "session",
+      userId: 7,
+      user: { id: 7, role: "admin", currentTenantId: null },
+      sub: "7",
+      scopes: ["llm:chat"],
+    });
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [{ id: "tenant-1" }],
+          }),
+        }),
+      }),
+    });
+
+    const approveRes = await request(app)
+      .post("/api/workers/connect/approve")
+      .send({ user_code: startRes.body.userCode, tenantId: "tenant-1" });
+
+    expect(approveRes.status).toBe(200);
+    expect(approveRes.body.session.status).toBe("approved");
+    expect(registerWorker).toHaveBeenCalledWith(expect.objectContaining({
+      auth: expect.objectContaining({
+        tenantId: "tenant-1",
+      }),
+      payload: expect.objectContaining({
+        deviceBinding: {
+          deviceId: "wdev_desktop_1",
+          machineFingerprint: "machine_desktop_1",
+          publicKey: "-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----",
+        },
+      }),
+    }));
+  });
+
+  it("approves worker connect sessions from the URL-resolved request tenant", async () => {
+    const registerWorker = vi.fn().mockResolvedValue({
+      created: true,
+      worker: {
+        id: "desktop-worker-1",
+        displayName: "My render worker",
+        runtimeType: "desktop_zeroclaw_managed",
+        machineName: "DESKTOP-1",
+      },
+      tokens: {
+        executionToken: "execution-token",
+        uploadToken: "upload-token",
+      },
+    });
+    const app = await makeApp({
+      tenantContext: { tenantId: "tenant-from-url" },
+      workerRegistry: { registerWorker },
+    });
+
+    const startRes = await request(app)
+      .post("/api/workers/connect/start")
+      .send(workerConnectStartPayload());
+
+    expect(startRes.status).toBe(201);
+    mockAuthorizeRequest.mockResolvedValue({
+      ok: true,
+      mode: "session",
+      userId: 7,
+      user: { id: 7, role: "user", currentTenantId: null },
+      sub: "7",
+      scopes: ["llm:chat"],
+    });
+
+    const approveRes = await request(app)
+      .post("/api/workers/connect/approve")
+      .send({ user_code: startRes.body.userCode });
+
+    expect(approveRes.status).toBe(200);
+    expect(approveRes.body.session.status).toBe("approved");
+    expect(registerWorker).toHaveBeenCalledWith(expect.objectContaining({
+      auth: expect.objectContaining({
+        tenantId: "tenant-from-url",
+      }),
+    }));
+    expect(mockGetDb).not.toHaveBeenCalled();
+  });
+
+  it("reports runtime pack as not published until an official pack exists", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-empty-"));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+    expect(res.body.error.message).toContain("Official HyperFrames runtime pack has not been published yet");
+  });
+
+  it("serves allowed runtime pack manifest with archive hash and download url", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-ready-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.23.1.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "runtime-zip-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hyperframes-windows-x64",
+      version: "2026.06.23.1",
+      hyperframesVersion: "1.0.0",
+      browserVersion: "chromium-1",
+      ffmpegVersion: "7.1",
+      ffprobeVersion: "7.1",
+      thaiFontFamily: "Noto Sans Thai",
+      sidecarPath: "hyperframes-render.exe",
+      sidecarSha256: "abc",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
+      supportedContractVersions: ["2026-06-22"],
+      runtimeProfileHash: "profile-hash",
+      allowed: true,
+      denyReason: null,
+      rollbackToVersion: null,
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hyperframes-windows-x64",
+      version: "2026.06.23.1",
+      archiveFileName: fileName,
+      archiveSizeBytes: Buffer.byteLength("runtime-zip-fixture"),
+      archiveUrl: `/api/workers/runtime-pack/download/${fileName}`,
+      allowed: true,
+    });
+    expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+    expect(downloadRes.text).toBe("runtime-zip-fixture");
   });
 });

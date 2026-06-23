@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
@@ -1114,6 +1114,26 @@ type HyperframesFinalSourceClip = StoryboardClipCandidate & {
   segmentCount?: number;
   originalDurationSeconds?: number;
 };
+type HyperframesFinalResolvedPromptShot = {
+  id: string;
+  prompt: string;
+  sourceClipId?: string;
+  sourceVideoRef: string;
+  mediaStartSec: number;
+  startSec: number;
+  endSec: number;
+  durationSeconds: number;
+  overlayText: string;
+  overlayLines: string[];
+  subtitleText: string;
+  subtitleCues: HyperframesFinalCompositeConfig["shots"][number]["subtitleCues"];
+  subtitleVtt?: string;
+  subtitleSrt?: string;
+  overlayPreset: HyperframesFinalOverlayPreset;
+  animationPreset: HyperframesFinalShotAnimationPreset;
+  transition: HyperframesFinalShotTransition;
+  textMotionPreset: HyperframesFinalTextMotionPreset;
+};
 
 const HYPERFRAMES_FINAL_OVERLAY_PRESETS: Array<{
   id: HyperframesFinalOverlayPreset;
@@ -1260,6 +1280,7 @@ const HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS: Array<{
     descriptionEn: "No visual overlay text; subtitles can still render when burn-in subtitles are enabled.",
   },
 ];
+const HYPERFRAMES_FINAL_HOOK_DURATION_SEC = 3;
 
 function getHyperframesFinalTextModeOption(mode: HyperframesFinalTextMode) {
   return HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS.find(option => option.id === mode) ??
@@ -1276,14 +1297,51 @@ function shouldRenderHyperframesFinalShotOverlay(mode: HyperframesFinalTextMode,
   return false;
 }
 
-function resolveHyperframesFinalRenderOverlayText(input: {
+function resolveHyperframesFinalShotOverlayLines(input: {
   textMode: HyperframesFinalTextMode;
   shotIndex: number;
-  overlayText: string;
-}): string {
-  return shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)
-    ? removeHyperframesVideoPromptOverlayText(input.overlayText)
-    : "";
+  overlayPreset: HyperframesFinalOverlayPreset;
+  productContext: Record<string, unknown> | null;
+  productTitle: string;
+  productDescription: string;
+  storyboardName: string;
+  hookText: string;
+  supportingText: string;
+  clip: StoryboardClipCandidate;
+  clipCount: number;
+  savedOverlayText?: string | null;
+}): string[] {
+  if (!shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)) {
+    return [];
+  }
+  const draftedOverlayText = buildHyperframesShotOverlayDraft({
+    preset: input.overlayPreset,
+    productContext: input.productContext,
+    productTitle: input.productTitle || input.storyboardName,
+    description: input.productDescription,
+    hookText: input.hookText,
+    supportingText: input.supportingText,
+    clip: input.clip,
+    index: input.shotIndex,
+    total: input.clipCount,
+  });
+  const editableOverlayText =
+    sanitizeHyperframesShotOverlayText(input.savedOverlayText ?? "") ||
+    draftedOverlayText ||
+    defaultHyperframesShotText(input.clip, input.shotIndex);
+  const normalizedOverlayText = removeHyperframesVideoPromptOverlayText(editableOverlayText);
+  const rawLines = normalizedOverlayText
+    .split(/\n+/)
+    .map(line => compactStoryboardText(line))
+    .filter(Boolean);
+  const lines = isHyperframesSpecOverlayPreset(input.overlayPreset)
+    ? uniqueHyperframesOverlayLines(rawLines)
+    : uniqueHyperframesOverlayLines(rawLines.map(line => expandLegacyEllipsizedHyperframesText(
+      line,
+      [input.productDescription, input.productTitle, input.hookText, input.supportingText].filter(Boolean),
+      180,
+    )));
+  return lines.slice(0, getHyperframesOverlayLineLimit(input.overlayPreset));
 }
 
 function resolveHyperframesFinalPreviewOverlayLines(input: {
@@ -1295,6 +1353,8 @@ function resolveHyperframesFinalPreviewOverlayLines(input: {
   supportingText: string;
   maxLines: number;
   maxLength: number;
+  playbackSec?: number;
+  preferOpeningHook?: boolean;
 }): string[] {
   const normalizeLines = (value: string) => isHyperframesSpecOverlayPreset(input.overlayPreset)
     ? uniqueHyperframesOverlayLines(
@@ -1308,13 +1368,43 @@ function resolveHyperframesFinalPreviewOverlayLines(input: {
       maxLength: input.maxLength,
     });
 
+  const shouldShowOpeningHook =
+    input.shotIndex === 0 &&
+    shouldRenderHyperframesFinalHookText(input.textMode) &&
+    (input.textMode === "hook_only" ||
+      input.preferOpeningHook ||
+      Number(input.playbackSec ?? 0) < HYPERFRAMES_FINAL_HOOK_DURATION_SEC);
+
+  if (shouldShowOpeningHook) {
+    return normalizeLines([input.hookText, input.supportingText].join("\n"));
+  }
   if (shouldRenderHyperframesFinalShotOverlay(input.textMode, input.shotIndex)) {
     return normalizeLines(input.overlayText);
   }
-  if (shouldRenderHyperframesFinalHookText(input.textMode) && input.shotIndex === 0) {
-    return normalizeLines([input.hookText, input.supportingText].join("\n"));
-  }
   return [];
+}
+
+function getHyperframesFinalPreviewLayerLabel(input: {
+  locale: string;
+  textMode: HyperframesFinalTextMode;
+  shotIndex: number;
+  playbackSec?: number;
+  preferOpeningHook?: boolean;
+}): string {
+  const showsOpeningHook =
+    input.shotIndex === 0 &&
+    shouldRenderHyperframesFinalHookText(input.textMode) &&
+    (input.textMode === "hook_only" ||
+      input.preferOpeningHook ||
+      Number(input.playbackSec ?? 0) < HYPERFRAMES_FINAL_HOOK_DURATION_SEC);
+
+  if (showsOpeningHook) {
+    return input.locale === "th" ? "Opening Hook 0-3s" : "Opening Hook 0-3s";
+  }
+  if (input.shotIndex === 0 && input.textMode === "hook_and_per_shot") {
+    return input.locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook";
+  }
+  return input.locale === "th" ? "Overlay text" : "Overlay text";
 }
 
 const HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS: Array<{
@@ -1380,6 +1470,16 @@ function getCreativePresetLabel(
   return locale === "th" ? preset.labels.th || preset.labels.en : preset.labels.en || preset.id;
 }
 
+function getHyperframesOptionLabel<T extends { id: string; labelTh: string; labelEn: string }>(
+  options: readonly T[],
+  id: string,
+  locale: string,
+): string {
+  const option = options.find(item => item.id === id);
+  if (!option) return id;
+  return locale === "th" ? option.labelTh || option.labelEn : option.labelEn || option.id;
+}
+
 const ELECTRONICS_SPEC_PATTERNS = [
   /(?:จอ|screen|display|amoled|oled|lcd|นิ้ว|inch|hz|refresh|nits)/i,
   /(?:แบต|battery|mah|ชาร์จ|charging|\b\d+\s*w\b)/i,
@@ -1404,6 +1504,7 @@ function isHyperframesVideoPromptLikeText(value: unknown): boolean {
     /^Create an?\s+\d+(?:\.\d+)?-second\s+cinematic\s+vid/i.test(text) ||
     /\bUse\s+@Image\d+\s+as\s+(?:start|stop)\s+frame\b/i.test(text) ||
     /\bVIDEO CHARACTER LOCK\b/i.test(text) ||
+    /^(?:Dialogue|Narration|Voiceover|Presenter|Action|Scene)\s*:/i.test(text) ||
     /\bScene:\s*Use\s+@Image\d+/i.test(text)
   );
 }
@@ -1773,10 +1874,15 @@ function formatHyperframesPromptBulletLines(lines: string[]): string {
 
 function formatHyperframesPromptTimeline(input: {
   durationSeconds: number;
+  textMode: HyperframesFinalTextMode;
+  hookText: string;
+  supportingText: string;
   shots: Array<{
     prompt: string;
     overlayText: string;
     subtitleText: string;
+    startSec?: number;
+    endSec?: number;
     durationSeconds: number;
     overlayPreset?: string;
     animationPreset?: string;
@@ -1790,13 +1896,16 @@ function formatHyperframesPromptTimeline(input: {
   let cursor = 0;
   return input.shots.map((shot, index) => {
     const duration = Math.max(1, Math.round(shot.durationSeconds * 10) / 10);
-    const start = Math.round(cursor * 10) / 10;
-    const end = Math.round((cursor + duration) * 10) / 10;
+    const start = typeof shot.startSec === "number" ? Math.round(shot.startSec * 10) / 10 : Math.round(cursor * 10) / 10;
+    const end = typeof shot.endSec === "number" ? Math.round(shot.endSec * 10) / 10 : Math.round((cursor + duration) * 10) / 10;
     cursor += duration;
     const overlay = hyperframesPromptLines(shot.overlayText, 2).join(" / ");
     const subtitle = hyperframesPromptLines(shot.subtitleText, 1)[0] ?? "";
     const source = firstThaiProductLine(shot.prompt, 90);
     const text = overlay || subtitle || source || `Shot ${index + 1}`;
+    const openingHook = index === 0 && shouldRenderHyperframesFinalHookText(input.textMode)
+      ? hyperframesPromptLines([input.hookText, input.supportingText].join("\n"), 2).join(" / ")
+      : "";
     const style = [
       shot.overlayPreset,
       shot.animationPreset,
@@ -1811,6 +1920,18 @@ function formatHyperframesPromptTimeline(input: {
         : index === input.shots.length - 1
           ? "hold final product/CTA clearly"
           : "show the next selling point with smooth easing";
+    if (openingHook && input.textMode === "hook_and_per_shot") {
+      const hookEnd = Math.min(end, Math.round((start + HYPERFRAMES_FINAL_HOOK_DURATION_SEC) * 10) / 10);
+      const overlayStart = Math.min(end, hookEnd);
+      return [
+        `${start}-${hookEnd}s: opening hook; display "${openingHook}"${style ? `; style ${style}` : ""}.`,
+        `${overlayStart}-${end}s: ${motion}; display shot overlay "${text}"${style ? `; style ${style}` : ""}.`,
+      ].join("\n");
+    }
+    if (openingHook && input.textMode === "hook_only") {
+      const hookEnd = Math.min(end, Math.round((start + HYPERFRAMES_FINAL_HOOK_DURATION_SEC) * 10) / 10);
+      return `${start}-${hookEnd}s: opening hook only; display "${openingHook}"${style ? `; style ${style}` : ""}.`;
+    }
     return `${start}-${end}s: ${motion}; display "${text}"${style ? `; style ${style}` : ""}.`;
   }).join("\n");
 }
@@ -2066,6 +2187,9 @@ function buildHyperframesFinalRenderPrompt(input: {
   ].join("; ");
   const timeline = formatHyperframesPromptTimeline({
     durationSeconds: duration,
+    textMode: input.textMode,
+    hookText,
+    supportingText,
     shots: input.shots,
   });
   return [
@@ -2094,8 +2218,10 @@ function buildHyperframesFinalRenderPrompt(input: {
     `- Text mode: ${input.textMode}`,
     `- Text motion: ${input.textMotionPreset}`,
     `- Thai font: ${input.fontFamily}`,
-    "- Keep every Thai line clear, uncut, and inside the 9:16 safe area.",
+    `- Opening hook duration: ${HYPERFRAMES_FINAL_HOOK_DURATION_SEC}s when the selected text mode uses hook text.`,
+    "- Keep every Thai line clear, uncut, and inside the 9:16 safe area with 8% margins.",
     "- Do not invent unsupported product claims, prices, logos, or badges.",
+    "- Preview and render must use the same resolved overlay, subtitle, timing, and preset values.",
     "",
     "Subtitle policy:",
     `- ${subtitlePolicy}`,
@@ -2109,6 +2235,7 @@ function buildHyperframesFinalRenderPrompt(input: {
     "",
     "Export:",
     `- MP4, 1080x1920, 30fps, ${duration || "auto"} seconds.`,
+    "- Render with the official HyperFrames CSS/browser runtime. Do not use ASS/FFmpeg text fallback.",
     "- No extra logos unless provided. No unrelated text. Final frame must keep product and CTA readable.",
   ].join("\n");
 }
@@ -2152,6 +2279,7 @@ export const __STORYBOARD_REVIEW_HYPERFRAMES_TEXT_TESTS = {
   buildHyperframesShotOverlayDraft,
   buildHyperframesSubtitleTextMapFromClips,
   defaultHyperframesSubtitleText,
+  resolveHyperframesFinalShotOverlayLines,
   sanitizeHyperframesShotTextMap,
 };
 
@@ -2178,6 +2306,15 @@ function buildHyperframesFinalPayloadPreview(input: {
     prompt: string;
     overlayText: string;
     subtitleText: string;
+    startSec?: number;
+    endSec?: number;
+    mediaStartSec?: number;
+    sourceClipId?: string;
+    sourceVideoRef?: string;
+    overlayLines?: string[];
+    subtitleCues?: HyperframesFinalCompositeConfig["shots"][number]["subtitleCues"];
+    subtitleVtt?: string;
+    subtitleSrt?: string;
     durationSeconds: number;
     overlayPreset?: HyperframesFinalOverlayPreset;
     animationPreset?: HyperframesFinalShotAnimationPreset;
@@ -2219,22 +2356,35 @@ function buildHyperframesFinalPayloadPreview(input: {
       shots: input.shots.map((shot, index) => ({
         index,
         id: shot.id,
+        sourceClipId: shot.sourceClipId || shot.id,
+        sourceVideoRef: shot.sourceVideoRef || null,
+        mediaStartSec: Math.max(0, Math.round(Number(shot.mediaStartSec ?? 0) * 10) / 10),
+        startSec: Math.max(0, Math.round(Number(shot.startSec ?? 0) * 10) / 10),
+        endSec: Math.max(0, Math.round(Number(shot.endSec ?? shot.durationSeconds) * 10) / 10),
         durationSeconds: Math.max(1, Math.round(shot.durationSeconds * 10) / 10),
         overlayPreset: shot.overlayPreset ?? input.overlayPreset,
         animationPreset: shot.animationPreset ?? "smooth_reveal",
         transition: shot.transition ?? "fade",
         textMotionPreset: shot.textMotionPreset ?? input.textMotionPreset,
         sourcePrompt: firstThaiProductLine(shot.prompt, 180),
-        onScreenText: shot.overlayText
-          .split(/\n+/)
+        onScreenText: (shot.overlayLines ?? shot.overlayText.split(/\n+/))
           .map(line => compactStoryboardText(line))
           .filter(Boolean)
           .slice(0, getHyperframesOverlayLineLimit(shot.overlayPreset ?? input.overlayPreset)),
-        subtitle: shot.subtitleText
+        subtitleCues: (shot.subtitleCues ?? [])
+          .map(cue => ({
+            startSec: Math.round(cue.startSec * 10) / 10,
+            endSec: Math.round(cue.endSec * 10) / 10,
+            text: compactStoryboardText(cue.text),
+          }))
+          .filter(cue => cue.text),
+        subtitleText: shot.subtitleText
           .split(/\n+/)
           .map(line => compactStoryboardText(line))
           .filter(Boolean)
           .slice(0, 4),
+        subtitleVtt: shot.subtitleVtt || null,
+        subtitleSrt: shot.subtitleSrt || null,
       })),
     },
     null,
@@ -2280,6 +2430,22 @@ function isHyperframesFinalCompositeRender(
   );
 }
 
+function isTerminalHyperframesRenderStatus(status?: string | null): boolean {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  return [
+    "completed",
+    "saved_to_library",
+    "failed",
+    "failed_permanent",
+    "dead_lettered",
+    "cancelled",
+    "canceled",
+    "blocked_needs_user",
+    "compliance_blocked",
+    "not_available",
+  ].includes(normalized);
+}
+
 function isSyntheticHyperframesRuntimeBlockedJobId(renderJobId?: string | null): boolean {
   return /^hf_final_runtime_blocked_/.test(String(renderJobId ?? "").trim());
 }
@@ -2294,11 +2460,84 @@ function formatHyperframesFinalCompositeStatus(
   locale: string,
 ): string | null {
   if (!render) return null;
-  const status = render.status.replace(/_/g, " ");
+  const status = getHyperframesFinalCompositeStatusLabel(render.status, locale);
   const progress = Math.round(render.progressPercent);
   const prefix = locale === "th" ? "สถานะ Final Composite" : "Final Composite status";
-  const updated = render.updatedAt ? ` · ${render.updatedAt}` : "";
-  return `${prefix}: ${status} · ${progress}%${updated}`;
+  return `${prefix}: ${status} · ${progress}%`;
+}
+
+function getHyperframesFinalCompositeStatusLabel(status: string, locale: string): string {
+  const normalized = status.trim().toLowerCase();
+  const labels: Record<string, { th: string; en: string }> = {
+    queued: { th: "รอคิว render", en: "Queued" },
+    staging_assets: { th: "กำลังเตรียม asset", en: "Staging assets" },
+    linting: { th: "กำลังตรวจ composition", en: "Checking composition" },
+    rendering: { th: "กำลัง render ด้วย CSS runtime", en: "Rendering with CSS runtime" },
+    inspecting: { th: "กำลังตรวจไฟล์วิดีโอ", en: "Inspecting output" },
+    completed: { th: "render สำเร็จ", en: "Completed" },
+    saved_to_library: { th: "บันทึกเข้า Library แล้ว", en: "Saved to Library" },
+    blocked_needs_user: { th: "ต้องแก้ไขก่อน render ต่อ", en: "Action required" },
+    compliance_blocked: { th: "ต้องตรวจ policy ก่อน render", en: "Compliance review required" },
+    stale_input_hash: { th: "ข้อมูลเปลี่ยน ต้อง render ใหม่", en: "Input changed, render again" },
+    dead_lettered: { th: "งานล้มเหลวถาวร", en: "Dead lettered" },
+    failed: { th: "render ไม่สำเร็จ", en: "Failed" },
+    failed_permanent: { th: "render ไม่สำเร็จถาวร", en: "Permanently failed" },
+    cancelled: { th: "ยกเลิกแล้ว", en: "Cancelled" },
+    canceled: { th: "ยกเลิกแล้ว", en: "Cancelled" },
+    not_available: { th: "ยังไม่มีงาน render", en: "Not available" },
+  };
+  const copy = labels[normalized];
+  if (copy) return locale === "th" ? copy.th : copy.en;
+  return normalized.replace(/_/g, " ");
+}
+
+function formatHyperframesRenderElapsed(
+  render: HyperframesRenderStatusProjection | null,
+  locale: string,
+): string | null {
+  const startedAt = render?.createdAt ?? render?.updatedAt;
+  if (!startedAt) return null;
+  const start = new Date(startedAt).getTime();
+  if (!Number.isFinite(start)) return null;
+  const end = isTerminalHyperframesRenderStatus(render?.status)
+    ? new Date(render?.updatedAt ?? startedAt).getTime()
+    : Date.now();
+  if (!Number.isFinite(end) || end < start) return null;
+  const totalSeconds = Math.max(0, Math.round((end - start) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (locale === "th") {
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const restMinutes = minutes % 60;
+      return restMinutes > 0 ? `${hours} ชม. ${restMinutes} นาที` : `${hours} ชม.`;
+    }
+    return minutes > 0 ? `${minutes} นาที ${seconds} วิ` : `${seconds} วิ`;
+  }
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    return restMinutes > 0 ? `${hours}h ${restMinutes}m` : `${hours}h`;
+  }
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function formatLocalRenderDateTime(value: string, locale: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  try {
+    return new Intl.DateTimeFormat(locale === "th" ? "th-TH" : "en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZoneName: "short",
+    }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
 }
 
 function getHyperframesPrimaryVideoOutput(render: HyperframesRenderStatusProjection | null) {
@@ -2956,6 +3195,40 @@ function createImportedAudioTrack(input: {
   };
 }
 
+function buildHyperframesSelectedVideoOverlayFrameVars(
+  stage: HTMLElement | null,
+  video: HTMLVideoElement | null,
+): CSSProperties | null {
+  if (!stage) return null;
+  const stageRect = stage.getBoundingClientRect();
+  const videoBoxRect = video?.getBoundingClientRect();
+  const boxLeft = videoBoxRect && videoBoxRect.width > 0 ? videoBoxRect.left - stageRect.left : 0;
+  const boxTop = videoBoxRect && videoBoxRect.height > 0 ? videoBoxRect.top - stageRect.top : 0;
+  const boxWidth = videoBoxRect?.width && videoBoxRect.width > 0 ? videoBoxRect.width : stageRect.width;
+  const boxHeight = videoBoxRect?.height && videoBoxRect.height > 0 ? videoBoxRect.height : stageRect.height;
+  if (boxWidth <= 0 || boxHeight <= 0) return null;
+
+  const safeX = Math.max(16, Math.round(boxWidth * 0.035));
+  const safeTop = Math.max(18, Math.round(boxHeight * 0.045));
+  const safeBottom = Math.max(116, Math.round(boxHeight * 0.27));
+  const subtitleX = Math.max(18, Math.round(boxWidth * 0.055));
+  const subtitleBottom = Math.max(30, Math.round(boxHeight * 0.07));
+  const statusX = Math.max(12, Math.round(boxWidth * 0.03));
+  const statusTop = Math.max(12, Math.round(boxHeight * 0.03));
+  return {
+    "--hf-video-overlay-left": `${Math.round(boxLeft + safeX)}px`,
+    "--hf-video-overlay-top": `${Math.round(boxTop + safeTop)}px`,
+    "--hf-video-overlay-width": `${Math.max(80, Math.round(boxWidth - safeX * 2))}px`,
+    "--hf-video-overlay-height": `${Math.max(80, Math.round(boxHeight - safeTop - safeBottom))}px`,
+    "--hf-video-subtitle-left": `${Math.round(boxLeft + subtitleX)}px`,
+    "--hf-video-subtitle-bottom": `${Math.round(stageRect.height - (boxTop + boxHeight) + subtitleBottom)}px`,
+    "--hf-video-subtitle-width": `${Math.max(80, Math.round(boxWidth - subtitleX * 2))}px`,
+    "--hf-video-status-left": `${Math.round(boxLeft + statusX)}px`,
+    "--hf-video-status-top": `${Math.round(boxTop + statusTop)}px`,
+    "--hf-video-status-width": `${Math.max(80, Math.round(boxWidth - statusX * 2))}px`,
+  } as CSSProperties;
+}
+
 function createManualStoryboardReviewDraft(locale: string): StoryboardReviewDraft {
   const now = Date.now();
   const suffix = `${now}-${Math.random().toString(36).slice(2, 8)}`;
@@ -3100,6 +3373,11 @@ export default function StoryboardReviewPage() {
   const [isHyperframesFinalPromptEdited, setIsHyperframesFinalPromptEdited] = useState(false);
   const [hyperframesFinalHookText, setHyperframesFinalHookText] = useState("");
   const [hyperframesFinalSupportingText, setHyperframesFinalSupportingText] = useState("");
+  const [isHyperframesFinalHookEditing, setIsHyperframesFinalHookEditing] = useState(false);
+  const [hyperframesFinalHookDraft, setHyperframesFinalHookDraft] = useState({
+    hookText: "",
+    supportingText: "",
+  });
   const [hyperframesFinalShotTextById, setHyperframesFinalShotTextById] = useState<Record<string, string>>({});
   const [hyperframesFinalSubtitleById, setHyperframesFinalSubtitleById] = useState<Record<string, string>>({});
   const [hyperframesFinalOverlayDraftById, setHyperframesFinalOverlayDraftById] = useState<Record<string, string>>({});
@@ -3132,6 +3410,12 @@ export default function StoryboardReviewPage() {
     useState<HyperframesFinalAutosaveStatus>("idle");
   const [hyperframesFinalTranscribingShotId, setHyperframesFinalTranscribingShotId] = useState<string | null>(null);
   const [hyperframesFinalTranscribeStatusText, setHyperframesFinalTranscribeStatusText] = useState("");
+  const hyperframesFinalPreviewHookText = isHyperframesFinalHookEditing
+    ? hyperframesFinalHookDraft.hookText
+    : hyperframesFinalHookText;
+  const hyperframesFinalPreviewSupportingText = isHyperframesFinalHookEditing
+    ? hyperframesFinalHookDraft.supportingText
+    : hyperframesFinalSupportingText;
   const hyperframesFinalStateRevisionRef = useRef<number | null>(null);
   const hyperframesFinalStateHydrationKeyRef = useRef<string | null>(null);
   const hyperframesFinalActiveIdentityKeyRef = useRef<string | null>(null);
@@ -3144,7 +3428,10 @@ export default function StoryboardReviewPage() {
   const hyperframesFinalAutosaveSkipNextRef = useRef(false);
   const hyperframesFinalAutosaveFlushAfterSnapshotRef = useRef(false);
   const hyperframesFinalLocalTextDirtyRef = useRef(false);
+  const hyperframesFinalSelectedShotStageRef = useRef<HTMLDivElement | null>(null);
   const hyperframesFinalSelectedShotVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [hyperframesFinalSelectedShotOverlayFrameVars, setHyperframesFinalSelectedShotOverlayFrameVars] =
+    useState<CSSProperties | null>(null);
   const hyperframesFinalSelectedShotPlaybackLastSecRef = useRef(0);
   const videoPreviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const videoPreviewOverlayReplayLastAtRef = useRef(0);
@@ -3226,6 +3513,7 @@ export default function StoryboardReviewPage() {
     setHyperframesFinalSelectedShotVideoLoadState("loading");
     setHyperframesFinalSelectedShotVideoError("");
   }, [hyperframesFinalSelectedShotPreviewMode, hyperframesFinalPreviewShotIndex]);
+
   const hyperframesRenderJobId = hyperframesSearchParams.get("hyperframesRenderJobId");
   const hyperframesProductId = hyperframesSearchParams.get("productId") ?? undefined;
   const hyperframesRunId = hyperframesSearchParams.get("runId") ?? undefined;
@@ -3493,10 +3781,14 @@ export default function StoryboardReviewPage() {
     createHyperframesFinalCompositeMutation.data?.render ??
     createHyperframesPreviewMutation.data?.render ??
     null;
+  const hyperframesFinalCompositeMutationRender =
+    createHyperframesFinalCompositeMutation.data?.render ?? null;
+  const hyperframesFinalCompositeQueryRender =
+    hyperframesRenderQuery.data?.render ?? null;
   const hyperframesFinalRenderProjection =
     [
-      createHyperframesFinalCompositeMutation.data?.render,
-      hyperframesRenderQuery.data?.render,
+      hyperframesFinalCompositeQueryRender,
+      hyperframesFinalCompositeMutationRender,
       hyperframesRenderProjection,
     ].find(isHyperframesFinalCompositeRender) ?? null;
   const hyperframesFinalCompositeStatusText = createHyperframesFinalCompositeMutation.isPending
@@ -3505,6 +3797,27 @@ export default function StoryboardReviewPage() {
       : "Submitting Final Composite render to the queue..."
     : formatHyperframesFinalCompositeStatus(hyperframesFinalRenderProjection, locale);
   const hyperframesFinalCompositeStatusDetail = hyperframesFinalRenderProjection?.safeMessage ?? null;
+  const hyperframesFinalCompositeElapsedText = formatHyperframesRenderElapsed(
+    hyperframesFinalRenderProjection,
+    locale,
+  );
+  const hyperframesFinalCompositeStartedText = hyperframesFinalRenderProjection?.createdAt
+    ? formatLocalRenderDateTime(hyperframesFinalRenderProjection.createdAt, locale)
+    : null;
+  const hyperframesFinalCompositeUpdatedText = hyperframesFinalRenderProjection?.updatedAt
+    ? formatLocalRenderDateTime(hyperframesFinalRenderProjection.updatedAt, locale)
+    : null;
+  const hyperframesFinalCompositeNextAction =
+    hyperframesFinalRenderProjection?.nextAction ??
+    (hyperframesFinalRenderProjection?.status === "blocked_needs_user"
+      ? locale === "th"
+        ? "ตรวจ runtime/worker แล้วกด Render Final Composite ใหม่"
+        : "Check the runtime/worker, then render Final Composite again."
+      : null);
+  const hyperframesFinalCompositePrimaryDiagnostic =
+    hyperframesFinalRenderProjection?.safeDiagnostics?.find(message =>
+      !/contract version|template|composition hash/i.test(message)
+    ) ?? null;
   const hyperframesFinalCompositeIsProblem = Boolean(
     hyperframesFinalRenderProjection?.status.startsWith("failed") ||
       hyperframesFinalRenderProjection?.status === "dead_lettered" ||
@@ -3515,6 +3828,7 @@ export default function StoryboardReviewPage() {
     createHyperframesFinalCompositeMutation.isPending ||
       (hyperframesFinalRenderProjection &&
         !hyperframesFinalCompositeIsProblem &&
+        !isTerminalHyperframesRenderStatus(hyperframesFinalRenderProjection.status) &&
         hyperframesFinalRenderProjection.progressPercent < 100)
   );
   const hyperframesFinalVideoOutput = getHyperframesPrimaryVideoOutput(
@@ -5578,6 +5892,111 @@ export default function StoryboardReviewPage() {
       hyperframesFinalSelectedShotMediaStartSec + hyperframesFinalSelectedShotDurationSec
     );
 
+  const syncHyperframesFinalSelectedShotOverlayFrame = useCallback(() => {
+    if (typeof window === "undefined" || hyperframesFinalSelectedShotPreviewMode !== "video") {
+      setHyperframesFinalSelectedShotOverlayFrameVars(null);
+      return;
+    }
+    const next = buildHyperframesSelectedVideoOverlayFrameVars(
+      hyperframesFinalSelectedShotStageRef.current,
+      hyperframesFinalSelectedShotVideoRef.current,
+    );
+    setHyperframesFinalSelectedShotOverlayFrameVars(next);
+  }, [hyperframesFinalSelectedShotPreviewMode]);
+
+  useEffect(() => {
+    if (hyperframesFinalSelectedShotPreviewMode !== "video") {
+      setHyperframesFinalSelectedShotOverlayFrameVars(null);
+      return;
+    }
+
+    let frameId = 0;
+    const scheduleSync = () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        syncHyperframesFinalSelectedShotOverlayFrame();
+      });
+    };
+    scheduleSync();
+
+    const stage = hyperframesFinalSelectedShotStageRef.current;
+    const video = hyperframesFinalSelectedShotVideoRef.current;
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(scheduleSync)
+        : null;
+    if (stage && resizeObserver) resizeObserver.observe(stage);
+    if (video && resizeObserver) resizeObserver.observe(video);
+    window.addEventListener("resize", scheduleSync);
+
+    return () => {
+      if (frameId) window.cancelAnimationFrame(frameId);
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleSync);
+    };
+  }, [
+    hyperframesFinalPreviewShotIndex,
+    hyperframesFinalSelectedShotDurationSec,
+    hyperframesFinalSelectedShotPreviewMode,
+    hyperframesFinalSelectedShotVideoUrl,
+    hyperframesFinalTextPreviewReplayKey,
+    syncHyperframesFinalSelectedShotOverlayFrame,
+  ]);
+
+  useEffect(() => {
+    if (hyperframesFinalSelectedShotPreviewMode !== "video") return;
+    let frameId = 0;
+    const intervalId = window.setInterval(() => {
+      const video = hyperframesFinalSelectedShotVideoRef.current;
+      if (!video) return;
+      const relativeSec = Math.max(0, video.currentTime - hyperframesFinalSelectedShotMediaStartSec);
+      if (Math.abs(relativeSec - hyperframesFinalSelectedShotPlaybackLastSecRef.current) >= 0.05) {
+        hyperframesFinalSelectedShotPlaybackLastSecRef.current = relativeSec;
+        setHyperframesFinalSelectedShotPlaybackSec(roundHyperframesTimelineSecond(relativeSec));
+      }
+    }, 100);
+    const hookFallbackId = window.setTimeout(() => {
+      if (
+        hyperframesFinalTextMode === "hook_and_per_shot" &&
+        hyperframesFinalPreviewShotIndex === 0 &&
+        hyperframesFinalSelectedShotPreviewMode === "video"
+      ) {
+        setHyperframesFinalSelectedShotPlaybackSec(current =>
+          current < HYPERFRAMES_FINAL_HOOK_DURATION_SEC
+            ? HYPERFRAMES_FINAL_HOOK_DURATION_SEC + 0.1
+            : current
+        );
+      }
+    }, HYPERFRAMES_FINAL_HOOK_DURATION_SEC * 1000 + 150);
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const video = hyperframesFinalSelectedShotVideoRef.current;
+      if (video && !video.paused && !video.ended) {
+        const relativeSec = Math.max(0, video.currentTime - hyperframesFinalSelectedShotMediaStartSec);
+        if (Math.abs(relativeSec - hyperframesFinalSelectedShotPlaybackLastSecRef.current) >= 0.05) {
+          hyperframesFinalSelectedShotPlaybackLastSecRef.current = relativeSec;
+          setHyperframesFinalSelectedShotPlaybackSec(roundHyperframesTimelineSecond(relativeSec));
+        }
+      }
+      frameId = window.requestAnimationFrame(tick);
+    };
+    frameId = window.requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.clearTimeout(hookFallbackId);
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [
+    hyperframesFinalPreviewShotIndex,
+    hyperframesFinalSelectedShotMediaStartSec,
+    hyperframesFinalSelectedShotPreviewMode,
+    hyperframesFinalTextPreviewReplayKey,
+    hyperframesFinalTextMode,
+  ]);
+
   useEffect(() => {
     if (hyperframesFinalSelectedShotPreviewMode !== "video" || !hyperframesFinalSelectedShotVideoUrl) return;
     const video = hyperframesFinalSelectedShotVideoRef.current;
@@ -5714,6 +6133,8 @@ export default function StoryboardReviewPage() {
     setIsHyperframesFinalPromptEdited(false);
     setHyperframesFinalHookText("");
     setHyperframesFinalSupportingText("");
+    setIsHyperframesFinalHookEditing(false);
+    setHyperframesFinalHookDraft({ hookText: "", supportingText: "" });
     setHyperframesFinalShotTextById({});
     setHyperframesFinalSubtitleById({});
     setHyperframesFinalOverlayDraftById({});
@@ -6213,13 +6634,65 @@ export default function StoryboardReviewPage() {
       productContext?.description ?? productContext?.descriptionText ?? draft?.conceptDetails ?? "",
     );
     return {
+      productContext,
+      storyboardName,
       productTitle: productTitle || storyboardName,
       productDescription,
       priceText: formatProductPriceForOverlay(productContext),
     };
   }, [draft]);
 
-  const generatedHyperframesFinalRenderPrompt = useMemo(() => {
+  const hyperframesFinalResolvedHookText = useMemo(
+    () => expandLegacyEllipsizedHyperframesText(
+      hyperframesFinalHookText,
+      [
+        hyperframesFinalProductPromptContext.productDescription,
+        hyperframesFinalProductPromptContext.productTitle,
+        hyperframesFinalProductPromptContext.storyboardName,
+      ].filter(Boolean),
+      180,
+    ),
+    [
+      hyperframesFinalHookText,
+      hyperframesFinalProductPromptContext.productDescription,
+      hyperframesFinalProductPromptContext.productTitle,
+      hyperframesFinalProductPromptContext.storyboardName,
+    ],
+  );
+
+  const hyperframesFinalResolvedSupportingText = useMemo(
+    () => expandLegacyEllipsizedHyperframesText(
+      hyperframesFinalSupportingText,
+      [
+        hyperframesFinalProductPromptContext.productTitle,
+        hyperframesFinalProductPromptContext.productDescription,
+        hyperframesFinalProductPromptContext.storyboardName,
+      ].filter(Boolean),
+      160,
+    ),
+    [
+      hyperframesFinalProductPromptContext.productDescription,
+      hyperframesFinalProductPromptContext.productTitle,
+      hyperframesFinalProductPromptContext.storyboardName,
+      hyperframesFinalSupportingText,
+    ],
+  );
+
+  const resolvedHyperframesFinalOverlayPreset = useMemo<HyperframesFinalOverlayPreset>(() => {
+    if (hyperframesFinalOverlayPreset !== "auto") return hyperframesFinalOverlayPreset;
+    return resolveHyperframesAutoOverlayPreset({
+      productContext: hyperframesFinalProductPromptContext.productContext,
+      description: hyperframesFinalProductPromptContext.productDescription,
+      hasPrice: Boolean(hyperframesFinalProductPromptContext.priceText),
+    });
+  }, [
+    hyperframesFinalOverlayPreset,
+    hyperframesFinalProductPromptContext.productContext,
+    hyperframesFinalProductPromptContext.productDescription,
+    hyperframesFinalProductPromptContext.priceText,
+  ]);
+
+  const hyperframesFinalPresetLabels = useMemo(() => {
     const audioPackPreset = HYPERFRAMES_FINAL_AUDIO_PACK_PRESETS.find(
       preset => preset.id === hyperframesFinalAudioPackPresetId,
     );
@@ -6230,67 +6703,132 @@ export default function StoryboardReviewPage() {
       .map(id => HYPERFRAMES_FINAL_SFX_PRESETS.find(preset => preset.id === id))
       .filter((preset): preset is HyperframesCreativePreset => Boolean(preset))
       .map(preset => getCreativePresetLabel(preset, locale));
+    return {
+      overlayPresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_OVERLAY_PRESETS, resolvedHyperframesFinalOverlayPreset, locale),
+      subtitlePresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_SUBTITLE_PRESETS, hyperframesFinalSubtitlePreset, locale),
+      textMotionPresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS, hyperframesFinalTextMotionPreset, locale),
+      textModeLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_TEXT_MODE_OPTIONS, hyperframesFinalTextMode, locale),
+      textModeDescription: locale === "th"
+        ? getHyperframesFinalTextModeOption(hyperframesFinalTextMode).descriptionTh
+        : getHyperframesFinalTextModeOption(hyperframesFinalTextMode).descriptionEn,
+      audioPackPresetLabel: audioPackPreset ? getCreativePresetLabel(audioPackPreset, locale) : "",
+      musicPresetLabel: musicPreset ? getCreativePresetLabel(musicPreset, locale) : "",
+      sfxPresetLabels,
+    };
+  }, [
+    hyperframesFinalAudioPackPresetId,
+    hyperframesFinalMusicPresetId,
+    resolvedHyperframesFinalOverlayPreset,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalSubtitlePreset,
+    hyperframesFinalTextMode,
+    hyperframesFinalTextMotionPreset,
+    locale,
+  ]);
+
+  const hyperframesFinalResolvedPromptShots = useMemo<HyperframesFinalResolvedPromptShot[]>(() => {
+    let cursor = 0;
+    return hyperframesFinalSourceClips.map((clip, index) => {
+      const durationSeconds = getHyperframesFinalClipDurationSec(clip);
+      const startSec = roundHyperframesTimelineSecond(cursor);
+      const endSec = roundHyperframesTimelineSecond(cursor + durationSeconds);
+      cursor = endSec;
+      const overlayPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedHyperframesFinalOverlayPreset;
+      const overlayLines = resolveHyperframesFinalShotOverlayLines({
+        textMode: hyperframesFinalTextMode,
+        shotIndex: index,
+        overlayPreset,
+        productContext: hyperframesFinalProductPromptContext.productContext,
+        productTitle: hyperframesFinalProductPromptContext.productTitle,
+        productDescription: hyperframesFinalProductPromptContext.productDescription,
+        storyboardName: hyperframesFinalProductPromptContext.storyboardName,
+        hookText: hyperframesFinalResolvedHookText,
+        supportingText: hyperframesFinalResolvedSupportingText,
+        clip,
+        clipCount: hyperframesFinalSourceClips.length,
+        savedOverlayText: hyperframesFinalShotTextById[clip.id],
+      });
+      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
+      return {
+        id: clip.id,
+        prompt: clip.prompt,
+        sourceClipId: clip.sourceClipId,
+        sourceVideoRef: clip.url,
+        mediaStartSec: roundHyperframesTimelineSecond(clip.mediaStartSec ?? 0),
+        startSec,
+        endSec,
+        durationSeconds,
+        overlayText: overlayLines.join("\n"),
+        overlayLines,
+        subtitleText,
+        subtitleCues: subtitleCuesFromEditableText(subtitleText, startSec, durationSeconds),
+        subtitleVtt: hyperframesFinalSubtitleVttById[clip.id],
+        subtitleSrt: hyperframesFinalSubtitleSrtById[clip.id],
+        overlayPreset,
+        animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
+        transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
+        textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
+      };
+    });
+  }, [
+    hyperframesFinalProductPromptContext.productContext,
+    hyperframesFinalProductPromptContext.productDescription,
+    hyperframesFinalProductPromptContext.productTitle,
+    hyperframesFinalProductPromptContext.storyboardName,
+    hyperframesFinalResolvedHookText,
+    hyperframesFinalResolvedSupportingText,
+    hyperframesFinalShotAnimationById,
+    hyperframesFinalShotOverlayPresetById,
+    hyperframesFinalShotTextById,
+    hyperframesFinalShotTextMotionById,
+    hyperframesFinalShotTransitionById,
+    hyperframesFinalSourceClips,
+    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitleSrtById,
+    hyperframesFinalSubtitleVttById,
+    hyperframesFinalTextMode,
+    resolvedHyperframesFinalOverlayPreset,
+  ]);
+
+  const generatedHyperframesFinalRenderPrompt = useMemo(() => {
     return buildHyperframesFinalRenderPrompt({
       productTitle: hyperframesFinalProductPromptContext.productTitle,
       productDescription: hyperframesFinalProductPromptContext.productDescription,
       priceText: hyperframesFinalProductPromptContext.priceText,
       styleBrief: DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF,
-      overlayPreset: hyperframesFinalOverlayPreset,
+      overlayPreset: resolvedHyperframesFinalOverlayPreset,
       subtitlePreset: hyperframesFinalSubtitlePreset,
       subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
       textMode: hyperframesFinalTextMode,
       textMotionPreset: hyperframesFinalTextMotionPreset,
       fontFamily: hyperframesFinalFont,
-      hookText: hyperframesFinalHookText,
-      supportingText: hyperframesFinalSupportingText,
-      audioPackPresetLabel: audioPackPreset ? getCreativePresetLabel(audioPackPreset, locale) : "",
-      musicPresetLabel: musicPreset ? getCreativePresetLabel(musicPreset, locale) : "",
-      sfxPresetLabels,
+      hookText: hyperframesFinalResolvedHookText,
+      supportingText: hyperframesFinalResolvedSupportingText,
+      audioPackPresetLabel: hyperframesFinalPresetLabels.audioPackPresetLabel,
+      musicPresetLabel: hyperframesFinalPresetLabels.musicPresetLabel,
+      sfxPresetLabels: hyperframesFinalPresetLabels.sfxPresetLabels,
       preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
       syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
       burnInSubtitles: hyperframesFinalBurnInSubtitles,
       durationSeconds: hyperframesFinalDurationSeconds,
-      shots: hyperframesFinalSourceClips.map((clip, index) => ({
-        id: clip.id,
-        prompt: clip.prompt,
-        overlayText: resolveHyperframesFinalRenderOverlayText({
-          textMode: hyperframesFinalTextMode,
-          shotIndex: index,
-          overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
-        }),
-        subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
-        durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
-        overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
-        animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
-        transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
-        textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
-      })),
+      shots: hyperframesFinalResolvedPromptShots,
     });
   }, [
-    hyperframesFinalAudioPackPresetId,
     hyperframesFinalBurnInSubtitles,
     hyperframesFinalDurationSeconds,
     hyperframesFinalFont,
-    hyperframesFinalHookText,
-    hyperframesFinalMusicPresetId,
-    hyperframesFinalOverlayPreset,
     hyperframesFinalPreserveNativeAudio,
-    hyperframesFinalShotAnimationById,
-    hyperframesFinalShotOverlayPresetById,
     hyperframesFinalProductPromptContext,
-    hyperframesFinalShotTextById,
-    hyperframesFinalSourceClips,
-    hyperframesFinalSfxPresetIds,
-    hyperframesFinalShotTransitionById,
-    hyperframesFinalSubtitleById,
+    hyperframesFinalPresetLabels,
+    hyperframesFinalResolvedHookText,
+    hyperframesFinalResolvedPromptShots,
+    hyperframesFinalResolvedSupportingText,
     hyperframesFinalSubtitleFontSizePx,
     hyperframesFinalSubtitlePreset,
-    hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
     hyperframesFinalTextMotionPreset,
-    hyperframesFinalShotTextMotionById,
-    locale,
+    resolvedHyperframesFinalOverlayPreset,
   ]);
 
   const hyperframesFinalPromptInputSignature = useMemo(
@@ -6299,14 +6837,15 @@ export default function StoryboardReviewPage() {
         productTitle: hyperframesFinalProductPromptContext.productTitle,
         productDescription: hyperframesFinalProductPromptContext.productDescription,
         priceText: hyperframesFinalProductPromptContext.priceText,
-        overlayPreset: hyperframesFinalOverlayPreset,
+        overlayPreset: resolvedHyperframesFinalOverlayPreset,
+        overlayPresetSource: hyperframesFinalOverlayPreset === "auto" ? "auto_resolved" : "user_selected",
         subtitlePreset: hyperframesFinalSubtitlePreset,
         subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
         textMode: hyperframesFinalTextMode,
         textMotionPreset: hyperframesFinalTextMotionPreset,
         fontFamily: hyperframesFinalFont,
-        hookText: hyperframesFinalHookText,
-        supportingText: hyperframesFinalSupportingText,
+        hookText: hyperframesFinalResolvedHookText,
+        supportingText: hyperframesFinalResolvedSupportingText,
         audioPackPresetId: hyperframesFinalAudioPackPresetId,
         musicPresetId: hyperframesFinalMusicPresetId,
         sfxPresetIds: hyperframesFinalSfxPresetIds,
@@ -6315,20 +6854,25 @@ export default function StoryboardReviewPage() {
         syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
         burnInSubtitles: hyperframesFinalBurnInSubtitles,
         durationSeconds: hyperframesFinalDurationSeconds,
-        shots: hyperframesFinalSourceClips.map((clip, index) => ({
-          id: clip.id,
-          prompt: clip.prompt,
-          overlayText: resolveHyperframesFinalRenderOverlayText({
-            textMode: hyperframesFinalTextMode,
-            shotIndex: index,
-            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
-          }),
-          subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
-          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
-          animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
-          transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
-          textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
-          durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+        shots: hyperframesFinalResolvedPromptShots.map(shot => ({
+          id: shot.id,
+          sourceClipId: shot.sourceClipId,
+          sourceVideoRef: shot.sourceVideoRef,
+          mediaStartSec: shot.mediaStartSec,
+          startSec: shot.startSec,
+          endSec: shot.endSec,
+          prompt: shot.prompt,
+          overlayText: shot.overlayText,
+          overlayLines: shot.overlayLines,
+          subtitleText: shot.subtitleText,
+          subtitleCues: shot.subtitleCues,
+          subtitleVtt: shot.subtitleVtt || "",
+          subtitleSrt: shot.subtitleSrt || "",
+          overlayPreset: shot.overlayPreset,
+          animationPreset: shot.animationPreset,
+          transition: shot.transition,
+          textMotionPreset: shot.textMotionPreset,
+          durationSeconds: shot.durationSeconds,
         })),
       }),
     [
@@ -6336,26 +6880,22 @@ export default function StoryboardReviewPage() {
       hyperframesFinalBurnInSubtitles,
       hyperframesFinalDurationSeconds,
       hyperframesFinalFont,
-      hyperframesFinalHookText,
       hyperframesFinalMusicPresetId,
       hyperframesFinalOverlayPreset,
       hyperframesFinalPreserveNativeAudio,
       hyperframesFinalProductPromptContext,
-      hyperframesFinalShotTextById,
-      hyperframesFinalShotAnimationById,
-      hyperframesFinalShotOverlayPresetById,
-      hyperframesFinalSourceClips,
+      hyperframesFinalResolvedHookText,
+      hyperframesFinalResolvedPromptShots,
+      hyperframesFinalResolvedSupportingText,
       hyperframesFinalSfxDrafts,
       hyperframesFinalSfxPresetIds,
       hyperframesFinalSubtitleById,
       hyperframesFinalSubtitleFontSizePx,
       hyperframesFinalSubtitlePreset,
-      hyperframesFinalShotTransitionById,
-      hyperframesFinalSupportingText,
       hyperframesFinalSyntheticAudioFallback,
       hyperframesFinalTextMode,
       hyperframesFinalTextMotionPreset,
-      hyperframesFinalShotTextMotionById,
+      resolvedHyperframesFinalOverlayPreset,
     ],
   );
 
@@ -6447,14 +6987,14 @@ export default function StoryboardReviewPage() {
     () =>
       buildHyperframesFinalPayloadPreview({
         renderPrompt: hyperframesFinalStyleBrief,
-        overlayPreset: hyperframesFinalOverlayPreset,
+        overlayPreset: resolvedHyperframesFinalOverlayPreset,
         subtitlePreset: hyperframesFinalSubtitlePreset,
         subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
         textMode: hyperframesFinalTextMode,
         textMotionPreset: hyperframesFinalTextMotionPreset,
         fontFamily: hyperframesFinalFont,
-        hookText: hyperframesFinalHookText,
-        supportingText: hyperframesFinalSupportingText,
+        hookText: hyperframesFinalResolvedHookText,
+        supportingText: hyperframesFinalResolvedSupportingText,
         audioPackPresetId: hyperframesFinalAudioPackPresetId,
         musicPresetId: hyperframesFinalMusicPresetId,
         sfxPresetIds: hyperframesFinalSfxPresetIds,
@@ -6463,53 +7003,53 @@ export default function StoryboardReviewPage() {
         syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
         burnInSubtitles: hyperframesFinalBurnInSubtitles,
         durationSeconds: hyperframesFinalDurationSeconds,
-        shots: hyperframesFinalSourceClips.map((clip, index) => ({
-          id: clip.id,
-          prompt: clip.prompt,
-          overlayText: resolveHyperframesFinalRenderOverlayText({
-            textMode: hyperframesFinalTextMode,
-            shotIndex: index,
-            overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
-          }),
-          subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
-          durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
-          overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
-          animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
-          transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
-          textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
-        })),
+        shots: hyperframesFinalResolvedPromptShots,
       }),
     [
       hyperframesFinalAudioPackPresetId,
       hyperframesFinalBurnInSubtitles,
       hyperframesFinalDurationSeconds,
       hyperframesFinalFont,
-      hyperframesFinalHookText,
       hyperframesFinalMusicPresetId,
-      hyperframesFinalOverlayPreset,
       hyperframesFinalPreserveNativeAudio,
-      hyperframesFinalShotAnimationById,
-      hyperframesFinalShotOverlayPresetById,
-      hyperframesFinalShotTextById,
-      hyperframesFinalSourceClips,
+      hyperframesFinalResolvedHookText,
+      hyperframesFinalResolvedPromptShots,
+      hyperframesFinalResolvedSupportingText,
       hyperframesFinalSfxDrafts,
       hyperframesFinalSfxPresetIds,
-      hyperframesFinalShotTransitionById,
       hyperframesFinalStyleBrief,
-      hyperframesFinalSubtitleById,
       hyperframesFinalSubtitleFontSizePx,
       hyperframesFinalSubtitlePreset,
-      hyperframesFinalSupportingText,
       hyperframesFinalSyntheticAudioFallback,
       hyperframesFinalTextMode,
       hyperframesFinalTextMotionPreset,
-      hyperframesFinalShotTextMotionById,
+      resolvedHyperframesFinalOverlayPreset,
+    ],
+  );
+
+  const hyperframesFinalHasUnsavedTextEdits = useMemo(
+    () =>
+      isHyperframesFinalHookEditing ||
+      hyperframesFinalSourceClips.some(clip =>
+        Boolean(hyperframesFinalOverlayEditingById[clip.id]) ||
+        Boolean(hyperframesFinalSubtitleEditingById[clip.id])
+      ),
+    [
+      hyperframesFinalOverlayEditingById,
+      hyperframesFinalSourceClips,
+      hyperframesFinalSubtitleEditingById,
+      isHyperframesFinalHookEditing,
     ],
   );
 
   const hyperframesFinalCompositeDisabledReason = useMemo(() => {
     if (hyperframesFinalSourceClips.length === 0) {
       return hyperframesFinalMissingVideoTitle;
+    }
+    if (hyperframesFinalHasUnsavedTextEdits) {
+      return locale === "th"
+        ? "มี Overlay/Subtitle ที่กำลังแก้ไขอยู่ กดบันทึกหรือยกเลิกก่อน render"
+        : "Overlay/subtitle text is still being edited. Save or cancel before rendering.";
     }
     if (!effectiveHyperframesProductId || !effectiveHyperframesRunId) {
       return locale === "th"
@@ -6528,6 +7068,7 @@ export default function StoryboardReviewPage() {
   }, [
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalHasUnsavedTextEdits,
     hyperframesFinalMissingVideoTitle,
     hyperframesFinalMusicPresetId,
     hyperframesFinalSourceClips.length,
@@ -6541,6 +7082,35 @@ export default function StoryboardReviewPage() {
       toast.error(hyperframesFinalMissingVideoDetail || hyperframesFinalMissingVideoTitle);
       return;
     }
+    if (hyperframesFinalCompositeDisabledReason) {
+      toast.error(hyperframesFinalCompositeDisabledReason);
+      return;
+    }
+    const lastResolvedPromptShot = hyperframesFinalResolvedPromptShots[hyperframesFinalResolvedPromptShots.length - 1];
+    const resolvedPromptDurationSeconds = lastResolvedPromptShot?.endSec ?? hyperframesFinalDurationSeconds;
+    const promptCompositeShots: HyperframesFinalCompositeConfig["shots"] = hyperframesFinalResolvedPromptShots.map((shot, index) => ({
+      id: shot.id,
+      index,
+      title: firstThaiProductLine(shot.prompt, 80),
+      sourceVideoUrl: shot.sourceVideoRef,
+      sourceVideoRef: shot.sourceVideoRef,
+      mediaStartSec: shot.mediaStartSec,
+      startSec: shot.startSec,
+      durationSec: shot.durationSeconds,
+      onScreenText: shot.overlayLines,
+      subtitleCues: shot.subtitleCues,
+      overlayPreset: shot.overlayPreset,
+      animationPreset: shot.animationPreset,
+      transition: shot.transition,
+      textMotionPreset: shot.textMotionPreset,
+    }));
+    const promptAudioEvents = buildHyperframesFinalAudioEvents({
+      finalVideoLengthSec: resolvedPromptDurationSeconds,
+      shots: promptCompositeShots,
+      musicPresetId: hyperframesFinalMusicPresetId || undefined,
+      sfxPresetIds: hyperframesFinalSfxPresetIds,
+      sfxDrafts: hyperframesFinalSfxDrafts,
+    });
     try {
       const result = await generateHyperframesFinalPromptSkillMutation.mutateAsync({
         skillId: "hyperframes-render-prompt",
@@ -6560,35 +7130,76 @@ export default function StoryboardReviewPage() {
           productTitle: hyperframesFinalProductPromptContext.productTitle,
           productDescription: hyperframesFinalProductPromptContext.productDescription,
           priceText: hyperframesFinalProductPromptContext.priceText,
-          overlayPreset: hyperframesFinalOverlayPreset,
+          platform: {
+            aspectRatio: "9:16",
+            width: 1080,
+            height: 1920,
+            fps: 30,
+            safeZonePercent: 8,
+            language: locale === "th" ? "th" : "en",
+            exportFormat: "mp4",
+            maxFinalVideoLengthSec: HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
+            maxShotLengthSec: HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+          },
+          renderContract: {
+            hyperframesRuntime: "official_css_browser_runtime",
+            compositionMode: "captioned_final_composite",
+            renderIntent: "final",
+            cssAnimationEnabled: true,
+            gsapCompatibleTimeline: true,
+            fallbackAllowed: false,
+            previewAndRenderMustUseSameResolvedText: true,
+          },
+          overlayPreset: resolvedHyperframesFinalOverlayPreset,
+          overlayPresetSource: hyperframesFinalOverlayPreset === "auto" ? "auto_resolved" : "user_selected",
+          overlayPresetLabel: hyperframesFinalPresetLabels.overlayPresetLabel,
           subtitlePreset: hyperframesFinalSubtitlePreset,
+          subtitlePresetLabel: hyperframesFinalPresetLabels.subtitlePresetLabel,
+          subtitleFontSizePx: hyperframesFinalSubtitleFontSizePx,
           textMode: hyperframesFinalTextMode,
+          textModeLabel: hyperframesFinalPresetLabels.textModeLabel,
+          textModeDescription: hyperframesFinalPresetLabels.textModeDescription,
           textMotionPreset: hyperframesFinalTextMotionPreset,
+          textMotionPresetLabel: hyperframesFinalPresetLabels.textMotionPresetLabel,
           fontFamily: hyperframesFinalFont,
-          hookText: hyperframesFinalHookText,
-          supportingText: hyperframesFinalSupportingText,
+          hookText: hyperframesFinalResolvedHookText,
+          supportingText: hyperframesFinalResolvedSupportingText,
           audioPackPresetId: hyperframesFinalAudioPackPresetId,
+          audioPackPresetLabel: hyperframesFinalPresetLabels.audioPackPresetLabel,
           musicPresetId: hyperframesFinalMusicPresetId,
+          musicPresetLabel: hyperframesFinalPresetLabels.musicPresetLabel,
           sfxPresetIds: hyperframesFinalSfxPresetIds,
+          sfxPresetLabels: hyperframesFinalPresetLabels.sfxPresetLabels,
           sfxDrafts: hyperframesFinalSfxDrafts,
+          audioEvents: promptAudioEvents,
           preserveNativeAudio: hyperframesFinalPreserveNativeAudio,
           syntheticAudioFallback: hyperframesFinalSyntheticAudioFallback,
           burnInSubtitles: hyperframesFinalBurnInSubtitles,
-          durationSeconds: hyperframesFinalDurationSeconds,
-          shots: hyperframesFinalSourceClips.map((clip, index) => ({
-            id: clip.id,
-            prompt: clip.prompt,
-            overlayText: resolveHyperframesFinalRenderOverlayText({
-              textMode: hyperframesFinalTextMode,
-              shotIndex: index,
-              overlayText: hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index),
-            }),
-            subtitleText: hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip),
-            overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
-            animationPreset: hyperframesFinalShotAnimationById[clip.id] ?? (index === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : index === 0 ? "glow_feature" : "smooth_reveal"),
-            transition: hyperframesFinalShotTransitionById[clip.id] ?? "fade",
-            textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
-            durationSeconds: Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
+          durationSeconds: resolvedPromptDurationSeconds,
+          shots: hyperframesFinalResolvedPromptShots.map((shot, index) => ({
+            index,
+            id: shot.id,
+            sourceClipId: shot.sourceClipId,
+            sourceVideoRef: shot.sourceVideoRef,
+            mediaStartSec: shot.mediaStartSec,
+            startSec: shot.startSec,
+            endSec: shot.endSec,
+            durationSeconds: shot.durationSeconds,
+            prompt: shot.prompt,
+            overlayText: shot.overlayText,
+            overlayLines: shot.overlayLines,
+            subtitleText: shot.subtitleText,
+            subtitleCues: shot.subtitleCues,
+            subtitleVtt: shot.subtitleVtt || "",
+            subtitleSrt: shot.subtitleSrt || "",
+            overlayPreset: shot.overlayPreset,
+            overlayPresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_OVERLAY_PRESETS, shot.overlayPreset, locale),
+            animationPreset: shot.animationPreset,
+            animationPresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_SHOT_ANIMATION_PRESETS, shot.animationPreset, locale),
+            transition: shot.transition,
+            transitionLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_SHOT_TRANSITIONS, shot.transition, locale),
+            textMotionPreset: shot.textMotionPreset,
+            textMotionPresetLabel: getHyperframesOptionLabel(HYPERFRAMES_FINAL_TEXT_MOTION_PRESETS, shot.textMotionPreset, locale),
           })),
         },
       });
@@ -6624,31 +7235,30 @@ export default function StoryboardReviewPage() {
     generateHyperframesFinalPromptSkillMutation,
     hyperframesFinalAudioPackPresetId,
     hyperframesFinalBurnInSubtitles,
+    hyperframesFinalCompositeDisabledReason,
     hyperframesFinalDurationSeconds,
     hyperframesFinalFont,
-    hyperframesFinalHookText,
     hyperframesFinalMissingVideoDetail,
     hyperframesFinalMissingVideoTitle,
     hyperframesFinalMusicPresetId,
     hyperframesFinalOverlayPreset,
+    hyperframesFinalPresetLabels,
     hyperframesFinalPreserveNativeAudio,
     hyperframesFinalProductPromptContext,
     hyperframesFinalPromptInputSignature,
-    hyperframesFinalShotAnimationById,
-    hyperframesFinalShotOverlayPresetById,
-    hyperframesFinalShotTextById,
-    hyperframesFinalShotTextMotionById,
-    hyperframesFinalSourceClips,
+    hyperframesFinalResolvedHookText,
+    hyperframesFinalResolvedPromptShots,
+    hyperframesFinalResolvedSupportingText,
+    hyperframesFinalSourceClips.length,
     hyperframesFinalSfxDrafts,
     hyperframesFinalSfxPresetIds,
-    hyperframesFinalShotTransitionById,
-    hyperframesFinalSubtitleById,
+    hyperframesFinalSubtitleFontSizePx,
     hyperframesFinalSubtitlePreset,
-    hyperframesFinalSupportingText,
     hyperframesFinalSyntheticAudioFallback,
     hyperframesFinalTextMode,
     hyperframesFinalTextMotionPreset,
     locale,
+    resolvedHyperframesFinalOverlayPreset,
     toast,
   ]);
 
@@ -6831,13 +7441,7 @@ export default function StoryboardReviewPage() {
         [productTitle, productDescription, storyboardName].filter(Boolean),
         160,
       );
-      const resolvedOverlayPreset = hyperframesFinalOverlayPreset === "auto"
-        ? resolveHyperframesAutoOverlayPreset({
-          productContext,
-          description: productDescription,
-          hasPrice: Boolean(formatProductPriceForOverlay(productContext)),
-        })
-        : hyperframesFinalOverlayPreset;
+      const resolvedOverlayPreset = resolvedHyperframesFinalOverlayPreset;
       let cursor = 0;
       const shots: HyperframesFinalCompositeConfig["shots"] = [];
       const shotMediaAssignments: Array<Record<string, unknown>> = [];
@@ -6864,38 +7468,20 @@ export default function StoryboardReviewPage() {
         });
         const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
         const shotOverlayPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedOverlayPreset;
-        const draftedOverlayText = buildHyperframesShotOverlayDraft({
-          preset: shotOverlayPreset,
+        const resolvedShotOverlayLines = resolveHyperframesFinalShotOverlayLines({
+          textMode: hyperframesFinalTextMode,
+          shotIndex: index,
+          overlayPreset: shotOverlayPreset,
           productContext,
           productTitle: productTitle || storyboardName,
-          description: productDescription,
+          productDescription,
+          storyboardName,
           hookText: renderHookText,
           supportingText: renderSupportingText,
           clip,
-          index,
-          total: hyperframesFinalSourceClips.length,
+          clipCount: hyperframesFinalSourceClips.length,
+          savedOverlayText: hyperframesFinalShotTextById[clip.id],
         });
-        const editableOverlayText =
-          sanitizeHyperframesShotOverlayText(hyperframesFinalShotTextById[clip.id] ?? "") ||
-          draftedOverlayText ||
-          defaultHyperframesShotText(clip, index);
-        const normalizedOverlayText = removeHyperframesVideoPromptOverlayText(editableOverlayText);
-        const overlayLines = isHyperframesSpecOverlayPreset(shotOverlayPreset)
-          ? uniqueHyperframesOverlayLines(normalizedOverlayText
-            .split(/\n+/)
-            .map(line => compactStoryboardText(line))
-            .filter(Boolean))
-          : uniqueHyperframesOverlayLines(normalizedOverlayText
-            .split(/\n+/)
-            .map(line => expandLegacyEllipsizedHyperframesText(
-              compactStoryboardText(line),
-              [productDescription, productTitle, renderHookText, renderSupportingText].filter(Boolean),
-              180,
-            )))
-            .slice(0, getHyperframesOverlayLineLimit(shotOverlayPreset));
-        const resolvedShotOverlayLines = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, index)
-          ? overlayLines
-          : [];
         renderPerShotTextById[clip.id] = resolvedShotOverlayLines.join("\n");
         shots.push({
           id: clip.id,
@@ -7023,6 +7609,7 @@ export default function StoryboardReviewPage() {
     generatedHyperframesFinalRenderPrompt,
     hyperframesFinalAudioPackPresetId,
     hyperframesFinalBurnInSubtitles,
+    hyperframesFinalCompositeDisabledReason,
     hyperframesFinalFont,
     hyperframesFinalHookText,
     hyperframesFinalMusicPresetId,
@@ -7052,6 +7639,7 @@ export default function StoryboardReviewPage() {
     locale,
     draft,
     persistHyperframesFinalCompositeState,
+    resolvedHyperframesFinalOverlayPreset,
   ]);
 
   const inferredRenderAspectRatio = useMemo(
@@ -8506,7 +9094,7 @@ export default function StoryboardReviewPage() {
             {hyperframesFinalCompositeStatusText ? (
               <div
                 className={cn(
-                  "mt-2 flex flex-col gap-1 rounded-md border px-2 py-1.5 text-[11px] sm:flex-row sm:items-center sm:justify-between",
+                  "mt-2 flex flex-col gap-2 rounded-md border px-3 py-2 text-[11px] lg:flex-row lg:items-start lg:justify-between",
                   createHyperframesFinalCompositeMutation.isPending
                     ? "border-sky-200 bg-sky-50 text-sky-900"
                     : hyperframesFinalCompositeIsProblem
@@ -8515,7 +9103,7 @@ export default function StoryboardReviewPage() {
                 )}
                 aria-live="polite"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2 font-medium">
                     {hyperframesFinalCompositeIsActive ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -8524,11 +9112,40 @@ export default function StoryboardReviewPage() {
                     ) : (
                       <Check className="h-3.5 w-3.5" />
                     )}
-                    <span className="truncate">{hyperframesFinalCompositeStatusText}</span>
+                    <span>{hyperframesFinalCompositeStatusText}</span>
                   </div>
                   {hyperframesFinalCompositeStatusDetail ? (
-                    <p className="mt-1 line-clamp-1 text-[11px] opacity-85">
+                    <p className="text-[11px] leading-relaxed opacity-90">
                       {hyperframesFinalCompositeStatusDetail}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] opacity-80">
+                    {hyperframesFinalCompositeStartedText ? (
+                      <span>
+                        {locale === "th" ? "เริ่ม" : "Started"} {hyperframesFinalCompositeStartedText}
+                      </span>
+                    ) : null}
+                    {hyperframesFinalCompositeUpdatedText ? (
+                      <span>
+                        {locale === "th" ? "อัปเดต" : "Updated"} {hyperframesFinalCompositeUpdatedText}
+                      </span>
+                    ) : null}
+                    {hyperframesFinalCompositeElapsedText ? (
+                      <span>
+                        {locale === "th" ? "ใช้เวลา" : "Elapsed"} {hyperframesFinalCompositeElapsedText}
+                      </span>
+                    ) : null}
+                  </div>
+                  {hyperframesFinalCompositeNextAction ? (
+                    <p className="text-[11px] font-medium leading-relaxed">
+                      {locale === "th" ? "แนวทางแก้ไข: " : "Next step: "}
+                      {hyperframesFinalCompositeNextAction}
+                    </p>
+                  ) : null}
+                  {hyperframesFinalCompositeIsProblem && hyperframesFinalCompositePrimaryDiagnostic ? (
+                    <p className="text-[10px] leading-relaxed opacity-75">
+                      {locale === "th" ? "รายละเอียดเทคนิค: " : "Technical detail: "}
+                      {hyperframesFinalCompositePrimaryDiagnostic}
                     </p>
                   ) : null}
                 </div>
@@ -8788,34 +9405,6 @@ export default function StoryboardReviewPage() {
                 CSS/GSAP timeline, 9:16, MP4 1080x1920
               </div>
 	            </div>
-	            <div className="mt-3 grid gap-3 lg:grid-cols-2">
-	              <label className="grid gap-1 text-xs font-medium text-slate-700">
-	                <span className="flex flex-wrap items-center gap-2">
-	                  <span>{locale === "th" ? "Hook text" : "Hook text"}</span>
-	                  <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] text-amber-800">
-	                    {locale === "th" ? "แก้ข้อความเปิด 0-3s ของ shot 1" : "Edits opening 0-3s on shot 1"}
-	                  </Badge>
-	                </span>
-	                <Input
-	                  value={hyperframesFinalHookText}
-	                  onChange={event => setHyperframesFinalHookText(event.target.value)}
-	                  placeholder={locale === "th" ? "เช่น จอใหญ่ ลื่นแรง แบตอึด" : "Large, smooth, long battery"}
-	                />
-	              </label>
-	              <label className="grid gap-1 text-xs font-medium text-slate-700">
-	                <span className="flex flex-wrap items-center gap-2">
-	                  <span>{locale === "th" ? "Supporting text" : "Supporting text"}</span>
-	                  <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] text-amber-800">
-	                    {locale === "th" ? "ข้อความรองของ Hook" : "Secondary hook line"}
-	                  </Badge>
-	                </span>
-	                <Input
-                  value={hyperframesFinalSupportingText}
-                  onChange={event => setHyperframesFinalSupportingText(event.target.value)}
-                  placeholder={locale === "th" ? "ชื่อสินค้า / ราคา / โปรโมชัน" : "Product / price / promotion"}
-                />
-              </label>
-            </div>
             <div className="mt-3 rounded-lg border bg-white p-3 text-xs text-slate-700">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -8824,8 +9413,8 @@ export default function StoryboardReviewPage() {
                   </p>
 	                  <p className="mt-1 text-[11px] text-slate-500">
 	                    {locale === "th"
-	                      ? "Hook/Supporting เป็นข้อความรวม ส่วนแต่ละ shot ควรมี overlay/subtitle/style ของตัวเองให้สอดคล้องกับบทพูด"
-	                      : "Hook/supporting copy is global. Each shot should have its own overlay, subtitle, and style aligned with its voiceover."}
+	                      ? "เลือก shot เพื่อแก้เฉพาะข้อความที่ใช้จริง: shot 1 มี Opening Hook 0-3s และ Overlay หลัง Hook; shot 2+ มี Overlay ราย shot"
+	                      : "Select a shot to edit only the text that is rendered: shot 1 has a 0-3s opening hook plus after-hook overlay; shot 2+ has per-shot overlay."}
 	                  </p>
 	                  {hyperframesFinalSourceClipPlan.wasSplit ? (
 	                    <div className="mt-2 flex max-w-3xl items-start gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sky-900">
@@ -8904,9 +9493,13 @@ export default function StoryboardReviewPage() {
                 <>
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1 xl:hidden">
 	                    {hyperframesFinalSourceClips.map((clip, index) => {
-	                      const overlayText = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+		                      const resolvedShot = hyperframesFinalResolvedPromptShots[index];
+		                      const savedOverlayText = hyperframesFinalShotTextById[clip.id] ?? resolvedShot?.overlayText ?? defaultHyperframesShotText(clip, index);
+		                      const overlayText = hyperframesFinalOverlayEditingById[clip.id]
+		                        ? hyperframesFinalOverlayDraftById[clip.id] ?? savedOverlayText
+		                        : resolvedShot?.overlayText ?? savedOverlayText;
 	                      const subtitleText = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
-	                      const shotPreviewPreset = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
+	                      const shotPreviewPreset = resolvedShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedHyperframesFinalOverlayPreset;
 	                      const shotPreviewLineLimit = getHyperframesOverlayLineLimit(shotPreviewPreset);
 	                      const shotTextMotion = hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
 	                      const shotPresetMeta = getHyperframesOverlayPresetMeta(shotPreviewPreset);
@@ -8916,10 +9509,11 @@ export default function StoryboardReviewPage() {
 		                        shotIndex: index,
 		                        overlayPreset: shotPreviewPreset,
 		                        overlayText,
-		                        hookText: hyperframesFinalHookText,
-		                        supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+		                        hookText: hyperframesFinalPreviewHookText,
+		                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
 		                        maxLines: shotPreviewLineLimit,
 		                        maxLength: 34,
+		                        preferOpeningHook: index === 0,
 		                      });
 		                      const shotHasOverlayLayer = shotPreviewLines.length > 0;
 		                      const shotSubtitleLine = getHyperframesSubtitlePreviewText(
@@ -9027,17 +9621,18 @@ export default function StoryboardReviewPage() {
                   {(() => {
                     const selectedClip = hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ?? hyperframesFinalSourceClips[0]!;
                     const selectedIndex = Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === selectedClip.id));
-                    const selectedOverlayPreset = hyperframesFinalShotOverlayPresetById[selectedClip.id] ?? hyperframesFinalOverlayPreset;
+                    const selectedResolvedPromptShot = hyperframesFinalResolvedPromptShots[selectedIndex];
+                    const selectedOverlayPreset = selectedResolvedPromptShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[selectedClip.id] ?? resolvedHyperframesFinalOverlayPreset;
                     const selectedAnimation = hyperframesFinalShotAnimationById[selectedClip.id] ?? (selectedIndex === hyperframesFinalSourceClips.length - 2 ? "bounce_price" : selectedIndex === 0 ? "glow_feature" : "smooth_reveal");
                     const selectedTransition = hyperframesFinalShotTransitionById[selectedClip.id] ?? "fade";
                     const selectedTextMotion = hyperframesFinalShotTextMotionById[selectedClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedIndex);
 		                    const selectedPresetMeta = getHyperframesOverlayPresetMeta(selectedOverlayPreset);
-		                    const selectedShotOverlay = hyperframesFinalShotTextById[selectedClip.id] ?? defaultHyperframesShotText(selectedClip, selectedIndex);
+		                    const selectedSavedShotOverlay = hyperframesFinalShotTextById[selectedClip.id] ?? selectedResolvedPromptShot?.overlayText ?? defaultHyperframesShotText(selectedClip, selectedIndex);
+		                    const selectedShotOverlay = hyperframesFinalOverlayEditingById[selectedClip.id]
+		                      ? hyperframesFinalOverlayDraftById[selectedClip.id] ?? selectedSavedShotOverlay
+		                      : selectedResolvedPromptShot?.overlayText ?? selectedSavedShotOverlay;
 		                    const selectedSubtitleText = hyperframesFinalSubtitleById[selectedClip.id] ?? defaultHyperframesSubtitleText(selectedClip);
-		                    const selectedOverlayPersistedValue =
-		                      hyperframesFinalTextMode === "hook_only" && selectedIndex === 0
-		                        ? [hyperframesFinalHookText, hyperframesFinalSupportingText].filter(Boolean).join("\n")
-		                        : selectedShotOverlay;
+		                    const selectedOverlayPersistedValue = selectedSavedShotOverlay;
 		                    const selectedOverlayIsEditing = Boolean(hyperframesFinalOverlayEditingById[selectedClip.id]);
 		                    const selectedSubtitleIsEditing = Boolean(hyperframesFinalSubtitleEditingById[selectedClip.id]);
 		                    const selectedOverlayEditorValue = selectedOverlayIsEditing
@@ -9079,15 +9674,39 @@ export default function StoryboardReviewPage() {
 	                      shotIndex: selectedIndex,
 	                      overlayPreset: selectedOverlayPreset,
 	                      overlayText: selectedShotOverlay,
-	                      hookText: hyperframesFinalHookText,
-	                      supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                      hookText: hyperframesFinalPreviewHookText,
+	                      supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
 	                      maxLines: selectedPreviewLineLimit,
 	                      maxLength: 42,
+	                      playbackSec: hyperframesFinalSelectedShotPreviewMode === "video"
+	                        ? hyperframesFinalSelectedShotPlaybackSec
+	                        : 0,
 	                    });
 		                    const selectedShouldRenderShotOverlay = shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, selectedIndex);
-		                    const selectedCanEditOverlayText =
-		                      selectedShouldRenderShotOverlay ||
-		                      (hyperframesFinalTextMode === "hook_only" && selectedIndex === 0);
+		                    const selectedCanEditOverlayText = selectedShouldRenderShotOverlay;
+		                    const selectedShowsOpeningHook =
+		                      selectedIndex === 0 && shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode);
+		                    const startHyperframesFinalHookEdit = () => {
+		                      setHyperframesFinalHookDraft({
+		                        hookText: hyperframesFinalHookText,
+		                        supportingText: hyperframesFinalSupportingText,
+		                      });
+		                      setIsHyperframesFinalHookEditing(true);
+		                    };
+		                    const cancelHyperframesFinalHookEdit = () => {
+		                      setHyperframesFinalHookDraft({
+		                        hookText: hyperframesFinalHookText,
+		                        supportingText: hyperframesFinalSupportingText,
+		                      });
+		                      setIsHyperframesFinalHookEditing(false);
+		                    };
+		                    const saveHyperframesFinalHookEdit = () => {
+		                      hyperframesFinalLocalTextDirtyRef.current = true;
+		                      setHyperframesFinalHookText(hyperframesFinalHookDraft.hookText);
+		                      setHyperframesFinalSupportingText(hyperframesFinalHookDraft.supportingText);
+		                      setIsHyperframesFinalHookEditing(false);
+		                      flushHyperframesFinalAutosaveSoon();
+		                    };
 		                    const startSelectedOverlayEdit = () => {
 		                      if (!selectedCanEditOverlayText) return;
 		                      setHyperframesFinalOverlayDraftById(current => ({ ...current, [selectedClip.id]: selectedOverlayPersistedValue }));
@@ -9107,13 +9726,7 @@ export default function StoryboardReviewPage() {
 		                    const saveSelectedOverlayEdit = () => {
 		                      if (!selectedCanEditOverlayText) return;
 		                      hyperframesFinalLocalTextDirtyRef.current = true;
-		                      if (hyperframesFinalTextMode === "hook_only" && selectedIndex === 0) {
-		                        const lines = selectedOverlayEditorValue.split(/\r?\n/);
-		                        setHyperframesFinalHookText(lines.shift() ?? "");
-		                        setHyperframesFinalSupportingText(lines.join("\n"));
-		                      } else {
-		                        setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: selectedOverlayEditorValue }));
-		                      }
+		                      setHyperframesFinalShotTextById(current => ({ ...current, [selectedClip.id]: selectedOverlayEditorValue }));
 		                      setHyperframesFinalOverlayEditingById(current => ({ ...current, [selectedClip.id]: false }));
 		                      flushHyperframesFinalAutosaveSoon();
 		                    };
@@ -9152,14 +9765,14 @@ export default function StoryboardReviewPage() {
 		                    const selectedHasSubtitleLayer = hyperframesFinalBurnInSubtitles && selectedSubtitlePreviewText.length > 0;
 		                    const selectedSubtitleLine = selectedSubtitlePreviewText;
 		                    const selectedSubtitlePreviewFontSize = hyperframesPreviewSubtitleFontSize(hyperframesFinalSubtitleFontSizePx);
-		                    const selectedPreviewLayerLabel =
-		                      shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
-		                        selectedIndex === 0 &&
-		                        !selectedShouldRenderShotOverlay
-		                        ? locale === "th" ? "Hook text" : "Hook text"
-		                        : selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
-		                          ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
-		                          : locale === "th" ? "Overlay text" : "Overlay text";
+		                    const selectedPreviewLayerLabel = getHyperframesFinalPreviewLayerLabel({
+		                      locale,
+		                      textMode: hyperframesFinalTextMode,
+		                      shotIndex: selectedIndex,
+		                      playbackSec: hyperframesFinalSelectedShotPreviewMode === "video"
+		                        ? hyperframesFinalSelectedShotPlaybackSec
+		                        : 0,
+		                    });
 		                    const selectedPreviewTitle = formatHyperframesPreviewLineForPreset(selectedPreviewLines[0] ?? "", selectedOverlayPreset, 34, { ellipsis: false });
 	                    const selectedPreviewHook = formatHyperframesPreviewLineForPreset(selectedPreviewLines[1] ?? "", selectedOverlayPreset, 38, { ellipsis: false });
                     const selectedPreviewChips = selectedPreviewLines
@@ -9171,6 +9784,109 @@ export default function StoryboardReviewPage() {
                       24,
                       { ellipsis: false },
                     );
+                    const selectedShouldSequenceHookAndOverlay =
+                      hyperframesFinalSelectedShotPreviewMode === "video" &&
+                      selectedIndex === 0 &&
+                      hyperframesFinalTextMode === "hook_and_per_shot" &&
+                      selectedShouldRenderShotOverlay;
+                    const selectedOpeningHookPreviewLines = selectedShouldSequenceHookAndOverlay
+                      ? resolveHyperframesFinalPreviewOverlayLines({
+                        textMode: hyperframesFinalTextMode,
+                        shotIndex: selectedIndex,
+                        overlayPreset: selectedOverlayPreset,
+                        overlayText: selectedShotOverlay,
+                        hookText: hyperframesFinalPreviewHookText,
+                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        maxLines: selectedPreviewLineLimit,
+                        maxLength: 42,
+                        preferOpeningHook: true,
+                      })
+                      : selectedPreviewLines;
+                    const selectedAfterHookPreviewLines = selectedShouldSequenceHookAndOverlay
+                      ? resolveHyperframesFinalPreviewOverlayLines({
+                        textMode: hyperframesFinalTextMode,
+                        shotIndex: selectedIndex,
+                        overlayPreset: selectedOverlayPreset,
+                        overlayText: selectedShotOverlay,
+                        hookText: hyperframesFinalPreviewHookText,
+                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        maxLines: selectedPreviewLineLimit,
+                        maxLength: 42,
+                        playbackSec: HYPERFRAMES_FINAL_HOOK_DURATION_SEC + 0.1,
+                      })
+                      : selectedPreviewLines;
+                    const renderSelectedOverlayCopy = (input: {
+                      lines: string[];
+                      layerLabel: string;
+                      className?: string;
+                    }) => {
+                      if (input.lines.length === 0) return null;
+                      const title = formatHyperframesPreviewLineForPreset(input.lines[0] ?? "", selectedOverlayPreset, 34, { ellipsis: false });
+                      const hook = formatHyperframesPreviewLineForPreset(input.lines[1] ?? "", selectedOverlayPreset, 38, { ellipsis: false });
+                      const chips = input.lines
+                        .slice(2)
+                        .map(line => formatHyperframesPreviewLineForPreset(line, selectedOverlayPreset, 32, { ellipsis: false }))
+                        .filter(Boolean);
+                      const priceText = firstThaiProductLine(
+                        chips.find(line => /(?:฿|บาท|ราคา|เริ่มต้น|ผ่อน|%|\d)/i.test(line)) ?? hook,
+                        24,
+                        { ellipsis: false },
+                      );
+                      return (
+                        <div className={cn(
+                          "hf-preview-overlay-copy relative z-10 flex h-full min-h-[198px] flex-col justify-between",
+                          hyperframesFinalSelectedShotPreviewMode === "video" ? "pointer-events-none" : "",
+                          input.className,
+                        )}>
+                          <div className="hf-preview-copy-top">
+                            <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
+                              {input.layerLabel}
+                            </div>
+                            <div className={cn(
+                              "hf-preview-title max-w-[92%] font-black",
+                              selectedOverlayPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
+                            )}>
+                              {title}
+                            </div>
+                            {selectedPresetMeta.kind === "price" ? (
+                              <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
+                                {priceText}
+                              </div>
+                            ) : hook ? (
+                              <div className={cn(
+                                "hf-preview-hook mt-2 font-extrabold",
+                                selectedOverlayPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
+                              )}>
+                                {hook}
+                              </div>
+                            ) : null}
+                          </div>
+                          {selectedPresetMeta.kind !== "clean" && chips.length > 0 ? (
+                            <div className={cn(
+                              "hf-preview-chip-list mt-4 grid gap-2",
+                              selectedPresetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
+                              selectedPresetMeta.kind === "cards" ? "grid-cols-2" : "",
+                            )}>
+                              {chips.filter(Boolean).slice(0, Math.max(0, selectedPreviewLineLimit - 2)).map((line, index) => (
+                                <div
+                                  key={`${line}-${index}`}
+                                  className={cn(
+                                    "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
+                                    selectedOverlayPreset === "neon_gaming_specs"
+                                      ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                                      : selectedPresetMeta.kind === "price"
+                                        ? "bg-white text-slate-950"
+                                        : "bg-white/85 text-slate-950",
+                                  )}
+                                >
+                                  {line}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    };
                     return (
                       <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(18rem,0.78fr)_minmax(0,1fr)_minmax(8.75rem,0.32fr)]">
                         <div className="grid gap-2 rounded-md border bg-slate-950 p-3 text-white">
@@ -9320,6 +10036,12 @@ export default function StoryboardReviewPage() {
                           </div>
                           <div
                             key={`hyperframes-final-large-preview-${selectedClip.id}-${hyperframesFinalTextPreviewReplayKey}`}
+                            ref={hyperframesFinalSelectedShotStageRef}
+                            style={
+                              hyperframesFinalSelectedShotPreviewMode === "video" && hyperframesFinalSelectedShotOverlayFrameVars
+                                ? hyperframesFinalSelectedShotOverlayFrameVars
+                                : undefined
+                            }
                             className={cn(
                               "hf-preview-stage hf-preview-stage--large relative mx-auto aspect-[9/16] min-h-[430px] max-h-[680px] w-[min(100%,27rem)] max-w-[27rem] overflow-hidden rounded-md bg-slate-900 p-4 text-left text-slate-950",
                               selectedOverlayPreset === "neon_gaming_specs" ||
@@ -9348,7 +10070,7 @@ export default function StoryboardReviewPage() {
                               controls={hyperframesFinalSelectedShotPreviewMode === "video"}
                               className={cn(
                                 hyperframesFinalSelectedShotPreviewMode === "video"
-                                  ? "absolute inset-0 z-[8] h-full w-full bg-transparent object-contain transition-opacity duration-200"
+                                  ? "absolute inset-0 z-[8] h-full w-full bg-transparent object-cover transition-opacity duration-200"
                                   : "hf-preview-media",
                                 hyperframesFinalSelectedShotPreviewMode === "video" ? "hf-preview-media--interactive" : "",
                                 "opacity-100",
@@ -9366,6 +10088,9 @@ export default function StoryboardReviewPage() {
                                   setHyperframesFinalSelectedShotVideoLoadState("ready");
                                   setHyperframesFinalSelectedShotVideoError("");
                                 }
+                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
+                                  window.requestAnimationFrame(syncHyperframesFinalSelectedShotOverlayFrame);
+                                }
                               }}
                               onLoadStart={() => {
                                 if (hyperframesFinalSelectedShotPreviewMode === "video") {
@@ -9376,6 +10101,9 @@ export default function StoryboardReviewPage() {
                               onLoadedData={() => {
                                 setHyperframesFinalSelectedShotVideoLoadState("ready");
                                 setHyperframesFinalSelectedShotVideoError("");
+                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
+                                  window.requestAnimationFrame(syncHyperframesFinalSelectedShotOverlayFrame);
+                                }
                               }}
 	                              onCanPlay={() => {
 	                                const video = hyperframesFinalSelectedShotVideoRef.current;
@@ -9388,10 +10116,16 @@ export default function StoryboardReviewPage() {
 	                                }
 	                                setHyperframesFinalSelectedShotVideoLoadState("ready");
 	                                setHyperframesFinalSelectedShotVideoError("");
+	                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
+	                                  window.requestAnimationFrame(syncHyperframesFinalSelectedShotOverlayFrame);
+	                                }
 	                              }}
                               onPlaying={() => {
                                 setHyperframesFinalSelectedShotVideoLoadState("ready");
                                 setHyperframesFinalSelectedShotVideoError("");
+                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
+                                  window.requestAnimationFrame(syncHyperframesFinalSelectedShotOverlayFrame);
+                                }
                               }}
 	                              onTimeUpdate={(event) => {
 	                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
@@ -9468,63 +10202,29 @@ export default function StoryboardReviewPage() {
                                 </div>
                             ) : null}
                             {hyperframesFinalSelectedShotPreviewMode === "video" ? (
-                              <div className="absolute inset-x-3 top-3 z-30 rounded-full bg-slate-950/85 px-3 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-lg">
+                              <div className="hf-preview-video-playback-status absolute inset-x-3 top-3 z-30 rounded-full bg-slate-950/85 px-3 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-lg">
                                 <span>{selectedVideoStatusText}</span>
                               </div>
                             ) : null}
-		                            {selectedHasOverlayLayer ? (
-		                              <div className={cn(
-                                      "hf-preview-overlay-copy relative z-10 flex h-full min-h-[198px] flex-col justify-between",
-                                      hyperframesFinalSelectedShotPreviewMode === "video" ? "pointer-events-none" : "",
-                                    )}>
-		                                <div className="hf-preview-copy-top">
-		                                  <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
-		                                    {selectedPreviewLayerLabel}
-		                                  </div>
-		                                  <div className={cn(
-	                                    "hf-preview-title max-w-[92%] font-black",
-	                                    selectedOverlayPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
-	                                  )}>
-	                                    {selectedPreviewTitle}
-	                                  </div>
-	                                  {selectedPresetMeta.kind === "price" ? (
-	                                    <div className="hf-preview-price mt-2 font-black text-yellow-400 drop-shadow">
-	                                      {selectedPriceText}
-	                                    </div>
-	                                  ) : selectedPreviewHook ? (
-	                                    <div className={cn(
-	                                      "hf-preview-hook mt-2 font-extrabold",
-	                                      selectedOverlayPreset === "neon_gaming_specs" ? "text-fuchsia-200" : "",
-	                                    )}>
-	                                      {selectedPreviewHook}
-	                                    </div>
-	                                  ) : null}
-	                                </div>
-		                                {selectedPresetMeta.kind !== "clean" && selectedPreviewChips.length > 0 ? (
-	                                  <div className={cn(
-	                                    "hf-preview-chip-list mt-4 grid gap-2",
-	                                    selectedPresetMeta.kind === "spec" ? "ml-auto w-[58%]" : "w-full",
-	                                    selectedPresetMeta.kind === "cards" ? "grid-cols-2" : "",
-	                                  )}>
-		                                    {selectedPreviewChips.filter(Boolean).slice(0, Math.max(0, selectedPreviewLineLimit - 2)).map((line, index) => (
-	                                      <div
-	                                        key={`${line}-${index}`}
-	                                        className={cn(
-	                                          "hf-preview-chip rounded-full px-3 py-2 font-black shadow-sm",
-	                                          selectedOverlayPreset === "neon_gaming_specs"
-	                                            ? "border border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
-	                                            : selectedPresetMeta.kind === "price"
-	                                              ? "bg-white text-slate-950"
-	                                              : "bg-white/85 text-slate-950",
-	                                        )}
-	                                      >
-	                                        {line}
-	                                      </div>
-	                                    ))}
-	                                  </div>
-	                                ) : null}
-	                              </div>
-	                            ) : null}
+		                            {selectedShouldSequenceHookAndOverlay ? (
+		                              <>
+		                                {renderSelectedOverlayCopy({
+		                                  lines: selectedOpeningHookPreviewLines,
+		                                  layerLabel: locale === "th" ? "Opening Hook 0-3s" : "Opening Hook 0-3s",
+		                                  className: "hf-preview-overlay-copy--opening-hook",
+		                                })}
+		                                {renderSelectedOverlayCopy({
+		                                  lines: selectedAfterHookPreviewLines,
+		                                  layerLabel: locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook",
+		                                  className: "hf-preview-overlay-copy--after-hook",
+		                                })}
+		                              </>
+		                            ) : selectedHasOverlayLayer ? (
+		                              renderSelectedOverlayCopy({
+		                                lines: selectedPreviewLines,
+		                                layerLabel: selectedPreviewLayerLabel,
+		                              })
+		                            ) : null}
 		                            {selectedHasSubtitleLayer && selectedSubtitleLine ? (
 	                              <div
 	                                className={cn(
@@ -9625,9 +10325,76 @@ export default function StoryboardReviewPage() {
                                 </option>
                               ))}
                             </select>
-                          </label>
-                        </div>
-                        <div className="grid gap-4 xl:grid-cols-2">
+	                          </label>
+	                        </div>
+	                        {selectedShowsOpeningHook ? (
+	                          <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-xs text-slate-700 shadow-sm">
+	                            <div className="flex flex-wrap items-start justify-between gap-3">
+	                              <div className="grid gap-1">
+	                                <div className="flex flex-wrap items-center gap-2">
+	                                  <span className="text-sm font-semibold text-slate-900">
+	                                    {locale === "th" ? "Opening Hook ของ shot 1" : "Shot 1 opening hook"}
+	                                  </span>
+	                                  <Badge variant="outline" className="rounded-full border-amber-200 bg-white px-2 py-0 text-[10px] text-amber-800">
+	                                    {locale === "th" ? "ใช้จริง 0-3s แรก" : "rendered during 0-3s"}
+	                                  </Badge>
+	                                  {isHyperframesFinalHookEditing ? (
+	                                    <Badge variant="outline" className="rounded-full border-amber-200 bg-white px-2 py-0 text-[10px] text-amber-700">
+	                                      {locale === "th" ? "ยังไม่ได้บันทึก" : "unsaved"}
+	                                    </Badge>
+	                                  ) : null}
+	                                </div>
+	                                <p className="text-[11px] leading-relaxed text-slate-600">
+	                                  {locale === "th"
+	                                    ? "สองช่องนี้ใช้เฉพาะ shot 1 ช่วงเปิดคลิปเท่านั้น; shot อื่นจะไม่ใช้ Hook/Supporting"
+	                                    : "These two fields are used only for shot 1 at the opening; other shots never use Hook/Supporting."}
+	                                </p>
+	                              </div>
+	                              <div className="flex flex-wrap justify-end gap-2">
+	                                {isHyperframesFinalHookEditing ? (
+	                                  <>
+	                                    <Button type="button" size="sm" className="h-8 px-3 text-xs" onClick={saveHyperframesFinalHookEdit}>
+	                                      <Check className="mr-1.5 h-3.5 w-3.5" />
+	                                      {locale === "th" ? "บันทึก" : "Save"}
+	                                    </Button>
+	                                    <Button type="button" size="sm" variant="outline" className="h-8 bg-white px-3 text-xs" onClick={cancelHyperframesFinalHookEdit}>
+	                                      <X className="mr-1.5 h-3.5 w-3.5" />
+	                                      {locale === "th" ? "ยกเลิก" : "Cancel"}
+	                                    </Button>
+	                                  </>
+	                                ) : (
+	                                  <Button type="button" size="sm" variant="outline" className="h-8 bg-white px-3 text-xs" onClick={startHyperframesFinalHookEdit}>
+	                                    <Pencil className="mr-1.5 h-3.5 w-3.5" />
+	                                    {locale === "th" ? "แก้ไข" : "Edit"}
+	                                  </Button>
+	                                )}
+	                              </div>
+	                            </div>
+	                            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+	                              <label className="grid gap-1 font-medium text-slate-700">
+	                                <span>{locale === "th" ? "Hook text" : "Hook text"}</span>
+	                                <Input
+	                                  value={isHyperframesFinalHookEditing ? hyperframesFinalHookDraft.hookText : hyperframesFinalHookText}
+	                                  onChange={event => setHyperframesFinalHookDraft(current => ({ ...current, hookText: event.target.value }))}
+	                                  disabled={!isHyperframesFinalHookEditing}
+	                                  className={cn(!isHyperframesFinalHookEditing ? "bg-slate-50 text-slate-500" : "bg-white")}
+	                                  placeholder={locale === "th" ? "ข้อความหลักช่วงเปิด shot 1" : "Main opening text for shot 1"}
+	                                />
+	                              </label>
+	                              <label className="grid gap-1 font-medium text-slate-700">
+	                                <span>{locale === "th" ? "Supporting text" : "Supporting text"}</span>
+	                                <Input
+	                                  value={isHyperframesFinalHookEditing ? hyperframesFinalHookDraft.supportingText : hyperframesFinalSupportingText}
+	                                  onChange={event => setHyperframesFinalHookDraft(current => ({ ...current, supportingText: event.target.value }))}
+	                                  disabled={!isHyperframesFinalHookEditing}
+	                                  className={cn(!isHyperframesFinalHookEditing ? "bg-slate-50 text-slate-500" : "bg-white")}
+	                                  placeholder={locale === "th" ? "ข้อความรองช่วงเปิด shot 1" : "Supporting opening text for shot 1"}
+	                                />
+	                              </label>
+	                            </div>
+	                          </section>
+	                        ) : null}
+	                        <div className="grid gap-4 xl:grid-cols-2">
                           <section className="grid min-h-[24rem] content-start gap-3 rounded-lg border border-slate-200 bg-white/95 p-4 shadow-sm">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="grid gap-1">
@@ -9647,9 +10414,7 @@ export default function StoryboardReviewPage() {
                                     {selectedCanEditOverlayText
                                       ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
                                         ? locale === "th" ? "ใช้หลัง Hook" : "after hook"
-                                        : selectedIndex === 0 && hyperframesFinalTextMode === "hook_only"
-                                          ? locale === "th" ? "แก้ Hook" : "edit hook"
-                                          : locale === "th" ? "ใช้ตอน render" : "rendered"
+                                        : locale === "th" ? "ใช้ตอน render" : "rendered"
                                       : locale === "th" ? "ไม่ใช้ในโหมดนี้" : "not used in this mode"}
                                   </Badge>
                                   {selectedOverlayHasUnsavedChanges ? (
@@ -9662,10 +10427,10 @@ export default function StoryboardReviewPage() {
                                   {selectedCanEditOverlayText
                                     ? selectedIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
                                       ? locale === "th" ? "ข้อความนี้จะแสดงหลัง Hook 0-3s ของ shot 1" : "This text appears after the 0-3s hook on shot 1."
-                                      : selectedIndex === 0 && hyperframesFinalTextMode === "hook_only"
-                                        ? locale === "th" ? "บรรทัดแรกคือ Hook text และบรรทัดถัดไปคือ Supporting text" : "First line edits Hook text; following lines edit Supporting text."
-                                        : locale === "th" ? "ข้อความนี้จะแสดงบน preview และ final render ของ shot นี้" : "This text appears in this shot preview and final render."
-                                    : locale === "th" ? "โหมดข้อความบนภาพปัจจุบันไม่ render overlay ของ shot นี้" : "The current text-layer mode does not render this shot overlay."}
+                                      : locale === "th" ? "ข้อความนี้จะแสดงบน preview และ final render ของ shot นี้" : "This text appears in this shot preview and final render."
+                                    : hyperframesFinalTextMode === "hook_only"
+                                      ? locale === "th" ? "โหมดนี้ใช้เฉพาะ Opening Hook ของ shot 1; เลือก shot 1 เพื่อแก้ Hook/Supporting" : "This mode uses only the shot-1 opening hook; select shot 1 to edit Hook/Supporting."
+                                      : locale === "th" ? "โหมดข้อความบนภาพปัจจุบันไม่ render overlay ของ shot นี้" : "The current text-layer mode does not render this shot overlay."}
                                 </p>
                               </div>
                               <div className="flex flex-wrap justify-end gap-2">
@@ -9872,19 +10637,25 @@ export default function StoryboardReviewPage() {
                             </Badge>
                           </div>
 	                          {hyperframesFinalSourceClips.map((railClip, railIndex) => {
-	                            const railOverlayText = hyperframesFinalShotTextById[railClip.id] ?? defaultHyperframesShotText(railClip, railIndex);
+		                            const railResolvedShot = hyperframesFinalResolvedPromptShots[railIndex];
+		                            const railSavedOverlayText = hyperframesFinalShotTextById[railClip.id] ?? railResolvedShot?.overlayText ?? defaultHyperframesShotText(railClip, railIndex);
+		                            const railOverlayText = hyperframesFinalOverlayEditingById[railClip.id]
+		                              ? hyperframesFinalOverlayDraftById[railClip.id] ?? railSavedOverlayText
+		                              : railResolvedShot?.overlayText ?? railSavedOverlayText;
 	                            const railSubtitleText = hyperframesFinalSubtitleById[railClip.id] ?? defaultHyperframesSubtitleText(railClip);
 	                            const railPosterUrl = getStoryboardClipPosterUrl(railClip);
 	                            const railIsSelected = railIndex === hyperframesFinalPreviewShotIndex;
+	                            const railOverlayPreset = railResolvedShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[railClip.id] ?? resolvedHyperframesFinalOverlayPreset;
 	                            const railPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
 	                              textMode: hyperframesFinalTextMode,
 	                              shotIndex: railIndex,
-	                              overlayPreset: hyperframesFinalShotOverlayPresetById[railClip.id] ?? hyperframesFinalOverlayPreset,
+	                              overlayPreset: railOverlayPreset,
 	                              overlayText: railOverlayText,
-	                              hookText: hyperframesFinalHookText,
-	                              supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+		                              hookText: hyperframesFinalPreviewHookText,
+	                              supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
 	                              maxLines: 1,
 	                              maxLength: 32,
+	                              preferOpeningHook: railIndex === 0,
 	                            });
 	                            const railHasOverlayLayer = railPreviewLines.length > 0;
 		                            const railHasSubtitleLayer = hyperframesFinalBurnInSubtitles && railSubtitleText.trim().length > 0;
@@ -10269,30 +11040,22 @@ export default function StoryboardReviewPage() {
               </div>
               {isHyperframesFinalAudioPreviewExpanded ? (() => {
                 const previewShots = hyperframesFinalSourceClips.map((clip, index) => {
-                  const startSec = hyperframesFinalSourceClips
-                    .slice(0, index)
-                    .reduce(
-                      (sum, item) => sum + Math.max(1, item.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS),
-                      0
-                    );
+                  const resolvedShot = hyperframesFinalResolvedPromptShots[index];
                   return {
                     id: clip.id,
                     index,
                     title: `Shot ${index + 1}`,
                     sourceVideoUrl: clip.url,
                     sourceVideoRef: clip.url,
-                    mediaStartSec: clip.mediaStartSec ?? 0,
-                    startSec: Math.round(startSec * 10) / 10,
-                    durationSec: Math.min(
-                      HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
-                      Math.max(1, clip.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS)
-                    ),
-                    onScreenText: [],
-                    subtitleCues: [],
-                    overlayPreset: hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset,
-                    animationPreset: "smooth_reveal" as const,
-                    transition: "fade" as const,
-                    textMotionPreset: hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index),
+                    mediaStartSec: resolvedShot?.mediaStartSec ?? clip.mediaStartSec ?? 0,
+                    startSec: resolvedShot?.startSec ?? 0,
+                    durationSec: resolvedShot?.durationSeconds ?? getHyperframesFinalClipDurationSec(clip),
+                    onScreenText: resolvedShot?.overlayLines ?? [],
+                    subtitleCues: resolvedShot?.subtitleCues ?? [],
+                    overlayPreset: resolvedShot?.overlayPreset ?? resolvedHyperframesFinalOverlayPreset,
+                    animationPreset: resolvedShot?.animationPreset ?? "smooth_reveal" as const,
+                    transition: resolvedShot?.transition ?? "fade" as const,
+                    textMotionPreset: resolvedShot?.textMotionPreset ?? defaultHyperframesFinalTextMotionPreset(index),
                   };
                 });
                 const events = buildHyperframesFinalAudioEvents({
@@ -10351,6 +11114,8 @@ export default function StoryboardReviewPage() {
                 @keyframes hfPreviewSlideLeftToRight { from { opacity: 0; transform: translateX(-90%) scale(.98); } 72% { opacity: 1; transform: translateX(3%) scale(1.02); } to { opacity: 1; transform: translateX(0) scale(1); } }
                 @keyframes hfPreviewWipe { from { opacity: 1; clip-path: inset(0 100% 0 0); transform: translateX(10px); } to { opacity: 1; clip-path: inset(0 0 0 0); transform: translateX(0); } }
                 @keyframes hfPreviewOverlayLifetime { 0%, 86% { opacity: 1; } 100% { opacity: 0; } }
+                @keyframes hfPreviewOpeningHookWindow { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+                @keyframes hfPreviewAfterHookWindow { 0%, 99% { opacity: 0; } 100% { opacity: 1; } }
                 @keyframes hfPreviewGlow { 0%, 100% { box-shadow: 0 0 0 rgba(34,211,238,0); } 50% { box-shadow: 0 0 34px rgba(34,211,238,.42); } }
                 @keyframes hfPreviewPrice { 0% { opacity: 0; transform: translateY(24px) scale(.82); } 60% { opacity: 1; transform: translateY(-4px) scale(1.14); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
                 .hf-preview-stage { aspect-ratio: 9 / 16; container-type: inline-size; min-height: 320px; max-height: 520px; max-width: 22rem; position: relative; overflow: hidden; }
@@ -10402,6 +11167,7 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-has-media="true"][data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 18%, rgba(255,255,255,.42), transparent 32%), linear-gradient(180deg, rgba(255,255,255,.18), rgba(15,23,42,.32)); }
                 .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-overlay-copy { position: absolute !important; inset: 16px !important; z-index: 18 !important; width: auto !important; height: auto !important; min-height: 0 !important; max-width: none !important; margin: 0 !important; transform: none !important; padding: 0 0 18% !important; }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy { inset: 28px 30px 24% !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-copy-top,
                 .hf-preview-stage[data-has-media="true"] .hf-preview-chip-list { max-width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; transform: none !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-title,
@@ -10433,6 +11199,13 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
                 .hf-preview-stage[data-preview-mode="video"] .hf-preview-media--interactive { z-index: 8; }
                 .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy { z-index: 24 !important; }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy--opening-hook {
+                  animation: hfPreviewOpeningHookWindow 3s linear forwards !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy--after-hook {
+                  opacity: 0;
+                  animation: hfPreviewAfterHookWindow 3.05s steps(1, end) forwards !important;
+                }
                 .hf-preview-stage[data-preview-mode="video"] .hf-sub-preview-inline { z-index: 26 !important; }
                 .hf-preview-title { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .12s both; }
                 .hf-preview-hook { animation: hfPreviewRise .56s cubic-bezier(.2,.9,.2,1) .34s both; }
@@ -10543,12 +11316,31 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-title { color: #38bdf8; font-size: 21px; }
                 .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-hook,
                 .hf-preview-stage[data-preset="electronics_spec_stack"] .hf-preview-chip { border-radius: 10px; background: rgba(255,255,255,.12); color: #f8fafc; }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-copy-top { margin-top: 12%; max-width: 46%; }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-title { border-radius: 0 16px 16px 0; background: #f8fafc; padding: 10px 12px; color: #0f172a; font-size: 22px; }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook { border-radius: 999px; background: #facc15; padding: 8px 12px; color: #020617; transform: translateX(16px); }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip-list { margin-left: 16px !important; width: 44% !important; }
-                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip { border-radius: 999px; background: #facc15; color: #020617; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-overlay-copy { justify-content: flex-start; padding-bottom: 0; overflow: hidden; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-copy-top { box-sizing: border-box; margin-top: 12%; width: min(50%, 12rem); max-width: 50%; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-title,
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook,
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip {
+                  box-sizing: border-box;
+                  display: block;
+                  width: 100%;
+                  max-width: 100% !important;
+                  overflow: hidden;
+                  overflow-wrap: anywhere;
+                  word-break: break-word;
+                  text-wrap: balance;
+                  transform: none !important;
+                }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-title { border-radius: 0 12px 12px 0; background: #f8fafc; padding: 8px 10px; color: #0f172a; font-size: clamp(13px, 3.6cqw, 18px); line-height: 1.12; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook { margin-top: 6px; border-radius: 999px; background: #facc15; padding: 6px 10px; color: #020617; font-size: clamp(10px, 2.8cqw, 13px); line-height: 1.16; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip-list { margin-left: 0 !important; width: min(50%, 12rem) !important; max-width: 50% !important; }
+                .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip { border-radius: 999px; background: #facc15; color: #020617; font-size: clamp(10px, 2.8cqw, 13px); line-height: 1.14; }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy { inset: 32px 42px 28% !important; }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list { width: 48% !important; max-width: 48% !important; }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-title { font-size: clamp(12px, 3.2cqw, 16px); }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-hook,
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip { font-size: clamp(9px, 2.45cqw, 12px); }
                 .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-overlay-copy { justify-content: flex-start; gap: 4px; padding-bottom: 0; }
                 .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-copy-top,
                 .hf-preview-stage[data-preset^="spec_lines_"] .hf-preview-chip-list { box-sizing: border-box; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; }
@@ -10724,6 +11516,57 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage--thumb[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-overlay-copy {
                   inset: 6px 6px 24% !important;
                 }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy {
+                  inset: 32px 42px 28% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list {
+                  width: 48% !important;
+                  max-width: 48% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy {
+                  inset: 6% 9% 26% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy {
+                  inset: 6% 10% 28% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list {
+                  width: 46% !important;
+                  max-width: 46% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy {
+                  inset: auto !important;
+                  left: var(--hf-video-overlay-left, 9%) !important;
+                  top: var(--hf-video-overlay-top, 6%) !important;
+                  right: auto !important;
+                  bottom: auto !important;
+                  width: var(--hf-video-overlay-width, 82%) !important;
+                  height: var(--hf-video-overlay-height, 48%) !important;
+                  min-height: 0 !important;
+                  max-height: var(--hf-video-overlay-height, 48%) !important;
+                  padding: 0 !important;
+                  overflow: hidden !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list {
+                  width: min(46%, 12rem) !important;
+                  max-width: 46% !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-video-playback-status {
+                  left: var(--hf-video-status-left, .75rem) !important;
+                  top: var(--hf-video-status-top, .75rem) !important;
+                  right: auto !important;
+                  width: var(--hf-video-status-width, calc(100% - 1.5rem)) !important;
+                  max-width: var(--hf-video-status-width, calc(100% - 1.5rem)) !important;
+                }
+                .hf-preview-stage[data-preview-mode="video"] .hf-sub-preview-inline {
+                  left: var(--hf-video-subtitle-left, 7%) !important;
+                  right: auto !important;
+                  bottom: var(--hf-video-subtitle-bottom, 5.5%) !important;
+                  width: var(--hf-video-subtitle-width, 86%) !important;
+                  max-width: var(--hf-video-subtitle-width, 86%) !important;
+                }
                 .hf-sub-preview { min-height: 198px; position: relative; overflow: hidden; }
                 .hf-sub-preview .hf-preview-media { opacity: .68; }
                 .hf-sub-preview-inline { position: absolute; left: 7%; right: 7%; bottom: 5.5%; z-index: 20; display: flex; justify-content: center; text-align: center; pointer-events: none; }
@@ -10816,17 +11659,21 @@ export default function StoryboardReviewPage() {
                   const selectedPreviewIndex = selectedPreviewClip
                     ? Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === selectedPreviewClip.id))
                     : 0;
+                  const selectedResolvedPreviewShot = hyperframesFinalResolvedPromptShots[selectedPreviewIndex];
                   const previewPreset = selectedPreviewClip
-                    ? hyperframesFinalShotOverlayPresetById[selectedPreviewClip.id] ?? hyperframesFinalOverlayPreset
-                    : hyperframesFinalOverlayPreset;
+                    ? selectedResolvedPreviewShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[selectedPreviewClip.id] ?? resolvedHyperframesFinalOverlayPreset
+                    : resolvedHyperframesFinalOverlayPreset;
                   const previewTextMotion = selectedPreviewClip
-                    ? hyperframesFinalShotTextMotionById[selectedPreviewClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedPreviewIndex)
+                    ? selectedResolvedPreviewShot?.textMotionPreset ?? hyperframesFinalShotTextMotionById[selectedPreviewClip.id] ?? defaultHyperframesFinalTextMotionPreset(selectedPreviewIndex)
                     : hyperframesFinalTextMotionPreset;
                   const presetMeta = getHyperframesOverlayPresetMeta(previewPreset);
                   const previewLineLimit = getHyperframesOverlayLineLimit(previewPreset);
-                  const selectedShotOverlay = selectedPreviewClip
-                    ? hyperframesFinalShotTextById[selectedPreviewClip.id] ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex)
-                    : "";
+	                  const selectedShotOverlay = selectedPreviewClip
+	                    ? hyperframesFinalOverlayEditingById[selectedPreviewClip.id]
+	                      ? hyperframesFinalOverlayDraftById[selectedPreviewClip.id] ??
+	                        (hyperframesFinalShotTextById[selectedPreviewClip.id] ?? selectedResolvedPreviewShot?.overlayText ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex))
+	                      : selectedResolvedPreviewShot?.overlayText ?? hyperframesFinalShotTextById[selectedPreviewClip.id] ?? defaultHyperframesShotText(selectedPreviewClip, selectedPreviewIndex)
+	                    : "";
                   const selectedSubtitle = selectedPreviewClip
                     ? hyperframesFinalSubtitleById[selectedPreviewClip.id] ?? defaultHyperframesSubtitleText(selectedPreviewClip)
                     : "";
@@ -10836,20 +11683,19 @@ export default function StoryboardReviewPage() {
 	                    shotIndex: selectedPreviewIndex,
 	                    overlayPreset: previewPreset,
 	                    overlayText: selectedShotOverlay,
-	                    hookText: hyperframesFinalHookText,
-	                    supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+		                    hookText: hyperframesFinalPreviewHookText,
+	                    supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
 	                    maxLines: previewLineLimit,
 	                    maxLength: 42,
+	                    preferOpeningHook: selectedPreviewIndex === 0,
 	                  });
 		                  const hasPreviewOverlayLayer = previewLines.length > 0;
-		                  const previewLayerLabel =
-		                    shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
-		                      selectedPreviewIndex === 0 &&
-		                      !shouldRenderHyperframesFinalShotOverlay(hyperframesFinalTextMode, selectedPreviewIndex)
-		                      ? locale === "th" ? "Hook text" : "Hook text"
-		                      : selectedPreviewIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
-		                        ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
-		                        : locale === "th" ? "Overlay text" : "Overlay text";
+		                  const previewLayerLabel = getHyperframesFinalPreviewLayerLabel({
+		                    locale,
+		                    textMode: hyperframesFinalTextMode,
+		                    shotIndex: selectedPreviewIndex,
+		                    preferOpeningHook: selectedPreviewIndex === 0,
+		                  });
 		                  const title = formatHyperframesPreviewLineForPreset(previewLines[0] ?? "", previewPreset, 34, { ellipsis: false });
 	                  const hook = formatHyperframesPreviewLineForPreset(previewLines[1] ?? "", previewPreset, 38, { ellipsis: false });
                   const chips = previewLines
@@ -11035,21 +11881,26 @@ export default function StoryboardReviewPage() {
                         hyperframesFinalSourceClips[hyperframesFinalPreviewShotIndex] ??
                         hyperframesFinalSourceClips[0]!;
                       const modalIndex = Math.max(0, hyperframesFinalSourceClips.findIndex(clip => clip.id === modalClip.id));
-                      const modalOverlayPreset = hyperframesFinalShotOverlayPresetById[modalClip.id] ?? hyperframesFinalOverlayPreset;
+                      const modalResolvedShot = hyperframesFinalResolvedPromptShots[modalIndex];
+                      const modalOverlayPreset = modalResolvedShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[modalClip.id] ?? resolvedHyperframesFinalOverlayPreset;
                       const modalPreviewLineLimit = getHyperframesOverlayLineLimit(modalOverlayPreset);
                       const modalPresetMeta = getHyperframesOverlayPresetMeta(modalOverlayPreset);
-                      const modalTextMotion = hyperframesFinalShotTextMotionById[modalClip.id] ?? defaultHyperframesFinalTextMotionPreset(modalIndex);
-                      const modalOverlayText = hyperframesFinalShotTextById[modalClip.id] ?? defaultHyperframesShotText(modalClip, modalIndex);
+                      const modalTextMotion = modalResolvedShot?.textMotionPreset ?? hyperframesFinalShotTextMotionById[modalClip.id] ?? defaultHyperframesFinalTextMotionPreset(modalIndex);
+	                      const modalSavedOverlayText = hyperframesFinalShotTextById[modalClip.id] ?? modalResolvedShot?.overlayText ?? defaultHyperframesShotText(modalClip, modalIndex);
+	                      const modalOverlayText = hyperframesFinalOverlayEditingById[modalClip.id]
+	                        ? hyperframesFinalOverlayDraftById[modalClip.id] ?? modalSavedOverlayText
+	                        : modalResolvedShot?.overlayText ?? modalSavedOverlayText;
                       const modalSubtitleText = hyperframesFinalSubtitleById[modalClip.id] ?? defaultHyperframesSubtitleText(modalClip);
                       const modalPreviewLines = resolveHyperframesFinalPreviewOverlayLines({
                         textMode: hyperframesFinalTextMode,
                         shotIndex: modalIndex,
                         overlayPreset: modalOverlayPreset,
                         overlayText: modalOverlayText,
-                        hookText: hyperframesFinalHookText,
-                        supportingText: hyperframesFinalSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        hookText: hyperframesFinalPreviewHookText,
+                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
                         maxLines: modalPreviewLineLimit,
                         maxLength: 42,
+                        preferOpeningHook: modalIndex === 0,
                       });
                       const modalPreviewTitle = formatHyperframesPreviewLineForPreset(modalPreviewLines[0] ?? "", modalOverlayPreset, 34, { ellipsis: false });
                       const modalPreviewHook = formatHyperframesPreviewLineForPreset(modalPreviewLines[1] ?? "", modalOverlayPreset, 38, { ellipsis: false });
@@ -11062,18 +11913,12 @@ export default function StoryboardReviewPage() {
                         24,
                         { ellipsis: false },
                       );
-                      const modalShouldRenderShotOverlay = shouldRenderHyperframesFinalShotOverlay(
-                        hyperframesFinalTextMode,
-                        modalIndex,
-                      );
-                      const modalLayerLabel =
-                        shouldRenderHyperframesFinalHookText(hyperframesFinalTextMode) &&
-                          modalIndex === 0 &&
-                          !modalShouldRenderShotOverlay
-                          ? locale === "th" ? "Hook text" : "Hook text"
-                          : modalIndex === 0 && hyperframesFinalTextMode === "hook_and_per_shot"
-                            ? locale === "th" ? "Overlay text หลัง Hook" : "Overlay text after hook"
-                            : locale === "th" ? "Overlay text" : "Overlay text";
+                      const modalLayerLabel = getHyperframesFinalPreviewLayerLabel({
+                        locale,
+                        textMode: hyperframesFinalTextMode,
+                        shotIndex: modalIndex,
+                        preferOpeningHook: modalIndex === 0,
+                      });
                       setVideoPreview({
                         url: modalClip.url,
                         title: `Shot ${modalIndex + 1}`,
@@ -11100,15 +11945,16 @@ export default function StoryboardReviewPage() {
                 </div>
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {hyperframesFinalSourceClips.slice(0, 12).map((clip, index) => {
-                    const overlay = hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
+                    const resolvedShot = hyperframesFinalResolvedPromptShots[index];
+                    const overlay = resolvedShot?.overlayText ?? hyperframesFinalShotTextById[clip.id] ?? defaultHyperframesShotText(clip, index);
                     const subtitle = hyperframesFinalSubtitleById[clip.id] ?? defaultHyperframesSubtitleText(clip);
                     const subtitlePreviewText = getHyperframesSubtitlePreviewText(
                       subtitle,
                       getHyperframesFinalClipDurationSec(clip),
                       0,
                     );
-                    const style = hyperframesFinalShotOverlayPresetById[clip.id] ?? hyperframesFinalOverlayPreset;
-                    const motion = hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
+                    const style = resolvedShot?.overlayPreset ?? hyperframesFinalShotOverlayPresetById[clip.id] ?? resolvedHyperframesFinalOverlayPreset;
+                    const motion = resolvedShot?.textMotionPreset ?? hyperframesFinalShotTextMotionById[clip.id] ?? defaultHyperframesFinalTextMotionPreset(index);
                     return (
                       <button
                         key={clip.id}
@@ -12565,7 +13411,7 @@ export default function StoryboardReviewPage() {
                       playsInline
                       preload="auto"
                       className={cn(
-                        "absolute inset-0 z-10 h-full w-full bg-transparent object-contain transition-opacity duration-200",
+                        "absolute inset-0 z-10 h-full w-full bg-transparent object-cover transition-opacity duration-200",
                         "opacity-100",
                       )}
                       onLoadStart={() => {

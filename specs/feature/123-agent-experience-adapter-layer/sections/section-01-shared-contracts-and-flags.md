@@ -15,7 +15,7 @@ Create the safe MVP foundation: `packages/agent-experience`, canonical event con
 
 ## Out Of Scope
 
-- No `@runtypelabs/persona` dependency.
+- Initial section scope had no `@runtypelabs/persona` dependency; the 2026-06-22 follow-up directive supersedes this only for gated bridge evaluation.
 - No live stream binding.
 - No preview UI.
 - No database migration.
