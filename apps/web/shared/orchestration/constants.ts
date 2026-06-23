@@ -15,10 +15,22 @@ export const CLASSIFIER_CIRCUIT_BREAKER_COOLDOWN_MS = 300_000;
 export const CLASSIFIER_CIRCUIT_BREAKER_WINDOW = 100;
 
 /** Maximum iterations for the COMPLEX agent loop */
-export const AGENT_MAX_ITERATIONS = 5;
+export const AGENT_MAX_ITERATIONS = 8;
 
-/** Maximum wall-clock time for the agent loop (ms) — 30 seconds */
-export const AGENT_MAX_DURATION_MS = 30_000;
+/** Maximum wall-clock time for the agent loop (ms) — 90 seconds */
+export const AGENT_MAX_DURATION_MS = 90_000;
+
+/** Maximum wall-clock time for one skill execution in the agent loop (ms) */
+export const AGENT_LOOP_STEP_TIMEOUT_MS = 45_000;
+
+/** Recommend sub-agent delegation after this many failed quality checks */
+export const AGENT_LOOP_SUBAGENT_RECOMMEND_AFTER_REPAIRS = 1;
+
+/** Soft context-size guard before recommending sub-agent delegation */
+export const AGENT_LOOP_CONTEXT_SOFT_LIMIT_CHARS = 24_000;
+
+/** Hard fanout cap for future sub-agent delegation from the skill loop */
+export const AGENT_LOOP_MAX_SUBAGENT_FANOUT = 2;
 
 /** Confidence threshold: auto-route without confirmation */
 export const CONFIDENCE_AUTO_ROUTE = 0.85;

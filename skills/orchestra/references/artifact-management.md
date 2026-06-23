@@ -18,6 +18,8 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
 | `review-findings.md` | First review convergence round | Every convergence round | Never | Review rounds, material findings, stale gates, fixes, and stop reason |
+| `loop-progress-template.md` reference content in `progress.md` | Step 0/1 when `agent-loop-policy.md` is active | Every loop iteration, wave integration, sub-agent return/timeout, repair round, and verification command | Never | Bounded loop counters, sub-agent lifecycle, timeout state, and final stop reason |
+| `learning-log.md` | First loop completion, blocked stop, timeout, evidence-gated debug, or repeated repair | Append after each qualifying loop completion/stop | Never | Compact self-improvement signals for future routing, evidence, gate, and policy tuning |
 | `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / standard / open-code) |
 | `decision-mode.md` | First mode selection | Never (permanent) | Never | Decision mode (ask_every_choice / smart_auto / auto_by_default); user may edit the value but the file is never removed |
 | `risk_register.md` | When security gate triggers | Each security gate run | Never | All security findings regardless of verdict |
@@ -58,6 +60,22 @@ This append-only constraint provides a full audit trail across compaction events
 [IN-PROGRESS] wave-N-name — {current sub-step}
 [PENDING] wave-N-name — {planned, not yet started}
 ```
+
+When `agent-loop-policy.md` is active, initialize `progress.md` from
+`loop-progress-template.md` during Step 0/1 and keep the Loop policy ledger at
+the top of the file. Update the ledger after every iteration, tool-call batch,
+sub-agent dispatch/return/timeout, repair round, and verification command. Do
+not start replacement agents until the lifecycle ledger records the missing
+agent as `timed_out` or `blocked`.
+
+### `learning-log.md` — Self-Improvement Memory
+
+When `agent-loop-policy.md` is active, append a compact learning entry before the
+final response whenever the loop completes, blocks, times out, hits a budget
+limit, uses the data-first debug gate, or needs repair after review/gate
+feedback. Use `loop-learning-log.md` as the template. Store only counters,
+short evidence references, stop reasons, verification commands, residual risk,
+and suggested future policy/routing improvements.
 
 ### `risk_register.md` — Security Gate Output (Append-Only)
 

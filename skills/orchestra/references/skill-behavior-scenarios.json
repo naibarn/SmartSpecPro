@@ -2,6 +2,94 @@
   "version": 1,
   "scenarios": [
     {
+      "id": "LOOP-POLICY-001",
+      "user_message": "ใช้ orchestra_id fable_style_coding_orchestra ทำ coding webapp แบบ agent loop max_iterations 12 max_tool_calls 30 max_cost_usd 0.5 stop เมื่อ tests ผ่านและไม่มี blocker",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "backend",
+        "frontend",
+        "test-qa"
+      ],
+      "expected_gates": [
+        "TypeScript Check",
+        "Unit Tests",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "backend",
+          "frontend"
+        ],
+        [
+          "test-qa"
+        ]
+      ],
+      "forbidden_execution": [
+        "unbounded-agent-loop",
+        "missing-loop-policy-ledger",
+        "inline-with-agent-tool"
+      ],
+      "why": "Fable-style webapp coding loops should activate agent-loop-policy, preserve counters, cap fanout, and stop only after success criteria, tests, and blockers converge."
+    },
+    {
+      "id": "LOOP-POLICY-002",
+      "user_message": "ทำ repair loop ต่อจนกว่าจะผ่าน แต่ห้ามเกิน budget และห้ามปล่อย subagents ค้าง",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "reviewer",
+        "test-qa"
+      ],
+      "expected_gates": [
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "expected_dispatch_mode": "sequential_exception",
+      "sequential_reason": "repair loop must integrate each review result and update loop-policy counters before dispatching the next agent",
+      "forbidden_execution": [
+        "unbounded-agent-loop",
+        "replacement-agent-before-timeout-recorded"
+      ],
+      "why": "Repair loops need explicit loop-policy counters, sub-agent lifecycle accounting, and stop reasons before continuing."
+    },
+    {
+      "id": "DEBUG-DATA-001",
+      "user_message": "แก้ bug หน้า workflow จาก UI มันขึ้น failed แต่ไม่มี log หรือ run id",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "error-detective"
+      ],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "ui-only-root-cause"
+      ],
+      "why": "Bug reports with only UI symptoms must collect trace/log/table/test evidence or ask for a narrow identifier before code changes."
+    },
+    {
+      "id": "DEBUG-DATA-002",
+      "user_message": "debug failed runId run_123 จาก audit log และ table media_tasks status failed",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "error-detective",
+        "debugger"
+      ],
+      "expected_gates": [
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "expected_dispatch_mode": "sequential_exception",
+      "sequential_reason": "debugger depends on the Evidence Ledger produced by error-detective",
+      "why": "Bug reports with concrete run/log/table evidence should start with evidence-led error investigation, then dispatch debugger only after an Evidence Ledger exists."
+    },
+    {
       "id": "MODEL-001",
       "user_message": "ใช้ sub-agent ตรวจไฟล์ docs แบบเร็ว ๆ ว่ามีหัวข้อไหนตกหล่น",
       "expected_owner": "orchestra",
@@ -909,6 +997,36 @@
         "Verification Before Completion"
       ],
       "why": "A gate that passed before later fixes is stale and must be rerun before final summary."
+    },
+    {
+      "id": "GAP-CLOSURE-001",
+      "user_message": "ก่อนปิดงานให้บอก gap ที่เจอระหว่างทาง และถ้าเป็น gap ที่ต้องทำแน่ ๆ ให้ทำเลยไม่ต้องรอให้สั่งซ้ำ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "reviewer",
+        "test-qa"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "reviewer"
+        ],
+        [
+          "test-qa"
+        ]
+      ],
+      "forbidden_execution": [
+        "inline-with-agent-tool",
+        "must-do-gap-as-next-step",
+        "final-summary-with-unclosed-must-do",
+        "single-review-only"
+      ],
+      "expected_gates": [
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Before final summary, Orchestra must triage discovered gaps, fix safe in-scope must-do-now items, and only offer optional or blocked work as next steps."
     }
   ]
 }

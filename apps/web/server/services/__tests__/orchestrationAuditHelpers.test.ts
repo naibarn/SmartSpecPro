@@ -12,6 +12,7 @@ vi.mock("../traceContext", () => ({
 import {
   logClassifyEvent,
   logPipelineEvent,
+  logAgentLoopSummaryEvent,
   logAgentStepEvent,
   logFallbackEvent,
   logQualityGateEvent,
@@ -75,6 +76,42 @@ describe("orchestration audit helpers", () => {
     expect(entry.eventType).toBe("orchestration_agent_step");
     expect(entry.metadata.iteration).toBe(2);
     expect(entry.metadata.action).toBe("execute_skill");
+  });
+
+  it("logAgentLoopSummaryEvent logs stop reason and learning signals", () => {
+    logAgentLoopSummaryEvent({
+      traceId: "t1",
+      userId: 1,
+      stopReason: "data_first_debug_required",
+      iterations: 0,
+      totalCreditsUsed: 0,
+      totalDurationMs: 25,
+      sectionCount: 1,
+      actionCount: 1,
+      subAgentPolicy: {
+        mode: "subagent_recommended",
+        reason: "context_soft_limit",
+        maxFanout: 2,
+        maxConcurrency: 2,
+        estimatedContextChars: 25_000,
+        failedQualityChecks: 0,
+        activeSubagents: 0,
+      },
+      debugEvidencePolicy: {
+        requiresDataFirst: true,
+        hasEvidenceHint: false,
+        reason: "evidence_missing",
+        evidenceHints: [],
+      },
+    });
+
+    const entry = mockLog.mock.calls[0][0];
+    expect(entry.eventType).toBe("orchestration_agent_loop_summary");
+    expect(entry.creditsCharged).toBe(0);
+    expect(entry.metadata.stopReason).toBe("data_first_debug_required");
+    expect(entry.metadata.learningSignals.stoppedByEvidenceGate).toBe(true);
+    expect(entry.metadata.learningSignals.subAgentRecommended).toBe(true);
+    expect(entry.metadata.learningSignals.contextSoftLimit).toBe(true);
   });
 
   it("logFallbackEvent logs reason", () => {

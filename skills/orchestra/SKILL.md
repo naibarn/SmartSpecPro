@@ -40,6 +40,9 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/intent-matrix.md` | Always — Step 1 plain-text activation and edge-case calibration |
 | `references/intent-regression-suite.md` | Always when tuning or validating Step 1 trigger behavior; recommended for ambiguous trigger decisions |
 | `references/routing-decision.md` | Always — Step 2 |
+| `references/agent-loop-policy.md` | Always for coding, debugging, implementation, review/repair loops, webapp work, or user-supplied loop_policy/orchestra_id requests |
+| `references/loop-progress-template.md` | Whenever `agent-loop-policy.md` is active or `orchestra/progress.md` is created/updated |
+| `references/loop-learning-log.md` | Before final summary for active agent-loop-policy sessions, blocked loops, timeout/budget stops, evidence-gated debugging, or repeated repair |
 | `references/installed-skill-routing.md` | When the user names a skill/slash tool, asks for audit/scan/generate/deploy/release/SEO/security/content/analytics/UI/image/OpenAI-docs work, or when routing needs installed skill coverage |
 | `references/skill-pack-integration.md` | Only when scope is `large` or `project` — Step 2 |
 | `references/wave-planning.md` | Only for `medium` scope and above — Step 3 |
@@ -58,7 +61,9 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/meta-activation.md` | Always — before Step 1 skill/route classification |
 | `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
 | `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
+| `references/data-first-debug.md` | Always for bug reports, error/debug/fix requests, stuck jobs, failed runs, audit/log investigations, or repair loops caused by runtime behavior |
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
+| `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
 | `references/skill-behavior-tests.md` | When adding/changing skills, sub-agents, routing triggers, or quality gates |
@@ -846,6 +851,9 @@ After the report:
 ### Final Summary (after review)
 
 Before printing the final summary, apply `references/verification-before-completion.md`.
+Apply `references/gap-closure-before-final.md` and fix every safe in-scope
+`must_do_now` gap before finalizing. Do not turn a required fix into a
+recommended next step merely because the user did not ask a second time.
 If the user asked to commit, push, open a PR, keep, discard, or otherwise finish the
 branch, also apply `references/branch-finishing.md`.
 
@@ -854,6 +862,7 @@ Print the final summary:
 - Quality gate results
 - Security gate verdict (if triggered)
 - Review convergence rounds run and stop reason
+- Gap closure verdict: must-do-now fixed, should-offer-next, safely deferred, or blocked
 - Auto-approved decisions (with "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header if any HIGH findings were auto-approved)
 - Post-completion review verdict (CLEAN or summary of findings addressed/deferred)
 - Remaining items in `orchestra/backlog.md` (if any)

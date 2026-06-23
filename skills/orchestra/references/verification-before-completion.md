@@ -14,6 +14,8 @@ At least one fresh verification signal is required before final summary:
 - Playwright or screenshot evidence for user-visible UI changes
 - explicit manual inspection notes when no automated check exists
 - review convergence evidence for medium+ scope/risk or any task with review findings
+- final Loop Policy ledger from `agent-loop-policy.md`
+- gap closure triage from `gap-closure-before-final.md`
 
 ## Final Summary Requirements
 
@@ -23,6 +25,9 @@ The final summary must include:
 - pass/fail result
 - checks skipped and why
 - review convergence rounds run and stop reason, when triggered
+- gap closure status: must-do-now fixed, safely deferred, or blocked
+- loop policy counters and final stop reason, including unknown exact cost/tool-call
+  telemetry when unavailable
 - known unrelated dirty work that was not touched
 - residual risk if a gate could not run
 
@@ -37,6 +42,14 @@ For medium+ scope/risk, or any task where review/gate feedback caused fixes, the
 must not describe the task as complete until `review-convergence.md` criteria pass or a stop
 condition is reached and reported. A single post-completion review is not enough after
 material fixes; run the required consecutive clean rounds.
+
+## No-Unclosed-Must-Do Gap Rule
+
+Before final summary, apply `gap-closure-before-final.md`. If any safe,
+in-scope `must_do_now` gap is discovered, fix it and rerun the relevant stale
+verification before finalizing. Do not present a `must_do_now` item as a next
+step. Only defer gaps that are optional, out of scope, blocked by missing
+external state, destructive, high-cost, or require a product/security decision.
 
 ## Retry Rule
 

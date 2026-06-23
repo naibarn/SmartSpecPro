@@ -14,6 +14,8 @@ Before dispatching any Task Packet, verify all of the following:
 - [ ] **DOMAIN** matches the registered agent name or inline role you will use
 - [ ] **FILES** uses absolute paths only (`<absolute-repo-root>/...`) — no relative paths
 - [ ] **CONTEXT** includes the actual error text or audit log traceId (not a paraphrase)
+- [ ] **BUG/DEBUG PACKETS** include an Evidence Ledger from `data-first-debug.md`;
+      do not dispatch debugger/error-detective on UI symptoms alone
 - [ ] **CONSTRAINTS** lists every file/table the agent must not touch
 - [ ] **CONTRACT** is filled in for parallel agents, or explicitly `N/A` for solo agents
 - [ ] **OUTPUT** names the specific file to modify or the report format to return
@@ -107,6 +109,15 @@ bug-fix agent, include:
 2. The file:line where it originated
 3. What was already tried and why it failed
 4. The relevant audit log traceId if it is an LLM/media call
+5. An Evidence Ledger from `data-first-debug.md` with checked log/data/table
+   evidence. If no data/log source is available, do not ask the agent to fix
+   code; ask it to return the smallest missing identifier or evidence query.
+
+**Data-first debug requirement:** A UI symptom, screenshot, component name, or user-visible
+label is a symptom, not a root cause. For runtime bugs, inspect trace/log/table/test
+evidence before writing implementation instructions. If the Task Packet cannot include
+that evidence, route to read-only `error-detective`/research or ask for the missing
+trace/run/task/job id, timestamp, tenant/user scope, or failing command output.
 
 **For a new-feature wave:** Describe what the previous wave did and what this wave must build on top of.
 

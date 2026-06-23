@@ -2037,10 +2037,19 @@ type OrchestrationSignalStats = {
   fallbackCount: number;
   qualityCount: number;
   riskyQualityCount: number;
+  loopSummaryCount?: number;
+  evidenceGateCount?: number;
+  timeoutStopCount?: number;
+  budgetStopCount?: number;
+  subAgentRecommendedCount?: number;
+  repeatedRepairCount?: number;
+  contextSoftLimitCount?: number;
   avgClassifyLatencyMs: number | null;
   fallbackRate: number | null;
   qualityRiskRate: number | null;
+  loopInterventionRate?: number | null;
   topFallbackReason: string | null;
+  topLoopStopReason?: string | null;
   lastSeenAt: string | null;
 };
 
@@ -2096,6 +2105,7 @@ export interface OpsOverview {
     mediaP95LatencyMs: number | null;
     fallbackRate: number | null;
     qualityRiskRate: number | null;
+    loopInterventionRate?: number | null;
   };
   windows: {
     metricsHours: number;
@@ -2681,6 +2691,7 @@ const ORCHESTRATION_EVENT_TYPES = [
   "orchestration_classify",
   "orchestration_pipeline",
   "orchestration_agent_step",
+  "orchestration_agent_loop_summary",
   "orchestration_quality_gate",
   "orchestration_param_extract",
   "orchestration_fallback",
@@ -3464,6 +3475,66 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
     );
   }
 
+  const loopSummaryCount = input.orchestrationStats.loopSummaryCount ?? 0;
+  const loopInterventionRate = input.orchestrationStats.loopInterventionRate ?? null;
+  if (loopSummaryCount >= 4 && (loopInterventionRate ?? 0) >= 0.5) {
+    anomalies.push(
+      buildAnomaly({
+        severity: "critical",
+        category: "orchestration",
+        type: "orchestration_loop_intervention",
+        title: "Agent loops need frequent intervention",
+        message: `${input.orchestrationStats.evidenceGateCount ?? 0} evidence gates, ${input.orchestrationStats.timeoutStopCount ?? 0} timeout stops, and ${input.orchestrationStats.budgetStopCount ?? 0} budget stops were observed across ${loopSummaryCount} recent loop summaries.`,
+        recommendation:
+          "Review loop-learning logs and debug evidence collection before more repair loops stall or guess from UI symptoms.",
+        signal:
+          loopInterventionRate != null
+            ? `${(loopInterventionRate * 100).toFixed(0)}% intervention rate`
+            : null,
+        observedAt: input.orchestrationStats.lastSeenAt,
+        source: "audit_jsonl",
+      })
+    );
+  } else if (loopSummaryCount >= 4 && (loopInterventionRate ?? 0) >= 0.25) {
+    anomalies.push(
+      buildAnomaly({
+        severity: "warning",
+        category: "orchestration",
+        type: "orchestration_loop_intervention",
+        title: "Agent loops are starting to need intervention",
+        message: `${input.orchestrationStats.evidenceGateCount ?? 0} evidence gates, ${input.orchestrationStats.timeoutStopCount ?? 0} timeout stops, and ${input.orchestrationStats.budgetStopCount ?? 0} budget stops were observed across ${loopSummaryCount} recent loop summaries.`,
+        recommendation:
+          "Inspect the top loop stop reason and add missing evidence, gates, or routing rules before the pattern becomes blocking.",
+        signal:
+          loopInterventionRate != null
+            ? `${(loopInterventionRate * 100).toFixed(0)}% intervention rate`
+            : null,
+        observedAt: input.orchestrationStats.lastSeenAt,
+        source: "audit_jsonl",
+      })
+    );
+  }
+
+  if (
+    loopSummaryCount >= 4 &&
+    (input.orchestrationStats.subAgentRecommendedCount ?? 0) / loopSummaryCount >= 0.5
+  ) {
+    anomalies.push(
+      buildAnomaly({
+        severity: "warning",
+        category: "orchestration",
+        type: "orchestration_subagent_recommended",
+        title: "Inline loops are hitting sub-agent handoff signals",
+        message: `${input.orchestrationStats.subAgentRecommendedCount ?? 0} of ${loopSummaryCount} recent loop summaries recommended sub-agent routing.`,
+        recommendation:
+          "Review whether repeated repair or context pressure should promote these tasks to bounded sub-agent waves earlier.",
+        signal: `${input.orchestrationStats.repeatedRepairCount ?? 0} repeated repairs, ${input.orchestrationStats.contextSoftLimitCount ?? 0} context soft limits`,
+        observedAt: input.orchestrationStats.lastSeenAt,
+        source: "audit_jsonl",
+      })
+    );
+  }
+
   const criticalLikeAlerts =
     input.unackedAlerts.critical + input.unackedAlerts.error;
   if (criticalLikeAlerts > 0) {
@@ -3564,6 +3635,7 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
       mediaP95LatencyMs: input.mediaStats.p95LatencyMs,
       fallbackRate: input.orchestrationStats.fallbackRate,
       qualityRiskRate: input.orchestrationStats.qualityRiskRate,
+      loopInterventionRate: input.orchestrationStats.loopInterventionRate,
     },
     windows: input.windows,
     updatedAt: now.toISOString(),
@@ -3864,6 +3936,9 @@ async function getOrchestrationSignalStats(
   const qualityEntries = recentEntries.filter(
     entry => entry.eventType === "orchestration_quality_gate"
   );
+  const loopSummaryEntries = recentEntries.filter(
+    entry => entry.eventType === "orchestration_agent_loop_summary"
+  );
 
   const classifyLatencyValues = classifyEntries
     .map(entry => toFiniteNumber(asRecord(entry.metadata)?.latencyMs))
@@ -3874,6 +3949,28 @@ async function getOrchestrationSignalStats(
     const metadata = asRecord(entry.metadata);
     const reason = String(metadata?.reason ?? "").trim() || "unknown";
     fallbackReasons.set(reason, (fallbackReasons.get(reason) ?? 0) + 1);
+  }
+
+  const loopStopReasons = new Map<string, number>();
+  let evidenceGateCount = 0;
+  let timeoutStopCount = 0;
+  let budgetStopCount = 0;
+  let subAgentRecommendedCount = 0;
+  let repeatedRepairCount = 0;
+  let contextSoftLimitCount = 0;
+  for (const entry of loopSummaryEntries) {
+    const metadata = asRecord(entry.metadata);
+    const stopReason = String(metadata?.stopReason ?? "").trim() || "unknown";
+    loopStopReasons.set(stopReason, (loopStopReasons.get(stopReason) ?? 0) + 1);
+
+    const learningSignals = asRecord(metadata?.learningSignals);
+    if (learningSignals?.stoppedByEvidenceGate === true) evidenceGateCount += 1;
+    if (learningSignals?.stoppedByTimeout === true) timeoutStopCount += 1;
+    if (learningSignals?.stoppedByBudget === true) budgetStopCount += 1;
+    if (learningSignals?.subAgentRecommended === true)
+      subAgentRecommendedCount += 1;
+    if (learningSignals?.repeatedRepair === true) repeatedRepairCount += 1;
+    if (learningSignals?.contextSoftLimit === true) contextSoftLimitCount += 1;
   }
 
   const riskyQualityCount = qualityEntries.filter(entry => {
@@ -3895,6 +3992,9 @@ async function getOrchestrationSignalStats(
   const sortedReasons = Array.from(fallbackReasons.entries()).sort(
     (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
   );
+  const sortedLoopStopReasons = Array.from(loopStopReasons.entries()).sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  );
   const lastSeenAt =
     recentEntries
       .map(entry => entry.timestamp)
@@ -3908,10 +4008,22 @@ async function getOrchestrationSignalStats(
     fallbackCount: fallbackEntries.length,
     qualityCount: qualityEntries.length,
     riskyQualityCount,
+    loopSummaryCount: loopSummaryEntries.length,
+    evidenceGateCount,
+    timeoutStopCount,
+    budgetStopCount,
+    subAgentRecommendedCount,
+    repeatedRepairCount,
+    contextSoftLimitCount,
     avgClassifyLatencyMs,
     fallbackRate: ratioOrNull(fallbackEntries.length, classifyEntries.length),
     qualityRiskRate: ratioOrNull(riskyQualityCount, qualityEntries.length),
+    loopInterventionRate: ratioOrNull(
+      evidenceGateCount + timeoutStopCount + budgetStopCount,
+      loopSummaryEntries.length
+    ),
     topFallbackReason: sortedReasons[0]?.[0] ?? null,
+    topLoopStopReason: sortedLoopStopReasons[0]?.[0] ?? null,
     lastSeenAt,
   };
 }

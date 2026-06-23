@@ -12,6 +12,7 @@ let mockExtraction: any = null;
 let mockSkillDef: any = null;
 let mockExecResult: any = null;
 let mockHasCredits = true;
+let mockAgentLoopResult: any = null;
 
 // ─── Top-level mocks ────────────────────────────────────────────────────────
 
@@ -46,6 +47,10 @@ vi.mock("../skillExecutor", () => ({
   executeSkill: vi.fn(async () => mockExecResult),
 }));
 
+vi.mock("../skillAgentLoop", () => ({
+  runAgentLoop: vi.fn(async () => mockAgentLoopResult),
+}));
+
 vi.mock("../creditService", () => ({
   hasEnoughCredits: vi.fn(async () => mockHasCredits),
   reserveCredits: vi.fn(async () => ({ reservationId: "res-test" })),
@@ -61,6 +66,8 @@ vi.mock("../auditLogger", () => ({
 import { orchestrateSkill } from "../skillOrchestrator";
 import { classifyIntent } from "../skillIntentClassifier";
 import { executeSkill } from "../skillExecutor";
+import { runAgentLoop } from "../skillAgentLoop";
+import { auditLogger } from "../auditLogger";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -108,6 +115,34 @@ describe("orchestrateSkill", () => {
     mockExtraction = makeExtraction();
     mockSkillDef = { id: "test-skill", name: "Test", type: "prompt-enhancement" };
     mockExecResult = { success: true, type: "text", content: "Result", creditsUsed: 5 };
+    mockAgentLoopResult = {
+      sections: [{
+        skillId: "test-skill",
+        type: "text",
+        content: "Loop result",
+        metadata: { creditsUsed: 5, durationMs: 10 },
+      }],
+      totalCreditsUsed: 5,
+      totalDurationMs: 10,
+      iterations: 1,
+      actions: [],
+      subAgentPolicy: {
+        mode: "inline",
+        reason: "within_inline_limits",
+        maxFanout: 2,
+        maxConcurrency: 2,
+        estimatedContextChars: 20,
+        failedQualityChecks: 0,
+        activeSubagents: 0,
+      },
+      debugEvidencePolicy: {
+        requiresDataFirst: false,
+        hasEvidenceHint: false,
+        reason: "not_debug_request",
+        evidenceHints: [],
+      },
+      stopReason: "quality_passed",
+    };
     mockHasCredits = true;
   });
 
@@ -164,6 +199,12 @@ describe("orchestrateSkill", () => {
     const result = await orchestrateSkill("test", baseOptions);
 
     expect(result).toBeNull();
+    expect(auditLogger.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "orchestration_fallback",
+        errorMessage: "classification_confidence_below_threshold",
+      }),
+    );
   });
 
   it("returns error when insufficient credits", async () => {
@@ -229,13 +270,56 @@ describe("orchestrateSkill", () => {
     const result = await orchestrateSkill("test", baseOptions);
 
     expect(result).toBeNull();
+    expect(auditLogger.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "orchestration_fallback",
+        metadata: expect.objectContaining({ reason: "disabled" }),
+      }),
+    );
   });
 
-  it("never throws — returns null on unexpected error", async () => {
+  it("routes COMPLEX to the bounded agent loop", async () => {
+    mockMaxLevel = "complex";
+    mockClassification = makeClassification({
+      level: "complex",
+      skills: [
+        { skillId: "test-skill", confidence: 0.9, reason: "a", extractedParams: {}, missingRequiredParams: [] },
+        { skillId: "second-skill", confidence: 0.8, reason: "b", extractedParams: {}, missingRequiredParams: [] },
+      ],
+    });
+
+    const result = await orchestrateSkill("test", baseOptions);
+
+    expect(runAgentLoop).toHaveBeenCalledWith(
+      "test",
+      ["test-skill", "second-skill"],
+      expect.objectContaining({
+        userId: 1,
+        tenantId: "t1",
+        userToken: "token",
+      }),
+    );
+    if (result && "orchestrationLevel" in result) {
+      expect(result.orchestrationLevel).toBe("complex");
+      expect(result.sections[0].content).toBe("Loop result");
+      expect(result.summary).toBe(
+        "Agent loop stopped: quality_passed; sub-agent policy: inline/within_inline_limits; debug evidence: not_debug_request",
+      );
+    }
+  });
+
+  it("never throws — returns null on unexpected error and logs fallback", async () => {
     (classifyIntent as any).mockRejectedValueOnce(new Error("unexpected"));
 
     const result = await orchestrateSkill("test", baseOptions);
 
     expect(result).toBeNull();
+    expect(auditLogger.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "orchestration_fallback",
+        errorMessage: "unexpected",
+        metadata: expect.objectContaining({ reason: "error" }),
+      }),
+    );
   });
 });

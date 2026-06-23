@@ -123,6 +123,7 @@ export type AuditEventType =
   | "orchestration_classify"
   | "orchestration_pipeline"
   | "orchestration_agent_step"
+  | "orchestration_agent_loop_summary"
   | "orchestration_quality_gate"
   | "orchestration_param_extract"
   | "orchestration_fallback"

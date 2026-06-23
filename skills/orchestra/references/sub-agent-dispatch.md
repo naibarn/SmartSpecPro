@@ -150,6 +150,12 @@ dispatch_mode: parallel_batch | parallel_with_worktree | single_agent | sequenti
 same_wave_peers: [ssp-backend]
 depends_on: [wave-1-backend-contract]
 sequential_reason: N/A
+loop_policy:
+  iteration: 3/12
+  dispatch_wave: 2/6
+  active_subagents_after_dispatch: 2/4
+  parallel_writers: 1/2
+  report_target_words: 1500
 ```
 
 Guidance:
@@ -163,6 +169,11 @@ Guidance:
   them into sequential sub-waves.
 - If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, `sequential_reason`
   is mandatory.
+- If dispatch would exceed `agent-loop-policy.md` limits for active sub-agents,
+  dispatch waves, parallel writers, or context capsule size, do not dispatch. Split the
+  wave, reduce fanout, or stop with the matching `loop_policy_*` stop reason.
+- Never launch replacement sub-agents for a missing/stuck result until the previous
+  sub-agent is recorded as timed out or failed in `orchestra/progress.md`.
 
 ---
 
@@ -197,6 +208,9 @@ dispatch mechanics only.
    should know exactly which downstream files/tests are in scope and when to stop.
 8. Include model routing metadata from `model-routing.md`, and pass the model override to
    the sub-agent tool when supported.
+9. Include loop policy metadata from `agent-loop-policy.md`, including stop instructions:
+   return a compact Result Capsule, do not exceed report budget, and stop with a blocker
+   instead of expanding scope or waiting indefinitely.
 
 ---
 

@@ -196,11 +196,16 @@ required_orchestra_refs = [
     "meta-activation.md",
     "worktree-discipline.md",
     "verification-before-completion.md",
+    "gap-closure-before-final.md",
     "review-convergence.md",
     "tdd-discipline.md",
     "branch-finishing.md",
     "skill-behavior-tests.md",
     "skill-behavior-scenarios.json",
+    "agent-loop-policy.md",
+    "data-first-debug.md",
+    "loop-progress-template.md",
+    "loop-learning-log.md",
     "ui-ux-planning-contract.md",
     "ui-browser-verification.md",
     "design-token-extraction.md",
@@ -298,6 +303,85 @@ if orchestra_skill_path.exists():
     ]:
         if required_parallel_marker not in orchestra_skill_text:
             errors.append(f"{orchestra_skill_path}: missing sub-agent-first marker: {required_parallel_marker}")
+    for required_policy_ref in [
+        "references/agent-loop-policy.md",
+        "references/data-first-debug.md",
+        "references/loop-progress-template.md",
+        "references/loop-learning-log.md",
+        "references/gap-closure-before-final.md",
+    ]:
+        if required_policy_ref not in orchestra_skill_text:
+            errors.append(f"{orchestra_skill_path}: missing orchestra policy reference: {required_policy_ref}")
+
+agent_loop_policy_path = orchestra_ref_dir / "agent-loop-policy.md"
+if agent_loop_policy_path.exists():
+    agent_loop_policy_text = agent_loop_policy_path.read_text(encoding="utf-8")
+    for required_loop_marker in [
+        "fable_style_coding_orchestra",
+        '"max_iterations": 12',
+        '"max_tool_calls": 30',
+        '"max_cost_usd": 0.5',
+        '"max_subagent_wait_minutes": 10',
+        '"max_background_analysis_wait_minutes": 15',
+        '"max_context_capsule_words": 1500',
+        "subagent_timeout_or_missing_result",
+        "loop_policy_subagent_limit",
+        "Loop policy final",
+    ]:
+        if required_loop_marker not in agent_loop_policy_text:
+            errors.append(f"{agent_loop_policy_path}: missing loop policy marker: {required_loop_marker}")
+
+data_first_debug_path = orchestra_ref_dir / "data-first-debug.md"
+if data_first_debug_path.exists():
+    data_first_debug_text = data_first_debug_path.read_text(encoding="utf-8")
+    for required_debug_marker in [
+        "Evidence ledger",
+        "UI behavior alone is not enough",
+        "database table row",
+        "Dispatch `error-detective` first",
+        "Dispatch `debugger` only after an Evidence Ledger exists",
+    ]:
+        if required_debug_marker not in data_first_debug_text:
+            errors.append(f"{data_first_debug_path}: missing data-first debug marker: {required_debug_marker}")
+
+loop_progress_template_path = orchestra_ref_dir / "loop-progress-template.md"
+if loop_progress_template_path.exists():
+    loop_progress_template_text = loop_progress_template_path.read_text(encoding="utf-8")
+    for required_template_marker in [
+        "Loop policy:",
+        "Sub-agent lifecycle:",
+        "replacement_allowed: false until timeout/blocker is recorded",
+        "Evidence ledger:",
+        "Loop policy final:",
+    ]:
+        if required_template_marker not in loop_progress_template_text:
+            errors.append(f"{loop_progress_template_path}: missing loop progress template marker: {required_template_marker}")
+
+loop_learning_log_path = orchestra_ref_dir / "loop-learning-log.md"
+if loop_learning_log_path.exists():
+    loop_learning_log_text = loop_learning_log_path.read_text(encoding="utf-8")
+    for required_learning_marker in [
+        "Learning entry",
+        "stop_reason",
+        "Evidence quality:",
+        "Next improvement signals:",
+        "suggested_policy_change",
+    ]:
+        if required_learning_marker not in loop_learning_log_text:
+            errors.append(f"{loop_learning_log_path}: missing loop learning log marker: {required_learning_marker}")
+
+gap_closure_path = orchestra_ref_dir / "gap-closure-before-final.md"
+if gap_closure_path.exists():
+    gap_closure_text = gap_closure_path.read_text(encoding="utf-8")
+    for required_gap_marker in [
+        "Gap closure:",
+        "must_do_now",
+        "should_offer_next",
+        "safely_deferred",
+        "No-Unclosed-Must-Do Gap",
+    ]:
+        if required_gap_marker not in gap_closure_text:
+            errors.append(f"{gap_closure_path}: missing gap closure marker: {required_gap_marker}")
 
 wave_planning_path = orchestra_ref_dir / "wave-planning.md"
 if wave_planning_path.exists():
@@ -505,6 +589,11 @@ if scenario_path.exists():
         "REVIEW-CONVERGENCE-001",
         "IMPACT-RIPPLE-001",
         "STALE-GATE-001",
+        "GAP-CLOSURE-001",
+        "DEBUG-DATA-001",
+        "DEBUG-DATA-002",
+        "LOOP-POLICY-001",
+        "LOOP-POLICY-002",
     ]:
         if required_scenario_id not in scenario_ids:
             errors.append(f"{scenario_path}: missing expanded behavior scenario {required_scenario_id}")
@@ -565,6 +654,14 @@ if scenario_path.exists():
                 errors.append(f"{scenario_path}: IMPACT-RIPPLE-001 must forbid skipping impact closure")
             if scenario.get("id") == "STALE-GATE-001" and "stale-gate-pass" not in forbidden_execution:
                 errors.append(f"{scenario_path}: STALE-GATE-001 must forbid stale-gate-pass")
+        if scenario.get("id") == "GAP-CLOSURE-001":
+            forbidden_execution = set(scenario.get("forbidden_execution", []))
+            for required_forbidden in [
+                "must-do-gap-as-next-step",
+                "final-summary-with-unclosed-must-do",
+            ]:
+                if required_forbidden not in forbidden_execution:
+                    errors.append(f"{scenario_path}: GAP-CLOSURE-001 must forbid {required_forbidden}")
 
     def lightweight_route(message: str) -> tuple[str, str]:
         text = message.lower()

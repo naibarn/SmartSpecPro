@@ -44,12 +44,18 @@ blockers: []
 stale_gates: [TypeScript check]
 open_contract_notes: [response shape unchanged]
 evidence_refs: [commands, artifact paths, trace IDs]
+loop_policy_refs: [iteration 4/12, wave 2/6, repair 1/5]
 ```
 
 Use these capsules for wave N+1 context injection and convergence review. Do not paste full
 Result Reports, full diffs, full logs, full test output, or raw timelines into future
 Task Packets. If a report is too large to capsule safely, mark integration `partial`, ask
 the source agent for a compact report, or split the next wave.
+
+Update the Loop Policy ledger from `agent-loop-policy.md` during integration. Increment the
+iteration counter for the integration decision cycle, increment dispatch-wave counters for
+completed waves, record active sub-agent completion, and record any soft-limit uncertainty
+such as unknown exact cost/tool-call telemetry.
 
 ### Step 2: Detect File Conflicts
 
@@ -120,6 +126,15 @@ Write wave status to `orchestra/progress.md`:
 Progress entries should be durable but compact: one-line file summaries, top findings,
 gate statuses, and artifact/command references. Do not append raw agent transcripts,
 complete command output, or full logs to `orchestra/progress.md`.
+
+Also update the Loop Policy ledger:
+- `iteration`
+- `tool_call_batches`
+- `estimated_cost_usd` or conservative proxy
+- `dispatch_waves`
+- `active_subagents`
+- `repair_rounds`
+- current `stop_reason`
 
 ### Step 7: Check Pre-Merge Security Gate
 

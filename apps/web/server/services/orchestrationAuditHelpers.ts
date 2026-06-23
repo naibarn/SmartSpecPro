@@ -90,6 +90,57 @@ export function logAgentStepEvent(params: {
   });
 }
 
+export function logAgentLoopSummaryEvent(params: {
+  traceId?: string;
+  userId: number;
+  stopReason: string;
+  iterations: number;
+  totalCreditsUsed: number;
+  totalDurationMs: number;
+  sectionCount: number;
+  actionCount: number;
+  subAgentPolicy: {
+    mode: string;
+    reason: string;
+    maxFanout: number;
+    maxConcurrency: number;
+    estimatedContextChars: number;
+    failedQualityChecks: number;
+    activeSubagents: number;
+  };
+  debugEvidencePolicy: {
+    requiresDataFirst: boolean;
+    hasEvidenceHint: boolean;
+    reason: string;
+    evidenceHints: string[];
+  };
+}): void {
+  auditLogger.log({
+    traceId: resolveTraceId(params.traceId),
+    eventType: "orchestration_agent_loop_summary",
+    userId: params.userId,
+    creditsCharged: params.totalCreditsUsed,
+    metadata: {
+      stopReason: params.stopReason,
+      iterations: params.iterations,
+      totalCreditsUsed: params.totalCreditsUsed,
+      totalDurationMs: params.totalDurationMs,
+      sectionCount: params.sectionCount,
+      actionCount: params.actionCount,
+      subAgentPolicy: params.subAgentPolicy,
+      debugEvidencePolicy: params.debugEvidencePolicy,
+      learningSignals: {
+        stoppedByEvidenceGate: params.stopReason === "data_first_debug_required",
+        stoppedByTimeout: params.stopReason === "step_timeout" || params.stopReason === "max_duration",
+        stoppedByBudget: params.stopReason === "budget_exceeded",
+        subAgentRecommended: params.subAgentPolicy.mode === "subagent_recommended",
+        repeatedRepair: params.subAgentPolicy.reason === "repeated_quality_repair",
+        contextSoftLimit: params.subAgentPolicy.reason === "context_soft_limit",
+      },
+    },
+  });
+}
+
 export function logQualityGateEvent(params: {
   traceId?: string;
   userId: number;

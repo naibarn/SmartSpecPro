@@ -13,9 +13,16 @@ Maintain scenario coverage for:
 - deep planning requests choose the correct deep-* chain
 - trivial requests do not trigger heavyweight orchestration
 - final completion requires verification evidence
+- final completion requires gap closure triage; safe in-scope must-do-now gaps
+  must be fixed before final summary, not presented as ordinary next steps
 - final completion for medium+ work requires review convergence evidence; Codex standard
   light mode may use one targeted clean round for implementation-ready medium work
 - review/gate-driven fixes mark covered gates stale and require reruns
+- bug/debug requests require data-first evidence before code fixes; UI-only symptoms
+  must route to evidence collection or a narrow user question, not direct guessing
+- Fable-style coding loop requests with `orchestra_id` or `loop_policy` activate
+  `agent-loop-policy.md`, preserve loop counters, and stop on success criteria,
+  tests, and blockers instead of running unbounded repair loops
 - Task Packet examples preserve all 8 required fields
 - Result Report output contracts preserve all 6 required fields
 - Claude Code dispatch examples use generated `ssp-*` names
@@ -80,6 +87,10 @@ Level 2 behavioral validation:
   not become the default again
 - review convergence scenarios require `Review Convergence Gate`, stale-gate reruns, and
   no `single-review-only` completion path
+- bug/debug scenarios require an Evidence Ledger from `data-first-debug.md` and forbid
+  `ui-only-root-cause` fixes unless the issue is purely presentational
+- loop-policy scenarios require `agent-loop-policy.md`, compact progress ledgers,
+  sub-agent fanout limits, and final stop reasons
 - generated `.claude/agents/ssp-*` definitions match portable source content
 
 Level 3 live validation:

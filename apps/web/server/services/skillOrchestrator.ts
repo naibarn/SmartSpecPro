@@ -14,6 +14,8 @@ import { getSkillByIdAsync } from "./skillRegistry";
 import { executeSkill, type SkillExecutionParams } from "./skillExecutor";
 import { hasEnoughCredits } from "./creditService";
 import { auditLogger } from "./auditLogger";
+import { runAgentLoop } from "./skillAgentLoop";
+import { logFallbackEvent } from "./orchestrationAuditHelpers";
 import type {
   OrchestrationLevel,
   OrchestrationResult,
@@ -72,6 +74,12 @@ export async function orchestrateSkill(
       options.tenantId,
     );
     if (!enabled) {
+      logFallbackEvent({
+        traceId,
+        userId: options.userId,
+        reason: "disabled",
+        classifierAttempted: false,
+      });
       return null; // Let chat router use existing detectSkill path
     }
 
@@ -82,6 +90,12 @@ export async function orchestrateSkill(
     );
     const maxLevel = (maxLevelStr as SkillOrchestratorMaxLevel) || ORCHESTRATOR_MAX_LEVEL_DEFAULT;
     if (maxLevel === "disabled") {
+      logFallbackEvent({
+        traceId,
+        userId: options.userId,
+        reason: "disabled",
+        classifierAttempted: false,
+      });
       return null;
     }
 
@@ -107,6 +121,13 @@ export async function orchestrateSkill(
     // 4. Check confidence threshold
     const topSkill = classification.skills[0];
     if (!topSkill || topSkill.confidence < CONFIDENCE_ASK_USER) {
+      logFallbackEvent({
+        traceId,
+        userId: options.userId,
+        reason: "error",
+        classifierAttempted: true,
+        errorMessage: "classification_confidence_below_threshold",
+      });
       return null;
     }
 
@@ -223,14 +244,55 @@ export async function orchestrateSkill(
 
     // 8. COMPLEX path — delegate to agent loop (Section 07)
     if (cappedLevel === "complex") {
-      return buildErrorResult(traceId, cappedLevel, classificationLatencyMs, startMs, {
-        code: "agent_timeout",
-        message: "Complex orchestration not yet available",
-      });
+      const loopResult = await runAgentLoop(
+        message,
+        effectiveSkills.map((skill) => skill.skillId),
+        {
+          userId: options.userId,
+          tenantId: options.tenantId,
+          userToken: options.userToken,
+          traceId,
+          budget: options.budget,
+        },
+      );
+
+      return {
+        sections: loopResult.sections,
+        totalCreditsUsed: loopResult.totalCreditsUsed,
+        totalDurationMs: Date.now() - startMs,
+        traceId,
+        orchestrationLevel: cappedLevel,
+        classificationLatencyMs,
+        summary: [
+          `Agent loop stopped: ${loopResult.stopReason}`,
+          `sub-agent policy: ${loopResult.subAgentPolicy.mode}/${loopResult.subAgentPolicy.reason}`,
+          `debug evidence: ${loopResult.debugEvidencePolicy.reason}`,
+        ].join("; "),
+        error: loopResult.sections.some((section) => section.type === "error")
+          ? {
+              code: loopResult.stopReason === "budget_exceeded"
+                ? "agent_budget_exceeded"
+                : loopResult.stopReason === "data_first_debug_required"
+                  ? "partial_failure"
+                : "agent_timeout",
+              message: `Agent loop stopped: ${loopResult.stopReason}`,
+              affectedSkills: loopResult.sections
+                .filter((section) => section.type === "error")
+                .map((section) => section.skillId),
+            }
+          : undefined,
+      };
     }
 
     return null;
-  } catch {
+  } catch (error) {
+    logFallbackEvent({
+      traceId,
+      userId: options.userId,
+      reason: "error",
+      classifierAttempted: classificationLatencyMs > 0,
+      errorMessage: error instanceof Error ? error.message : "Unexpected orchestration error",
+    });
     // Never throw — return null for chat router to use default path
     return null;
   }

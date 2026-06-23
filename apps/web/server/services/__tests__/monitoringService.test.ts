@@ -111,10 +111,19 @@ describe("monitoringService", () => {
           fallbackCount: 7,
           qualityCount: 10,
           riskyQualityCount: 5,
+          loopSummaryCount: 6,
+          evidenceGateCount: 2,
+          timeoutStopCount: 1,
+          budgetStopCount: 0,
+          subAgentRecommendedCount: 4,
+          repeatedRepairCount: 3,
+          contextSoftLimitCount: 1,
           avgClassifyLatencyMs: 4_400,
           fallbackRate: 0.4375,
           qualityRiskRate: 0.5,
+          loopInterventionRate: 0.5,
           topFallbackReason: "timeout",
+          topLoopStopReason: "data_first_debug_required",
           lastSeenAt: "2026-03-30T07:59:00.000Z",
         },
         windows: {
@@ -130,6 +139,8 @@ describe("monitoringService", () => {
       expect(overview.anomalies.some((anomaly) => anomaly.type === "memory_pressure" && anomaly.severity === "critical")).toBe(true);
       expect(overview.anomalies.some((anomaly) => anomaly.type === "llm_error_spike" && anomaly.severity === "critical")).toBe(true);
       expect(overview.anomalies.some((anomaly) => anomaly.type === "orchestration_fallback_spike" && anomaly.severity === "critical")).toBe(true);
+      expect(overview.anomalies.some((anomaly) => anomaly.type === "orchestration_loop_intervention" && anomaly.severity === "critical")).toBe(true);
+      expect(overview.anomalies.some((anomaly) => anomaly.type === "orchestration_subagent_recommended" && anomaly.severity === "warning")).toBe(true);
       expect(overview.anomalies.find((anomaly) => anomaly.type === "llm_error_spike")?.message).toContain("Top failures");
       expect(overview.anomalies.find((anomaly) => anomaly.type === "llm_error_spike")?.signal).toContain("OpenRouter");
       expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.message).toContain("LLM error rate spiked");
@@ -138,6 +149,7 @@ describe("monitoringService", () => {
       expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.status).toBe("active");
       expect(overview.leadingSignals.maxRestartDelta).toBe(4);
       expect(overview.leadingSignals.llmErrorRate).toBeCloseTo(0.24);
+      expect(overview.leadingSignals.loopInterventionRate).toBeCloseTo(0.5);
     });
 
     it("marks stale alert backlog as recovered when the original condition is normal now", () => {

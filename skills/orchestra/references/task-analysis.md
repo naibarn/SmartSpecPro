@@ -13,6 +13,11 @@ This document is read by SKILL.md at **Step 1**. Apply it to classify the incomi
 
 When the input is a bug report, error message, test failure, or audit log investigation — apply this decision tree **before** the scope table. Bug routing takes priority over size-based routing.
 
+Before dispatching any debugger, editing code, or forming a root-cause hypothesis, read
+`data-first-debug.md` and create an Evidence Ledger. UI symptoms alone are not enough
+evidence for a bug fix unless the issue is purely presentational and the affected UI file
+is already obvious.
+
 Apply branches in this order:
 
 ```
@@ -28,6 +33,8 @@ Is this an error log / audit trail investigation?
   YES → Dispatch ssp-error-detective.
         Context: provide the traceId and the JSONL log path:
           apps/web/logs/audit/audit-YYYY-MM-DD.jsonl
+        Include an Evidence Ledger with the exact event excerpt, status/error,
+        and any runId/jobId/taskId/table row discovered.
         After investigation, the detective may escalate to ssp-debugger.
 
 Is this a Python-only error (traceback in python-backend/)?
@@ -43,6 +50,8 @@ Is this a CI, GitHub Actions, deployment, or release failure?
 Is this an E2E/browser workflow or Playwright failure?
   YES → Dispatch ssp-e2e-playwright.
         Context: route, user role, viewport, test output, screenshot/trace path if available.
+        If the failure may come from backend/runtime data, also collect trace/log/table
+        evidence before changing UI code.
 
 Is this a performance/load/latency regression?
   YES → Dispatch ssp-performance.
@@ -55,10 +64,14 @@ Is this a dependency, lockfile, package audit, or supply-chain issue?
 Is the affected file/component known?
   YES → Dispatch ssp-debugger with that file as context.
         Example: "500 error from skills.create" → files: apps/web/server/routers/skills.ts
+        Still include the Evidence Ledger. If only a UI symptom is known, first inspect
+        the backing data/log/test evidence or ask for a trace/run/task/job id.
 
 Is the affected file/component unknown?
   YES → Dispatch ssp-research first to locate root cause.
         After research returns, dispatch ssp-debugger with research findings as CONTEXT.
+        The research output must include an Evidence Ledger or explain exactly what
+        evidence is missing and how to obtain it.
 ```
 
 **Post-fix mandatory waves (apply after any bug route resolves):**

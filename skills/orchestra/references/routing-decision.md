@@ -23,6 +23,13 @@ This reference defines when orchestra should stay in its normal wave model and w
 
 Do not stop merely to ask the user to run another skill.
 
+For coding, debugging, implementation, review/repair, or user-supplied
+`loop_policy` work, read `agent-loop-policy.md` before finalizing the route. Record the
+Loop Policy ledger in `orchestra/progress.md`, including iteration, tool-call batch,
+dispatch-wave, repair-round, cost-proxy, and stop-condition fields. If a selected route
+would exceed the active loop policy, split the work, reduce fanout, or stop with a
+`loop_policy_*` stop reason before dispatching.
+
 Do not collapse non-trivial work into conductor-only implementation when a sub-agent tool is
 available **and authorized by that tool's policy/user request**. In Codex standard light
 mode, sub-agent availability alone is not authorization. Before selecting `single-agent`,
@@ -52,13 +59,15 @@ Behavior:
 1. Keep SocratiCode preflight, impact notes, and `orchestra/` progress artifacts.
 2. Prefer direct conductor implementation for `small` and implementation-ready `medium`
    work.
-3. Do not create Task Packets or spawn agents unless the user explicitly asked for
+3. Still apply `agent-loop-policy.md`; direct/inline execution must update the same
+   iteration, repair-round, context, and stop-condition ledger.
+4. Do not create Task Packets or spawn agents unless the user explicitly asked for
    sub-agents, delegation, parallel agents, reviewers, or agent waves.
-4. Replace reviewer-agent waves with targeted conductor review and the smallest relevant
+5. Replace reviewer-agent waves with targeted conductor review and the smallest relevant
    repository commands.
-5. Record `dispatch_preference: direct-standard-light` or
+6. Record `dispatch_preference: direct-standard-light` or
    `dispatch_preference: inline-standard-light` in `orchestra/plan.md`.
-6. Escalate out of light mode only when the user authorizes agents, product ambiguity
+7. Escalate out of light mode only when the user authorizes agents, product ambiguity
    requires a specialist, or high/critical risk cannot be reviewed safely inline.
 
 ## Route: `installed-skill-flow`

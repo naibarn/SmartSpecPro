@@ -136,11 +136,12 @@ These limits are non-negotiable. The conductor must enforce them when building t
 
 | Constraint | Limit | Enforcement |
 |-----------|-------|-------------|
-| Concurrent agents | Max 4 | Count active Task tool calls; queue excess into the next sub-wave |
-| File-editing agents in parallel | Max 2 | Use `isolation: worktree` for parallel writers; if more than 2 write tasks are needed, split into sub-waves |
+| Concurrent agents | Max 4 or active `agent-loop-policy.md` `max_active_subagents`, whichever is lower | Count active Task tool calls; queue excess into the next sub-wave |
+| File-editing agents in parallel | Max 2 or active `agent-loop-policy.md` `max_parallel_writers`, whichever is lower | Use `isolation: worktree` for parallel writers; if more than 2 write tasks are needed, split into sub-waves |
 | DB agents active simultaneously | 1 | Database tasks always run alone in their wave |
 | Git agents active simultaneously | 1 | Git tasks always run alone in their wave |
 | Parallel dispatch without contract | Not allowed | Write contract first; if contract is missing, dispatch sequentially |
+| Dispatch waves | Max active `agent-loop-policy.md` `max_dispatch_waves` | Stop with `loop_policy_dispatch_wave_limit` or ask for explicit continuation before adding waves |
 
 **Worktree isolation note:** When `isolation: worktree` is used, each agent works in a
 separate git worktree and the conductor merges afterward. Do not use worktree isolation if
@@ -158,6 +159,7 @@ For every wave containing file-editing agents, write this dispatch metadata into
 | `ownership_map` | Exact files each writer may modify |
 | `merge_owner` | Conductor responsible for final integration. A named agent may only review/report; it must not perform the final merge decision. |
 | `verification_owner` | Agent/gate responsible for proving the merged output works |
+| `loop_policy` | Current iteration/wave/writer counters from `agent-loop-policy.md` |
 
 Rules:
 
