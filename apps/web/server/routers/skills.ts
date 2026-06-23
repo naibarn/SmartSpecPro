@@ -2368,7 +2368,7 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
 }
 
 const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
-const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 4500;
+const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800;
 const STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
 const STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS = 20000;
 const STORYBOARD_REVIEW_PLANNER_CONTEXT_MAX_CHARS = 2400;
@@ -4178,12 +4178,17 @@ export const skillsRouter = router({
       const promptPackageMode = preparedPromptPackageInputs.promptPackageMode;
 
       const requestedMaxPromptLength = Number(mergedUserInputs.maxPromptLength);
-      const effectiveMaxPromptLength =
+      const requestedPositiveMaxPromptLength =
         Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
           ? requestedMaxPromptLength
-          : input.skillId === PRODUCT_REFERENCE_STORYBOARD_SKILL_ID
-            ? PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS
-            : 0;
+          : 0;
+      const effectiveMaxPromptLength =
+        input.skillId === PRODUCT_REFERENCE_STORYBOARD_SKILL_ID
+          ? Math.min(
+              requestedPositiveMaxPromptLength || PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS,
+              PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS
+            )
+          : requestedPositiveMaxPromptLength;
       const promptLengthPlan = effectiveMaxPromptLength > 0
         ? buildPromptLengthPlan(effectiveMaxPromptLength, resolvePromptLanguageHintFromInputs(mergedUserInputs))
         : null;

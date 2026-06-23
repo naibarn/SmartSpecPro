@@ -45,6 +45,7 @@ import {
 } from "../services/privateVaultService";
 import { createWorkerRegistrationToken } from "../services/workerAuthService";
 import { revokeJti } from "../_core/revocation";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   localAiPreferencesSchema,
   mergeLocalAiPreferences,
@@ -983,7 +984,7 @@ export const usersRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) {
         throw new Error("Tenant context is required");
       }
@@ -1088,7 +1089,7 @@ export const usersRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) {
         throw new Error("Tenant context is required");
       }
@@ -1243,7 +1244,7 @@ export const usersRouter = router({
       if (permissionPreset === "custom" && permissionScopes.length === 0) {
         throw new Error("permissionScopes are required when permissionPreset is custom");
       }
-      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) {
         throw new Error("Tenant context is required");
       }

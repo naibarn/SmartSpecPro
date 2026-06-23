@@ -706,7 +706,7 @@ describe("workerSchedulerService", () => {
         ...commonInput,
         idempotencyKey: "hf-final:hf_config_123",
       },
-      { repo: repo as any, reserveCredits, getFeatureFlags },
+      { repo: repo as any, reserveCredits },
     );
 
     expect(first.created).toBe(false);
@@ -719,7 +719,7 @@ describe("workerSchedulerService", () => {
         finalCompositeConfigHash: "hf_config_regenerated_456",
         idempotencyKey: "hf-final:hf_config_regenerated_456",
       },
-      { repo: repo as any, reserveCredits, getFeatureFlags },
+      { repo: repo as any, reserveCredits },
     );
 
     expect(second.created).toBe(true);
@@ -728,7 +728,7 @@ describe("workerSchedulerService", () => {
     }));
   });
 
-  it("rejects HyperFrames final composite queueing when the worker flag is off or the preferred worker is draining", async () => {
+  it("queues HyperFrames final composite without tenant flags but still rejects draining preferred workers", async () => {
     getFeatureFlags.mockResolvedValue({
       openClawExternalRuntime: true,
       desktopZeroClawWorker: true,
@@ -772,13 +772,17 @@ describe("workerSchedulerService", () => {
       },
     };
 
-    await expect(queueDesktopHyperframesFinalCompositeJob(
+    const queued = await queueDesktopHyperframesFinalCompositeJob(
       input,
-      { repo: repo as any, reserveCredits, getFeatureFlags },
-    )).rejects.toMatchObject({
-      code: "feature_disabled",
-      statusCode: 403,
-    });
+      { repo: repo as any, reserveCredits },
+    );
+
+    expect(queued.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+    }));
 
     getFeatureFlags.mockResolvedValue({
       openClawExternalRuntime: true,
@@ -799,7 +803,7 @@ describe("workerSchedulerService", () => {
         ...input,
         preferredWorkerId: "desktop-worker-1",
       },
-      { repo: repo as any, reserveCredits, getFeatureFlags },
+      { repo: repo as any, reserveCredits },
     )).rejects.toMatchObject({
       code: "worker_state_invalid",
       statusCode: 409,

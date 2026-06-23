@@ -1414,27 +1414,16 @@ export async function queueDesktopHyperframesFinalCompositeJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
   } = {},
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const input = hyperframesFinalCompositeWorkerInputSchema.parse(rawInput);
   const repo = deps.repo ?? defaultRepo;
-  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
 
   if (!isDesktopWorkerDispatchEnabled()) {
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
       "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
-    );
-  }
-
-  const tenantFlags = await getFeatureFlags(rawInput.tenantId);
-  if (!tenantFlags.desktopZeroClawWorker || tenantFlags.hyperframesWorkerFinalComposite !== true) {
-    throw new WorkerSchedulerError(
-      "feature_disabled",
-      403,
-      "HyperFrames final composite worker rendering is not enabled for this tenant",
     );
   }
 

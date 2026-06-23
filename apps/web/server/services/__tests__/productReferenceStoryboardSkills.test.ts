@@ -117,7 +117,7 @@ describe("unified product reference storyboard skill", () => {
     expect(skillContent).toContain("Never write `child from @Image2`");
     expect(skillContent).not.toContain("Recreate exact product from product reference image");
     expect(skillContent).toContain("blank/unreadable book covers and spines");
-    expect(skillContent).toContain("Aim to keep the final plain-text prompt under 4300 characters");
+    expect(skillContent).toContain("Aim to keep the final plain-text prompt under 3600 characters");
     expect(skillContent).toContain("This is a soft budget, not an input field or schema parameter");
     expect(skillContent).toContain("Completeness is mandatory");
     expect(skillContent).toContain("Completeness is mandatory and has higher priority than brevity");
@@ -221,10 +221,10 @@ describe("unified product reference storyboard skill", () => {
   });
 
   it("keeps the skill output length rule while avoiding premature LLM completion cutoff", () => {
-    const result = resolveProductReferenceStoryboardLlmMaxTokensForTest(4500, "unknown");
+    const result = resolveProductReferenceStoryboardLlmMaxTokensForTest(3800, "unknown");
 
-    expect(result.promptLengthPlan?.maxPromptLength).toBe(4500);
-    expect(result.promptLengthPlan?.targetPromptLength).toBeLessThanOrEqual(4500);
+    expect(result.promptLengthPlan?.maxPromptLength).toBe(3800);
+    expect(result.promptLengthPlan?.targetPromptLength).toBeLessThanOrEqual(3800);
     expect(result.promptLengthPlan?.maxTokens).toBeLessThan(
       result.llmMaxTokens
     );
@@ -565,7 +565,7 @@ describe("unified product reference storyboard skill", () => {
       unitId: "unit-1",
       attempt: 1,
       promptAttempt: 2,
-      maxOutputChars: 4500,
+      maxOutputChars: 3800,
       rawOutput: "Frame 1: partial prompt",
       fullOutputLogPath: "/tmp/full-output.jsonl",
       promptLengthPlan: null,
@@ -619,9 +619,9 @@ describe("unified product reference storyboard skill", () => {
     expect(skillContent).toContain("the product must match that reference exactly");
     expect(skillContent).not.toContain("product must be recreated from the product reference image exactly");
     expect(inputSchema.required).toContain("source_prompt");
-    expect(inputSchema.properties.target_max_chars.default).toBe(4500);
-    expect(inputSchema.properties.target_max_chars.maximum).toBe(4500);
-    expect(inputSchema.properties.preferred_target_chars.default).toBe(4300);
+    expect(inputSchema.properties.target_max_chars.default).toBe(3800);
+    expect(inputSchema.properties.target_max_chars.maximum).toBe(3800);
+    expect(inputSchema.properties.preferred_target_chars.default).toBe(3600);
     expect(uiSchema["ui:order"]).toEqual([
       "source_prompt",
       "target_max_chars",
@@ -638,7 +638,7 @@ describe("unified product reference storyboard skill", () => {
         "schemas/output.schema.json",
       ])
     );
-    expect(outputSchema.maxLength).toBe(4500);
+    expect(outputSchema.maxLength).toBe(3800);
     expect(outputContract).toContain("Return plain prompt text only");
     expect(outputContract).toContain("must not end mid-frame or at a bare label");
   });
@@ -656,16 +656,20 @@ describe("unified product reference storyboard skill", () => {
     expect(PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID).toBe(
       promptOptimizerSkillId
     );
-    expect(shouldOptimizeProductReferenceStoryboardPromptForTest("x".repeat(4501), 4500)).toBe(true);
-    expect(shouldOptimizeProductReferenceStoryboardPromptForTest("x".repeat(4500), 4500)).toBe(false);
+    expect(shouldOptimizeProductReferenceStoryboardPromptForTest("x".repeat(3801), 3800)).toBe(true);
+    expect(shouldOptimizeProductReferenceStoryboardPromptForTest("x".repeat(3800), 3800)).toBe(false);
     expect(runnerSource).toContain("optimizeProductReferenceStoryboardPrompt");
     expect(runnerSource).toContain(
       "PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID"
     );
     expect(runnerSource).toContain("optimizer_dispatch");
     expect(runnerSource).toContain("promptOptimizer");
+    expect(runnerSource).toContain("Math.min(");
     expect(skillsRouterSource).toContain(
-      "PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 4500"
+      "PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800"
+    );
+    expect(skillsRouterSource).toContain(
+      "requestedPositiveMaxPromptLength || PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS"
     );
     expect(skillsRouterSource).toContain(
       "optimizeProductReferenceStoryboardPrompt"

@@ -12,19 +12,19 @@
     },
     "target_max_chars": {
       "title": "Hard Character Limit",
-      "description": "Hard maximum character count for the returned prompt. Default is 4500 for image-provider compatibility.",
+      "description": "Hard maximum character count for the returned prompt. Default is 3800 for image-provider compatibility.",
       "type": "integer",
       "minimum": 1000,
-      "maximum": 4500,
-      "default": 4500
+      "maximum": 3800,
+      "default": 3800
     },
     "preferred_target_chars": {
       "title": "Preferred Character Target",
-      "description": "Preferred shorter target that leaves room for downstream system variance. Default is 4300.",
+      "description": "Preferred shorter target that leaves room for downstream system variance. Default is 3600.",
       "type": "integer",
       "minimum": 1000,
-      "maximum": 4500,
-      "default": 4300
+      "maximum": 3800,
+      "default": 3600
     },
     "preserve_storyboard_contract": {
       "title": "Preserve Storyboard Contract",

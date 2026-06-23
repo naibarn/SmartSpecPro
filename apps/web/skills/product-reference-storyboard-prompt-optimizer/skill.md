@@ -1,6 +1,6 @@
 ---
 name: product-reference-storyboard-prompt-optimizer
-description: Post-processes product-reference-storyboard prompts by rewriting and compressing unnecessary text until the final plain image prompt is at or below 4500 characters while preserving the critical storyboard, product fidelity, camera/light, text policy, and 9-frame generation contract.
+description: Post-processes product-reference-storyboard prompts by rewriting and compressing unnecessary text until the final plain image prompt is at or below 3800 characters while preserving the critical storyboard, product fidelity, camera/light, text policy, and 9-frame generation contract.
 category: image_prompt_generation
 version: 1.0.0
 icon: minify
@@ -57,13 +57,13 @@ config:
 
 Use this skill after `product-reference-storyboard` when the generated prompt is too long, repetitive, or likely to exceed an image provider prompt limit. Return a shorter plain prompt that remains directly usable for image generation.
 
-The normal hard limit is 4500 characters. Prefer 4300 characters or less to leave safety margin, but never return a partial storyboard. If the input is already short enough and complete, lightly clean duplicates and return it without unnecessary rewriting.
+The normal hard limit is 3800 characters. Prefer 3600 characters or less to leave safety margin, but never return a partial storyboard. If the input is already short enough and complete, lightly clean duplicates and return it without unnecessary rewriting.
 
 ## Input Meaning
 
 - `source_prompt`: the prompt to optimize. Treat it as the source of truth.
-- `target_max_chars`: target hard maximum. Default and normal value is 4500.
-- `preferred_target_chars`: softer target. Default and normal value is 4300.
+- `target_max_chars`: target hard maximum. Default and normal value is 3800.
+- `preferred_target_chars`: softer target. Default and normal value is 3600.
 - `preserve_storyboard_contract`: when true, keep every detected frame and critical storyboard labels.
 
 Do not invent new product facts, shots, characters, claims, prices, ratings, badges, or visible text. Only compress, merge, reorder, and remove redundant wording from the source prompt.

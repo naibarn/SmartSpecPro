@@ -59,6 +59,7 @@ import { getDb } from "../db";
 import {
   groupMembers,
   runtimeProfiles,
+  userGroups,
   workerArtifacts,
   workerHeartbeats,
   workerJobEvents,
@@ -518,10 +519,13 @@ async function filterClaimableJobsForWorker(
   const memberships = await db
     .select({ userId: groupMembers.userId })
     .from(groupMembers)
+    .innerJoin(userGroups, eq(userGroups.id, groupMembers.groupId))
     .where(and(
       inArray(groupMembers.groupId, sharedGroupIds),
       inArray(groupMembers.userId, requesterIds),
       eq(groupMembers.status, "active"),
+      eq(userGroups.tenantId, worker.tenantId),
+      isNull(userGroups.deletedAt),
     ));
   const allowedRequesterIds = new Set(memberships.map((membership) => membership.userId));
   if (ownerUserId != null) {

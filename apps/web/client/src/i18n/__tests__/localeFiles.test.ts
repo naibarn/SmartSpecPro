@@ -90,7 +90,6 @@ describe("locale JSON files — validity", () => {
       "admin.json": ["invite."],
       "presentation.json": ["editor."],
       "common.json": ["notifications.", "common."],
-      "agency.json": ["teams.", "orchestrator."],
     };
     for (const [file, prefixes] of Object.entries(filePrefixMap)) {
       const path = join(EN_DIR, file);
@@ -112,6 +111,55 @@ describe("locale JSON files — validity", () => {
     expect(data["title"]).toBe("Complete User Guide");
     // bsHelp.title should appear as bs.title
     expect(Object.prototype.hasOwnProperty.call(data, "bs.title")).toBe(true);
+  });
+
+  it("settings connected worker keys exist in en/th settings namespaces", () => {
+    const requiredKeys = [
+      "workers.connectedWorkers.title",
+      "workers.connectedWorkers.description",
+      "workers.connectedWorkers.loading",
+      "workers.connectedWorkers.empty",
+      "workers.connectedWorkers.saved",
+      "workers.connectedWorkers.identityTitle",
+      "workers.connectedWorkers.shareTitle",
+      "workers.connectedWorkers.shareDescription",
+      "workers.connectedWorkers.type",
+      "workers.connectedWorkers.runtime",
+      "workers.connectedWorkers.family",
+      "workers.connectedWorkers.externalRef",
+      "workers.connectedWorkers.scopeCount",
+      "workers.connectedWorkers.machine",
+      "workers.connectedWorkers.version",
+      "workers.connectedWorkers.lastSeen",
+      "workers.connectedWorkers.notSeenYet",
+      "workers.connectedWorkers.groupPickerTitle",
+      "workers.connectedWorkers.noGroups",
+      "workers.connectedWorkers.save",
+      "workers.connectedWorkers.reset",
+      "workers.connectedWorkers.currentShare.private",
+      "workers.connectedWorkers.currentShare.tenant",
+      "workers.connectedWorkers.currentShare.groups",
+      "workers.connectedWorkers.shareModes.private.label",
+      "workers.connectedWorkers.shareModes.private.description",
+      "workers.connectedWorkers.shareModes.groups.label",
+      "workers.connectedWorkers.shareModes.groups.description",
+      "workers.connectedWorkers.shareModes.tenant.label",
+      "workers.connectedWorkers.shareModes.tenant.description",
+      "workers.connectedWorkers.status.online",
+      "workers.connectedWorkers.status.offline",
+      "workers.connectedWorkers.status.unhealthy",
+      "workers.connectedWorkers.status.disabled",
+      "workers.connectedWorkers.status.draining",
+    ];
+    const en = readJson(join(EN_DIR, "settings.json"));
+    const th = readJson(join(TH_DIR, "settings.json"));
+
+    for (const key of requiredKeys) {
+      expect(en[key], `Missing en/settings.json key "${key}"`).toBeTruthy();
+      expect(th[key], `Missing th/settings.json key "${key}"`).toBeTruthy();
+      expect(en[key], `Raw key leaked in en/settings.json for "${key}"`).not.toBe(key);
+      expect(th[key], `Raw key leaked in th/settings.json for "${key}"`).not.toBe(key);
+    }
   });
 
   it("interpolation placeholders use {{...}} syntax", () => {

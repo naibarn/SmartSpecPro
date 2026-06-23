@@ -31,8 +31,8 @@ export const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID =
   "product-reference-storyboard";
 export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID =
   "product-reference-storyboard-prompt-optimizer";
-export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 4500;
-const PRODUCT_REFERENCE_STORYBOARD_PROMPT_PREFERRED_CHARS = 4300;
+export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800;
+const PRODUCT_REFERENCE_STORYBOARD_PROMPT_PREFERRED_CHARS = 3600;
 const PRODUCT_REFERENCE_STORYBOARD_MIN_COMPLETION_TOKENS = 4000;
 const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS = 500;
 const PRODUCT_REFERENCE_STORYBOARD_FULL_OUTPUT_LOG_DIR = (
@@ -1825,7 +1825,10 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
 }): Promise<ProductReferenceStoryboardPromptSkillRunResult> {
   const maxOutputChars =
     input.maxOutputChars && input.maxOutputChars > 0
-      ? Math.floor(input.maxOutputChars)
+      ? Math.min(
+          Math.floor(input.maxOutputChars),
+          PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS
+        )
       : PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS;
   const synced = await syncSingleSkillIfChanged(
     PRODUCT_REFERENCE_STORYBOARD_SKILL_ID

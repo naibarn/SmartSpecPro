@@ -3,8 +3,8 @@
 Expected input:
 
 - `source_prompt`: required prompt text to optimize.
-- `target_max_chars`: hard maximum output length. Default 4500.
-- `preferred_target_chars`: preferred output length. Default 4300.
+- `target_max_chars`: hard maximum output length. Default 3800.
+- `preferred_target_chars`: preferred output length. Default 3600.
 - `preserve_storyboard_contract`: default true. Preserve critical storyboard structure.
 - `optimization_strength`: optional aggressiveness hint.
 

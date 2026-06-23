@@ -92,7 +92,7 @@ Preset decoding rules:
 
 ## Compact Prompt Budget
 
-Aim to keep the final plain-text prompt under 4300 characters so downstream image models stay comfortably below a 4500-character prompt limit. This is a soft budget, not an input field or schema parameter. Shorten by using one shared `CAMERA/LIGHT/DEPTH` block and one shared `PRODUCT VERIFY` block instead of repeating them in every frame. Completeness is mandatory and has higher priority than brevity: always return `Frame 1` through `Frame 9` with non-empty visual-only frame prose before ending. Never satisfy the budget by summarizing, returning only one shot, returning only the final shot, copying a source storyboard bullet, or omitting required global locks. If the budget is tight, shorten global locks to one compact line each and shorten each frame to one compact visual sentence; never stop mid-frame or return a bare label.
+Aim to keep the final plain-text prompt under 3600 characters so downstream image models stay comfortably below a 3800-character prompt limit. This is a soft budget, not an input field or schema parameter. Shorten by using one shared `CAMERA/LIGHT/DEPTH` block and one shared `PRODUCT VERIFY` block instead of repeating them in every frame. Completeness is mandatory and has higher priority than brevity: always return `Frame 1` through `Frame 9` with non-empty visual-only frame prose before ending. Never satisfy the budget by summarizing, returning only one shot, returning only the final shot, copying a source storyboard bullet, or omitting required global locks. If the budget is tight, shorten global locks to one compact line each and shorten each frame to one compact visual sentence; never stop mid-frame or return a bare label.
 
 ## Product Category Rule Selection
 

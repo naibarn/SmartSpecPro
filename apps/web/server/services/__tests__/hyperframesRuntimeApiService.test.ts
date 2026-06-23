@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -122,6 +122,20 @@ describe("hyperframesRuntimeApiService", () => {
         idempotencyKey: "caller_supplied",
       })
     ).toThrow();
+  });
+
+  it("submits final composite execution to the desktop worker queue without server render fallback", () => {
+    const source = readFileSync(
+      join(import.meta.dirname, "../hyperframesRuntimeApiService.ts"),
+      "utf-8",
+    );
+
+    expect(source).not.toContain("dispatchHyperframesFinalCompositeWorker");
+    expect(source).not.toContain("startDetachedHyperframesRenderWorker");
+    expect(source).not.toContain("hf_final_worker_required_");
+    expect(source).not.toContain("Server-side HyperFrames final composite render is disabled for Storyboard Review.");
+    expect(source).toContain("queueDesktopHyperframesFinalCompositeJob");
+    expect(source).toContain('Reflect.get(error, "code") === "dispatch_disabled"');
   });
 
   it("allows final composite queueing only when the official CLI runtime is doctor-ready", async () => {

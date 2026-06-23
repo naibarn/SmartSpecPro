@@ -61,9 +61,7 @@ import {
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
 import { queueDesktopHyperframesFinalCompositeJob } from "./workerSchedulerService";
-import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
-import { startDetachedHyperframesRenderWorker } from "./backgroundWorkerProcess";
 import {
   normalizeVideoSegmentCreativeBrief,
   planVideoSegments,
@@ -208,63 +206,6 @@ async function getMarketplaceAutoReviewRunOrManualFallback(input: {
       stages: [],
     };
   }
-}
-
-function scheduleHyperframesFinalCompositeWorkerKick(
-  renderJobId?: string
-): void {
-  const timer = setTimeout(() => {
-    try {
-      const worker = startDetachedHyperframesRenderWorker({
-        limit: 1,
-        renderJobId,
-      });
-      console.info("[HyperFrames] Started detached render worker.", {
-        renderJobId: renderJobId ?? null,
-        pid: worker.pid,
-      });
-    } catch (error) {
-      console.warn(
-        "HyperFrames final composite worker kick failed.",
-        error instanceof Error ? error.message : error
-      );
-    }
-  }, 250);
-  if (typeof timer === "object" && timer && "unref" in timer) {
-    timer.unref();
-  }
-}
-
-async function dispatchHyperframesFinalCompositeWorker(input: {
-  renderJobId: string;
-}): Promise<void> {
-  try {
-    const { enqueueTask, getCloudTasksConfigStatus } =
-      await import("./cloudTasks");
-    const config = getCloudTasksConfigStatus("node");
-    if (config.configured) {
-      await enqueueTask({
-        queueName: "media-jobs",
-        handlerPath: "/_internal/tasks/hyperframes-render-worker",
-        targetService: "node",
-        payload: {
-          renderJobId: input.renderJobId,
-          limit: 1,
-        },
-        taskId: `hyperframes-render-${input.renderJobId}`,
-      });
-      return;
-    }
-    console.warn(
-      `[HyperFrames] Node Cloud Tasks config is incomplete; starting detached render worker. Missing: ${config.missingKeys.join(", ")}`
-    );
-  } catch (error) {
-    console.warn(
-      "[HyperFrames] Failed to enqueue render worker task; starting detached render worker.",
-      error instanceof Error ? error.message : error
-    );
-  }
-  scheduleHyperframesFinalCompositeWorkerKick(input.renderJobId);
 }
 
 export function getHyperframesFinalCompositeRuntimeBlockReason(
@@ -1740,199 +1681,115 @@ export async function createHyperframesFinalCompositeForApi(
       invalidates: [],
     };
   }
-  const runtimeBlockReason = getHyperframesFinalCompositeRuntimeBlockReason();
   const payload = buildHyperframesRenderJobPayload({ composition });
-  const tenantFlags = await getTenantFeatureFlags(input.auth.tenantId ?? "default");
-  if (tenantFlags.hyperframesWorkerFinalComposite === true) {
-    const workerInput = buildHyperframesFinalCompositeWorkerInput({
-      apiInput: input,
-      payload,
-    });
-    const creditEstimate = buildHyperframesCreditEstimate({
+  const workerInput = buildHyperframesFinalCompositeWorkerInput({
+    apiInput: input,
+    payload,
+  });
+  const creditEstimate = buildHyperframesCreditEstimate({
+    tenantId: input.auth.tenantId ?? "default",
+    userId: input.auth.userId,
+    runId: input.runId,
+    renderIntent: "final",
+    compositionMode: "captioned_final_composite",
+    costClass: "composition_render",
+    compositionInputHash: composition.provenance.compositionInputHash,
+    templateVersion: composition.template.templateVersion,
+    platformPreset: {
+      ...composition.platformPreset,
+      durationSeconds: workerInput.finalVideoLengthSec,
+      maxDurationSeconds: workerInput.finalVideoLengthSec,
+    },
+    workerComplexityMultiplier: Math.max(1, input.config.shots.length / 6),
+  });
+  try {
+    const queued = await queueDesktopHyperframesFinalCompositeJob({
+      ...workerInput,
       tenantId: input.auth.tenantId ?? "default",
-      userId: input.auth.userId,
-      runId: input.runId,
-      renderIntent: "final",
-      compositionMode: "captioned_final_composite",
-      costClass: "composition_render",
-      compositionInputHash: composition.provenance.compositionInputHash,
-      templateVersion: composition.template.templateVersion,
-      platformPreset: {
-        ...composition.platformPreset,
-        durationSeconds: workerInput.finalVideoLengthSec,
-        maxDurationSeconds: workerInput.finalVideoLengthSec,
-      },
-      workerComplexityMultiplier: Math.max(1, input.config.shots.length / 6),
-    });
-    try {
-      const queued = await queueDesktopHyperframesFinalCompositeJob({
-        ...workerInput,
+      teamId: null,
+      workflowRunId: input.runId,
+      requestedByUserId: input.auth.userId,
+      requestedBySystemComponent: "hyperframes_final_composite_api",
+      priority: 82,
+      timeoutSeconds: 7200,
+      idempotencyKey: buildHyperframesFinalCompositeWorkerIdempotencyKey({
         tenantId: input.auth.tenantId ?? "default",
-        teamId: null,
-        workflowRunId: input.runId,
-        requestedByUserId: input.auth.userId,
-        requestedBySystemComponent: "hyperframes_final_composite_api",
-        priority: 82,
-        timeoutSeconds: 7200,
-        idempotencyKey: buildHyperframesFinalCompositeWorkerIdempotencyKey({
-          tenantId: input.auth.tenantId ?? "default",
-          runId: input.runId,
-          payload,
-          finalCompositeConfigHash: workerInput.finalCompositeConfigHash,
-        }),
-        reservedCredits: creditEstimate.estimatedCredits,
-      });
-      const render = buildHyperframesRenderProjection({
-        tenantId: input.auth.tenantId ?? "default",
-        productId: input.productId,
         runId: input.runId,
-        renderJobId: String(queued.job.id),
-        status: "queued",
         payload,
-        safeMessage: queued.created
-          ? "ส่งงาน Final Composite เข้า Smart AI Hub Worker App แล้ว กำลังรอ worker รับงาน"
-          : "พบงาน Final Composite ชุดเดียวกันในคิวแล้ว ระบบจะติดตามงานเดิมต่อ",
-        safeDiagnostics: [
-          queued.created
-            ? "Queued as worker_jobs.hyperframes_final_composite; no server render was started."
-            : "Reused existing worker job with the same composition/config hash.",
-        ],
-        canMutate: true,
-      });
-      return {
-        contractVersion:
-          HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-        render,
-        chargeSummary: {
-          chargeRequired: true,
-          creditEstimate,
-          quotaDecision: access.creditAndQuota.quotaDecision,
-        },
-        polling: render.polling,
-        invalidates: INVALIDATES,
-      };
-    } catch (error) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        (Reflect.get(error, "code") === "feature_disabled" ||
-          Reflect.get(error, "code") === "dispatch_disabled")
-      ) {
-        const render = buildHyperframesRenderProjection({
-          tenantId: input.auth.tenantId ?? "default",
-          productId: input.productId,
-          runId: input.runId,
-          renderJobId: `hf_final_worker_blocked_${input.runId}`,
-          status: "blocked_needs_user",
-          payload,
-          safeMessage:
-            "ยังไม่ได้เปิด Smart AI Hub Worker App สำหรับ Final Composite จึงไม่สามารถ render งานคุณภาพจริงได้",
-          safeDiagnostics: [
-            error instanceof Error ? error.message : "Worker dispatch is not enabled.",
-            "Enable desktopZeroClawWorker and hyperframesWorkerFinalComposite for this tenant, then render again.",
-          ],
-          permissions: {
-            canCancel: false,
-            canRepair: false,
-          },
-          canMutate: false,
-        });
-        return {
-          contractVersion:
-            HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-          render,
-          chargeSummary: {
-            chargeRequired: false,
-            quotaDecision: "no_charge" as const,
-            noChargeReason: "not_applicable" as const,
-          },
-          polling: render.polling,
-          invalidates: [],
-        };
-      }
-      throw error;
-    }
-  }
-  const finalCompositeConfig =
-    payload.finalCompositeConfig &&
-    typeof payload.finalCompositeConfig === "object" &&
-    !Array.isArray(payload.finalCompositeConfig)
-      ? (payload.finalCompositeConfig as Record<string, unknown>)
-      : {};
-  const fallbackCapability =
-    finalCompositeConfig.fallbackCapability &&
-    typeof finalCompositeConfig.fallbackCapability === "object" &&
-    !Array.isArray(finalCompositeConfig.fallbackCapability)
-      ? (finalCompositeConfig.fallbackCapability as Record<string, unknown>)
-      : {};
-  const allowFfmpegAssFallback = fallbackCapability.ffmpegAssFallback === true;
-  if (runtimeBlockReason && !allowFfmpegAssFallback) {
+        finalCompositeConfigHash: workerInput.finalCompositeConfigHash,
+      }),
+      reservedCredits: creditEstimate.estimatedCredits,
+    });
     const render = buildHyperframesRenderProjection({
       tenantId: input.auth.tenantId ?? "default",
       productId: input.productId,
       runId: input.runId,
-      renderJobId: `hf_final_runtime_blocked_${input.runId}`,
-      status: "blocked_needs_user",
+      renderJobId: String(queued.job.id),
+      status: "queued",
       payload,
-      safeMessage:
-        "Final Composite ต้องใช้ official HyperFrames HTML/CSS/browser runtime เท่านั้น ระบบปิด ASS fallback แล้วเพื่อให้ผลลัพธ์ตรงกับ preview",
+      safeMessage: queued.created
+        ? "ส่งงาน Final Composite เข้า Smart AI Hub Worker App แล้ว กำลังรอ worker รับงาน"
+        : "พบงาน Final Composite ชุดเดียวกันในคิวแล้ว ระบบจะติดตามงานเดิมต่อ",
       safeDiagnostics: [
-        runtimeBlockReason,
-        "No render job was queued and no credits were reserved. Configure the official HyperFrames CSS/browser runtime, then render again.",
+        queued.created
+          ? "Queued as worker_jobs.hyperframes_final_composite; no server render was started."
+          : "Reused existing worker job with the same composition/config hash.",
       ],
-      permissions: {
-        canCancel: false,
-        canRepair: false,
-      },
-      canMutate: false,
+      canMutate: true,
     });
     return {
       contractVersion:
         HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
       render,
       chargeSummary: {
-        chargeRequired: false,
-        quotaDecision: "no_charge" as const,
-        noChargeReason: "not_applicable" as const,
+        chargeRequired: true,
+        creditEstimate,
+        quotaDecision: access.creditAndQuota.quotaDecision,
       },
       polling: render.polling,
-      invalidates: [],
+      invalidates: INVALIDATES,
     };
-  }
-  const render = await queueHyperframesRenderJob({
-    auth: input.auth,
-    composition,
-    priority: 82,
-    maxAttempts: 3,
-  });
-  void dispatchHyperframesFinalCompositeWorker({
-    renderJobId: render.renderJobId,
-  });
-  return {
-    contractVersion:
-      HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-    render,
-    chargeSummary: {
-      chargeRequired: true,
-      creditEstimate: buildHyperframesCreditEstimate({
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      Reflect.get(error, "code") === "dispatch_disabled"
+    ) {
+      const render = buildHyperframesRenderProjection({
         tenantId: input.auth.tenantId ?? "default",
-        userId: input.auth.userId,
+        productId: input.productId,
         runId: input.runId,
-        renderIntent: "final",
-        compositionMode: "captioned_final_composite",
-        costClass: "composition_render",
-        compositionInputHash: composition.provenance.compositionInputHash,
-        templateVersion: composition.template.templateVersion,
-        platformPreset: composition.platformPreset,
-        workerComplexityMultiplier: Math.max(1, input.config.shots.length / 6),
-      }),
-      quotaDecision: "allowed" as const,
-      noChargeReason: null,
-    },
-    polling: render.polling,
-    invalidates: INVALIDATES,
-  };
+        renderJobId: `hf_final_worker_blocked_${input.runId}`,
+        status: "blocked_needs_user",
+        payload,
+        safeMessage:
+          "ระบบปิดการส่งงานเข้า Smart AI Hub Worker App ชั่วคราว จึงยังไม่สามารถส่ง Final Composite เข้าคิวได้",
+        safeDiagnostics: [
+          error instanceof Error ? error.message : "Worker dispatch is disabled.",
+          "No server render job was queued and no credits were reserved.",
+        ],
+        permissions: {
+          canCancel: false,
+          canRepair: false,
+        },
+        canMutate: false,
+      });
+      return {
+        contractVersion:
+          HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
+        render,
+        chargeSummary: {
+          chargeRequired: false,
+          quotaDecision: "no_charge" as const,
+          noChargeReason: "not_applicable" as const,
+        },
+        polling: render.polling,
+        invalidates: [],
+      };
+    }
+    throw error;
+  }
 }
 
 export async function getHyperframesRenderJobForApi(input: {

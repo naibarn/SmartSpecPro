@@ -7,6 +7,18 @@ import type {
   WorkerRegistrationPayload,
 } from "../../../shared/workerRuntime";
 
+const { mockGetDb } = vi.hoisted(() => {
+  process.env.JWT_SECRET = "test-jwt-secret-for-worker-registry-service";
+
+  return {
+    mockGetDb: vi.fn(),
+  };
+});
+
+vi.mock("../../db", () => ({
+  getDb: mockGetDb,
+}));
+
 describe("workerRegistryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -929,6 +941,103 @@ describe("workerRegistryService", () => {
     expect(result.job?.id).toBe("job-own");
     expect(repo.tryClaimJob).toHaveBeenCalledWith(
       "job-own",
+      "worker-1",
+      expect.any(String),
+      expect.any(Date),
+    );
+  });
+
+  it("allows group-shared workers to claim jobs submitted by selected group members", async () => {
+    const { claimWorkerJob } = await import("../workerRegistryService");
+
+    const nonMemberJob = {
+      id: "job-non-member",
+      tenantId: "tenant-1",
+      teamId: null,
+      workerId: null,
+      requestedByUserId: 999,
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      priority: 30,
+      capabilityRequirementsJson: {},
+      inputJson: {},
+      instructionsJson: {},
+      outputJson: null,
+      failureReason: null,
+      timeoutSeconds: 7200,
+      retryPolicyJson: {},
+      idempotencyKey: null,
+      leaseOwnerToken: null,
+      leaseExpiresAt: null,
+      createdAt: new Date("2026-04-06T00:00:00.000Z"),
+      startedAt: null,
+      finishedAt: null,
+    };
+    const groupMemberJob = {
+      ...nonMemberJob,
+      id: "job-group-member",
+      requestedByUserId: 88,
+    };
+    const membershipQuery = {
+      from: vi.fn(() => membershipQuery),
+      innerJoin: vi.fn(() => membershipQuery),
+      where: vi.fn().mockResolvedValue([{ userId: 88 }]),
+    };
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => membershipQuery),
+    });
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue({
+        id: "worker-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        registeredByUserId: 7,
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        capabilitiesJson: {
+          workerApp: {
+            sharingMode: "group",
+            sharedGroupIds: [12],
+            acceptJobs: true,
+          },
+          runtimeMetadata: {
+            workerSharingPolicy: {
+              mode: "groups",
+              groupIds: [12],
+            },
+          },
+        },
+      }),
+      listClaimableJobs: vi.fn().mockResolvedValue([nonMemberJob, groupMemberJob]),
+      tryClaimJob: vi.fn().mockResolvedValue({
+        ...groupMemberJob,
+        workerId: "worker-1",
+        status: "claimed",
+        leaseOwnerToken: "lease-group",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...groupMemberJob,
+        ...values,
+      })),
+    };
+
+    const result = await claimWorkerJob({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-1",
+      payload: { maxJobs: 1, capabilityHints: [] },
+    }, { repo } as any);
+
+    expect(result.job?.id).toBe("job-group-member");
+    expect(membershipQuery.innerJoin).toHaveBeenCalledOnce();
+    expect(repo.tryClaimJob).toHaveBeenCalledWith(
+      "job-group-member",
       "worker-1",
       expect.any(String),
       expect.any(Date),

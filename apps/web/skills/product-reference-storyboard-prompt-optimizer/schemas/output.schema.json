@@ -3,6 +3,6 @@
   "title": "ProductReferenceStoryboardPromptOptimizerOutput",
   "type": "string",
   "minLength": 1,
-  "maxLength": 4500,
+  "maxLength": 3800,
   "description": "Plain optimized image prompt text only. No JSON wrapper."
 }
