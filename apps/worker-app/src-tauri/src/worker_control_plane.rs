@@ -11,7 +11,8 @@ use crate::control_plane::{
 };
 use crate::credentials::WorkerDeviceProofMaterial;
 
-const CONTROL_PLANE_TIMEOUT_MS: u64 = 120_000;
+const CONTROL_PLANE_TIMEOUT_MS: u64 = 30_000;
+const WORKER_CLAIM_TIMEOUT_MS: u64 = 15_000;
 const ARTIFACT_UPLOAD_TIMEOUT_MS: u64 = 30 * 60 * 1000;
 const ARTIFACT_UPLOAD_ATTEMPTS: u8 = 3;
 
@@ -185,12 +186,13 @@ pub async fn claim_worker_job(
     connection: &WorkerLoopConnection,
     payload: &WorkerClaimRequest,
 ) -> Result<WorkerClaimResponse, String> {
-    post_json(
+    post_json_with_timeout(
         connection,
         &connection.server_url,
         &format!("/api/workers/{}/jobs/claim", connection.worker_id),
         &connection.tokens.execution_token,
         payload,
+        WORKER_CLAIM_TIMEOUT_MS,
     )
     .await
 }
@@ -287,12 +289,35 @@ where
     P: Serialize + ?Sized,
 {
     let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
+        device_proof,
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+async fn post_worker_json_url_with_timeout<T, P>(
+    url: reqwest::Url,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    device_proof: &WorkerDeviceProofMaterial,
+    timeout_ms: u64,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
     let payload_value = serde_json::to_value(payload)
         .map_err(|error| format!("failed to serialize worker control plane payload: {error}"))?;
     let proof_headers =
         build_device_proof_headers("POST", path, bearer_token, &payload_value, device_proof)?;
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_millis(CONTROL_PLANE_TIMEOUT_MS))
+        .timeout(Duration::from_millis(timeout_ms))
         .build()
         .map_err(|error| format!("failed to build worker HTTP client: {error}"))?;
     let mut request = client
@@ -304,11 +329,13 @@ where
     for (name, value) in proof_headers {
         request = request.header(name, value);
     }
-    let response = request
-        .json(&payload_value)
-        .send()
-        .await
-        .map_err(|error| format!("worker control plane request failed: {error}"))?;
+    let response = request.json(&payload_value).send().await.map_err(|error| {
+        if error.is_timeout() {
+            format!("worker control plane request timed out after {timeout_ms}ms: {error}")
+        } else {
+            format!("worker control plane request failed: {error}")
+        }
+    })?;
     read_json_response(response).await
 }
 
@@ -323,12 +350,37 @@ where
     T: DeserializeOwned,
     P: Serialize + ?Sized,
 {
-    post_worker_json(
+    post_json_with_timeout(
+        connection,
         server_url,
         path,
         bearer_token,
         payload,
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+async fn post_json_with_timeout<T, P>(
+    connection: &WorkerLoopConnection,
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    timeout_ms: u64,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
         &connection.device_proof,
+        timeout_ms,
     )
     .await
 }

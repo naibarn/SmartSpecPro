@@ -96,7 +96,7 @@ async fn run_worker_loop(
         if let Err(error) = tick_result {
             set_executor_error(&executor, format!("Worker loop error: {error}"));
         }
-        sleep_cancelable(IDLE_CLAIM_INTERVAL, &cancel);
+        sleep_cancelable(IDLE_CLAIM_INTERVAL, &cancel).await;
     }
     set_executor_idle(&executor, "Worker loop stopped.");
 }
@@ -146,7 +146,8 @@ async fn worker_loop_tick(
     }
 
     let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
-    let claimed = claim_worker_job(
+    set_executor_polling(executor, "Checking Smart AI Hub worker queue.");
+    let claimed = match claim_worker_job(
         &connection_snapshot,
         &WorkerClaimRequest {
             max_jobs,
@@ -156,7 +157,17 @@ async fn worker_loop_tick(
             ],
         },
     )
-    .await?;
+    .await
+    {
+        Ok(claimed) => claimed,
+        Err(error) => {
+            set_executor_polling(
+                executor,
+                format!("Queue check failed; heartbeat is active and will retry. {error}"),
+            );
+            return Ok(());
+        }
+    };
     let Some(job) = claimed.job else {
         set_executor_polling(executor, "No queued jobs. Heartbeat is active.");
         return Ok(());
@@ -371,7 +382,7 @@ async fn run_sidecar_with_active_heartbeat(
                     "HyperFrames sidecar exited with {status}. Check the runtime logs in the worker workspace."
                 ));
             }
-            Ok(None) => sleep_cancelable(Duration::from_millis(500), cancel),
+            Ok(None) => sleep_cancelable(Duration::from_millis(500), cancel).await,
             Err(error) => return Err(format!("failed to monitor HyperFrames sidecar: {error}")),
         }
     }
@@ -421,7 +432,7 @@ fn clone_connection(
         .map_err(|_| "worker loop connection lock poisoned".to_string())
 }
 
-fn set_executor_polling(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
+fn set_executor_polling(executor: &Arc<Mutex<ExecutorState>>, message: impl Into<String>) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = true;
         state.status = ExecutorStatus::Polling;
@@ -505,11 +516,11 @@ fn set_executor_complete(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
     }
 }
 
-fn sleep_cancelable(duration: Duration, cancel: &AtomicBool) {
+async fn sleep_cancelable(duration: Duration, cancel: &AtomicBool) {
     let slice = Duration::from_millis(250);
     let mut elapsed = Duration::ZERO;
     while elapsed < duration && !cancel.load(Ordering::Relaxed) {
-        std::thread::sleep(slice);
+        let _ = tauri::async_runtime::spawn_blocking(move || std::thread::sleep(slice)).await;
         elapsed += slice;
     }
 }
