@@ -628,6 +628,19 @@ mod tests {
     }
 
     #[test]
+    fn claim_request_uses_worker_control_plane_contract() {
+        let payload = WorkerClaimRequest {
+            max_jobs: 1,
+            capability_hints: vec!["hyperframes-final-composite".into()],
+        };
+        let value = serde_json::to_value(payload).unwrap();
+
+        assert_eq!(value["maxJobs"], 1);
+        assert_eq!(value["capabilityHints"][0], "hyperframes-final-composite");
+        assert!(value.get("max_jobs").is_none());
+    }
+
+    #[test]
     fn device_proof_headers_cover_path_body_and_jti() {
         let temp = tempfile::tempdir().unwrap();
         let material = ensure_device_proof_material(temp.path()).unwrap();

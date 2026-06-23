@@ -195,7 +195,8 @@ function App() {
   const [savedConnection, setSavedConnection] = useState<SavedConnectionSession | null>(null);
   const [loopStatus, setLoopStatus] = useState<WorkerLoopStatus>(fallbackLoopStatus);
 
-  async function refresh() {
+  async function refresh(options: { updateConnectionMessage?: boolean } = {}) {
+    const updateConnectionMessage = options.updateConnectionMessage ?? true;
     const [nextSettings, nextDoctor, nextExecutor, nextLoopStatus, restoredConnection] = await Promise.all([
       safeInvoke<Settings>("worker_app_get_settings", fallbackSettings),
       safeInvoke<DoctorSummary>("worker_app_run_doctor", fallbackDoctor),
@@ -211,13 +212,23 @@ function App() {
     setConnectedWorker(restoredConnection?.worker ?? null);
     if (restoredConnection) {
       setConnectionState("connected");
-      setConnectMessage("Connected. Access tokens will refresh automatically.");
+      if (updateConnectionMessage) {
+        setConnectMessage("Connected. Access tokens will refresh automatically.");
+      }
     }
   }
 
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    const intervalMs = loopStatus.running ? 2_000 : 10_000;
+    const handle = window.setInterval(() => {
+      void refresh({ updateConnectionMessage: false });
+    }, intervalMs);
+    return () => window.clearInterval(handle);
+  }, [loopStatus.running]);
 
   const readinessLabel = useMemo(() => {
     if (doctor.status === "ready") return "Ready for render jobs";
@@ -464,7 +475,7 @@ function App() {
               <p className="eyebrow">Readiness</p>
               <h2>Runtime doctor</h2>
             </div>
-            <button type="button" className="secondary-button" onClick={refresh}>
+            <button type="button" className="secondary-button" onClick={() => void refresh()}>
               Run checks
             </button>
           </div>

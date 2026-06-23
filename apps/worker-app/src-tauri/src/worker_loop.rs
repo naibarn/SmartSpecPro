@@ -18,8 +18,8 @@ use crate::runtime_manifest::{
 use crate::settings::WorkerAppSettings;
 use crate::worker_control_plane::{
     build_worker_heartbeat_payload, claim_worker_job, report_worker_job_event,
-    send_worker_heartbeat, upload_worker_artifact_file, WorkerClaimRequest, WorkerJobEventPayload,
-    WorkerLoopConnection,
+    send_worker_heartbeat, upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse,
+    WorkerJobEventPayload, WorkerLoopConnection,
 };
 use crate::worker_executor::{
     build_failure_event, build_progress_event_plan, build_required_artifact_uploads,
@@ -29,6 +29,7 @@ use crate::worker_executor::{
 
 const IDLE_CLAIM_INTERVAL: Duration = Duration::from_secs(10);
 const ACTIVE_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
+const CLAIM_WATCHDOG_TIMEOUT: Duration = Duration::from_secs(20);
 
 #[derive(Debug)]
 pub struct WorkerLoopHandle {
@@ -147,15 +148,16 @@ async fn worker_loop_tick(
 
     let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
     set_executor_polling(executor, "Checking Smart AI Hub worker queue.");
-    let claimed = match claim_worker_job(
-        &connection_snapshot,
-        &WorkerClaimRequest {
+    let claimed = match claim_worker_job_with_watchdog(
+        connection_snapshot,
+        WorkerClaimRequest {
             max_jobs,
             capability_hints: vec![
                 "hyperframes-final-composite".into(),
                 HYPERFRAMES_JOB_TYPE.into(),
             ],
         },
+        CLAIM_WATCHDOG_TIMEOUT,
     )
     .await
     {
@@ -184,6 +186,33 @@ async fn worker_loop_tick(
         cancel,
     )
     .await
+}
+
+async fn claim_worker_job_with_watchdog(
+    connection: WorkerLoopConnection,
+    payload: WorkerClaimRequest,
+    timeout: Duration,
+) -> Result<WorkerClaimResponse, String> {
+    let handle =
+        tauri::async_runtime::spawn(async move { claim_worker_job(&connection, &payload).await });
+    let started_at = Instant::now();
+    loop {
+        if handle.inner().is_finished() {
+            return handle
+                .await
+                .map_err(|error| format!("worker claim task failed: {error}"))?;
+        }
+        if started_at.elapsed() >= timeout {
+            handle.abort();
+            return Err(format!(
+                "worker queue claim did not finish within {}s",
+                timeout.as_secs()
+            ));
+        }
+        let _ =
+            tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(100)))
+                .await;
+    }
 }
 
 async fn heartbeat(
