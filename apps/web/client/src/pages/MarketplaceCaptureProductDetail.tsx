@@ -2654,17 +2654,13 @@ export default function MarketplaceCaptureProductDetail() {
     loading: autoStoryboardPlanLoading,
     error: autoStoryboardPlanErrored,
   });
-  const autoStoryboardOverridesActive =
-    Object.keys(autoStoryboardOverrides).length > 0;
   const autoStoryboardPlanMatchesCurrentOverrides =
     autoStoryboardPlanMatchesOverrides(
       autoStoryboardPlan,
       autoStoryboardOverrides
     );
   const autoStoryboardPlanRefreshingForOverrides = Boolean(
-    autoStoryboardPlan &&
-      (!autoStoryboardPlanMatchesCurrentOverrides ||
-        (autoStoryboardOverridesActive && autoStoryboardPlanQuery.isFetching))
+    autoStoryboardPlan && !autoStoryboardPlanMatchesCurrentOverrides
   );
   const selectedStandardImageModelTransport = resolveAutoReviewImageModelTransport(
     autoReviewImageModel

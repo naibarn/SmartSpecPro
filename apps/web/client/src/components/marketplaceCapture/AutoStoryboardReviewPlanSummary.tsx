@@ -85,6 +85,12 @@ export function AutoStoryboardReviewPlanSummary({
                 : "Starting Auto Storyboard Review and waiting for a new run"}
             </p>
           ) : null}
+          {updating ? (
+            <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
+              <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
+              {copy.overridePending}
+            </p>
+          ) : null}
           {isActiveRun ? (
             <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
               <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
@@ -97,7 +103,7 @@ export function AutoStoryboardReviewPlanSummary({
         <div className="flex flex-wrap gap-2">
           {updating ? (
             <p className="sr-only" role="status" aria-live="polite">
-              {copy.autoPlanUpdating}
+              {copy.overridePending}
             </p>
           ) : null}
           {plan?.resetToAutoAvailable && onResetToAuto ? (

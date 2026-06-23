@@ -126,8 +126,11 @@ describe("AutoStoryboardReviewPlanSummary", () => {
       name: /updating auto plan/i,
     });
     expect(screen.getByRole("status").textContent).toMatch(
-      /updating auto plan/i
+      /updating the auto plan/i
     );
+    expect(
+      screen.getAllByText(/template and engine remain backend-managed/i).length
+    ).toBeGreaterThan(0);
     expect(button).toBeDisabled();
     fireEvent.click(button);
     expect(onStart).not.toHaveBeenCalled();
