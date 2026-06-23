@@ -72,3 +72,31 @@ Gap closure:
   - `npm --prefix apps/web run check`
 - Expected negative production gate:
   - `node apps/worker-app/scripts/package-windows-release.mjs --check-runtime` still fails because the current runtime pack is placeholder/non-official. This is intentional; render-ready installer publishing must remain blocked until the official HyperFrames runtime pack, browser runtime, FFmpeg/ffprobe, hashes, signatures, and license metadata are supplied.
+
+## Storyboard Review Final Composite Re-render Freedom
+
+Loop policy final:
+  iterations_used: 3/12
+  tool_call_batches_used: unknown/30
+  estimated_cost_usd: unknown <= 0.50
+  dispatch_waves_used: 0/6
+  timed_out_subagents: none
+  repair_rounds_used: 0/5
+  stop_conditions_met: success_criteria_met, tests_passed, no_open_blockers
+  stop_reason: success
+
+- SocratiCode status: green; searched Storyboard Review final composite symbols and impact before editing.
+- Root cause: final composite worker idempotency used only stable composition/config fields, so repeated clicks with the same render config could reuse an old worker job indefinitely. The UI also preferred old query projection over the newest mutation result.
+- Implemented:
+  - `apps/web/server/services/hyperframesRuntimeApiService.ts`: final composite idempotency now includes a 5 second submission window key; duplicate clicks inside that window still dedupe, later clicks create a fresh worker job.
+  - `apps/web/client/src/pages/StoryboardReviewPage.tsx`: render button now has a 5 second duplicate-submit cooldown, validates only real prerequisites, and prioritizes latest mutation render state over old query state.
+  - `apps/web/server/services/__tests__/hyperframesRuntimeApiService.test.ts`: added regression coverage for short-window dedupe only.
+- Verification passed:
+  - `npm --prefix apps/web run test -- server/services/__tests__/hyperframesRuntimeApiService.test.ts`
+  - `npm --prefix apps/web run check`
+
+Gap closure:
+  must_do_now: none
+  should_offer_next: live browser check on a Storyboard Review project with an old failed/cancelled final composite job | reason: valuable UX confirmation after code/type/test gates | suggested_next_step: click Render Final Composite twice inside 5 seconds and again after 5 seconds
+  safely_deferred: no live worker queue job was submitted from this session | reason: external/runtime side effect not required for code fix verification | residual_risk: low
+  no_action_needed: old terminal render statuses remain visible as history/status only | reason: they no longer define server idempotency across windows or button availability after cooldown

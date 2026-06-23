@@ -9,6 +9,8 @@ import {
   buildHyperframesLibraryIdempotencyKey,
 } from "@shared/hyperframes/contracts";
 import {
+  HYPERFRAMES_FINAL_COMPOSITE_SUBMISSION_DEDUPE_WINDOW_MS,
+  buildHyperframesFinalCompositeWorkerIdempotencyKey,
   buildHyperframesFinalizeInputFromCompletedRender,
   buildManualStoryboardProductState,
   getHyperframesFinalCompositeRuntimeBlockReason,
@@ -136,6 +138,51 @@ describe("hyperframesRuntimeApiService", () => {
     expect(source).not.toContain("Server-side HyperFrames final composite render is disabled for Storyboard Review.");
     expect(source).toContain("queueDesktopHyperframesFinalCompositeJob");
     expect(source).toContain('Reflect.get(error, "code") === "dispatch_disabled"');
+  });
+
+  it("deduplicates final composite submits only inside a short render window", () => {
+    const payload: Parameters<
+      typeof buildHyperframesFinalCompositeWorkerIdempotencyKey
+    >[0]["payload"] = {
+      renderIntent: "final",
+      compositionInputHash: "hf_input_same",
+      templateVersion: "v1",
+      platformPresetId: "vertical_9_16",
+      runtimeProfileHash: "runtime_ready",
+      creativePlanHash: "creative_same",
+    };
+    const baseInput = {
+      tenantId: "tenant_1",
+      runId: "mar_1",
+      payload,
+      finalCompositeConfigHash: "config_same",
+    };
+    const currentWindow = Math.floor(
+      Date.now() / HYPERFRAMES_FINAL_COMPOSITE_SUBMISSION_DEDUPE_WINDOW_MS
+    );
+
+    expect(
+      buildHyperframesFinalCompositeWorkerIdempotencyKey({
+        ...baseInput,
+        submissionWindowKey: currentWindow,
+      })
+    ).toBe(
+      buildHyperframesFinalCompositeWorkerIdempotencyKey({
+        ...baseInput,
+        submissionWindowKey: currentWindow,
+      })
+    );
+    expect(
+      buildHyperframesFinalCompositeWorkerIdempotencyKey({
+        ...baseInput,
+        submissionWindowKey: currentWindow + 1,
+      })
+    ).not.toBe(
+      buildHyperframesFinalCompositeWorkerIdempotencyKey({
+        ...baseInput,
+        submissionWindowKey: currentWindow,
+      })
+    );
   });
 
   it("allows final composite queueing only when the official CLI runtime is doctor-ready", async () => {

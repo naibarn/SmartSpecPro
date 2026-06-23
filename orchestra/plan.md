@@ -25,3 +25,21 @@
 - data state: no runtime run id was provided; local code path confirmed the false updating condition and component test covered the visible updating copy.
 - confidence: medium-high
 - next evidence needed: a live browser reproduction would raise confidence to high, but the direct state condition was isolated in code.
+
+## Addendum: Storyboard Review Final Composite Re-render Freedom
+- Scope: small
+- Risk: medium
+- Affected domains: Storyboard Review UI and HyperFrames final composite queueing service
+- Estimated file count: 3
+- Chosen route: direct-edit (standard light mode)
+- Bug route: true
+- Classification notes: Thai bug report that `Render Final Composite` was blocked/reusing old error state. SocratiCode was green and used first to locate Storyboard Review final composite handlers and server idempotency.
+- Activation: orchestra auto-activated from repository debugging/change request per AGENTS.md.
+
+## Evidence Ledger: Final Composite Re-render Freedom
+- source: screenshot + SocratiCode + code inspection + focused service test
+- identifier: `hyperframesFinalRenderProjection`, `createHyperframesFinalComposite`, and `buildHyperframesFinalCompositeWorkerIdempotencyKey`
+- observed failure: server idempotency key used stable composition/config hashes only, so identical later render clicks reused an old worker job indefinitely; UI also prioritized query render state ahead of the latest final-composite mutation result.
+- data state: screenshot showed final composite status and job id state; local code path confirmed old job reuse and stale status priority.
+- confidence: high
+- next evidence needed: optional live browser confirmation with a completed/cancelled old job, then repeated render clicks after 5 seconds.

@@ -782,11 +782,14 @@ function buildHyperframesFinalCompositeWorkerInput(input: {
   };
 }
 
-function buildHyperframesFinalCompositeWorkerIdempotencyKey(input: {
+export const HYPERFRAMES_FINAL_COMPOSITE_SUBMISSION_DEDUPE_WINDOW_MS = 5_000;
+
+export function buildHyperframesFinalCompositeWorkerIdempotencyKey(input: {
   tenantId: string;
   runId: string;
   payload: ReturnType<typeof buildHyperframesRenderJobPayload>;
   finalCompositeConfigHash: string;
+  submissionWindowKey: number;
 }): string {
   return `hf_worker_final_${stableHash({
     tenantId: input.tenantId,
@@ -798,6 +801,7 @@ function buildHyperframesFinalCompositeWorkerIdempotencyKey(input: {
     runtimeProfileHash: input.payload.runtimeProfileHash,
     creativePlanHash: input.payload.creativePlanHash,
     finalCompositeConfigHash: input.finalCompositeConfigHash,
+    submissionWindowKey: input.submissionWindowKey,
   })}`;
 }
 
@@ -1717,6 +1721,9 @@ export async function createHyperframesFinalCompositeForApi(
         runId: input.runId,
         payload,
         finalCompositeConfigHash: workerInput.finalCompositeConfigHash,
+        submissionWindowKey: Math.floor(
+          Date.now() / HYPERFRAMES_FINAL_COMPOSITE_SUBMISSION_DEDUPE_WINDOW_MS
+        ),
       }),
       reservedCredits: creditEstimate.estimatedCredits,
     });
@@ -1729,11 +1736,11 @@ export async function createHyperframesFinalCompositeForApi(
       payload,
       safeMessage: queued.created
         ? "ส่งงาน Final Composite เข้า Smart AI Hub Worker App แล้ว กำลังรอ worker รับงาน"
-        : "พบงาน Final Composite ชุดเดียวกันในคิวแล้ว ระบบจะติดตามงานเดิมต่อ",
+        : "พบการกด Render Final Composite ซ้ำในช่วงไม่กี่วินาทีเดียวกัน ระบบจะติดตามงานล่าสุดในช่วงนั้นต่อ",
       safeDiagnostics: [
         queued.created
           ? "Queued as worker_jobs.hyperframes_final_composite; no server render was started."
-          : "Reused existing worker job with the same composition/config hash.",
+          : "Reused an existing worker job only within the short duplicate-submit guard window.",
       ],
       canMutate: true,
     });

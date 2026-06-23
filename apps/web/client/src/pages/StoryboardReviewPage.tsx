@@ -1462,6 +1462,7 @@ const DEFAULT_HYPERFRAMES_FINAL_STYLE_BRIEF =
   "Create a 9:16 vertical Thai ecommerce product ad video using HyperFrames.";
 const HYPERFRAMES_FINAL_PROMPT_MAX_LENGTH = HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS;
 const HYPERFRAMES_FINAL_AUTOSAVE_DELAY_MS = 800;
+const HYPERFRAMES_FINAL_RENDER_DUPLICATE_GUARD_MS = 5_000;
 
 function getCreativePresetLabel(
   preset: Pick<HyperframesCreativePreset, "labels" | "id">,
@@ -3390,6 +3391,7 @@ export default function StoryboardReviewPage() {
   const [hyperframesFinalShotAnimationById, setHyperframesFinalShotAnimationById] = useState<Record<string, HyperframesFinalShotAnimationPreset>>({});
   const [hyperframesFinalShotTransitionById, setHyperframesFinalShotTransitionById] = useState<Record<string, HyperframesFinalShotTransition>>({});
   const [hyperframesFinalShotTextMotionById, setHyperframesFinalShotTextMotionById] = useState<Record<string, HyperframesFinalTextMotionPreset>>({});
+  const [hyperframesFinalCompositeCooldownUntil, setHyperframesFinalCompositeCooldownUntil] = useState(0);
   const [hyperframesFinalPreviewShotIndex, setHyperframesFinalPreviewShotIndex] = useState(0);
   const [hyperframesFinalSfxDrafts, setHyperframesFinalSfxDrafts] = useState<HyperframesFinalSfxDraft[]>(() =>
     DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
@@ -3787,8 +3789,8 @@ export default function StoryboardReviewPage() {
     hyperframesRenderQuery.data?.render ?? null;
   const hyperframesFinalRenderProjection =
     [
-      hyperframesFinalCompositeQueryRender,
       hyperframesFinalCompositeMutationRender,
+      hyperframesFinalCompositeQueryRender,
       hyperframesRenderProjection,
     ].find(isHyperframesFinalCompositeRender) ?? null;
   const hyperframesFinalCompositeStatusText = createHyperframesFinalCompositeMutation.isPending
@@ -3796,6 +3798,14 @@ export default function StoryboardReviewPage() {
       ? "กำลังส่งงาน Final Composite เข้า queue..."
       : "Submitting Final Composite render to the queue..."
     : formatHyperframesFinalCompositeStatus(hyperframesFinalRenderProjection, locale);
+  const hyperframesFinalCompositeDuplicateGuardActive =
+    hyperframesFinalCompositeCooldownUntil > Date.now();
+  const hyperframesFinalCompositeDuplicateGuardReason =
+    hyperframesFinalCompositeDuplicateGuardActive
+      ? locale === "th"
+        ? "รอสักครู่ก่อนกด render ซ้ำ เพื่อกันการส่งงานซ้อนภายในไม่กี่วินาที"
+        : "Wait a moment before rendering again to avoid duplicate submits within a few seconds."
+      : null;
   const hyperframesFinalCompositeStatusDetail = hyperframesFinalRenderProjection?.safeMessage ?? null;
   const hyperframesFinalCompositeElapsedText = formatHyperframesRenderElapsed(
     hyperframesFinalRenderProjection,
@@ -3868,6 +3878,19 @@ export default function StoryboardReviewPage() {
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
   ]);
+  useEffect(() => {
+    if (hyperframesFinalCompositeCooldownUntil <= 0) return;
+    const remainingMs = hyperframesFinalCompositeCooldownUntil - Date.now();
+    if (remainingMs <= 0) {
+      setHyperframesFinalCompositeCooldownUntil(0);
+      return;
+    }
+    const timeoutId = window.setTimeout(
+      () => setHyperframesFinalCompositeCooldownUntil(0),
+      remainingMs,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [hyperframesFinalCompositeCooldownUntil]);
   const saveHyperframesRenderToLibrary = useCallback(() => {
     const render = hyperframesRenderProjection;
     const idempotencyKey = buildHyperframesLibrarySaveKey(render);
@@ -7415,6 +7438,17 @@ export default function StoryboardReviewPage() {
       toast.error(hyperframesFinalMissingVideoDetail || hyperframesFinalMissingVideoTitle);
       return;
     }
+    if (hyperframesFinalCompositeDisabledReason) {
+      toast.error(hyperframesFinalCompositeDisabledReason);
+      return;
+    }
+    if (hyperframesFinalCompositeDuplicateGuardActive) {
+      toast.error(hyperframesFinalCompositeDuplicateGuardReason);
+      return;
+    }
+    setHyperframesFinalCompositeCooldownUntil(
+      Date.now() + HYPERFRAMES_FINAL_RENDER_DUPLICATE_GUARD_MS,
+    );
     try {
       const productContext = draft
         ? resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null
@@ -7617,6 +7651,8 @@ export default function StoryboardReviewPage() {
     hyperframesFinalPreserveNativeAudio,
     hyperframesFinalMissingVideoDetail,
     hyperframesFinalMissingVideoTitle,
+    hyperframesFinalCompositeDuplicateGuardActive,
+    hyperframesFinalCompositeDuplicateGuardReason,
     hyperframesFinalShotAnimationById,
     hyperframesFinalShotOverlayPresetById,
     hyperframesFinalShotTextById,
@@ -9075,11 +9111,12 @@ export default function StoryboardReviewPage() {
                   disabled={
                     createHyperframesFinalCompositeMutation.isPending ||
                     updateHyperframesFinalCompositeStateMutation.isPending ||
-                    Boolean(hyperframesFinalCompositeDisabledReason)
+                    Boolean(hyperframesFinalCompositeDisabledReason) ||
+                    hyperframesFinalCompositeDuplicateGuardActive
                   }
                   className="h-8 px-3 text-xs"
-                  title={hyperframesFinalCompositeDisabledReason ?? undefined}
-                  aria-disabled={Boolean(hyperframesFinalCompositeDisabledReason)}
+                  title={hyperframesFinalCompositeDisabledReason ?? hyperframesFinalCompositeDuplicateGuardReason ?? undefined}
+                  aria-disabled={Boolean(hyperframesFinalCompositeDisabledReason) || hyperframesFinalCompositeDuplicateGuardActive}
                 >
                   {createHyperframesFinalCompositeMutation.isPending ||
                   updateHyperframesFinalCompositeStateMutation.isPending ? (
@@ -9185,14 +9222,16 @@ export default function StoryboardReviewPage() {
                 </div>
               </div>
             ) : null}
-            {hyperframesFinalCompositeDisabledReason ? (
+            {hyperframesFinalCompositeDisabledReason || hyperframesFinalCompositeDuplicateGuardReason ? (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-semibold">
-                      {locale === "th" ? "ยังไม่พร้อม render" : "Not render-ready"}
+                      {hyperframesFinalCompositeDisabledReason
+                        ? locale === "th" ? "ยังไม่พร้อม render" : "Not render-ready"
+                        : locale === "th" ? "กันการกดซ้ำชั่วคราว" : "Duplicate submit guard"}
                       {": "}
-                      {hyperframesFinalCompositeDisabledReason}
+                      {hyperframesFinalCompositeDisabledReason ?? hyperframesFinalCompositeDuplicateGuardReason}
                     </p>
                     {hyperframesFinalSourceClips.length === 0 ? (
                       <p className="mt-1 leading-relaxed text-amber-800">
@@ -12272,8 +12311,14 @@ export default function StoryboardReviewPage() {
               onCreateHyperframesFinalComposite={createHyperframesFinalComposite}
               isCompounding={isCompounding}
               isCreatingProject={isCreatingProject}
-              isCreatingHyperframesFinalComposite={createHyperframesFinalCompositeMutation.isPending}
-              hyperframesFinalCompositeDisabledReason={hyperframesFinalCompositeDisabledReason}
+              isCreatingHyperframesFinalComposite={
+                createHyperframesFinalCompositeMutation.isPending ||
+                hyperframesFinalCompositeDuplicateGuardActive
+              }
+              hyperframesFinalCompositeDisabledReason={
+                hyperframesFinalCompositeDisabledReason ??
+                hyperframesFinalCompositeDuplicateGuardReason
+              }
               hyperframesFinalCompositeStatus={hyperframesFinalCompositeStatusText}
               isCancellingGeneration={isCancellingGeneration}
               regeneratingTaskId={regeneratingTaskId}
