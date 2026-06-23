@@ -168,6 +168,12 @@ function computeRefreshDelayMs(session: SavedConnectionSession): number {
   return Math.max(60_000, refreshAt - now);
 }
 
+function shouldRefreshBeforeStartingLoop(session: SavedConnectionSession): boolean {
+  const executionExpiresAt = decodeJwtExpirationMs(session.tokens.executionToken);
+  if (!executionExpiresAt) return true;
+  return executionExpiresAt - Date.now() <= 2 * 60 * 1000;
+}
+
 const runtimeRequirements = [
   "Official HyperFrames sidecar for this Worker App build",
   "Managed browser runtime for CSS/HTML render parity",
@@ -303,11 +309,18 @@ function App() {
   }, [connectionState, connectSession, settings.serverUrl]);
 
   const startLoop = async (session: SavedConnectionSession | null = savedConnection) => {
-    if (!session) {
+    let activeSession = session;
+    if (!activeSession) {
       setConnectMessage("Connect this Worker App before starting the worker loop.");
       return;
     }
     try {
+      if (shouldRefreshBeforeStartingLoop(activeSession)) {
+        setConnectMessage("Refreshing Worker App access before starting the loop...");
+        activeSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection");
+        setSavedConnection(activeSession);
+        setConnectedWorker(activeSession.worker);
+      }
       const status = await invoke<WorkerLoopStatus>("worker_app_start_saved_worker_loop");
       setLoopStatus(status);
       setConnectMessage(status.message);

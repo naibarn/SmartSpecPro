@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetDb, mockResolveTenantIdVarchar } = vi.hoisted(() => {
   process.env.JWT_SECRET = "test-jwt-secret-for-users-router-tenant-context";
@@ -61,6 +61,12 @@ function createContext() {
 describe("usersRouter connected workers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-23T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("lists connected workers from the URL tenant before the profile tenant", async () => {
@@ -105,9 +111,51 @@ describe("usersRouter connected workers", () => {
       displayName: "My render worker",
       workerTypeKey: "smart_ai_hub_worker_app",
       runtimeVersion: "0.1.9",
+      status: "offline",
       preferredProviderName: "SmartSpecPro Gateway",
       permissionPreset: "operator_basic",
       permissionScopeCount: 1,
     });
+  });
+
+  it("marks connected workers offline when their heartbeat is stale", async () => {
+    const baseWorker = {
+      displayName: "My render worker",
+      externalReference: "worker-app://machine-01",
+      runtimeType: "desktop_zeroclaw_managed",
+      workerMode: "shared_department",
+      status: "online",
+      machineId: "machine-01",
+      machineName: "NAIBARN-PC",
+      runtimeVersion: "0.1.9",
+      teamId: null,
+      capabilitiesJson: {},
+    };
+    const workerRows = [
+      {
+        ...baseWorker,
+        id: "fresh-worker",
+        lastSeenAt: new Date("2026-06-23T11:59:00.000Z"),
+      },
+      {
+        ...baseWorker,
+        id: "stale-worker",
+        lastSeenAt: new Date("2026-06-23T11:55:00.000Z"),
+      },
+    ];
+    const workerQuery = createSelectChain(workerRows, "orderBy");
+    const groupsQuery = createSelectChain([]);
+    mockGetDb.mockResolvedValue({
+      select: vi.fn()
+        .mockReturnValueOnce(workerQuery)
+        .mockReturnValueOnce(groupsQuery),
+    });
+
+    const result = await usersRouter.createCaller(createContext() as any).listConnectedWorkers();
+
+    expect(result.workers.map((worker) => [worker.workerId, worker.status])).toEqual([
+      ["fresh-worker", "online"],
+      ["stale-worker", "offline"],
+    ]);
   });
 });

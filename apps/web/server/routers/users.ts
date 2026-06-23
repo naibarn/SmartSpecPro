@@ -29,6 +29,7 @@ import {
 } from "../../shared/workerAccessKeys";
 import {
   getWorkerRuntimeDefinition,
+  workerStatusSchema,
   workerRuntimeTypeSchema,
 } from "../../shared/workerRuntime";
 import {
@@ -234,6 +235,27 @@ function normalizeConnectedWorkerSharing(
     sharingMode,
     sharedGroups,
   };
+}
+
+const CONNECTED_WORKER_ONLINE_STALE_MS = 2 * 60 * 1000;
+
+function normalizeConnectedWorkerStatus(worker: {
+  status: z.infer<typeof workerStatusSchema>;
+  lastSeenAt: Date | string | null;
+}): z.infer<typeof workerStatusSchema> {
+  if (worker.status === "disabled" || worker.status === "draining") {
+    return worker.status;
+  }
+  if (!worker.lastSeenAt) {
+    return "offline";
+  }
+  const lastSeenMs = new Date(worker.lastSeenAt).getTime();
+  if (!Number.isFinite(lastSeenMs)) {
+    return "offline";
+  }
+  return Date.now() - lastSeenMs <= CONNECTED_WORKER_ONLINE_STALE_MS
+    ? worker.status
+    : "offline";
 }
 
 export const usersRouter = router({
@@ -1062,7 +1084,7 @@ export const usersRouter = router({
           workerTypeKey: workerType.workerTypeKey,
           workerTypeLabel: workerType.workerTypeLabel,
           workerMode: worker.workerMode,
-          status: worker.status,
+          status: normalizeConnectedWorkerStatus(worker),
           machineId: worker.machineId ?? null,
           machineName: worker.machineName ?? null,
           runtimeVersion: worker.runtimeVersion ?? null,
@@ -1201,7 +1223,7 @@ export const usersRouter = router({
         workerTypeKey: workerType.workerTypeKey,
         workerTypeLabel: workerType.workerTypeLabel,
         workerMode: nextWorkerMode,
-        status: workerRow.status,
+        status: normalizeConnectedWorkerStatus(workerRow),
         machineId: workerRow.machineId ?? null,
         machineName: workerRow.machineName ?? null,
         runtimeVersion: workerRow.runtimeVersion ?? null,
