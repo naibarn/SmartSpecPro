@@ -728,6 +728,7 @@ const browserGpuFlag = process.env.SMARTAIHUB_DISABLE_BROWSER_GPU === "1"
   ? "--no-browser-gpu"
   : "--browser-gpu";
 const enableEncoderGpu = process.env.SMARTAIHUB_ENABLE_GPU_ENCODING === "1";
+const enableHyperframesDebug = process.env.SMARTAIHUB_HYPERFRAMES_DEBUG === "1";
 const env = {
   ...process.env,
   SMARTAIHUB_RUNTIME_ROOT: runtimeRoot,
@@ -773,8 +774,10 @@ const renderArgsFor = (compositionFile, targetOutputPath) => {
     "60000",
     "--browser-timeout",
     "180",
-    "--debug",
   ];
+  if (enableHyperframesDebug) {
+    renderArgs.push("--debug");
+  }
   if (enableEncoderGpu) {
     renderArgs.push("--gpu");
   }

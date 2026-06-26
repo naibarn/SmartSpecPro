@@ -83,6 +83,7 @@ const DEFAULT_RENDER_ENV: &[(&str, &str)] = &[
     ("SMARTAIHUB_ENABLE_GPU_ENCODING", "1"),
     ("SMARTAIHUB_DISABLE_BROWSER_GPU", "1"),
     ("SMARTAIHUB_RENDER_WORKERS", ""),
+    ("SMARTAIHUB_HYPERFRAMES_DEBUG", "0"),
     ("PRODUCER_LOW_MEMORY_MODE", "false"),
 ];
 
@@ -443,7 +444,7 @@ pub fn build_sidecar_command(
                 \n\
                 export HYPERFRAMES_NO_AUTO_INSTALL=1\n\
                 \n\
-                RENDER_TIMEOUT_SECONDS=\"${{RENDER_TIMEOUT_SECONDS:-1200}}\"\n\
+                RENDER_TIMEOUT_SECONDS=\"${{RENDER_TIMEOUT_SECONDS:-3600}}\"\n\
                 \n\
                 sync_render_output() {{\n\
                   if [ -d \"$WSL_OUTPUT_DIR\" ]; then\n\
@@ -664,6 +665,7 @@ pub fn build_sidecar_command(
                 "HYPERFRAMES_NO_AUTO_INSTALL",
                 "SMARTAIHUB_ENABLE_GPU_ENCODING",
                 "SMARTAIHUB_DISABLE_BROWSER_GPU",
+                "SMARTAIHUB_HYPERFRAMES_DEBUG",
             ]
             .join(":"),
         );
@@ -935,7 +937,10 @@ pub fn validate_final_video_artifact(path: &Path) -> Result<u64, String> {
 
 fn to_wsl_path(path: &Path) -> String {
     let s = path.to_string_lossy().to_string();
-    let s = s.replace('\\', "/");
+    let mut s = s.replace('\\', "/");
+    if s.starts_with("//?/") {
+        s = s[4..].to_string();
+    }
     if s.len() >= 2 && s.chars().nth(1) == Some(':') {
         let drive = s.chars().next().unwrap().to_lowercase().to_string();
         format!("/mnt/{}{}", drive, &s[2..])

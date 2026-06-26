@@ -299,8 +299,10 @@ services:
 # ============================================
 volumes:
   postgres_data:
+    name: smartspec_postgres_data
     driver: local
   redis_data:
+    name: smartspec_redis_data
     driver: local
   chroma_data:
     driver: local
@@ -319,4 +321,5 @@ networks:
   data:
     name: smartspec-data
     driver: bridge
-    internal: true
+    # Keep this non-internal so localhost-bound database/cache ports remain
+    # reachable by the host-run systemd web/backend services.

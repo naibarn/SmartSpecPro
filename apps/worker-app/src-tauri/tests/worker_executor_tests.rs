@@ -182,6 +182,13 @@ fn sidecar_command_uses_bundled_wsl2_node_and_runtime_paths() {
             .envs
             .get("SMARTAIHUB_DISABLE_BROWSER_GPU")
             .map(String::as_str),
+        Some("1")
+    );
+    assert_eq!(
+        command
+            .envs
+            .get("SMARTAIHUB_HYPERFRAMES_DEBUG")
+            .map(String::as_str),
         Some("0")
     );
     assert!(command
@@ -243,27 +250,29 @@ fn sidecar_command_can_use_managed_wsl_runtime_root() {
     assert_eq!(command.executable, std::path::PathBuf::from("wsl.exe"));
     assert_eq!(command.args[0], "-e");
     assert_eq!(command.args[1], "bash");
-    assert_eq!(command.args[2], "-lc");
-    assert!(command.args[3].contains("ROOT=\"${HOME}/.smartaihub-worker/runtime\""));
-    assert!(command.args[3]
-        .contains("CONFIGURED_WORKSPACE_ROOT=\"${HOME}/smartaihub-worker/workspace\""));
-    assert!(
-        command.args[3].contains("WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"")
-    );
-    assert!(command.args[3].contains("cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/"));
-    assert!(command.args[3].contains("--workspace \"$WSL_JOB_WORKSPACE\""));
-    assert!(command.args[3].contains("cp -a \"$WSL_OUTPUT_DIR\"/. \"$WINDOWS_OUTPUT_DIR\"/"));
-    assert!(command.args[3].contains("runtime-pack/node/bin/node"));
-    assert!(command.args[3].contains("runtime-pack/hyperframes-sidecar/render.mjs"));
-    assert!(command.args[3].contains("HYPERFRAMES_NO_AUTO_INSTALL=1"));
-    assert!(command.args[3].contains("SMARTAIHUB_ENABLE_GPU_ENCODING"));
-    assert!(command.args[3].contains("SMARTAIHUB_DISABLE_BROWSER_GPU"));
-    assert!(command.args[3].contains("setsid"));
-    assert!(command.args[3].contains("trap cleanup_render_tree EXIT INT TERM HUP"));
-    assert!(command.args[3].contains("kill -TERM -\"$render_pid\""));
-    assert!(command.args[3].contains("kill -KILL -\"$render_pid\""));
-    assert!(command.args[3].contains("wait \"$render_pid\""));
-    assert!(!command.args[3].contains("\nexec \"$ROOT/runtime-pack/node/bin/node\""));
+    assert_eq!(command.args[2], "-s");
+    let script = command
+        .stdin_data
+        .as_ref()
+        .expect("managed WSL command should run the render script via stdin");
+    assert!(script.contains("ROOT=\"${HOME}/.smartaihub-worker/runtime\""));
+    assert!(script.contains("CONFIGURED_WORKSPACE_ROOT=\"${HOME}/smartaihub-worker/workspace\""));
+    assert!(script.contains("WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\""));
+    assert!(script.contains("cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/"));
+    assert!(script.contains("--workspace \"$WSL_JOB_WORKSPACE\""));
+    assert!(script.contains("cp -a \"$WSL_OUTPUT_DIR\"/. \"$WINDOWS_OUTPUT_DIR\"/"));
+    assert!(script.contains("runtime-pack/node/bin/node"));
+    assert!(script.contains("runtime-pack/hyperframes-sidecar/render.mjs"));
+    assert!(script.contains("HYPERFRAMES_NO_AUTO_INSTALL=1"));
+    assert!(script.contains("SMARTAIHUB_ENABLE_GPU_ENCODING"));
+    assert!(script.contains("SMARTAIHUB_DISABLE_BROWSER_GPU"));
+    assert!(script.contains("RENDER_TIMEOUT_SECONDS=\"${RENDER_TIMEOUT_SECONDS:-3600}\""));
+    assert!(script.contains("setsid"));
+    assert!(script.contains("trap cleanup_render_tree EXIT INT TERM HUP"));
+    assert!(script.contains("kill -TERM -\"$render_pid\""));
+    assert!(script.contains("kill -KILL -\"$render_pid\""));
+    assert!(script.contains("wait \"$render_pid\""));
+    assert!(!script.contains("\nexec \"$ROOT/runtime-pack/node/bin/node\""));
     let cleanup = command
         .cleanup
         .as_ref()
@@ -271,13 +280,17 @@ fn sidecar_command_can_use_managed_wsl_runtime_root() {
     assert_eq!(cleanup.executable, std::path::PathBuf::from("wsl.exe"));
     assert_eq!(cleanup.args[0], "-e");
     assert_eq!(cleanup.args[1], "bash");
-    assert_eq!(cleanup.args[2], "-lc");
-    assert!(cleanup.args[3].contains("pgrep -f"));
-    assert!(cleanup.args[3].contains("hyperframes-sidecar/render.mjs.*--workspace"));
-    assert!(cleanup.args[3]
+    assert_eq!(cleanup.args[2], "-s");
+    let cleanup_script = cleanup
+        .stdin_data
+        .as_ref()
+        .expect("managed WSL cleanup should run via stdin");
+    assert!(cleanup_script.contains("pgrep -f"));
+    assert!(cleanup_script.contains("hyperframes-sidecar/render.mjs.*--workspace"));
+    assert!(cleanup_script
         .contains("CONFIGURED_WORKSPACE_ROOT=\"${HOME}/smartaihub-worker/workspace\""));
-    assert!(cleanup.args[3].contains("kill -TERM -\"$pgid\""));
-    assert!(cleanup.args[3].contains("kill -KILL -\"$pgid\""));
+    assert!(cleanup_script.contains("kill -TERM -\"$pgid\""));
+    assert!(cleanup_script.contains("kill -KILL -\"$pgid\""));
     assert_eq!(
         command
             .envs

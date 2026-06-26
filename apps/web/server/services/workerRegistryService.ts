@@ -275,12 +275,49 @@ function mergeRuntimeMetadata(
     isPlainObject(capabilitiesJson) ? capabilitiesJson : {},
   ) as Record<string, unknown>;
   const sanitizedRuntimeMetadata = sanitizeWorkerPayload(runtimeMetadataJson) as Record<string, unknown>;
+  const capabilitiesWithHeartbeatPolicy = mergeWorkerAppHeartbeatPolicy(
+    sanitizedCapabilities,
+    sanitizedRuntimeMetadata,
+  );
   if (Object.keys(sanitizedRuntimeMetadata).length === 0) {
-    return sanitizedCapabilities;
+    return capabilitiesWithHeartbeatPolicy;
   }
   return {
-    ...sanitizedCapabilities,
+    ...capabilitiesWithHeartbeatPolicy,
     runtimeMetadata: sanitizedRuntimeMetadata,
+  };
+}
+
+function mergeWorkerAppHeartbeatPolicy(
+  capabilitiesJson: Record<string, unknown>,
+  runtimeMetadataJson: Record<string, unknown>,
+): Record<string, unknown> {
+  const rawClaimEnabled = runtimeMetadataJson.claimEnabled;
+  const rawAcceptJobs = runtimeMetadataJson.acceptJobs;
+  const nextAcceptJobs = typeof rawClaimEnabled === "boolean"
+    ? rawClaimEnabled
+    : typeof rawAcceptJobs === "boolean"
+      ? rawAcceptJobs
+      : undefined;
+  const rawSharingMode = runtimeMetadataJson.sharingMode;
+  const nextSharingMode = typeof rawSharingMode === "string" && rawSharingMode.trim().length > 0
+    ? rawSharingMode
+    : undefined;
+
+  if (typeof nextAcceptJobs !== "boolean" && !nextSharingMode) {
+    return capabilitiesJson;
+  }
+
+  const workerApp = isPlainObject(capabilitiesJson.workerApp)
+    ? capabilitiesJson.workerApp
+    : {};
+  return {
+    ...capabilitiesJson,
+    workerApp: {
+      ...workerApp,
+      ...(typeof nextAcceptJobs === "boolean" ? { acceptJobs: nextAcceptJobs } : {}),
+      ...(nextSharingMode ? { sharingMode: nextSharingMode } : {}),
+    },
   };
 }
 

@@ -682,6 +682,80 @@ describe("workerRegistryService", () => {
     );
   });
 
+  it("syncs worker app queue pickup policy from heartbeat runtime metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+
+    const worker = {
+      id: "worker-app-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "online",
+      capabilitiesJson: {
+        workerApp: {
+          acceptJobs: false,
+          sharingMode: "tenant",
+        },
+      },
+      healthSummaryJson: {},
+    };
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({
+        ...worker,
+        ...values,
+      })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-app-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-app-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.122",
+          runtimeFamilySchemaVersion: "2026-04-08",
+          runtimeProfileSchemaVersion: "2026-04-08",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          acceptJobs: true,
+          claimEnabled: true,
+          doctorStatus: "ready",
+          sharingMode: "tenant",
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-app-1",
+      expect.objectContaining({
+        capabilitiesJson: expect.objectContaining({
+          workerApp: expect.objectContaining({
+            acceptJobs: true,
+            sharingMode: "tenant",
+          }),
+          runtimeMetadata: expect.objectContaining({
+            acceptJobs: true,
+            claimEnabled: true,
+            doctorStatus: "ready",
+          }),
+        }),
+      }),
+    );
+  });
+
   it("rejects revoked worker tokens before mutating heartbeat state", async () => {
     const { recordWorkerHeartbeat } = await import("../workerRegistryService");
 
