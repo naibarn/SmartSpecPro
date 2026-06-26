@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
 
@@ -17,6 +18,11 @@ type Settings = {
   runtimeChannel: "stable" | "preview";
   runtimeVersion: string;
   diagnosticsLevel: "errors" | "standard" | "verbose";
+  useWsl2: boolean;
+  runtimeDir: string;
+  runtimeEnvironment: "runtime_pack" | "managed_wsl";
+  managedWslRoot: string;
+  managedWslWorkspaceRoot: string;
 };
 
 type DoctorCheck = {
@@ -30,15 +36,34 @@ type DoctorSummary = {
   status: "ready" | "degraded" | "blocked";
   checks: DoctorCheck[];
   recommendedActions: string[];
+  officialHyperframesRuntime?: boolean | null;
+  runtimeKind?: string | null;
+};
+
+type LastJobSummary = {
+  jobId: string;
+  jobLabel: string;
+  projectName?: string | null;
+  status: string;
+  message: string;
+  logPath?: string | null;
 };
 
 type ExecutorState = {
   acceptingJobs: boolean;
   currentJobId?: string | null;
   currentJobLabel?: string | null;
+  currentJobType?: string | null;
+  currentProjectId?: string | null;
+  currentProjectName?: string | null;
+  queueDepth: number;
   progressPercent: number;
   status: "idle" | "polling" | "running" | "paused" | "error";
   lastMessage: string;
+  manualCommand?: string | null;
+  previewCommand?: string | null;
+  logTail?: string | null;
+  lastCompletedJob?: LastJobSummary | null;
 };
 
 type WorkerLoopStatus = {
@@ -82,13 +107,6 @@ type SavedConnectionSession = {
   lastRefreshedAt: string | null;
 };
 
-type RuntimeInstallResult = {
-  status: "installed" | "blocked" | "error";
-  message: string;
-  doctor: DoctorSummary;
-  manifest?: Record<string, unknown> | null;
-};
-
 const fallbackSettings: Settings = {
   serverUrl: SMART_AI_HUB_CLOUD_URL,
   workerLabel: "My render worker",
@@ -101,29 +119,57 @@ const fallbackSettings: Settings = {
   runtimeChannel: "stable",
   runtimeVersion: "not-installed",
   diagnosticsLevel: "standard",
+  useWsl2: true,
+  runtimeDir: "",
+  runtimeEnvironment: "managed_wsl",
+  managedWslRoot: "~/.smartaihub-worker/runtime",
+  managedWslWorkspaceRoot: "",
 };
 
 const fallbackDoctor: DoctorSummary = {
   status: "blocked",
   checks: [
     {
-      id: "runtime_manifest",
+      id: "managed_wsl_runtime",
       status: "error",
-      message: "Render runtime is not installed.",
+      message: "Managed WSL runtime has not been checked yet.",
       detailsJson: {},
     },
   ],
-  recommendedActions: ["Install official HyperFrames runtime pack"],
+  recommendedActions: [
+    "Prepare the managed WSL runtime environment, then run checks again.",
+  ],
 };
 
 const fallbackExecutor: ExecutorState = {
   acceptingJobs: false,
   currentJobId: null,
   currentJobLabel: null,
+  currentJobType: null,
+  currentProjectId: null,
+  currentProjectName: null,
+  queueDepth: 0,
   progressPercent: 0,
   status: "idle",
   lastMessage: "Idle. Connect and pass readiness checks to accept jobs.",
+  manualCommand: null,
+  previewCommand: null,
+  logTail: null,
 };
+
+function renderTerminalText(executor: ExecutorState): string {
+  if (executor.logTail?.trim()) {
+    return executor.logTail;
+  }
+  if (!executor.currentJobId) {
+    return "";
+  }
+  return [
+    "Waiting for HyperFrames render output...",
+    executor.lastMessage,
+    "If CPU or memory stays high without new lines, the render process may be stuck before HyperFrames emits progress.",
+  ].filter(Boolean).join("\n");
+}
 
 const fallbackLoopStatus: WorkerLoopStatus = {
   running: false,
@@ -137,6 +183,11 @@ async function safeInvoke<T>(command: string, fallback: T, args?: Record<string,
   } catch {
     return fallback;
   }
+}
+
+function formatInvokeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
 
 function decodeBase64UrlJson<T>(value: string): T | null {
@@ -160,26 +211,45 @@ function decodeJwtExpirationMs(token: string | null | undefined): number | null 
 
 function computeRefreshDelayMs(session: SavedConnectionSession): number {
   const executionExpiresAt = decodeJwtExpirationMs(session.tokens.executionToken);
+  const uploadExpiresAt = decodeJwtExpirationMs(session.tokens.uploadToken) ?? executionExpiresAt;
   if (!executionExpiresAt) {
     return 6 * 60 * 60 * 1000;
   }
+  const minExpiresAt = Math.min(executionExpiresAt, uploadExpiresAt!);
   const now = Date.now();
-  const refreshAt = executionExpiresAt - (15 * 60 * 1000);
+  const refreshAt = minExpiresAt - (15 * 60 * 1000);
   return Math.max(60_000, refreshAt - now);
 }
 
 function shouldRefreshBeforeStartingLoop(session: SavedConnectionSession): boolean {
   const executionExpiresAt = decodeJwtExpirationMs(session.tokens.executionToken);
+  const uploadExpiresAt = decodeJwtExpirationMs(session.tokens.uploadToken) ?? executionExpiresAt;
   if (!executionExpiresAt) return true;
-  return executionExpiresAt - Date.now() <= 2 * 60 * 1000;
+  const minExpiresAt = Math.min(executionExpiresAt, uploadExpiresAt!);
+  return minExpiresAt - Date.now() <= 2 * 60 * 1000;
+}
+
+function shouldClearSavedConnectionAfterRefreshError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return [
+    "revoked",
+    "reuse",
+    "replay",
+    "expired refresh",
+    "refresh token is invalid",
+    "refresh token is missing worker binding",
+    "does not include a refresh token",
+    "device proof",
+    "wrong device",
+  ].some((marker) => normalized.includes(marker));
 }
 
 const runtimeRequirements = [
-  "Official HyperFrames sidecar for this Worker App build",
-  "Managed browser runtime for CSS/HTML render parity",
-  "FFmpeg and ffprobe binaries",
-  "Thai font pack for subtitle and overlay output",
-  "Writable workspace folder for staging and uploads",
+  "WSL2 host responds to wsl.exe --status on Windows",
+  "Prepare checks the latest Smart AI Hub runtime manifest and updates the WSL root when HyperFrames changes",
+  "Managed WSL runtime root contains Node 22+ and the HyperFrames render script",
+  "Linux Chrome Headless Shell plus FFmpeg and ffprobe are executable in WSL",
+  "Chrome shared libraries, fontconfig, and Noto/Liberation fonts are resolved inside WSL",
 ];
 
 function App() {
@@ -191,30 +261,63 @@ function App() {
   const [connectedWorker, setConnectedWorker] = useState<WorkerConnectPollResponse["worker"]>(null);
   const [connectMessage, setConnectMessage] = useState("");
   const [runtimeInstallMessage, setRuntimeInstallMessage] = useState("");
-  const [runtimeInstalling, setRuntimeInstalling] = useState(false);
+  const [doctorRunning, setDoctorRunning] = useState(false);
   const [savedConnection, setSavedConnection] = useState<SavedConnectionSession | null>(null);
   const [loopStatus, setLoopStatus] = useState<WorkerLoopStatus>(fallbackLoopStatus);
+  const [appVersion, setAppVersion] = useState("");
+  const [localRunning, setLocalRunning] = useState(false);
+  const [localResult, setLocalResult] = useState<string | null>(null);
+  const connectionStateRef = useRef(connectionState);
+  const loopStartingRef = useRef(false);
+  const liveLogRef = useRef<HTMLPreElement | null>(null);
 
-  async function refresh(options: { updateConnectionMessage?: boolean } = {}) {
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
+
+  useEffect(() => {
+    void getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion(""));
+  }, []);
+
+  async function refresh(options: { updateConnectionMessage?: boolean; fullDoctor?: boolean } = {}) {
     const updateConnectionMessage = options.updateConnectionMessage ?? true;
+    const doctorCommand = options.fullDoctor || loopStatus.running ? "worker_app_run_full_doctor" : "worker_app_run_doctor";
+    const restoredConnectionResult = invoke<SavedConnectionSession | null>("worker_app_get_saved_connection")
+      .then((connection) => ({ connection, error: null as string | null }))
+      .catch((error) => ({ connection: null, error: formatInvokeError(error) }));
     const [nextSettings, nextDoctor, nextExecutor, nextLoopStatus, restoredConnection] = await Promise.all([
       safeInvoke<Settings>("worker_app_get_settings", fallbackSettings),
-      safeInvoke<DoctorSummary>("worker_app_run_doctor", fallbackDoctor),
+      safeInvoke<DoctorSummary>(doctorCommand, fallbackDoctor),
       safeInvoke<ExecutorState>("worker_app_get_executor_state", fallbackExecutor),
       safeInvoke<WorkerLoopStatus>("worker_app_get_worker_loop_status", fallbackLoopStatus),
-      safeInvoke<SavedConnectionSession | null>("worker_app_get_saved_connection", null),
+      restoredConnectionResult,
     ]);
     setSettings(nextSettings);
     setDoctor(nextDoctor);
     setExecutor(nextExecutor);
     setLoopStatus(nextLoopStatus);
-    setSavedConnection(restoredConnection);
-    setConnectedWorker(restoredConnection?.worker ?? null);
-    if (restoredConnection) {
+
+    if (restoredConnection.error) {
+      setSavedConnection(null);
+      setConnectedWorker(null);
+      if (updateConnectionMessage) {
+        setConnectionState("error");
+        setConnectMessage(`Unable to restore saved Worker App connection: ${restoredConnection.error}`);
+      }
+      return;
+    }
+
+    setSavedConnection(restoredConnection.connection);
+    setConnectedWorker(restoredConnection.connection?.worker ?? null);
+    if (restoredConnection.connection) {
       setConnectionState("connected");
       if (updateConnectionMessage) {
-        setConnectMessage("Connected. Access tokens will refresh automatically.");
+        setConnectMessage("Restored saved Worker App connection. Access tokens will refresh automatically.");
       }
+    } else if (connectionStateRef.current !== "pending") {
+      setConnectionState("not_connected");
     }
   }
 
@@ -230,11 +333,70 @@ function App() {
     return () => window.clearInterval(handle);
   }, [loopStatus.running]);
 
+  useEffect(() => {
+    const logEl = liveLogRef.current;
+    if (!logEl) return;
+    logEl.scrollTop = logEl.scrollHeight;
+  }, [executor.logTail]);
+
   const readinessLabel = useMemo(() => {
     if (doctor.status === "ready") return "Ready for render jobs";
     if (doctor.status === "degraded") return "Needs attention";
     return "Runtime blocked";
   }, [doctor.status]);
+
+  const doctorCheckById = useMemo(() => {
+    return new Map(doctor.checks.map((check) => [check.id, check]));
+  }, [doctor.checks]);
+
+  const readinessSummaryItems = useMemo(
+    () => [
+      {
+        id: "wsl2",
+        label: "WSL2 readiness",
+        check:
+          doctorCheckById.get("wsl2_browser_dependencies") ??
+          doctorCheckById.get("wsl2_host") ??
+          doctorCheckById.get("wsl2_runtime_profile"),
+      },
+      {
+        id: "runtime",
+        label: "Managed runtime",
+        check: (() => {
+          const checks = [
+            doctorCheckById.get("managed_wsl_runtime"),
+            doctorCheckById.get("hyperframes_native_dependencies"),
+            doctorCheckById.get("official_hyperframes_renderer"),
+            doctorCheckById.get("runtime_bundle"),
+            doctorCheckById.get("runtime_manifest"),
+          ].filter((check): check is DoctorCheck => Boolean(check));
+          return (
+            checks.find((check) => check.status === "error") ??
+            checks.find((check) => check.status === "warn") ??
+            checks[0]
+          );
+        })(),
+      },
+      {
+        id: "installer",
+        label: "Install set",
+        check: doctorCheckById.get("installer_set") ?? doctorCheckById.get("runtime_signature_bundle"),
+      },
+    ],
+    [doctorCheckById],
+  );
+
+  const startLoopDisabled = !savedConnection || loopStatus.running || connectionState === "pending";
+  const stopLoopDisabled = !loopStatus.running;
+  const terminalText = renderTerminalText(executor);
+  const startLoopLabel = loopStatus.running
+    ? "Loop already running"
+    : savedConnection
+      ? "Start worker loop"
+      : connectionState === "pending"
+        ? "Waiting for approval"
+        : "Connect before starting";
+  const stopLoopLabel = loopStatus.running ? "Stop loop" : "Loop already stopped";
 
   const saveSettings = async (patch: Partial<Settings>) => {
     const nextSettings = { ...settings, ...patch };
@@ -320,11 +482,13 @@ function App() {
   }, [connectionState, connectSession, settings.serverUrl]);
 
   const startLoop = async (session: SavedConnectionSession | null = savedConnection) => {
+    if (loopStartingRef.current) return;
     let activeSession = session;
     if (!activeSession) {
       setConnectMessage("Connect this Worker App before starting the worker loop.");
       return;
     }
+    loopStartingRef.current = true;
     try {
       if (shouldRefreshBeforeStartingLoop(activeSession)) {
         setConnectMessage("Refreshing Worker App access before starting the loop...");
@@ -332,13 +496,24 @@ function App() {
         setSavedConnection(activeSession);
         setConnectedWorker(activeSession.worker);
       }
-      const status = await invoke<WorkerLoopStatus>("worker_app_start_saved_worker_loop");
+      const status = await invoke<WorkerLoopStatus>("worker_app_start_worker_loop", {
+        request: {
+          serverUrl: activeSession.serverUrl,
+          workerId: activeSession.worker.id,
+          workerLabel: activeSession.worker.displayName,
+          executionToken: activeSession.tokens.executionToken,
+          uploadToken: activeSession.tokens.uploadToken,
+        },
+      });
       setLoopStatus(status);
       setConnectMessage(status.message);
-      void refresh();
+      void refresh({ fullDoctor: status.running });
     } catch (error) {
       setLoopStatus({ running: false, mode: "manual", message: String(error) });
-      setConnectMessage(error instanceof Error ? error.message : String(error));
+      setConnectionState("error");
+      setConnectMessage(formatInvokeError(error));
+    } finally {
+      loopStartingRef.current = false;
     }
   };
 
@@ -349,20 +524,41 @@ function App() {
     void refresh();
   };
 
-  const installRuntime = async () => {
-    setRuntimeInstalling(true);
-    setRuntimeInstallMessage("Checking Smart AI Hub runtime release...");
+  const runLocalCommand = async () => {
+    if (!executor.manualCommand) return;
+    setLocalRunning(true);
+    setLocalResult("Running local render... Please wait. This may take several minutes.");
     try {
-      const result = await invoke<RuntimeInstallResult>("worker_app_install_runtime_pack");
-      setDoctor(result.doctor);
-      setRuntimeInstallMessage(result.message);
-      if (result.status === "installed") {
-        void refresh();
-      }
+      const result = await invoke<string>("worker_app_run_manual_command", { command: executor.manualCommand });
+      setLocalResult(result);
     } catch (error) {
-      setRuntimeInstallMessage(error instanceof Error ? error.message : String(error));
+      setLocalResult(formatInvokeError(error));
     } finally {
-      setRuntimeInstalling(false);
+      setLocalRunning(false);
+    }
+  };
+
+  const runLocalPreview = async () => {
+    if (!executor.previewCommand) return;
+    setLocalRunning(true);
+    setLocalResult("Starting preview server locally...");
+    try {
+      const result = await invoke<string>("worker_app_run_manual_command", { command: executor.previewCommand });
+      setLocalResult(result);
+    } catch (error) {
+      setLocalResult(formatInvokeError(error));
+    } finally {
+      setLocalRunning(false);
+    }
+  };
+
+  const runDoctorChecks = async () => {
+    setDoctorRunning(true);
+    try {
+      const nextDoctor = await safeInvoke<DoctorSummary>("worker_app_run_full_doctor", fallbackDoctor);
+      setDoctor(nextDoctor);
+    } finally {
+      setDoctorRunning(false);
     }
   };
 
@@ -381,14 +577,19 @@ function App() {
         const nextSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection");
         if (cancelled) return;
         setSavedConnection(nextSession);
+        setConnectedWorker(nextSession.worker);
+        setConnectionState("connected");
         setConnectMessage("Connected. Access renewed automatically.");
       } catch (error) {
         if (cancelled) return;
-        await safeInvoke<void>("worker_app_clear_saved_connection", undefined);
-        setSavedConnection(null);
-        setConnectedWorker(null);
+        const message = formatInvokeError(error);
+        if (shouldClearSavedConnectionAfterRefreshError(message)) {
+          await safeInvoke<void>("worker_app_clear_saved_connection", undefined);
+          setSavedConnection(null);
+          setConnectedWorker(null);
+        }
         setConnectionState("error");
-        setConnectMessage(error instanceof Error ? error.message : "Connection expired. Start Connect again.");
+        setConnectMessage(`${message}. Reconnect this Worker App if browser approval was revoked or expired.`);
       }
     }, computeRefreshDelayMs(savedConnection));
 
@@ -404,6 +605,7 @@ function App() {
         <div>
           <p className="eyebrow">Lightweight worker helper</p>
           <h1>Smart AI Hub Worker App</h1>
+          {appVersion ? <p className="app-version">Version {appVersion}</p> : null}
           <p className="subtle">
             Connect in your browser, verify the render runtime, then let this app process jobs in
             the background.
@@ -446,11 +648,21 @@ function App() {
                 : "Connect to Smart AI Hub"}
           </button>
           <div className="button-row">
-            <button type="button" className="secondary-button" onClick={() => void startLoop()}>
-              Start worker loop
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void startLoop()}
+              disabled={startLoopDisabled}
+            >
+              {startLoopLabel}
             </button>
-            <button type="button" className="secondary-button" onClick={() => void stopLoop()}>
-              Stop loop
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void stopLoop()}
+              disabled={stopLoopDisabled}
+            >
+              {stopLoopLabel}
             </button>
           </div>
         </article>
@@ -460,13 +672,138 @@ function App() {
             <p className="eyebrow">Current job</p>
             <h2>{executor.currentJobLabel || "No active job"}</h2>
           </div>
+          <div className="queue-summary" aria-label="Worker queue summary">
+            <div>
+              <span>Waiting queue</span>
+              <strong>{executor.queueDepth}</strong>
+            </div>
+            <div>
+              <span>Active render</span>
+              <strong>{executor.currentJobId ? "Running" : "None"}</strong>
+            </div>
+          </div>
+          {executor.currentJobId ? (
+            <dl className="job-details">
+              <div>
+                <dt>Job ID</dt>
+                <dd>{executor.currentJobId}</dd>
+              </div>
+              {executor.currentJobType ? (
+                <div>
+                  <dt>Job type</dt>
+                  <dd>{executor.currentJobType}</dd>
+                </div>
+              ) : null}
+              {executor.currentProjectName ? (
+                <div>
+                  <dt>Project</dt>
+                  <dd>{executor.currentProjectName}</dd>
+                </div>
+              ) : null}
+              {executor.currentProjectId ? (
+                <div>
+                  <dt>Project ID</dt>
+                  <dd>{executor.currentProjectId}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
           <p className={`loop-badge ${loopStatus.running ? "running" : "stopped"}`}>
             {loopStatus.running ? "Loop running" : "Loop stopped"} · {loopStatus.mode}
           </p>
           <div className="progress-track" aria-label="Current job progress">
             <span style={{ width: `${executor.progressPercent}%` }} />
           </div>
-          <p className="subtle">{executor.lastMessage}</p>
+          {!executor.currentJobId ? <p className="subtle">{executor.lastMessage}</p> : null}
+          
+          {executor.currentJobId ? (
+            <div className="live-log-tail">
+              <div className="live-log-header">
+                <span className="eyebrow">Live Render Output</span>
+                <span>{executor.progressPercent}%</span>
+              </div>
+              <pre ref={liveLogRef}>{terminalText}</pre>
+            </div>
+          ) : null}
+
+          {executor.manualCommand ? (
+            <div className="manual-command-box">
+              <div className="manual-command-header">
+                <span className="eyebrow">Manual Commands</span>
+              </div>
+              <div style={{ marginTop: "8px", marginBottom: "8px" }}>
+                <p style={{ fontWeight: "bold", marginBottom: "4px" }}>Render Command:</p>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                  <button 
+                    type="button" 
+                    className="secondary-button small"
+                    onClick={() => void runLocalCommand()}
+                    disabled={localRunning}
+                    title="Run render command locally to bypass the cloud queue"
+                  >
+                    {localRunning ? "Running..." : "Run Render Locally"}
+                  </button>
+                  <button 
+                    type="button" 
+                    className="copy-button"
+                    onClick={() => navigator.clipboard.writeText(executor.manualCommand!)}
+                    title="Copy command to clipboard"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <pre className="manual-command-text">{executor.manualCommand}</pre>
+              </div>
+
+              {executor.previewCommand ? (
+                <div style={{ marginTop: "16px" }}>
+                  <p style={{ fontWeight: "bold", marginBottom: "4px" }}>Preview Command:</p>
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                    <button 
+                      type="button" 
+                      className="secondary-button small"
+                      onClick={() => void runLocalPreview()}
+                      disabled={localRunning}
+                      title="Run preview server locally"
+                    >
+                      {localRunning ? "Running..." : "Run Preview Locally"}
+                    </button>
+                    <button 
+                      type="button" 
+                      className="copy-button"
+                      onClick={() => navigator.clipboard.writeText(executor.previewCommand!)}
+                      title="Copy preview command to clipboard"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <pre className="manual-command-text">{executor.previewCommand}</pre>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {executor.lastCompletedJob ? (
+            <div className={`last-job-summary ${executor.lastCompletedJob.status}`}>
+              <div className="panel-heading">
+                <p className="eyebrow">Last job</p>
+                <h3>{executor.lastCompletedJob.jobLabel}</h3>
+              </div>
+              <p className="subtle">Project: {executor.lastCompletedJob.projectName || "Unknown"}</p>
+              <p className="last-job-status">
+                Status: <strong>{executor.lastCompletedJob.status.toUpperCase()}</strong> - {executor.lastCompletedJob.message}
+              </p>
+              {executor.lastCompletedJob.logPath ? (
+                <button
+                  type="button"
+                  className="secondary-button small"
+                  onClick={() => invoke("worker_app_open_file", { path: executor.lastCompletedJob!.logPath })}
+                >
+                  View Render Log
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </article>
 
         <article className="panel wide">
@@ -475,9 +812,25 @@ function App() {
               <p className="eyebrow">Readiness</p>
               <h2>Runtime doctor</h2>
             </div>
-            <button type="button" className="secondary-button" onClick={() => void refresh()}>
-              Run checks
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void runDoctorChecks()}
+              disabled={doctorRunning}
+            >
+              {doctorRunning ? "Checking..." : "Run checks"}
             </button>
+          </div>
+          <div className="readiness-summary">
+            {readinessSummaryItems.map((item) => (
+              <div className="readiness-card" key={item.id}>
+                <span className={`status-dot ${item.check?.status ?? "warn"}`} />
+                <div>
+                  <strong>{item.label}</strong>
+                  <p>{item.check?.message ?? "Run checks to verify this requirement."}</p>
+                </div>
+              </div>
+            ))}
           </div>
           <div className="check-list">
             {doctor.checks.map((check) => (
@@ -492,30 +845,50 @@ function App() {
           </div>
           {doctor.recommendedActions.length > 0 ? (
             <div className="runtime-help">
-              <strong>Required for HyperFrames jobs</strong>
+              <strong>What to fix next</strong>
+              <ul>
+                {doctor.recommendedActions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <strong className="runtime-help-subheading">Complete managed WSL install set</strong>
               <ul>
                 {runtimeRequirements.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
               <p className="subtle">
-                The Worker App downloads the official pack from Smart AI Hub, verifies its
-                checksum, installs it locally, then re-runs readiness checks. It will not claim
-                render jobs until the installed pack is allowed and complete.
+                Managed WSL is the default render path. The Worker App runs directly from the WSL runtime root and reports
+                the real missing file, executable, or shared library instead of falling back to the legacy runtime path.
               </p>
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => void installRuntime()}
-                disabled={runtimeInstalling}
+                onClick={async () => {
+                  try {
+                    const message = await invoke<string>("worker_app_open_managed_wsl_runtime_setup");
+                    setRuntimeInstallMessage(message);
+                  } catch (err) {
+                    setRuntimeInstallMessage("Failed to open managed WSL setup: " + err);
+                  }
+                }}
               >
-                {runtimeInstalling ? "Installing runtime..." : "Download render runtime"}
+                Prepare managed WSL runtime
               </button>
               {runtimeInstallMessage ? (
                 <p className="connect-message">{runtimeInstallMessage}</p>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <div className="runtime-help">
+              <p className="subtle">
+                Managed WSL runtime is ready. Render jobs will run from the configured WSL runtime root.
+              </p>
+              {runtimeInstallMessage ? (
+                <p className="connect-message">{runtimeInstallMessage}</p>
+              ) : null}
+            </div>
+          )}
         </article>
 
         <article className="panel wide settings-panel">
@@ -594,6 +967,45 @@ function App() {
               />
               Start with Windows sign-in
             </label>
+            <label>
+              Managed WSL runtime root
+              <input
+                type="text"
+                value={settings.managedWslRoot}
+                onChange={(event) => void saveSettings({ managedWslRoot: event.target.value })}
+              />
+              <span className="field-help">
+                This folder lives inside WSL, for example ~/.smartaihub-worker/runtime. The setup terminal installs Node, HyperFrames, Chrome, FFmpeg, and Linux dependencies into this root.
+              </span>
+            </label>
+            <label>
+              Managed WSL workspace root
+              <input
+                type="text"
+                placeholder="Auto: sibling workspace next to the runtime root"
+                value={settings.managedWslWorkspaceRoot}
+                onChange={(event) => void saveSettings({ managedWslWorkspaceRoot: event.target.value })}
+              />
+              <span className="field-help">
+                Render jobs are staged here inside WSL before running. Keep this on the Linux filesystem or on the same drive as your managed WSL runtime; avoid /mnt/c for large video jobs.
+              </span>
+            </label>
+            <div style={{ marginTop: '8px' }}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={async () => {
+                  try {
+                    const message = await invoke<string>("worker_app_open_managed_wsl_runtime_setup");
+                    setRuntimeInstallMessage(message);
+                  } catch (err) {
+                    setRuntimeInstallMessage("Failed to open managed WSL setup: " + err);
+                  }
+                }}
+              >
+                Prepare managed WSL runtime
+              </button>
+            </div>
             <p className="field-help">
               This is Windows user-login autostart, not a Windows service. Service mode is not
               installed in this build and will not be shown as ready.

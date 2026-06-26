@@ -119,6 +119,10 @@ import {
   shutdownBrowserAutomationClaimReconcilerJob,
 } from "../jobs/browserAutomationClaimReconciler";
 import {
+  initializeWorkerStallWatchdogJob,
+  shutdownWorkerStallWatchdogJob,
+} from "../jobs/workerStallWatchdogJob";
+import {
   initializeProductionExecutionReconciliationJob,
   shutdownProductionExecutionReconciliationJob,
 } from "../jobs/productionExecutionReconciliationJob";
@@ -1720,6 +1724,12 @@ async function main() {
   }
 
   try {
+    await initializeWorkerStallWatchdogJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize worker stall watchdog job:", error);
+  }
+
+  try {
     await initializeProductionExecutionReconciliationJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize production execution reconciler job:", error);
@@ -1851,6 +1861,7 @@ process.on("SIGTERM", async () => {
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
+  await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
@@ -1916,6 +1927,7 @@ process.on("SIGINT", async () => {
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
+  await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});

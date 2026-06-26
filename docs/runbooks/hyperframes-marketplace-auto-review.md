@@ -9,6 +9,11 @@
    unlock render completion, Library save, or credit charging.
    Use a Node >=22.22 worker runtime for official HyperFrames execution because
    the pinned HyperFrames packages require Node 22+.
+   For the desktop Worker App, publish and validate the WSL2 runtime pack
+   (`hyperframes-wsl2`) first. The pack must contain Linux Node, Chrome or
+   headless shell, FFmpeg, ffprobe, `runtime-pack/hyperframes-sidecar/render.mjs`,
+   and the official HyperFrames CLI/producer packages. The native Windows pack
+   is fallback-only.
 3. Run `hyperframes:fixture-render` and `hyperframes:official-compatibility`
    with the Node >=22.22 worker image. The fixture command must produce a
    manifest with `renderer: "hyperframes_cli_official"` or

@@ -10,6 +10,7 @@ import {
   isNotNull,
   lt,
   or,
+  sql,
 } from "drizzle-orm";
 
 import type {
@@ -125,6 +126,10 @@ type WorkerRecord = Record<string, any>;
 type WorkerJobRecord = Record<string, any>;
 type WorkerJobEventRecord = Record<string, any>;
 type WorkerArtifactRecord = Record<string, any>;
+type WorkerClaimResult = {
+  job: (WorkerJobRecord & { leaseOwnerToken: string; leaseExpiresAt: Date }) | null;
+  queueDepth: number;
+};
 
 function sanitizeDashboardUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) {
@@ -174,6 +179,7 @@ export interface WorkerRuntimeRepository {
   insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>) => Promise<WorkerJobEventRecord>;
   listClaimableJobs: (tenantId: string, runtimeType: WorkerRuntimeType, teamId: string | null, capabilityHints: string[]) => Promise<WorkerJobRecord[]>;
   listJobEvents: (workerJobId: string) => Promise<WorkerJobEventRecord[]>;
+  renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
   tryClaimJob: (jobId: string, workerId: string, leaseOwnerToken: string, leaseExpiresAt: Date) => Promise<WorkerJobRecord | null>;
   updateJob: (jobId: string, values: Record<string, any>) => Promise<WorkerJobRecord>;
   updateWorker: (workerId: string, values: Record<string, any>) => Promise<WorkerRecord>;
@@ -834,6 +840,28 @@ const defaultRepo: WorkerRuntimeRepository = {
       .where(eq(workerJobEvents.workerJobId, workerJobId))
       .orderBy(asc(workerJobEvents.createdAt));
   },
+  async renewActiveJobLeasesForWorker(input) {
+    const db = await getDb();
+    const leaseIso = input.leaseExpiresAt.toISOString();
+    const patch = {
+      assignmentLeaseExpiresAt: leaseIso,
+      lastWorkerHeartbeatAt: input.heartbeatAt.toISOString(),
+    };
+    const rows = await db
+      .update(workerJobs)
+      .set({
+        leaseExpiresAt: input.leaseExpiresAt,
+        outputJson: sql`coalesce(${workerJobs.outputJson}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`,
+      })
+      .where(and(
+        eq(workerJobs.tenantId, input.tenantId),
+        eq(workerJobs.workerId, input.workerId),
+        inArray(workerJobs.status, RECLAIMABLE_JOB_STATUSES),
+        isNotNull(workerJobs.leaseOwnerToken),
+      ))
+      .returning({ id: workerJobs.id });
+    return rows.length;
+  },
   async tryClaimJob(jobId, workerId, leaseOwnerToken, leaseExpiresAt) {
     const db = await getDb();
     return db.transaction(async (tx) => {
@@ -1122,6 +1150,15 @@ export async function recordWorkerHeartbeat(
     freeDiskBytes: input.payload.freeDiskBytes,
   });
 
+  if (input.payload.currentJobCount > 0 && typeof repo.renewActiveJobLeasesForWorker === "function") {
+    await repo.renewActiveJobLeasesForWorker({
+      tenantId: worker.tenantId,
+      workerId: worker.id,
+      heartbeatAt: new Date(),
+      leaseExpiresAt: new Date(Date.now() + DEFAULT_LEASE_TTL_MS),
+    });
+  }
+
   return updatedWorker;
 }
 
@@ -1132,7 +1169,7 @@ export async function claimWorkerJob(
     workerId: string;
   },
   deps: { repo?: WorkerRuntimeRepository } = {},
-): Promise<{ job: (WorkerJobRecord & { leaseOwnerToken: string; leaseExpiresAt: Date }) | null }> {
+): Promise<WorkerClaimResult> {
   const repo = deps.repo ?? defaultRepo;
   const worker = requireWorkerRecord(
     await repo.getWorkerById(input.auth.tenantId, input.workerId),
@@ -1148,11 +1185,11 @@ export async function claimWorkerJob(
     input.payload.capabilityHints,
   );
   const eligibleCandidates = await filterClaimableJobsForWorker(worker, candidates);
+  const selectableCandidates = eligibleCandidates.filter((candidate) =>
+    workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
+  );
 
-  for (const candidate of eligibleCandidates) {
-    if (!workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints)) {
-      continue;
-    }
+  for (const candidate of selectableCandidates) {
     const leaseOwnerToken = crypto.randomBytes(12).toString("hex");
     const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
     const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);
@@ -1165,6 +1202,8 @@ export async function claimWorkerJob(
         assignmentLeaseExpiresAt: (claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString?.()
           ?? new Date(claimed.leaseExpiresAt ?? leaseExpiresAt).toISOString(),
         assignedAt: new Date().toISOString(),
+        lastWorkerEventAt: null,
+        lastProgressAt: null,
         assignmentStatus: "active",
       };
       let claimedWithAttempt: WorkerJobRecord & { assignmentAttempt: string } = {
@@ -1191,6 +1230,7 @@ export async function claimWorkerJob(
         },
       });
       return {
+        queueDepth: Math.max(0, selectableCandidates.length - 1),
         job: {
           ...claimedWithAttempt,
           leaseOwnerToken: claimedWithAttempt.leaseOwnerToken ?? leaseOwnerToken,
@@ -1201,7 +1241,7 @@ export async function claimWorkerJob(
     }
   }
 
-  return { job: null };
+  return { job: null, queueDepth: selectableCandidates.length };
 }
 
 export async function recordWorkerJobEvent(
@@ -1242,26 +1282,45 @@ export async function recordWorkerJobEvent(
   let nextJob = job;
   const nextStatus = resolveEventStatus(input.payload.eventType);
   const sanitizedPayloadJson = sanitizeWorkerPayload(input.payload.payloadJson) as Record<string, unknown>;
+  const eventAt = new Date();
+  const terminalStatus = nextStatus ? TERMINAL_JOB_STATUSES.includes(nextStatus) : false;
+  const nextLeaseExpiresAt = terminalStatus
+    ? job.leaseExpiresAt
+    : new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
+  const outputJson = {
+    ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+    lastEventType: input.payload.eventType,
+    lastEventPayload: sanitizedPayloadJson,
+    lastWorkerEventAt: eventAt.toISOString(),
+    lastSequenceNumber: sequenceNumber,
+    lastAssignmentAttempt: input.payload.assignmentAttempt ?? readAssignmentAttempt(job),
+    assignmentLeaseExpiresAt: nextLeaseExpiresAt instanceof Date
+      ? nextLeaseExpiresAt.toISOString()
+      : job.outputJson?.assignmentLeaseExpiresAt,
+    ...(input.payload.eventType === "job.progress"
+      ? { lastProgressAt: eventAt.toISOString() }
+      : {}),
+  };
   if (nextStatus) {
     assertStatusTransition(job.status, nextStatus);
     nextJob = await repo.updateJob(job.id, {
       status: nextStatus,
-      outputJson: {
-        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
-        lastEventType: input.payload.eventType,
-        lastEventPayload: sanitizedPayloadJson,
-        lastSequenceNumber: sequenceNumber,
-        lastAssignmentAttempt: input.payload.assignmentAttempt ?? readAssignmentAttempt(job),
-      },
+      outputJson,
+      leaseExpiresAt: nextLeaseExpiresAt,
       startedAt:
         nextStatus === "running" && !job.startedAt
-          ? new Date()
+          ? eventAt
           : job.startedAt,
-      finishedAt: TERMINAL_JOB_STATUSES.includes(nextStatus) ? new Date() : job.finishedAt,
+      finishedAt: terminalStatus ? eventAt : job.finishedAt,
       failureReason:
         nextStatus === "failed"
           ? String(sanitizedPayloadJson?.error ?? sanitizedPayloadJson?.message ?? "Worker job failed")
           : job.failureReason,
+    });
+  } else {
+    nextJob = await repo.updateJob(job.id, {
+      outputJson,
+      leaseExpiresAt: nextLeaseExpiresAt,
     });
   }
 

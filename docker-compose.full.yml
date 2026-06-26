@@ -249,6 +249,12 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
+      - CONTROL_PLANE_API_KEY=${CONTROL_PLANE_API_KEY:-dev_api_key_1234567890123456}
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production_12345678}
+      - R2_ENDPOINT=${R2_ENDPOINT:-https://mock.r2.cloudflarestorage.com}
+      - R2_BUCKET=${R2_BUCKET:-smartspec-artifacts}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-mock_key}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-mock_secret}
     ports:
       - "127.0.0.1:7070:7070"
     depends_on:

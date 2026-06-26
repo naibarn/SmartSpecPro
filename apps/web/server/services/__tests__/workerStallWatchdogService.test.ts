@@ -164,6 +164,48 @@ describe("workerStallWatchdogService", () => {
     }));
   });
 
+  it("watchdog uses last worker activity instead of a refreshed assignment timestamp", async () => {
+    const staleActivityJob = hyperframesJob({
+      outputJson: {
+        assignmentAttempt: "attempt_reclaimed",
+        assignmentWorkerId: "worker-1",
+        assignedAt: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        lastProgressAt: new Date(now.getTime() - WORKER_HARD_STALL_THRESHOLD_MS - 1_000).toISOString(),
+      },
+      createdAt: new Date(now.getTime() - WORKER_HARD_STALL_THRESHOLD_MS - 1_000),
+    });
+    const repo = createRepo(staleActivityJob, [staleActivityJob]);
+
+    await expect(requeueStalledWorkerJobs({
+      tenantId: "tenant-1",
+      now,
+    }, { repo })).resolves.toEqual(expect.objectContaining({
+      requeued: 1,
+      jobIds: ["job-hf-1"],
+    }));
+  });
+
+  it("watchdog requeues expired fresh claims that never report activity", async () => {
+    const expiredClaimJob = hyperframesJob({
+      outputJson: {
+        assignmentAttempt: "attempt_expired",
+        assignmentWorkerId: "worker-1",
+        assignedAt: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+      },
+      leaseExpiresAt: new Date(now.getTime() - 1_000),
+      createdAt: new Date(now.getTime() - 5 * 60 * 1000),
+    });
+    const repo = createRepo(expiredClaimJob, [expiredClaimJob]);
+
+    await expect(requeueStalledWorkerJobs({
+      tenantId: "tenant-1",
+      now,
+    }, { repo })).resolves.toEqual(expect.objectContaining({
+      requeued: 1,
+      jobIds: ["job-hf-1"],
+    }));
+  });
+
   it("fails repeated stalled jobs instead of requeueing forever", async () => {
     const stalledJob = hyperframesJob({
       outputJson: {

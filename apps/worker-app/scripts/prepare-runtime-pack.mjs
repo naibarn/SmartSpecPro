@@ -24,11 +24,11 @@ function validateExistingRuntimePack() {
   if (!manifest.allowed || manifest.version === "0.0.0-placeholder") return false;
   const sidecarPath = resolve(sidecarsDir, manifest.sidecarPath || "");
   if (!existsSync(sidecarPath)) {
-    throw new Error(`Runtime manifest sidecar is missing: ${sidecarPath}`);
+    return false;
   }
   const actualDigest = sha256(sidecarPath);
   if (actualDigest !== manifest.sidecarSha256) {
-    throw new Error("Runtime manifest sidecarSha256 does not match the sidecar file");
+    return false;
   }
   const notices = Array.isArray(manifest.licenseNotices) ? manifest.licenseNotices : [];
   if (notices.length === 0) {

@@ -132,7 +132,7 @@ Estimate formula:
 ```text
 estimatedFrameCount = ceil(durationSeconds * fps)
 estimatedRenderPixels = width * height * estimatedFrameCount
-rawComputeUnits = estimatedRenderPixels / 1_000_000
+rawComputeUnits = estimatedRenderPixels / 1_000_000_000
 estimatedStorageBytes =
   estimatedVideoBytes(width, height, fps, durationSeconds, renderProfile)
   + estimatedSnapshotBytes

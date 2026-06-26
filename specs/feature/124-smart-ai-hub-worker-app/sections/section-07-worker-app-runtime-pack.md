@@ -2,9 +2,13 @@
 
 ## Goal
 
-Create the Windows-first **Smart AI Hub Worker App** as a separate lightweight
-Tauri workspace with UI-managed settings, background/minimize behavior, and
-HyperFrames runtime doctor/readiness.
+Create the Windows **Smart AI Hub Worker App** as a separate lightweight Tauri
+workspace with UI-managed settings, background/minimize behavior, and
+HyperFrames runtime doctor/readiness. HyperFrames execution is WSL2-first:
+the Windows app is the control surface, while the default render runtime pack is
+`hyperframes-wsl2` with Linux Node, Chrome/headless shell, FFmpeg, ffprobe, and
+the official HyperFrames CLI/producer packages. Native Windows runtime packs are
+kept as an explicit fallback profile, not the default.
 
 ## Dependencies
 
@@ -17,7 +21,8 @@ HyperFrames runtime doctor/readiness.
 - Product naming/build profile for the lightweight worker app.
 - Runtime manifest and doctor.
 - Settings UI requirements.
-- Runtime pack download/verification if lightweight mode is chosen.
+- Runtime pack download/verification if lightweight mode is chosen, defaulting
+  to `hyperframes-wsl2`.
 - Windows installer/update/release gate.
 - Tauri capability hardening.
 
@@ -55,7 +60,8 @@ desktop shell.
   doctor passes.
 - Test: doctor fails when HyperFrames sidecar missing.
 - Test: doctor fails when Thai font check fails.
-- Test: doctor reports FFmpeg/FFprobe/browser/HyperFrames versions.
+- Test: doctor reports FFmpeg/FFprobe/browser/HyperFrames versions for WSL2 and
+  native Windows runtime profiles.
 - Test: runtime pack manifest hash mismatch blocks readiness.
 - Test: credentials can be stored, read, deleted, and cleared.
 - Test: settings serialize without exposing tokens.
@@ -73,8 +79,9 @@ desktop shell.
 - Test: Worker App signs authenticated worker requests with the bound device key
   and clears tokens when the server reports device proof mismatch or replay.
 - Test: signed Windows installer metadata uses Smart AI Hub Worker App naming.
-- Test: lightweight runtime download resumes and verifies hash/signature before
-  enabling readiness.
+- Test: lightweight runtime download requests `hyperframes-wsl2` by default,
+  verifies hash/signature, checks required archive paths, and only then enables
+  readiness.
 - Test: runtime pack manifest includes license notices, checksum file,
   signature file, supported contract versions, and immutable version metadata.
 - Test: runtime allowlist/denylist/rollback manifest blocks disabled runtime
@@ -90,9 +97,10 @@ desktop shell.
    naming.
 3. Extract or mirror only the narrow worker credential/control-plane/runtime
    helper code needed from `apps/tauri-shell`; keep the full shell independent.
-4. Add runtime manifest fields for sidecar path, HyperFrames version, browser,
-   FFmpeg/FFprobe, fonts, hashes, license notices, checksum/signature files,
-   supported contract versions, and runtime profile hash.
+4. Add runtime manifest fields for runtime id/platform, sidecar path,
+   HyperFrames version, browser, FFmpeg/FFprobe, fonts, hashes, license
+   notices, checksum/signature files, supported contract versions, and runtime
+   profile hash.
 5. Add runtime allowlist/denylist/rollback handling so the server can block
    broken runtime packs before claim.
 6. Add runtime doctor command used by UI and heartbeat metadata.
@@ -117,8 +125,8 @@ desktop shell.
 11. Narrow Tauri capabilities around sidecar execution and file access.
 12. Persist safe settings in app data and secrets/device private key in secure
     storage.
-13. Define Windows release gate checklist for complete installer and lightweight
-   installer paths.
+13. Define release gate checklist for the Windows app plus default WSL2 runtime
+   pack, including a fallback Windows-native runtime pack path.
 
 ## UI/UX Contract
 

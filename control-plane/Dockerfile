@@ -71,4 +71,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 7070
 
 # Run application
-CMD ["node", "dist/index.js"]
+CMD ["npx", "tsx", "src/index.ts"]

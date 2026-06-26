@@ -44,6 +44,38 @@ describe("hyperframesFeatureAccessService", () => {
     expect(estimate.estimatedCredits).toBeGreaterThan(0);
   });
 
+  it("keeps long final composite worker reservations in normal credit scale", () => {
+    const estimate = buildHyperframesCreditEstimate({
+      tenantId: "tenant_1",
+      userId: 1,
+      runId: "manual_run_94",
+      renderIntent: "final",
+      compositionMode: "captioned_final_composite",
+      costClass: "composition_render",
+      compositionInputHash: "hf_final_input",
+      templateVersion: "official_html_css_browser_final_composite_v1",
+      platformPreset: {
+        presetId: "generic_vertical_9_16",
+        label: "Generic vertical 9:16",
+        aspectRatio: "9:16",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        durationSeconds: 240,
+        maxDurationSeconds: 240,
+        safeZonePercent: 8,
+        exportFormat: "mp4",
+      },
+      workerComplexityMultiplier: 8 / 6,
+    });
+
+    expect(estimate.estimatedFrameCount).toBe(7200);
+    expect(estimate.estimatedRenderPixels).toBe(14_929_920_000);
+    expect(estimate.workerComplexityMultiplier).toBeCloseTo(8 / 6);
+    expect(estimate.estimatedCredits).toBe(38);
+    expect(estimate.estimatedCredits).toBeLessThan(100);
+  });
+
   it("keeps compliance review as a warning so Auto can still start", () => {
     const access = resolveHyperframesFeatureAccess({
       auth: { userId: 1, tenantId: "tenant_1" },

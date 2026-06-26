@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const appDir = resolve(scriptDir, "..");
 const repoRoot = resolve(appDir, "../..");
-const releasesDir = resolve(repoRoot, "apps/web/client/public/releases");
+const sourceReleasesDir = resolve(repoRoot, "apps/web/client/public/releases");
+const runtimeReleasesDir = resolve(repoRoot, "apps/web/dist/public/releases");
 const packagePath = join(appDir, "package.json");
 const tauriConfigPath = join(appDir, "src-tauri/tauri.conf.json");
 const cargoTomlPath = join(appDir, "src-tauri/Cargo.toml");
@@ -24,6 +25,24 @@ function readJson(path) {
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function fileIncludes(path, text) {
+  return existsSync(path) && readFileSync(path).includes(Buffer.from(text, "utf8"));
+}
+
+function findFileName(root, predicate) {
+  if (!existsSync(root)) return null;
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const absolute = join(root, entry.name);
+    if (entry.isDirectory()) {
+      const nested = findFileName(absolute, predicate);
+      if (nested) return nested;
+    } else if (entry.isFile() && predicate(entry.name, absolute)) {
+      return absolute;
+    }
+  }
+  return null;
 }
 
 function compareVersions(left, right) {
@@ -46,10 +65,8 @@ function bumpPatch(version) {
 }
 
 function listPublishedVersions() {
-  if (!existsSync(releasesDir)) {
-    return [];
-  }
-  return readdirSync(releasesDir)
+  const releaseDirs = [sourceReleasesDir, runtimeReleasesDir].filter((releaseDir) => existsSync(releaseDir));
+  return releaseDirs.flatMap((releaseDir) => readdirSync(releaseDir))
     .map((fileName) => fileName.match(releasePattern)?.[1] ?? null)
     .filter(Boolean);
 }
@@ -74,6 +91,8 @@ function run(command, args, options = {}) {
 function assertReleaseRuntimePack() {
   const manifestPath = join(appDir, "runtime-pack/manifest.json");
   const manifest = readJson(manifestPath);
+  const runtimeId = manifest.runtimeId || "hyperframes-wsl2";
+  const isWsl2Runtime = runtimeId === "hyperframes-wsl2" || String(manifest.runtimePlatform || "").includes("wsl2");
   const blockedReasons = [];
   if (!manifest.allowed) blockedReasons.push("manifest.allowed is false");
   if (manifest.version === "0.0.0-placeholder") blockedReasons.push("runtime version is placeholder");
@@ -81,8 +100,59 @@ function assertReleaseRuntimePack() {
   if (manifest.browserVersion === "not-bundled") blockedReasons.push("browser runtime is not bundled");
   if (manifest.ffmpegVersion === "not-bundled") blockedReasons.push("FFmpeg is not bundled");
   if (manifest.ffprobeVersion === "not-bundled") blockedReasons.push("ffprobe is not bundled");
+  if (manifest.rendererKind !== "hyperframes_cli_official") blockedReasons.push("official HyperFrames renderer kind is missing");
+  if (manifest.sidecarLauncher !== "smart-ai-hub-hyperframes-node-launcher") blockedReasons.push("official sidecar launcher marker is missing");
+  if (manifest.sidecarScriptPath !== "hyperframes-sidecar/render.mjs") blockedReasons.push("official sidecar render script path is missing");
+  if (isWsl2Runtime) {
+    if (!existsSync(join(appDir, "runtime-pack/node/bin/node"))) blockedReasons.push("bundled WSL2 Linux node binary is missing");
+    if (!existsSync(join(appDir, "runtime-pack/bin/ffmpeg"))) blockedReasons.push("bundled WSL2 Linux ffmpeg is missing");
+    if (!existsSync(join(appDir, "runtime-pack/bin/ffprobe"))) blockedReasons.push("bundled WSL2 Linux ffprobe is missing");
+    if (!existsSync(join(appDir, "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/package.json"))) {
+      blockedReasons.push("bundled WSL2 Linux sharp native package is missing");
+    }
+    if (!existsSync(join(appDir, "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/package.json"))) {
+      blockedReasons.push("bundled WSL2 Linux sharp libvips package is missing");
+    }
+    if (!findFileName(
+      join(appDir, "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib"),
+      (name) => name.startsWith("sharp-linux-x64") && name.endsWith(".node"),
+    )) {
+      blockedReasons.push("bundled WSL2 Linux sharp native binding is missing");
+    }
+    if (!findFileName(
+      join(appDir, "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib"),
+      (name) => name.startsWith("libvips-cpp.so."),
+    )) {
+      blockedReasons.push("bundled WSL2 Linux sharp libvips binary is missing");
+    }
+  } else {
+    if (!existsSync(join(appDir, "runtime-pack/node/node.exe"))) blockedReasons.push("bundled Windows node.exe is missing");
+    if (!existsSync(join(appDir, "runtime-pack/bin/ffmpeg.exe"))) blockedReasons.push("bundled Windows ffmpeg.exe is missing");
+    if (!existsSync(join(appDir, "runtime-pack/bin/ffprobe.exe"))) blockedReasons.push("bundled Windows ffprobe.exe is missing");
+  }
+  if (!existsSync(join(appDir, "runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js"))) {
+    blockedReasons.push("bundled official HyperFrames CLI is missing");
+  }
+  if (!existsSync(join(appDir, "runtime-pack/hyperframes-sidecar/render.mjs"))) {
+    blockedReasons.push("bundled HyperFrames sidecar render script is missing");
+  }
   if (!Array.isArray(manifest.licenseNotices) || manifest.licenseNotices.length === 0) {
     blockedReasons.push("license notices are missing");
+  }
+  const sidecarPath = join(appDir, "sidecars", manifest.sidecarPath || "");
+  if (!existsSync(sidecarPath)) {
+    blockedReasons.push(`HyperFrames sidecar file does not exist: ${manifest.sidecarPath || "(missing)"}`);
+  } else if (
+    fileIncludes(sidecarPath, "placeholder sidecar")
+    || fileIncludes(sidecarPath, "mock video content")
+    || fileIncludes(sidecarPath, "mock-hyperframes")
+    || fileIncludes(sidecarPath, "testsrc2=")
+    || fileIncludes(sidecarPath, "testsrc=size=")
+    || fileIncludes(sidecarPath, "lavfi")
+    || fileIncludes(sidecarPath, "local_smoke_snapshot")
+    || fileIncludes(sidecarPath, "diagnostic_ffmpeg_smoke")
+  ) {
+    blockedReasons.push("HyperFrames sidecar is a mock, placeholder, or diagnostic smoke renderer");
   }
   for (const fileField of ["checksumFile", "signatureFile"]) {
     const fileName = manifest[fileField];
@@ -119,7 +189,8 @@ const baseVersion = highestPublishedVersion && compareVersions(highestPublishedV
   : packageJson.version;
 const nextVersion = bumpPatch(baseVersion);
 const releaseFileName = `smart-ai-hub-worker-app-${nextVersion}-x64-setup.exe`;
-const releasePath = join(releasesDir, releaseFileName);
+const sourceReleasePath = join(sourceReleasesDir, releaseFileName);
+const runtimeReleasePath = join(runtimeReleasesDir, releaseFileName);
 
 console.log(`[worker-app] current package version: ${packageJson.version}`);
 console.log(`[worker-app] highest dashboard release: ${highestPublishedVersion ?? "none"}`);
@@ -133,12 +204,15 @@ if (checkRuntime) {
 
 if (dryRun) {
   console.log("[worker-app] dry run does not validate runtime readiness; use --check-runtime for the release gate.");
-  console.log(`[worker-app] dry run only; would write ${releasePath}`);
+  console.log(`[worker-app] dry run only; would write ${sourceReleasePath}`);
+  if (existsSync(runtimeReleasesDir)) {
+    console.log(`[worker-app] dry run only; would update runtime dashboard copy ${runtimeReleasePath}`);
+  }
   process.exit(0);
 }
 
-if (existsSync(releasePath)) {
-  throw new Error(`Release already exists: ${releasePath}`);
+if (existsSync(sourceReleasePath) || existsSync(runtimeReleasePath)) {
+  throw new Error(`Release already exists: ${existsSync(sourceReleasePath) ? sourceReleasePath : runtimeReleasePath}`);
 }
 
 packageJson.version = nextVersion;
@@ -172,6 +246,12 @@ if (!existsSync(bundlePath)) {
   throw new Error(`Windows installer was not found after build: ${bundlePath}`);
 }
 
-mkdirSync(releasesDir, { recursive: true });
-copyFileSync(bundlePath, releasePath);
-console.log(`[worker-app] copied dashboard release: ${releasePath}`);
+mkdirSync(sourceReleasesDir, { recursive: true });
+copyFileSync(bundlePath, sourceReleasePath);
+console.log(`[worker-app] copied dashboard source release: ${sourceReleasePath}`);
+
+if (existsSync(resolve(repoRoot, "apps/web/dist/public"))) {
+  mkdirSync(runtimeReleasesDir, { recursive: true });
+  copyFileSync(bundlePath, runtimeReleasePath);
+  console.log(`[worker-app] updated live dashboard release: ${runtimeReleasePath}`);
+}

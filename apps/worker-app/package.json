@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/worker-app",
-  "version": "0.1.12",
+  "version": "0.1.122",
   "private": true,
   "type": "module",
   "scripts": {

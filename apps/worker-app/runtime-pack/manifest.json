@@ -1,22 +1,27 @@
 {
-  "runtimeId": "hyperframes-windows-x64",
-  "version": "2026.06.23.1",
-  "hyperframesVersion": "official-hyperframes-2026.06.23",
-  "browserVersion": "Google Chrome for Testing 148.0.7778.96",
-  "ffmpegVersion": "7.0.2-static",
-  "ffprobeVersion": "7.0.2-static",
+  "runtimeId": "hyperframes-wsl2",
+  "version": "2026.06.25.1",
+  "hyperframesVersion": "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
+  "browserVersion": "Chrome for Testing 148.0.7778.97 linux64",
+  "ffmpegVersion": "johnvansickle ffmpeg 7.0.2 linux static",
+  "ffprobeVersion": "johnvansickle ffmpeg 7.0.2 linux static",
   "thaiFontFamily": "Noto Sans Thai",
   "sidecarPath": "hyperframes-render.exe",
-  "sidecarSha256": "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
+  "sidecarSha256": "c09c2c536bc07400a185708741189309042b9be40a9b5f43f3b6d599344fe229",
   "checksumFile": "SHA256SUMS",
   "signatureFile": "SHA256SUMS.sig",
   "licenseNotices": [
     "THIRD_PARTY_NOTICES.txt"
   ],
+  "runtimePlatform": "wsl2-linux-x64",
+  "nodeVersion": "bundled-node-linux-x64",
+  "rendererKind": "hyperframes_cli_official",
+  "sidecarLauncher": "smart-ai-hub-hyperframes-node-launcher",
+  "sidecarScriptPath": "hyperframes-sidecar/render.mjs",
   "supportedContractVersions": [
     "2026-06-22"
   ],
-  "runtimeProfileHash": "860128c1b28753ba14a73969d39678812565b1261976c6f94c9a060e92a2183e",
+  "runtimeProfileHash": "bb1fd424ee76bce0a015f7cade849e239545e07301d475128858b5826c9d8ee4",
   "allowed": true,
   "denyReason": null,
   "rollbackToVersion": null

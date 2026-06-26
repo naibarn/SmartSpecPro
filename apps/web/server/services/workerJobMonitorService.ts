@@ -3,12 +3,14 @@ import { TRPCError } from "@trpc/server";
 
 import { db } from "../db";
 import {
+  libraryItems,
   workerArtifacts,
   workerJobEvents,
   workerJobs,
   workers,
   type WorkerJob,
 } from "../../drizzle/schema";
+import { HYPERFRAMES_FINAL_VIDEO_MIN_BYTES } from "./hyperframesWorkerVerificationService";
 
 export const USER_WORKER_JOB_STATUSES = [
   "queued",
@@ -76,6 +78,7 @@ type ArtifactRow = {
   storageRef: string;
   metadataJson: JsonRecord;
   publishedItemId: number | null;
+  sourceUrl?: string | null;
   createdAt: Date;
 };
 
@@ -101,9 +104,17 @@ export type WorkerJobMonitorRepository = {
 export type SafeWorkerJobEvent = {
   id: string;
   eventType: string;
+  sidecarEventType: string | null;
   message: string | null;
   progressPercent: number | null;
   phase: string | null;
+  shotId: string | null;
+  shotIndex: number | null;
+  shotTotal: number | null;
+  cacheHit: boolean | null;
+  errorCode: string | null;
+  rootCause: string | null;
+  concatMode: string | null;
   createdAt: Date;
 };
 
@@ -112,6 +123,8 @@ export type SafeWorkerOutputRef = {
   artifactType: string;
   storageRef?: string;
   publishedItemId?: number | null;
+  sourceUrl?: string | null;
+  downloadUrl?: string | null;
   contentHash?: string;
   mimeType?: string;
   sizeBytes?: number;
@@ -258,9 +271,11 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         storageRef: workerArtifacts.storageRef,
         metadataJson: workerArtifacts.metadataJson,
         publishedItemId: workerArtifacts.publishedItemId,
+        sourceUrl: libraryItems.sourceUrl,
         createdAt: workerArtifacts.createdAt,
       })
       .from(workerArtifacts)
+      .leftJoin(libraryItems, eq(workerArtifacts.publishedItemId, libraryItems.id))
       .where(inArray(workerArtifacts.workerJobId, jobIds))
       .orderBy(desc(workerArtifacts.createdAt)) as ArtifactRow[];
   },
@@ -277,7 +292,15 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         eq(workerJobs.id, input.jobId),
         eq(workerJobs.tenantId, input.auth.tenantId),
         eq(workerJobs.requestedByUserId, input.auth.userId),
-        eq(workerJobs.status, "queued"),
+        inArray(workerJobs.status, [
+          "queued",
+          "claimed",
+          "preparing",
+          "running",
+          "uploading",
+          "publishing",
+          "indexing",
+        ]),
       ))
       .returning();
 
@@ -299,7 +322,26 @@ function safeNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function safeBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function isHyperframesFinalVideoType(value: unknown): boolean {
+  return value === "hyperframes_final_video";
+}
+
+function hasValidHyperframesFinalVideoSize(sizeBytes: unknown): boolean {
+  const size = safeNumber(sizeBytes);
+  return typeof size === "number" && size >= HYPERFRAMES_FINAL_VIDEO_MIN_BYTES;
+}
+
 function isVerifiedArtifact(artifact: ArtifactRow): boolean {
+  if (isHyperframesFinalVideoType(artifact.artifactType)) {
+    const metadata = asRecord(artifact.metadataJson);
+    if (!hasValidHyperframesFinalVideoSize(metadata.sizeBytes ?? metadata.size)) {
+      return false;
+    }
+  }
   const metadata = asRecord(artifact.metadataJson);
   const verificationState = safeString(metadata.verificationState ?? metadata.verificationStatus ?? metadata.status);
   return artifact.publishedItemId != null
@@ -314,18 +356,26 @@ function projectOutputJson(outputJson: unknown): SafeWorkerOutputRef[] {
     ? output.outputRefs
     : Array.isArray(output.artifacts)
       ? output.artifacts
-      : [];
+      : Array.isArray(output.publishedArtifacts)
+        ? output.publishedArtifacts
+        : [];
 
   return refs.reduce<SafeWorkerOutputRef[]>((items, ref) => {
       const record = asRecord(ref);
+      const artifactType = safeString(record.artifactType ?? record.type) ?? "output";
+      if (isHyperframesFinalVideoType(artifactType) && !hasValidHyperframesFinalVideoSize(record.sizeBytes ?? record.size)) {
+        return items;
+      }
       const verificationState = safeString(record.verificationState ?? record.verificationStatus);
       const publishedItemId = safeNumber(record.publishedItemId);
       if (!publishedItemId && verificationState !== "verified" && verificationState !== "passed") {
         return items;
       }
       items.push({
-        artifactType: safeString(record.artifactType ?? record.type) ?? "output",
+        artifactType,
         publishedItemId: publishedItemId ?? null,
+        sourceUrl: safeString(record.sourceUrl ?? record.source_url),
+        downloadUrl: safeString(record.downloadUrl),
         contentHash: safeString(record.contentHash ?? record.sha256),
         mimeType: safeString(record.mimeType),
         sizeBytes: safeNumber(record.sizeBytes),
@@ -343,6 +393,8 @@ function projectArtifact(artifact: ArtifactRow): SafeWorkerOutputRef | null {
     artifactType: artifact.artifactType,
     storageRef: artifact.storageRef,
     publishedItemId: artifact.publishedItemId,
+    sourceUrl: safeString(metadata.sourceUrl ?? metadata.source_url ?? artifact.sourceUrl),
+    downloadUrl: safeString(metadata.downloadUrl),
     contentHash: safeString(metadata.contentHash ?? metadata.sha256),
     mimeType: safeString(metadata.mimeType ?? metadata.contentType),
     sizeBytes: safeNumber(metadata.sizeBytes ?? metadata.size),
@@ -356,9 +408,17 @@ function projectEvent(event: EventRow): SafeWorkerJobEvent {
   return {
     id: event.id,
     eventType: event.eventType,
+    sidecarEventType: safeString(payload.eventType ?? payload.sidecarEventType) ?? null,
     message: safeString(payload.message ?? payload.safeMessage ?? payload.phaseLabel) ?? null,
-    progressPercent: safeNumber(payload.progressPercent ?? payload.progress) ?? null,
+    progressPercent: safeNumber(payload.progressPercent ?? payload.progress ?? payload.percent) ?? null,
     phase: safeString(payload.phase ?? payload.stage ?? payload.status) ?? null,
+    shotId: safeString(payload.shotId) ?? null,
+    shotIndex: safeNumber(payload.shotIndex) ?? null,
+    shotTotal: safeNumber(payload.shotTotal) ?? null,
+    cacheHit: safeBoolean(payload.cacheHit) ?? null,
+    errorCode: safeString(payload.errorCode ?? payload.failureCode ?? payload.code) ?? null,
+    rootCause: safeString(payload.rootCause) ?? null,
+    concatMode: safeString(payload.concatMode) ?? null,
     createdAt: event.createdAt,
   };
 }
@@ -375,13 +435,36 @@ function projectJob(
   const artifactRefs = (artifactsByJobId.get(row.id) ?? [])
     .map(projectArtifact)
     .filter((ref): ref is SafeWorkerOutputRef => ref != null);
+  const rawOutputRefs = [...artifactRefs, ...projectOutputJson(row.outputJson)];
+  const outputRefs = Array.from(
+    rawOutputRefs.reduce((map, ref) => {
+      const key = ref.publishedItemId
+        ? `pub:${ref.publishedItemId}`
+        : ref.artifactId
+          ? `art:${ref.artifactId}`
+          : `typ:${ref.artifactType}`;
+      if (!map.has(key) || (!map.get(key)!.downloadUrl && ref.downloadUrl)) {
+        map.set(key, ref);
+      }
+      return map;
+    }, new Map<string, SafeWorkerOutputRef>()).values()
+  );
+  const status =
+    row.jobType === "hyperframes_final_composite" &&
+    row.status === "completed" &&
+    outputRefs.length === 0
+      ? "failed"
+      : row.status;
 
   return {
     id: row.id,
     jobType: row.jobType,
-    status: row.status as UserWorkerJobStatus,
+    status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
-    failureReason: row.failureReason,
+    failureReason:
+      status === "failed" && !row.failureReason
+        ? "HyperFrames final video verification failed."
+        : row.failureReason,
     runtimeType: row.runtimeType,
     resourceProfile: row.resourceProfile,
     workflowRunId: row.workflowRunId,
@@ -390,8 +473,8 @@ function projectJob(
     finishedAt: row.finishedAt,
     latestEvent: events[0] ?? null,
     worker: row.worker?.id ? row.worker : null,
-    outputRefs: [...artifactRefs, ...projectOutputJson(row.outputJson)],
-    canCancel: row.status === "queued",
+    outputRefs,
+    canCancel: ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(status),
   };
 }
 
@@ -475,7 +558,7 @@ export async function cancelQueuedUserWorkerJob(
     }
     throw new TRPCError({
       code: "CONFLICT",
-      message: "Only queued jobs can be canceled.",
+      message: "Only active jobs can be canceled.",
     });
   }
   return { canceled: true, jobId: updated.id };

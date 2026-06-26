@@ -189,7 +189,17 @@ type PublicDashboardRelease = {
 };
 
 function getPublicReleaseDirs(): string[] {
+  const configuredDirs = (
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR
+    || process.env.DESKTOP_PUBLIC_RELEASES_DIR
+    || ""
+  )
+    .split(path.delimiter)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => path.resolve(value));
   const candidates = [
+    ...configuredDirs,
     path.resolve(process.cwd(), "client/public/releases"),
     path.resolve(process.cwd(), "dist/public/releases"),
     path.resolve(process.cwd(), "public/releases"),

@@ -51,6 +51,13 @@ function readIsoMs(value: unknown): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
+function readLastActivityAtMs(job: WorkerJobRecord): number | null {
+  const output = asRecord(job.outputJson);
+  return readIsoMs(output.lastProgressAt)
+    ?? readIsoMs(output.lastWorkerEventAt)
+    ?? readIsoMs(output.lastWorkerHeartbeatAt);
+}
+
 function readAssignedAtMs(job: WorkerJobRecord): number | null {
   const output = asRecord(job.outputJson);
   return readIsoMs(output.assignedAt)
@@ -129,6 +136,16 @@ function ensureReassignableStatus(job: WorkerJobRecord) {
 }
 
 function computeElapsedMs(job: WorkerJobRecord, now: Date): number {
+  const activityAtMs = readLastActivityAtMs(job);
+  if (activityAtMs != null) {
+    return Math.max(0, now.getTime() - activityAtMs);
+  }
+
+  const leaseExpiresAtMs = readIsoMs(job.leaseExpiresAt);
+  if (leaseExpiresAtMs != null && leaseExpiresAtMs < now.getTime()) {
+    return WORKER_HARD_STALL_THRESHOLD_MS;
+  }
+
   const assignedAtMs = readAssignedAtMs(job);
   return assignedAtMs == null ? 0 : Math.max(0, now.getTime() - assignedAtMs);
 }

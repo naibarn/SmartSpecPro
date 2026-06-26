@@ -906,7 +906,7 @@ function buildStoryboardPlannerPrompt(input: {
     "Every slot.video_prompt must be unique to its own visible image pair, using the images as visual truth while focusing on motion, action, camera, and continuity instead of restating static product/prop/background details.",
     "Start each slot.video_prompt with the unique visible action/camera direction for that shot, not with a repeated alias boilerplate sentence.",
     "Do not reuse the same generic transition prompt across slots. Do not merely paraphrase currentPrompt.",
-    "Every slot.video_prompt must follow this Veo 3.1 section format exactly: Create an [duration]-second cinematic video. Then sections Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+    "Every slot.video_prompt must follow this model-agnostic section format exactly: Create a cinematic video. Then sections Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
     "Hard limit: every slot.video_prompt must be 2,000 characters or less, target 1,200-1,500. Do not paste Production concept, Storyboard guide, Product metadata, Options, PRODUCT FACTS LOCK, USER-SELECTED CREATIVE DIRECTION LOCK, Prop details, price, rating, or sales metadata into slot.video_prompt.",
     "For start/stop frame video, the frame images already define product, people, props, room, lighting, and composition. State that frames are the visual truth, then describe only how the shot should move and what continuity to preserve.",
     "Use product facts only as implicit context for the spoken line or movement choice; never repeat the same product/concept facts across Scene, Action, Camera, and Storyboard guide wording inside the prompt.",
@@ -963,7 +963,7 @@ function buildStoryboardPlannerPrompt(input: {
         "- Each line must naturally follow the previous slot and set up the next slot. Avoid repeating the same opening phrase, benefit, or sales claim in multiple slots.",
         `- The complete voiceover_full_script must fit the total storyboard duration of about ${totalDurationSeconds} seconds. Treat each slot.durationSeconds as that slot's speech budget; if a slot duration is missing, use 8 seconds.`,
         "- Each slot includes speechBudgetSeconds. Write enough spoken content to fill that speech budget, not only the visible clip duration.",
-        "- For an 8-second shot, target about 9-10 seconds of natural spoken content. Veo 3.1 can finish a slightly longer line; avoid short 5-6 second lines that leave silence at the end.",
+        "- Write enough natural spoken content for the selected clip duration; avoid overly short lines that leave silence at the end.",
         "- The line must match the concept/details guideline, visible product use, journey stage, and video_prompt.",
         "- Write like customer-facing ElevenLabs ad dialogue: short, specific, speakable, and emotionally clear. Convert planning notes into real spoken copy.",
         useVoiceoverScriptAsConcept
@@ -1112,7 +1112,7 @@ async function repairStoryboardSlotVideoPrompt(input: {
     "Choose motion and camera direction that follows exact start/stop frames when declared; use reference-only images as guidance without treating them as frozen endpoints.",
     "Do not reuse generic transition language. Do not invent unrelated objects, extra people, captions, UI, price badges, logos, labels, or new readable text.",
     "Keep the prompt under 1,500 characters and never exceed 2,000 characters. Do not paste product metadata, concept details, storyboard guide, USER-SELECTED CREATIVE DIRECTION LOCK, PRODUCT FACTS LOCK, Prop details, price, rating, or sales metadata.",
-    "Use the Veo 3.1 section format: Create an [duration]-second cinematic video. Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
+    "Use the model-agnostic section format: Create a cinematic video. Scene:, Characters:, Action:, Camera:, Lighting / Style:, Audio:, Dialogue:.",
     includeSpeech
       ? "The Dialogue section is required. Write one unique, natural customer-facing spoken line based on the actual two images, product details, and selected concept. Do not copy the current prompt dialogue."
       : "The Dialogue section must be: No spoken dialogue.",
@@ -1234,7 +1234,7 @@ function enforceStoryboardPlannerNativeAudio(input: {
       ? input.slot.qualityNotes
       : [
         ...input.slot.qualityNotes,
-        "Veo 3.1 native speech prompt was normalized so the generated video prompt keeps the requested voiceover line.",
+        "Native speech prompt was normalized so the generated video prompt keeps the requested voiceover line.",
       ],
   };
 }

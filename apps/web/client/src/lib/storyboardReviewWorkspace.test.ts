@@ -868,7 +868,8 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       resolution: "1080p",
       generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
     });
-    expect(tasks[0]?.prompt).toContain("Create an 8-second cinematic video.");
+    expect(tasks[0]?.prompt).toContain("Create a cinematic video.");
+    expect(tasks[0]?.prompt).not.toMatch(/Create an? \d+(?:\.\d+)?-second cinematic video/i);
     expect(tasks[0]?.prompt).toContain("Scene:\n");
     expect(tasks[0]?.prompt).toContain("Action:\n");
     expect(tasks[0]?.prompt).toContain("Camera:\n");
@@ -972,7 +973,8 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
       storyboardShotDurationSeconds: 6,
       storyboardTotalDurationSeconds: 18,
     });
-    expect(tasks[2]?.prompt).toContain("Create a 6-second cinematic video.");
+    expect(tasks[2]?.prompt).toContain("Create a cinematic video.");
+    expect(tasks[2]?.prompt).not.toMatch(/Create an? \d+(?:\.\d+)?-second cinematic video/i);
   });
 
   it("applies split storyboard speech and sound planner options to Veo prompts", () => {

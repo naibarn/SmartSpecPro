@@ -46,6 +46,17 @@ pub struct StoredWorkerConnection {
     pub last_refreshed_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct StoredWorkerConnectionFile {
+    pub server_url: String,
+    pub worker: WorkerConnectWorker,
+    pub tokens: WorkerConnectTokens,
+    pub connected_at: String,
+    pub last_refreshed_at: Option<String>,
+    pub device_proof: Option<WorkerDeviceProofMaterial>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkerDeviceBinding {
@@ -168,7 +179,7 @@ pub fn load_device_proof_material(
                 .map_err(|error| format!("failed to parse worker device proof: {error}"))?;
             save_device_proof_material(app_data_dir, &legacy)?;
             legacy
-    };
+        };
     Ok(Some(material))
 }
 
@@ -402,13 +413,23 @@ fn hex_lower(bytes: &[u8]) -> String {
 }
 
 pub fn load_connection(app_data_dir: &Path) -> Result<Option<StoredWorkerConnection>, String> {
+    Ok(load_connection_file(app_data_dir)?.map(|file| file.connection()))
+}
+
+pub fn load_connection_device_proof(
+    app_data_dir: &Path,
+) -> Result<Option<WorkerDeviceProofMaterial>, String> {
+    Ok(load_connection_file(app_data_dir)?.and_then(|file| file.device_proof))
+}
+
+fn load_connection_file(app_data_dir: &Path) -> Result<Option<StoredWorkerConnectionFile>, String> {
     let path = app_data_dir.join(CONNECTION_FILE_NAME);
     if !path.exists() {
         return Ok(None);
     }
     let contents = fs::read_to_string(&path)
         .map_err(|error| format!("failed to read worker connection: {error}"))?;
-    let connection = serde_json::from_str::<StoredWorkerConnection>(&contents)
+    let connection = serde_json::from_str::<StoredWorkerConnectionFile>(&contents)
         .map_err(|error| format!("failed to parse worker connection: {error}"))?;
     Ok(Some(connection))
 }
@@ -417,12 +438,60 @@ pub fn save_connection(
     app_data_dir: &Path,
     connection: &StoredWorkerConnection,
 ) -> Result<(), String> {
+    save_connection_file(
+        app_data_dir,
+        &StoredWorkerConnectionFile::from_connection(connection, None),
+    )
+}
+
+pub fn save_connection_with_device_proof(
+    app_data_dir: &Path,
+    connection: &StoredWorkerConnection,
+    device_proof: &WorkerDeviceProofMaterial,
+) -> Result<(), String> {
+    validate_device_proof_material(device_proof)?;
+    save_connection_file(
+        app_data_dir,
+        &StoredWorkerConnectionFile::from_connection(connection, Some(device_proof.clone())),
+    )
+}
+
+fn save_connection_file(
+    app_data_dir: &Path,
+    connection: &StoredWorkerConnectionFile,
+) -> Result<(), String> {
     fs::create_dir_all(app_data_dir)
         .map_err(|error| format!("failed to create connection directory: {error}"))?;
     let path = app_data_dir.join(CONNECTION_FILE_NAME);
     let contents = serde_json::to_vec_pretty(connection)
         .map_err(|error| format!("failed to serialize worker connection: {error}"))?;
     fs::write(path, contents).map_err(|error| format!("failed to save worker connection: {error}"))
+}
+
+impl StoredWorkerConnectionFile {
+    fn from_connection(
+        connection: &StoredWorkerConnection,
+        device_proof: Option<WorkerDeviceProofMaterial>,
+    ) -> Self {
+        Self {
+            server_url: connection.server_url.clone(),
+            worker: connection.worker.clone(),
+            tokens: connection.tokens.clone(),
+            connected_at: connection.connected_at.clone(),
+            last_refreshed_at: connection.last_refreshed_at.clone(),
+            device_proof,
+        }
+    }
+
+    fn connection(self) -> StoredWorkerConnection {
+        StoredWorkerConnection {
+            server_url: self.server_url,
+            worker: self.worker,
+            tokens: self.tokens,
+            connected_at: self.connected_at,
+            last_refreshed_at: self.last_refreshed_at,
+        }
+    }
 }
 
 pub fn clear_connection(app_data_dir: &Path) -> Result<(), String> {
@@ -483,6 +552,36 @@ mod tests {
         assert_eq!(load_connection(temp.path()).unwrap(), Some(connection));
         clear_connection(temp.path()).unwrap();
         assert!(load_connection(temp.path()).unwrap().is_none());
+    }
+
+    #[test]
+    fn stored_connection_can_carry_connection_bound_device_proof() {
+        let temp = tempfile::tempdir().unwrap();
+        let connection = StoredWorkerConnection {
+            server_url: "https://smartaihub.app".into(),
+            worker: WorkerConnectWorker {
+                id: "wrk_1".into(),
+                display_name: "Render worker".into(),
+                runtime_type: "desktop_zeroclaw_managed".into(),
+                machine_name: Some("DESKTOP".into()),
+            },
+            tokens: WorkerConnectTokens {
+                execution_token: "execution.jwt".into(),
+                upload_token: "upload.jwt".into(),
+                refresh_token: Some("refresh.jwt".into()),
+            },
+            connected_at: "2026-06-23T00:00:00Z".into(),
+            last_refreshed_at: None,
+        };
+        let proof = ensure_device_proof_material(temp.path()).unwrap();
+
+        save_connection_with_device_proof(temp.path(), &connection, &proof).unwrap();
+
+        assert_eq!(load_connection(temp.path()).unwrap(), Some(connection));
+        assert_eq!(
+            load_connection_device_proof(temp.path()).unwrap(),
+            Some(proof)
+        );
     }
 
     #[test]

@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import AdmZip from "adm-zip";
 
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
@@ -85,8 +86,15 @@ interface WorkerRuntimeRouteDeps {
 
 const WORKER_CONNECT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const WORKER_CONNECT_POLL_INTERVAL_SECONDS = 3;
-const WORKER_RUNTIME_PACK_ID = "hyperframes-windows-x64";
-const WORKER_RUNTIME_PACK_FILE_PATTERN = /^smart-ai-hub-worker-runtime-(hyperframes-windows-x64)-(.+)\.zip$/i;
+const DEFAULT_WORKER_RUNTIME_PACK_ID = "hyperframes-wsl2";
+const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set(["hyperframes-wsl2", "hyperframes-windows-x64"]);
+const WORKER_RUNTIME_PACK_FILE_PATTERN = /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64))-(.+)\.zip$/i;
+const DENIED_RUNTIME_SIDECAR_SHA256 = new Set([
+  // Placeholder sidecar from early runtime pack scaffolding.
+  "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
+  // FFmpeg diagnostic smoke renderer: uses lavfi/testsrc2 color bars, not real HyperFrames composition.
+  "4a73439229e3c18034ada679a32f005e7e126376631405062f05e88a5562920e",
+]);
 const workerConnectSessions = new Map<string, WorkerConnectSession>();
 const workerConnectUserCodeIndex = new Map<string, string>();
 
@@ -326,7 +334,17 @@ function handleWorkerRouteError(error: unknown, res: Response): void {
 }
 
 function getRuntimePackReleaseDirs(): string[] {
+  const configuredDirs = (
+    process.env.SMARTAIHUB_RUNTIME_RELEASES_DIR
+    || process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR
+    || ""
+  )
+    .split(path.delimiter)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => path.resolve(value, value.endsWith("/runtime") ? "" : "runtime"));
   const candidates = [
+    ...configuredDirs,
     path.resolve(process.cwd(), "client/public/releases/runtime"),
     path.resolve(process.cwd(), "dist/public/releases/runtime"),
     path.resolve(process.cwd(), "public/releases/runtime"),
@@ -341,7 +359,7 @@ function sha256File(filePath: string): string {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
-function findLatestRuntimePack(releaseDirs: string[]) {
+function findLatestRuntimePack(releaseDirs: string[], runtimeId = DEFAULT_WORKER_RUNTIME_PACK_ID) {
   const packs: Array<{
     fileName: string;
     filePath: string;
@@ -355,6 +373,7 @@ function findLatestRuntimePack(releaseDirs: string[]) {
     for (const fileName of fs.readdirSync(releaseDir)) {
       const match = fileName.match(WORKER_RUNTIME_PACK_FILE_PATTERN);
       if (!match?.[1] || !match?.[2]) continue;
+      if (match[1] !== runtimeId) continue;
       const filePath = path.join(releaseDir, fileName);
       const stat = fs.statSync(filePath);
       if (!stat.isFile()) continue;
@@ -382,6 +401,155 @@ function readRuntimePackManifest(packFilePath: string): Record<string, unknown> 
   } catch {
     return null;
   }
+}
+
+function stringField(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function archiveContainsFiles(filePath: string, requiredFiles: string[]): boolean {
+  try {
+    const entries = new Set(new AdmZip(filePath).getEntries().map((entry) => entry.entryName));
+    return requiredFiles.every((file) => {
+      if (file.endsWith("*")) {
+        const prefix = file.slice(0, -1);
+        return Array.from(entries).some((entryName) => entryName.startsWith(prefix));
+      }
+      return entries.has(file);
+    });
+  } catch {
+    return false;
+  }
+}
+
+function archiveEntriesFromManifest(manifest: Record<string, unknown> | null): string[] | null {
+  const archiveEntries = manifest?.archiveEntries;
+  if (!Array.isArray(archiveEntries)) return null;
+  const entries = archiveEntries.filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+  return entries.length > 0 ? entries : null;
+}
+
+function manifestArchiveContainsFiles(manifest: Record<string, unknown> | null, requiredFiles: string[]): boolean {
+  const archiveEntries = archiveEntriesFromManifest(manifest);
+  if (!archiveEntries) return false;
+  const entries = new Set(archiveEntries);
+  return requiredFiles.every((file) => {
+    if (file.endsWith("*")) {
+      const prefix = file.slice(0, -1);
+      return archiveEntries.some((entryName) => entryName.startsWith(prefix));
+    }
+    return entries.has(file);
+  });
+}
+
+function runtimeArchiveContainsFiles(
+  filePath: string,
+  manifest: Record<string, unknown> | null,
+  requiredFiles: string[],
+): boolean {
+  if (manifestArchiveContainsFiles(manifest, requiredFiles)) return true;
+  return archiveContainsFiles(filePath, requiredFiles);
+}
+
+function requiredRuntimeArchiveFiles(runtimeId: string): string[] {
+  const common = [
+    "runtime-pack/manifest.json",
+    "runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js",
+    "runtime-pack/hyperframes/node_modules/@hyperframes/producer/package.json",
+    "runtime-pack/hyperframes-sidecar/render.mjs",
+    "runtime-pack/SHA256SUMS",
+    "runtime-pack/SHA256SUMS.sig",
+    "sidecars/hyperframes-render.exe",
+  ];
+  if (runtimeId === "hyperframes-wsl2") {
+    return [
+      ...common,
+      "runtime-pack/node/bin/node",
+      "runtime-pack/bin/ffmpeg",
+      "runtime-pack/bin/ffprobe",
+      "runtime-pack/browser-libs/libnspr4.so*",
+      "runtime-pack/browser-libs/libnss3.so*",
+      "runtime-pack/browser-libs/libnssutil3.so*",
+      "runtime-pack/browser-libs/libsmime3.so*",
+      "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64*",
+      "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.*",
+    ];
+  }
+  return [
+    ...common,
+    "runtime-pack/node/node.exe",
+    "runtime-pack/bin/ffmpeg.exe",
+    "runtime-pack/bin/ffprobe.exe",
+  ];
+}
+
+function isOfficialRuntimePackManifest(
+  manifest: Record<string, unknown> | null,
+  runtimeId = DEFAULT_WORKER_RUNTIME_PACK_ID,
+): manifest is Record<string, unknown> {
+  if (!manifest || manifest.allowed !== true) return false;
+  if (!SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeId)) return false;
+  const manifestRuntimeId = stringField(manifest.runtimeId);
+  if (manifestRuntimeId && manifestRuntimeId !== runtimeId) return false;
+  const sidecarSha256 = stringField(manifest.sidecarSha256).toLowerCase();
+  if (DENIED_RUNTIME_SIDECAR_SHA256.has(sidecarSha256)) return false;
+  const denyReason = stringField(manifest.denyReason).toLowerCase();
+  const hyperframesVersion = stringField(manifest.hyperframesVersion).toLowerCase();
+  const runtimeKind = stringField(manifest.runtimeKind).toLowerCase();
+  const sidecarKind = stringField(manifest.sidecarKind).toLowerCase();
+  const rendererKind = stringField(manifest.rendererKind);
+  const sidecarLauncher = stringField(manifest.sidecarLauncher);
+  const sidecarScriptPath = stringField(manifest.sidecarScriptPath);
+  const runtimePlatform = stringField(manifest.runtimePlatform).toLowerCase();
+  if (rendererKind !== "hyperframes_cli_official") return false;
+  if (sidecarLauncher !== "smart-ai-hub-hyperframes-node-launcher") return false;
+  if (sidecarScriptPath !== "hyperframes-sidecar/render.mjs") return false;
+  if (runtimeId === "hyperframes-wsl2" && !/wsl2|linux/.test(runtimePlatform)) return false;
+  if (runtimeId === "hyperframes-windows-x64" && !/windows|win/.test(runtimePlatform || runtimeId)) return false;
+  const blockedText = [denyReason, hyperframesVersion, runtimeKind, sidecarKind, runtimePlatform].join(" ");
+  if ([
+    "mock",
+    "placeholder",
+    "smoke",
+    "testsrc",
+    "lavfi",
+    "ffmpeg-render-sidecar",
+    "diagnostic",
+    "fallback",
+  ].some(marker => blockedText.includes(marker))) {
+    return false;
+  }
+  return hyperframesVersion.includes("hyperframes@") && hyperframesVersion.includes("@hyperframes/producer@");
+}
+
+function findLatestAllowedRuntimePack(releaseDirs: string[], runtimeId = DEFAULT_WORKER_RUNTIME_PACK_ID) {
+  const candidates: Array<NonNullable<ReturnType<typeof findLatestRuntimePack>>> = [];
+  for (const releaseDir of releaseDirs) {
+    if (!fs.existsSync(releaseDir)) continue;
+    for (const fileName of fs.readdirSync(releaseDir)) {
+      const match = fileName.match(WORKER_RUNTIME_PACK_FILE_PATTERN);
+      if (!match?.[1] || !match?.[2]) continue;
+      if (match[1] !== runtimeId) continue;
+      const filePath = path.join(releaseDir, fileName);
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) continue;
+      const manifest = readRuntimePackManifest(filePath);
+      if (!isOfficialRuntimePackManifest(manifest, runtimeId)) continue;
+      if (!runtimeArchiveContainsFiles(filePath, manifest, requiredRuntimeArchiveFiles(runtimeId))) continue;
+      candidates.push({
+        fileName,
+        filePath,
+        runtimeId: match[1],
+        version: match[2],
+        updatedAt: stat.mtime.toISOString(),
+        sizeBytes: stat.size,
+      });
+    }
+  }
+  return candidates.sort((left, right) => {
+    const versionCompare = right.version.localeCompare(left.version, undefined, { numeric: true, sensitivity: "base" });
+    return versionCompare || right.updatedAt.localeCompare(left.updatedAt);
+  })[0] ?? null;
 }
 
 function requireBearerToken(req: Request): string {
@@ -442,34 +610,38 @@ export function registerWorkerRuntimeRoutes(
     runtimePackLimiter,
     async (req, res) => {
       try {
-        const runtimeId = String(req.query.runtimeId || WORKER_RUNTIME_PACK_ID).trim();
-        if (runtimeId !== WORKER_RUNTIME_PACK_ID) {
+        res.setHeader("Cache-Control", "no-store");
+        const runtimeId = String(req.query.runtimeId || DEFAULT_WORKER_RUNTIME_PACK_ID).trim();
+        if (!SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeId)) {
           sendApiError(res, 404, "runtime_pack_not_found", `Runtime pack is not available for ${runtimeId}`, "not_found_error");
           return;
         }
-        const pack = findLatestRuntimePack(runtimePackReleaseDirs);
+        const pack = findLatestAllowedRuntimePack(runtimePackReleaseDirs, runtimeId);
         if (!pack) {
           sendApiError(
             res,
             404,
             "runtime_pack_not_published",
-            "Official HyperFrames runtime pack has not been published yet. Build the Worker App can run UI/connection tests, but render jobs remain blocked until the signed runtime pack is available.",
+            "Official HyperFrames runtime pack has not been published yet. Mock, fallback, diagnostic smoke, and FFmpeg test-source packs are not allowed for render jobs.",
             "not_found_error",
           );
           return;
         }
         const manifest = readRuntimePackManifest(pack.filePath);
-        if (!manifest || manifest.allowed !== true) {
+        if (!isOfficialRuntimePackManifest(manifest, runtimeId)) {
           sendApiError(
             res,
             409,
             "runtime_pack_not_allowed",
-            "The latest HyperFrames runtime pack is present but is not allowed for render jobs. Check manifest.allowed, checksum, signature, and license notices.",
+            "The latest HyperFrames runtime pack is present but is not allowed for render jobs. Mock, fallback, diagnostic smoke, and FFmpeg test-source packs are blocked.",
             "invalid_request_error",
           );
           return;
         }
-        const archiveSha256 = sha256File(pack.filePath);
+        const manifestArchiveSha256 = stringField(manifest.archiveSha256).toLowerCase();
+        const archiveSha256 = /^[a-f0-9]{64}$/.test(manifestArchiveSha256)
+          ? manifestArchiveSha256
+          : sha256File(pack.filePath);
         res.json({
           ...manifest,
           runtimeId: manifest.runtimeId ?? pack.runtimeId,
@@ -491,18 +663,20 @@ export function registerWorkerRuntimeRoutes(
     runtimePackLimiter,
     async (req, res) => {
       try {
+        res.setHeader("Cache-Control", "no-store");
         const fileName = path.basename(String(req.params.fileName || ""));
-        if (!WORKER_RUNTIME_PACK_FILE_PATTERN.test(fileName)) {
+        const runtimeMatch = fileName.match(WORKER_RUNTIME_PACK_FILE_PATTERN);
+        if (!runtimeMatch?.[1] || !SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeMatch[1])) {
           sendApiError(res, 400, "invalid_runtime_pack_file", "Invalid runtime pack file name", "invalid_request_error");
           return;
         }
-        const pack = findLatestRuntimePack(runtimePackReleaseDirs);
+        const pack = findLatestAllowedRuntimePack(runtimePackReleaseDirs, runtimeMatch[1]);
         if (!pack || pack.fileName !== fileName) {
           sendApiError(res, 404, "runtime_pack_not_found", "Runtime pack file was not found", "not_found_error");
           return;
         }
         const manifest = readRuntimePackManifest(pack.filePath);
-        if (!manifest || manifest.allowed !== true) {
+        if (!isOfficialRuntimePackManifest(manifest, runtimeMatch[1])) {
           sendApiError(res, 409, "runtime_pack_not_allowed", "Runtime pack is not allowed for download", "invalid_request_error");
           return;
         }

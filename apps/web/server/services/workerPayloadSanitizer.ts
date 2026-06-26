@@ -15,6 +15,7 @@ const REDACTED_WORKER_KEYS = new Set([
 
 const MAX_SANITIZED_WORKER_STRING_LENGTH = 2_000;
 const MAX_SANITIZED_WORKER_COLLECTION_LENGTH = 50;
+const WORKER_JSONB_UNSAFE_CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g;
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -22,6 +23,10 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 
 function normalizeSensitiveWorkerKey(key: string): string {
   return key.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function sanitizeWorkerPayloadKey(key: string): string {
+  return key.replace(WORKER_JSONB_UNSAFE_CONTROL_CHARS, " ").slice(0, 255);
 }
 
 function shouldRedactWorkerKey(key: string): boolean {
@@ -43,9 +48,10 @@ function shouldRedactWorkerKey(key: string): boolean {
 export function sanitizeWorkerPayload(value: unknown, depth = 0): unknown {
   if (value == null) return value;
   if (typeof value === "string") {
-    return value.length > MAX_SANITIZED_WORKER_STRING_LENGTH
-      ? `${value.slice(0, MAX_SANITIZED_WORKER_STRING_LENGTH)}...[truncated]`
-      : value;
+    const jsonbSafe = value.replace(WORKER_JSONB_UNSAFE_CONTROL_CHARS, " ");
+    return jsonbSafe.length > MAX_SANITIZED_WORKER_STRING_LENGTH
+      ? `${jsonbSafe.slice(0, MAX_SANITIZED_WORKER_STRING_LENGTH)}...[truncated]`
+      : jsonbSafe;
   }
   if (typeof value === "number" || typeof value === "boolean") {
     return value;
@@ -66,7 +72,7 @@ export function sanitizeWorkerPayload(value: unknown, depth = 0): unknown {
     Object.entries(value)
       .slice(0, MAX_SANITIZED_WORKER_COLLECTION_LENGTH)
       .map(([key, entry]) => [
-        key,
+        sanitizeWorkerPayloadKey(key),
         shouldRedactWorkerKey(key)
           ? "[REDACTED]"
           : sanitizeWorkerPayload(entry, depth + 1),

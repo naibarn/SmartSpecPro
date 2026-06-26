@@ -208,11 +208,15 @@ mod tests {
             status: "blocked".into(),
             checks: vec![],
             recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
         };
         let ready = DoctorSummary {
             status: "ready".into(),
             checks: vec![],
             recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
         };
 
         let device_binding = WorkerDeviceBinding {

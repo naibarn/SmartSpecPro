@@ -1,15 +1,15 @@
-Smart AI Hub Worker Runtime Pack
+Smart AI Hub Worker Runtime Pack third-party notices
 
-Bundled components in the official runtime release:
+This runtime pack bundles third-party components used only for local HyperFrames
+render execution.
 
-- Official HyperFrames render sidecar for Smart AI Hub Worker App
-- Google Chrome for Testing / Chromium runtime
-- FFmpeg and ffprobe binaries
-- Noto Sans Thai font
+- HyperFrames and @hyperframes/producer are bundled from their npm packages.
+- Node.js is bundled for Linux x64 execution inside WSL2.
+- Chrome for Testing / Chrome Headless Shell is bundled for browser rendering.
+- FFmpeg and ffprobe are bundled from BtbN FFmpeg-Builds GPL Linux x64 static
+  builds. The bundled FFmpeg build includes NVIDIA NVENC encoders.
+- Noto/Liberation/Ubuntu-compatible fonts are bundled for Thai-capable text
+  rendering.
 
-The bundled Noto Sans Thai font is licensed under the SIL Open Font License 1.1.
-Its license text is included in the packaged runtime under `fonts/OFL.txt`.
-
-The bundled browser and media binaries retain their upstream redistributable
-license terms. Keep the packaged archive and manifest together when publishing
-or mirroring the runtime release.
+Redistribution of this runtime pack must continue to preserve the applicable
+upstream licenses and notices for each bundled component.

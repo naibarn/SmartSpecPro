@@ -59,7 +59,7 @@ describe("storyboard prompt audio helpers", () => {
     expect(segments[3]).toContain("ตัวเลือกที่น่ารัก");
   });
 
-  it("builds a complete Veo 3.1 storyboard prompt with Thai dialogue and sound", () => {
+  it("builds a complete model-agnostic storyboard prompt with Thai dialogue and sound", () => {
     const prompt = buildVeo31StoryboardVideoPrompt({
       visualPrompt: "Start with a close-up of the cluttered floor, then reveal the organized bedside table.",
       durationSeconds: 8,
@@ -73,7 +73,9 @@ describe("storyboard prompt audio helpers", () => {
       soundBrief: "Soft room tone and gentle product handling foley.",
     });
 
-    expect(prompt).toContain("Create an 8-second cinematic video.");
+    expect(prompt).toContain("Create a cinematic video.");
+    expect(prompt).not.toMatch(/Create an? \d+(?:\.\d+)?-second cinematic video/i);
+    expect(prompt).not.toContain("Veo 3.1");
     expect(prompt).toContain("Scene:\n");
     expect(prompt).toContain("Characters:\n");
     expect(prompt).toContain("Action:\n");
@@ -82,8 +84,8 @@ describe("storyboard prompt audio helpers", () => {
     expect(prompt).toContain("Audio:\n");
     expect(prompt).toContain("Dialogue:\n");
     expect(prompt).toContain("Dialogue must be spoken in natural Thai, central Thai accent.");
-    expect(prompt).toContain("Dialogue pacing: write enough spoken content for about 9.5 วินาที");
-    expect(prompt).toContain("Avoid a short 5-6 second line or silent tail.");
+    expect(prompt).toContain("Dialogue pacing: write enough spoken content for the selected clip duration");
+    expect(prompt).toContain("avoid a short line or silent tail.");
     expect(prompt).toContain('Presenter พูดเป็นภาษาไทยว่า "โต๊ะนี้ช่วยให้มุมข้างเตียงหยิบของง่ายขึ้น"');
     expect(storyboardPromptHasVeo31Sections(prompt)).toBe(true);
   });
@@ -145,6 +147,9 @@ describe("storyboard prompt audio helpers", () => {
         "Scene:",
         "A warm bedroom.",
         "",
+        "Characters:",
+        "For Veo 3.1, infer the presenter's apparent styling from the uploaded reference.",
+        "",
         "Action:",
         "A presenter shows a bedside table.",
         "",
@@ -167,8 +172,10 @@ describe("storyboard prompt audio helpers", () => {
       voiceoverScript: "โต๊ะนี้ช่วยให้หยิบของง่ายขึ้น",
     });
 
-    expect(prompt).toContain("Dialogue pacing: write enough spoken content for about 9.5 วินาที");
-    expect(prompt).toContain("Veo 3.1 can finish a slightly longer line.");
+    expect(prompt).toContain("Create a cinematic video.");
+    expect(prompt).not.toMatch(/Create an? \d+(?:\.\d+)?-second cinematic video/i);
+    expect(prompt).toContain("Dialogue pacing: write enough spoken content for the selected clip duration");
+    expect(prompt).not.toContain("Veo 3.1");
     expect(prompt.match(/Dialogue pacing:/g)).toHaveLength(1);
   });
 
@@ -285,6 +292,9 @@ describe("storyboard prompt audio helpers", () => {
 
     expect(prompt.length).toBeLessThanOrEqual(2000);
     expect(storyboardPromptHasVeo31Sections(prompt)).toBe(true);
+    expect(prompt).toContain("Create a cinematic video.");
+    expect(prompt).not.toMatch(/Create an? \d+(?:\.\d+)?-second cinematic video/i);
+    expect(prompt).not.toContain("Veo 3.1");
     expect(prompt).toContain("Use @Image1 as start frame. Use @Image2 as stop/end frame.");
     expect(prompt).toContain("Frames define the product, people, props, location, lighting, and final look");
     expect(prompt).toContain("The presenter reaches toward the BENO PRO-FLEX");

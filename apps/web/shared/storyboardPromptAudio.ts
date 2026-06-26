@@ -136,6 +136,15 @@ function compactInlineText(text: string): string {
     .trim();
 }
 
+function sanitizeStoryboardVideoPromptContract(text: string): string {
+  return cleanPromptText(text)
+    .replace(/^Create an?\s+\d+(?:\.\d+)?-second cinematic video\./i, "Create a cinematic video.")
+    .replace(/\bFor\s+Veo\s+3\.1,\s*/gi, "")
+    .replace(/\bVeo\s+3\.1 can finish a slightly longer line\.\s*/gi, "")
+    .replace(/\s+Avoid a short 5-6 second line or silent tail\./gi, " Avoid a short line or silent tail.")
+    .trim();
+}
+
 function compactPromptContext(text: string, maxLength = 320): string {
   const compacted = compactInlineText(text).replace(/\s+/g, " ").trim();
   if (compacted.length <= maxLength) return compacted;
@@ -261,27 +270,17 @@ export interface BuildCompactStoryboardReviewVideoPromptInput extends BuildVeo31
 const DEFAULT_COMPACT_STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS = 2000;
 
 export function storyboardPromptHasVeo31Sections(promptText: string): boolean {
-  const text = cleanPromptText(promptText);
-  return /Create an?\s+\d+(?:\.\d+)?-second cinematic video\./i.test(text)
+  const text = sanitizeStoryboardVideoPromptContract(promptText);
+  return /Create (?:a cinematic video|an?\s+\d+(?:\.\d+)?-second cinematic video)\./i.test(text)
     && /\nScene:\s*/i.test(`\n${text}`)
     && /\nAction:\s*/i.test(`\n${text}`)
     && /\nCamera:\s*/i.test(`\n${text}`)
     && /\nAudio:\s*/i.test(`\n${text}`);
 }
 
-function normalizeDurationSeconds(durationSeconds?: number | null): number {
-  const value = Number(durationSeconds);
-  if (!Number.isFinite(value) || value <= 0) return 8;
-  return Math.round(value * 10) / 10;
-}
-
 function durationIntro(durationSeconds?: number | null): string {
-  const value = normalizeDurationSeconds(durationSeconds);
-  const text = Number.isInteger(value) ? String(value) : String(value);
-  const article = /^8(?:\.|$)/.test(text) || /^11(?:\.|$)/.test(text) || /^18(?:\.|$)/.test(text)
-    ? "an"
-    : "a";
-  return `Create ${article} ${text}-second cinematic video.`;
+  void durationSeconds;
+  return "Create a cinematic video.";
 }
 
 function describeFrameRoles(frameRoles?: readonly string[] | null): string {
@@ -312,23 +311,15 @@ function describeCompactFrameRoles(frameRoles?: readonly string[] | null): strin
   return `Use @Image1 as ${describeRole(roles[0])}. Use @Image2 as ${describeRole(roles[1])}.`;
 }
 
-function dialogueTargetSeconds(durationSeconds?: number | null): number {
-  const duration = normalizeDurationSeconds(durationSeconds);
-  const extraSpeechSeconds = duration <= 8 ? 1.5 : duration <= 12 ? 1 : 0;
-  const target = duration <= 12 ? duration + extraSpeechSeconds : duration;
-  return Math.round(Math.max(1, target) * 2) / 2;
-}
-
 function buildDialoguePacingRule(
   durationSeconds: number | null | undefined,
   speechMode: StoryboardPromptSpeechMode,
   speechLanguage?: string | null,
 ): string {
-  const targetSeconds = dialogueTargetSeconds(durationSeconds);
-  const secondsLabel = isThaiSpeechMode(speechMode, speechLanguage) ? `${targetSeconds} วินาที` : `${targetSeconds} seconds`;
-  const clipSeconds = normalizeDurationSeconds(durationSeconds);
-  const clipLabel = isThaiSpeechMode(speechMode, speechLanguage) ? `${clipSeconds} วินาที` : `${clipSeconds} seconds`;
-  return `Dialogue pacing: write enough spoken content for about ${secondsLabel}, even when the clip is ${clipLabel}; Veo 3.1 can finish a slightly longer line. Avoid a short 5-6 second line or silent tail.`;
+  void durationSeconds;
+  void speechMode;
+  void speechLanguage;
+  return "Dialogue pacing: write enough spoken content for the selected clip duration and avoid a short line or silent tail.";
 }
 
 function buildAudioSection(input: BuildVeo31StoryboardVideoPromptInput, hasVoiceover: boolean): string {
@@ -446,7 +437,7 @@ const STORYBOARD_REVIEW_STATIC_CONTEXT_LINE_PATTERN =
   /\b(?:USER-SELECTED CREATIVE DIRECTION LOCK|PRODUCT FACTS LOCK|Product metadata|Marketplace product metadata|Production Director concept|Production concept|Concept and product facts|Storyboard guide|Options|User-selected visual details|User-selected character brief|Character brief|Prop details|Storytelling structure|Price signal|Rating signal|Sold signal)\b/i;
 
 function sanitizeCompactStoryboardReviewMotionText(text: string): string {
-  return compactInlineText(text)
+  return sanitizeStoryboardVideoPromptContract(text)
     .replace(/^Create an?\s+\d+(?:\.\d+)?-second cinematic video\.?/i, "")
     .replace(/(?:^|\n)\s*(?:Scene|Characters|Action|Camera|Lighting\s*\/\s*Style|Audio|Dialogue):\s*/gi, "\n")
     .split(/\n+/)
@@ -569,7 +560,7 @@ export function buildVeo31StoryboardVideoPrompt(input: BuildVeo31StoryboardVideo
   const hasVoiceover = Boolean(wantsVoiceover && voiceoverScript);
 
   if (storyboardPromptHasVeo31Sections(visualPrompt)) {
-    let prompt = visualPrompt;
+    let prompt = sanitizeStoryboardVideoPromptContract(visualPrompt);
     const soundBrief = compactInlineText(input.soundBrief ?? "");
     const existingAudioConflicts =
       /\nAudio:\s*\n?\s*No audio\./i.test(`\n${prompt}`) ||

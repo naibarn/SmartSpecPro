@@ -30,6 +30,10 @@ pub struct RuntimePackManifest {
     pub archive_sha256: Option<String>,
     #[serde(default)]
     pub archive_size_bytes: Option<u64>,
+    #[serde(default)]
+    pub runtime_platform: Option<String>,
+    #[serde(default)]
+    pub sidecar_script_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -49,6 +53,10 @@ pub struct DoctorSummary {
     pub checks: Vec<DoctorCheck>,
     #[serde(default)]
     pub recommended_actions: Vec<String>,
+    #[serde(default)]
+    pub official_hyperframes_runtime: Option<bool>,
+    #[serde(default)]
+    pub runtime_kind: Option<String>,
 }
 
 pub fn doctor_from_default_paths(resource_dir: &Path) -> DoctorSummary {
@@ -59,13 +67,44 @@ pub fn doctor_from_default_paths(resource_dir: &Path) -> DoctorSummary {
 
 pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf, PathBuf) {
     let installed_manifest_path = app_data_dir.join("runtime-pack").join("manifest.json");
+
+    let mut bundled_resource_dir = resource_dir.to_path_buf();
+    if !bundled_resource_dir
+        .join("runtime-pack")
+        .join("manifest.json")
+        .is_file()
+    {
+        if bundled_resource_dir
+            .join("_up_")
+            .join("runtime-pack")
+            .join("manifest.json")
+            .is_file()
+        {
+            bundled_resource_dir = bundled_resource_dir.join("_up_");
+        }
+    }
+
+    let bundled_manifest_path = bundled_resource_dir
+        .join("runtime-pack")
+        .join("manifest.json");
+
+    let installed_version = read_runtime_pack_manifest(&installed_manifest_path)
+        .ok()
+        .map(|m| m.version);
+    let bundled_version = read_runtime_pack_manifest(&bundled_manifest_path)
+        .ok()
+        .map(|m| m.version);
+
+    if let (Some(ref iv), Some(ref bv)) = (installed_version, bundled_version) {
+        if bv >= iv {
+            return (bundled_manifest_path, bundled_resource_dir.join("sidecars"));
+        }
+    }
+
     if installed_manifest_path.is_file() {
         return (installed_manifest_path, app_data_dir.join("sidecars"));
     }
-    (
-        resource_dir.join("runtime-pack").join("manifest.json"),
-        resource_dir.join("sidecars"),
-    )
+    (bundled_manifest_path, bundled_resource_dir.join("sidecars"))
 }
 
 pub fn doctor_from_installed_or_default_paths(
@@ -89,6 +128,8 @@ pub fn doctor_from_manifest_path(manifest_path: &Path, sidecar_root: &Path) -> D
                     details_json: json!({ "path": manifest_path.to_string_lossy() }),
                 }],
                 recommended_actions: vec!["Install official HyperFrames runtime pack".into()],
+                official_hyperframes_runtime: None,
+                runtime_kind: None,
             };
         }
     };
@@ -114,6 +155,7 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     let mut recommended_actions = Vec::new();
     let sidecar_path = safe_join(sidecar_root, &manifest.sidecar_path);
     let runtime_root = runtime_pack_root_for_sidecars(sidecar_root);
+    let runtime_pack_dir = runtime_root.clone();
     let checksum_path = safe_join(&runtime_root, &manifest.checksum_file);
     let signature_path = safe_join(&runtime_root, &manifest.signature_file);
     let sidecar_exists = sidecar_path.exists();
@@ -170,6 +212,183 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         );
     }
 
+    let is_wsl2_runtime = is_wsl2_runtime(manifest);
+    let node_binary = if is_wsl2_runtime {
+        runtime_pack_dir.join("node").join("bin").join("node")
+    } else {
+        runtime_pack_dir.join("node").join("node.exe")
+    };
+    let hyperframes_cli = runtime_pack_dir
+        .join("hyperframes")
+        .join("node_modules")
+        .join("hyperframes")
+        .join("dist")
+        .join("cli.js");
+    let sidecar_script = manifest
+        .sidecar_script_path
+        .as_deref()
+        .map(|path| safe_join(&runtime_pack_dir, path))
+        .unwrap_or_else(|| {
+            runtime_pack_dir
+                .join("hyperframes-sidecar")
+                .join("render.mjs")
+        });
+    let official_renderer_files =
+        node_binary.is_file() && hyperframes_cli.is_file() && sidecar_script.is_file();
+    checks.push(DoctorCheck {
+        id: "official_hyperframes_renderer".into(),
+        status: if official_renderer_files { "ok" } else { "error" }.into(),
+        message: if official_renderer_files {
+            "Bundled Node launcher, official HyperFrames CLI, and sidecar render script are present.".into()
+        } else {
+            "Official HyperFrames renderer files are missing from the runtime pack.".into()
+        },
+        details_json: json!({
+            "node": node_binary.to_string_lossy(),
+            "hyperframesCli": hyperframes_cli.to_string_lossy(),
+            "sidecarScript": sidecar_script.to_string_lossy(),
+            "runtimePlatform": runtime_platform(manifest),
+        }),
+    });
+    if !official_renderer_files {
+        recommended_actions.push("Install the runtime pack that bundles Node, HyperFrames CLI, and the sidecar render script.".into());
+    }
+
+    let sharp_runtime_ok = if is_wsl2_runtime {
+        let hyperframes_root = runtime_pack_dir.join("hyperframes");
+        let sharp_package = hyperframes_root
+            .join("node_modules")
+            .join("sharp")
+            .join("package.json");
+        let sharp_linux_package = hyperframes_root
+            .join("node_modules")
+            .join("@img")
+            .join("sharp-linux-x64")
+            .join("package.json");
+        let sharp_linux_binding = hyperframes_root
+            .join("node_modules")
+            .join("@img")
+            .join("sharp-linux-x64")
+            .join("lib");
+        let sharp_libvips_package = hyperframes_root
+            .join("node_modules")
+            .join("@img")
+            .join("sharp-libvips-linux-x64")
+            .join("package.json");
+        let sharp_libvips_binary = hyperframes_root
+            .join("node_modules")
+            .join("@img")
+            .join("sharp-libvips-linux-x64")
+            .join("lib");
+        let ok = sharp_package.is_file()
+            && sharp_linux_package.is_file()
+            && find_runtime_file_by_name(&sharp_linux_binding, |name| {
+                name.starts_with("sharp-linux-x64") && name.ends_with(".node")
+            })
+            && sharp_libvips_package.is_file()
+            && find_runtime_file_by_name(&sharp_libvips_binary, |name| {
+                name.starts_with("libvips-cpp.so.")
+            });
+        checks.push(DoctorCheck {
+            id: "hyperframes_native_dependencies".into(),
+            status: if ok { "ok" } else { "error" }.into(),
+            message: if ok {
+                "WSL2 Linux x64 native dependencies for HyperFrames are present.".into()
+            } else {
+                "WSL2 runtime is missing Linux x64 native dependencies required by HyperFrames."
+                    .into()
+            },
+            details_json: json!({
+                "sharpPackage": sharp_package.to_string_lossy(),
+                "sharpLinuxPackage": sharp_linux_package.to_string_lossy(),
+                "sharpLinuxBindingDir": sharp_linux_binding.to_string_lossy(),
+                "sharpLibvipsPackage": sharp_libvips_package.to_string_lossy(),
+                "sharpLibvipsBinaryDir": sharp_libvips_binary.to_string_lossy(),
+            }),
+        });
+        ok
+    } else {
+        checks.push(DoctorCheck {
+            id: "hyperframes_native_dependencies".into(),
+            status: "ok".into(),
+            message: "Windows fallback runtime does not require WSL2 Linux x64 sharp bindings."
+                .into(),
+            details_json: json!({
+                "runtimePlatform": runtime_platform(manifest),
+            }),
+        });
+        true
+    };
+    if !sharp_runtime_ok {
+        recommended_actions.push(
+            "Install the WSL2 HyperFrames runtime pack that includes @img/sharp-linux-x64 and @img/sharp-libvips-linux-x64.".into(),
+        );
+    }
+
+    let browser_names: &[&str] = if is_wsl2_runtime {
+        &["chrome", "headless_shell", "chrome-headless-shell"]
+    } else {
+        &["chrome.exe", "headless_shell.exe"]
+    };
+    let browser_ok = find_runtime_file(&runtime_pack_dir.join("browser"), browser_names);
+    checks.push(DoctorCheck {
+        id: "browser_runtime".into(),
+        status: if browser_ok { "ok" } else { "error" }.into(),
+        message: if browser_ok {
+            if is_wsl2_runtime {
+                "WSL2 Linux Chrome browser runtime is present.".into()
+            } else {
+                "Windows Chrome browser runtime is present.".into()
+            }
+        } else {
+            if is_wsl2_runtime {
+                "WSL2 Linux Chrome browser runtime is missing.".into()
+            } else {
+                "Windows Chrome browser runtime is missing.".into()
+            }
+        },
+        details_json: json!({ "browserDir": runtime_pack_dir.join("browser").to_string_lossy() }),
+    });
+    if !browser_ok {
+        recommended_actions.push(if is_wsl2_runtime {
+            "Install the WSL2 HyperFrames runtime pack with a Linux Chrome browser runtime.".into()
+        } else {
+            "Install the Windows Chrome for Testing runtime pack.".into()
+        });
+    }
+
+    let ffmpeg_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
+        "ffmpeg"
+    } else {
+        "ffmpeg.exe"
+    });
+    let ffprobe_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
+        "ffprobe"
+    } else {
+        "ffprobe.exe"
+    });
+    let media_tools_ok = ffmpeg_path.is_file() && ffprobe_path.is_file();
+    checks.push(DoctorCheck {
+        id: "media_tools".into(),
+        status: if media_tools_ok { "ok" } else { "error" }.into(),
+        message: if media_tools_ok {
+            "FFmpeg and ffprobe binaries are present for the selected runtime platform.".into()
+        } else {
+            "FFmpeg or ffprobe is missing for the selected runtime platform.".into()
+        },
+        details_json: json!({
+            "ffmpeg": ffmpeg_path.to_string_lossy(),
+            "ffprobe": ffprobe_path.to_string_lossy(),
+            "runtimePlatform": runtime_platform(manifest),
+        }),
+    });
+    if !media_tools_ok {
+        recommended_actions.push(
+            "Install a runtime pack with FFmpeg and ffprobe for the selected runtime platform."
+                .into(),
+        );
+    }
+
     checks.push(DoctorCheck {
         id: "hyperframes_sidecar".into(),
         status: if sidecar_exists { "ok" } else { "error" }.into(),
@@ -182,6 +401,43 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     });
     if !sidecar_exists {
         recommended_actions.push("Install official HyperFrames runtime pack".into());
+    }
+
+    let sidecar_has_mock_signature = sidecar_exists
+        && file_contains_any(
+            &sidecar_path,
+            &[
+                b"mock video content",
+                b"mock-hyperframes",
+                b"placeholder sidecar",
+                b"testsrc2=",
+                b"testsrc=size=",
+                b"lavfi",
+                b"local_smoke_snapshot",
+                b"diagnostic_ffmpeg_smoke",
+            ],
+        );
+    checks.push(DoctorCheck {
+        id: "runtime_sidecar_policy".into(),
+        status: if sidecar_has_mock_signature {
+            "error"
+        } else {
+            "ok"
+        }
+        .into(),
+        message: if sidecar_has_mock_signature {
+            "Runtime sidecar is a mock or diagnostic smoke renderer and cannot produce real HyperFrames final output."
+                .into()
+        } else {
+            "Runtime sidecar is not a known mock or diagnostic smoke renderer.".into()
+        },
+        details_json: json!({
+            "runtimeId": manifest.runtime_id,
+            "version": manifest.version,
+        }),
+    });
+    if sidecar_has_mock_signature {
+        recommended_actions.push("Install a signed official HyperFrames runtime pack; mock or diagnostic smoke sidecars cannot render final output.".into());
     }
 
     let hash_ok = sidecar_exists
@@ -287,6 +543,8 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         .into(),
         checks,
         recommended_actions,
+        official_hyperframes_runtime: Some(true),
+        runtime_kind: Some("official_hyperframes".into()),
     }
 }
 
@@ -295,6 +553,74 @@ pub fn file_sha256(path: &Path) -> Result<String, String> {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
     Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn file_contains_any(path: &Path, needles: &[&[u8]]) -> bool {
+    let Ok(bytes) = fs::read(path) else {
+        return false;
+    };
+    needles.iter().any(|needle| {
+        !needle.is_empty() && bytes.windows(needle.len()).any(|window| window == *needle)
+    })
+}
+
+fn find_runtime_file(root: &Path, names: &[&str]) -> bool {
+    let entries = match fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(_) => return false,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if find_runtime_file(&path, names) {
+                return true;
+            }
+        } else if path.is_file() {
+            if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                if names
+                    .iter()
+                    .any(|candidate| name.eq_ignore_ascii_case(candidate))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn find_runtime_file_by_name(root: &Path, predicate: impl Fn(&str) -> bool + Copy) -> bool {
+    let entries = match fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(_) => return false,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            if find_runtime_file_by_name(&path, predicate) {
+                return true;
+            }
+        } else if path.is_file() {
+            if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                if predicate(name) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn runtime_platform(manifest: &RuntimePackManifest) -> &str {
+    manifest
+        .runtime_platform
+        .as_deref()
+        .unwrap_or(manifest.runtime_id.as_str())
+}
+
+fn is_wsl2_runtime(manifest: &RuntimePackManifest) -> bool {
+    let platform = runtime_platform(manifest).to_ascii_lowercase();
+    platform.contains("wsl2") || platform.contains("linux")
 }
 
 fn safe_join(root: &Path, relative: &str) -> PathBuf {

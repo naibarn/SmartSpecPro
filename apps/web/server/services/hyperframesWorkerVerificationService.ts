@@ -11,6 +11,8 @@ export const HYPERFRAMES_WORKER_REQUIRED_ARTIFACT_TYPES = [
   "hyperframes_probe_report",
 ] as const;
 
+export const HYPERFRAMES_FINAL_VIDEO_MIN_BYTES = 1024;
+
 export type HyperframesWorkerVerificationStatus = "passed" | "failed";
 
 export interface HyperframesWorkerVerificationReport {
@@ -72,6 +74,11 @@ function normalizeHash(value: unknown): string | null {
 
 function normalizeContentType(value: unknown): string | null {
   return asString(value)?.toLowerCase() ?? null;
+}
+
+function asPositiveInteger(value: unknown): number | null {
+  const number = asNumber(value);
+  return number !== null && Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function artifactMetadata(artifact: WorkerArtifactRecord): Record<string, unknown> {
@@ -317,13 +324,28 @@ export function verifyHyperframesWorkerArtifacts(input: {
     });
   }
 
+  const finalVideoSizeBytes = asPositiveInteger(finalMetadata.sizeBytes);
+  if (!finalVideoSizeBytes || finalVideoSizeBytes < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES) {
+    fail({
+      job: input.job,
+      artifacts: input.artifacts,
+      now,
+      code: "final_video_size_invalid",
+      message: "HyperFrames final video is too small to be a valid MP4 output.",
+      finalVideoChecksumSha256: finalChecksum,
+      durationSec,
+      aspectRatio,
+      fps,
+    });
+  }
+
   if (!finalChecksum || !manifestChecksum || finalChecksum !== manifestChecksum) {
     fail({
       job: input.job,
       artifacts: input.artifacts,
       now,
       code: "final_video_hash_mismatch",
-      message: "HyperFrames final video hash does not match the render manifest.",
+      message: `HyperFrames final video hash does not match the render manifest. (final: ${String(finalChecksum)}, manifest: ${String(manifestChecksum)})`,
       finalVideoChecksumSha256: finalChecksum,
     });
   }

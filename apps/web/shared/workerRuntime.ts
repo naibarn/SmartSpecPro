@@ -1139,12 +1139,14 @@ export function isWorkerPathWithinAllowedRoots(
 
 const workerStableHashSchema = z.string().trim().min(8).max(256);
 const workerStorageRefSchema = z.string().trim().min(1).max(2_000);
+const workerDownloadUrlSchema = z.string().trim().min(1).max(8_192).regex(/^(https?:\/\/|\/).+/);
 
 export const hyperframesFinalCompositeAssetManifestSchema = z.object({
   sourceVideos: z.array(
     z.object({
       shotId: z.string().trim().min(1),
       storageRef: workerStorageRefSchema,
+      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
       mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).default(0),
       durationSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
       contentType: z.string().trim().min(1).default("video/mp4"),
@@ -1155,6 +1157,7 @@ export const hyperframesFinalCompositeAssetManifestSchema = z.object({
     z.object({
       role: z.enum(["source_audio", "music_bed", "sfx", "voiceover"]),
       storageRef: workerStorageRefSchema,
+      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
       checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
     }),
   ).default([]),
@@ -1163,6 +1166,7 @@ export const hyperframesFinalCompositeAssetManifestSchema = z.object({
       shotId: z.string().trim().min(1),
       kind: z.enum(["vtt", "srt", "json"]),
       storageRef: workerStorageRefSchema,
+      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
       checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
     }),
   ).default([]),
@@ -1242,6 +1246,7 @@ export const hyperframesFinalCompositeWorkerInputSchema = z.object({
   shots: z.array(hyperframesFinalCompositeShotSchema).min(1).max(60),
   assetManifest: hyperframesFinalCompositeAssetManifestSchema,
   outputRequirements: hyperframesFinalCompositeOutputRequirementsSchema,
+  compositionHtml: z.string().trim().min(1).nullable().optional().default(null),
   renderConfig: z.record(z.string(), z.unknown()).default({}),
 }).superRefine((payload, ctx) => {
   const assetShotIds = new Set(payload.assetManifest.sourceVideos.map((video) => video.shotId));

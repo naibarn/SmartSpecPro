@@ -833,6 +833,12 @@ function buildHyperframesFinalCompositeHtml(input: {
       }
       html, body { margin: 0; width: 100%; height: 100%; background: #050505; }
       body { font-family: "SmartSpecThai", ${fontStack}; }
+      
+      /* HyperFrames Render-Safe Guardrail: Prevent infinite animation loops from hanging the render worker */
+      [data-composition-id] *, [data-composition-id] *::before, [data-composition-id] *::after {
+        animation-iteration-count: 1 !important;
+        animation-fill-mode: both !important;
+      }
       [data-composition-id] {
         position: relative;
         width: ${config.width}px;
@@ -1042,7 +1048,7 @@ function buildHyperframesFinalCompositeHtml(input: {
       .shot.is-active { opacity: 1; animation: shotIn .38s ease-out both; }
       .shot.is-active .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear both; }
       .shot.is-active[data-shot-copy-deferred="after-hook"] .overlay-copy-layer { animation: overlayCopyLifetime 3.2s linear 3s forwards; }
-      .source-video.is-active { animation: floatProduct ${Math.max(shotDurationAverage(config), 4)}s ease-in-out infinite; }
+      .source-video.is-active { animation: floatProduct ${Math.max(shotDurationAverage(config), 4)}s ease-in-out both; }
       .shot.is-active .shot-line { animation: textStaggerRise .52s cubic-bezier(.22,1,.36,1) both; }
       .shot.is-active .line-2 { animation-delay: .16s; }
       .shot.is-active .line-3 { animation-delay: .28s; }

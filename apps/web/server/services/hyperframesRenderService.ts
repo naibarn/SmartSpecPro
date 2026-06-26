@@ -26,6 +26,7 @@ import {
 import type { HyperframesAuthContext } from "./hyperframesFeatureAccessService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import { redactHyperframesDiagnostics } from "./hyperframesCompositionSanitizer";
+import { HYPERFRAMES_FINAL_VIDEO_MIN_BYTES } from "./hyperframesWorkerVerificationService";
 
 export const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -599,12 +600,11 @@ export function buildHyperframesRenderProjection(input: {
     : []);
   const completedFinalNeedsPlayableOutput =
     input.status === "completed" && input.payload?.renderIntent === "final";
-  const hasPlayableFinalOutput = outputRefs.some(ref =>
-    ref.kind === "final_video" &&
-    Boolean(ref.url) &&
-    Boolean(ref.contentHash)
-  );
-  const finalProbePassed = input.payload?.playableProbe?.passed === true;
+  const hasPlayableFinalOutput = hasPlayableFinalOutputRef(outputRefs);
+  const finalProbePassed = hasFinalProbeOrVerifiedLibraryOutput({
+    payload: input.payload,
+    outputRefs,
+  });
   const projectedStatus: HyperframesRenderStatus =
     completedFinalNeedsPlayableOutput && (!hasPlayableFinalOutput || !finalProbePassed)
       ? "failed_permanent"
@@ -743,6 +743,62 @@ function hasCompletedHyperframesOutput(
   return outputRefs.some(ref => Boolean(ref.url) && Boolean(ref.contentHash));
 }
 
+function isPlayableFinalOutputRef(ref: HyperframesOutputRef): boolean {
+  if (!ref.contentHash) return false;
+  if (ref.kind === "final_video") {
+    return Boolean(ref.url);
+  }
+  if (ref.kind === "library_item") {
+    return Boolean(ref.libraryItemId);
+  }
+  return false;
+}
+
+function hasPlayableFinalOutputRef(
+  outputRefs: HyperframesOutputRef[]
+): boolean {
+  return outputRefs.some(isPlayableFinalOutputRef);
+}
+
+function hasVerifiedLibraryFinalOutputRef(
+  outputRefs: HyperframesOutputRef[]
+): boolean {
+  return outputRefs.some(ref =>
+    ref.kind === "library_item" &&
+    Boolean(ref.libraryItemId) &&
+    Boolean(ref.contentHash)
+  );
+}
+
+function hasFinalProbeOrVerifiedLibraryOutput(input: {
+  payload?: Partial<HyperframesRenderJobPayload>;
+  outputRefs: HyperframesOutputRef[];
+}): boolean {
+  return (
+    input.payload?.playableProbe?.passed === true ||
+    hasVerifiedLibraryFinalOutputRef(input.outputRefs)
+  );
+}
+
+function buildHyperframesLibraryOutputFallbackUrl(input: {
+  payload: Partial<HyperframesRenderJobPayload>;
+  publishedItemId?: string | number | null;
+}): string | null {
+  if (input.publishedItemId == null) return null;
+  const payloadRecord = input.payload as Record<string, unknown>;
+  const params = new URLSearchParams({
+    source: "marketplace_auto_review_hyperframes_render",
+    type: "video",
+  });
+  if (typeof input.payload.productId === "string" && input.payload.productId.trim()) {
+    params.set("productId", input.payload.productId.trim());
+  }
+  if (typeof payloadRecord.runId === "string" && payloadRecord.runId.trim()) {
+    params.set("runId", payloadRecord.runId.trim());
+  }
+  return `/media-history?${params.toString()}`;
+}
+
 function mapWorkerJobStatusToHyperframesRenderStatus(
   status: string,
   failureReason?: string | null,
@@ -817,35 +873,45 @@ function outputRefsFromWorkerArtifacts(input: {
     const metadata = artifact.metadataJson && typeof artifact.metadataJson === "object"
       ? artifact.metadataJson as Record<string, unknown>
       : {};
+    const isHyperframesFinalVideo =
+      artifact.artifactType === "final_video" ||
+      artifact.artifactType === "hyperframes_final_video" ||
+      artifact.artifactType === "hyperframes_final_composite";
+    const sizeBytes = typeof metadata.sizeBytes === "number" ? metadata.sizeBytes : undefined;
+    if (isHyperframesFinalVideo && (!sizeBytes || sizeBytes < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES)) {
+      continue;
+    }
     const contentHash =
       typeof metadata.contentHash === "string"
         ? metadata.contentHash
         : typeof metadata.checksumSha256 === "string"
           ? metadata.checksumSha256
-          : undefined;
+          : typeof metadata.sha256 === "string"
+            ? metadata.sha256
+            : undefined;
     const url =
       typeof metadata.url === "string"
         ? metadata.url
         : typeof metadata.downloadUrl === "string"
           ? metadata.downloadUrl
-          : null;
+          : typeof metadata.sourceUrl === "string"
+            ? metadata.sourceUrl
+            : typeof metadata.source_url === "string"
+              ? metadata.source_url
+              : buildHyperframesLibraryOutputFallbackUrl({
+                  payload: input.payload,
+                  publishedItemId: artifact.publishedItemId,
+                });
     const artifactRef = HyperframesArtifactRefSchema.safeParse({
       artifactId: artifact.id,
-      kind:
-        artifact.artifactType === "final_video" ||
-        artifact.artifactType === "hyperframes_final_composite"
-          ? "hyperframes_render_mp4"
-          : artifact.artifactType,
+      kind: isHyperframesFinalVideo ? "hyperframes_render_mp4" : artifact.artifactType,
       storageRef: artifact.storageRef,
       contentHash,
       mimeType:
         typeof metadata.contentType === "string"
           ? metadata.contentType
           : "video/mp4",
-      sizeBytes:
-        typeof metadata.sizeBytes === "number"
-          ? metadata.sizeBytes
-          : undefined,
+      sizeBytes,
       retentionClass:
         artifact.publishedItemId != null ? "library" : "review",
       redacted: true,
@@ -1252,12 +1318,13 @@ export async function getHyperframesRenderProjection(input: {
         hasCompletedOutput && HYPERFRAMES_ACTIVE_RENDER_STATUSES.has(renderStatus)
           ? "completed"
           : renderStatus;
-      const hasSafeFinalVideoOutput = outputRefs.outputRefs.some(ref =>
-        ref.kind === "final_video" &&
-        Boolean(ref.url) &&
-        Boolean(ref.contentHash)
+      const hasSafeFinalVideoOutput = hasPlayableFinalOutputRef(
+        outputRefs.outputRefs
       );
-      const finalProbePassed = payload.playableProbe?.passed === true;
+      const finalProbePassed = hasFinalProbeOrVerifiedLibraryOutput({
+        payload,
+        outputRefs: outputRefs.outputRefs,
+      });
       const completedFinalMissingPlayableOutput =
         effectiveRenderStatus === "completed" &&
         payload.renderIntent === "final" &&

@@ -61,6 +61,7 @@ import {
   type HyperframesRuntimeAdapterEnv,
 } from "./hyperframesRuntimeAdapter";
 import { queueDesktopHyperframesFinalCompositeJob } from "./workerSchedulerService";
+import { generateSignedUrl } from "./mediaAssetService";
 import { finalizeHyperframesRenderToLibrary } from "./hyperframesLibraryFinalizeService";
 import {
   normalizeVideoSegmentCreativeBrief,
@@ -642,7 +643,14 @@ function hyperframesAspectRatioForOutput(width: number, height: number): "9:16" 
   return "9:16";
 }
 
-function buildHyperframesFinalCompositeWorkerInput(input: {
+async function resolveWorkerDownloadUrl(storageRef: string | null | undefined): Promise<string | null> {
+  const normalized = cleanText(storageRef);
+  if (!normalized) return null;
+  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("/")) return normalized;
+  return await generateSignedUrl(normalized, 86_400);
+}
+
+async function buildHyperframesFinalCompositeWorkerInput(input: {
   apiInput: CreateHyperframesFinalCompositeInput;
   payload: ReturnType<typeof buildHyperframesRenderJobPayload>;
 }) {
@@ -661,6 +669,27 @@ function buildHyperframesFinalCompositeWorkerInput(input: {
     creativePlanHash: input.payload.creativePlanHash,
     finalCompositeConfig,
   });
+
+  const sourceVideos = await Promise.all(timeline.entries.map(async entry => ({
+    shotId: entry.shotId,
+    storageRef: entry.sourceMediaRef,
+    downloadUrl: await resolveWorkerDownloadUrl(entry.sourceMediaRef),
+    mediaStartSec: entry.mediaStartSec,
+    durationSec: entry.durationSec,
+    contentType: "video/mp4",
+    checksumSha256: entry.sourceMediaHash,
+  })));
+  const audioRefs = await Promise.all(config.audioEvents.map(async event => ({
+    role:
+      event.role === "voiceover"
+        ? ("voiceover" as const)
+        : event.role === "music"
+          ? ("music_bed" as const)
+          : ("sfx" as const),
+    storageRef: event.assetRef,
+    downloadUrl: await resolveWorkerDownloadUrl(event.assetRef),
+    checksumSha256: null,
+  })));
 
   return {
     renderIntent: "hyperframes_final_composite" as const,
@@ -698,24 +727,8 @@ function buildHyperframesFinalCompositeWorkerInput(input: {
       };
     }),
     assetManifest: {
-      sourceVideos: timeline.entries.map(entry => ({
-        shotId: entry.shotId,
-        storageRef: entry.sourceMediaRef,
-        mediaStartSec: entry.mediaStartSec,
-        durationSec: entry.durationSec,
-        contentType: "video/mp4",
-        checksumSha256: entry.sourceMediaHash,
-      })),
-      audioRefs: config.audioEvents.map(event => ({
-        role:
-          event.role === "voiceover"
-            ? ("voiceover" as const)
-            : event.role === "music"
-              ? ("music_bed" as const)
-              : ("sfx" as const),
-        storageRef: event.assetRef,
-        checksumSha256: null,
-      })),
+      sourceVideos,
+      audioRefs,
       subtitleRefs: [],
       fontRefs: [
         {
@@ -741,9 +754,10 @@ function buildHyperframesFinalCompositeWorkerInput(input: {
       requireServerVerification: true,
       publishToLibrary: true,
     },
+    compositionHtml: input.payload.compositionHtml ?? null,
     renderConfig: {
       ...finalCompositeConfig,
-      compositionHtml: input.payload.compositionHtml,
+      compositionHtml: input.payload.compositionHtml ?? null,
       platformPresetId: input.payload.platformPresetId,
       platformPresetVersion: input.payload.platformPresetVersion,
       creativePlanHash: input.payload.creativePlanHash,
@@ -1686,7 +1700,7 @@ export async function createHyperframesFinalCompositeForApi(
     };
   }
   const payload = buildHyperframesRenderJobPayload({ composition });
-  const workerInput = buildHyperframesFinalCompositeWorkerInput({
+  const workerInput = await buildHyperframesFinalCompositeWorkerInput({
     apiInput: input,
     payload,
   });

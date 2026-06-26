@@ -21,6 +21,8 @@ import type { TenantFeatureFlags } from "../../shared/featureFlags";
 
 export type HyperframesAuthContext = { userId: number; tenantId?: string };
 
+const HYPERFRAMES_PIXEL_FRAME_CREDIT_UNIT = 1_000_000_000;
+
 export interface HyperframesAccessInput {
   auth: HyperframesAuthContext;
   productId?: string;
@@ -171,7 +173,7 @@ export function buildHyperframesCreditEstimate(input: {
           ? 0.4
           : 0.65;
   const workerComplexityMultiplier = input.workerComplexityMultiplier ?? 1;
-  const rawComputeUnits = estimatedRenderPixels / 1_000_000;
+  const rawComputeUnits = estimatedRenderPixels / HYPERFRAMES_PIXEL_FRAME_CREDIT_UNIT;
   const estimatedCredits = Math.ceil(
     rawComputeUnits *
       profileMultiplier *

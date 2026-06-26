@@ -20,7 +20,7 @@ type WorkerArtifactRecord = Record<string, any>;
 
 const WORKER_ARTIFACT_STORAGE_PREFIX = "worker-artifacts/";
 const MAX_WORKER_ARTIFACT_SIZE_BYTES = parseInt(
-  process.env.WORKER_ARTIFACT_MAX_BYTES || String(100 * 1024 * 1024),
+  process.env.WORKER_ARTIFACT_MAX_BYTES || String(2000 * 1024 * 1024),
   10,
 );
 const UNSAFE_DOWNLOAD_ONLY_CONTENT_TYPES = new Set([
@@ -44,6 +44,7 @@ export interface WorkerArtifactPublicationResult {
   created: boolean;
   indexStatus: string;
   safeServing: "inline" | "download_only";
+  sourceUrl?: string | null;
 }
 
 export interface WorkerArtifactRepository {
@@ -288,6 +289,10 @@ export async function publishWorkerArtifacts(
         created: false,
         indexStatus: "already_published",
         safeServing: determineSafeServing(normalizeContentType(artifact.metadataJson?.contentType)),
+        sourceUrl:
+          typeof artifact.metadataJson?.sourceUrl === "string"
+            ? artifact.metadataJson.sourceUrl
+            : null,
       });
       continue;
     }
@@ -372,6 +377,7 @@ export async function publishWorkerArtifacts(
       created: !libraryResult.idempotent,
       indexStatus: indexJob.status,
       safeServing: validated.safeServing,
+      sourceUrl: storageAsset.url,
     });
   }
 
@@ -385,6 +391,7 @@ export async function publishWorkerArtifacts(
       publishedItemId: result.publishedItemId,
       indexStatus: result.indexStatus,
       safeServing: result.safeServing,
+      sourceUrl: result.sourceUrl ?? null,
     })),
   });
 

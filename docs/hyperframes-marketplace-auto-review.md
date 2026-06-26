@@ -115,6 +115,12 @@ Package installation remains gated until exact package names, pinned versions,
 license/provenance, native/postinstall behavior, Chrome, FFmpeg, fonts, and
 worker-image compatibility are approved.
 
+For the Smart AI Hub Worker App, the default approved desktop runtime profile is
+`hyperframes-wsl2`: a Windows app controlling a WSL2 Linux runtime pack. Runtime
+download endpoints must prefer this profile and must verify the zip contains the
+platform-specific Linux paths before serving it. `hyperframes-windows-x64` is a
+fallback profile only.
+
 Diagnostic smoke rendering may verify worker plumbing, fixtures, browser
 evidence, and MediaStudio-to-Library handoff, but it cannot mark a user-facing
 HyperFrames render complete, reserve/consume credits, or unlock producer-only

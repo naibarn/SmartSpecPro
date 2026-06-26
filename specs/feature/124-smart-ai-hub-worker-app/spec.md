@@ -1268,17 +1268,24 @@ Priority and fairness:
 
 ### 8.1 Runtime Pack Contents
 
-Runtime pack for Windows should include:
+The default runtime pack for the Windows Worker App should be WSL2-first:
+`hyperframes-wsl2` runs inside the local WSL2 Linux environment while the Tauri
+app remains a Windows control surface. It should include:
 
-- worker sidecar executable or Node runtime plus sidecar JS bundle
+- worker launcher sidecar plus Linux Node runtime and sidecar JS bundle
 - pinned HyperFrames packages
-- pinned Chromium/Playwright browser binary
-- pinned FFmpeg and FFprobe
+- pinned Linux Chromium/Chrome/headless-shell browser binary
+- pinned Linux FFmpeg and ffprobe
 - Thai-capable font files
 - runtime manifest
 - license notices
 - checksum file
 - signature file
+
+`hyperframes-windows-x64` remains an explicit fallback profile for machines
+where WSL2 cannot be used. The server must not serve a runtime pack whose zip
+contents do not contain the required platform-specific paths declared by the
+manifest.
 
 Future local AI extension may add provider adapters rather than bundling AI
 models:
@@ -1297,7 +1304,8 @@ explicitly defines model distribution.
 ```json
 {
   "schemaVersion": 1,
-  "platform": "windows-x64",
+  "runtimeId": "hyperframes-wsl2",
+  "platform": "wsl2-linux-x64",
   "runtimePackVersion": "2026.06.22.1",
   "hyperframesCliVersion": "0.6.95",
   "hyperframesProducerVersion": "0.6.95",
@@ -1309,7 +1317,7 @@ explicitly defines model distribution.
   "runtimeProfileHash": "hf_...",
   "files": [
     {
-      "path": "bin/ffmpeg.exe",
+      "path": "bin/ffmpeg",
       "sha256": "...",
       "sizeBytes": 123
     }

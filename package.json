@@ -36,5 +36,24 @@
     "reactflow": "^11.11.4",
     "rg": "^0.0.2",
     "sharp": "^0.34.5"
-  }
+  },
+  "version": "1.0.0",
+  "description": "[![CI](https://github.com/naibarn/SmartSpecPro/actions/workflows/ci.yml/badge.svg)](https://github.com/naibarn/SmartSpecPro/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE) [![Release Stage](https://img.shields.io/badge/Release%20Stage-Alpha-orange)](#alpha-release-notice) [![Monorepo](https://img.shields.io/badge/Monorepo-Turbo-blue)](https://turbo.build/repo) [![Node](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/) [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)",
+  "main": "test_hash.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naibarn/SmartSpecPro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/naibarn/SmartSpecPro/issues"
+  },
+  "homepage": "https://github.com/naibarn/SmartSpecPro#readme"
 }

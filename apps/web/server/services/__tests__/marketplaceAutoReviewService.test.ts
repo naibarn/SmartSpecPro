@@ -789,6 +789,29 @@ describe("Marketplace Auto Review MCP transport metadata", () => {
       argumentShape: "higgsfield.generate_video",
     });
   });
+
+  it("does not force MCP metadata onto gateway API image models from a mixed image/video run", () => {
+    expect(
+      mergeMarketplaceMcpTransportMetadataForModelForTest(
+        {
+          transport: "mcp",
+          tenantId: "tenant-ZCSKEM9s",
+          actorUserId: 109,
+          connectionId: "conn_higgsfield",
+          sharedGroupId: 1,
+        },
+        {
+          mediaType: "image",
+          modelTransport: {
+            transport: "gateway_api",
+            providerKey: "kie_ai",
+            providerModelId: "google-banana-2",
+            creditSource: "smartspec_credits",
+          },
+        }
+      )
+    ).toBeUndefined();
+  });
 });
 
 describe("Marketplace Auto Review run idempotency", () => {
@@ -2913,7 +2936,7 @@ describe("marketplace auto review audio/video planning", () => {
           [
             "USER-SELECTED REFERENCE ANCHOR LOCK:",
             "Product anchor product-image-sha256:producthash: strict product source.",
-            "VIDEO CHARACTER LOCK: The uploaded character reference image is the presenter source of truth. For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames. The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
+            "VIDEO CHARACTER LOCK: The uploaded character reference image is the presenter source of truth. Infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames. The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
             "Character anchor character-upload:char_123: preserve the same identity, face structure, hair, body proportions, and styling from the supplied user reference across every shot.",
           ].join(" "),
         ].join("\n\n"),
@@ -2926,6 +2949,7 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prompt).toContain("visible/uploaded presenter identity");
     expect(prompt).toContain("Voice matches the visible/uploaded presenter");
     expect(prompt.length).toBeLessThanOrEqual(2000);
+    expect(prompt).not.toContain("For Veo 3.1");
     expect(prompt).not.toMatch(
       /\bfemale presenter\b|\byoung female host\b|\byoung mother-style female voice\b/i
     );

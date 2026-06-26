@@ -66,10 +66,11 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
   // Priority 3: Query DB for active storage_settings
   try {
     // Lazy import to avoid circular dependency and allow startup without DB
-    const { db } = await import("./db");
+    const { getDb } = await import("./db");
     const { storageSettings } = await import("../drizzle/schema");
     const { decrypt } = await import("./services/crypto");
 
+    const db = getDb();
     const [setting] = await db
       .select()
       .from(storageSettings)

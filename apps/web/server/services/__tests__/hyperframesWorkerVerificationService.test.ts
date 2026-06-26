@@ -158,6 +158,30 @@ describe("hyperframesWorkerVerificationService", () => {
     }));
   });
 
+  it("rejects mock sidecar text outputs even when probe and manifest claim success", () => {
+    const mockTextChecksum = "cff40476b79b0adbc845136bd90294841a8073ee71f03031de75d6eb1e998f87";
+
+    expect(() => verifyHyperframesWorkerArtifacts({
+      job: job(),
+      artifacts: artifacts({
+        hyperframes_final_video: {
+          metadataJson: {
+            checksumSha256: mockTextChecksum,
+            sizeBytes: 18,
+          },
+        },
+        hyperframes_render_manifest: {
+          metadataJson: {
+            finalVideoChecksumSha256: mockTextChecksum,
+          },
+        },
+      }),
+      now,
+    })).toThrowError(expect.objectContaining({
+      code: "final_video_size_invalid",
+    }));
+  });
+
   it("rejects duration mismatch against the requested final composite length", () => {
     expect(() => verifyHyperframesWorkerArtifacts({
       job: job(),

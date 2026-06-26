@@ -287,7 +287,7 @@ function buildStoryboardReviewCharacterVideoLockFromContext(
     return [
       "VIDEO CHARACTER LOCK:",
       "The uploaded character reference image is the presenter source of truth.",
-      "For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
+      "Infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
       "The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
     ].join(" ");
   }
@@ -300,7 +300,7 @@ function buildStoryboardReviewCharacterVideoLockFromContext(
     "VIDEO CHARACTER LOCK:",
     "The selected character choices are the presenter source of truth.",
     subject
-      ? `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`
+      ? `Any visible presenter/reviewer must be ${subject}.`
       : "",
     visualDetails ? `User-selected visual details: ${visualDetails}.` : "",
     characterBrief ? `User-selected character brief: ${characterBrief}` : "",

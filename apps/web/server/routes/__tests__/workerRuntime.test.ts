@@ -4,6 +4,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import request from "supertest";
+import AdmZip from "adm-zip";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
 
@@ -291,6 +292,62 @@ describe("workerRuntime routes", () => {
     });
 
     return app;
+  }
+
+  function writeRuntimeZip(filePath: string, runtimeId = "hyperframes-wsl2") {
+    const zip = new AdmZip();
+    const common = [
+      "runtime-pack/manifest.json",
+      "runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js",
+      "runtime-pack/hyperframes/node_modules/@hyperframes/producer/package.json",
+      "runtime-pack/hyperframes-sidecar/render.mjs",
+      "runtime-pack/SHA256SUMS",
+      "runtime-pack/SHA256SUMS.sig",
+      "sidecars/hyperframes-render.exe",
+    ];
+    const platformFiles = runtimeId === "hyperframes-wsl2"
+      ? [
+          "runtime-pack/node/bin/node",
+          "runtime-pack/bin/ffmpeg",
+          "runtime-pack/bin/ffprobe",
+          "runtime-pack/browser-libs/libnspr4.so",
+          "runtime-pack/browser-libs/libnss3.so",
+          "runtime-pack/browser-libs/libnssutil3.so",
+          "runtime-pack/browser-libs/libsmime3.so",
+          "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64.node",
+          "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.17.3",
+        ]
+      : ["runtime-pack/node/node.exe", "runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"];
+    for (const entry of [...common, ...platformFiles]) {
+      zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+    }
+    zip.writeZip(filePath);
+  }
+
+  function officialRuntimeManifest(runtimeId = "hyperframes-wsl2") {
+    return {
+      runtimeId,
+      version: "2026.06.25.1",
+      hyperframesVersion: "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
+      browserVersion: runtimeId === "hyperframes-wsl2" ? "Chrome for Testing linux64" : "Chrome for Testing win64",
+      ffmpegVersion: runtimeId === "hyperframes-wsl2" ? "linux ffmpeg static" : "gyan.dev win64",
+      ffprobeVersion: runtimeId === "hyperframes-wsl2" ? "linux ffprobe static" : "gyan.dev win64",
+      thaiFontFamily: "Noto Sans Thai",
+      sidecarPath: "hyperframes-render.exe",
+      sidecarSha256: "abc",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
+      runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : "windows-x64",
+      rendererKind: "hyperframes_cli_official",
+      sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
+      sidecarScriptPath: "hyperframes-sidecar/render.mjs",
+      supportedContractVersions: ["2026-06-22"],
+      runtimeProfileHash: "profile-hash",
+      allowed: true,
+      denyReason: null,
+      rollbackToVersion: null,
+    };
   }
 
   function workerConnectStartPayload() {
@@ -889,40 +946,55 @@ describe("workerRuntime routes", () => {
     expect(res.body.error.message).toContain("Official HyperFrames runtime pack has not been published yet");
   });
 
-  it("serves allowed runtime pack manifest with archive hash and download url", async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-ready-"));
-    const fileName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.23.1.zip";
+  it("does not serve diagnostic smoke runtime packs as render-ready", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-smoke-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.3.zip";
     const filePath = path.join(tempDir, fileName);
     fs.writeFileSync(filePath, "runtime-zip-fixture");
     fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
       runtimeId: "hyperframes-windows-x64",
-      version: "2026.06.23.1",
-      hyperframesVersion: "1.0.0",
+      version: "2026.06.24.3",
+      hyperframesVersion: "smart-ai-hub-ffmpeg-render-sidecar-2026.06.24",
       browserVersion: "chromium-1",
       ffmpegVersion: "7.1",
       ffprobeVersion: "7.1",
       thaiFontFamily: "Noto Sans Thai",
       sidecarPath: "hyperframes-render.exe",
-      sidecarSha256: "abc",
+      sidecarSha256: "sha256",
       checksumFile: "SHA256SUMS",
       signatureFile: "SHA256SUMS.sig",
       licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
       supportedContractVersions: ["2026-06-22"],
-      runtimeProfileHash: "profile-hash",
+      runtimeProfileHash: "profile",
       allowed: true,
       denyReason: null,
-      rollbackToVersion: null,
     }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const manifestRes = await request(app).get("/api/workers/runtime-pack/manifest");
+    expect(manifestRes.status).toBe(404);
+    expect(manifestRes.body.error.message).toContain("Mock, fallback, diagnostic smoke");
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(404);
+  });
+
+  it("serves allowed runtime pack manifest with archive hash and download url", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-ready-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.1.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(officialRuntimeManifest("hyperframes-wsl2")));
     const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
 
     const res = await request(app).get("/api/workers/runtime-pack/manifest");
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      runtimeId: "hyperframes-windows-x64",
-      version: "2026.06.23.1",
+      runtimeId: "hyperframes-wsl2",
+      version: "2026.06.25.1",
       archiveFileName: fileName,
-      archiveSizeBytes: Buffer.byteLength("runtime-zip-fixture"),
+      archiveSizeBytes: fs.statSync(filePath).size,
       archiveUrl: `/api/workers/runtime-pack/download/${fileName}`,
       allowed: true,
     });
@@ -931,6 +1003,103 @@ describe("workerRuntime routes", () => {
     const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
-    expect(downloadRes.text).toBe("runtime-zip-fixture");
+    expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
+  });
+
+  it("blocks WSL2 runtime packs that miss Linux sharp native dependencies", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-missing-sharp-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.2.zip";
+    const filePath = path.join(tempDir, fileName);
+    const zip = new AdmZip();
+    for (const entry of [
+      "runtime-pack/manifest.json",
+      "runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js",
+      "runtime-pack/hyperframes/node_modules/@hyperframes/producer/package.json",
+      "runtime-pack/hyperframes-sidecar/render.mjs",
+      "runtime-pack/SHA256SUMS",
+      "runtime-pack/SHA256SUMS.sig",
+      "sidecars/hyperframes-render.exe",
+      "runtime-pack/node/bin/node",
+      "runtime-pack/bin/ffmpeg",
+      "runtime-pack/bin/ffprobe",
+    ]) {
+      zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+    }
+    zip.writeZip(filePath);
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.2",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("blocks allowed manifests when the archive misses the runtime-pack sidecar script path", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-bad-path-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.2.zip";
+    const filePath = path.join(tempDir, fileName);
+    const zip = new AdmZip();
+    zip.addFile("runtime-pack/manifest.json", Buffer.from("{}"));
+    zip.addFile("hyperframes-sidecar/render.mjs", Buffer.from("wrong root path"));
+    zip.addFile("runtime-pack/node/bin/node", Buffer.from("node"));
+    zip.addFile("runtime-pack/bin/ffmpeg", Buffer.from("ffmpeg"));
+    zip.addFile("runtime-pack/bin/ffprobe", Buffer.from("ffprobe"));
+    zip.addFile("runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js", Buffer.from("cli"));
+    zip.addFile("runtime-pack/hyperframes/node_modules/@hyperframes/producer/package.json", Buffer.from("{}"));
+    zip.addFile("runtime-pack/SHA256SUMS", Buffer.from("sums"));
+    zip.addFile("runtime-pack/SHA256SUMS.sig", Buffer.from("sig"));
+    zip.addFile("sidecars/hyperframes-render.exe", Buffer.from("launcher"));
+    zip.writeZip(filePath);
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.2",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("skips a newer malformed archive and serves the latest structurally valid pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-valid-fallback-"));
+    const validName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.5.zip";
+    const invalidName = "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.6.zip";
+    const validPath = path.join(tempDir, validName);
+    const invalidPath = path.join(tempDir, invalidName);
+    writeRuntimeZip(validPath, "hyperframes-windows-x64");
+    fs.writeFileSync(`${validPath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-windows-x64"),
+      version: "2026.06.24.5",
+    }));
+
+    const badZip = new AdmZip();
+    badZip.addFile("runtime-pack/manifest.json", Buffer.from("{}"));
+    badZip.addFile("hyperframes-sidecar/render.mjs", Buffer.from("wrong root path"));
+    badZip.addFile("runtime-pack/node/node.exe", Buffer.from("node"));
+    badZip.addFile("runtime-pack/bin/ffmpeg.exe", Buffer.from("ffmpeg"));
+    badZip.addFile("runtime-pack/bin/ffprobe.exe", Buffer.from("ffprobe"));
+    badZip.addFile("runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js", Buffer.from("cli"));
+    badZip.addFile("runtime-pack/hyperframes/node_modules/@hyperframes/producer/package.json", Buffer.from("{}"));
+    badZip.addFile("runtime-pack/SHA256SUMS", Buffer.from("sums"));
+    badZip.addFile("runtime-pack/SHA256SUMS.sig", Buffer.from("sig"));
+    badZip.addFile("sidecars/hyperframes-render.exe", Buffer.from("launcher"));
+    badZip.writeZip(invalidPath);
+    fs.writeFileSync(`${invalidPath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-windows-x64"),
+      version: "2026.06.24.6",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hyperframes-windows-x64");
+
+    expect(res.status).toBe(200);
+    expect(res.body.version).toBe("2026.06.24.5");
+    expect(res.body.archiveFileName).toBe(validName);
   });
 });

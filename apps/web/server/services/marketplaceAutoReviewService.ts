@@ -3094,6 +3094,7 @@ function mergeMarketplaceMcpTransportMetadataForModel(
 ): Record<string, unknown> | undefined {
   const record = asRecord(value);
   if (record.transport !== "mcp") return undefined;
+  if (params.modelTransport.transport !== "mcp") return undefined;
   return compactRecord({
     ...record,
     assetType: params.mediaType,
@@ -4244,7 +4245,7 @@ function buildMarketplaceAutoReviewCharacterVideoLock(input: {
     return [
       "VIDEO CHARACTER LOCK:",
       "The uploaded character reference image is the presenter source of truth.",
-      "For Veo 3.1, infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
+      "Infer the presenter's apparent gender presentation, age range, maturity, styling, and reviewer persona from the uploaded character image and visible reference frames.",
       "The spoken Thai voice must match that apparent character from the image; hidden/default character-choice values must not override the uploaded reference.",
       "Keep the presenter's voice, wardrobe family, identity, and demographics consistent with the selected image/frame references across shots.",
     ].join(" ");
@@ -4269,7 +4270,7 @@ function buildMarketplaceAutoReviewCharacterVideoLock(input: {
     "VIDEO CHARACTER LOCK:",
     `${source} are the presenter source of truth.`,
     subject
-      ? `For Veo 3.1, any visible presenter/reviewer must be ${subject}.`
+      ? `Any visible presenter/reviewer must be ${subject}.`
       : "",
     visualDetails ? `User-selected visual details: ${visualDetails}.` : "",
     characterBrief ? `User-selected character brief: ${characterBrief}` : "",
@@ -20671,11 +20672,25 @@ async function fetchBufferFromUrl(
   const absoluteUrl = url.startsWith("/")
     ? `${(cleanText(publicUrl) || process.env.NODE_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, "")}${url}`
     : url;
-  const response = await fetch(absoluteUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image for split: ${response.status}`);
+  
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(absoluteUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return Buffer.from(await response.arrayBuffer());
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+      }
+    }
   }
-  return Buffer.from(await response.arrayBuffer());
+  
+  const errorMessage = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`Failed to fetch image for split: ${errorMessage}`);
 }
 
 async function splitStoryboardGrid(params: {

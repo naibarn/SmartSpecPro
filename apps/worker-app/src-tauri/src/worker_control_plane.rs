@@ -80,6 +80,8 @@ pub struct WorkerClaimRequest {
 #[serde(rename_all = "camelCase")]
 pub struct WorkerClaimResponse {
     pub job: Option<crate::worker_executor::ClaimedWorkerJob>,
+    #[serde(default)]
+    pub queue_depth: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -147,6 +149,7 @@ pub fn build_worker_heartbeat_payload(
     runtime_version: &str,
     status: &str,
     current_job_count: u32,
+    queue_depth: u32,
     warnings_json: Vec<String>,
     runtime_metadata_json: Value,
 ) -> WorkerHeartbeatPayload {
@@ -160,7 +163,7 @@ pub fn build_worker_heartbeat_payload(
         runtime_type: WORKER_RUNTIME_TYPE.into(),
         status: status.into(),
         current_job_count,
-        queue_depth: 0,
+        queue_depth,
         free_disk_bytes: None,
         metrics_json: serde_json::json!({}),
         warnings_json,
@@ -597,6 +600,22 @@ fn jwt_jti(token: &str) -> Result<String, String> {
         .ok_or_else(|| "worker token is missing jti".to_string())
 }
 
+pub fn jwt_exp(token: &str) -> Result<u64, String> {
+    let payload = token
+        .trim()
+        .split('.')
+        .nth(1)
+        .ok_or_else(|| "worker token is not a JWT".to_string())?;
+    let bytes = base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, payload)
+        .map_err(|error| format!("worker token payload is invalid: {error}"))?;
+    let value = serde_json::from_slice::<Value>(&bytes)
+        .map_err(|error| format!("worker token payload is not JSON: {error}"))?;
+    value
+        .get("exp")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "worker token is missing exp".to_string())
+}
+
 fn random_nonce() -> String {
     let mut bytes = [0_u8; 16];
     rand::rngs::OsRng.fill_bytes(&mut bytes);
@@ -614,6 +633,7 @@ mod tests {
             "0.1.0",
             "online",
             0,
+            2,
             vec!["runtime blocked".into()],
             serde_json::json!({ "doctorStatus": "blocked" }),
         );
@@ -623,6 +643,7 @@ mod tests {
             payload.compatibility.protocol_version,
             WORKER_APP_PROTOCOL_VERSION
         );
+        assert_eq!(payload.queue_depth, 2);
         assert_eq!(payload.warnings_json, vec!["runtime blocked"]);
         assert_eq!(payload.runtime_metadata_json["doctorStatus"], "blocked");
     }

@@ -135,13 +135,14 @@ const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
 ].join(" ");
 
 function applyStoryboardPromptDuration(prompt: string, durationSeconds: number): string {
-  const duration = Math.max(1, Math.round(durationSeconds));
-  const speechTarget = Math.round((duration + (duration <= 8 ? 1.5 : duration <= 12 ? 1 : 0)) * 2) / 2;
+  void durationSeconds;
   return prompt
-    .replace(/Create an? \d+(?:\.\d+)?-second cinematic video\./i, `Create a ${duration}-second cinematic video.`)
+    .replace(/Create an? \d+(?:\.\d+)?-second cinematic video\./i, "Create a cinematic video.")
+    .replace(/\bFor\s+Veo\s+3\.1,\s*/gi, "")
+    .replace(/\bVeo\s+3\.1 can finish a slightly longer line\.\s*/gi, "")
     .replace(
       /Dialogue pacing:\s*write enough spoken content for about [^.;\n]+?(?:;|\.)(?:\s*Veo 3\.1 can finish a slightly longer line\.)?(?:\s*Avoid a short 5-6 second line or silent tail\.)?/i,
-      `Dialogue pacing: write enough spoken content for about ${speechTarget} วินาที, even when the clip is ${duration} วินาที; Veo 3.1 can finish a slightly longer line. Avoid a short 5-6 second line or silent tail.`
+      "Dialogue pacing: write enough spoken content for the selected clip duration and avoid a short line or silent tail."
     );
 }
 
@@ -1970,7 +1971,7 @@ function splitHyperframesFinalSourceClips(
     let segmentIndex = 0;
     const segmentCount = Math.max(
       1,
-      Math.ceil(Math.min(clipDuration, HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC) / HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC)
+      Math.ceil((Math.min(clipDuration, HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC) - 0.1) / HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC)
     );
 
     while (
@@ -1990,7 +1991,7 @@ function splitHyperframesFinalSourceClips(
       if (durationSeconds < 0.5) break;
       output.push({
         ...clip,
-        id: segmentIndex === 0 && clipDuration <= HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC
+        id: segmentIndex === 0 && clipDuration <= HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC + 0.1
           ? clip.id
           : `${clip.id}__hfseg_${segmentIndex + 1}`,
         prompt: segmentCount > 1
@@ -2010,7 +2011,7 @@ function splitHyperframesFinalSourceClips(
       segmentIndex += 1;
     }
 
-    if (clipDuration > HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC) {
+    if (segmentIndex > 1) {
       wasSplit = true;
     }
     if (consumed < clipDuration - 0.05) {
@@ -3817,8 +3818,15 @@ export default function StoryboardReviewPage() {
   const hyperframesFinalCompositeUpdatedText = hyperframesFinalRenderProjection?.updatedAt
     ? formatLocalRenderDateTime(hyperframesFinalRenderProjection.updatedAt, locale)
     : null;
+  const hyperframesFinalCompositeIsCancelled =
+    hyperframesFinalRenderProjection?.status === "cancelled";
   const hyperframesFinalCompositeNextAction =
     hyperframesFinalRenderProjection?.nextAction ??
+    (hyperframesFinalCompositeIsCancelled
+      ? locale === "th"
+        ? "งานนี้ถูกยกเลิกแล้ว กด Render Final Composite ใหม่เพื่อส่งงานรอบใหม่"
+        : "This job was cancelled. Render Final Composite again to submit a new job."
+      : null) ??
     (hyperframesFinalRenderProjection?.status === "blocked_needs_user"
       ? locale === "th"
         ? "ตรวจ runtime/worker แล้วกด Render Final Composite ใหม่"
@@ -3830,6 +3838,7 @@ export default function StoryboardReviewPage() {
     ) ?? null;
   const hyperframesFinalCompositeIsProblem = Boolean(
     hyperframesFinalRenderProjection?.status.startsWith("failed") ||
+      hyperframesFinalCompositeIsCancelled ||
       hyperframesFinalRenderProjection?.status === "dead_lettered" ||
       hyperframesFinalRenderProjection?.status === "blocked_needs_user" ||
       hyperframesFinalRenderProjection?.status === "compliance_blocked"
@@ -5886,13 +5895,6 @@ export default function StoryboardReviewPage() {
       );
       return;
     }
-    if (hyperframesFinalSourceClipPlan.wasSplit) {
-      toast.info(
-        locale === "th"
-          ? `แยกคลิปยาวเป็น shot ย่อยไม่เกิน ${HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC}s อัตโนมัติแล้ว`
-          : `Long clips were split into ${HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC}s-or-shorter shots automatically.`
-      );
-    }
   }, [
     hyperframesFinalSourceClipPlan.plannedDurationSeconds,
     hyperframesFinalSourceClipPlan.wasSplit,
@@ -7099,6 +7101,14 @@ export default function StoryboardReviewPage() {
     hyperframesFinalSyntheticAudioFallback,
     locale,
   ]);
+  const hyperframesFinalCompositeRenderBlockedReason =
+    hyperframesFinalCompositeDisabledReason ??
+    hyperframesFinalCompositeDuplicateGuardReason;
+  const hyperframesFinalCompositeRenderButtonDisabled = Boolean(
+    createHyperframesFinalCompositeMutation.isPending ||
+      updateHyperframesFinalCompositeStateMutation.isPending ||
+      hyperframesFinalCompositeRenderBlockedReason
+  );
 
   const generateHyperframesFinalPromptWithSkill = useCallback(async () => {
     if (hyperframesFinalSourceClips.length === 0) {
@@ -9108,15 +9118,10 @@ export default function StoryboardReviewPage() {
                   type="button"
                   size="sm"
                   onClick={() => void createHyperframesFinalComposite()}
-                  disabled={
-                    createHyperframesFinalCompositeMutation.isPending ||
-                    updateHyperframesFinalCompositeStateMutation.isPending ||
-                    Boolean(hyperframesFinalCompositeDisabledReason) ||
-                    hyperframesFinalCompositeDuplicateGuardActive
-                  }
+                  disabled={hyperframesFinalCompositeRenderButtonDisabled}
                   className="h-8 px-3 text-xs"
-                  title={hyperframesFinalCompositeDisabledReason ?? hyperframesFinalCompositeDuplicateGuardReason ?? undefined}
-                  aria-disabled={Boolean(hyperframesFinalCompositeDisabledReason) || hyperframesFinalCompositeDuplicateGuardActive}
+                  title={hyperframesFinalCompositeRenderBlockedReason ?? undefined}
+                  aria-disabled={hyperframesFinalCompositeRenderButtonDisabled}
                 >
                   {createHyperframesFinalCompositeMutation.isPending ||
                   updateHyperframesFinalCompositeStateMutation.isPending ? (
@@ -9144,6 +9149,8 @@ export default function StoryboardReviewPage() {
                   <div className="flex items-center gap-2 font-medium">
                     {hyperframesFinalCompositeIsActive ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : hyperframesFinalCompositeIsCancelled ? (
+                      <RefreshCw className="h-3.5 w-3.5" />
                     ) : hyperframesFinalCompositeIsProblem ? (
                       <X className="h-3.5 w-3.5" />
                     ) : (
@@ -9187,6 +9194,26 @@ export default function StoryboardReviewPage() {
                   ) : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={hyperframesFinalCompositeIsProblem ? "default" : "outline"}
+                    className={cn(
+                      "h-8",
+                      hyperframesFinalCompositeIsProblem ? "" : "bg-white/90"
+                    )}
+                    onClick={() => void createHyperframesFinalComposite()}
+                    disabled={hyperframesFinalCompositeRenderButtonDisabled}
+                    title={hyperframesFinalCompositeRenderBlockedReason ?? undefined}
+                  >
+                    {createHyperframesFinalCompositeMutation.isPending ||
+                    updateHyperframesFinalCompositeStateMutation.isPending ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    {locale === "th" ? "Render ใหม่" : "Render again"}
+                  </Button>
                   {hyperframesFinalVideoUrl ? (
                     <>
                       <Button
@@ -9222,7 +9249,7 @@ export default function StoryboardReviewPage() {
                 </div>
               </div>
             ) : null}
-            {hyperframesFinalCompositeDisabledReason || hyperframesFinalCompositeDuplicateGuardReason ? (
+            {hyperframesFinalCompositeRenderBlockedReason ? (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -9231,7 +9258,7 @@ export default function StoryboardReviewPage() {
                         ? locale === "th" ? "ยังไม่พร้อม render" : "Not render-ready"
                         : locale === "th" ? "กันการกดซ้ำชั่วคราว" : "Duplicate submit guard"}
                       {": "}
-                      {hyperframesFinalCompositeDisabledReason ?? hyperframesFinalCompositeDuplicateGuardReason}
+                      {hyperframesFinalCompositeRenderBlockedReason}
                     </p>
                     {hyperframesFinalSourceClips.length === 0 ? (
                       <p className="mt-1 leading-relaxed text-amber-800">
@@ -12313,12 +12340,10 @@ export default function StoryboardReviewPage() {
               isCreatingProject={isCreatingProject}
               isCreatingHyperframesFinalComposite={
                 createHyperframesFinalCompositeMutation.isPending ||
+                updateHyperframesFinalCompositeStateMutation.isPending ||
                 hyperframesFinalCompositeDuplicateGuardActive
               }
-              hyperframesFinalCompositeDisabledReason={
-                hyperframesFinalCompositeDisabledReason ??
-                hyperframesFinalCompositeDuplicateGuardReason
-              }
+              hyperframesFinalCompositeDisabledReason={hyperframesFinalCompositeRenderBlockedReason}
               hyperframesFinalCompositeStatus={hyperframesFinalCompositeStatusText}
               isCancellingGeneration={isCancellingGeneration}
               regeneratingTaskId={regeneratingTaskId}

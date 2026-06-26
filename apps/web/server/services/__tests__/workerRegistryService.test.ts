@@ -585,6 +585,7 @@ describe("workerRegistryService", () => {
         lastSeenAt: new Date("2026-04-06T12:00:00.000Z"),
       }),
       insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+      renewActiveJobLeasesForWorker: vi.fn().mockResolvedValue(1),
     };
 
     const payload: WorkerHeartbeatPayload = {
@@ -615,6 +616,12 @@ describe("workerRegistryService", () => {
     expect(result.status).toBe("online");
     expect(repo.updateWorker).toHaveBeenCalled();
     expect(repo.insertHeartbeat).toHaveBeenCalled();
+    expect(repo.renewActiveJobLeasesForWorker).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      leaseExpiresAt: expect.any(Date),
+      heartbeatAt: expect.any(Date),
+    }));
   });
 
   it("backfills compatibility state for legacy workers on heartbeat without re-registration", async () => {
@@ -866,6 +873,72 @@ describe("workerRegistryService", () => {
     });
   });
 
+  it("returns remaining selectable queue depth with worker claims", async () => {
+    const { claimWorkerJob } = await import("../workerRegistryService");
+
+    const baseJob = {
+      tenantId: "tenant-1",
+      teamId: null,
+      workerId: null,
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hyperframes_final_composite",
+      status: "queued",
+      priority: 30,
+      capabilityRequirementsJson: {},
+      inputJson: {},
+      instructionsJson: {},
+      outputJson: null,
+      failureReason: null,
+      timeoutSeconds: 7200,
+      retryPolicyJson: {},
+      idempotencyKey: null,
+      leaseOwnerToken: null,
+      leaseExpiresAt: null,
+      createdAt: new Date("2026-04-06T00:00:00.000Z"),
+      startedAt: null,
+      finishedAt: null,
+    };
+    const firstJob = { ...baseJob, id: "job-hf-1" };
+    const secondJob = { ...baseJob, id: "job-hf-2" };
+    const claimedJob = {
+      ...firstJob,
+      workerId: "worker-1",
+      status: "claimed",
+      leaseOwnerToken: "lease-hf-1",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+    };
+
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue({
+        id: "worker-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        capabilitiesJson: {},
+      }),
+      listClaimableJobs: vi.fn().mockResolvedValue([firstJob, secondJob]),
+      tryClaimJob: vi.fn().mockResolvedValue(claimedJob),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...claimedJob,
+        ...values,
+      })),
+    };
+
+    const result = await claimWorkerJob({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-1",
+      payload: { maxJobs: 1, capabilityHints: [] },
+    }, { repo } as any);
+
+    expect(result.job?.id).toBe("job-hf-1");
+    expect(result.queueDepth).toBe(1);
+  });
+
   it("limits private workers to their own queued jobs", async () => {
     const { claimWorkerJob } = await import("../workerRegistryService");
 
@@ -1103,7 +1176,10 @@ describe("workerRegistryService", () => {
       getJobById: vi.fn().mockResolvedValue(baseJob),
       listJobEvents: vi.fn().mockResolvedValue([]),
       insertJobEvent: vi.fn().mockResolvedValue({ id: "event-1" }),
-      updateJob: vi.fn(),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...baseJob,
+        ...values,
+      })),
     };
 
     await expect(recordWorkerJobEvent({
@@ -1149,6 +1225,13 @@ describe("workerRegistryService", () => {
     expect(repo.insertJobEvent).toHaveBeenCalledWith("job-hf-1", "job.progress", expect.objectContaining({
       assignmentAttempt: "attempt_active",
       sequenceNumber: 1,
+    }));
+    expect(repo.updateJob).toHaveBeenCalledWith("job-hf-1", expect.objectContaining({
+      leaseExpiresAt: expect.any(Date),
+      outputJson: expect.objectContaining({
+        lastProgressAt: expect.any(String),
+        lastWorkerEventAt: expect.any(String),
+      }),
     }));
   });
 
@@ -1627,6 +1710,79 @@ describe("workerRegistryService", () => {
         checksumSha256: "a".repeat(64),
         contentType: "application/pdf",
         sizeBytes: 2048,
+      }),
+    }));
+  });
+
+  it("strips jsonb-unsafe control characters from artifact metadata", async () => {
+    const { completeWorkerArtifact } = await import("../workerRegistryService");
+
+    const baseJob = {
+      id: "job-1",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "uploading",
+      outputJson: {},
+      leaseOwnerToken: "lease-1",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+    };
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue(baseJob),
+      findArtifact: vi.fn().mockResolvedValue(null),
+      insertArtifact: vi.fn().mockResolvedValue({
+        id: "artifact-2",
+        workerJobId: "job-1",
+        artifactType: "hyperframes_runtime_doctor",
+        storageRef: "worker-artifacts/tenant-1/job-1/doctor.json",
+        metadataJson: {},
+        publishedItemId: null,
+      }),
+      updateJob: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await completeWorkerArtifact({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: "job-1",
+      payload: {
+        artifactType: "hyperframes_runtime_doctor",
+        storageRef: "worker-artifacts/tenant-1/job-1/doctor.json",
+        checksumSha256: "b".repeat(64),
+        sizeBytes: 2048,
+        contentType: "application/json",
+        metadataJson: {
+          doctorJson: {
+            checks: [
+              {
+                detailsJson: {
+                  stdout: "wsl status\u0000has null\u0007and bell\nkeeps newline",
+                },
+              },
+            ],
+          },
+          "unsafe\u0000key": "unsafe\u0000value",
+        },
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any);
+
+    expect(repo.insertArtifact).toHaveBeenCalledWith(expect.objectContaining({
+      metadataJson: expect.objectContaining({
+        doctorJson: expect.objectContaining({
+          checks: [
+            {
+              detailsJson: {
+                stdout: "wsl status has null and bell\nkeeps newline",
+              },
+            },
+          ],
+        }),
+        "unsafe key": "unsafe value",
       }),
     }));
   });

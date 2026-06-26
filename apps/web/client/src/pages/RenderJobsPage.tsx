@@ -6,9 +6,11 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  ExternalLink,
   Loader2,
   MonitorPlay,
   RefreshCw,
+  Scissors,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -102,6 +104,109 @@ function JobStatusBadge({ status }: { status: string }) {
   );
 }
 
+type RenderJobOutputRef = {
+  artifactId?: string | null;
+  artifactType?: string | null;
+  storageRef?: string | null;
+  publishedItemId?: number | null;
+  sourceUrl?: string | null;
+  downloadUrl?: string | null;
+  contentHash?: string | null;
+};
+
+type RenderJobEvent = {
+  id: string;
+  eventType: string;
+  sidecarEventType?: string | null;
+  message?: string | null;
+  progressPercent?: number | null;
+  phase?: string | null;
+  shotId?: string | null;
+  shotIndex?: number | null;
+  shotTotal?: number | null;
+  cacheHit?: boolean | null;
+  errorCode?: string | null;
+  rootCause?: string | null;
+  concatMode?: string | null;
+  createdAt: Date | string;
+};
+
+function getOutputDownloadUrl(ref: RenderJobOutputRef): string {
+  return (
+    ref.downloadUrl?.trim() ||
+    ref.sourceUrl?.trim() ||
+    ""
+  );
+}
+
+function formatShotLabel(event: RenderJobEvent | null | undefined): string | null {
+  if (!event || typeof event.shotIndex !== "number" || typeof event.shotTotal !== "number") {
+    return null;
+  }
+  return `Shot ${event.shotIndex + 1}/${event.shotTotal}`;
+}
+
+function formatEventMessage(event: RenderJobEvent | null | undefined): string {
+  if (!event) return "-";
+  const shotLabel = formatShotLabel(event);
+  const message = event.message ?? event.phase ?? event.sidecarEventType ?? event.eventType;
+  return shotLabel ? `${shotLabel}: ${message}` : message;
+}
+
+function isShotEvent(event: RenderJobEvent): boolean {
+  return typeof event.shotIndex === "number" && typeof event.shotTotal === "number";
+}
+
+function getCurrentShotEvent(events: RenderJobEvent[]): RenderJobEvent | null {
+  return [...events]
+    .reverse()
+    .find((event) =>
+      isShotEvent(event)
+      && !String(event.sidecarEventType ?? "").endsWith(".succeeded")
+      && !String(event.sidecarEventType ?? "").endsWith(".cache_hit")
+    ) ?? null;
+}
+
+function getShotRows(events: RenderJobEvent[]) {
+  const rows = new Map<number, {
+    shotIndex: number;
+    shotTotal: number;
+    shotId: string | null;
+    status: "queued" | "cached" | "rendering" | "completed" | "failed";
+    message: string;
+    rootCause: string | null;
+  }>();
+  for (const event of events) {
+    if (!isShotEvent(event)) continue;
+    const type = String(event.sidecarEventType ?? "");
+    let status: "queued" | "cached" | "rendering" | "completed" | "failed" = "rendering";
+    if (type.endsWith(".cache_hit")) status = "cached";
+    if (type.endsWith(".succeeded")) status = "completed";
+    if (type.endsWith(".failed")) status = "failed";
+    rows.set(event.shotIndex!, {
+      shotIndex: event.shotIndex!,
+      shotTotal: event.shotTotal!,
+      shotId: event.shotId ?? null,
+      status,
+      message: event.message ?? type,
+      rootCause: event.rootCause ?? null,
+    });
+  }
+  return [...rows.values()].sort((a, b) => a.shotIndex - b.shotIndex);
+}
+
+function getOutputLibraryRoute(ref: RenderJobOutputRef): string {
+  return ref.publishedItemId
+    ? `/media-history?type=video&source=marketplace_auto_review_hyperframes_render`
+    : "/media-history";
+}
+
+function getOutputVideoEditorRoute(ref: RenderJobOutputRef): string | null {
+  return ref.publishedItemId
+    ? `/video-editor?libraryItemId=${encodeURIComponent(String(ref.publishedItemId))}`
+    : null;
+}
+
 export default function RenderJobsPage() {
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -141,6 +246,10 @@ export default function RenderJobsPage() {
     () => jobs.filter((job) => ["claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(job.status)).length,
     [jobs],
   );
+  const detailEvents = (detailQuery.data?.events ?? []) as RenderJobEvent[];
+  const currentShotEvent = getCurrentShotEvent(detailEvents);
+  const shotRows = getShotRows(detailEvents);
+  const failedShotRows = shotRows.filter((row) => row.status === "failed");
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -289,8 +398,11 @@ export default function RenderJobsPage() {
                             </TableCell>
                             <TableCell>
                               <div className="max-w-72 truncate text-sm">
-                                {job.latestEvent?.message ?? job.latestEvent?.phase ?? job.latestEvent?.eventType ?? "-"}
+                                {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined)}
                               </div>
+                              {job.latestEvent?.cacheHit ? (
+                                <div className="text-xs text-emerald-600">ใช้ cache แล้ว</div>
+                              ) : null}
                               {typeof job.latestEvent?.progressPercent === "number" ? (
                                 <div className="text-xs text-slate-500">{job.latestEvent.progressPercent}%</div>
                               ) : null}
@@ -321,7 +433,7 @@ export default function RenderJobsPage() {
                         </div>
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
                         <div className="mt-2 truncate text-sm">
-                          {job.latestEvent?.message ?? job.latestEvent?.eventType ?? "ยังไม่มี progress event"}
+                          {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined) || "ยังไม่มี progress event"}
                         </div>
                       </button>
                     ))}
@@ -372,11 +484,42 @@ export default function RenderJobsPage() {
                         <span className="ml-2 text-xs text-slate-400">({detailQuery.data.worker.status})</span>
                       ) : null}
                     </div>
+                    {currentShotEvent ? (
+                      <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-3 text-sm text-cyan-50">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-xs text-cyan-100/70">กำลังทำงานที่</div>
+                            <div className="font-medium">{formatShotLabel(currentShotEvent)}</div>
+                          </div>
+                          {typeof currentShotEvent.progressPercent === "number" ? (
+                            <div className="text-lg font-semibold">{currentShotEvent.progressPercent}%</div>
+                          ) : null}
+                        </div>
+                        <div className="mt-2 text-xs text-cyan-100/80">{currentShotEvent.message}</div>
+                      </div>
+                    ) : null}
                   </div>
 
                   {detailQuery.data.failureReason ? (
                     <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 p-3 text-sm text-rose-100">
                       {detailQuery.data.failureReason}
+                    </div>
+                  ) : null}
+
+                  {failedShotRows.length > 0 ? (
+                    <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 p-3 text-sm text-rose-100">
+                      <div className="mb-2 flex items-center gap-2 font-medium">
+                        <AlertCircle className="h-4 w-4" />
+                        Shot ที่ render มีปัญหา
+                      </div>
+                      <div className="space-y-2">
+                        {failedShotRows.map((row) => (
+                          <div key={row.shotIndex} className="rounded-xl bg-rose-950/40 p-2">
+                            <div className="font-medium">Shot {row.shotIndex + 1}/{row.shotTotal}: {row.shotId ?? "-"}</div>
+                            <div className="text-xs text-rose-100/80">{row.rootCause ?? row.message}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
 
@@ -388,7 +531,7 @@ export default function RenderJobsPage() {
                       onClick={() => cancelMutation.mutate({ jobId: detailQuery.data.id })}
                     >
                       {cancelMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      ยกเลิกงานที่ยังรอ
+                      ยกเลิกงาน
                     </Button>
                     {detailQuery.data.workflowRunId ? (
                       <Link href={`/workpacks/${detailQuery.data.workflowRunId}`}>
@@ -397,6 +540,36 @@ export default function RenderJobsPage() {
                         </Button>
                       </Link>
                     ) : null}
+                  </div>
+
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold text-white">Shot progress</h3>
+                    {shotRows.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400">
+                        ยังไม่มีข้อมูลราย shot
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {shotRows.map((row) => (
+                          <div key={row.shotIndex} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-medium text-white">Shot {row.shotIndex + 1}/{row.shotTotal}</div>
+                                <div className="truncate text-xs text-slate-400">{row.shotId ?? row.message}</div>
+                              </div>
+                              <Badge
+                                variant={row.status === "failed" ? "destructive" : row.status === "completed" || row.status === "cached" ? "default" : "secondary"}
+                              >
+                                {row.status === "cached" ? "ใช้ cache" : row.status === "completed" ? "สำเร็จ" : row.status === "failed" ? "ล้มเหลว" : "กำลังเรนเดอร์"}
+                              </Badge>
+                            </div>
+                            {row.rootCause ? (
+                              <div className="mt-2 text-xs text-rose-200">{row.rootCause}</div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -410,14 +583,49 @@ export default function RenderJobsPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {detailQuery.data.outputRefs.map((ref, index) => (
-                          <div key={`${ref.artifactId ?? ref.publishedItemId ?? index}`} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
-                            <div className="font-medium text-white">{ref.artifactType}</div>
-                            <div className="break-all text-xs text-slate-400">
-                              {ref.publishedItemId ? `Library item #${ref.publishedItemId}` : ref.storageRef ?? ref.contentHash ?? "verified output"}
+                        {detailQuery.data.outputRefs.map((ref, index) => {
+                          const downloadUrl = getOutputDownloadUrl(ref);
+                          const videoEditorRoute = getOutputVideoEditorRoute(ref);
+                          const libraryRoute = getOutputLibraryRoute(ref);
+                          return (
+                            <div key={`${ref.artifactId ?? ref.publishedItemId ?? index}`} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-white">{ref.artifactType}</div>
+                                  <div className="break-all text-xs text-slate-400">
+                                    {ref.publishedItemId ? `Library item #${ref.publishedItemId}` : ref.storageRef ?? ref.contentHash ?? "verified output"}
+                                  </div>
+                                </div>
+                                <div className="flex shrink-0 flex-wrap gap-2">
+                                  {downloadUrl ? (
+                                    <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
+                                      <a href={downloadUrl} target="_blank" rel="noreferrer" download>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        ดาวน์โหลด
+                                      </a>
+                                    </Button>
+                                  ) : null}
+                                  {videoEditorRoute ? (
+                                    <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
+                                      <Link href={videoEditorRoute}>
+                                        <Scissors className="mr-2 h-4 w-4" />
+                                        เปิดวิดีโอ
+                                      </Link>
+                                    </Button>
+                                  ) : null}
+                                  {ref.publishedItemId ? (
+                                    <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
+                                      <Link href={libraryRoute}>
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+                                        Media History
+                                      </Link>
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -434,8 +642,14 @@ export default function RenderJobsPage() {
                           <li key={event.id} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="truncate font-medium text-white">{event.message ?? event.phase ?? event.eventType}</div>
-                                <div className="text-xs text-slate-400">{event.eventType}</div>
+                                <div className="truncate font-medium text-white">{formatEventMessage(event as RenderJobEvent)}</div>
+                                <div className="text-xs text-slate-400">
+                                  {(event as RenderJobEvent).sidecarEventType ?? event.eventType}
+                                  {(event as RenderJobEvent).cacheHit ? " · cache" : ""}
+                                </div>
+                                {(event as RenderJobEvent).rootCause ? (
+                                  <div className="mt-1 text-xs text-rose-200">{(event as RenderJobEvent).rootCause}</div>
+                                ) : null}
                               </div>
                               <div className="shrink-0 text-xs text-slate-400">{formatDate(event.createdAt)}</div>
                             </div>

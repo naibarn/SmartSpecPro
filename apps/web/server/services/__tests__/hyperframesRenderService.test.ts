@@ -22,6 +22,8 @@ import {
   marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
   marketplaceProducts,
+  workerArtifacts,
+  workerJobs,
 } from "../../../drizzle/schema";
 import {
   buildHyperframesRenderJobPayload,
@@ -42,6 +44,37 @@ function createOutboxSelectDb(job: Record<string, unknown> | null) {
           limit: async () => (job ? [job] : []),
         }),
       }),
+    }),
+  };
+}
+
+function createWorkerProjectionDb(input: {
+  job: Record<string, unknown> | null;
+  artifacts?: Array<Record<string, unknown>>;
+}) {
+  return {
+    select: () => ({
+      from: (table: unknown) => {
+        if (table === workerJobs) {
+          return {
+            where: () => ({
+              limit: async () => (input.job ? [input.job] : []),
+            }),
+          };
+        }
+        if (table === workerArtifacts) {
+          return {
+            where: () => ({
+              orderBy: async () => input.artifacts ?? [],
+            }),
+          };
+        }
+        return {
+          where: () => ({
+            limit: async () => [],
+          }),
+        };
+      },
     }),
   };
 }
@@ -968,6 +1001,149 @@ describe("hyperframesRenderService", () => {
 
     expect(projection.status).toBe("failed_permanent");
     expect(projection.progressPercent).toBe(100);
+    expect(projection.safeDiagnostics[0]).toContain("verified playable final video");
+  });
+
+  it("projects completed worker Library artifacts as completed final output", async () => {
+    mockGetDb.mockResolvedValue(
+      createWorkerProjectionDb({
+        job: {
+          id: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+          tenantId: "tenant_1",
+          requestedByUserId: 1,
+          workerId: "worker_1",
+          jobType: "hyperframes_final_composite",
+          runtimeType: "desktop_zeroclaw_managed",
+          workflowRunId: "mar_1",
+          status: "completed",
+          failureReason: null,
+          inputJson: {
+            source: { runId: "mar_1" },
+            renderConfig: {
+              renderPayload: {
+                productId: "product_1",
+                runId: "mar_1",
+                compositionInputHash: "hf_input",
+                compositionHtmlHash: "hf_html",
+                templateId: "marketplace_storyboard_motion_9x9_v1",
+                templateVersion: "1.0.0",
+                templateContentHash: "hf_template",
+                platformPresetId: "generic_vertical_9_16",
+                platformPresetVersion: "1.0.0",
+                renderIntent: "final",
+                compositionMode: "captioned_final_composite",
+                runtimeProfileHash: "hf_runtime",
+                launchMode: "auto_storyboard_review",
+                qaStatus: "passed",
+              },
+            },
+          },
+          createdAt: new Date("2026-06-24T03:38:00.000Z"),
+          startedAt: new Date("2026-06-24T03:38:05.000Z"),
+          finishedAt: new Date("2026-06-24T03:38:30.000Z"),
+        },
+        artifacts: [
+          {
+            id: "artifact_511",
+            workerJobId: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+            artifactType: "hyperframes_final_video",
+            storageRef:
+              "marketplace-auto-review/tenant_1/mar_1/hyperframes/c960c363-17d3-4523-92a1-49c7cc5eb721/output.mp4",
+            publishedItemId: 511,
+            metadataJson: {
+              checksumSha256: "hf_worker_output_hash",
+              contentType: "video/mp4",
+              sizeBytes: 123456,
+            },
+            createdAt: new Date("2026-06-24T03:38:30.000Z"),
+          },
+        ],
+      })
+    );
+
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+      productId: "product_1",
+      runId: "mar_1",
+    });
+
+    expect(projection).toMatchObject({
+      status: "completed",
+      progressPercent: 100,
+      renderIntent: "final",
+      qaStatus: "passed",
+    });
+    expect(projection.outputRefs[0]).toMatchObject({
+      kind: "library_item",
+      url: "/media-history?source=marketplace_auto_review_hyperframes_render&type=video&productId=product_1&runId=mar_1",
+      contentHash: "hf_worker_output_hash",
+      libraryItemId: 511,
+    });
+    expect(projection.artifactRefs[0]).toMatchObject({
+      kind: "hyperframes_render_mp4",
+      retentionClass: "library",
+      contentHash: "hf_worker_output_hash",
+    });
+  });
+
+  it("does not project corrupt worker mock MP4 artifacts as completed final output", async () => {
+    mockGetDb.mockResolvedValue(
+      createWorkerProjectionDb({
+        job: {
+          id: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+          tenantId: "tenant_1",
+          requestedByUserId: 1,
+          workerId: "worker_1",
+          jobType: "hyperframes_final_composite",
+          runtimeType: "desktop_zeroclaw_managed",
+          workflowRunId: "mar_1",
+          status: "completed",
+          failureReason: null,
+          inputJson: {
+            source: { runId: "mar_1" },
+            renderConfig: {
+              renderPayload: {
+                productId: "product_1",
+                runId: "mar_1",
+                renderIntent: "final",
+                compositionMode: "captioned_final_composite",
+                launchMode: "auto_storyboard_review",
+              },
+            },
+          },
+          createdAt: new Date("2026-06-24T03:38:00.000Z"),
+          startedAt: new Date("2026-06-24T03:38:05.000Z"),
+          finishedAt: new Date("2026-06-24T03:38:30.000Z"),
+        },
+        artifacts: [
+          {
+            id: "artifact_511",
+            workerJobId: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+            artifactType: "hyperframes_final_video",
+            storageRef:
+              "worker-artifacts/tenant_1/c960c363-17d3-4523-92a1-49c7cc5eb721/afce2d859f8675f4db71e914-final.mp4",
+            publishedItemId: 511,
+            metadataJson: {
+              checksumSha256: "cff40476b79b0adbc845136bd90294841a8073ee71f03031de75d6eb1e998f87",
+              contentType: "video/mp4",
+              sizeBytes: 18,
+            },
+            createdAt: new Date("2026-06-24T03:38:30.000Z"),
+          },
+        ],
+      })
+    );
+
+    const projection = await getHyperframesRenderProjection({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      renderJobId: "c960c363-17d3-4523-92a1-49c7cc5eb721",
+      productId: "product_1",
+      runId: "mar_1",
+    });
+
+    expect(projection.status).toBe("failed_permanent");
+    expect(projection.outputRefs).toEqual([]);
     expect(projection.safeDiagnostics[0]).toContain("verified playable final video");
   });
 

@@ -178,7 +178,7 @@ function sha256Hex(value: string): string {
 }
 
 function normalizePublicKey(raw: string): string {
-  return raw.trim().replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
+  return raw.replace(/\\n/g, "\n").replace(/\r\n/g, "\n").trim();
 }
 
 function normalizeDeviceBinding(input?: WorkerDeviceBindingInput): NormalizedWorkerDeviceBinding | null {
@@ -254,6 +254,41 @@ async function blockWorkerConnection(claims: TokenClaims, reason: string): Promi
   }
 }
 
+function logDeviceProofMismatch(
+  claims: TokenClaims,
+  details: {
+    deviceIdMatches: boolean;
+    expectedDeviceId: string;
+    expectedMachineFingerprintHash: string;
+    expectedPublicKeyFingerprint: string;
+    machineFingerprintMatches: boolean;
+    providedDeviceId: string;
+    providedMachineFingerprintHash: string;
+    providedPublicKeyFingerprint: string;
+    publicKeyMatches: boolean;
+  },
+): void {
+  console.warn("[workerAuth] device proof binding mismatch", {
+    connectionIdHash: hashForLog(String(claims.workerConnectionId || "")),
+    deviceIdMatches: details.deviceIdMatches,
+    expectedDeviceIdHash: hashForLog(details.expectedDeviceId),
+    expectedMachineFingerprintHash: details.expectedMachineFingerprintHash || null,
+    expectedPublicKeyFingerprint: details.expectedPublicKeyFingerprint || null,
+    machineFingerprintMatches: details.machineFingerprintMatches,
+    providedDeviceIdHash: hashForLog(details.providedDeviceId),
+    providedMachineFingerprintHash: details.providedMachineFingerprintHash || null,
+    providedPublicKeyFingerprint: details.providedPublicKeyFingerprint || null,
+    publicKeyMatches: details.publicKeyMatches,
+    tokenUse: claims.tokenUse,
+    workerId: claims.workerId,
+  });
+}
+
+function hashForLog(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed ? sha256Hex(trimmed) : null;
+}
+
 async function assertConnectionNotBlocked(claims: TokenClaims): Promise<void> {
   const connectionId = String(claims.workerConnectionId || "");
   if (!connectionId) {
@@ -327,11 +362,29 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
         ? proof.machineFingerprint.trim().toLowerCase()
         : sha256Hex(proof.machineFingerprint.trim()))
     : "";
+  const providedPublicKeyFingerprint = sha256Hex(providedPublicKey);
+  const deviceIdMatches = proof.deviceId === expectedDeviceId;
+  const publicKeyMatches = providedPublicKeyFingerprint === expectedPublicKeyFingerprint;
+  const machineFingerprintMatches =
+    !expectedMachineFingerprintHash
+    || !providedMachineFingerprintHash
+    || providedMachineFingerprintHash === expectedMachineFingerprintHash;
   if (
-    proof.deviceId !== expectedDeviceId
-    || sha256Hex(providedPublicKey) !== expectedPublicKeyFingerprint
-    || (expectedMachineFingerprintHash && providedMachineFingerprintHash && providedMachineFingerprintHash !== expectedMachineFingerprintHash)
+    !deviceIdMatches
+    || !publicKeyMatches
+    || !machineFingerprintMatches
   ) {
+    logDeviceProofMismatch(claims, {
+      deviceIdMatches,
+      expectedDeviceId,
+      expectedMachineFingerprintHash,
+      expectedPublicKeyFingerprint,
+      machineFingerprintMatches,
+      providedDeviceId: proof.deviceId,
+      providedMachineFingerprintHash,
+      providedPublicKeyFingerprint,
+      publicKeyMatches,
+    });
     await blockWorkerConnection(claims, "device_binding_mismatch");
     throw new WorkerAuthError("worker_device_mismatch", 401, "Worker token was used from a different device");
   }

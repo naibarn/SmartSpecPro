@@ -4,6 +4,8 @@ use std::path::Path;
 
 pub const DEFAULT_SERVER_URL: &str = "https://smartaihub.app";
 const SETTINGS_FILE_NAME: &str = "worker-settings.json";
+const DEFAULT_MANAGED_WSL_ROOT: &str = "~/.smartaihub-worker/runtime";
+const DEFAULT_MANAGED_WSL_WORKSPACE_ROOT: &str = "";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -43,6 +45,25 @@ impl RuntimeChannel {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum RuntimeEnvironment {
+    RuntimePack,
+    ManagedWsl,
+}
+
+impl Default for RuntimeEnvironment {
+    fn default() -> Self {
+        Self::ManagedWsl
+    }
+}
+
+impl RuntimeEnvironment {
+    pub fn is_managed_wsl(&self) -> bool {
+        matches!(self, Self::ManagedWsl)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum DiagnosticsLevel {
     Errors,
     Standard,
@@ -69,6 +90,14 @@ pub struct WorkerAppSettings {
     pub runtime_channel: RuntimeChannel,
     pub runtime_version: String,
     pub diagnostics_level: DiagnosticsLevel,
+    pub use_wsl2: bool,
+    pub runtime_dir: String,
+    #[serde(default)]
+    pub runtime_environment: RuntimeEnvironment,
+    #[serde(default = "default_managed_wsl_root")]
+    pub managed_wsl_root: String,
+    #[serde(default = "default_managed_wsl_workspace_root")]
+    pub managed_wsl_workspace_root: String,
 }
 
 impl Default for WorkerAppSettings {
@@ -85,6 +114,11 @@ impl Default for WorkerAppSettings {
             runtime_channel: RuntimeChannel::Stable,
             runtime_version: "not-installed".into(),
             diagnostics_level: DiagnosticsLevel::Standard,
+            use_wsl2: true,
+            runtime_dir: String::new(),
+            runtime_environment: RuntimeEnvironment::ManagedWsl,
+            managed_wsl_root: default_managed_wsl_root(),
+            managed_wsl_workspace_root: default_managed_wsl_workspace_root(),
         }
     }
 }
@@ -107,6 +141,18 @@ impl WorkerAppSettings {
         }
         Ok(())
     }
+
+    pub fn uses_wsl2_runtime(&self) -> bool {
+        self.use_wsl2 || self.runtime_environment.is_managed_wsl()
+    }
+}
+
+fn default_managed_wsl_root() -> String {
+    DEFAULT_MANAGED_WSL_ROOT.into()
+}
+
+fn default_managed_wsl_workspace_root() -> String {
+    DEFAULT_MANAGED_WSL_WORKSPACE_ROOT.into()
 }
 
 pub fn load_settings(app_data_dir: &Path) -> WorkerAppSettings {
@@ -118,6 +164,8 @@ pub fn load_settings(app_data_dir: &Path) -> WorkerAppSettings {
         return WorkerAppSettings::default();
     };
     settings.server_url = settings.normalized_server_url();
+    settings.runtime_environment = RuntimeEnvironment::ManagedWsl;
+    settings.use_wsl2 = true;
     if settings.validate().is_err() {
         return WorkerAppSettings::default();
     }
@@ -169,5 +217,36 @@ mod tests {
 
         assert_eq!(loaded.worker_label, "Office GPU worker");
         assert!(!loaded.accept_jobs);
+    }
+
+    #[test]
+    fn old_settings_without_runtime_environment_still_load() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::write(
+            temp.path().join(SETTINGS_FILE_NAME),
+            r#"{
+              "serverUrl": "https://smartaihub.app",
+              "workerLabel": "Existing worker",
+              "acceptJobs": true,
+              "sharingMode": "private",
+              "startWithWindows": false,
+              "minimizeToTray": true,
+              "maxConcurrentJobs": 1,
+              "workspaceDir": "",
+              "runtimeChannel": "stable",
+              "runtimeVersion": "not-installed",
+              "diagnosticsLevel": "standard",
+              "useWsl2": true,
+              "runtimeDir": ""
+            }"#,
+        )
+        .unwrap();
+
+        let loaded = load_settings(temp.path());
+
+        assert_eq!(loaded.worker_label, "Existing worker");
+        assert_eq!(loaded.runtime_environment, RuntimeEnvironment::ManagedWsl);
+        assert_eq!(loaded.managed_wsl_root, "~/.smartaihub-worker/runtime");
+        assert_eq!(loaded.managed_wsl_workspace_root, "");
     }
 }
