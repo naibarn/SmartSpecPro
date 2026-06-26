@@ -835,9 +835,14 @@ async fn execute_hyperframes_job_inner(
                     );
                     if upload.artifact_type == "hyperframes_render_manifest" {
                         if let Some(hash) = parsed
-                            .get("outputs")
-                            .and_then(|v| v.get("finalVideo"))
-                            .and_then(|v| v.get("checksumSha256").or_else(|| v.get("sha256")))
+                            .get("finalVideoSha256")
+                            .or_else(|| parsed.get("finalVideoChecksumSha256"))
+                            .or_else(|| {
+                                parsed
+                                    .get("outputs")
+                                    .and_then(|v| v.get("finalVideo"))
+                                    .and_then(|v| v.get("checksumSha256").or_else(|| v.get("sha256")))
+                            })
                         {
                             metadata.as_object_mut().unwrap().insert(
                                 "finalVideoChecksumSha256".to_string(),
