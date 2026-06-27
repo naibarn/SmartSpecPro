@@ -773,6 +773,8 @@ pub(crate) fn annotate_runtime_doctor_for_settings(
             );
         }
         recompute_doctor_status(doctor);
+        doctor.official_hyperframes_runtime = Some(true);
+        doctor.runtime_kind = Some("official_hyperframes".into());
         return;
     }
 
