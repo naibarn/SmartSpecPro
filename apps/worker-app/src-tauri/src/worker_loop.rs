@@ -825,13 +825,23 @@ async fn execute_hyperframes_job_inner(
         if upload.content_type == "application/json" {
             if let Ok(content) = std::fs::read_to_string(&upload.path) {
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let summary = compact_json_artifact_metadata(
+                        &upload.artifact_type,
+                        &parsed,
+                        upload.size_bytes(),
+                    );
+                    
+                    if let Some(summary_obj) = summary.as_object() {
+                        for (k, v) in summary_obj {
+                            if !v.is_null() {
+                                metadata.as_object_mut().unwrap().insert(k.clone(), v.clone());
+                            }
+                        }
+                    }
+
                     metadata.as_object_mut().unwrap().insert(
                         "artifactJsonSummary".to_string(),
-                        compact_json_artifact_metadata(
-                            &upload.artifact_type,
-                            &parsed,
-                            upload.size_bytes(),
-                        ),
+                        summary,
                     );
                     if upload.artifact_type == "hyperframes_render_manifest" {
                         if let Some(hash) = parsed

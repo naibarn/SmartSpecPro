@@ -129,6 +129,7 @@ pub fn compact_json_artifact_metadata(
             "renderJobId": parsed.get("renderJobId").cloned().unwrap_or(Value::Null),
             "compositionHash": parsed.get("compositionHash").cloned().unwrap_or(Value::Null),
             "finalVideoPath": parsed.get("finalVideoPath").cloned().unwrap_or(Value::Null),
+            "fallbackRender": parsed.get("fallbackRender").cloned().unwrap_or(Value::Null),
         }),
         "hyperframes_probe_report" => json!({
             "artifactJsonStoredInUpload": true,
@@ -148,6 +149,7 @@ pub fn compact_json_artifact_metadata(
             "runtimeKind": parsed.get("runtimeKind").cloned().unwrap_or(Value::Null),
             "runtimeModel": parsed.get("runtimeModel").cloned().unwrap_or(Value::Null),
             "runtimeVersion": parsed.get("runtimeVersion").cloned().unwrap_or(Value::Null),
+            "fallbackRender": parsed.get("fallbackRender").cloned().unwrap_or(Value::Null),
             "recommendedActionCount": parsed.get("recommendedActions").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
             "checkCount": parsed.get("checks").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
         }),
