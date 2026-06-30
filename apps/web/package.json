@@ -56,10 +56,13 @@
     "repair:library-knowledge": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-schema --repair-ledger",
     "repair:library-knowledge-schema": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-schema",
     "repair:library-knowledge-ledger": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-ledger",
+    "astryx": "node ../../node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
+    "@astryxdesign/core": "^0.1.2",
+    "@astryxdesign/theme-neutral": "^0.1.2",
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "@codemirror/lang-css": "^6.3.1",
@@ -105,8 +108,8 @@
     "@sentry/node": "^10.38.0",
     "@sentry/react": "^10.38.0",
     "@sentry/vite-plugin": "^4.9.1",
-    "@smartspec/db": "file:../../packages/db",
     "@smartspec/agent-experience": "file:../../packages/agent-experience",
+    "@smartspec/db": "file:../../packages/db",
     "@smartspec/local-ai-core": "file:../../packages/local-ai-core",
     "@smartspec/shared": "file:../../packages/shared",
     "@smartspec/skills": "file:../../packages/skills",
@@ -216,6 +219,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "^0.1.2",
     "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.15",

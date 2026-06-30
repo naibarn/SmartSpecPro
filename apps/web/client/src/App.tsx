@@ -3,7 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { GlobalAlerts } from "@/components/GlobalAlerts";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef, type AnchorHTMLAttributes, type MouseEvent } from "react";
+import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
+import { LinkProvider } from "@astryxdesign/core/Link";
+import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -17,6 +20,37 @@ import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
+
+function AstryxWouterLink({
+  href,
+  onClick,
+  target,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
+  const [, setLocation] = useLocation();
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      target ||
+      href.startsWith("http") ||
+      href.startsWith("mailto:") ||
+      href.startsWith("tel:")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    setLocation(href);
+  };
+
+  return <a href={href} target={target} onClick={handleClick} {...props} />;
+}
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -541,22 +575,26 @@ function App() {
     <ErrorBoundary>
       <HelmetProvider>
         <I18nextProvider i18n={i18n}>
-        <ThemeProvider defaultTheme="light">
-          <AuthProvider>
-            <TenantProvider>
-              <TooltipProvider>
-                <Toaster />
-                <GlobalAlerts />
-                <SystemHealthBanner />
-                <LanguageSyncBridge />
-                <WelcomeLanguagePicker />
-                <Router />
-                <FeedbackButton />
-                <RuntimePerformanceOverlay />
-              </TooltipProvider>
-            </TenantProvider>
-          </AuthProvider>
-        </ThemeProvider>
+          <AstryxTheme theme={neutralTheme}>
+            <LinkProvider component={AstryxWouterLink}>
+              <ThemeProvider defaultTheme="light">
+                <AuthProvider>
+                  <TenantProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <GlobalAlerts />
+                      <SystemHealthBanner />
+                      <LanguageSyncBridge />
+                      <WelcomeLanguagePicker />
+                      <Router />
+                      <FeedbackButton />
+                      <RuntimePerformanceOverlay />
+                    </TooltipProvider>
+                  </TenantProvider>
+                </AuthProvider>
+              </ThemeProvider>
+            </LinkProvider>
+          </AstryxTheme>
         </I18nextProvider>
       </HelmetProvider>
     </ErrorBoundary>
