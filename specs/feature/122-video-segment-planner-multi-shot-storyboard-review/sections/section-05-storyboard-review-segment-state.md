@@ -128,3 +128,11 @@ Tests:
 - Verification passed:
   - `npm --prefix apps/web test -- --run client/src/lib/storyboardReviewWorkspace.test.ts server/routers/__tests__/videoEditorProjects.storyboardReview.test.ts`
   - `npm --prefix apps/web run check`
+
+## Addendum: Source Trim And Disabled Middle Ranges
+
+The implemented Storyboard Review source-trim workflow is documented in:
+
+- `sections/section-07-storyboard-source-trim-and-disabled-ranges.md`
+
+That addendum covers task-level `sourceTrim` metadata, head/tail trim, disabled middle ranges, tablet mark-from-current-frame UX, preview playback skip behavior, render/capture expectations, and future silence-cut/derived-render hooks.

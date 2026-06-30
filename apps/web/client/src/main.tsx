@@ -13,11 +13,21 @@ import { toast } from "sonner";
 import App from "./App";
 import { getLoginUrl } from "./const";
 import { setupAuthInterceptor } from "@/services/authService";
+import "@astryxdesign/core/astryx.css";
+import "@astryxdesign/theme-neutral/theme.css";
 import "./index.css";
 import { i18nReady } from "@/i18n";
 
+const SMARTAIHUB_CLIENT_BUILD_ID = "storyboard-review-duration-hotfix-20260627-2";
+
 if (typeof document !== "undefined") {
   document.documentElement.classList.add("enterprise-theme");
+}
+
+if (typeof window !== "undefined") {
+  Object.assign(window, {
+    __SMARTAIHUB_CLIENT_BUILD_ID__: SMARTAIHUB_CLIENT_BUILD_ID,
+  });
 }
 
 const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
@@ -30,6 +40,68 @@ const CHUNK_ERROR_PATTERNS = [
   /Loading chunk [\w-]+ failed/i,
   /ChunkLoadError/i,
 ];
+const RESTCOUNTRIES_FALLBACK_PAYLOAD = [
+  {
+    name: { common: "Thailand", official: "Kingdom of Thailand" },
+    idd: { root: "+6", suffixes: ["6"] },
+    flag: "TH",
+  },
+  {
+    name: { common: "United States", official: "United States of America" },
+    idd: { root: "+1", suffixes: [""] },
+    flag: "US",
+  },
+  {
+    name: { common: "United Kingdom", official: "United Kingdom of Great Britain and Northern Ireland" },
+    idd: { root: "+4", suffixes: ["4"] },
+    flag: "GB",
+  },
+];
+
+function isRestCountriesRequest(input: unknown): boolean {
+  if (typeof input === "string") return /restcountries\.com\/v3\.1\/all/i.test(input);
+  if (input instanceof URL) return /restcountries\.com\/v3\.1\/all/i.test(input.href);
+  if (typeof Request !== "undefined" && input instanceof Request) {
+    return /restcountries\.com\/v3\.1\/all/i.test(input.url);
+  }
+  return false;
+}
+
+function installNoisyThirdPartyRequestGuards(): void {
+  if (typeof window === "undefined") return;
+
+  const fallbackBody = JSON.stringify(RESTCOUNTRIES_FALLBACK_PAYLOAD);
+
+  if (typeof window.fetch === "function") {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      if (isRestCountriesRequest(input)) {
+        return Promise.resolve(new Response(fallbackBody, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }));
+      }
+      return originalFetch(input, init);
+    }) as typeof window.fetch;
+  }
+
+  if (typeof window.XMLHttpRequest === "function") {
+    const originalOpen = window.XMLHttpRequest.prototype.open;
+    window.XMLHttpRequest.prototype.open = function patchedOpen(
+      method: string,
+      url: string | URL,
+      async?: boolean,
+      username?: string | null,
+      password?: string | null,
+    ) {
+      if (isRestCountriesRequest(url)) {
+        const dataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(fallbackBody)}`;
+        return originalOpen.call(this, method, dataUrl, async ?? true, username ?? null, password ?? null);
+      }
+      return originalOpen.call(this, method, url, async ?? true, username ?? null, password ?? null);
+    };
+  }
+}
 
 function summarizeUnknownValue(value: unknown): {
   topKeys?: string[];
@@ -145,6 +217,34 @@ function shouldDropDuplicateSentryEvent(event: Sentry.Event): boolean {
   return false;
 }
 
+function shouldDropNoisyThirdPartyBrowserEvent(event: Sentry.Event): boolean {
+  const breadcrumbText = (event.breadcrumbs ?? [])
+    .map((crumb) => [
+      crumb.category,
+      crumb.message,
+      crumb.data && typeof crumb.data === "object"
+        ? Object.values(crumb.data as Record<string, unknown>).join(" ")
+        : "",
+    ].join(" "))
+    .join(" ");
+  const text = [
+    event.message,
+    event.exception?.values?.map((value) => `${value.type ?? ""} ${value.value ?? ""}`).join(" "),
+    event.request?.url,
+    event.transaction,
+    breadcrumbText,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    /restcountries\.com/i.test(text) ||
+    /No 'Access-Control-Allow-Origin' header is present/i.test(text) ||
+    /blocked by CORS policy/i.test(text) ||
+    /429 \(Too Many Requests\)/i.test(text)
+  );
+}
+
 function isChunkLoadError(error: unknown): boolean {
   if (error instanceof Error) {
     return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(error.message));
@@ -174,6 +274,8 @@ function reloadForChunkError(): void {
 }
 
 if (typeof window !== "undefined") {
+  installNoisyThirdPartyRequestGuards();
+
   window.addEventListener(
     "error",
     (event) => {
@@ -202,6 +304,7 @@ const sentryDenyUrls = [
   /moz-extension:\/\//i,
   /safari-extension:\/\//i,
   /static\.cloudflareinsights\.com/i,
+  /restcountries\.com/i,
   /extension\.js/i,
 ];
 const isSentryEnabled = shouldEnableBrowserSentry({
@@ -241,6 +344,9 @@ if (isSentryEnabled && sentryDsn) {
     ],
     denyUrls: sentryDenyUrls,
     beforeSend(event) {
+      if (shouldDropNoisyThirdPartyBrowserEvent(event)) {
+        return null;
+      }
       if (shouldDropDuplicateSentryEvent(event)) {
         return null;
       }

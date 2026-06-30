@@ -14,7 +14,7 @@ import {
 } from "../../drizzle/schema";
 import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, productReferenceCategorySchema, type LocalInsightType, type MarketplacePlatform } from "@shared/marketplaceCapture";
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
-import { searchImages } from "./vectorize-search";
+import { searchImages, searchImagesByBuffer } from "./vectorize-search";
 
 type MarketplaceProductEditableFields = {
   productName: string;
@@ -37,6 +37,16 @@ type ManualMarketplaceProductInput = MarketplaceProductEditableFields & {
 };
 
 type MarketplaceProductRow = typeof marketplaceProducts.$inferSelect;
+type MarketplaceProductImageRow = typeof marketplaceProductImages.$inferSelect;
+
+type MarketplaceProductImageWithAccess = {
+  image: MarketplaceProductImageRow;
+  product: MarketplaceProductRow;
+  accessType: "owner" | "group";
+  sharedByUserId: number | null;
+  groupId: number | null;
+  permission?: string | null;
+};
 
 function money(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
@@ -66,6 +76,15 @@ function optionalText(value: unknown, max = 4096): string | null {
 
 function manualProductSourceUrl(productId: string, productPageUrl: string | null, sourceUrl?: string | null) {
   return normalizeOptionalHttpUrl(sourceUrl) ?? productPageUrl ?? `${(process.env.PUBLIC_URL || "https://smartaihub.app").replace(/\/$/, "")}/marketplace-capture/products/${productId}`;
+}
+
+function excludeSyntheticStoryboardProductsWhere() {
+  return sql`NOT (
+    ${marketplaceProducts.id} LIKE 'manual_storyboard_product_%'
+    OR COALESCE(${marketplaceProducts.sourceUrl}, '') LIKE 'manual-storyboard://%'
+    OR COALESCE(${marketplaceProducts.platformRawJson}->>'manualStoryboardReview', 'false') = 'true'
+    OR COALESCE(${marketplaceProducts.platformRawJson}->>'sourceSurface', '') = 'storyboard_review'
+  )`;
 }
 
 function countText(value: number | null | undefined, fallback: string | null | undefined): string | null {
@@ -1009,15 +1028,21 @@ export async function listMarketplaceProductsWithAccess(
   auth: { userId: number; tenantId?: string },
   options: {
     limit?: number;
+    cursor?: string | null;
     ownerOnly?: boolean;
     platform?: MarketplacePlatform | "all";
     query?: string;
+    category?: string;
+    sortMode?: "recommended" | "sold" | "rating" | "updated";
   } = {},
 ) {
   const db = getDb();
   const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
+  const offset = Math.max(Number.parseInt(String(options.cursor ?? "0"), 10) || 0, 0);
+  const isCursorRequest = Object.prototype.hasOwnProperty.call(options, "cursor");
   const platform = options.platform && options.platform !== "all" ? options.platform : null;
   const query = options.query?.trim();
+  const category = options.category?.trim();
   const platformWhere = platform ? eq(marketplaceProducts.platform, platform) : undefined;
   const searchWhere = query
     ? or(
@@ -1031,10 +1056,22 @@ export async function listMarketplaceProductsWithAccess(
       ilike(marketplaceProducts.externalShopId, `%${query}%`),
     )
     : undefined;
+  const categoryWhere = category && category !== "all"
+    ? or(
+      ilike(marketplaceProducts.productCategory, `%${category}%`),
+      sql`${marketplaceProducts.platformRawJson}->>'categoryText' ILIKE ${`%${category}%`}`,
+      sql`${marketplaceProducts.platformRawJson}->>'category' ILIKE ${`%${category}%`}`,
+    )
+    : undefined;
+  const orderBy = (() => {
+    if (options.sortMode === "sold") return desc(marketplaceProducts.soldCountNormalized);
+    if (options.sortMode === "rating") return desc(marketplaceProducts.ratingScore);
+    return desc(marketplaceProducts.updatedAt);
+  })();
   const ownRows = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.userId, auth.userId), platformWhere, searchWhere))
-    .orderBy(desc(marketplaceProducts.updatedAt))
-    .limit(limit);
+    .where(and(eq(marketplaceProducts.userId, auth.userId), excludeSyntheticStoryboardProductsWhere(), platformWhere, searchWhere, categoryWhere))
+    .orderBy(orderBy)
+    .limit(limit + offset + 1);
   const results: any[] = ownRows.map((product) => ({ ...product, accessType: "owner", sharedByUserId: product.userId, groupId: null }));
 
   if (!options.ownerOnly && auth.tenantId) {
@@ -1052,11 +1089,13 @@ export async function listMarketplaceProductsWithAccess(
           eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
           inArray(marketplaceProductGroupShares.groupId, groupIds),
           or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+          excludeSyntheticStoryboardProductsWhere(),
           platformWhere,
           searchWhere,
+          categoryWhere,
         ))
-        .orderBy(desc(marketplaceProducts.updatedAt))
-        .limit(limit);
+        .orderBy(orderBy)
+        .limit(limit + offset + 1);
       const seen = new Set(results.map((row) => row.id));
       for (const row of sharedRows) {
         if (seen.has(row.product.id)) continue;
@@ -1066,13 +1105,20 @@ export async function listMarketplaceProductsWithAccess(
     }
   }
 
-  const trimmed = results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, limit);
+  const sorted = results.sort((a, b) => {
+    if (options.sortMode === "sold") return Number(b.soldCountNormalized ?? 0) - Number(a.soldCountNormalized ?? 0);
+    if (options.sortMode === "rating") return Number(b.ratingScore ?? 0) - Number(a.ratingScore ?? 0);
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+  const pageRows = isCursorRequest ? sorted.slice(offset, offset + limit + 1) : sorted.slice(0, limit);
+  const hasMore = pageRows.length > limit;
+  const trimmed = pageRows.slice(0, limit);
   const [snapshots, productImages] = await Promise.all([
     snapshotsForProductIds(trimmed.map((product) => product.id)),
     primaryImagesForProducts(trimmed),
   ]);
   const supportingInsights = await supportingInsightsForProducts(trimmed, auth);
-  return trimmed.map((product) => ({
+  const items = trimmed.map((product) => ({
     ...product,
     imageUrl: productImages.get(product.id)?.imageUrl ?? null,
     imageUrls: productImages.get(product.id)?.imageUrls ?? [],
@@ -1080,6 +1126,171 @@ export async function listMarketplaceProductsWithAccess(
     latestSnapshot: snapshots.get(product.id)?.[0] ?? null,
     supportingInsights: supportingInsights.get(product.id) ?? null,
   }));
+  if (!isCursorRequest) return items;
+  return {
+    items,
+    nextCursor: hasMore ? String(offset + limit) : null,
+  };
+}
+
+async function marketplaceImageRowsByCaptureAssetIds(
+  auth: { userId: number; tenantId?: string },
+  assetIds: string[],
+  options: {
+    ownerOnly?: boolean;
+    platform?: MarketplacePlatform | "all";
+  } = {},
+): Promise<MarketplaceProductImageWithAccess[]> {
+  if (assetIds.length === 0) return [];
+
+  const db = getDb();
+  const uniqueAssetIds = Array.from(new Set(assetIds.filter(Boolean)));
+  const platform = options.platform && options.platform !== "all" ? options.platform : null;
+  const platformWhere = platform ? eq(marketplaceProducts.platform, platform) : undefined;
+
+  const own = await db.select({
+    image: marketplaceProductImages,
+    product: marketplaceProducts,
+  })
+    .from(marketplaceProductImages)
+    .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+    .where(and(
+      eq(marketplaceProducts.userId, auth.userId),
+      inArray(marketplaceProductImages.captureAssetId, uniqueAssetIds),
+      excludeSyntheticStoryboardProductsWhere(),
+      platformWhere,
+    ));
+  const rows: MarketplaceProductImageWithAccess[] = own.map((row) => ({
+    ...row,
+    accessType: "owner",
+    sharedByUserId: row.product.userId,
+    groupId: null,
+    permission: null,
+  }));
+
+  if (!options.ownerOnly && auth.tenantId) {
+    const groupIds = await getActiveGroupIds(auth);
+    if (groupIds.length > 0) {
+      const shared = await db.select({
+        image: marketplaceProductImages,
+        product: marketplaceProducts,
+        groupId: marketplaceProductGroupShares.groupId,
+        sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+        permission: marketplaceProductGroupShares.permission,
+      })
+        .from(marketplaceProductImages)
+        .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+        .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
+        .where(and(
+          eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          inArray(marketplaceProductGroupShares.groupId, groupIds),
+          inArray(marketplaceProductImages.captureAssetId, uniqueAssetIds),
+          or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+          excludeSyntheticStoryboardProductsWhere(),
+          platformWhere,
+        ));
+      for (const row of shared) {
+        rows.push({
+          image: row.image,
+          product: row.product,
+          accessType: "group",
+          sharedByUserId: row.sharedByUserId,
+          groupId: row.groupId,
+          permission: row.permission,
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+export async function searchSimilarMarketplaceProductsByImage(
+  auth: { userId: number; tenantId?: string },
+  options: {
+    imageBuffer: Buffer | Uint8Array;
+    limit?: number;
+    ownerOnly?: boolean;
+    platform?: MarketplacePlatform | "all";
+  },
+) {
+  const limit = Math.min(Math.max(options.limit ?? 24, 1), 50);
+  const vectorMatches = await searchImagesByBuffer({
+    imageBuffer: options.imageBuffer,
+    tenantId: auth.tenantId ?? `user:${auth.userId}`,
+    limit: Math.min(limit * 4, 100),
+    scope: "marketplace",
+  });
+  const assetIds = vectorMatches
+    .map((match) => match.id.replace(/^marketplace-/, ""))
+    .filter(Boolean);
+  const vectorByAssetId = new Map(
+    vectorMatches.map((match, index) => [
+      match.id.replace(/^marketplace-/, ""),
+      { ...match, rank: index },
+    ]),
+  );
+  const rows = await marketplaceImageRowsByCaptureAssetIds(auth, assetIds, {
+    ownerOnly: options.ownerOnly,
+    platform: options.platform,
+  });
+  const rowsByProduct = new Map<string, MarketplaceProductImageWithAccess & {
+    visualMatchScore: number;
+    visualMatchRank: number;
+    visualMatchImageUrl: string | null;
+    visualMatchDescription: string;
+  }>();
+
+  for (const row of rows) {
+    const assetId = row.image.captureAssetId ?? "";
+    const match = vectorByAssetId.get(assetId);
+    if (!match) continue;
+    const existing = rowsByProduct.get(row.product.id);
+    if (existing && existing.visualMatchScore >= match.score) continue;
+    rowsByProduct.set(row.product.id, {
+      ...row,
+      visualMatchScore: match.score,
+      visualMatchRank: match.rank,
+      visualMatchImageUrl: match.imageUrl || row.image.url || null,
+      visualMatchDescription: match.description || "",
+    });
+  }
+
+  const rankedRows = Array.from(rowsByProduct.values())
+    .sort((a, b) => {
+      if (b.visualMatchScore !== a.visualMatchScore) return b.visualMatchScore - a.visualMatchScore;
+      return a.visualMatchRank - b.visualMatchRank;
+    })
+    .slice(0, limit);
+
+  const [snapshots, productImages] = await Promise.all([
+    snapshotsForProductIds(rankedRows.map((row) => row.product.id)),
+    primaryImagesForProducts(rankedRows.map((row) => row.product)),
+  ]);
+  const supportingInsights = await supportingInsightsForProducts(rankedRows.map((row) => row.product), auth);
+
+  return {
+    items: rankedRows.map((row) => ({
+      ...row.product,
+      accessType: row.accessType,
+      sharedByUserId: row.sharedByUserId,
+      groupId: row.groupId,
+      permission: row.permission ?? null,
+      imageUrl: productImages.get(row.product.id)?.imageUrl ?? row.visualMatchImageUrl,
+      imageUrls: productImages.get(row.product.id)?.imageUrls ?? [],
+      matchedImage: {
+        id: row.image.id,
+        url: row.image.url,
+        type: row.image.type,
+        score: row.visualMatchScore,
+        description: row.visualMatchDescription,
+      },
+      visualMatchScore: row.visualMatchScore,
+      health: buildProductHealth(row.product, snapshots.get(row.product.id) ?? []),
+      latestSnapshot: snapshots.get(row.product.id)?.[0] ?? null,
+      supportingInsights: supportingInsights.get(row.product.id) ?? null,
+    })),
+  };
 }
 
 export async function listMarketplaceProductImagesForMediaStudio(

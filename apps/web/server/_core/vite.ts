@@ -10,7 +10,7 @@ import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
 import { isApiRequestPath } from "./apiPathGuard";
 
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm|zip)(\?.*)?$/i;
-const HTML_CACHE_CONTROL = "public, max-age=60, s-maxage=300, stale-while-revalidate=86400";
+const HTML_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
 const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const STATIC_NOT_FOUND_CACHE_CONTROL = "public, max-age=60";
 const COMPRESSIBLE_STATIC_EXTENSIONS = new Set([
@@ -177,7 +177,13 @@ export async function setupVite(app: Express, server: Server) {
       );
       const transformed = await vite.transformIndexHtml(url, template);
       const page = injectPublicSeoSnapshot(transformed, url, resolveBaseUrl(req));
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      res
+        .status(200)
+        .set({
+          "Content-Type": "text/html",
+          "Cache-Control": HTML_CACHE_CONTROL,
+        })
+        .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);

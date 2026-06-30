@@ -1349,6 +1349,125 @@ function shortSyncHash(value: unknown) {
   return (hash >>> 0).toString(36);
 }
 
+function boundedStringList(values: unknown, maxItems: number, maxChars: number): string[] {
+  return Array.isArray(values)
+    ? values.map((value) => cleanText(value, maxChars)).filter(Boolean).slice(0, maxItems)
+    : [];
+}
+
+function boundedIdList(values: unknown, maxItems: number, maxChars = 120): string[] {
+  return boundedStringList(values, maxItems, maxChars);
+}
+
+function sanitizeVideoBriefForSync(videoBrief: VideoBrief | undefined): VideoBrief | undefined {
+  if (!videoBrief) return undefined;
+  return {
+    ...videoBrief,
+    sourceCaptureIds: boundedIdList(videoBrief.sourceCaptureIds, 10, 64),
+    title: cleanText(videoBrief.title, 240),
+    hook: cleanText(videoBrief.hook, 300),
+    scenes: videoBrief.scenes.slice(0, 20).map((scene, index) => ({
+      ...scene,
+      order: Number.isFinite(scene.order) ? scene.order : index + 1,
+      sceneGoal: cleanText(scene.sceneGoal, 300),
+      visualSuggestion: cleanText(scene.visualSuggestion, 500),
+      onScreenText: cleanText(scene.onScreenText, 220),
+      voiceover: scene.voiceover ? cleanText(scene.voiceover, 500) : undefined,
+    })),
+    captions: boundedStringList(videoBrief.captions, 20, 220),
+    cta: cleanText(videoBrief.cta, 220),
+    assetsNeeded: boundedStringList(videoBrief.assetsNeeded, 20, 160),
+    hyperframesHint: videoBrief.hyperframesHint ? {
+      ...videoBrief.hyperframesHint,
+      visualStyle: cleanText(videoBrief.hyperframesHint.visualStyle, 160),
+      transitionStyle: cleanText(videoBrief.hyperframesHint.transitionStyle, 160),
+      textOverlayStyle: cleanText(videoBrief.hyperframesHint.textOverlayStyle, 160),
+    } : undefined,
+  };
+}
+
+function sanitizeStoryOptionVideoBriefForSync(videoBrief: StoryOptionVideoBrief | undefined): StoryOptionVideoBrief | undefined {
+  if (!videoBrief) return undefined;
+  const shots = videoBrief.shots.slice(0, 3).map((shot, index) => ({
+    ...shot,
+    order: index + 1,
+    title: cleanText(shot.title, 240),
+    videoPrompt: cleanText(shot.videoPrompt, 1400),
+    subShots: [
+      ...boundedStringList(shot.subShots, 3, 500),
+      "โชว์รายละเอียดสินค้าในบริบทใช้งานจริง",
+      "เชื่อมภาพกับประโยชน์หลักของสินค้า",
+      "ปิดด้วยภาพสินค้าชัดเจน",
+    ].slice(0, 3),
+    thaiVoiceover: cleanText(shot.thaiVoiceover, 600),
+  }));
+  while (shots.length < 3) {
+    const order = shots.length + 1;
+    shots.push({
+      order,
+      startSec: (order - 1) * 10,
+      endSec: order * 10,
+      title: `Shot ${order}`,
+      videoPrompt: "Vertical video 9:16, realistic product lifestyle video, no text on screen.",
+      subShots: [
+        "โชว์สินค้าในบริบทจริง",
+        "เน้นประโยชน์หลักที่ตรวจได้",
+        "จบด้วยภาพสินค้าชัดเจน",
+      ],
+      thaiVoiceover: "พูดเป็นภาษาไทยว่า “ดูรายละเอียดสินค้าเพิ่มเติมได้เลย”",
+    });
+  }
+  return {
+    ...videoBrief,
+    structureLabel: cleanText(videoBrief.structureLabel, 120) as StoryOptionVideoBrief["structureLabel"],
+    shots,
+  };
+}
+
+function sanitizeStorytellingHandoffForSync(handoff: MarketplaceStorytellingHandoff): MarketplaceStorytellingHandoff {
+  return {
+    ...handoff,
+    sourceCaptureIds: boundedIdList(handoff.sourceCaptureIds, 10, 64),
+    insightIds: boundedIdList(handoff.insightIds, 20, 64),
+    productName: cleanText(handoff.productName, 300),
+    blockers: boundedStringList(handoff.blockers, 20, 240),
+    storyOptions: handoff.storyOptions.slice(0, 12).map((option) => ({
+      ...option,
+      id: cleanText(option.id, 120),
+      title: cleanText(option.title, 160),
+      audience: cleanText(option.audience, 300),
+      customerNeed: cleanText(option.customerNeed, 500),
+      problemToSolve: cleanText(option.problemToSolve, 500),
+      useCase: cleanText(option.useCase, 500),
+      angle: cleanText(option.angle, 500),
+      hook: cleanText(option.hook, 300),
+      storyboardOutline: boundedStringList(option.storyboardOutline, 8, 320),
+      primaryClaimIds: boundedIdList(option.primaryClaimIds, 20),
+      evidenceIds: boundedIdList(option.evidenceIds, 80),
+      decisionReason: option.decisionReason ? cleanText(option.decisionReason, 300) : undefined,
+      userAdditions: (option.userAdditions || []).slice(0, 20).map((addition) => ({
+        ...addition,
+        values: boundedStringList(addition.values, 8, 300),
+        rawText: cleanText(addition.rawText, 1400),
+        confirmedAt: cleanText(addition.confirmedAt, 80),
+      })),
+      videoBrief: sanitizeStoryOptionVideoBriefForSync(option.videoBrief),
+    })),
+    claims: handoff.claims.slice(0, 80).map((claim) => ({
+      ...claim,
+      id: cleanText(claim.id, 120),
+      text: cleanText(claim.text, 300),
+      evidenceIds: boundedIdList(claim.evidenceIds, 20),
+    })),
+    selectedImages: handoff.selectedImages.filter((image) => image.url).slice(0, 30).map((image) => ({
+      ...image,
+      url: cleanText(image.url, 4096),
+    })),
+    videoBrief: sanitizeVideoBriefForSync(handoff.videoBrief),
+    evidenceIds: boundedIdList(handoff.evidenceIds, 120),
+  };
+}
+
 function normalizeSourceIdentityUrl(value: unknown) {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
@@ -1511,11 +1630,14 @@ export function buildInsightSyncRequest(input: {
   settings: LocalAISettings;
 }) {
   const generationRunId = `${input.insightType}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
-  const storyOptions = input.insightType === "storytelling_handoff" && input.payload && typeof input.payload === "object" && Array.isArray((input.payload as any).storyOptions)
-    ? (input.payload as any).storyOptions as Array<{ videoBrief?: unknown }>
+  const payload = input.insightType === "storytelling_handoff" && input.payload && typeof input.payload === "object"
+    ? sanitizeStorytellingHandoffForSync(input.payload as MarketplaceStorytellingHandoff)
+    : input.payload;
+  const storyOptions = input.insightType === "storytelling_handoff" && payload && typeof payload === "object" && Array.isArray((payload as any).storyOptions)
+    ? (payload as any).storyOptions as Array<{ videoBrief?: unknown }>
     : [];
   const idempotencySchema = input.insightType === "storytelling_handoff" ? "story_options_video_v1" : "v1";
-  const payloadSyncHash = shortSyncHash(input.payload);
+  const payloadSyncHash = shortSyncHash(payload);
   const selectedImageQuality = (input.source.product.selectedImages ?? []).map((image) => ({
     evidenceId: typeof image.id === "string" ? image.id : undefined,
     url: String(image.url ?? ""),
@@ -1573,7 +1695,7 @@ export function buildInsightSyncRequest(input: {
       storyOptionCount: storyOptions.length,
       storyOptionVideoBriefCount: storyOptions.filter((option) => option.videoBrief).length,
     },
-    payload: input.payload,
+    payload,
     rawCaptureIncluded: false,
     rawCapture: undefined,
   };

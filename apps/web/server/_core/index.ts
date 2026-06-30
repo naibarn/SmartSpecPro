@@ -65,6 +65,7 @@ import "../services/channelAdapters/slack"; // Register Slack adapter
 import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
+import { createStoryboardFinalCaptureRouter } from "../routes/storyboardFinalCapture";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
 import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
@@ -587,6 +588,7 @@ app.get("/api/work-os/final-media", async (req, res) => {
 
 // Internal slide render route — localhost-only, JWT-gated, for Playwright screenshots
 app.use("/internal", createSlideRenderRouter());
+app.use("/internal", createStoryboardFinalCaptureRouter());
 
 // Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());

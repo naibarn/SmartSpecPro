@@ -384,12 +384,30 @@ type LibraryMediaItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
 type StudioSidebarTab = "history" | "library" | "marketplace" | "tools";
 type StudioWorkspaceTab = "production" | "video_shot" | MediaType;
 type HistoryGalleryTab = "image" | "video" | "audio";
+type ImageAttachTargetOption =
+  | {
+      id: "current_reference";
+      kind: "current_reference";
+      label: string;
+      description: string;
+    }
+  | {
+      id: string;
+      kind: "skill_field";
+      fieldId: string;
+      fieldType: string;
+      label: string;
+      description: string;
+      maxItems: number | null;
+      multiple: boolean;
+    };
 type VideoAudioWorkflow =
   | "native"
   | "separate_voice"
   | "separate_music"
   | "separate_voice_music";
 type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
+const CURRENT_REFERENCE_ATTACH_TARGET_ID = "current_reference";
 const MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID =
   "media-production-storyboard-planner";
 const MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID =
@@ -408,6 +426,85 @@ const PRODUCTION_SHOT_REFERENCE_STORYBOARD_SKILLS: ProductionReferenceStoryboard
 const LEGACY_PRODUCTION_REFERENCE_STORYBOARD_SKILL_IDS = new Set(
   PRODUCTION_REFERENCE_STORYBOARD_LEGACY_SKILL_IDS
 );
+
+function getSkillFieldLocalizedLabel(
+  field: Record<string, any>,
+  isThaiLocale: boolean
+): string {
+  return String(
+    (isThaiLocale && (field.labelTh || field.titleTh)) ||
+      field.label ||
+      field.title ||
+      field.id ||
+      ""
+  ).trim();
+}
+
+function getSkillFieldLocalizedDescription(
+  field: Record<string, any>,
+  isThaiLocale: boolean
+): string {
+  return String(
+    (isThaiLocale &&
+      (field.descriptionTh || field.helpTextTh || field.placeholderTh)) ||
+      field.description ||
+      field.helpText ||
+      field.placeholder ||
+      ""
+  ).trim();
+}
+
+function isSkillImageAttachField(field: Record<string, any>): boolean {
+  const type = String(field?.type ?? "");
+  if (type === "image" || type === "images" || type === "imageUpload") {
+    return true;
+  }
+  if (type !== "file" && type !== "files") {
+    return false;
+  }
+  const accept = String(field.accept ?? "").toLowerCase();
+  return accept.includes("image") || accept.includes(".jpg") || accept.includes(".png");
+}
+
+function getSkillImageAttachFieldMaxItems(field: Record<string, any>): number | null {
+  const value = Number(field.maxImages ?? field.maxCount ?? field.maxItems);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function isMultiSkillImageAttachField(field: Record<string, any>): boolean {
+  const type = String(field?.type ?? "");
+  return (
+    type === "images" ||
+    type === "files" ||
+    (type === "imageUpload" && field.multiple !== false)
+  );
+}
+
+function buildSkillImageAttachTargetOptions(params: {
+  schema: SkillInputSchema | null;
+  isThaiLocale: boolean;
+}): ImageAttachTargetOption[] {
+  const fields =
+    params.schema?.sections.flatMap(section => section.fields ?? []) ?? [];
+  return fields
+    .filter(field => isSkillImageAttachField(field as Record<string, any>))
+    .map(field => {
+      const label = getSkillFieldLocalizedLabel(field, params.isThaiLocale);
+      return {
+        id: `skill:${field.id}`,
+        kind: "skill_field" as const,
+        fieldId: field.id,
+        fieldType: String(field.type ?? ""),
+        label,
+        description: getSkillFieldLocalizedDescription(
+          field,
+          params.isThaiLocale
+        ),
+        maxItems: getSkillImageAttachFieldMaxItems(field),
+        multiple: isMultiSkillImageAttachField(field),
+      };
+    });
+}
 
 function isProductionReferenceStoryboardSkillId(skillId: string): boolean {
   return (
@@ -12375,6 +12472,9 @@ export default function MediaStudio() {
   const marketplaceScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] =
     useState<StudioSidebarTab>("history");
+  const [selectedImageAttachTarget, setSelectedImageAttachTarget] = useState(
+    CURRENT_REFERENCE_ATTACH_TARGET_ID
+  );
   const [historyGalleryTab, setHistoryGalleryTab] =
     useState<HistoryGalleryTab>("image");
   const [historyGalleryVisibleLimits, setHistoryGalleryVisibleLimits] =
@@ -14657,6 +14757,47 @@ export default function MediaStudio() {
       ),
     [dynamicFormValues, useAdvancedMode]
   );
+  const skillImageAttachTargetOptions = useMemo(
+    () =>
+      useAdvancedMode
+        ? buildSkillImageAttachTargetOptions({
+            schema: skillSchema,
+            isThaiLocale,
+          })
+        : [],
+    [isThaiLocale, skillSchema, useAdvancedMode]
+  );
+  const imageAttachTargetOptions = useMemo<ImageAttachTargetOption[]>(
+    () => [
+      {
+        id: CURRENT_REFERENCE_ATTACH_TARGET_ID,
+        kind: "current_reference",
+        label: t("mediaStudio.currentReferenceTarget"),
+        description: t("mediaStudio.currentReferenceTargetHelp"),
+      },
+      ...skillImageAttachTargetOptions,
+    ],
+    [skillImageAttachTargetOptions, t]
+  );
+  const selectedImageAttachTargetOption = useMemo(
+    () =>
+      imageAttachTargetOptions.find(
+        option => option.id === selectedImageAttachTarget
+      ) ?? imageAttachTargetOptions[0],
+    [imageAttachTargetOptions, selectedImageAttachTarget]
+  );
+
+  useEffect(() => {
+    if (
+      imageAttachTargetOptions.some(
+        option => option.id === selectedImageAttachTarget
+      )
+    ) {
+      return;
+    }
+    setSelectedImageAttachTarget(CURRENT_REFERENCE_ATTACH_TARGET_ID);
+  }, [imageAttachTargetOptions, selectedImageAttachTarget]);
+
   const autoPromptReferenceImageUrls = useMemo(() => {
     const seen = new Set<string>();
     return [
@@ -15897,6 +16038,94 @@ export default function MediaStudio() {
       ? Math.min(5, fieldMax)
       : 5;
   }, [activeTab, selectedMediaModelParsedInputFields]);
+  const canAttachImageToSelectedTarget =
+    selectedImageAttachTargetOption?.kind === "skill_field" ||
+    referenceImages.length < maxReferenceImages;
+
+  const attachImageUrlToSelectedTarget = useCallback(
+    (input: {
+      url: string;
+      name: string;
+      marketplaceProduct?: MarketplaceProductReferenceContext | null;
+      silent?: boolean;
+    }): boolean => {
+      const url = input.url.trim();
+      if (!url) {
+        toast.error(t("mediaStudio.failedToAddAsReference"));
+        return false;
+      }
+
+      if (selectedImageAttachTargetOption?.kind === "skill_field") {
+        const target = selectedImageAttachTargetOption;
+        setUseAdvancedMode(true);
+        setDynamicFormValues((prev: Record<string, any>) => {
+          const current = prev[target.fieldId];
+          if (!target.multiple) {
+            return { ...prev, [target.fieldId]: url };
+          }
+
+          const currentUrls = Array.isArray(current)
+            ? current.filter(
+                (entry: unknown): entry is string =>
+                  typeof entry === "string" && entry.trim().length > 0
+              )
+            : typeof current === "string" && current.trim()
+              ? [current.trim()]
+              : [];
+          const maxItems = target.maxItems ?? 50;
+          const nextUrls = Array.from(new Set([...currentUrls, url])).slice(
+            0,
+            maxItems
+          );
+          return { ...prev, [target.fieldId]: nextUrls };
+        });
+        if (!input.silent) {
+          toast.success(
+            t("mediaStudio.addedImageToAttachTarget", {
+              target: target.label,
+            })
+          );
+        }
+        return true;
+      }
+
+      if (!selectedMediaModelReferenceSupport.imageUrls) {
+        toast.error("The selected model does not accept image references.");
+        return false;
+      }
+      if (referenceImages.length >= maxReferenceImages) {
+        toast.error(
+          t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
+        );
+        return false;
+      }
+      setReferenceImages(prev => [
+        ...prev,
+        {
+          url,
+          name: input.name,
+          ...(input.marketplaceProduct
+            ? { marketplaceProduct: input.marketplaceProduct }
+            : {}),
+        },
+      ]);
+      if (!input.silent) {
+        toast.success(t("mediaStudio.useAsReference"));
+      }
+      return true;
+    },
+    [
+      maxReferenceImages,
+      referenceImages.length,
+      selectedImageAttachTargetOption,
+      selectedMediaModelReferenceSupport.imageUrls,
+      setDynamicFormValues,
+      setReferenceImages,
+      setUseAdvancedMode,
+      t,
+      toast,
+    ]
+  );
 
   const syncAutoPromptReferenceImages = useCallback(
     (referenceUrls: string[]): string[] => {
@@ -16302,24 +16531,21 @@ export default function MediaStudio() {
 
   // Add generated media as reference
   const addAsReference = (media: GeneratedMedia) => {
-    if (referenceImages.length >= maxReferenceImages) {
-      return;
-    }
-    setReferenceImages(prev => [
-      ...prev,
-      { url: media.url, name: `generated-${media.id}` },
-    ]);
+    attachImageUrlToSelectedTarget({
+      url: media.url,
+      name: `generated-${media.id}`,
+    });
   };
 
   // Add history task image as reference
   const addHistoryAsReference = (task: { id: string; resultUrl?: string }) => {
-    if (referenceImages.length >= maxReferenceImages || !task.resultUrl) {
+    if (!task.resultUrl) {
       return;
     }
-    setReferenceImages(prev => [
-      ...prev,
-      { url: task.resultUrl!, name: `history-${task.id}` },
-    ]);
+    attachImageUrlToSelectedTarget({
+      url: task.resultUrl,
+      name: `history-${task.id}`,
+    });
   };
 
   const refreshLibraryStatus = useCallback(
@@ -16468,29 +16694,17 @@ export default function MediaStudio() {
       }
 
       if (itemType === "image") {
-        if (!selectedMediaModelReferenceSupport.imageUrls) {
-          toast.error("The selected model does not accept image references.");
-          return;
-        }
-        if (referenceImages.length >= maxReferenceImages) {
-          toast.error(
-            t("mediaStudio.maxReferenceImagesError", {
-              max: maxReferenceImages,
-            })
-          );
-          return;
-        }
-        setReferenceImages(prev => [
-          ...prev,
-          { url: referenceUrl, name: `library-${item.item_id}` },
-        ]);
-        toast.success(t("mediaStudio.useAsReference"));
+        attachImageUrlToSelectedTarget({
+          url: referenceUrl,
+          name: `library-${item.item_id}`,
+        });
         return;
       }
 
       toast.error(t("mediaStudio.failedToAddAsReference"));
     },
     [
+      attachImageUrlToSelectedTarget,
       maxReferenceImages,
       maxReferenceVideos,
       referenceImages.length,
@@ -16508,33 +16722,17 @@ export default function MediaStudio() {
         toast.error(t("mediaStudio.failedToAddAsReference"));
         return;
       }
-      if (!selectedMediaModelReferenceSupport.imageUrls) {
-        toast.error("The selected model does not accept image references.");
-        return;
-      }
-      if (referenceImages.length >= maxReferenceImages) {
-        toast.error(
-          t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
-        );
-        return;
-      }
       const marketplaceProduct = buildMarketplaceProductContext(item);
       syncMarketplaceProductContextToSkillFields(marketplaceProduct);
-      setReferenceImages(prev => [
-        ...prev,
-        {
-          url: referenceUrl,
-          name: `marketplace-${item.platform}-${item.externalProductId || item.id}`,
-          marketplaceProduct,
-        },
-      ]);
-      toast.success(t("mediaStudio.useAsReference"));
+      attachImageUrlToSelectedTarget({
+        url: referenceUrl,
+        name: `marketplace-${item.platform}-${item.externalProductId || item.id}`,
+        marketplaceProduct,
+      });
     },
     [
+      attachImageUrlToSelectedTarget,
       buildMarketplaceProductContext,
-      maxReferenceImages,
-      referenceImages.length,
-      selectedMediaModelReferenceSupport.imageUrls,
       syncMarketplaceProductContextToSkillFields,
       t,
     ]
@@ -16747,22 +16945,19 @@ export default function MediaStudio() {
 
     const url = getDraggedMediaUrl(e.dataTransfer);
     const draggedMediaType = getDraggedMediaType(e.dataTransfer);
-    if (url && referenceImages.length < maxReferenceImages) {
+    if (url && canAttachImageToSelectedTarget) {
       if (draggedMediaType === "image" || isImageMediaUrl(url)) {
         const marketplaceProduct = getDraggedMarketplaceProductContext(
           e.dataTransfer
         );
         syncMarketplaceProductContextToSkillFields(marketplaceProduct);
-        setReferenceImages(prev => [
-          ...prev,
-          {
-            url,
-            name: marketplaceProduct?.itemId
-              ? `marketplace-${marketplaceProduct.platform}-${marketplaceProduct.itemId}`
-              : `dropped-${Date.now()}`,
-            ...(marketplaceProduct ? { marketplaceProduct } : {}),
-          },
-        ]);
+        attachImageUrlToSelectedTarget({
+          url,
+          name: marketplaceProduct?.itemId
+            ? `marketplace-${marketplaceProduct.platform}-${marketplaceProduct.itemId}`
+            : `dropped-${Date.now()}`,
+          marketplaceProduct,
+        });
       }
     }
   };
@@ -23413,12 +23608,6 @@ export default function MediaStudio() {
     result: SplitResult,
     sequenceNumber = getSplitResultSequenceNumber(result)
   ) => {
-    if (referenceImages.length >= maxReferenceImages) {
-      toast.error(
-        t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
-      );
-      return;
-    }
     try {
       const effectiveSplitMarketplaceContext =
         splitMarketplaceContext ?? getMarketplaceContextFromProduction();
@@ -23428,17 +23617,11 @@ export default function MediaStudio() {
         fileType: "image/jpeg",
         fileBase64: result.dataUrl,
       });
-      setReferenceImages(prev => [
-        ...prev,
-        {
-          url: uploadResult.url,
-          name: `Split ${sequenceNumber}`,
-          ...(effectiveSplitMarketplaceContext
-            ? { marketplaceProduct: effectiveSplitMarketplaceContext }
-            : {}),
-        },
-      ]);
-      toast.success(t("mediaStudio.addedAsReferenceImage"));
+      attachImageUrlToSelectedTarget({
+        url: uploadResult.url,
+        name: `Split ${sequenceNumber}`,
+        marketplaceProduct: effectiveSplitMarketplaceContext,
+      });
     } catch (error) {
       console.error("Failed to upload split image:", error);
       toast.error(t("mediaStudio.failedToAddAsReference"));
@@ -23448,12 +23631,6 @@ export default function MediaStudio() {
   // Add cropped image as reference
   const addCropAsReference = async () => {
     if (!cropResult) return;
-    if (referenceImages.length >= maxReferenceImages) {
-      toast.error(
-        t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
-      );
-      return;
-    }
     try {
       const effectiveSplitMarketplaceContext =
         splitMarketplaceContext ?? getMarketplaceContextFromProduction();
@@ -23462,17 +23639,11 @@ export default function MediaStudio() {
         fileType: "image/jpeg",
         fileBase64: cropResult.dataUrl,
       });
-      setReferenceImages(prev => [
-        ...prev,
-        {
-          url: uploadResult.url,
-          name: `Crop ${cropAspectRatio}`,
-          ...(effectiveSplitMarketplaceContext
-            ? { marketplaceProduct: effectiveSplitMarketplaceContext }
-            : {}),
-        },
-      ]);
-      toast.success(t("mediaStudio.addedCroppedImageAsReference"));
+      attachImageUrlToSelectedTarget({
+        url: uploadResult.url,
+        name: `Crop ${cropAspectRatio}`,
+        marketplaceProduct: effectiveSplitMarketplaceContext,
+      });
     } catch (error) {
       console.error("Failed to upload cropped image:", error);
       toast.error(t("mediaStudio.failedToAddAsReference"));
@@ -23482,7 +23653,10 @@ export default function MediaStudio() {
   const addAllSplitsAsReference = async () => {
     if (splitResults.length === 0) return;
 
-    const availableSlots = maxReferenceImages - referenceImages.length;
+    const availableSlots =
+      selectedImageAttachTargetOption?.kind === "skill_field"
+        ? (selectedImageAttachTargetOption.maxItems ?? splitResults.length)
+        : maxReferenceImages - referenceImages.length;
     if (availableSlots <= 0) {
       toast.error(
         t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
@@ -23517,11 +23691,23 @@ export default function MediaStudio() {
         });
       }
 
-      setReferenceImages(prev => [...prev, ...uploadedImages]);
+      uploadedImages.forEach(image => {
+        attachImageUrlToSelectedTarget({
+          url: image.url,
+          name: image.name,
+          marketplaceProduct: image.marketplaceProduct ?? null,
+          silent: true,
+        });
+      });
       toast.success(
-        t("mediaStudio.addedImagesToCurrentReference", {
-          count: uploadedImages.length,
-        })
+        selectedImageAttachTargetOption?.kind === "skill_field"
+          ? t("mediaStudio.addedImagesToAttachTarget", {
+              count: uploadedImages.length,
+              target: selectedImageAttachTargetOption.label,
+            })
+          : t("mediaStudio.addedImagesToCurrentReference", {
+              count: uploadedImages.length,
+            })
       );
     } catch (error) {
       console.error("Failed to upload split images:", error);
@@ -40821,7 +41007,7 @@ export default function MediaStudio() {
                         {media.type !== "audio" ? (
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                             {media.type === "image" &&
-                              referenceImages.length < maxReferenceImages && (
+                              canAttachImageToSelectedTarget && (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -41174,7 +41360,7 @@ export default function MediaStudio() {
 
                         <div className="pr-0 sm:pr-3">
                           {/* Completed tasks grid */}
-                          <div className="mb-4 grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3">
+                          <div className="mb-4 grid grid-cols-2 gap-3 pb-2 xl:grid-cols-3">
                             {historyGalleryCompletedTasks.map(task => {
                               const resultUrl = extractTaskResultUrl(task);
                               if (!resultUrl) return null;
@@ -41411,15 +41597,16 @@ export default function MediaStudio() {
                                       }}
                                     />
                                   )}
-                                  <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
+                                  <div className="mt-1 grid grid-cols-4 gap-1 rounded-md border bg-white/90 p-1 shadow-sm">
                                     {task.mediaType === "image" && (
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-9 w-9 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               onClick={e => {
                                                 e.stopPropagation();
                                                 openLightbox(
@@ -41430,7 +41617,7 @@ export default function MediaStudio() {
                                                 );
                                               }}
                                             >
-                                              <Maximize2 className="h-5 w-5" />
+                                              <Maximize2 className="h-4 w-4" />
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -41440,15 +41627,15 @@ export default function MediaStudio() {
                                       </TooltipProvider>
                                     )}
                                     {task.mediaType === "image" &&
-                                      referenceImages.length <
-                                        maxReferenceImages && (
+                                      canAttachImageToSelectedTarget && (
                                         <TooltipProvider>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               <Button
+                                                type="button"
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-9 w-9 rounded-lg"
+                                                className="h-8 w-full min-w-0 rounded-lg"
                                                 onClick={e => {
                                                   e.stopPropagation();
                                                   addHistoryAsReference({
@@ -41457,7 +41644,7 @@ export default function MediaStudio() {
                                                   });
                                                 }}
                                               >
-                                                <ImagePlus className="h-5 w-5" />
+                                                <ImagePlus className="h-4 w-4" />
                                               </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>
@@ -41473,9 +41660,10 @@ export default function MediaStudio() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-9 w-9 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               disabled={
                                                 !selectedProductionNodeId
                                               }
@@ -41498,7 +41686,7 @@ export default function MediaStudio() {
                                                 );
                                               }}
                                             >
-                                              <Route className="h-5 w-5" />
+                                              <Route className="h-4 w-4" />
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -41518,9 +41706,10 @@ export default function MediaStudio() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-9 w-9 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               onClick={e => {
                                                 e.stopPropagation();
                                                 const historyMarketplaceCtx =
@@ -41534,7 +41723,7 @@ export default function MediaStudio() {
                                                 );
                                               }}
                                             >
-                                              <Grid2X2 className="h-5 w-5" />
+                                              <Grid2X2 className="h-4 w-4" />
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -41549,9 +41738,10 @@ export default function MediaStudio() {
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               <Button
+                                                type="button"
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-9 w-9 rounded-lg"
+                                                className="h-8 w-full min-w-0 rounded-lg"
                                                 disabled={
                                                   isAppendingSplitResults
                                                 }
@@ -41569,9 +41759,9 @@ export default function MediaStudio() {
                                                 }}
                                               >
                                                 {isAppendingSplitResults ? (
-                                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                                  <Loader2 className="h-4 w-4 animate-spin" />
                                                 ) : (
-                                                  <Scissors className="h-5 w-5" />
+                                                  <Scissors className="h-4 w-4" />
                                                 )}
                                               </Button>
                                             </TooltipTrigger>
@@ -41588,9 +41778,10 @@ export default function MediaStudio() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-9 w-9 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               onClick={e => {
                                                 e.stopPropagation();
                                                 const historyMarketplaceCtx =
@@ -41605,7 +41796,7 @@ export default function MediaStudio() {
                                                 );
                                               }}
                                             >
-                                              <Crop className="h-5 w-5" />
+                                              <Crop className="h-4 w-4" />
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -41624,9 +41815,10 @@ export default function MediaStudio() {
                                           <Tooltip>
                                             <TooltipTrigger asChild>
                                               <Button
+                                                type="button"
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-9 w-9 rounded-lg"
+                                                className="h-8 w-full min-w-0 rounded-lg"
                                                 onClick={e => {
                                                   e.stopPropagation();
                                                   void selectExistingStoryboardAudio(
@@ -41639,7 +41831,7 @@ export default function MediaStudio() {
                                                   );
                                                 }}
                                               >
-                                                <Mic className="h-5 w-5" />
+                                                <Mic className="h-4 w-4" />
                                               </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>
@@ -41654,9 +41846,10 @@ export default function MediaStudio() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-9 w-9 rounded-lg"
+                                            className="h-8 w-full min-w-0 rounded-lg"
                                             onClick={e => {
                                               e.stopPropagation();
                                               const ext =
@@ -41671,7 +41864,7 @@ export default function MediaStudio() {
                                               );
                                             }}
                                           >
-                                            <Download className="h-5 w-5" />
+                                            <Download className="h-4 w-4" />
                                           </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
@@ -41865,7 +42058,7 @@ export default function MediaStudio() {
                           return (
                             (!selectedModel ||
                               selectedMediaModelReferenceSupport.imageUrls) &&
-                            referenceImages.length < maxReferenceImages
+                            canAttachImageToSelectedTarget
                           );
                         }
                         return false;
@@ -42713,7 +42906,7 @@ export default function MediaStudio() {
                         </div>
                       ) : (
                         <>
-                          <div className="grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3">
+                          <div className="grid grid-cols-2 gap-3 pb-2 xl:grid-cols-3">
                             {marketplaceImages.map(item => {
                               const isSelectedMarketplaceImage =
                                 selectedMarketplaceImageId === item.id;
@@ -42825,14 +43018,15 @@ export default function MediaStudio() {
                                       </p>
                                     )}
                                   </div>
-                                  <div className="mt-1 flex items-center justify-center gap-1 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
+                                  <div className="mt-1 grid grid-cols-4 gap-1 rounded-md border bg-white/90 p-1 shadow-sm">
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-lg"
+                                            className="h-8 w-full min-w-0 rounded-lg"
                                             onClick={event => {
                                               event.stopPropagation();
                                               openLightbox(
@@ -42854,15 +43048,15 @@ export default function MediaStudio() {
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                    {referenceImages.length <
-                                      maxReferenceImages && (
+                                    {canAttachImageToSelectedTarget && (
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-8 w-8 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               onClick={event => {
                                                 event.stopPropagation();
                                                 handleMarketplaceImageAddToReference(
@@ -42884,9 +43078,10 @@ export default function MediaStudio() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-8 w-8 rounded-lg"
+                                              className="h-8 w-full min-w-0 rounded-lg"
                                               aria-label={
                                                 isThaiLocale
                                                   ? "เปิด Product Detail เพื่อเลือก product/person/environment 3 anchors"
@@ -42918,9 +43113,10 @@ export default function MediaStudio() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-lg"
+                                            className="h-8 w-full min-w-0 rounded-lg"
                                             disabled={!selectedProductionNodeId}
                                             onClick={event => {
                                               event.stopPropagation();
@@ -42951,9 +43147,10 @@ export default function MediaStudio() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 rounded-lg"
+                                            className="h-8 w-full min-w-0 rounded-lg"
                                             onClick={event => {
                                               event.stopPropagation();
                                               window.open(
@@ -43095,7 +43292,7 @@ export default function MediaStudio() {
                                   "mediaStudio.addAllToCurrentReference"
                                 )}
                                 disabled={
-                                  referenceImages.length >= maxReferenceImages ||
+                                  !canAttachImageToSelectedTarget ||
                                   uploadMutation.isPending
                                 }
                                 onClick={() => void addAllSplitsAsReference()}
@@ -43176,8 +43373,7 @@ export default function MediaStudio() {
                                           : `Attach image ${sequenceNumber} as reference`
                                       }
                                       disabled={
-                                        referenceImages.length >=
-                                        maxReferenceImages
+                                        !canAttachImageToSelectedTarget
                                       }
                                       onClick={() =>
                                         void addSplitAsReference(
@@ -43267,7 +43463,7 @@ export default function MediaStudio() {
                             size="sm"
                             className="min-h-10 w-full gap-2 whitespace-normal"
                             disabled={
-                              referenceImages.length >= maxReferenceImages
+                              !canAttachImageToSelectedTarget
                             }
                             onClick={addCropAsReference}
                           >
@@ -44319,7 +44515,7 @@ export default function MediaStudio() {
                                 onClick={() => void addAllSplitsAsReference()}
                                 className="min-h-10 w-full justify-center gap-2 whitespace-normal px-3 py-2 text-center leading-snug"
                                 disabled={
-                                  referenceImages.length >= maxReferenceImages ||
+                                  !canAttachImageToSelectedTarget ||
                                   uploadMutation.isPending
                                 }
                               >
@@ -44452,8 +44648,7 @@ export default function MediaStudio() {
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                    {referenceImages.length <
-                                      maxReferenceImages && (
+                                    {canAttachImageToSelectedTarget && (
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
@@ -44693,7 +44888,7 @@ export default function MediaStudio() {
                           />
                         </div>
                         <div className="flex gap-2">
-                          {referenceImages.length < maxReferenceImages && (
+                          {canAttachImageToSelectedTarget && (
                             <Button
                               type="button"
                               variant="outline"

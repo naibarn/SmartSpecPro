@@ -22,9 +22,9 @@ describe("vite api fallback guard", () => {
 });
 
 describe("vite production static serving", () => {
-  it("uses CDN-friendly cache headers for HTML and hashed assets", () => {
+  it("prevents stale HTML while keeping hashed assets cacheable", () => {
     expect(cacheControlForStaticFile(path.join("dist", "public", "index.html"))).toBe(
-      "public, max-age=60, s-maxage=300, stale-while-revalidate=86400"
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
     );
     expect(cacheControlForStaticFile(path.join("dist", "public", "assets", "index-abc123.js"))).toBe(
       "public, max-age=31536000, immutable"

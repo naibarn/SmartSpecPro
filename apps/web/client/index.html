@@ -32,6 +32,55 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Bangers&family=Boogaloo&family=Fredoka+One&family=Anton&family=Paytone+One&family=Righteous&family=Permanent+Marker&family=Bebas+Neue&family=Nunito:wght@700;900&family=Poppins:wght@400;600;700&family=Montserrat:wght@400;600;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet" />
     <script>
       (function () {
+        var restCountriesPattern = /restcountries\.com\/v3\.1\/all/i;
+        var fallbackBody = JSON.stringify([
+          { name: { common: "Thailand", official: "Kingdom of Thailand" }, idd: { root: "+6", suffixes: ["6"] }, flag: "TH" },
+          { name: { common: "United States", official: "United States of America" }, idd: { root: "+1", suffixes: [""] }, flag: "US" },
+          { name: { common: "United Kingdom", official: "United Kingdom of Great Britain and Northern Ireland" }, idd: { root: "+4", suffixes: ["4"] }, flag: "GB" }
+        ]);
+
+        function isRestCountriesRequest(input) {
+          try {
+            var raw = typeof input === "string"
+              ? input
+              : input && input.href
+                ? input.href
+                : input && input.url
+                  ? input.url
+                  : "";
+            return restCountriesPattern.test(String(raw));
+          } catch (_) {
+            return false;
+          }
+        }
+
+        if (typeof window.fetch === "function") {
+          var originalFetch = window.fetch.bind(window);
+          window.fetch = function (input, init) {
+            if (isRestCountriesRequest(input)) {
+              return Promise.resolve(new Response(fallbackBody, {
+                status: 200,
+                headers: { "content-type": "application/json" }
+              }));
+            }
+            return originalFetch(input, init);
+          };
+        }
+
+        if (typeof window.XMLHttpRequest === "function") {
+          var originalOpen = window.XMLHttpRequest.prototype.open;
+          window.XMLHttpRequest.prototype.open = function (method, url, async, username, password) {
+            if (isRestCountriesRequest(url)) {
+              var dataUrl = "data:application/json;charset=utf-8," + encodeURIComponent(fallbackBody);
+              return originalOpen.call(this, method, dataUrl, async !== false, username || null, password || null);
+            }
+            return originalOpen.call(this, method, url, async !== false, username || null, password || null);
+          };
+        }
+      })();
+    </script>
+    <script>
+      (function () {
         var cloudflareBeaconPattern = /static\.cloudflareinsights\.com\/beacon\.min\.js/i;
         var cspPattern = /violates the following Content Security Policy directive/i;
 

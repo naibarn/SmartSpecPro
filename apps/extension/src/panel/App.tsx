@@ -217,6 +217,10 @@ interface StoryboardReviewProjectSummary {
   clipCount: number;
   completedClipCount: number;
   thumbnailUrl: string | null;
+  affiliateUrl?: string | null;
+  finalVideoUrl?: string | null;
+  finalVideoTitle?: string | null;
+  finalVideoThumbnailUrl?: string | null;
   videoEditorProjectId: number | null;
   updatedAt: string | null;
   createdAt: string | null;
@@ -248,6 +252,8 @@ interface ProductionMediaFileEntry {
   objectUrl?: string;
   dragId?: string;
   dataUrl?: string;
+  sourceUrl?: string;
+  authHeaders?: Record<string, string>;
 }
 
 type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: "image" | "video" };
@@ -270,8 +276,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.95";
-const EXTENSION_BUILD_LABEL = "2026-05-29 21:19 +07";
+const EXTENSION_VERSION = "0.1.106";
+const EXTENSION_BUILD_LABEL = "2026-06-28 18:47 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -718,28 +724,33 @@ function fileNameFromUrl(url: string, fallback: string): string {
   }
 }
 
-function storeDragMediaForBridge(input: { id: string; dataUrl: string; file: File }) {
+function storeDragMediaForBridge(input: { id: string; dataUrl?: string; file: File; metadataOnly?: boolean; sourceUrl?: string; headers?: Record<string, string> }) {
   return chrome.runtime.sendMessage({
     type: "SMARTAIHUB_STORE_DRAG_MEDIA",
     id: input.id,
-    dataUrl: input.dataUrl,
+    dataUrl: input.dataUrl || "",
     name: input.file.name,
     mimeType: input.file.type || "application/octet-stream",
+    metadataOnly: input.metadataOnly === true,
+    sourceUrl: input.sourceUrl,
+    headers: input.headers,
   });
 }
 
-function startDragMediaBridge(input: { id: string; dataUrl?: string; file: File }) {
+function startDragMediaBridge(input: { id: string; dataUrl?: string; file: File; sourceUrl?: string; headers?: Record<string, string> }) {
   const start = () => chrome.runtime.sendMessage({ type: "SMARTAIHUB_START_DRAG_MEDIA", id: input.id });
   if (!input.dataUrl) {
-    void start().catch(() => undefined);
+    void storeDragMediaForBridge({ id: input.id, file: input.file, metadataOnly: true, sourceUrl: input.sourceUrl, headers: input.headers })
+      .catch(() => undefined)
+      .then(() => start().catch(() => undefined));
     return;
   }
-  void storeDragMediaForBridge({ id: input.id, dataUrl: input.dataUrl, file: input.file })
+  void storeDragMediaForBridge({ id: input.id, dataUrl: input.dataUrl, file: input.file, sourceUrl: input.sourceUrl, headers: input.headers })
     .catch(() => undefined)
     .then(() => start().catch(() => undefined));
 }
 
-function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string; dataUrl?: string }) {
+function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string; dataUrl?: string; headers?: Record<string, string> }) {
   event.dataTransfer.effectAllowed = "copy";
   if (input.file) {
     try {
@@ -751,7 +762,7 @@ function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: s
       event.dataTransfer.items.add(input.file);
       if (input.dragId) {
         activeProductionDragMediaId = input.dragId;
-        startDragMediaBridge({ id: input.dragId, dataUrl: input.dataUrl, file: input.file });
+        startDragMediaBridge({ id: input.dragId, dataUrl: input.dataUrl, file: input.file, sourceUrl: input.url, headers: input.headers });
       }
       return;
     } catch {
@@ -760,6 +771,10 @@ function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: s
     }
   }
   event.preventDefault();
+}
+
+function socialUploadUrl(platform: "facebook" | "tiktok") {
+  return platform === "facebook" ? "https://www.facebook.com/" : "https://www.tiktok.com/tiktokstudio/upload?from=webapp";
 }
 
 function endProductionMediaDrag(input: { dragId?: string }) {
@@ -3579,6 +3594,28 @@ export default function App() {
     return fileNameFromUrl(url, fallback);
   }
 
+  async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "video") {
+    const sourceUrl = rawUrl?.trim();
+    if (!sourceUrl) throw new Error("No media URL to download");
+    const url = resolveServerUrl(serverBaseUrl, sourceUrl);
+    let response = await fetch(url);
+    if (!response.ok) {
+      response = await fetch(url, { headers: await extensionAuthHeaders() });
+    }
+    if (!response.ok) throw new Error(`Unable to download media ${response.status}`);
+    const blob = await response.blob();
+    const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = productionMediaFileName(url, title, kind, mimeType);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    setStatus("Media download started");
+  }
+
   async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "image") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) return;
@@ -3586,8 +3623,8 @@ export default function App() {
     const existing = productionMediaFiles[url];
     if (!url || existing?.status === "loading") return;
     if (existing?.status === "ready") {
-      if (existing.dragId && existing.dataUrl && existing.file) {
-        void storeDragMediaForBridge({ id: existing.dragId, dataUrl: existing.dataUrl, file: existing.file }).catch(() => undefined);
+      if (existing.dragId && existing.file) {
+        void storeDragMediaForBridge({ id: existing.dragId, dataUrl: existing.dataUrl, file: existing.file, metadataOnly: !existing.dataUrl, sourceUrl: existing.sourceUrl, headers: existing.authHeaders }).catch(() => undefined);
       }
       return;
     }
@@ -3607,26 +3644,20 @@ export default function App() {
       const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
       const file = new File([blob], productionMediaFileName(url, title, kind, mimeType), { type: mimeType });
       const objectUrl = URL.createObjectURL(blob);
-      let dragId: string | undefined;
+      let dragId: string | undefined = createDragMediaId();
       let dataUrl: string | undefined;
+      const dragAuthHeaders = await extensionAuthHeaders();
       try {
-        dataUrl = await blobToDataUrl(blob);
-        dragId = createDragMediaId();
-        await chrome.runtime.sendMessage({
-          type: "SMARTAIHUB_STORE_DRAG_MEDIA",
-          id: dragId,
-          dataUrl,
-          name: file.name,
-          mimeType,
-        });
+        dataUrl = blob.size <= 8_000_000 ? await blobToDataUrl(blob) : undefined;
+        await storeDragMediaForBridge({ id: dragId, dataUrl, file, metadataOnly: !dataUrl, sourceUrl: url, headers: dragAuthHeaders });
       } catch {
-        dragId = undefined;
         dataUrl = undefined;
+        await storeDragMediaForBridge({ id: dragId, file, metadataOnly: true, sourceUrl: url, headers: dragAuthHeaders }).catch(() => undefined);
       }
       setProductionMediaFiles((current) => {
         const previous = current[url];
         if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
-        return { ...current, [url]: { status: "ready", file, objectUrl, dragId, dataUrl } };
+        return { ...current, [url]: { status: "ready", file, objectUrl, dragId, dataUrl, sourceUrl: url, authHeaders: dragAuthHeaders } };
       });
     } catch {
       setProductionMediaFiles((current) => ({ ...current, [url]: { status: "failed" } }));
@@ -3661,6 +3692,7 @@ export default function App() {
 
   async function prepareStoryboardReviewProjectMediaFiles(project: StoryboardReviewProjectDetail) {
     const jobs: ProductionMediaPrepareJob[] = [
+      ...(project.finalVideoUrl ? [{ url: project.finalVideoUrl, title: project.finalVideoTitle || project.title || "storyboard-final-video", kind: "video" as const }] : []),
       ...project.clips.flatMap((clip) => [
         { url: clip.referenceImageUrl, title: `clip-${clip.order}-reference-frame` },
         { url: clip.startFrameUrl, title: `clip-${clip.order}-start-frame` },
@@ -3725,19 +3757,21 @@ export default function App() {
 
   function buildSupplementalInsightPayloads(source: SanitizedLocalAIInput, brief: ProductBrief) {
     const evidenceIds = source.evidence.map((item) => item.id).slice(0, 20);
+    const boundedText = (value: string, max = 220) => compactAskText(value, max);
+    const boundedList = (values: string[], maxItems = 12, maxChars = 220) => values.map((value) => boundedText(value, maxChars)).filter(Boolean).slice(0, maxItems);
     const reviewInsight = {
       schemaVersion: "1.0",
       source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
-      positiveThemes: brief.trustSignals.length ? brief.trustSignals : brief.keySellingPoints.slice(0, 3),
+      positiveThemes: boundedList(brief.trustSignals.length ? brief.trustSignals : brief.keySellingPoints.slice(0, 3)),
       negativeThemes: [],
       repeatedPhrases: [],
-      commonBuyerQuestions: brief.buyerObjections.map((objection) => `ลูกค้าอาจถามเรื่อง ${objection}`),
-      objectionsToAddress: brief.buyerObjections,
+      commonBuyerQuestions: boundedList(brief.buyerObjections.map((objection) => `ลูกค้าอาจถามเรื่อง ${objection}`)),
+      objectionsToAddress: boundedList(brief.buyerObjections),
       recommendedFAQ: brief.buyerObjections.slice(0, 4).map((objection) => ({
-        question: `ควรอธิบายเรื่อง ${objection} อย่างไร?`,
+        question: boundedText(`ควรอธิบายเรื่อง ${objection} อย่างไร?`, 240),
         answerDraft: "ใช้ข้อมูลจากหน้าสินค้าและหลักฐานที่เลือกเท่านั้นก่อนเผยแพร่",
       })),
-      contentRecommendations: brief.contentAngles,
+      contentRecommendations: boundedList(brief.contentAngles),
       confidence: Math.min(brief.confidence, source.reviews.length > 0 ? 0.75 : 0.45),
       evidenceIds,
     };
@@ -3745,13 +3779,13 @@ export default function App() {
       schemaVersion: "1.0",
       source: { platform: source.platform, captureId: source.captureId, url: source.sourceUrl, affiliateUrl: source.affiliateUrl ?? null },
       contentType: source.platform === "tiktok_shop" ? "product_review" : "unknown",
-      hookPattern: brief.suggestedHooks[0] || brief.shortSummary,
+      hookPattern: boundedText(brief.suggestedHooks[0] || brief.shortSummary, 300),
       structure: ["hook", "product proof", "objection handling", "CTA"],
-      hashtags: source.tiktok?.hashtags ?? [],
-      audience: brief.targetAudiences,
-      engagementDrivers: brief.keySellingPoints,
-      replicableIdeas: brief.contentAngles,
-      risks: brief.buyerObjections,
+      hashtags: boundedList(source.tiktok?.hashtags ?? [], 40, 120),
+      audience: boundedList(brief.targetAudiences),
+      engagementDrivers: boundedList(brief.keySellingPoints),
+      replicableIdeas: boundedList(brief.contentAngles),
+      risks: boundedList(brief.buyerObjections),
       confidence: Math.min(brief.confidence, source.platform === "tiktok_shop" ? 0.65 : 0.35),
       evidenceIds,
     };
@@ -3885,7 +3919,7 @@ export default function App() {
         onKeyDown={(event) => {
           if (event.key === "Enter") chrome.tabs.create({ url });
         }}
-        title={fileEntry?.file ? "Drag this image as a file into an upload drop zone. Double-click to open." : "Preparing file drag. Wait for file ready, or double-click to open."}
+        title={fileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
       >
         {kind === "video" ? (
           <div className="production-video-thumb">▶</div>
@@ -4744,6 +4778,66 @@ export default function App() {
                       {selectedStoryboardProject.status} | {selectedStoryboardProject.completedClipCount}/{selectedStoryboardProject.clipCount} clips | {formatDateTime(selectedStoryboardProject.updatedAt)}
                     </div>
                   </div>
+                </div>
+                <div className={selectedStoryboardProject.affiliateUrl ? "connection-summary" : "section muted"} style={{ marginTop: 8 }}>
+                  <strong>Affiliate link</strong>
+                  {selectedStoryboardProject.affiliateUrl ? (
+                    <>
+                      <a className="candidate-url" href={selectedStoryboardProject.affiliateUrl} target="_blank" rel="noreferrer">{selectedStoryboardProject.affiliateUrl}</a>
+                      <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+                        <button
+                          className="button"
+                          type="button"
+                          onClick={() => navigator.clipboard?.writeText(selectedStoryboardProject.affiliateUrl || "").then(() => setStatus("Affiliate link copied")).catch(() => setStatus("Could not copy affiliate link"))}
+                        >
+                          Copy link
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+                      ยังไม่พบ affiliate link สำหรับ Storyboard นี้ ถ้าเพิ่งอัปเดต extension แล้วแต่ยังไม่ขึ้น ให้ deploy ฝั่ง SmartAIHub server ด้วย หรือเลือก Storyboard ที่สร้างจาก product ที่มี affiliate link
+                    </div>
+                  )}
+                </div>
+                <div className="section" style={{ marginTop: 8 }}>
+                  <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                    <div>
+                      <strong>Final MP4 upload</strong>
+                      <div className="muted">
+                        {selectedStoryboardProject.finalVideoUrl
+                          ? "Hover or press once until file ready, then drag this video into a social upload drop zone."
+                          : "ยังไม่พบ final/capture MP4 สำหรับ Storyboard นี้ ถ้า capture เสร็จแล้วให้ Refresh หลัง deploy ฝั่ง server ล่าสุด"}
+                      </div>
+                    </div>
+                    <div className="row" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      {selectedStoryboardProject.finalVideoUrl ? (
+                        <button
+                          className="button primary"
+                          type="button"
+                          onClick={() => run(() => downloadProductionMedia(
+                            selectedStoryboardProject.finalVideoUrl,
+                            selectedStoryboardProject.finalVideoTitle || selectedStoryboardProject.title || "storyboard-final-video",
+                            "video",
+                          ))}
+                        >
+                          Download MP4
+                        </button>
+                      ) : null}
+                      <button className="button" type="button" onClick={() => chrome.tabs.create({ url: socialUploadUrl("facebook") })}>Open Facebook</button>
+                      <button className="button" type="button" onClick={() => chrome.tabs.create({ url: socialUploadUrl("tiktok") })}>Open TikTok Studio</button>
+                    </div>
+                  </div>
+                  {selectedStoryboardProject.finalVideoUrl ? (
+                    <div className="production-shot-assets" style={{ marginTop: 8 }}>
+                      {productionMediaCard({
+                        label: "Final video",
+                        url: selectedStoryboardProject.finalVideoUrl,
+                        title: selectedStoryboardProject.finalVideoTitle || selectedStoryboardProject.title || "storyboard-final-video",
+                        kind: "video",
+                      })}
+                    </div>
+                  ) : null}
                 </div>
                 {selectedStoryboardProject.conceptDetails ? (
                   <details className="story-option-video" style={{ marginTop: 8 }}>

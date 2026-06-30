@@ -30,6 +30,7 @@ import {
   transcribeHyperframesStoryboardShot,
 } from "../services/hyperframesTranscriptionService";
 import {
+  attachStoryboardReviewTranscribeWorkerPid,
   getStoryboardReviewTranscribeJob,
   setStoryboardReviewTranscribeJob,
 } from "../services/storyboardReviewTranscriptionJobs";
@@ -39,6 +40,10 @@ import {
   normalizeVideoSegmentCreativeBrief,
   type VideoSegmentPlan,
 } from "../../shared/videoSegmentPlanner";
+import {
+  MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
+  normalizeManualStoryboardProductId,
+} from "../../shared/storyboardPreviewMatchCapture";
 import {
   optimizeProductReferenceStoryboardPrompt,
 } from "../services/productReferenceStoryboardSkillRunner";
@@ -130,6 +135,30 @@ function hasStoryboardMarketplaceContext(value: unknown): value is Record<string
 
 function cleanString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+const MANUAL_STORYBOARD_TASK_ID_PATTERN = /^manual-shot-\d+-(.+)$/;
+
+function deriveManualHyperframesIdentityFromReviewData(
+  reviewData: unknown,
+): { productId: string; runId: string } | null {
+  if (!isStoryboardReviewRecord(reviewData) || !Array.isArray(reviewData.tasks)) {
+    return null;
+  }
+  const suffixes = new Set<string>();
+  for (const task of reviewData.tasks) {
+    if (!isStoryboardReviewRecord(task)) continue;
+    const suffix = cleanString(task.id)
+      .match(MANUAL_STORYBOARD_TASK_ID_PATTERN)?.[1]
+      ?.trim();
+    if (suffix) suffixes.add(suffix);
+  }
+  if (suffixes.size !== 1) return null;
+  const [suffix] = [...suffixes];
+  return {
+    productId: MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
+    runId: `manual_storyboard_run_${suffix}`,
+  };
 }
 
 const STORYBOARD_REVIEW_CHARACTER_GENDER_PROMPT_LABELS: Record<string, string> = {
@@ -452,8 +481,10 @@ function getStoryboardReviewMarketplaceProductId(reviewData: unknown): string {
 export function getStoryboardReviewHyperframesProductId(reviewData: unknown): string {
   if (!isStoryboardReviewRecord(reviewData)) return "";
   return (
-    getStoryboardReviewMarketplaceProductId(reviewData) ||
-    cleanString(reviewData.manualHyperframesProductId)
+    normalizeManualStoryboardProductId(getStoryboardReviewMarketplaceProductId(reviewData)) ||
+    normalizeManualStoryboardProductId(cleanString(reviewData.manualHyperframesProductId)) ||
+    normalizeManualStoryboardProductId(deriveManualHyperframesIdentityFromReviewData(reviewData)?.productId) ||
+    ""
   );
 }
 
@@ -542,7 +573,9 @@ export function getStoryboardReviewHyperframesRunId(reviewData: unknown): string
   if (!isStoryboardReviewRecord(reviewData)) return "";
   return (
     getStoryboardReviewAutoReviewRunId(reviewData) ||
-    cleanString(reviewData.manualHyperframesRunId)
+    cleanString(reviewData.manualHyperframesRunId) ||
+    deriveManualHyperframesIdentityFromReviewData(reviewData)?.runId ||
+    ""
   );
 }
 
@@ -1758,6 +1791,10 @@ export const videoEditorProjectsRouter = router({
 
       if (!dispatchedToCloudTasks) {
         const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+        await attachStoryboardReviewTranscribeWorkerPid({
+          jobId,
+          workerPid: worker.pid,
+        });
         console.info("[StoryboardReview] Started detached transcribe worker.", {
           jobId,
           pid: worker.pid,

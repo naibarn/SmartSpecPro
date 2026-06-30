@@ -16,6 +16,9 @@ export type StoryboardReviewTranscribeJob = {
   status: StoryboardReviewTranscribeJobStatus;
   submittedAt: number;
   updatedAt: number;
+  workerPid?: number | null;
+  startedAt?: number;
+  heartbeatAt?: number;
   input: {
     shotId: string;
     sourceVideoUrl: string;
@@ -29,14 +32,28 @@ export type StoryboardReviewTranscribeJob = {
 };
 
 const STORYBOARD_REVIEW_TRANSCRIBE_JOB_TTL_SECONDS = 60 * 60;
-const STORYBOARD_REVIEW_TRANSCRIBE_RUNNING_STALE_MS = 12 * 60 * 1000;
+const STORYBOARD_REVIEW_TRANSCRIBE_RUNNING_STALE_MS = 30 * 60 * 1000;
+const STORYBOARD_REVIEW_TRANSCRIBE_ORPHANED_RUNNING_STALE_MS = 5 * 60 * 1000;
+
+function isProcessAlive(pid: number): boolean {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function isRunningTranscribeJobStale(job: StoryboardReviewTranscribeJob): boolean {
-  return (
-    job.status === "running" &&
-    Date.now() - Number(job.updatedAt || job.submittedAt || 0) >
-      STORYBOARD_REVIEW_TRANSCRIBE_RUNNING_STALE_MS
-  );
+  if (job.status !== "running") return false;
+  const lastUpdateAgeMs = Date.now() - Number(job.heartbeatAt || job.updatedAt || job.submittedAt || 0);
+  const workerPid = Number(job.workerPid);
+  if (Number.isFinite(workerPid) && workerPid > 0 && !isProcessAlive(workerPid)) return true;
+  if ((!Number.isFinite(workerPid) || workerPid <= 0) && lastUpdateAgeMs > STORYBOARD_REVIEW_TRANSCRIBE_ORPHANED_RUNNING_STALE_MS) {
+    return true;
+  }
+  return lastUpdateAgeMs > STORYBOARD_REVIEW_TRANSCRIBE_RUNNING_STALE_MS;
 }
 
 export async function setStoryboardReviewTranscribeJob(job: StoryboardReviewTranscribeJob): Promise<void> {
@@ -58,10 +75,24 @@ export async function getStoryboardReviewTranscribeJob(jobId: string): Promise<S
     status: "failed" as const,
     updatedAt: Date.now(),
     errorMessage:
-      "HyperFrames transcribe worker timed out before completing this shot. Please try Transcribe again; the next run will start a fresh background job.",
+      "HyperFrames transcribe worker stopped before completing this shot. Please try Transcribe again; the next run will start a fresh background job.",
   };
   await setStoryboardReviewTranscribeJob(failedJob);
   return failedJob;
+}
+
+export async function attachStoryboardReviewTranscribeWorkerPid(input: {
+  jobId: string;
+  workerPid: number | null | undefined;
+}): Promise<void> {
+  const workerPid = Number(input.workerPid);
+  if (!Number.isFinite(workerPid) || workerPid <= 0) return;
+  const current = await getStoryboardReviewTranscribeJob(input.jobId);
+  if (!current) return;
+  await setStoryboardReviewTranscribeJob({
+    ...current,
+    workerPid,
+  });
 }
 
 export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<void> {
@@ -72,10 +103,14 @@ export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<v
   if (current.status === "completed" || current.status === "running") {
     return;
   }
+  const startedAt = Date.now();
   await setStoryboardReviewTranscribeJob({
     ...current,
     status: "running",
-    updatedAt: Date.now(),
+    updatedAt: startedAt,
+    startedAt,
+    heartbeatAt: startedAt,
+    workerPid: process.pid,
     errorMessage: undefined,
   });
   try {
@@ -90,6 +125,8 @@ export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<v
       ...current,
       status: "completed",
       updatedAt: Date.now(),
+      heartbeatAt: Date.now(),
+      workerPid: process.pid,
       result: {
         shotId: current.input.shotId,
         sourceVideoUrl: current.input.sourceVideoUrl,
@@ -102,6 +139,8 @@ export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<v
       ...current,
       status: "failed",
       updatedAt: Date.now(),
+      heartbeatAt: Date.now(),
+      workerPid: process.pid,
       errorMessage: error instanceof Error ? error.message : "HyperFrames transcribe failed.",
     });
   }

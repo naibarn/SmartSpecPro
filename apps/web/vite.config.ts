@@ -7,8 +7,23 @@ import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
+function stripAstryxPropertyRegistrationWarnings() {
+  return {
+    name: "strip-astryx-property-registration-warnings",
+    enforce: "pre" as const,
+    transform(code: string, id: string) {
+      if (!id.includes("@astryxdesign/core") || !id.endsWith("astryx.css")) {
+        return null;
+      }
+      return {
+        code: code.replace(/\s*@property\s+--x-[^{]+\{\s*syntax:\s*"\*";\s*inherits:\s*false;\s*\}/g, ""),
+        map: null,
+      };
+    },
+  };
+}
 
-const plugins = [react(), tailwindcss(), vitePluginManusRuntime()];
+const plugins = [stripAstryxPropertyRegistrationWarnings(), react(), tailwindcss(), vitePluginManusRuntime()];
 const require = createRequire(import.meta.url);
 const reactPath = path.dirname(require.resolve("react/package.json"));
 const reactDomPath = path.dirname(require.resolve("react-dom/package.json"));

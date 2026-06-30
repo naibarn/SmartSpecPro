@@ -4,7 +4,15 @@ import multer from "multer";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { mediaProductionRuns, mediaProductionSpaces, mediaStudioStoryboardReviews } from "../../drizzle/schema";
+import {
+  libraryItems,
+  marketplaceAutoReviewRuns,
+  marketplaceProducts,
+  mediaProductionRuns,
+  mediaProductionSpaces,
+  mediaStudioStoryboardReviews,
+  storyboardPreviewMatchCaptureJobs,
+} from "../../drizzle/schema";
 import type { ProductionFlowNode, ProductionReferenceInput, ProductionShot, ProductionSpace } from "../../shared/mediaProduction";
 import { createMarketplaceCaptureDraft, getMarketplaceCaptureForUser, getMarketplaceCandidateBatchForUser, saveMarketplaceCandidateBatch } from "../services/marketplaceCaptureService";
 import { uploadMarketplaceCaptureAsset } from "../services/marketplaceAssetService";
@@ -418,6 +426,151 @@ function storyboardMediaFromRecord(record: Record<string, unknown> | undefined, 
   return "";
 }
 
+function isStoryboardVideoMedia(value: string): boolean {
+  const text = value.trim().toLowerCase();
+  if (!text) return false;
+  if (text.startsWith("data:video/")) return true;
+  return /\.(mp4|webm|mov|m4v)(?:[?#].*)?$/i.test(text);
+}
+
+function findStoryboardVideoUrl(value: unknown, depth = 0): string {
+  if (depth > 5 || value == null) return "";
+  if (typeof value === "string") return isStoryboardVideoMedia(value) ? value.trim() : "";
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findStoryboardVideoUrl(item, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  }
+  const record = asStoryboardRecord(value);
+  if (!record) return "";
+  const preferredKeys = [
+    "finalVideoUrl",
+    "final_video_url",
+    "videoUrl",
+    "video_url",
+    "resultUrl",
+    "result_url",
+    "outputUrl",
+    "output_url",
+    "sourceUrl",
+    "source_url",
+    "url",
+  ];
+  for (const key of preferredKeys) {
+    const candidate = storyboardMediaString(record[key]);
+    if (isStoryboardVideoMedia(candidate)) return candidate;
+  }
+  for (const item of Object.values(record)) {
+    const found = findStoryboardVideoUrl(item, depth + 1);
+    if (found) return found;
+  }
+  return "";
+}
+
+function findAffiliateUrl(value: unknown, depth = 0): string {
+  if (depth > 5 || value == null) return "";
+  if (typeof value === "string") return "";
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findAffiliateUrl(item, depth + 1);
+      if (found) return found;
+    }
+    return "";
+  }
+  const record = asStoryboardRecord(value);
+  if (!record) return "";
+  for (const key of ["affiliateUrl", "affiliate_url", "latestAffiliateUrl", "latest_affiliate_url", "trackingUrl", "tracking_url"]) {
+    const candidate = compactProductionText(record[key], 4096);
+    if (/^https?:\/\//i.test(candidate)) return candidate;
+  }
+  for (const item of Object.values(record)) {
+    const found = findAffiliateUrl(item, depth + 1);
+    if (found) return found;
+  }
+  return "";
+}
+
+async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId: number }, reviewId: number, reviewData: unknown) {
+  const db = getDb();
+  const [run] = await db
+    .select({
+      resultJson: marketplaceAutoReviewRuns.resultJson,
+      metadataJson: marketplaceAutoReviewRuns.metadataJson,
+      updatedAt: marketplaceAutoReviewRuns.updatedAt,
+      productAffiliateUrl: marketplaceProducts.affiliateUrl,
+      productName: marketplaceProducts.productName,
+      libraryTitle: libraryItems.title,
+      librarySourceUrl: libraryItems.sourceUrl,
+      libraryThumbnailUrl: libraryItems.thumbnailUrl,
+      libraryItemType: libraryItems.itemType,
+    })
+    .from(marketplaceAutoReviewRuns)
+    .leftJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId))
+    .leftJoin(libraryItems, eq(libraryItems.id, marketplaceAutoReviewRuns.resultLibraryItemId))
+    .where(and(
+      eq(marketplaceAutoReviewRuns.userId, auth.userId),
+      eq(marketplaceAutoReviewRuns.storyboardReviewId, String(reviewId)),
+    ))
+    .orderBy(desc(marketplaceAutoReviewRuns.updatedAt))
+    .limit(1);
+  const [captureJob] = await db
+    .select({
+      outputJson: storyboardPreviewMatchCaptureJobs.outputJson,
+      updatedAt: storyboardPreviewMatchCaptureJobs.updatedAt,
+    })
+    .from(storyboardPreviewMatchCaptureJobs)
+    .where(and(
+      eq(storyboardPreviewMatchCaptureJobs.userId, auth.userId),
+      eq(storyboardPreviewMatchCaptureJobs.storyboardReviewId, String(reviewId)),
+    ))
+    .orderBy(desc(storyboardPreviewMatchCaptureJobs.updatedAt))
+    .limit(1);
+  const captureLibraryRows = await db
+    .select({
+      title: libraryItems.title,
+      sourceUrl: libraryItems.sourceUrl,
+      thumbnailUrl: libraryItems.thumbnailUrl,
+      metadata: libraryItems.metadata,
+      updatedAt: libraryItems.updatedAt,
+    })
+    .from(libraryItems)
+    .where(and(
+      eq(libraryItems.ownerUserId, auth.userId),
+      eq(libraryItems.itemType, "video"),
+      eq(libraryItems.source, "storyboard_preview_match_capture"),
+    ))
+    .orderBy(desc(libraryItems.updatedAt))
+    .limit(30);
+  const captureLibraryItem = captureLibraryRows.find((item) => {
+    const metadata = asStoryboardRecord(item.metadata);
+    return compactProductionText(metadata?.storyboard_review_id, 128) === String(reviewId)
+      || compactProductionText(metadata?.storyboardReviewId, 128) === String(reviewId);
+  });
+  const finalVideoUrl = [
+    run?.libraryItemType === "video" ? run.librarySourceUrl : "",
+    captureLibraryItem?.sourceUrl,
+    findStoryboardVideoUrl(captureJob?.outputJson),
+    findStoryboardVideoUrl(run?.resultJson),
+    findStoryboardVideoUrl(run?.metadataJson),
+    findStoryboardVideoUrl(reviewData),
+  ].find((url): url is string => Boolean(url && isStoryboardVideoMedia(url))) ?? null;
+  const affiliateUrl = [
+    run?.productAffiliateUrl,
+    findAffiliateUrl(run?.metadataJson),
+    findAffiliateUrl(run?.resultJson),
+    findAffiliateUrl(reviewData),
+  ].find((url): url is string => Boolean(url && /^https?:\/\//i.test(url))) ?? null;
+  return {
+    affiliateUrl,
+    finalVideoUrl,
+    finalVideoTitle: finalVideoUrl ? compactProductionText(captureLibraryItem?.title ?? run?.libraryTitle ?? run?.productName ?? "Storyboard final video", 180) || "Storyboard final video" : null,
+    finalVideoThumbnailUrl: captureLibraryItem?.thumbnailUrl ?? run?.libraryThumbnailUrl ?? null,
+    autoReviewUpdatedAt: captureJob?.updatedAt ?? captureLibraryItem?.updatedAt ?? run?.updatedAt ?? null,
+  };
+}
+
 function storyboardReferenceImagesFromTask(task: Record<string, unknown> | undefined) {
   const context = asStoryboardRecord(task?.storyboardContext);
   const images = Array.isArray(context?.referenceImages)
@@ -591,9 +744,11 @@ async function getStoryboardReviewProjectForExtension(auth: { userId: number }, 
     .limit(1);
   if (!row) throw Object.assign(new Error("Storyboard review project not found"), { status: 404, code: "storyboard_review_project_not_found" });
   const summary = buildStoryboardReviewProjectSummary(row);
+  const marketplaceMetadata = await getStoryboardReviewMarketplaceMetadataForExtension(auth, reviewId, row.reviewData);
   return {
     project: {
       ...summary,
+      ...marketplaceMetadata,
       conceptDetails: compactProductionText(asStoryboardRecord(row.reviewData)?.conceptDetails, 3000),
       clips: storyboardTasksFromReviewData(row.reviewData).map(buildStoryboardReviewClipView),
     },

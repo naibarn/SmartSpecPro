@@ -9,6 +9,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { Link, useLocation } from "wouter";
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
@@ -5132,22 +5133,25 @@ export default function MarketplaceCaptureProductDetail() {
       />
       <div className="mx-auto grid max-w-[1600px] gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="min-w-0 space-y-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/marketplace-capture">
-              <Button type="button" variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Marketplace Capture
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/marketplace-capture">
+                <Button type="button" variant="outline" size="sm">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Marketplace Capture
+                </Button>
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => product.refetch()}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
               </Button>
-            </Link>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => product.refetch()}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
+            </div>
+            <LocaleToggle className="shrink-0" />
           </div>
 
           {autoStoryboardReviewSurface ? (

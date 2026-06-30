@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID } from "../../../shared/storyboardPreviewMatchCapture";
 import {
   getStoryboardReviewAutoReviewRunId,
   getStoryboardReviewHyperframesProductId,
@@ -497,6 +498,25 @@ describe("getStoryboardReviewHyperframes identity", () => {
 
     expect(getStoryboardReviewHyperframesProductId(reviewData)).toBe("manual_product_1");
     expect(getStoryboardReviewHyperframesRunId(reviewData)).toBe("manual_run_1");
+    expect(getStoryboardReviewAutoReviewRunId(reviewData)).toBe("");
+  });
+
+  it("derives legacy manual HyperFrames identity from manual storyboard task ids", () => {
+    const reviewData = {
+      version: 1,
+      productionContext: { productionRunId: "draft" },
+      tasks: [
+        { id: "manual-shot-1-1782006453374-k5236d", type: "video" },
+        { id: "manual-shot-2-1782006453374-k5236d", type: "video" },
+      ],
+    };
+
+    expect(getStoryboardReviewHyperframesProductId(reviewData)).toBe(
+      MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
+    );
+    expect(getStoryboardReviewHyperframesRunId(reviewData)).toBe(
+      "manual_storyboard_run_1782006453374-k5236d",
+    );
     expect(getStoryboardReviewAutoReviewRunId(reviewData)).toBe("");
   });
 

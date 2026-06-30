@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { resolveWhisperExecutable } from "./hyperframesTranscriptionService";
 
 const SMARTSPEC_NODE_ENGINE_REQUIREMENT = ">=22.22.0 <23";
 const HYPERFRAMES_OFFICIAL_NODE_ENGINE_REQUIREMENT = ">=22.22.0";
@@ -99,14 +100,22 @@ function getHyperframesFontStatus() {
 }
 
 function getWhisperCppStatus() {
-  const available = hasCommand("whisper-cpp");
-  return {
-    ok: available,
-    binary: available ? readCommand("command -v whisper-cpp").trim() : "",
-    message: available
-      ? "whisper-cpp is available for HyperFrames transcribe."
-      : "HyperFrames transcribe requires whisper-cpp on this worker/local machine.",
-  };
+  try {
+    const binary = resolveWhisperExecutable(process.env);
+    return {
+      ok: true,
+      binary,
+      message: "A working whisper.cpp executable is available for HyperFrames transcribe.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      binary: readCommand("command -v whisper-cpp || command -v whisper-cli").trim(),
+      message: error instanceof Error
+        ? error.message
+        : "HyperFrames transcribe requires a working whisper.cpp executable on this worker/local machine.",
+    };
+  }
 }
 
 export function runHyperframesDependencyAudit(): HyperframesDependencyAuditResult {

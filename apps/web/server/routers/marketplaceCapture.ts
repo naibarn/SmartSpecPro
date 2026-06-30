@@ -26,6 +26,7 @@ import {
   listMarketplaceProductsWithAccess,
   removeMarketplaceProductImage,
   saveMarketplaceShareSetting,
+  searchSimilarMarketplaceProductsByImage,
   setMarketplaceProductHeroImage,
   updateMarketplaceProductDetails,
 } from "../services/marketplaceProductService";
@@ -88,6 +89,12 @@ import {
   HyperframesRenderStatusProjectionSchema,
 } from "@shared/hyperframes/contracts";
 import {
+  cancelPreviewMatchCaptureJobInputSchema,
+  createPreviewMatchFinalCompositeCaptureInputSchema,
+  getPreviewMatchCaptureJobInputSchema,
+  previewMatchCaptureJobOutputSchema,
+} from "@shared/storyboardPreviewMatchCapture";
+import {
   cancelHyperframesRenderJobForApi,
   createHyperframesFinalCompositeForApi,
   createHyperframesPreviewForApi,
@@ -100,6 +107,11 @@ import {
   saveHyperframesRenderToLibraryForApi,
   startAutoStoryboardReviewForApi,
 } from "../services/hyperframesRuntimeApiService";
+import {
+  cancelPreviewMatchCaptureJobForApi,
+  createPreviewMatchFinalCompositeCaptureForApi,
+  getPreviewMatchCaptureJobForApi,
+} from "../services/storyboardPreviewMatchCaptureService";
 import {
   defaultHyperframesOperatorAuditSink,
   cancelHyperframesRenderAsOperator,
@@ -128,6 +140,44 @@ function authFromCtx(ctx: any) {
   return { userId, tenantId };
 }
 
+const VISUAL_SEARCH_MAX_BYTES = 5 * 1024 * 1024;
+const visualSearchMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function hasImageMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  if (mimeType === "image/png") {
+    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  }
+  if (mimeType === "image/jpeg") {
+    return buffer[0] === 0xff && buffer[1] === 0xd8;
+  }
+  if (mimeType === "image/webp") {
+    return buffer.slice(0, 4).toString("ascii") === "RIFF" && buffer.slice(8, 12).toString("ascii") === "WEBP";
+  }
+  return false;
+}
+
+function decodeVisualSearchImage(input: { imageBase64: string; mimeType: string }): Buffer {
+  const mimeType = input.mimeType.trim().toLowerCase();
+  if (!visualSearchMimeTypes.has(mimeType)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "รองรับเฉพาะรูป PNG, JPEG หรือ WebP" });
+  }
+  const cleaned = input.imageBase64.replace(/^data:image\/(?:png|jpeg|jpg|webp);base64,/i, "").replace(/\s+/g, "");
+  if (!cleaned) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่พบข้อมูลรูปภาพ" });
+  }
+  const buffer = Buffer.from(cleaned, "base64");
+  if (!buffer.length) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่สามารถอ่านรูปภาพได้" });
+  }
+  if (buffer.length > VISUAL_SEARCH_MAX_BYTES) {
+    throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "รูปภาพต้องมีขนาดไม่เกิน 5MB" });
+  }
+  if (!hasImageMagicBytes(buffer, mimeType)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "ชนิดไฟล์รูปภาพไม่ตรงกับข้อมูลจริง" });
+  }
+  return buffer;
+}
+
 const editableProductDetailsSchema = z.object({
   productName: z.string().trim().min(1).max(500),
   descriptionText: z.string().max(80_000).optional().nullable(),
@@ -146,6 +196,14 @@ const manualProductSchema = editableProductDetailsSchema.extend({
   platform: z.enum(["shopee", "tiktok_shop"]).default("shopee"),
   sourceUrl: z.string().trim().max(4096).optional().nullable(),
   affiliateUrl: z.string().trim().max(4096).optional().nullable(),
+});
+
+const visualProductSearchSchema = z.object({
+  imageBase64: z.string().min(1).max(Math.ceil(VISUAL_SEARCH_MAX_BYTES * 1.4)),
+  mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+  limit: z.number().int().min(1).max(50).optional().default(24),
+  ownerOnly: z.boolean().optional().default(false),
+  platform: z.enum(["all", "shopee", "tiktok_shop"]).optional().default("all"),
 });
 
 async function operatorAuthFromCtx(ctx: any) {
@@ -442,12 +500,15 @@ export const marketplaceCaptureRouter = router({
       z
         .object({
           limit: z.number().int().min(1).max(100).optional().default(30),
+          cursor: z.string().optional().nullable(),
           ownerOnly: z.boolean().optional().default(false),
           platform: z
             .enum(["all", "shopee", "tiktok_shop"])
             .optional()
             .default("all"),
           query: z.string().trim().max(160).optional(),
+          category: z.string().trim().max(160).optional(),
+          sortMode: z.enum(["recommended", "sold", "rating", "updated"]).optional().default("updated"),
         })
         .optional()
         .default({})
@@ -455,6 +516,18 @@ export const marketplaceCaptureRouter = router({
     .query(async ({ input, ctx }) =>
       listMarketplaceProductsWithAccess(authFromCtx(ctx), input)
     ),
+
+  searchSimilarProductsByImage: protectedProcedure
+    .input(visualProductSearchSchema)
+    .mutation(async ({ input, ctx }) => {
+      const imageBuffer = decodeVisualSearchImage(input);
+      return searchSimilarMarketplaceProductsByImage(authFromCtx(ctx), {
+        imageBuffer,
+        limit: input.limit,
+        ownerOnly: input.ownerOnly,
+        platform: input.platform,
+      });
+    }),
 
   listProductImages: protectedProcedure
     .input(
@@ -805,6 +878,36 @@ export const marketplaceCaptureRouter = router({
         renderIntent: input.renderIntent,
         compositionMode: input.compositionMode,
         config: input.config,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  createPreviewMatchFinalCompositeCapture: protectedProcedure
+    .input(createPreviewMatchFinalCompositeCaptureInputSchema)
+    .output(previewMatchCaptureJobOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      createPreviewMatchFinalCompositeCaptureForApi({
+        ...input,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  getPreviewMatchCaptureJob: protectedProcedure
+    .input(getPreviewMatchCaptureJobInputSchema)
+    .output(previewMatchCaptureJobOutputSchema)
+    .query(async ({ input, ctx }) =>
+      getPreviewMatchCaptureJobForApi({
+        ...input,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  cancelPreviewMatchCaptureJob: protectedProcedure
+    .input(cancelPreviewMatchCaptureJobInputSchema)
+    .output(previewMatchCaptureJobOutputSchema)
+    .mutation(async ({ input, ctx }) =>
+      cancelPreviewMatchCaptureJobForApi({
+        ...input,
         auth: authFromCtx(ctx),
       })
     ),

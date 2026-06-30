@@ -1081,3 +1081,24 @@ MVP is acceptable when:
 - How should native audio dialogue timing work when one generated segment contains multiple narration beats?
 - Should a segment-level QA model evaluate every sub-shot individually before marking the clip accepted?
 - Should creative briefs become reusable saved presets per tenant/brand in a later feature?
+
+---
+
+## 20. Implementation Addenda
+
+### 20.1 Storyboard Source Trim And Disabled Middle Ranges
+
+Implemented Storyboard Review source-trim behavior is captured in:
+
+- `sections/section-07-storyboard-source-trim-and-disabled-ranges.md`
+
+This addendum documents:
+
+- task-level `sourceTrim` metadata;
+- head/tail source trim;
+- disabled middle ranges for cutting out internal portions of a shot;
+- tablet-friendly mark-from-current-frame UX;
+- preview playback that skips disabled ranges;
+- Capture Preview and Final Composite expectations;
+- subtitle/transcription implications;
+- future hooks for silence-based auto cuts and derived per-shot rendering.

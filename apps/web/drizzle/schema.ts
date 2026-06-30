@@ -12357,6 +12357,62 @@ export const marketplaceAutoReviewOutboxJobs = pgTable("marketplace_auto_review_
   index("marketplace_auto_review_outbox_jobs_lock_idx").on(t.lockedUntil),
 ]);
 
+export const storyboardPreviewMatchCaptureJobs = pgTable("storyboard_preview_match_capture_jobs", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productId: varchar("productId", { length: 64 }).notNull(),
+  runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
+  storyboardReviewId: varchar("storyboardReviewId", { length: 128 }).notNull(),
+  engine: varchar("engine", { length: 80 }).notNull().default("preview_match_browser_capture"),
+  quality: varchar("quality", { length: 24 }).notNull().default("standard"),
+  status: varchar("status", { length: 40 }).notNull().default("queued"),
+  stage: varchar("stage", { length: 80 }),
+  progressPercent: integer("progressPercent").notNull().default(0),
+  failureCode: varchar("failureCode", { length: 120 }),
+  safeMessage: text("safeMessage"),
+  safeDiagnosticsJson: jsonb("safeDiagnosticsJson").$type<string[]>().notNull().default([]),
+  idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+  previewCompositionHash: varchar("previewCompositionHash", { length: 160 }).notNull(),
+  timelineHash: varchar("timelineHash", { length: 160 }).notNull(),
+  finalCompositeConfigHash: varchar("finalCompositeConfigHash", { length: 160 }).notNull(),
+  payloadJson: jsonb("payloadJson").$type<Record<string, any>>().notNull().default({}),
+  outputJson: jsonb("outputJson").$type<Record<string, any>>().notNull().default({}),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, any>>().notNull().default({}),
+  billingJson: jsonb("billingJson").$type<Record<string, any>>().notNull().default({}),
+  activeAttemptId: varchar("activeAttemptId", { length: 128 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  cancelledAt: timestamp("cancelledAt", { withTimezone: true }),
+}, (t) => [
+  uniqueIndex("storyboard_preview_match_capture_jobs_tenant_idem_unique").on(t.tenantId, t.idempotencyKey),
+  index("storyboard_preview_match_capture_jobs_lookup_idx").on(t.tenantId, t.productId, t.runId, t.storyboardReviewId, t.createdAt),
+  index("storyboard_preview_match_capture_jobs_status_idx").on(t.tenantId, t.status, t.createdAt),
+]);
+
+export const storyboardPreviewMatchCaptureAttempts = pgTable("storyboard_preview_match_capture_attempts", {
+  id: varchar("id", { length: 128 }).primaryKey(),
+  captureJobId: varchar("captureJobId", { length: 128 }).notNull().references(() => storyboardPreviewMatchCaptureJobs.id, { onDelete: "cascade" }),
+  attemptNumber: integer("attemptNumber").notNull().default(1),
+  status: varchar("status", { length: 40 }).notNull().default("active"),
+  stage: varchar("stage", { length: 80 }),
+  failureCode: varchar("failureCode", { length: 120 }),
+  routeTokenHash: varchar("routeTokenHash", { length: 160 }),
+  assetManifestJson: jsonb("assetManifestJson").$type<Record<string, any>>().notNull().default({}),
+  workspaceJson: jsonb("workspaceJson").$type<Record<string, any>>().notNull().default({}),
+  outputJson: jsonb("outputJson").$type<Record<string, any>>().notNull().default({}),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, any>>().notNull().default({}),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  staleAt: timestamp("staleAt", { withTimezone: true }),
+  cancelledAt: timestamp("cancelledAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("storyboard_preview_match_capture_attempts_job_idx").on(t.captureJobId, t.attemptNumber),
+  index("storyboard_preview_match_capture_attempts_stale_idx").on(t.captureJobId, t.staleAt, t.cancelledAt),
+]);
+
 export const marketplaceAutoReviewArtifacts = pgTable("marketplace_auto_review_artifacts", {
   id: varchar("id", { length: 128 }).primaryKey(),
   runId: varchar("runId", { length: 64 }).notNull().references(() => marketplaceAutoReviewRuns.id, { onDelete: "cascade" }),
@@ -12417,6 +12473,10 @@ export type MarketplaceAutoReviewProviderEvent = typeof marketplaceAutoReviewPro
 export type InsertMarketplaceAutoReviewProviderEvent = typeof marketplaceAutoReviewProviderEvents.$inferInsert;
 export type MarketplaceAutoReviewOutboxJob = typeof marketplaceAutoReviewOutboxJobs.$inferSelect;
 export type InsertMarketplaceAutoReviewOutboxJob = typeof marketplaceAutoReviewOutboxJobs.$inferInsert;
+export type StoryboardPreviewMatchCaptureJob = typeof storyboardPreviewMatchCaptureJobs.$inferSelect;
+export type InsertStoryboardPreviewMatchCaptureJob = typeof storyboardPreviewMatchCaptureJobs.$inferInsert;
+export type StoryboardPreviewMatchCaptureAttempt = typeof storyboardPreviewMatchCaptureAttempts.$inferSelect;
+export type InsertStoryboardPreviewMatchCaptureAttempt = typeof storyboardPreviewMatchCaptureAttempts.$inferInsert;
 export type MarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifacts.$inferSelect;
 export type InsertMarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifacts.$inferInsert;
 export type MarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferSelect;

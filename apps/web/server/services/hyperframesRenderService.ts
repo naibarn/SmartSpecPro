@@ -15,6 +15,7 @@ import {
   type HyperframesRepairAction,
 } from "@shared/hyperframes/contracts";
 import { getHyperframesStatusCopy } from "@shared/hyperframes/statusCopy";
+import { normalizeManualStoryboardProductId } from "@shared/storyboardPreviewMatchCapture";
 import { getDb } from "../db";
 import {
   marketplaceAutoReviewOutboxJobs,
@@ -122,13 +123,14 @@ async function ensureManualStoryboardOutboxParents(input: {
     typeof input.payload.productTitle === "string" && input.payload.productTitle.trim()
       ? input.payload.productTitle.trim()
       : "Manual Storyboard Project";
+  const productId = normalizeManualStoryboardProductId(input.productId);
   const sourceUrl = `manual-storyboard://${input.runId}`;
   const idempotencyKey = `manual-storyboard:${input.runId}`;
 
   await input.db
     .insert(marketplaceProducts)
     .values({
-      id: input.productId,
+      id: productId,
       captureId: null,
       userId: input.auth.userId,
       tenantId: input.auth.tenantId ?? null,
@@ -140,11 +142,14 @@ async function ensureManualStoryboardOutboxParents(input: {
       descriptionText: "User-managed Storyboard Review project.",
       descriptionJson: {
         manualStoryboardReview: true,
+        syntheticProduct: true,
         runId: input.runId,
       },
       specsJson: {},
       platformRawJson: {
         manualStoryboardReview: true,
+        syntheticProduct: true,
+        sourceSurface: "storyboard_review",
         runId: input.runId,
         hyperframesRenderOnly: true,
       },
@@ -160,7 +165,7 @@ async function ensureManualStoryboardOutboxParents(input: {
       id: input.runId,
       tenantId: input.auth.tenantId ?? null,
       userId: input.auth.userId,
-      productId: input.productId,
+      productId,
       productionRunId: input.runId,
       outputMode: "storyboard_video",
       frameStrategy: "manual_storyboard",
@@ -963,7 +968,14 @@ export async function queueHyperframesRenderJob(input: {
 }): Promise<HyperframesRenderStatusProjection> {
   const tenantId = input.auth.tenantId ?? "default";
   const runId = input.composition.provenance.runId ?? "pending_run";
-  const payload = buildHyperframesRenderJobPayload({ composition: input.composition });
+  const productId = normalizeManualStoryboardProductId(
+    input.composition.provenance.productId,
+  );
+  const rawPayload = buildHyperframesRenderJobPayload({ composition: input.composition });
+  const payload =
+    productId && productId !== rawPayload.productId
+      ? { ...rawPayload, productId }
+      : rawPayload;
   const idempotencyKey = buildHyperframesRenderJobIdempotencyKey({
     tenantId,
     runId,
@@ -982,7 +994,7 @@ export async function queueHyperframesRenderJob(input: {
     await ensureManualStoryboardOutboxParents({
       db,
       auth: input.auth,
-      productId: input.composition.provenance.productId,
+      productId,
       runId,
       payload,
       now,
@@ -1051,7 +1063,7 @@ export async function queueHyperframesRenderJob(input: {
           return getHyperframesRenderProjection({
             auth: input.auth,
             renderJobId,
-            productId: input.composition.provenance.productId,
+            productId,
             runId,
           });
         }
@@ -1060,7 +1072,7 @@ export async function queueHyperframesRenderJob(input: {
   }
   return buildHyperframesRenderProjection({
     tenantId,
-    productId: input.composition.provenance.productId,
+    productId,
     runId,
     renderJobId,
     status: "queued",

@@ -4,7 +4,7 @@
  * Used by the search tRPC router to provide semantic search
  * over documents and images with tenant isolation.
  */
-import { generateEmbedding } from "./vectorize";
+import { generateEmbedding, generateImageDescriptionFromBuffer } from "./vectorize";
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
@@ -120,6 +120,52 @@ export async function searchImages(params: {
       }));
   } catch {
     // Graceful degradation: return empty results if Vectorize is unavailable
+    return [];
+  }
+}
+
+/**
+ * Search images by uploading a query image. The query image is described by the
+ * existing vision model, embedded as text, then matched against the image index.
+ */
+export async function searchImagesByBuffer(params: {
+  imageBuffer: Buffer | Uint8Array;
+  tenantId: string;
+  limit: number;
+  scope?: "all" | "library" | "marketplace";
+}): Promise<ImageSearchResult[]> {
+  if (!params.imageBuffer?.byteLength) return [];
+
+  try {
+    const description = await generateImageDescriptionFromBuffer(params.imageBuffer);
+    const queryEmbedding = await generateEmbedding(description);
+    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+
+    const filter: Record<string, string> = { tenantId: params.tenantId };
+    if (params.scope === "marketplace") filter.type = "marketplace_image";
+    if (params.scope === "library") filter.type = "image";
+
+    const result = await dispatchVectorOperation({
+      operation: "search",
+      indexName: IMAGES_INDEX,
+      vector: queryEmbedding,
+      topK: params.limit,
+      filter,
+      providerConfig,
+    });
+    const matches = (result as { matches: VectorSearchMatch[] }).matches;
+
+    return matches
+      .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
+      .map((match) => ({
+        id: match.id,
+        score: match.score,
+        imageUrl: match.metadata.sourceUrl,
+        filename: match.metadata.title,
+        description: match.metadata.description || "",
+        createdAt: match.metadata.createdAt,
+      }));
+  } catch {
     return [];
   }
 }

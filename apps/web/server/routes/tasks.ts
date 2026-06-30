@@ -15,8 +15,10 @@ import { runLibraryKnowledgeRefreshWorker } from "../services/libraryKnowledgeRe
 import { runProductionExecutionReconciliationJob } from "../jobs/productionExecutionReconciliationJob";
 import {
   startDetachedHyperframesRenderWorker,
+  startDetachedStoryboardPreviewMatchCaptureWorker,
   startDetachedStoryboardReviewTranscribeWorker,
 } from "../services/backgroundWorkerProcess";
+import { attachStoryboardReviewTranscribeWorkerPid } from "../services/storyboardReviewTranscriptionJobs";
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
@@ -245,6 +247,10 @@ export function createTasksRouter(): Router {
         return;
       }
       const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+      await attachStoryboardReviewTranscribeWorkerPid({
+        jobId,
+        workerPid: worker.pid,
+      });
       await recordCloudTaskEvent(req, "completed");
       res.status(202).json({
         success: true,
@@ -254,6 +260,35 @@ export function createTasksRouter(): Router {
       });
     } catch (err: any) {
       console.error("[Tasks] storyboard-review-transcribe failed:", err);
+      await recordCloudTaskEvent(req, "failed", err?.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * POST /tasks/storyboard-preview-match-capture
+   *
+   * Runs a Storyboard Review Preview-Match browser capture job.
+   * The user-facing page starts the job via tRPC and polls DB-backed status.
+   */
+  router.post("/storyboard-preview-match-capture", async (req: Request, res: Response) => {
+    try {
+      const captureJobId =
+        typeof req.body?.captureJobId === "string" ? req.body.captureJobId.trim() : "";
+      if (!captureJobId) {
+        res.status(400).json({ error: "captureJobId is required" });
+        return;
+      }
+      const worker = startDetachedStoryboardPreviewMatchCaptureWorker({ captureJobId });
+      await recordCloudTaskEvent(req, "completed");
+      res.status(202).json({
+        success: true,
+        accepted: true,
+        captureJobId,
+        workerPid: worker.pid,
+      });
+    } catch (err: any) {
+      console.error("[Tasks] storyboard-preview-match-capture failed:", err);
       await recordCloudTaskEvent(req, "failed", err?.message);
       res.status(500).json({ error: err.message });
     }

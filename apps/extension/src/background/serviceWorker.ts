@@ -2,6 +2,7 @@ declare const chrome: any;
 
 const DEVICE_ID_KEY = "deviceId";
 const DRAG_MEDIA_TTL_MS = 10 * 60 * 1000;
+const DRAG_MEDIA_CHUNK_SIZE = 1_000_000;
 const LOCAL_AI_MAX_CHARS = 30_000;
 const LOCAL_AI_MAX_IMAGES = 5;
 const LOCAL_AI_MAX_IMAGE_BYTES = 4_000_000;
@@ -16,7 +17,16 @@ const IMAGE_HOST_PATTERNS = [
   /(^|\.)byteimg\.com$/i,
   /(^|\.)ibytedtos\.com$/i,
 ];
-const dragMediaStore = new Map<string, { dataUrl: string; name: string; type: string; expiresAt: number }>();
+type DragMediaItem = {
+  dataUrl?: string;
+  chunks?: string[];
+  sourceUrl?: string;
+  headers?: Record<string, string>;
+  name: string;
+  type: string;
+  expiresAt: number;
+};
+const dragMediaStore = new Map<string, DragMediaItem>();
 let activeDragMedia: { id: string; expiresAt: number } | null = null;
 let activeDragMediaClearTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -24,6 +34,32 @@ function randomHex(bytes: number) {
   const array = new Uint8Array(bytes);
   crypto.getRandomValues(array);
   return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
+async function ensureDragMediaChunks(item: DragMediaItem) {
+  if (item.chunks?.length) return item.chunks;
+  if (item.dataUrl) {
+    const [, payload = ""] = item.dataUrl.split(",");
+    item.chunks = payload.match(new RegExp(`.{1,${DRAG_MEDIA_CHUNK_SIZE}}`, "g")) ?? [payload];
+    return item.chunks;
+  }
+  if (!item.sourceUrl) throw new Error("drag_media_source_missing");
+  const response = await fetch(item.sourceUrl, { headers: item.headers ?? {} });
+  if (!response.ok) throw new Error(`drag_media_fetch_${response.status}`);
+  const blob = await response.blob();
+  item.type = blob.type || item.type || "application/octet-stream";
+  const base64 = arrayBufferToBase64(await blob.arrayBuffer());
+  item.chunks = base64.match(new RegExp(`.{1,${DRAG_MEDIA_CHUNK_SIZE}}`, "g")) ?? [base64];
+  return item.chunks;
 }
 
 async function getOrCreateDeviceId(): Promise<string> {
@@ -174,6 +210,9 @@ function isDragBridgeTargetUrl(url: unknown): boolean {
       || parsed.hostname === "flow.google"
       || parsed.hostname.endsWith(".flow.google")
       || parsed.hostname.endsWith(".google.com")
+      || parsed.hostname === "facebook.com"
+      || parsed.hostname.endsWith(".facebook.com")
+      || (parsed.hostname === "www.tiktok.com" && parsed.pathname.startsWith("/tiktokstudio"))
       || parsed.hostname === "magnific.ai"
       || parsed.hostname.endsWith(".magnific.ai")
       || parsed.hostname === "magnific.com"
@@ -332,6 +371,7 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
   if (
     message?.type !== "SMARTAIHUB_STORE_DRAG_MEDIA"
     && message?.type !== "SMARTAIHUB_GET_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_GET_DRAG_MEDIA_CHUNK"
     && message?.type !== "SMARTAIHUB_START_DRAG_MEDIA"
     && message?.type !== "SMARTAIHUB_END_DRAG_MEDIA"
     && message?.type !== "SMARTAIHUB_COMPLETE_DRAG_MEDIA"
@@ -345,8 +385,17 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
       const dataUrl = String(message.dataUrl || "");
       const name = cleanString(message.name, 240) || "smartaihub-media";
       const type = cleanString(message.mimeType, 120) || "application/octet-stream";
-      if (!id || !dataUrl.startsWith("data:") || dataUrl.length > 12_000_000) throw new Error("drag_media_invalid");
-      dragMediaStore.set(id, { dataUrl, name, type, expiresAt: Date.now() + DRAG_MEDIA_TTL_MS });
+      const sourceUrl = cleanString(message.sourceUrl, 4096);
+      const rawHeaders = message.headers && typeof message.headers === "object" ? message.headers as Record<string, unknown> : {};
+      const headers = Object.fromEntries(Object.entries(rawHeaders)
+        .filter(([, value]) => typeof value === "string")
+        .map(([key, value]) => [cleanString(key, 120), cleanString(value, 4096)])
+        .filter(([key, value]) => key && value));
+      const metadataOnly = message.metadataOnly === true;
+      if (!id || (!metadataOnly && !sourceUrl && (!dataUrl.startsWith("data:") || dataUrl.length > 12_000_000))) throw new Error("drag_media_invalid");
+      const item = { ...(metadataOnly || sourceUrl ? {} : { dataUrl }), sourceUrl, headers, name, type, expiresAt: Date.now() + DRAG_MEDIA_TTL_MS };
+      dragMediaStore.set(id, item);
+      if (sourceUrl) void ensureDragMediaChunks(item).catch(() => undefined);
       sendResponse({ ok: true });
       return true;
     }
@@ -385,9 +434,20 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
       sendResponse(activeDragMedia ? { ok: true, id: activeDragMedia.id } : { ok: false, error: "active_drag_media_not_found" });
       return true;
     }
+    if (message.type === "SMARTAIHUB_GET_DRAG_MEDIA_CHUNK") {
+      if (!isDragBridgeContentSender(sender)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      const index = Math.max(0, Math.floor(Number(message.index) || 0));
+      const item = id ? dragMediaStore.get(id) : undefined;
+      if (!item) throw new Error("drag_media_not_found");
+      ensureDragMediaChunks(item)
+        .then((chunks) => sendResponse({ ok: true, chunk: chunks[index] ?? "", index, count: chunks.length, name: item.name, type: item.type }))
+        .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "drag_media_chunk_failed" }));
+      return true;
+    }
     const id = cleanString(message.id, 160);
     const item = id ? dragMediaStore.get(id) : undefined;
-    sendResponse(item ? { ok: true, ...item } : { ok: false, error: "drag_media_not_found" });
+    sendResponse(item ? { ok: true, dataUrl: item.dataUrl, chunked: Boolean(item.sourceUrl || item.chunks), name: item.name, type: item.type } : { ok: false, error: "drag_media_not_found" });
   } catch (error) {
     sendResponse({ ok: false, error: error instanceof Error ? error.message : "drag_media_failed" });
   }

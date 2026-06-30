@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
-import { AlertTriangle, ChevronLeft, Copy, Download, ExternalLink, Eye, ImageIcon, Loader2, Plus, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertTriangle, Camera, ChevronLeft, Copy, Download, ExternalLink, Eye, ImageIcon, Loader2, Plus, Search, Store, Trash2, TrendingUp, Upload, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -161,8 +161,26 @@ function copyFor(language: string) {
       : "This product will be removed from Marketplace Capture and hidden from recommendations and product lists.",
     deleteDialogMeta: th ? "รายการที่จะลบ" : "Product to delete",
     deleteDialogWarning: th ? "การลบนี้ไม่สามารถย้อนกลับจากหน้านี้ได้" : "This action cannot be undone from this page.",
+    visualSearch: th ? "ค้นหาด้วยภาพ" : "Search by image",
+    visualSearchTitle: th ? "ค้นหาสินค้าคล้ายกันด้วยภาพ" : "Find similar products by image",
+    visualSearchHint: th ? "แนบรูปหรือถ่ายรูปสินค้า ระบบจะค้นหาสินค้าที่หน้าตาใกล้เคียงใน Marketplace Capture" : "Upload or capture a product photo to find visually similar marketplace products.",
+    uploadImage: th ? "แนบรูป" : "Upload image",
+    openCamera: th ? "เปิดกล้อง" : "Open camera",
+    capturePhoto: th ? "ถ่ายรูป" : "Capture photo",
+    stopCamera: th ? "ปิดกล้อง" : "Stop camera",
+    clearVisualSearch: th ? "ล้างผลค้นหาด้วยภาพ" : "Clear visual search",
+    visualResults: th ? "ผลค้นหาด้วยภาพ" : "Visual search results",
+    similarScore: th ? "ความคล้าย" : "Similarity",
+    noVisualResults: th ? "ยังไม่พบสินค้าที่คล้ายกัน" : "No similar products found",
+    imageTooLarge: th ? "รูปภาพต้องมีขนาดไม่เกิน 5MB" : "Image must be 5MB or smaller",
+    cameraError: th ? "เปิดกล้องไม่สำเร็จ" : "Could not open camera",
     affiliateLink: th ? "ลิงก์ affiliate" : "Affiliate link",
     copyAffiliate: th ? "คัดลอก affiliate" : "Copy affiliate",
+    loaded: th ? "โหลดแล้ว" : "Loaded",
+    loadingMore: th ? "กำลังโหลดสินค้าเพิ่ม..." : "Loading more products...",
+    loadMore: th ? "โหลดสินค้าเพิ่ม" : "Load more products",
+    endOfList: th ? "แสดงสินค้าครบแล้ว" : "All matching products loaded",
+    popularCategories: th ? "หมวดหมู่ยอดนิยม" : "Popular categories",
     copiedAffiliate: th ? "คัดลอกลิงก์ affiliate แล้ว" : "Affiliate link copied",
     cancel: th ? "ยกเลิก" : "Cancel",
     deleting: th ? "กำลังลบ..." : "Deleting...",
@@ -173,14 +191,23 @@ export default function MarketplaceCaptureProducts() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState<PlatformFilter>("all");
-  const [health, setHealth] = useState<HealthFilter>("active");
+  const [health, setHealth] = useState<HealthFilter>("all");
   const [category, setCategory] = useState("all");
   const [ownerOnly, setOwnerOnly] = useState(false);
   const [sortMode, setSortMode] = useState<"recommended" | "sold" | "rating" | "updated">("recommended");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [deletedProductIds, setDeletedProductIds] = useState<Set<string>>(() => new Set());
   const [productPendingDelete, setProductPendingDelete] = useState<any | null>(null);
+  const productListSentinelRef = useRef<HTMLDivElement | null>(null);
   const [manualProductOpen, setManualProductOpen] = useState(false);
+  const [visualSearchOpen, setVisualSearchOpen] = useState(false);
+  const [visualSearchPreviewUrl, setVisualSearchPreviewUrl] = useState<string | null>(null);
+  const [visualSearchResults, setVisualSearchResults] = useState<any[] | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const visualSearchFileInputRef = useRef<HTMLInputElement | null>(null);
+  const visualSearchVideoRef = useRef<HTMLVideoElement | null>(null);
+  const visualSearchCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const visualSearchStreamRef = useRef<MediaStream | null>(null);
   const [manualProductForm, setManualProductForm] = useState({
     platform: "shopee" as "shopee" | "tiktok_shop",
     productName: "",
@@ -201,7 +228,23 @@ export default function MarketplaceCaptureProducts() {
   const utils = trpc.useUtils();
 
   const captures = trpc.marketplaceCapture.listCaptures.useQuery({ limit: 20 });
-  const products = trpc.marketplaceCapture.listProducts.useQuery({ limit: 100, ownerOnly });
+  const products = trpc.marketplaceCapture.listProducts.useInfiniteQuery(
+    {
+      limit: 24,
+      cursor: null,
+      ownerOnly,
+      platform,
+      query: query.trim() || undefined,
+      category: category === "all" ? undefined : category,
+      sortMode,
+    },
+    {
+      initialCursor: null,
+      getNextPageParam: (lastPage: any) => Array.isArray(lastPage) ? undefined : lastPage.nextCursor ?? undefined,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  );
   const batches = trpc.marketplaceCapture.listCandidateBatches.useQuery({ limit: 10 });
   const selectedProductDetail = trpc.marketplaceCapture.getProduct.useQuery(
     { productId: selectedProductId ?? "" },
@@ -232,15 +275,8 @@ export default function MarketplaceCaptureProducts() {
   const deleteProductMutation = trpc.marketplaceCapture.deleteProduct.useMutation({
     onMutate: async (variables) => {
       await utils.marketplaceCapture.listProducts.cancel();
-      const listInput = { limit: 100, ownerOnly };
-      const previousProducts = utils.marketplaceCapture.listProducts.getData(listInput);
       setDeletedProductIds((current) => new Set(current).add(variables.productId));
       if (selectedProductId === variables.productId) setSelectedProductId(null);
-      utils.marketplaceCapture.listProducts.setData(
-        listInput,
-        (current) => current?.filter((product: any) => product.id !== variables.productId),
-      );
-      return { listInput, previousProducts };
     },
     onSuccess: async (_, variables) => {
       if (selectedProductId === variables.productId) setSelectedProductId(null);
@@ -252,34 +288,49 @@ export default function MarketplaceCaptureProducts() {
         utils.marketplaceCapture.listProductImages.invalidate(),
       ]);
     },
-    onError: (error, variables, context) => {
+    onError: (error, variables) => {
       setDeletedProductIds((current) => {
         const next = new Set(current);
         next.delete(variables.productId);
         return next;
       });
-      if (context?.previousProducts) {
-        utils.marketplaceCapture.listProducts.setData(context.listInput, context.previousProducts);
-      }
       setProductPendingDelete(null);
       toast.error(`${copy.deleteError}: ${error.message}`);
     },
   });
+  const visualSearchMutation = trpc.marketplaceCapture.searchSimilarProductsByImage.useMutation({
+    onSuccess: (result: any) => {
+      const items = Array.isArray(result?.items) ? result.items : [];
+      setVisualSearchResults(items);
+      setVisualSearchOpen(false);
+      toast.success(items.length > 0 ? `${copy.visualResults}: ${items.length}` : copy.noVisualResults);
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const loadedProducts = useMemo(
+    () => (
+      (products.data?.pages ?? []).flatMap((page: any) => Array.isArray(page) ? page : page.items ?? []) as any[]
+    ),
+    [products.data?.pages],
+  );
 
   const visibleProducts = useMemo(
-    () => (products.data ?? []).filter((product: any) => !deletedProductIds.has(product.id)),
-    [deletedProductIds, products.data],
+    () => loadedProducts.filter((product: any) => !deletedProductIds.has(product.id)),
+    [deletedProductIds, loadedProducts],
   );
+
+  const productSource = visualSearchResults ?? visibleProducts;
 
   const categories = useMemo(() => {
     const values = new Set<string>();
-    for (const product of visibleProducts) values.add(String(productCategory(product)));
+    for (const product of productSource) values.add(String(productCategory(product)));
     return Array.from(values).sort((a, b) => a.localeCompare(b));
-  }, [visibleProducts]);
+  }, [productSource]);
 
   const filteredProducts = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return visibleProducts
+    const needle = visualSearchResults ? "" : query.trim().toLowerCase();
+    return productSource
       .filter((product: any) => platform === "all" || product.platform === platform)
       .filter((product: any) => category === "all" || productCategory(product) === category)
       .filter((product: any) => {
@@ -301,20 +352,43 @@ export default function MarketplaceCaptureProducts() {
         if (sortMode === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         return interestScore(b) - interestScore(a);
       });
-  }, [category, health, platform, query, sortMode, visibleProducts]);
+  }, [category, health, platform, productSource, query, sortMode, visualSearchResults]);
 
   const filteredCaptures = useMemo(() => (captures.data ?? []).filter((capture: any) => platform === "all" || capture.platform === platform), [captures.data, platform]);
   const filteredBatches = useMemo(() => (batches.data ?? []).filter((batch: any) => platform === "all" || batch.platform === platform), [batches.data, platform]);
   const recommendedProducts = filteredProducts.filter((product: any) => isActiveProduct(product)).slice(0, 8);
   const healthCounts = useMemo(() => {
-    const rows = visibleProducts;
+    const rows = productSource;
     return {
       active: rows.filter((product: any) => isActiveProduct(product)).length,
       stale: rows.filter((product: any) => isStale(product)).length,
       lowRating: rows.filter((product: any) => isLowRating(product)).length,
       inactive: rows.filter((product: any) => product.health?.warnings?.some((warning: any) => warning.code === "sold_not_growing" || warning.code === "low_sold_velocity")).length,
     };
-  }, [visibleProducts]);
+  }, [productSource]);
+  const categoryQuickFilters = useMemo(() => categories.slice(0, 8), [categories]);
+
+  useEffect(() => {
+    const node = productListSentinelRef.current;
+    if (!node || !products.hasNextPage || products.isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void products.fetchNextPage();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage, filteredProducts.length]);
+
+  useEffect(() => {
+    return () => {
+      stopVisualSearchCamera();
+      if (visualSearchPreviewUrl) URL.revokeObjectURL(visualSearchPreviewUrl);
+    };
+  }, [visualSearchPreviewUrl]);
 
   function downloadJson(name: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -382,28 +456,129 @@ export default function MarketplaceCaptureProducts() {
     createManualProductMutation.mutate(manualProductForm);
   }
 
+  function setVisualSearchPreview(url: string | null) {
+    setVisualSearchPreviewUrl((current) => {
+      if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return url;
+    });
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const value = typeof reader.result === "string" ? reader.result : "";
+        resolve(value.includes(",") ? value.split(",")[1] ?? "" : value);
+      };
+      reader.onerror = () => reject(reader.error ?? new Error("file_read_failed"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function submitVisualSearchImage(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(copy.imageTooLarge);
+      return;
+    }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast.error("รองรับเฉพาะรูป PNG, JPEG หรือ WebP");
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setVisualSearchPreview(preview);
+    const imageBase64 = await fileToBase64(file);
+    visualSearchMutation.mutate({
+      imageBase64,
+      mimeType: file.type as "image/png" | "image/jpeg" | "image/webp",
+      limit: 24,
+      ownerOnly,
+      platform,
+    });
+  }
+
+  function handleVisualSearchFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    void submitVisualSearchImage(file);
+  }
+
+  async function startVisualSearchCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
+      visualSearchStreamRef.current = stream;
+      setCameraActive(true);
+      if (visualSearchVideoRef.current) {
+        visualSearchVideoRef.current.srcObject = stream;
+        await visualSearchVideoRef.current.play();
+      }
+    } catch {
+      toast.error(copy.cameraError);
+    }
+  }
+
+  function stopVisualSearchCamera() {
+    visualSearchStreamRef.current?.getTracks().forEach((track) => track.stop());
+    visualSearchStreamRef.current = null;
+    setCameraActive(false);
+    if (visualSearchVideoRef.current) {
+      visualSearchVideoRef.current.srcObject = null;
+    }
+  }
+
+  function captureVisualSearchPhoto() {
+    const video = visualSearchVideoRef.current;
+    const canvas = visualSearchCanvasRef.current;
+    if (!video || !canvas || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+    setVisualSearchPreview(dataUrl);
+    const imageBase64 = dataUrl.split(",")[1] ?? "";
+    visualSearchMutation.mutate({
+      imageBase64,
+      mimeType: "image/jpeg",
+      limit: 24,
+      ownerOnly,
+      platform,
+    });
+    stopVisualSearchCamera();
+  }
+
+  function clearVisualSearch() {
+    setVisualSearchResults(null);
+    setVisualSearchPreview(null);
+    stopVisualSearchCamera();
+  }
+
   function productCard(product: any) {
     const score = interestScore(product);
     const imageUrl = primaryProductImageUrl(product);
     return (
       <article
         key={product.id}
-        className={`group cursor-pointer rounded-lg border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+        className={`group cursor-pointer overflow-hidden rounded-xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
           selectedProductId === product.id ? "border-blue-300 ring-2 ring-blue-100" : "border-slate-200"
         }`}
         onClick={() => setSelectedProductId(product.id)}
       >
-        <div className="flex items-start gap-3">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+        <div className="grid gap-3 p-3 sm:grid-cols-[9rem_minmax(0,1fr)]">
+          <div className="flex aspect-square min-h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-36 sm:w-36">
             {imageUrl ? (
               <img
                 src={imageUrl}
                 alt={product.productName ? `${product.productName} product image` : "Product image"}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                 loading="lazy"
               />
             ) : (
-              <ImageIcon className="h-7 w-7 text-slate-300" aria-hidden="true" />
+              <ImageIcon className="h-10 w-10 text-slate-300" aria-hidden="true" />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -411,17 +586,22 @@ export default function MarketplaceCaptureProducts() {
               <div className="min-w-0">
                 <div className="line-clamp-2 font-semibold text-slate-950">{product.productName}</div>
                 <div className="mt-1 truncate text-xs text-slate-500">{productCategory(product)}</div>
+                {typeof product.visualMatchScore === "number" ? (
+                  <div className="mt-2 inline-flex items-center rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-100">
+                    {copy.similarScore} {Math.round(product.visualMatchScore * 100)}%
+                  </div>
+                ) : null}
               </div>
               <span className="shrink-0 rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{score}</span>
             </div>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+        <div className="grid grid-cols-3 gap-2 px-3 pb-3 text-sm">
           <div><div className="text-xs text-slate-500">Price</div><div className="font-medium">{product.priceCurrent ?? "-"} {product.currency ?? "THB"}</div></div>
           <div><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{formatCommissionRate(product.commissionRatePercent)}</div><div className="text-xs text-slate-500">{formatCommissionAmount(product)}</div></div>
           <div><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(product.soldCountNormalized, product.soldCountText)}</div></div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 px-3 pb-3 text-xs">
           <span className="rounded bg-slate-100 px-2 py-1 text-slate-700">{product.platform === "shopee" ? "Shopee" : "TikTok"}</span>
           <span className={product.accessType === "group" ? "rounded bg-blue-50 px-2 py-1 text-blue-700" : "rounded bg-slate-100 px-2 py-1 text-slate-700"}>
             {product.accessType === "group" ? copy.shared : copy.own}
@@ -432,11 +612,11 @@ export default function MarketplaceCaptureProducts() {
             "bg-emerald-50 text-emerald-700"
           }`}>{product.health?.status ?? "ok"}</span>
         </div>
-        <div className="mt-3 text-xs text-slate-500">{copy.lastChecked}: {product.health?.lastCheckedAt ? new Date(product.health.lastCheckedAt).toLocaleString() : "-"}</div>
-        {product.health?.warnings?.[0]?.message ? <div className="mt-2 text-xs text-amber-700">{product.health.warnings[0].message}</div> : null}
+        <div className="px-3 pb-3 text-xs text-slate-500">{copy.lastChecked}: {product.health?.lastCheckedAt ? new Date(product.health.lastCheckedAt).toLocaleString() : "-"}</div>
+        {product.health?.warnings?.[0]?.message ? <div className="px-3 pb-3 text-xs text-amber-700">{product.health.warnings[0].message}</div> : null}
         {product.affiliateUrl ? (
           <button
-            className="mt-3 inline-flex max-w-full items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+            className="mx-3 mb-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
             onClick={(event) => {
               event.stopPropagation();
               copyAffiliateLink(product.affiliateUrl);
@@ -446,7 +626,7 @@ export default function MarketplaceCaptureProducts() {
             <span className="truncate">{copy.affiliateLink}</span>
           </button>
         ) : null}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 border-t border-slate-100 bg-slate-50/70 p-3">
           <button
             className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
             onClick={(event) => {
@@ -484,8 +664,8 @@ export default function MarketplaceCaptureProducts() {
   }
 
   const selectedListProduct = useMemo(
-    () => visibleProducts.find((product: any) => product.id === selectedProductId) ?? null,
-    [selectedProductId, visibleProducts],
+    () => productSource.find((product: any) => product.id === selectedProductId) ?? null,
+    [productSource, selectedProductId],
   );
   const selectedData = selectedProductDetail.data as any;
   const panelProduct = selectedData?.product ?? selectedListProduct;
@@ -516,7 +696,8 @@ export default function MarketplaceCaptureProducts() {
       </header>
 
       <main className="px-4 py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:grid-cols-[minmax(0,1fr)_28rem]">
+          <div className="min-w-0 space-y-6">
           <section className="rounded-xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
             <div className="grid gap-3 lg:grid-cols-[1fr_180px_180px_180px]">
               <div className="relative">
@@ -546,6 +727,10 @@ export default function MarketplaceCaptureProducts() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add manual product
               </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setVisualSearchOpen(true)}>
+                <Camera className="mr-2 h-4 w-4" />
+                {copy.visualSearch}
+              </Button>
               {(["all", "shopee", "tiktok_shop"] as PlatformFilter[]).map((item) => (
                 <button
                   key={item}
@@ -562,6 +747,46 @@ export default function MarketplaceCaptureProducts() {
               <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => downloadCsv("marketplace-products.csv", filteredProducts)}><Download className="mr-1 inline h-4 w-4" />{copy.exportCsv}</button>
               <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => downloadJson("marketplace-capture-export.json", { products: filteredProducts, captures: filteredCaptures, batches: filteredBatches })}>{copy.exportJson}</button>
             </div>
+            {visualSearchResults ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
+                <div className="flex min-w-0 items-center gap-2">
+                  <ImageIcon className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{copy.visualResults}</span>
+                  <span className="text-cyan-700">{visualSearchResults.length} รายการ</span>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md border border-cyan-200 bg-white px-3 py-1.5 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
+                  onClick={clearVisualSearch}
+                >
+                  {copy.clearVisualSearch}
+                </button>
+              </div>
+            ) : null}
+            {categoryQuickFilters.length > 0 ? (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">{copy.popularCategories}</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  <button
+                    type="button"
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${category === "all" ? "border-blue-300 bg-blue-50 text-blue-700" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                    onClick={() => setCategory("all")}
+                  >
+                    {copy.allCategories}
+                  </button>
+                  {categoryQuickFilters.map((item) => (
+                    <button
+                      type="button"
+                      key={item}
+                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${category === item ? "border-blue-300 bg-blue-50 text-blue-700" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                      onClick={() => setCategory(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="grid gap-3 md:grid-cols-4">
@@ -572,19 +797,26 @@ export default function MarketplaceCaptureProducts() {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white/85 p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-              <h2 className="text-lg font-semibold">{copy.recommendations}</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{copy.products} ({filteredProducts.length})</h2>
+              <span className="text-xs text-slate-500">{copy.loaded} {visibleProducts.length}</span>
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {recommendedProducts.length > 0 ? recommendedProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-slate-200 bg-white/85 p-5 shadow-sm">
-            <h2 className="text-lg font-semibold">{copy.products} ({filteredProducts.length})</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
               {filteredProducts.length > 0 ? filteredProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
+            </div>
+            <div ref={productListSentinelRef} className="mt-5 flex min-h-12 items-center justify-center">
+              {products.isFetchingNextPage ? (
+                <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {copy.loadingMore}
+                </div>
+              ) : products.hasNextPage ? (
+                <Button type="button" variant="outline" onClick={() => void products.fetchNextPage()}>
+                  {copy.loadMore}
+                </Button>
+              ) : filteredProducts.length > 0 ? (
+                <div className="text-sm text-slate-500">{copy.endOfList}</div>
+              ) : null}
             </div>
           </section>
 
@@ -614,6 +846,23 @@ export default function MarketplaceCaptureProducts() {
               </div>
             </section>
           </div>
+          </div>
+          <aside className="min-w-0 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <section className="rounded-xl border border-emerald-100 bg-white/90 p-4 shadow-sm backdrop-blur">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <TrendingUp className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-semibold">{copy.recommendations}</h2>
+                  <p className="text-xs text-slate-500">{copy.loaded} {recommendedProducts.length}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {recommendedProducts.length > 0 ? recommendedProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
+              </div>
+            </section>
+          </aside>
         </div>
       </main>
       {panelProduct ? (
@@ -704,6 +953,120 @@ export default function MarketplaceCaptureProducts() {
             </section>
           </div>
         </aside>
+      ) : null}
+      {visualSearchOpen ? (
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-4">
+          <section className="mx-auto my-8 max-w-3xl rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">{copy.visualSearchTitle}</h2>
+                <p className="mt-1 text-sm text-slate-500">{copy.visualSearchHint}</p>
+              </div>
+              <button
+                className="rounded-md border p-2"
+                onClick={() => {
+                  setVisualSearchOpen(false);
+                  stopVisualSearchCamera();
+                }}
+                aria-label={copy.close}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    className="inline-flex min-h-24 items-center justify-center rounded-lg border border-dashed border-blue-300 bg-blue-50 px-4 py-5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                    onClick={() => visualSearchFileInputRef.current?.click()}
+                    disabled={visualSearchMutation.isPending}
+                  >
+                    <Upload className="mr-2 h-5 w-5" />
+                    {copy.uploadImage}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-24 items-center justify-center rounded-lg border border-dashed border-cyan-300 bg-cyan-50 px-4 py-5 text-sm font-semibold text-cyan-700 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={cameraActive ? stopVisualSearchCamera : () => void startVisualSearchCamera()}
+                    disabled={visualSearchMutation.isPending}
+                  >
+                    <Camera className="mr-2 h-5 w-5" />
+                    {cameraActive ? copy.stopCamera : copy.openCamera}
+                  </button>
+                </div>
+                <input
+                  ref={visualSearchFileInputRef}
+                  className="hidden"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleVisualSearchFile}
+                />
+
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+                  <video
+                    ref={visualSearchVideoRef}
+                    className={`aspect-video w-full object-contain ${cameraActive ? "block" : "hidden"}`}
+                    playsInline
+                    muted
+                  />
+                  {!cameraActive ? (
+                    <div className="flex aspect-video items-center justify-center bg-slate-100 text-sm text-slate-500">
+                      {visualSearchPreviewUrl ? (
+                        <img src={visualSearchPreviewUrl} alt={copy.visualSearch} className="h-full w-full object-contain" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <ImageIcon className="h-8 w-8 text-slate-300" />
+                          <span>{copy.visualSearch}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                <canvas ref={visualSearchCanvasRef} className="hidden" />
+
+                {cameraActive ? (
+                  <Button
+                    type="button"
+                    className="w-full"
+                    onClick={captureVisualSearchPhoto}
+                    disabled={visualSearchMutation.isPending}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    {copy.capturePhoto}
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="text-sm font-semibold text-slate-900">{copy.visualResults}</div>
+                <div className="mt-2 text-sm leading-6 text-slate-600">
+                  {visualSearchMutation.isPending
+                    ? "กำลังวิเคราะห์รูปและค้นหาสินค้าที่คล้ายกัน..."
+                    : visualSearchResults
+                      ? `${visualSearchResults.length} รายการ`
+                      : "เลือกรูปสินค้าเพื่อเริ่มค้นหา"}
+                </div>
+                {visualSearchMutation.isPending ? (
+                  <div className="mt-4 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching
+                  </div>
+                ) : null}
+                {visualSearchPreviewUrl && !visualSearchMutation.isPending ? (
+                  <button
+                    type="button"
+                    className="mt-4 rounded-md border bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                    onClick={clearVisualSearch}
+                  >
+                    {copy.clearVisualSearch}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </div>
       ) : null}
       {manualProductOpen ? (
         <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-4">

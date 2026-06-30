@@ -10,6 +10,7 @@ section-03-marketplace-auto-review-integration
 section-04-auto-overrides-and-preview-ui
 section-05-storyboard-review-segment-state
 section-06-access-observability-and-rollout
+section-07-storyboard-source-trim-and-disabled-ranges
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -22,8 +23,9 @@ END_MANIFEST -->
 | section-02-prompt-builder-and-creative-brief | 01 | 03, 05 | No |
 | section-03-marketplace-auto-review-integration | 01, 02 | 05, 06 | No |
 | section-04-auto-overrides-and-preview-ui | 01 | 03, 06 | Yes after 01 |
-| section-05-storyboard-review-segment-state | 01, 02, 03 | 06 | No |
+| section-05-storyboard-review-segment-state | 01, 02, 03 | 06, 07 | No |
 | section-06-access-observability-and-rollout | 03, 04, 05 | - | No |
+| section-07-storyboard-source-trim-and-disabled-ranges | 05 | 06 | No |
 
 ## Execution Order
 
@@ -31,7 +33,8 @@ END_MANIFEST -->
 2. `section-02-prompt-builder-and-creative-brief`
 3. `section-03-marketplace-auto-review-integration` and `section-04-auto-overrides-and-preview-ui`
 4. `section-05-storyboard-review-segment-state`
-5. `section-06-access-observability-and-rollout`
+5. `section-07-storyboard-source-trim-and-disabled-ranges`
+6. `section-06-access-observability-and-rollout`
 
 ## Section Summaries
 
@@ -58,3 +61,7 @@ Add Storyboard Review segment state normalization, legacy synthesis on read, `re
 ### section-06-access-observability-and-rollout
 
 Add model/MCP eligibility checks, segment-based access/credit warning hooks, durable output URL gates, redacted observability, feature flags, browser evidence, and final rollout gates.
+
+### section-07-storyboard-source-trim-and-disabled-ranges
+
+Document the implemented Storyboard Review source-trim workflow, including head/tail trim, middle disabled ranges, tablet mark-from-current-frame UX, preview skip behavior, render/capture expectations, and future silence-cut/derived-render hooks.

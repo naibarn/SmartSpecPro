@@ -219,6 +219,28 @@ const desktopGovernanceStatusState = {
 const changeLanguageMock = vi.fn();
 const financeMutationMock = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false });
 const financeInvalidateMock = () => ({ invalidate: vi.fn() });
+const skillMaintenanceRecommendationsMock = Array.from({ length: 7 }, (_, index) => ({
+  id: index + 1,
+  skillId: 100 + index,
+  recommendationType: "metadata_update",
+  title: `Recommendation ${index + 1}`,
+  summary: "Keep this skill current.",
+  status: "pending_review",
+  riskLevel: "medium",
+  compatibilityStatus: "compatible",
+  qualityScore: 90,
+  isAutoApplySafe: true,
+  analyzedAt: "2026-04-09T10:00:00.000Z",
+  updatedAt: "2026-04-09T10:00:00.000Z",
+  latestRun: null,
+  skill: {
+    id: 100 + index,
+    slug: `skill-${index + 1}`,
+    name: `Skill ${index + 1}`,
+    category: "test",
+    executionMode: null,
+  },
+}));
 
 const translationMap: Record<string, string> = {
   "common:admin": "Admin",
@@ -258,6 +280,19 @@ const translationMap: Record<string, string> = {
   "dashboard:nextBestActions.manageDesktopReleases": "Manage desktop releases",
   "dashboard:admin.systemMonitoring": "System Monitoring",
   "dashboard:admin.tools": "Admin Tools",
+  "dashboard:admin.skillMaintenanceTitle": "Skill Maintenance",
+  "dashboard:admin.skillMaintenanceDescription": "Review pending skill upgrade recommendations and launch safe maintenance runs.",
+  "dashboard:admin.skillMaintenanceHeaderButton": "Skill Maintenance (7)",
+  "dashboard:admin.skillMaintenanceOpenQueue": "Open maintenance queue",
+  "dashboard:admin.skillMaintenanceStartAll": "Start all safe recommendations",
+  "dashboard:admin.skillMaintenanceStartOne": "Start recommendation",
+  "dashboard:admin.skillMaintenancePendingLabel": "Pending recommendations",
+  "dashboard:admin.skillMaintenanceQueueLabel": "Maintenance queue",
+  "dashboard:admin.skillMaintenanceSafeRolloutLabel": "Safe rollout",
+  "dashboard:admin.skillMaintenanceAcrossSkills": "Across {{count}} skills",
+  "dashboard:admin.skillMaintenancePendingDescription": "Recommendations waiting for admin review.",
+  "dashboard:admin.skillMaintenanceQueueDescription": "Maintenance runs currently queued or running.",
+  "dashboard:admin.skillMaintenanceSafeRolloutDescription": "Safe changes can be started from the dashboard.",
   "dashboard:admin.skillMaintenanceQueuedRuns": "{{count}} queued runs",
   "dashboard:admin.skillMaintenanceLatestRun": "Open latest run detail",
   "dashboard:admin.skillMaintenanceFailedRuns": "{{count}} failed runs",
@@ -421,6 +456,7 @@ vi.mock("@/contexts/AuthContext", () => ({
       email: "test@example.com",
       credits: 0,
       plan: "free",
+      currentTenantId: "tenant-1",
     },
     isLoading: false,
     isAuthenticated: true,
@@ -616,6 +652,12 @@ vi.mock("@/hooks/useMenuItems", () => ({
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
+      skills: {
+        getUpgradeRecommendations: financeInvalidateMock(),
+        getLegacyUpgradeApplyRuns: financeInvalidateMock(),
+        getLegacyUpgradeQueueSummary: financeInvalidateMock(),
+        listFromDb: financeInvalidateMock(),
+      },
       finance: {
         listDrafts: financeInvalidateMock(),
         getDailySummary: financeInvalidateMock(),
@@ -652,6 +694,18 @@ vi.mock("@/lib/trpc", () => ({
             items: [{ id: 901 }],
           },
           isLoading: false,
+        })),
+      },
+      getUpgradeRecommendations: {
+        useQuery: vi.fn(() => ({
+          data: skillMaintenanceRecommendationsMock,
+          isLoading: false,
+        })),
+      },
+      applyMaintenanceRecommendations: {
+        useMutation: vi.fn(() => ({
+          mutate: vi.fn(),
+          isPending: false,
         })),
       },
     },
@@ -879,6 +933,16 @@ describe("Dashboard", () => {
     changeLanguageMock.mockClear();
     authState.role = "user";
     tenantFeatureFlagsState.desktopHostEnabled = false;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("1280px"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
   });
 
   it("shows Private Files in the sidebar", () => {
@@ -980,6 +1044,28 @@ describe("Dashboard", () => {
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /start work/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /my requests/i }).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the core dashboard surfaces available on tablet viewports", () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    render(<Dashboard />);
+
+    expect(screen.getByTestId("dashboard-quick-links")).toBeInTheDocument();
+    expect(screen.getByText("Priority Snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Trend & Health")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Personal Finance" })).toBeInTheDocument();
+    expect(screen.getByText("Tenant-wide improvement loop")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Finance$/i })).toBeInTheDocument();
   });
 
   it("links workpack surfaces from the dashboard hub", () => {

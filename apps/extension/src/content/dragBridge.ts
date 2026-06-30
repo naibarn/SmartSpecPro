@@ -61,6 +61,20 @@ export {};
     return new File([array], name || "smartaihub-media", { type: mime });
   }
 
+  async function chunkedDragMediaFileFromBackground(id: string, name: string, type: string) {
+    let chunks: string[] = [];
+    let count = 0;
+    do {
+      const response = await chrome.runtime.sendMessage({ type: "SMARTAIHUB_GET_DRAG_MEDIA_CHUNK", id, index: chunks.length }).catch(() => null);
+      if (!response?.ok) return null;
+      if (typeof response.chunk === "string") chunks.push(response.chunk);
+      count = Number(response.count) || chunks.length;
+      name = response.name || name;
+      type = response.type || type;
+    } while (chunks.length < count);
+    return dataUrlToFile(`data:${type || "application/octet-stream"};base64,${chunks.join("")}`, name, type);
+  }
+
   function isLikelyUploadElement(element: Element | null): element is HTMLElement {
     if (!(element instanceof HTMLElement)) return false;
     const text = [
@@ -188,10 +202,27 @@ export {};
       || hostname.endsWith(".higgsfield.ai");
   }
 
+  function isFacebookHost(hostname: string) {
+    return hostname === "facebook.com" || hostname.endsWith(".facebook.com");
+  }
+
+  function isFacebookContext() {
+    return isFacebookHost(location.hostname.toLowerCase());
+  }
+
+  function isTikTokStudioContext() {
+    return location.hostname.toLowerCase() === "www.tiktok.com" && location.pathname.startsWith("/tiktokstudio");
+  }
+
+  function isSocialUploadContext() {
+    return isFacebookContext() || isTikTokStudioContext();
+  }
+
   function canUseFileInputFallback(target: HTMLElement, files: FileList) {
     const hostname = location.hostname.toLowerCase();
     if (isGoogleFlowContext()) return Boolean(findNearestFileInput(target, files));
     if (target instanceof HTMLInputElement && target.type === "file") return true;
+    if (isFacebookHost(hostname) || isTikTokStudioContext()) return Boolean(findNearestFileInput(target, files));
     return isMagnificHost(hostname) && Boolean(findNearestFileInput(target, files));
   }
 
@@ -226,7 +257,7 @@ export {};
 
   function isBridgeTargetHost() {
     const hostname = location.hostname.toLowerCase();
-    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname);
+    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isFacebookHost(hostname) || isTikTokStudioContext();
   }
 
   function isPotentialFileDrag(event: DragEvent) {
@@ -354,6 +385,85 @@ export {};
     return inputSet;
   }
 
+  function findFacebookPhotoVideoButton(): HTMLElement | null {
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>("[role='button'], button, label, [aria-label], [data-testid]"));
+    return candidates.find((element) => {
+      const text = [
+        element.getAttribute("aria-label"),
+        element.getAttribute("data-testid"),
+        element.textContent,
+      ].join(" ").toLowerCase();
+      return /photo\/video|photo|video|media|รูปภาพ|วิดีโอ|วีดีโอ/.test(text);
+    }) ?? null;
+  }
+
+  async function waitForNearestFileInput(target: HTMLElement, files: FileList, attempts = 10, intervalMs = 180) {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const input = findNearestFileInput(target, files);
+      if (input) return input;
+      await delay(intervalMs);
+    }
+    return null;
+  }
+
+  async function setFacebookComposerFileInput(target: HTMLElement, files: FileList) {
+    const existing = findNearestFileInput(target, files);
+    if (existing) {
+      return { inputSet: setFileInputFiles(existing, files), input: describeFileInput(existing), activated: false };
+    }
+    const button = findFacebookPhotoVideoButton();
+    if (button) {
+      button.click();
+      await delay(250);
+    }
+    const input = await waitForNearestFileInput(target, files, 12, 220);
+    if (!input) return { inputSet: false, input: null, activated: Boolean(button) };
+    return { inputSet: setFileInputFiles(input, files), input: describeFileInput(input), activated: Boolean(button) };
+  }
+
+  async function deliverSocialFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const initial = isFacebookContext()
+      ? await setFacebookComposerFileInput(target, transfer.files)
+      : setNearestFileInputDetailed(target, transfer.files);
+    let inputSet = initial.inputSet;
+    let inputDetails = initial.input;
+    const activatedUploadControl = "activated" in initial ? initial.activated : false;
+    let retryUsed = false;
+    if (!inputSet) {
+      await delay(120);
+      const retry = isFacebookContext()
+        ? await setFacebookComposerFileInput(target, transfer.files)
+        : setNearestFileInputDetailed(target, transfer.files);
+      inputSet = retry.inputSet;
+      inputDetails = retry.input || inputDetails;
+      retryUsed = true;
+    }
+    if (!inputSet) {
+      dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    } else {
+      await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
+    }
+    void recordDiagnosticLog("social_video_drag_delivery", {
+      host: location.hostname,
+      path: location.pathname,
+      strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
+      fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
+      activatedUploadControl,
+      cleanupStep: inputSet ? "dragleave_dragend" : "drop",
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      targetTag: target.tagName,
+      targetClass: typeof target.className === "string" ? target.className : "",
+      fileInputCount: document.querySelectorAll("input[type='file']").length,
+      fileInput: inputDetails,
+    });
+    return inputSet;
+  }
+
   function eventDragMediaId(event: DragEvent): string {
     try {
       return event.dataTransfer?.getData(SMARTAIHUB_DRAG_MEDIA_MIME) || activeDragMediaId || "";
@@ -382,7 +492,11 @@ export {};
     const existing = dragMediaFileCache.get(id);
     if (existing) return existing;
     const pending = chrome.runtime.sendMessage({ type: "SMARTAIHUB_GET_DRAG_MEDIA", id })
-      .then((response: any) => response?.ok && response.dataUrl ? dataUrlToFile(response.dataUrl, response.name, response.type) : null)
+      .then((response: any) => {
+        if (response?.ok && response.dataUrl) return dataUrlToFile(response.dataUrl, response.name, response.type);
+        if (response?.ok && response.chunked) return chunkedDragMediaFileFromBackground(id, response.name || "smartaihub-media", response.type || "application/octet-stream");
+        return null;
+      })
       .catch(() => null);
     dragMediaFileCache.set(id, pending);
     return pending;
@@ -414,7 +528,8 @@ export {};
     const id = eventDragMediaId(event);
     if (!id) {
       const reservePotentialBridgeDrop = isBridgeTargetHost() && isPotentialFileDrag(event);
-      if (bridgePayload || reservePotentialBridgeDrop) {
+      const passiveSocialFileDrop = isSocialUploadContext() && reservePotentialBridgeDrop && !bridgePayload;
+      if ((bridgePayload || reservePotentialBridgeDrop) && !passiveSocialFileDrop) {
         event.preventDefault();
         if (bridgePayload) event.stopPropagation();
         if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
@@ -436,15 +551,16 @@ export {};
     if (bridgedDragEvents.has(event)) return;
     const bridgePayload = hasBridgePayload(event);
     const reservePotentialBridgeDrop = isBridgeTargetHost() && isPotentialFileDrag(event);
+    const passiveSocialFileDrop = isSocialUploadContext() && reservePotentialBridgeDrop && !bridgePayload;
     let id = eventDragMediaId(event);
-    if (bridgePayload || reservePotentialBridgeDrop) {
+    if ((bridgePayload || reservePotentialBridgeDrop) && !passiveSocialFileDrop) {
       event.preventDefault();
       if (bridgePayload) event.stopPropagation();
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
     }
     if (!id) id = await activeDragMediaIdFromBackground();
     if (!id) return;
-    if (!bridgePayload) {
+    if (bridgePayload || !passiveSocialFileDrop || isSocialUploadContext()) {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -457,6 +573,8 @@ export {};
       await deliverGoogleFlowFileDrop(target, file, event);
     } else if (isHiggsfieldHost(location.hostname.toLowerCase())) {
       await deliverHiggsfieldFileDrop(target, file, event);
+    } else if (isFacebookHost(location.hostname.toLowerCase()) || isTikTokStudioContext()) {
+      await deliverSocialFileDrop(target, file, event);
     } else {
       dispatchFileDragEvents(target, file, event, ["dragenter", "dragover", "drop"]);
     }

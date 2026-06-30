@@ -21,6 +21,7 @@ vi.mock("../hyperframesTranscriptionService", () => ({
 }));
 
 import {
+  attachStoryboardReviewTranscribeWorkerPid,
   getStoryboardReviewTranscribeJob,
   runStoryboardReviewTranscribeJob,
   setStoryboardReviewTranscribeJob,
@@ -76,8 +77,8 @@ describe("storyboardReviewTranscriptionJobs", () => {
       jobId: "job_stale",
       userId: "1",
       status: "running",
-      submittedAt: Date.now() - 20 * 60_000,
-      updatedAt: Date.now() - 20 * 60_000,
+      submittedAt: Date.now() - 35 * 60_000,
+      updatedAt: Date.now() - 35 * 60_000,
       input: {
         shotId: "shot_1",
         sourceVideoUrl: "/api/storage/files/shot-1.mp4",
@@ -91,7 +92,59 @@ describe("storyboardReviewTranscriptionJobs", () => {
       jobId: "job_stale",
       status: "failed",
     });
-    expect(job?.errorMessage).toMatch(/timed out/i);
+    expect(job?.errorMessage).toMatch(/worker stopped/i);
+  });
+
+  it("fails orphaned running jobs quickly when no worker pid was recorded", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T10:20:00.000Z"));
+    await setStoryboardReviewTranscribeJob({
+      jobId: "job_orphaned",
+      userId: "1",
+      status: "running",
+      submittedAt: Date.now() - 6 * 60_000,
+      updatedAt: Date.now() - 6 * 60_000,
+      input: {
+        shotId: "shot_1",
+        sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+        language: "th",
+      },
+    });
+
+    const job = await getStoryboardReviewTranscribeJob("job_orphaned");
+
+    expect(job).toMatchObject({
+      jobId: "job_orphaned",
+      status: "failed",
+    });
+    expect(job?.errorMessage).toMatch(/worker stopped/i);
+  });
+
+  it("attaches the detached worker pid without resetting job status", async () => {
+    await setStoryboardReviewTranscribeJob({
+      jobId: "job_pid",
+      userId: "1",
+      status: "queued",
+      submittedAt: 1_000,
+      updatedAt: 1_000,
+      input: {
+        shotId: "shot_1",
+        sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+        language: "th",
+      },
+    });
+
+    await attachStoryboardReviewTranscribeWorkerPid({
+      jobId: "job_pid",
+      workerPid: process.pid,
+    });
+
+    const job = await getStoryboardReviewTranscribeJob("job_pid");
+    expect(job).toMatchObject({
+      jobId: "job_pid",
+      status: "queued",
+      workerPid: process.pid,
+    });
   });
 
   it("allows a failed stale job to be retried by a Cloud Tasks redelivery", async () => {

@@ -69,3 +69,12 @@ export function startDetachedStoryboardReviewTranscribeWorker(input: {
     input.jobId,
   ]);
 }
+
+export function startDetachedStoryboardPreviewMatchCaptureWorker(input: {
+  captureJobId: string;
+}): DetachedWorkerStart {
+  return startDetachedTsxWorker("server/workers/storyboardPreviewMatchCaptureWorkerCli.ts", [
+    "--capture-job-id",
+    input.captureJobId,
+  ]);
+}

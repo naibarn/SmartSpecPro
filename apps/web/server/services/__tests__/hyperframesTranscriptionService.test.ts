@@ -1,4 +1,6 @@
-import { writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,11 +9,72 @@ import {
   parseHyperframesTranscriptJson,
   renderTranscriptCuesAsSrt,
   renderTranscriptCuesAsVtt,
+  resolveWhisperExecutable,
+  resolveWhisperThreadCount,
   storageKeyFromManagedHyperframesMediaUrl,
   transcribeHyperframesStoryboardShot,
 } from "../hyperframesTranscriptionService";
 
 describe("hyperframesTranscriptionService", () => {
+  it("prefers a working configured whisper bin dir over a stale PATH wrapper", async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "smartspec-whisper-test-"));
+    try {
+      const staleBinDir = path.join(tmpDir, "stale-bin");
+      const workingBinDir = path.join(tmpDir, "working-bin");
+      await writeFile(path.join(tmpDir, "placeholder"), "", "utf8");
+      await mkdir(staleBinDir, { recursive: true });
+      await mkdir(workingBinDir, { recursive: true });
+      const staleWrapper = path.join(staleBinDir, "whisper-cpp");
+      const workingCli = path.join(workingBinDir, "whisper-cli");
+      await writeFile(
+        staleWrapper,
+        "#!/usr/bin/env bash\nexec /tmp/smartspec-deps/whisper.cpp/build/bin/whisper-cli \"$@\"\n",
+        "utf8",
+      );
+      await writeFile(
+        workingCli,
+        "#!/usr/bin/env bash\nif [ \"$1\" = \"--help\" ]; then echo usage >&2; exit 0; fi\nexit 1\n",
+        "utf8",
+      );
+      await chmod(staleWrapper, 0o755);
+      await chmod(workingCli, 0o755);
+
+      expect(resolveWhisperExecutable({
+        PATH: staleBinDir,
+        HYPERFRAMES_WHISPER_BIN_DIR: workingBinDir,
+      })).toBe(workingCli);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails fast when HYPERFRAMES_WHISPER_PATH points to a broken wrapper", async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "smartspec-whisper-test-"));
+    try {
+      const staleWrapper = path.join(tmpDir, "whisper-cpp");
+      await writeFile(
+        staleWrapper,
+        "#!/usr/bin/env bash\nexec /tmp/smartspec-deps/whisper.cpp/build/bin/whisper-cli \"$@\"\n",
+        "utf8",
+      );
+      await chmod(staleWrapper, 0o755);
+
+      expect(() => resolveWhisperExecutable({
+        HYPERFRAMES_WHISPER_PATH: staleWrapper,
+      })).toThrow(/not a working whisper\.cpp executable/i);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps whisper.cpp CPU usage bounded by default and respects thread overrides", () => {
+    expect(resolveWhisperThreadCount({ HYPERFRAMES_WHISPER_THREADS: "2" })).toBeLessThanOrEqual(2);
+    expect(resolveWhisperThreadCount({
+      HYPERFRAMES_WHISPER_THREADS: "8",
+      HYPERFRAMES_WHISPER_THREADS_MAX: "2",
+    })).toBe(2);
+  });
+
   it("extracts a managed storage key from supported media URLs", () => {
     expect(
       storageKeyFromManagedHyperframesMediaUrl(
@@ -118,6 +181,10 @@ describe("hyperframesTranscriptionService", () => {
       language: "th",
       model: "large-v3",
       deps: {
+        env: {
+          HYPERFRAMES_TRANSCRIBE_LOCAL_CONCURRENCY: "2",
+          HYPERFRAMES_WHISPER_THREADS: "2",
+        },
         copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/shot-1.mp4" }),
         extractAudioFromVideo: () => undefined,
         resolveModelPath: model => `/tmp/${model}.bin`,
@@ -135,6 +202,8 @@ describe("hyperframesTranscriptionService", () => {
       expect.arrayContaining([
         "--model",
         "/tmp/large-v3.bin",
+        "--threads",
+        "2",
         "--output-json-full",
         "--language",
         "th",
@@ -161,6 +230,10 @@ describe("hyperframesTranscriptionService", () => {
       language: "th",
       model: "large-v3",
       deps: {
+        env: {
+          HYPERFRAMES_TRANSCRIBE_LOCAL_CONCURRENCY: "2",
+          HYPERFRAMES_WHISPER_THREADS: "2",
+        },
         copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/source.mp4" }),
         extractAudioFromVideo,
         resolveModelPath: model => `/tmp/${model}.bin`,
@@ -174,6 +247,67 @@ describe("hyperframesTranscriptionService", () => {
       mediaStartSec: 60,
       durationSec: 30,
     });
+  });
+
+  it("serializes local transcribe work so only one whisper job runs per machine", async () => {
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "smartspec-whisper-lock-test-"));
+    try {
+      const workingCli = path.join(tmpDir, "whisper-cli");
+      await writeFile(
+        workingCli,
+        "#!/usr/bin/env bash\nif [ \"$1\" = \"--help\" ]; then echo usage >&2; exit 0; fi\nexit 0\n",
+        "utf8",
+      );
+      await chmod(workingCli, 0o755);
+
+      let activeCommands = 0;
+      let maxActiveCommands = 0;
+      const runCommand = vi.fn(async (_command, _args, options) => {
+        activeCommands += 1;
+        maxActiveCommands = Math.max(maxActiveCommands, activeCommands);
+        await new Promise(resolve => setTimeout(resolve, 25));
+        await writeFile(
+          `${options.cwd}/transcript.json`,
+          JSON.stringify([{ id: "w1", text: "เสียงทดสอบ", start: 0, end: 0.5 }]),
+          "utf8",
+        );
+        activeCommands -= 1;
+        return { stdout: "", stderr: "" };
+      });
+      const deps = {
+        env: {
+          HYPERFRAMES_WHISPER_PATH: workingCli,
+          HYPERFRAMES_WHISPER_THREADS: "2",
+          HYPERFRAMES_TRANSCRIBE_LOCK_PATH: path.join(tmpDir, "transcribe.lock"),
+          HYPERFRAMES_TRANSCRIBE_LOCK_POLL_MS: "5",
+          HYPERFRAMES_TRANSCRIBE_LOCK_WAIT_MS: "5000",
+        },
+        copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/shot-1.mp4" }),
+        extractAudioFromVideo: () => undefined,
+        resolveModelPath: model => `/tmp/${model}.bin`,
+        runCommand,
+      };
+
+      await Promise.all([
+        transcribeHyperframesStoryboardShot({
+          sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_1/shot-1.mp4",
+          language: "th",
+          model: "large-v3",
+          deps,
+        }),
+        transcribeHyperframesStoryboardShot({
+          sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_2/shot-1.mp4",
+          language: "th",
+          model: "large-v3",
+          deps,
+        }),
+      ]);
+
+      expect(runCommand).toHaveBeenCalledTimes(2);
+      expect(maxActiveCommands).toBe(1);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
   });
 
   it("fails closed for Thai when an English-only model or remote URL is used", async () => {
@@ -207,6 +341,10 @@ describe("hyperframesTranscriptionService", () => {
       sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_1/shot-1.mp4",
       language: "th",
       deps: {
+        env: {
+          HYPERFRAMES_TRANSCRIBE_LOCAL_CONCURRENCY: "2",
+          HYPERFRAMES_WHISPER_THREADS: "2",
+        },
         copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/shot-1.mp4" }),
         extractAudioFromVideo: () => undefined,
         resolveModelPath: model => `/tmp/${model}.bin`,
@@ -225,6 +363,10 @@ describe("hyperframesTranscriptionService", () => {
         sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_1/shot-1.mp4",
         language: "th",
         deps: {
+          env: {
+            HYPERFRAMES_TRANSCRIBE_LOCAL_CONCURRENCY: "2",
+            HYPERFRAMES_WHISPER_THREADS: "2",
+          },
           copyStorageToPath: async () => ({ key: "marketplace-auto-review/tenant_1/run_1/shot-1.mp4" }),
           extractAudioFromVideo: () => undefined,
           resolveModelPath: model => `/tmp/${model}.bin`,
@@ -235,6 +377,27 @@ describe("hyperframesTranscriptionService", () => {
           },
         },
       }),
-    ).rejects.toThrow(/whisper-cpp is missing/i);
+    ).rejects.toThrow(/stale temporary path/i);
+  });
+
+  it("does not misclassify non-whisper missing file errors as runtime setup failures", async () => {
+    await expect(
+      transcribeHyperframesStoryboardShot({
+        sourceVideoUrl: "/api/storage/files/marketplace-auto-review/tenant_1/run_1/shot-1.mp4",
+        language: "th",
+        deps: {
+          env: {
+            HYPERFRAMES_TRANSCRIBE_LOCAL_CONCURRENCY: "2",
+            HYPERFRAMES_WHISPER_THREADS: "2",
+          },
+          copyStorageToPath: async () => {
+            throw new Error("ENOENT: no such file or directory, open '/missing/source.mp4'");
+          },
+          extractAudioFromVideo: () => undefined,
+          resolveModelPath: model => `/tmp/${model}.bin`,
+          runCommand: async () => ({ stdout: "", stderr: "" }),
+        },
+      }),
+    ).rejects.toThrow(/HyperFrames transcribe failed: ENOENT/i);
   });
 });

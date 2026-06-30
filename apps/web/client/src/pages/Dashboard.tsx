@@ -73,7 +73,6 @@ import {
   ShieldCheck,
   Filter,
   Download,
-  ReceiptText,
   ClipboardList,
   ClipboardCheck,
 } from "lucide-react";
@@ -276,6 +275,19 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedReviewAgencyId, setSelectedReviewAgencyId] =
     useState<string>("all");
+  const [isDesktopSidebarViewport, setIsDesktopSidebarViewport] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 1280px)").matches
+      : false,
+  );
+  const dashboardMotionProps = (delay: number) =>
+    isDesktopSidebarViewport
+      ? {
+          initial: { opacity: 0, y: 20 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay },
+        }
+      : {};
 
   // Fetch real media tasks for recent activity
   const { data: mediaTasksData } = trpc.media.listTasks.useQuery(
@@ -337,7 +349,10 @@ export default function Dashboard() {
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
   const analyticsEnabled = isAuthenticated && isAdminLike;
   const desktopGovernanceEnabled =
-    isAuthenticated && tenantFlags.desktopHostEnabled && isAdminLike && Boolean(user?.currentTenantId);
+    isAuthenticated &&
+    tenantFlags.desktopHostEnabled &&
+    isAdminLike &&
+    Boolean(user?.currentTenantId);
   const desktopGovernanceStatus = useDesktopHostStatus(
     desktopGovernanceEnabled,
     "tenant"
@@ -446,6 +461,15 @@ export default function Dashboard() {
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(min-width: 1280px)");
+    const updateViewport = () => setIsDesktopSidebarViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -1215,83 +1239,166 @@ export default function Dashboard() {
     applySkillMaintenanceRecommendationsMutation.mutate({ recommendationIds });
   };
 
-  const quickActions = [
-    {
+  const sidebarQuickActionIds = [
+    "work-request",
+    "my-requests",
+    "chat",
+    "finance",
+    "finance-reports",
+    "media-studio",
+    "storyboard-review",
+    "marketplace-capture",
+    "skills",
+    "media-history",
+    "render-jobs",
+    "document-management",
+    "private-files",
+    "presentations",
+    "agencies",
+    "workpack-roi",
+    "credits",
+  ] as const;
+  const quickActionColorById: Record<string, string> = {
+    "work-request": "from-slate-700 to-sky-700",
+    "my-requests": "from-slate-700 to-indigo-700",
+    chat: "from-slate-700 to-cyan-700",
+    finance: "from-slate-700 to-emerald-700",
+    "finance-reports": "from-slate-700 to-teal-700",
+    "media-studio": "from-slate-700 to-slate-900",
+    "storyboard-review": "from-slate-700 to-cyan-700",
+    "marketplace-capture": "from-slate-700 to-emerald-700",
+    skills: "from-slate-700 to-violet-700",
+    "media-history": "from-slate-700 to-sky-700",
+    "render-jobs": "from-slate-700 to-indigo-700",
+    "document-management": "from-slate-700 to-sky-700",
+    "private-files": "from-slate-700 to-slate-900",
+    presentations: "from-slate-700 to-indigo-700",
+    agencies: "from-slate-700 to-blue-700",
+    "workpack-roi": "from-slate-700 to-violet-700",
+    credits: "from-slate-700 to-emerald-700",
+  };
+  const quickActionFallbackById = {
+    "work-request": {
       label: t("dashboard:quickActions.startWork"),
       icon: ClipboardList,
       href: "/work/request",
-      color: "from-slate-700 to-sky-700",
     },
-    {
+    "my-requests": {
       label: t("dashboard:quickActions.myRequests"),
       icon: FileText,
       href: "/work/requests",
-      color: "from-slate-700 to-indigo-700",
     },
-    {
-      label: t("dashboard:quickActions.mediaStudio"),
-      icon: Sparkles,
-      href: "/media-studio",
-      color: "from-slate-700 to-slate-900",
-    },
-    {
-      label: "Chrome Extension",
-      icon: Download,
-      href: "/marketplace-capture/connect",
-      color: "from-slate-700 to-sky-700",
-    },
-    {
-      label: "Storyboard Review",
-      icon: Video,
-      href: "/storyboard-review",
-      color: "from-slate-700 to-cyan-700",
-    },
-    {
+    chat: {
       label: t("dashboard:quickActions.chat"),
       icon: MessageSquare,
       href: "/chat",
-      color: "from-slate-700 to-cyan-700",
     },
-    {
+    finance: {
       label: t("dashboard:quickActions.finance"),
-      icon: ReceiptText,
+      icon: CreditCard,
       href: "/chat?panel=finance",
-      color: "from-slate-700 to-emerald-700",
     },
-    {
+    "media-studio": {
+      label: t("dashboard:quickActions.mediaStudio"),
+      icon: Sparkles,
+      href: "/media-studio",
+    },
+    "storyboard-review": {
+      label: "Storyboard Review",
+      icon: Video,
+      href: "/storyboard-review",
+    },
+    "document-management": {
       label: t("dashboard:quickActions.documentManagement"),
       icon: FileText,
       href: "/document-management",
-      color: "from-slate-700 to-sky-700",
     },
-    {
+    presentations: {
       label: t("dashboard:quickActions.presentations"),
       icon: Layers,
       href: "/presentations",
-      color: "from-slate-700 to-indigo-700",
     },
-    {
+    agencies: {
       label: t("dashboard:quickActions.agencies"),
       icon: Users,
       href: "/agencies",
-      color: "from-slate-700 to-blue-700",
     },
-    {
+    "workpack-roi": {
       label: "Workpacks",
       icon: Workflow,
       href: buildWorkpackEntrypointHref({
         entrypoint: "dashboard",
         surface: "roi",
       }),
-      color: "from-slate-700 to-violet-700",
     },
-    {
+    credits: {
       label: t("dashboard:quickActions.buyCredits"),
       icon: CreditCard,
       href: "/credits",
-      color: "from-slate-700 to-emerald-700",
     },
-  ];
+  } as const;
+  const quickActions = sidebarQuickActionIds
+    .map(id => {
+      const menuItem = mainMenuItems.find(item => item.id === id);
+      const fallback =
+        quickActionFallbackById[id as keyof typeof quickActionFallbackById];
+      if (!menuItem && !fallback) return null;
+      return {
+        id,
+        label: menuItem?.label ?? fallback.label,
+        icon: menuItem?.IconComponent ?? fallback.icon,
+        href: menuItem?.path ?? fallback.href,
+        color: quickActionColorById[id] ?? "from-slate-700 to-sky-700",
+      };
+    })
+    .filter((action): action is NonNullable<typeof action> => Boolean(action));
+
+  const renderQuickActionsSection = (delay = 0.1) => (
+    <motion.section
+      {...dashboardMotionProps(delay)}
+      className="mb-8"
+      data-testid="dashboard-quick-links"
+    >
+      <DashboardSectionHeader
+        eyebrow={t("dashboard:quickActions.eyebrow")}
+        title={t("dashboard:quickActions.titleAttr")}
+        description={t("dashboard:quickActions.description")}
+        trailing={
+          <p className="hidden max-w-md text-right text-sm leading-6 text-slate-500 xl:block">
+            {t("dashboard:quickActions.subtitle")}
+          </p>
+        }
+        titleClassName={`mt-1 ${dashboardCardTitleXlClass}`}
+      />
+      <p className="mb-4 text-sm leading-6 text-slate-500 xl:hidden">
+        {t("dashboard:quickActions.subtitle")}
+      </p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
+        {quickActions.map(action => (
+          <button
+            key={action.id}
+            onClick={() => navigateTo(action.href)}
+            className="group relative min-h-[104px] overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition-colors duration-200 hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 xl:bg-white/90 xl:shadow-[0_16px_38px_rgba(15,23,42,0.06)] xl:backdrop-blur-xl xl:transition-all xl:hover:-translate-y-0.5 xl:hover:shadow-[0_22px_52px_rgba(15,23,42,0.10)]"
+          >
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 transition-opacity duration-300 group-hover:opacity-[0.08]`}
+            />
+            <div
+              className={`mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${action.color} shadow-lg shadow-black/10`}
+            >
+              <action.icon className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 pr-6">
+              <div className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+                {action.label}
+              </div>
+            </div>
+            <ChevronRight className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-slate-600" />
+          </button>
+        ))}
+      </div>
+    </motion.section>
+  );
 
   const workpackAccessActions = [
     {
@@ -1535,27 +1642,27 @@ export default function Dashboard() {
     ));
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_85%_12%,rgba(14,165,233,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.06),transparent_26%)]" />
+    <div className="relative min-h-screen overflow-x-hidden bg-slate-50">
+      <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_85%_12%,rgba(14,165,233,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(15,23,42,0.06),transparent_26%)] xl:block" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-slate-300/70 to-transparent" />
-      <div className="pointer-events-none absolute -left-24 top-32 h-72 w-72 rounded-full bg-sky-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 top-1/3 h-80 w-80 rounded-full bg-indigo-400/8 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-32 hidden h-72 w-72 rounded-full bg-sky-400/10 blur-3xl xl:block" />
+      <div className="pointer-events-none absolute right-0 top-1/3 hidden h-80 w-80 rounded-full bg-indigo-400/8 blur-3xl xl:block" />
       {/* Mobile menu button */}
       <button
         onClick={() => setSidebarOpen(true)}
-        className="fixed top-4 left-4 z-50 lg:hidden rounded-2xl border border-slate-200/80 bg-white/85 p-2.5 shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+        className="fixed top-4 left-4 z-50 rounded-2xl border border-slate-200/80 bg-white p-2.5 shadow-sm xl:hidden"
       >
         <Menu className="w-5.5 h-5.5 text-slate-700" />
       </button>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 xl:hidden">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white/95 border-r border-slate-200/80 flex flex-col shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+          <aside className="absolute left-0 top-0 bottom-0 w-[min(88vw,24rem)] bg-white/95 border-r border-slate-200/80 flex flex-col shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
             <div className="flex items-center justify-between p-4">
               <span className="font-semibold text-slate-900">
                 {tenant?.name || t("dashboard:title")}
@@ -1697,7 +1804,8 @@ export default function Dashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200/80 shadow-[0_24px_70px_rgba(15,23,42,0.08)] hidden lg:flex lg:flex-col">
+      {isDesktopSidebarViewport ? (
+      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200/80 shadow-[0_24px_70px_rgba(15,23,42,0.08)] flex flex-col">
         <div className="flex items-center gap-3 p-6 pb-4">
           {tenant?.logoUrl ? (
             <img
@@ -1830,14 +1938,14 @@ export default function Dashboard() {
           </Button>
         </div>
       </aside>
+      ) : null}
 
       {/* Main Content */}
-      <main className="relative z-10 lg:ml-64 px-5 py-6 lg:px-8 lg:py-8">
+      <main className="relative z-10 px-5 py-6 xl:ml-64 xl:px-8 xl:py-8">
         <div className="mx-auto max-w-[1600px]">
           {/* Header */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            {...dashboardMotionProps(0)}
             className="mb-8"
           >
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -1898,14 +2006,14 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                 <LocaleToggle />
                 <HelpButton page="/dashboard" variant="outline" size="sm" />
                 {user.role === "admin" && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-2"
+                    className="min-h-10 gap-2 whitespace-normal text-left"
                     onClick={() => navigateTo(adminSkillMaintenancePath)}
                   >
                     <ClipboardCheck className="h-4 w-4" />
@@ -1921,7 +2029,7 @@ export default function Dashboard() {
                   href="/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-900"
                 >
                   <ExternalLink className="w-4 h-4" />
                   {t("dashboard:websitePreview")}
@@ -1930,14 +2038,14 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
+          {renderQuickActionsSection(0.08)}
+
           {/* Priority Snapshot */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
+            {...dashboardMotionProps(0.08)}
             className="mb-8 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]"
           >
-            <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-sm xl:bg-white/90 xl:shadow-[0_24px_60px_rgba(15,23,42,0.08)] xl:backdrop-blur-xl">
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-500 via-sky-500 to-emerald-400" />
               <DashboardSectionHeader
                 eyebrow={t("dashboard:prioritySnapshot.eyebrow")}
@@ -1974,7 +2082,7 @@ export default function Dashboard() {
                   return (
                     <div
                       key={notice.key}
-                      className={`rounded-2xl border p-4 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 ${toneClass}`}
+                      className={`rounded-2xl border p-4 shadow-sm xl:transition-transform xl:duration-200 xl:hover:-translate-y-0.5 ${toneClass}`}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
@@ -2012,7 +2120,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white p-5 shadow-sm xl:bg-white/90 xl:shadow-[0_24px_60px_rgba(15,23,42,0.08)] xl:backdrop-blur-xl">
               <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-500 via-sky-500 to-slate-300" />
               <DashboardSectionHeader
                 eyebrow={t("dashboard:nextBestActions.eyebrow")}
@@ -2036,7 +2144,7 @@ export default function Dashboard() {
                   <button
                     key={action.label}
                     onClick={() => navigateTo(action.href)}
-                    className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+                    className="group flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 xl:bg-white/90 xl:transition-all xl:hover:-translate-y-0.5"
                   >
                     <div
                       className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${action.color} shadow-sm shadow-slate-200`}
@@ -2057,9 +2165,7 @@ export default function Dashboard() {
           </motion.section>
 
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.09 }}
+            {...dashboardMotionProps(0.09)}
             className="mb-8"
           >
             <FinanceAccessGate>
@@ -2088,9 +2194,7 @@ export default function Dashboard() {
 
           {desktopGovernanceEnabled && (
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.09 }}
+              {...dashboardMotionProps(0.09)}
               className="mb-8"
             >
               <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
@@ -2204,9 +2308,7 @@ export default function Dashboard() {
 
           {user.role === "admin" && (
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.095 }}
+              {...dashboardMotionProps(0.095)}
               className="mb-8"
             >
               <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
@@ -2416,10 +2518,8 @@ export default function Dashboard() {
           )}
 
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-8"
+            {...dashboardMotionProps(0.1)}
+            className="mb-8 hidden xl:block"
           >
             <Suspense
               fallback={
@@ -2434,9 +2534,7 @@ export default function Dashboard() {
 
           {/* Trend & Health */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.14 }}
+            {...dashboardMotionProps(0.14)}
             className="mb-8 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
           >
             <div className="border-b border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-sky-50/70 p-5">
@@ -2814,9 +2912,7 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            {...dashboardMotionProps(0.1)}
             className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8"
           >
             {stats.map((stat, index) => (
@@ -3139,41 +3235,6 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-
-            <DashboardSectionHeader
-              eyebrow={t("dashboard:quickActions.eyebrow")}
-              title={t("dashboard:quickActions.titleAttr")}
-              description={t("dashboard:quickActions.description")}
-              trailing={
-                <p className="hidden max-w-md text-right text-sm leading-6 text-slate-500 lg:block">
-                  {t("dashboard:quickActions.subtitle")}
-                </p>
-              }
-              titleClassName={`mt-1 ${dashboardCardTitleXlClass}`}
-            />
-            <p className="mb-4 text-sm leading-6 text-slate-500 lg:hidden">
-              {t("dashboard:quickActions.subtitle")}
-            </p>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              {quickActions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={() => setLocation(action.href)}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-5 text-left shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(15,23,42,0.10)]"
-                >
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-0 transition-opacity duration-300 group-hover:opacity-[0.08]`}
-                  />
-                  <div
-                    className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.color} flex items-center justify-center mb-4 shadow-lg shadow-black/10`}
-                  >
-                    <action.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div className={dashboardCardTitleClass}>{action.label}</div>
-                  <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-slate-600" />
-                </button>
-              ))}
-            </div>
           </motion.div>
 
           {/* Workflow and Approvals Grid */}
@@ -3344,9 +3405,7 @@ export default function Dashboard() {
 
           {/* Two-column layout: Recent Activity + Sidebar */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
+            {...dashboardMotionProps(0.35)}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"
           >
             {/* Recent Media Generations */}
@@ -3542,9 +3601,7 @@ export default function Dashboard() {
 
           {/* Credit Transactions */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            {...dashboardMotionProps(0.4)}
             className="mb-8"
           >
             <DashboardSectionHeader

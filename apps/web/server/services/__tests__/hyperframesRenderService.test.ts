@@ -18,6 +18,7 @@ import {
   buildHyperframesCompositionInput,
   buildHyperframesFinalCompositeCompositionInput,
 } from "../hyperframesCompositionService";
+import { MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID } from "../../../shared/storyboardPreviewMatchCapture";
 import {
   marketplaceAutoReviewOutboxJobs,
   marketplaceAutoReviewRuns,
@@ -340,7 +341,7 @@ describe("hyperframesRenderService", () => {
       marketplaceAutoReviewOutboxJobs,
     ]);
     expect(db.inserts[0].values).toMatchObject({
-      id: "manual_storyboard_product_123",
+      id: MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
       userId: 1,
       tenantId: "tenant_1",
       productName: "Manual Storyboard Project",
@@ -349,7 +350,7 @@ describe("hyperframesRenderService", () => {
       id: "manual_storyboard_run_123",
       userId: 1,
       tenantId: "tenant_1",
-      productId: "manual_storyboard_product_123",
+      productId: MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
       productionRunId: "manual_storyboard_run_123",
       status: "completed",
       currentStage: "storyboard_review",
