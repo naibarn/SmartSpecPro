@@ -101,6 +101,10 @@ export interface TenantFeatureFlags {
   hyperframesWorkerFinalComposite: boolean; // F92A — Worker-only HyperFrames final composite rendering
   marketplaceHyperframesLibrarySaveEnabled: boolean; // F93 — Save completed HyperFrames renders to Library
   marketplaceHyperframesOperatorEnabled: boolean; // F94 — Delegated HyperFrames operator controls
+  storyboardPreviewMatchCaptureEnabled: boolean; // F94A — Preview-match browser capture master gate
+  storyboardPreviewMatchCaptureServerWorkerEnabled: boolean; // F94B — Preview-match capture server worker
+  storyboardPreviewMatchCaptureHighEnabled: boolean; // F94C — Preview-match capture high-quality output
+  storyboardClientCaptureExperimentEnabled: boolean; // F94D — Experimental client capture gate
   mcpConnectEnabled: boolean; // F95 — MCP Connect master rollout gate
   mcpConnectMagnificEnabled: boolean; // F96 — Magnific MCP provider rollout gate
   mcpConnectHiggsfieldEnabled: boolean; // F97 — Higgsfield MCP provider rollout gate
@@ -128,6 +132,17 @@ export interface TenantFeatureFlags {
   agentExperienceForceRollback: boolean; // F119 — Force-disable all Agent Experience behavior
   agentExperienceWebsiteWidget: boolean; // F120 — Future customer website widget gate
   agentExperiencePageActions: boolean; // F121 — Future customer page action tools gate
+  presentationArticleStoryboardVideo: boolean; // F127 — Article to Storyboard Review video project output
+  presentationArticleStoryboardVideoPreview: boolean; // F127A — Builder preview for article video handoff
+  presentationArticleStoryboardVideoOverlay: boolean; // F127B — CSS text overlay metadata for article video shots
+  presentationArticleStoryboardVideoReferenceFrames: boolean; // F127C — 3x3 scene reference candidates
+  presentationArticleStoryboardVideoCharacterReferences: boolean; // F127D — Character reference image attachments
+  presentationArticleStoryboardVideoSeedancePrompt: boolean; // F127E — Seedance multi-shot prompt adapter
+  presentationArticleStoryboardVideoVoiceScript: boolean; // F127F — Article storytelling voice script skill
+  presentationArticleStoryboardVideoUvoiceVoiceover: boolean; // F127G — UVoice premium voiceover path
+  presentationArticleStoryboardVideoElevenLabsDialogue: boolean; // F127H — ElevenLabs dialogue-capable voice route
+  presentationArticleStoryboardVideoNativeAudio: boolean; // F127I — Native video speech/audio strategy
+  presentationArticleStoryboardVideoNativeAudioPromptComposer: boolean; // F127J — Native-audio video prompt composer
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -232,6 +247,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
+  "storyboardPreviewMatchCaptureEnabled",
+  "storyboardPreviewMatchCaptureServerWorkerEnabled",
+  "storyboardPreviewMatchCaptureHighEnabled",
+  "storyboardClientCaptureExperimentEnabled",
   "mcpConnectEnabled",
   "mcpConnectMagnificEnabled",
   "mcpConnectHiggsfieldEnabled",
@@ -259,6 +278,17 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agentExperienceForceRollback",
   "agentExperienceWebsiteWidget",
   "agentExperiencePageActions",
+  "presentationArticleStoryboardVideo",
+  "presentationArticleStoryboardVideoPreview",
+  "presentationArticleStoryboardVideoOverlay",
+  "presentationArticleStoryboardVideoReferenceFrames",
+  "presentationArticleStoryboardVideoCharacterReferences",
+  "presentationArticleStoryboardVideoSeedancePrompt",
+  "presentationArticleStoryboardVideoVoiceScript",
+  "presentationArticleStoryboardVideoUvoiceVoiceover",
+  "presentationArticleStoryboardVideoElevenLabsDialogue",
+  "presentationArticleStoryboardVideoNativeAudio",
+  "presentationArticleStoryboardVideoNativeAudioPromptComposer",
 ]);
 
 /**
@@ -362,6 +392,10 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hyperframesWorkerFinalComposite: false,
   marketplaceHyperframesLibrarySaveEnabled: false,
   marketplaceHyperframesOperatorEnabled: false,
+  storyboardPreviewMatchCaptureEnabled: false,
+  storyboardPreviewMatchCaptureServerWorkerEnabled: false,
+  storyboardPreviewMatchCaptureHighEnabled: false,
+  storyboardClientCaptureExperimentEnabled: false,
   mcpConnectEnabled: false,
   mcpConnectMagnificEnabled: false,
   mcpConnectHiggsfieldEnabled: false,
@@ -389,6 +423,17 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   agentExperienceForceRollback: false,
   agentExperienceWebsiteWidget: false,
   agentExperiencePageActions: false,
+  presentationArticleStoryboardVideo: false,
+  presentationArticleStoryboardVideoPreview: false,
+  presentationArticleStoryboardVideoOverlay: false,
+  presentationArticleStoryboardVideoReferenceFrames: false,
+  presentationArticleStoryboardVideoCharacterReferences: false,
+  presentationArticleStoryboardVideoSeedancePrompt: false,
+  presentationArticleStoryboardVideoVoiceScript: false,
+  presentationArticleStoryboardVideoUvoiceVoiceover: false,
+  presentationArticleStoryboardVideoElevenLabsDialogue: false,
+  presentationArticleStoryboardVideoNativeAudio: false,
+  presentationArticleStoryboardVideoNativeAudioPromptComposer: false,
 };
 
 export type HermesRolloutSurface =

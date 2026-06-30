@@ -1,0 +1,181 @@
+{
+  "ui:order": [
+    "product_category",
+    "custom_product_category",
+    "product_name",
+    "product_mark_name",
+    "brand_name",
+    "product_reference_images",
+    "character_images",
+    "supporting_images",
+    "clip_direction",
+    "custom_clip_direction",
+    "story_structure",
+    "custom_story_structure",
+    "key_features",
+    "target_audience",
+    "music_mood",
+    "visual_mood",
+    "randomize_mood",
+    "shot_count",
+    "aspect_ratio",
+    "camera_style",
+    "include_generator_name_in_prompt",
+    "show_child_if_relevant",
+    "preserve_product_identity",
+    "preserve_character_identity",
+    "background_must_match_reference",
+    "strict_sanitization",
+    "sanitize_level",
+    "remove_all_visible_text",
+    "disallow_named_style_references",
+    "banned_output_terms",
+    "avoid_elements",
+    "special_constraints",
+    "prompt_language"
+  ],
+  "product_category": {
+    "ui:widget": "select"
+  },
+  "custom_product_category": {
+    "ui:widget": "text"
+  },
+  "product_name": {
+    "ui:widget": "text",
+    "ui:placeholder": "e.g. minimalist coffee table"
+  },
+  "product_mark_name": {
+    "ui:widget": "text",
+    "ui:placeholder": "Optional internal name; removed from output"
+  },
+  "brand_name": {
+    "ui:widget": "text",
+    "ui:placeholder": "Legacy internal name; removed from output"
+  },
+  "product_reference_images": {
+    "ui:widget": "image-uploader",
+    "ui:options": {
+      "accept": [
+        "image/*"
+      ],
+      "multiple": true,
+      "maxItems": 4,
+      "minItems": 1,
+      "display": "grid",
+      "enableDragAndDrop": true
+    }
+  },
+  "character_images": {
+    "ui:widget": "image-uploader",
+    "ui:options": {
+      "accept": [
+        "image/*"
+      ],
+      "multiple": true,
+      "maxItems": 4,
+      "display": "grid",
+      "enableDragAndDrop": true
+    }
+  },
+  "supporting_images": {
+    "ui:widget": "image-uploader",
+    "ui:options": {
+      "accept": [
+        "image/*"
+      ],
+      "multiple": true,
+      "maxItems": 4,
+      "display": "grid",
+      "enableDragAndDrop": true
+    }
+  },
+  "clip_direction": {
+    "ui:widget": "select"
+  },
+  "custom_clip_direction": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 3
+    }
+  },
+  "story_structure": {
+    "ui:widget": "select"
+  },
+  "custom_story_structure": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 3
+    }
+  },
+  "key_features": {
+    "ui:widget": "tags",
+    "ui:placeholder": "Add visible points only"
+  },
+  "target_audience": {
+    "ui:widget": "text"
+  },
+  "music_mood": {
+    "ui:widget": "select"
+  },
+  "visual_mood": {
+    "ui:widget": "select"
+  },
+  "randomize_mood": {
+    "ui:widget": "switch"
+  },
+  "shot_count": {
+    "ui:widget": "radio"
+  },
+  "aspect_ratio": {
+    "ui:widget": "radio"
+  },
+  "camera_style": {
+    "ui:widget": "select"
+  },
+  "include_generator_name_in_prompt": {
+    "ui:widget": "switch"
+  },
+  "show_child_if_relevant": {
+    "ui:widget": "switch"
+  },
+  "preserve_product_identity": {
+    "ui:widget": "switch"
+  },
+  "preserve_character_identity": {
+    "ui:widget": "switch"
+  },
+  "background_must_match_reference": {
+    "ui:widget": "switch"
+  },
+  "strict_sanitization": {
+    "ui:widget": "switch",
+    "ui:help": "Recommended ON"
+  },
+  "sanitize_level": {
+    "ui:widget": "radio"
+  },
+  "remove_all_visible_text": {
+    "ui:widget": "switch",
+    "ui:help": "Recommended ON"
+  },
+  "disallow_named_style_references": {
+    "ui:widget": "switch",
+    "ui:help": "Recommended ON"
+  },
+  "banned_output_terms": {
+    "ui:widget": "tags",
+    "ui:placeholder": "Words that must never appear"
+  },
+  "avoid_elements": {
+    "ui:widget": "tags"
+  },
+  "special_constraints": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 5
+    }
+  },
+  "prompt_language": {
+    "ui:widget": "radio"
+  }
+}

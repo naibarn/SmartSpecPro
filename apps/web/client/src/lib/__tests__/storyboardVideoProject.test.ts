@@ -103,6 +103,108 @@ describe("buildStoryboardVideoProject", () => {
     expect(project?.settings.duration).toBeCloseTo(24 - oneFrameAt30Fps, 6);
   });
 
+  it("applies storyboard source trim to video editor timeline clips", () => {
+    const project = buildStoryboardVideoProject([
+      {
+        id: "trimmed",
+        prompt: "Uploaded source clip",
+        url: "https://cdn.example.com/source.mp4",
+        model: "Imported",
+        durationSeconds: 90,
+        generationExtraParams: {
+          sourceTrim: {
+            inSec: 12,
+            outSec: 46,
+            sourceDurationSec: 90,
+            disabledRanges: [],
+          },
+        },
+      },
+    ]);
+
+    const videoTrack = project?.timeline.tracks.find((track) => track.type === "video");
+    const clip = videoTrack?.clips[0];
+    const asset = clip ? project?.assets[clip.assetId] : undefined;
+
+    expect(clip?.duration).toBeCloseTo(34, 6);
+    expect(clip?.trimIn).toBeCloseTo(12, 6);
+    expect(clip?.trimOut).toBeCloseTo(46, 6);
+    expect(asset?.duration).toBeCloseTo(90, 6);
+    expect(project?.settings.duration).toBeCloseTo(34, 6);
+  });
+
+  it("expands disabled middle source ranges into separate video editor timeline clips", () => {
+    const project = buildStoryboardVideoProject([
+      {
+        id: "middle-cut",
+        prompt: "Uploaded source clip with middle cut",
+        url: "https://cdn.example.com/source.mp4",
+        model: "Imported",
+        durationSeconds: 90,
+        generationExtraParams: {
+          sourceTrim: {
+            inSec: 0,
+            outSec: 30,
+            sourceDurationSec: 90,
+            disabledRanges: [{ startSec: 10, endSec: 14 }],
+          },
+        },
+      },
+    ]);
+
+    const videoTrack = project?.timeline.tracks.find((track) => track.type === "video");
+
+    expect(videoTrack?.clips).toHaveLength(2);
+    expect(videoTrack?.clips[0].startTime).toBeCloseTo(0, 6);
+    expect(videoTrack?.clips[0].duration).toBeCloseTo(10, 6);
+    expect(videoTrack?.clips[0].trimIn).toBeCloseTo(0, 6);
+    expect(videoTrack?.clips[0].trimOut).toBeCloseTo(10, 6);
+    expect(videoTrack?.clips[1].startTime).toBeCloseTo(10, 6);
+    expect(videoTrack?.clips[1].duration).toBeCloseTo(16, 6);
+    expect(videoTrack?.clips[1].trimIn).toBeCloseTo(14, 6);
+    expect(videoTrack?.clips[1].trimOut).toBeCloseTo(30, 6);
+    expect(project?.settings.duration).toBeCloseTo(26, 6);
+  });
+
+  it("prefers a ready derived source clip over virtual source trim for video editor handoff", () => {
+    const project = buildStoryboardVideoProject([
+      {
+        id: "derived-middle-cut",
+        prompt: "Uploaded source clip with prepared trim",
+        url: "https://cdn.example.com/source.mp4",
+        model: "Imported",
+        durationSeconds: 90,
+        generationExtraParams: {
+          sourceTrim: {
+            inSec: 0,
+            outSec: 30,
+            sourceDurationSec: 90,
+            disabledRanges: [{ startSec: 10, endSec: 14 }],
+          },
+          sourceTrimDerived: {
+            status: "ready",
+            url: "https://cdn.example.com/source-trimmed.mp4",
+            durationSeconds: 26,
+            sourceUrl: "https://cdn.example.com/source.mp4",
+          },
+        },
+      },
+    ]);
+
+    const videoTrack = project?.timeline.tracks.find((track) => track.type === "video");
+    const clip = videoTrack?.clips[0];
+    const asset = clip ? project?.assets[clip.assetId] : undefined;
+
+    expect(videoTrack?.clips).toHaveLength(1);
+    expect(asset?.path).toBe("https://cdn.example.com/source-trimmed.mp4");
+    expect(asset?.originalPath).toBe("https://cdn.example.com/source-trimmed.mp4");
+    expect(asset?.duration).toBeCloseTo(26, 6);
+    expect(clip?.duration).toBeCloseTo(26, 6);
+    expect(clip?.trimIn).toBeCloseTo(0, 6);
+    expect(clip?.trimOut).toBeCloseTo(26, 6);
+    expect(project?.settings.duration).toBeCloseTo(26, 6);
+  });
+
   it("infers a vertical project from extra params when direct aspect ratio is missing", () => {
     const project = buildStoryboardVideoProject([
       {

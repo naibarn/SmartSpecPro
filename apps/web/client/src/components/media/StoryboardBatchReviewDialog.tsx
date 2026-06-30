@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Scissors, Trash2, Upload, Video, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, ChevronDown, ChevronUp, Copy, Download, ExternalLink, ImagePlus, Loader2, Maximize2, Mic2, Minus, Music2, Pause, Pencil, Play, Plus, RefreshCw, RotateCcw, Scissors, Trash2, Upload, Video, Volume2, VolumeX, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,8 +33,29 @@ import {
 } from "@/components/ui/dialog";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
+import {
+  getArticleStoryboardReviewMetadata,
+  isArticleStoryboardOverlayPromptLike,
+  updateArticleStoryboardOverlayMetadata,
+  updateArticleStoryboardVoiceMetadata,
+  type ArticleStoryboardReviewMetadata,
+} from "@shared/articleStoryboardVideo";
 
 const STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS = [4, 6, 8, 10, 12, 15] as const;
+const STORYBOARD_TRIM_FALLBACK_DURATION_SECONDS = 8;
+const STORYBOARD_TRIM_MAX_DISABLED_RANGES = 5;
+const STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS = 0.3;
+const STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS = 1;
+const STORYBOARD_TRIM_MERGE_GAP_SECONDS = 0.2;
+const STORYBOARD_TRIM_TIMELINE_MIN_ZOOM = 1;
+const STORYBOARD_TRIM_TIMELINE_MAX_ZOOM = 16;
+
+export interface StoryboardSourceTrimRange {
+  inSec: number;
+  outSec: number;
+  sourceDurationSec?: number;
+  disabledRanges?: Array<{ startSec: number; endSec: number }>;
+}
 
 export interface StoryboardReviewTask {
   id: string;
@@ -99,7 +120,9 @@ interface StoryboardBatchReviewDialogProps {
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
   onUpdateTaskPrompt?: (taskId: string, prompt: string) => void | Promise<void>;
+  onUpdateTaskExtraParams?: (taskId: string, extraParams: Record<string, unknown>) => void | Promise<void>;
   onUpdateTaskDuration?: (taskId: string, durationSeconds: number) => void | Promise<void>;
+  onUpdateTaskSourceTrim?: (taskId: string, trim: StoryboardSourceTrimRange | null) => void | Promise<void>;
   onUpdateTaskTransition?: (taskId: string, transition?: StoryboardClipTransition) => void | Promise<void>;
   conceptDetails?: string | null;
   onConceptDetailsChange?: (value: string) => void | Promise<void>;
@@ -152,6 +175,9 @@ interface StoryboardBatchReviewDialogProps {
   onRenderAspectRatioModeChange?: (mode: StoryboardRenderAspectRatioMode) => void;
   renderOutputLabel?: string | null;
   renderAspectRatioSourceLabel?: string | null;
+  mediaAttachTargetTaskId?: string | null;
+  mediaAttachTargetFrameIndex?: 0 | 1 | null;
+  onMediaAttachTargetChange?: (taskId: string | null, frameIndex?: 0 | 1 | null) => void;
 }
 
 export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchReviewDialogProps, "open"> {
@@ -159,6 +185,7 @@ export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchRev
   className?: string;
   contentClassName?: string;
   showCloseButton?: boolean;
+  tabletPageFlow?: boolean;
 }
 
 type StoryboardConfirmAction = "generate" | "render" | "project";
@@ -240,6 +267,146 @@ function getTransitionLabel(name: StoryboardClipTransitionName, locale: string):
   return locale === "th" ? option.labelTh : option.labelEn;
 }
 
+function roundStoryboardTrimSecond(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function clampStoryboardTrimTimelineZoom(value: number): number {
+  if (!Number.isFinite(value)) return STORYBOARD_TRIM_TIMELINE_MIN_ZOOM;
+  return Math.max(
+    STORYBOARD_TRIM_TIMELINE_MIN_ZOOM,
+    Math.min(STORYBOARD_TRIM_TIMELINE_MAX_ZOOM, Math.round(value * 10) / 10),
+  );
+}
+
+function readStoryboardSourceTrim(value: unknown): StoryboardSourceTrimRange | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const inSec = Number(record.inSec);
+  const outSec = Number(record.outSec);
+  if (!Number.isFinite(inSec) || !Number.isFinite(outSec) || outSec <= inSec) return null;
+  const sourceDurationSec = Number(record.sourceDurationSec);
+  return {
+    inSec: Math.max(0, roundStoryboardTrimSecond(inSec)),
+    outSec: Math.max(0.1, roundStoryboardTrimSecond(outSec)),
+    ...(Number.isFinite(sourceDurationSec) && sourceDurationSec > 0
+      ? { sourceDurationSec: roundStoryboardTrimSecond(sourceDurationSec) }
+      : {}),
+    disabledRanges: Array.isArray(record.disabledRanges)
+      ? record.disabledRanges
+          .map((range) => {
+            const rangeRecord = range && typeof range === "object" && !Array.isArray(range)
+              ? range as Record<string, unknown>
+              : {};
+            const startSec = Number(rangeRecord.startSec);
+            const endSec = Number(rangeRecord.endSec);
+            return Number.isFinite(startSec) && Number.isFinite(endSec) && endSec > startSec
+              ? { startSec: roundStoryboardTrimSecond(startSec), endSec: roundStoryboardTrimSecond(endSec) }
+              : null;
+          })
+          .filter((range): range is { startSec: number; endSec: number } => Boolean(range))
+      : undefined,
+  };
+}
+
+function normalizeStoryboardDisabledRanges(
+  ranges: Array<{ startSec: number; endSec: number }> | undefined,
+  inSec: number,
+  outSec: number,
+): Array<{ startSec: number; endSec: number }> {
+  const normalized = (ranges ?? [])
+    .map((range) => {
+      const startSec = Math.max(inSec, Math.min(outSec, roundStoryboardTrimSecond(range.startSec)));
+      const endSec = Math.max(inSec, Math.min(outSec, roundStoryboardTrimSecond(range.endSec)));
+      return endSec - startSec >= STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS
+        ? { startSec, endSec }
+        : null;
+    })
+    .filter((range): range is { startSec: number; endSec: number } => Boolean(range))
+    .sort((a, b) => a.startSec - b.startSec);
+
+  const merged: Array<{ startSec: number; endSec: number }> = [];
+  for (const range of normalized) {
+    const previous = merged[merged.length - 1];
+    if (previous && range.startSec <= previous.endSec + STORYBOARD_TRIM_MERGE_GAP_SECONDS) {
+      previous.endSec = Math.max(previous.endSec, range.endSec);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged.slice(0, STORYBOARD_TRIM_MAX_DISABLED_RANGES).map((range) => ({
+    startSec: roundStoryboardTrimSecond(range.startSec),
+    endSec: roundStoryboardTrimSecond(range.endSec),
+  }));
+}
+
+function storyboardDisabledDurationSeconds(ranges: Array<{ startSec: number; endSec: number }> | undefined): number {
+  return roundStoryboardTrimSecond(
+    (ranges ?? []).reduce((sum, range) => sum + Math.max(0, range.endSec - range.startSec), 0)
+  );
+}
+
+function getStoryboardTrimPreviewPlayableTime(
+  currentTime: number,
+  trim: StoryboardSourceTrimRange,
+): number {
+  let nextTime = Math.max(trim.inSec, Math.min(trim.outSec, currentTime));
+  const disabledRanges = normalizeStoryboardDisabledRanges(trim.disabledRanges, trim.inSec, trim.outSec);
+  for (const range of disabledRanges) {
+    if (nextTime >= range.startSec - 0.03 && nextTime < range.endSec - 0.03) {
+      nextTime = range.endSec;
+    }
+  }
+  return roundStoryboardTrimSecond(Math.max(trim.inSec, Math.min(trim.outSec, nextTime)));
+}
+
+function getTaskSourceTrim(task: StoryboardReviewTask): StoryboardSourceTrimRange | null {
+  return readStoryboardSourceTrim(task.generationExtraParams?.sourceTrim);
+}
+
+function getTaskTrimSourceDuration(task: StoryboardReviewTask, trim: StoryboardSourceTrimRange | null): number {
+  const sourceDuration = trim?.sourceDurationSec;
+  if (Number.isFinite(sourceDuration) && sourceDuration && sourceDuration > 0) return sourceDuration;
+  const taskDuration = Number(task.durationSeconds);
+  if (Number.isFinite(taskDuration) && taskDuration > 0) return taskDuration;
+  return STORYBOARD_TRIM_FALLBACK_DURATION_SECONDS;
+}
+
+function createStoryboardTrimDraft(task: StoryboardReviewTask): StoryboardSourceTrimRange {
+  const trim = getTaskSourceTrim(task);
+  const sourceDurationSec = Math.max(0.5, getTaskTrimSourceDuration(task, trim));
+  const inSec = Math.min(sourceDurationSec - 0.1, Math.max(0, trim?.inSec ?? 0));
+  const outSec = Math.max(inSec + 0.1, Math.min(sourceDurationSec, trim?.outSec ?? sourceDurationSec));
+  return {
+    inSec: roundStoryboardTrimSecond(inSec),
+    outSec: roundStoryboardTrimSecond(outSec),
+    sourceDurationSec: roundStoryboardTrimSecond(sourceDurationSec),
+    disabledRanges: normalizeStoryboardDisabledRanges(trim?.disabledRanges, inSec, outSec),
+  };
+}
+
+function isFullStoryboardTrim(trim: StoryboardSourceTrimRange): boolean {
+  const sourceDurationSec = trim.sourceDurationSec ?? trim.outSec;
+  return trim.inSec <= 0.05 && trim.outSec >= sourceDurationSec - 0.05 && (!trim.disabledRanges || trim.disabledRanges.length === 0);
+}
+
+function readStoryboardSourceTrimDerivedStatus(extraParams: Record<string, unknown> | undefined): {
+  status: string;
+  url?: string;
+} | null {
+  const derived = extraParams?.sourceTrimDerived;
+  if (!derived || typeof derived !== "object" || Array.isArray(derived)) return null;
+  const record = derived as Record<string, unknown>;
+  const status = typeof record.status === "string" ? record.status : "";
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  if (!status) return null;
+  return {
+    status,
+    ...(url ? { url } : {}),
+  };
+}
+
 export function StoryboardBatchReviewPanel({
   tasks,
   selectedTaskIds,
@@ -249,7 +416,9 @@ export function StoryboardBatchReviewPanel({
   onSelectNone,
   onRegenerateTask,
   onUpdateTaskPrompt,
+  onUpdateTaskExtraParams,
   onUpdateTaskDuration,
+  onUpdateTaskSourceTrim,
   onUpdateTaskTransition,
   conceptDetails,
   onConceptDetailsChange,
@@ -296,10 +465,14 @@ export function StoryboardBatchReviewPanel({
   onRenderAspectRatioModeChange,
   renderOutputLabel,
   renderAspectRatioSourceLabel,
+  mediaAttachTargetTaskId = null,
+  mediaAttachTargetFrameIndex = null,
+  onMediaAttachTargetChange,
   closeLabel = "Close",
   className,
   contentClassName,
   showCloseButton = true,
+  tabletPageFlow = false,
 }: StoryboardBatchReviewPanelProps) {
   const { t, locale } = useScopedTranslation(["media", "common"]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -307,6 +480,7 @@ export function StoryboardBatchReviewPanel({
   const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
   const [isCancellingSelected, setIsCancellingSelected] = useState(false);
   const [expandedMetadataTaskId, setExpandedMetadataTaskId] = useState<string | null>(null);
+  const [expandedArticleVideoMetadataTaskId, setExpandedArticleVideoMetadataTaskId] = useState<string | null>(null);
   const [expandedFrameTaskId, setExpandedFrameTaskId] = useState<string | null>(null);
   const [isGuidanceExpanded, setIsGuidanceExpanded] = useState(false);
   const [plannerSpeechMode, setPlannerSpeechMode] = useState<StoryboardPromptPlannerOptions["speechMode"]>(
@@ -328,6 +502,20 @@ export function StoryboardBatchReviewPanel({
   const [copiedPromptTaskId, setCopiedPromptTaskId] = useState<string | null>(null);
   const [lightboxMedia, setLightboxMedia] = useState<StoryboardLightboxMedia>(null);
   const [draggingVideoTaskId, setDraggingVideoTaskId] = useState<string | null>(null);
+  const [expandedTrimTaskId, setExpandedTrimTaskId] = useState<string | null>(null);
+  const [trimDrafts, setTrimDrafts] = useState<Record<string, StoryboardSourceTrimRange>>({});
+  const [disabledRangeDrafts, setDisabledRangeDrafts] = useState<Record<string, { startSec: number; endSec: number }>>({});
+  const [trimPreviewTimes, setTrimPreviewTimes] = useState<Record<string, number>>({});
+  const [trimTimelineZooms, setTrimTimelineZooms] = useState<Record<string, number>>({});
+  const [trimTimelineCenters, setTrimTimelineCenters] = useState<Record<string, number>>({});
+  const [trimTimelineDrag, setTrimTimelineDrag] = useState<{
+    taskId: string;
+    mode: "playhead" | "cut-start" | "cut-end" | "cut-range";
+    rangeOffsetSec?: number;
+  } | null>(null);
+  const [trimPreviewMuted, setTrimPreviewMuted] = useState(false);
+  const [playingTrimTaskId, setPlayingTrimTaskId] = useState<string | null>(null);
+  const trimVideoRef = useRef<HTMLVideoElement | null>(null);
   const showGenerationCancel = Boolean(onCancelGeneration) && (Boolean(regeneratingTaskId) || isGeneratingSelected);
   const plannerSpeechLanguage = plannerSpeechMode === "th"
     ? "Thai"
@@ -640,6 +828,277 @@ export function StoryboardBatchReviewPanel({
     await onReplaceReferenceFrame(taskId, frameIndex, imageUrl);
   };
 
+  const openTrimPanel = (task: StoryboardReviewTask) => {
+    setExpandedTrimTaskId((current) => {
+      const next = current === task.id ? null : task.id;
+      if (next) {
+        const draft = createStoryboardTrimDraft(task);
+        const rangeWidth = Math.max(
+          STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS,
+          Math.min(2, Math.max(0.3, (draft.outSec - draft.inSec) / 5))
+        );
+        const rangeStart = roundStoryboardTrimSecond(draft.inSec + Math.max(0, (draft.outSec - draft.inSec - rangeWidth) / 2));
+        setTrimDrafts((currentDrafts) => ({
+          ...currentDrafts,
+          [task.id]: draft,
+        }));
+        setDisabledRangeDrafts((currentDrafts) => ({
+          ...currentDrafts,
+          [task.id]: currentDrafts[task.id] ?? {
+            startSec: rangeStart,
+            endSec: roundStoryboardTrimSecond(rangeStart + rangeWidth),
+          },
+        }));
+        setTrimPreviewTimes((currentTimes) => ({
+          ...currentTimes,
+          [task.id]: draft.inSec,
+        }));
+        setTrimTimelineZooms((currentZooms) => ({
+          ...currentZooms,
+          [task.id]: currentZooms[task.id] ?? STORYBOARD_TRIM_TIMELINE_MIN_ZOOM,
+        }));
+        setTrimTimelineCenters((currentCenters) => ({
+          ...currentCenters,
+          [task.id]: currentCenters[task.id] ?? draft.inSec,
+        }));
+      }
+      return next;
+    });
+    setPlayingTrimTaskId(null);
+  };
+
+  const updateTrimDraft = (taskId: string, updater: (draft: StoryboardSourceTrimRange) => StoryboardSourceTrimRange) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    setTrimDrafts((currentDrafts) => {
+      const current = currentDrafts[taskId] ?? createStoryboardTrimDraft(task);
+      const next = updater(current);
+      const sourceDurationSec = Math.max(0.5, next.sourceDurationSec ?? current.sourceDurationSec ?? getTaskTrimSourceDuration(task, current));
+      const inSec = Math.max(0, Math.min(sourceDurationSec - 0.1, next.inSec));
+      const outSec = Math.max(inSec + 0.1, Math.min(sourceDurationSec, next.outSec));
+      const disabledRanges = normalizeStoryboardDisabledRanges(next.disabledRanges, inSec, outSec);
+      const disabledDuration = storyboardDisabledDurationSeconds(disabledRanges);
+      const keptDuration = roundStoryboardTrimSecond(outSec - inSec - disabledDuration);
+      return {
+        ...currentDrafts,
+        [taskId]: {
+          ...next,
+          inSec: roundStoryboardTrimSecond(inSec),
+          outSec: roundStoryboardTrimSecond(outSec),
+          sourceDurationSec: roundStoryboardTrimSecond(sourceDurationSec),
+          disabledRanges: keptDuration >= STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS ? disabledRanges : current.disabledRanges ?? [],
+        },
+      };
+    });
+  };
+
+  const updateDisabledRangeDraft = (
+    taskId: string,
+    updater: (draft: { startSec: number; endSec: number }) => { startSec: number; endSec: number },
+  ) => {
+    const trimDraft = trimDrafts[taskId];
+    if (!trimDraft) return;
+    setDisabledRangeDrafts((currentDrafts) => {
+      const current = currentDrafts[taskId] ?? {
+        startSec: trimDraft.inSec,
+        endSec: Math.min(trimDraft.outSec, trimDraft.inSec + 1),
+      };
+      const next = updater(current);
+      const startSec = Math.max(trimDraft.inSec, Math.min(trimDraft.outSec - STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS, next.startSec));
+      const endSec = Math.max(startSec + STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS, Math.min(trimDraft.outSec, next.endSec));
+      return {
+        ...currentDrafts,
+        [taskId]: {
+          startSec: roundStoryboardTrimSecond(startSec),
+          endSec: roundStoryboardTrimSecond(endSec),
+        },
+      };
+    });
+  };
+
+  const markDisabledRangeDraftPoint = (taskId: string, point: "start" | "end") => {
+    const trimDraft = trimDrafts[taskId];
+    if (!trimDraft) return;
+    const videoTime = trimVideoRef.current?.currentTime;
+    const fallbackTime = point === "start" ? trimDraft.inSec : trimDraft.outSec;
+    const currentTime = Number.isFinite(videoTime) ? Number(videoTime) : fallbackTime;
+    const playableTime = roundStoryboardTrimSecond(
+      Math.max(trimDraft.inSec, Math.min(trimDraft.outSec, getStoryboardTrimPreviewPlayableTime(currentTime, trimDraft))),
+    );
+    setTrimPreviewTimes((current) => ({ ...current, [taskId]: playableTime }));
+    setTrimTimelineCenters((current) => ({ ...current, [taskId]: playableTime }));
+    updateDisabledRangeDraft(taskId, (draft) => {
+      if (point === "start") {
+        return {
+          startSec: playableTime,
+          endSec: Math.max(draft.endSec, playableTime + STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS),
+        };
+      }
+      return {
+        startSec: Math.min(draft.startSec, playableTime - STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS),
+        endSec: playableTime,
+      };
+    });
+  };
+
+  const seekTrimPreviewToTime = (taskId: string, draft: StoryboardSourceTrimRange, rawTime: number) => {
+    const nextTime = roundStoryboardTrimSecond(
+      Math.max(draft.inSec, Math.min(draft.outSec, rawTime)),
+    );
+    const video = trimVideoRef.current;
+    if (video) {
+      try {
+        video.currentTime = nextTime;
+      } catch {
+        // Seeking can fail while metadata is not ready.
+      }
+    }
+    setTrimPreviewTimes((current) => ({ ...current, [taskId]: nextTime }));
+    setTrimTimelineCenters((current) => ({ ...current, [taskId]: nextTime }));
+  };
+
+  const getTrimTimelinePointerTime = (
+    event: PointerEvent<HTMLElement>,
+    viewportStartSec: number,
+    viewportDurationSec: number,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pct = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+    return roundStoryboardTrimSecond(viewportStartSec + Math.max(0, Math.min(1, pct)) * viewportDurationSec);
+  };
+
+  const updateTrimTimelineFromPointer = (
+    taskId: string,
+    draft: StoryboardSourceTrimRange,
+    viewportStartSec: number,
+    viewportDurationSec: number,
+    event: PointerEvent<HTMLElement>,
+    dragMode: "playhead" | "cut-start" | "cut-end" | "cut-range",
+    rangeOffsetSec = 0,
+  ) => {
+    const pointerTime = getTrimTimelinePointerTime(event, viewportStartSec, viewportDurationSec);
+    setTrimTimelineCenters((current) => ({ ...current, [taskId]: pointerTime }));
+    if (dragMode === "playhead") {
+      seekTrimPreviewToTime(taskId, draft, pointerTime);
+      return;
+    }
+    updateDisabledRangeDraft(taskId, (current) => {
+      if (dragMode === "cut-start") {
+        return { ...current, startSec: pointerTime };
+      }
+      if (dragMode === "cut-end") {
+        return { ...current, endSec: pointerTime };
+      }
+      const width = Math.max(
+        STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS,
+        current.endSec - current.startSec,
+      );
+      const startSec = pointerTime - rangeOffsetSec;
+      return {
+        startSec,
+        endSec: startSec + width,
+      };
+    });
+  };
+
+  const setTrimTimelineZoomLevel = (
+    taskId: string,
+    draft: StoryboardSourceTrimRange,
+    sourceDurationSec: number,
+    nextZoom: number,
+  ) => {
+    const zoom = clampStoryboardTrimTimelineZoom(nextZoom);
+    const fallbackCenter = trimPreviewTimes[taskId] ?? draft.inSec;
+    setTrimTimelineZooms((current) => ({
+      ...current,
+      [taskId]: zoom,
+    }));
+    setTrimTimelineCenters((current) => ({
+      ...current,
+      [taskId]: roundStoryboardTrimSecond(Math.max(0, Math.min(sourceDurationSec, current[taskId] ?? fallbackCenter))),
+    }));
+  };
+
+  const addDisabledRangeToTrimDraft = (taskId: string) => {
+    const draftRange = disabledRangeDrafts[taskId];
+    if (!draftRange) return;
+    updateTrimDraft(taskId, (draft) => {
+      const nextRanges = normalizeStoryboardDisabledRanges(
+        [...(draft.disabledRanges ?? []), draftRange],
+        draft.inSec,
+        draft.outSec,
+      );
+      const keptDuration = roundStoryboardTrimSecond(
+        draft.outSec - draft.inSec - storyboardDisabledDurationSeconds(nextRanges)
+      );
+      if (keptDuration < STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS) return draft;
+      return { ...draft, disabledRanges: nextRanges };
+    });
+  };
+
+  const removeDisabledRangeFromTrimDraft = (taskId: string, rangeIndex: number) => {
+    updateTrimDraft(taskId, (draft) => ({
+      ...draft,
+      disabledRanges: (draft.disabledRanges ?? []).filter((_, index) => index !== rangeIndex),
+    }));
+  };
+
+  const syncTrimVideoToDraft = (taskId: string, draftOverride?: StoryboardSourceTrimRange) => {
+    const video = trimVideoRef.current;
+    const draft = draftOverride ?? trimDrafts[taskId];
+    if (!video || !draft) return;
+    const nextTime = getStoryboardTrimPreviewPlayableTime(draft.inSec, draft);
+    try {
+      video.currentTime = nextTime;
+      setTrimPreviewTimes((current) => ({ ...current, [taskId]: roundStoryboardTrimSecond(nextTime) }));
+    } catch {
+      // Some browsers reject seeking before metadata is ready.
+    }
+  };
+
+  const toggleTrimPreviewPlayback = async (taskId: string) => {
+    const video = trimVideoRef.current;
+    const draft = trimDrafts[taskId];
+    if (!video || !draft) return;
+    if (playingTrimTaskId === taskId) {
+      video.pause();
+      setPlayingTrimTaskId(null);
+      return;
+    }
+    const nextTime = getStoryboardTrimPreviewPlayableTime(video.currentTime, draft);
+    if (video.currentTime < draft.inSec || video.currentTime >= draft.outSec || Math.abs(nextTime - video.currentTime) > 0.03) {
+      const seekTime = nextTime >= draft.outSec - 0.03
+        ? getStoryboardTrimPreviewPlayableTime(draft.inSec, draft)
+        : nextTime;
+      video.currentTime = seekTime;
+      setTrimPreviewTimes((current) => ({ ...current, [taskId]: roundStoryboardTrimSecond(seekTime) }));
+    }
+    try {
+      video.muted = false;
+      video.defaultMuted = false;
+      video.volume = 1;
+      setTrimPreviewMuted(false);
+      await video.play();
+      setPlayingTrimTaskId(taskId);
+    } catch {
+      setPlayingTrimTaskId(null);
+    }
+  };
+
+  const saveTrimDraft = async (task: StoryboardReviewTask) => {
+    const draft = trimDrafts[task.id] ?? createStoryboardTrimDraft(task);
+    const normalizedDraft = {
+      ...draft,
+      disabledRanges: draft.disabledRanges ?? [],
+    };
+    await onUpdateTaskSourceTrim?.(
+      task.id,
+      isFullStoryboardTrim(normalizedDraft) ? null : normalizedDraft,
+    );
+    setExpandedTrimTaskId(null);
+    setPlayingTrimTaskId(null);
+  };
+
   const handleGenerateSelectedTasks = async () => {
     if (generatableSelectedTasks.length === 0 || isGeneratingSelected) return;
     generationCancelRequestedRef.current = false;
@@ -757,6 +1216,476 @@ export function StoryboardBatchReviewPanel({
       </div>
     );
   };
+  const renderArticleStoryboardVideoPanel = (
+    task: StoryboardReviewTask,
+    metadata: ArticleStoryboardReviewMetadata,
+  ) => {
+    const formatDuration = (value: number | null | undefined) => (
+      typeof value === "number" && Number.isFinite(value) && value > 0
+        ? `${value.toFixed(value % 1 === 0 ? 0 : 1)}s`
+        : "-"
+    );
+    const formatAudioStrategy = (value: ArticleStoryboardReviewMetadata["audioStrategy"] | null | undefined) => {
+      if (value === "native_video_audio") return locale === "th" ? "เสียงในวิดีโอ" : "Native video audio";
+      if (value === "silent") return locale === "th" ? "ไม่มีเสียง" : "Silent";
+      return locale === "th" ? "Voiceover แยก" : "Separate TTS voiceover";
+    };
+    const formatBoolean = (value: boolean | undefined) => (
+      value === undefined ? "-" : value ? (locale === "th" ? "ได้" : "Yes") : (locale === "th" ? "ไม่ได้" : "No")
+    );
+    const updateOverlay = (update: Parameters<typeof updateArticleStoryboardOverlayMetadata>[1]) => {
+      if (!task.generationExtraParams || !onUpdateTaskExtraParams) return;
+      const nextExtraParams = updateArticleStoryboardOverlayMetadata(task.generationExtraParams, update);
+      void onUpdateTaskExtraParams(task.id, nextExtraParams);
+    };
+    const updateVoice = (update: Parameters<typeof updateArticleStoryboardVoiceMetadata>[1]) => {
+      if (!task.generationExtraParams || !onUpdateTaskExtraParams) return;
+      const nextExtraParams = updateArticleStoryboardVoiceMetadata(task.generationExtraParams, update);
+      void onUpdateTaskExtraParams(task.id, nextExtraParams);
+    };
+    const promptLikeOverlay = isArticleStoryboardOverlayPromptLike(
+      `${metadata.overlay.headline} ${metadata.overlay.subtext}`,
+    );
+    const imageReferencePromptText = metadata.imageReferencePrompt || "";
+    const generatedImageReferencePromptText = metadata.generatedImageReferencePrompt || "";
+    const videoPromptText = metadata.videoPrompt || task.prompt || "";
+    const generatedVideoPromptText = metadata.generatedVideoPrompt || "";
+    const currentVideoPromptText = metadata.currentVideoPrompt || task.prompt || "";
+    const currentTaskPromptDiffers = Boolean(
+      metadata.videoPrompt?.trim() &&
+      currentVideoPromptText.trim() &&
+      metadata.videoPrompt.trim() !== currentVideoPromptText.trim(),
+    );
+    const imagePromptDiffersFromGenerated = Boolean(
+      imageReferencePromptText.trim() &&
+      generatedImageReferencePromptText.trim() &&
+      imageReferencePromptText.trim() !== generatedImageReferencePromptText.trim(),
+    );
+    const videoPromptDiffersFromGenerated = Boolean(
+      videoPromptText.trim() &&
+      generatedVideoPromptText.trim() &&
+      videoPromptText.trim() !== generatedVideoPromptText.trim(),
+    );
+    const imagePromptCopyKey = `${task.id}:article-image-reference-prompt`;
+    const videoPromptCopyKey = `${task.id}:article-video-prompt`;
+    const currentVideoPromptCopyKey = `${task.id}:article-current-video-prompt`;
+    const generatedImagePromptCopyKey = `${task.id}:article-generated-image-reference-prompt`;
+    const generatedVideoPromptCopyKey = `${task.id}:article-generated-video-prompt`;
+    const currentPromptUpdatedAt = metadata.currentPromptUpdatedAt || metadata.reviewPromptEditedAt;
+    const currentPromptSourceLabel = metadata.currentPromptSource === "manual_edit"
+      ? (locale === "th" ? "แก้เองใน Storyboard Review" : "Manual edit in Storyboard Review")
+      : metadata.currentPromptSource === "regenerated"
+        ? (locale === "th" ? "Regenerated" : "Regenerated")
+        : metadata.currentPromptSource === "skill_generated"
+          ? (locale === "th" ? "Skill generated" : "Skill generated")
+          : metadata.currentPromptSource === "duration_adjusted"
+            ? (locale === "th" ? "ปรับความยาว" : "Duration adjusted")
+            : metadata.currentPromptSource;
+    return (
+      <section className="mt-3 rounded-lg border border-violet-200 bg-violet-50/50 p-3 text-sm text-violet-950">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">
+              {locale === "th" ? "Article video metadata" : "Article video metadata"}
+            </h3>
+            <p className="text-xs text-violet-800/80">
+              {locale === "th"
+                ? "ข้อมูลนี้แยกจาก prompt วิดีโอ ใช้สำหรับข้อความซ้อน เสียง และ reference ตอน render"
+                : "This stays separate from the video prompt and drives overlays, audio, and render references."}
+            </p>
+          </div>
+          <Badge variant="outline" className="border-violet-300 bg-white/70 text-violet-900">
+            {metadata.audioStrategy === "native_video_audio"
+              ? (locale === "th" ? "เสียงในวิดีโอ" : "Native audio")
+              : metadata.audioStrategy === "silent"
+                ? (locale === "th" ? "ไม่มีเสียง" : "Silent")
+                : (locale === "th" ? "Voiceover แยก" : "Separate voiceover")}
+          </Badge>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-md border bg-background p-3 lg:col-span-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+                {locale === "th" ? "Video prompt" : "Video prompt"}
+              </h4>
+              {metadata.promptSource ? (
+                <Badge variant="outline">
+                  {metadata.promptSource === "manual_edit"
+                    ? (locale === "th" ? "แก้เองจาก Builder" : "Manual edit from Builder")
+                    : metadata.promptSource}
+                </Badge>
+              ) : null}
+            </div>
+            <div className="grid gap-2 lg:grid-cols-2">
+              <div className="grid gap-1 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <span>{locale === "th" ? "Prompt สร้างภาพ reference 3x3" : "3x3 image reference prompt"}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px]"
+                    disabled={!imageReferencePromptText.trim()}
+                    onClick={() => void handleCopyTaskPrompt(imagePromptCopyKey, imageReferencePromptText)}
+                  >
+                    {copiedPromptTaskId === imagePromptCopyKey ? (
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                    ) : (
+                      <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {copiedPromptTaskId === imagePromptCopyKey
+                      ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                      : (locale === "th" ? "คัดลอก" : "Copy")}
+                  </Button>
+                </div>
+                <Textarea
+                  readOnly
+                  value={imageReferencePromptText}
+                  placeholder={locale === "th" ? "ไม่มี prompt สร้างภาพ reference ใน metadata" : "No image reference prompt metadata."}
+                  className="min-h-[96px] resize-y bg-muted/30 text-xs text-foreground"
+                  aria-label={locale === "th" ? "Prompt สร้างภาพ reference 3x3" : "3x3 image reference prompt"}
+                />
+                {imagePromptDiffersFromGenerated ? (
+                  <details className="rounded-md border bg-muted/20 p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
+                      {locale === "th" ? "ดู generated prompt เดิม" : "Show original generated prompt"}
+                    </summary>
+                    <div className="mt-2 grid gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 justify-self-start px-2 text-[11px]"
+                        onClick={() => void handleCopyTaskPrompt(generatedImagePromptCopyKey, generatedImageReferencePromptText)}
+                      >
+                        {copiedPromptTaskId === generatedImagePromptCopyKey ? (
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        {copiedPromptTaskId === generatedImagePromptCopyKey
+                          ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                          : (locale === "th" ? "คัดลอก generated" : "Copy generated")}
+                      </Button>
+                      <Textarea
+                        readOnly
+                        value={generatedImageReferencePromptText}
+                        className="min-h-[80px] resize-y bg-background text-xs text-foreground"
+                        aria-label={locale === "th" ? "Generated prompt เดิมสำหรับภาพ reference 3x3" : "Original generated 3x3 image reference prompt"}
+                      />
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+              <div className="grid gap-1 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center justify-between gap-2">
+                  <span>{locale === "th" ? "Prompt สร้างวิดีโอของ shot นี้" : "Video prompt for this shot"}</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px]"
+                    disabled={!videoPromptText.trim()}
+                    onClick={() => void handleCopyTaskPrompt(videoPromptCopyKey, videoPromptText)}
+                  >
+                    {copiedPromptTaskId === videoPromptCopyKey ? (
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                    ) : (
+                      <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {copiedPromptTaskId === videoPromptCopyKey
+                      ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                      : (locale === "th" ? "คัดลอก" : "Copy")}
+                  </Button>
+                </div>
+                <Textarea
+                  readOnly
+                  value={videoPromptText}
+                  placeholder={locale === "th" ? "ไม่มี prompt วิดีโอใน metadata" : "No video prompt metadata."}
+                  className="min-h-[96px] resize-y bg-muted/30 text-xs text-foreground"
+                  aria-label={locale === "th" ? "Prompt สร้างวิดีโอของ shot นี้" : "Video prompt for this shot"}
+                />
+                {videoPromptDiffersFromGenerated ? (
+                  <details className="rounded-md border bg-muted/20 p-2">
+                    <summary className="cursor-pointer text-[11px] font-medium text-muted-foreground">
+                      {locale === "th" ? "ดู generated prompt เดิม" : "Show original generated prompt"}
+                    </summary>
+                    <div className="mt-2 grid gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 justify-self-start px-2 text-[11px]"
+                        onClick={() => void handleCopyTaskPrompt(generatedVideoPromptCopyKey, generatedVideoPromptText)}
+                      >
+                        {copiedPromptTaskId === generatedVideoPromptCopyKey ? (
+                          <Check className="mr-1.5 h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        {copiedPromptTaskId === generatedVideoPromptCopyKey
+                          ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                          : (locale === "th" ? "คัดลอก generated" : "Copy generated")}
+                      </Button>
+                      <Textarea
+                        readOnly
+                        value={generatedVideoPromptText}
+                        className="min-h-[80px] resize-y bg-background text-xs text-foreground"
+                        aria-label={locale === "th" ? "Generated prompt เดิมสำหรับวิดีโอ" : "Original generated video prompt"}
+                      />
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            </div>
+            {currentTaskPromptDiffers ? (
+              <div className="mt-2 grid gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                <div>
+                  {locale === "th"
+                    ? "Prompt ปัจจุบันของ task ถูกแก้หลัง handoff จาก Builder แล้ว กล่องนี้ยังแสดง prompt ที่ส่งมาจาก Builder เพื่อใช้อ้างอิง"
+                    : "The current task prompt has changed after the Builder handoff. This card keeps the Builder handoff prompt for reference."}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentPromptSourceLabel ? (
+                    <Badge variant="outline" className="border-amber-300 bg-white/70 text-amber-900">
+                      {currentPromptSourceLabel}
+                    </Badge>
+                  ) : null}
+                  {currentPromptUpdatedAt ? (
+                    <span className="text-[11px] text-amber-900/80">
+                      {locale === "th" ? "อัปเดต" : "Updated"} {currentPromptUpdatedAt}
+                    </span>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[11px] text-amber-950 hover:bg-amber-100"
+                    disabled={!currentVideoPromptText.trim()}
+                    onClick={() => void handleCopyTaskPrompt(currentVideoPromptCopyKey, currentVideoPromptText)}
+                  >
+                    {copiedPromptTaskId === currentVideoPromptCopyKey ? (
+                      <Check className="mr-1.5 h-3.5 w-3.5" />
+                    ) : (
+                      <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    {copiedPromptTaskId === currentVideoPromptCopyKey
+                      ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
+                      : (locale === "th" ? "คัดลอก prompt ปัจจุบัน" : "Copy current prompt")}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-md border bg-background p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+                {locale === "th" ? "Text on video" : "Text on video"}
+              </h4>
+              <Badge variant="outline">
+                {metadata.overlay.preset === "center_title"
+                  ? (locale === "th" ? "กลางจอ" : "Center title")
+                  : (locale === "th" ? "ล่างซ้าย" : "Lower third")}
+              </Badge>
+            </div>
+            <div className="grid gap-2">
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                {locale === "th" ? "รูปแบบข้อความ" : "Overlay preset"}
+                <select
+                  value={metadata.overlay.preset}
+                  disabled={!onUpdateTaskExtraParams || task.status === "generating"}
+                  onChange={(event) => updateOverlay({ preset: event.target.value as ArticleStoryboardReviewMetadata["overlay"]["preset"] })}
+                  className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                  aria-label={locale === "th" ? "รูปแบบข้อความบนวิดีโอ" : "Text on video preset"}
+                >
+                  <option value="lower_third">{locale === "th" ? "Lower third" : "Lower third"}</option>
+                  <option value="center_title">{locale === "th" ? "Center title" : "Center title"}</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                {locale === "th" ? "หัวข้อบนวิดีโอ" : "Overlay headline"}
+                <input
+                  value={metadata.overlay.headline}
+                  disabled={!onUpdateTaskExtraParams || task.status === "generating"}
+                  onChange={(event) => updateOverlay({ headline: event.target.value })}
+                  className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                  aria-label={locale === "th" ? "หัวข้อบนวิดีโอ" : "Overlay headline"}
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                {locale === "th" ? "ข้อความเสริมบนวิดีโอ" : "Overlay subtext"}
+                <Textarea
+                  value={metadata.overlay.subtext}
+                  disabled={!onUpdateTaskExtraParams || task.status === "generating"}
+                  onChange={(event) => updateOverlay({ subtext: event.target.value })}
+                  className="min-h-[72px] text-xs"
+                  aria-label={locale === "th" ? "ข้อความเสริมบนวิดีโอ" : "Overlay subtext"}
+                />
+              </label>
+            </div>
+            {promptLikeOverlay ? (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                {locale === "th"
+                  ? "ข้อความนี้ดูเหมือน prompt สร้างวิดีโอ ควรย้ายไปแก้ในส่วน Prompt เพื่อให้ overlay อ่านง่าย"
+                  : "This looks like a video-generation prompt. Move it to Prompt so the overlay stays readable."}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="rounded-md border bg-background p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {locale === "th" ? "Voiceover/audio" : "Voiceover/audio"}
+            </h4>
+            <div className="grid gap-2 text-xs">
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "โหมด" : "Mode"}</span>
+                <span className="font-medium">{metadata.voiceConfig.mode === "two_speaker_dialogue" ? "Two speaker dialogue" : "Single narrator"}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "เสียงที่เลือก" : "Requested"}</span>
+                <span className="font-medium">{formatAudioStrategy(metadata.requestedAudioStrategy ?? metadata.audioStrategy)}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "เสียงที่ใช้" : "Resolved"}</span>
+                <span className="font-medium">{formatAudioStrategy(metadata.resolvedAudioStrategy ?? metadata.audioStrategy)}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "พูดในวิดีโอ" : "Native allowed"}</span>
+                <span className="font-medium">{formatBoolean(metadata.nativeAudioAllowed)}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "TTS แยก" : "TTS allowed"}</span>
+                <span className="font-medium">{formatBoolean(metadata.separateTtsAllowed)}</span>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <span className="text-muted-foreground">{locale === "th" ? "โมเดลเสียง" : "Voice model"}</span>
+                <input
+                  value={metadata.voiceConfig.voiceModelId || ""}
+                  placeholder={metadata.voiceConfig.provider || "-"}
+                  disabled={!onUpdateTaskExtraParams || task.status === "generating"}
+                  onChange={(event) => updateVoice({ voiceModelId: event.target.value })}
+                  className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                  aria-label={locale === "th" ? "Voice model สำหรับ voiceover" : "Voiceover voice model"}
+                />
+              </div>
+              {metadata.ttsRenderStrategy ? (
+                <div className="grid grid-cols-[7rem_1fr] gap-2">
+                  <span className="text-muted-foreground">{locale === "th" ? "วิธีสร้างเสียง" : "TTS strategy"}</span>
+                  <span className="font-medium">
+                    {metadata.ttsRenderStrategy === "single_request_dialogue"
+                      ? (locale === "th" ? "Dialogue request เดียว" : "Single dialogue request")
+                      : metadata.ttsRenderStrategy === "segment_then_merge"
+                        ? (locale === "th" ? "สร้างแยกแล้ว merge" : "Segment then merge")
+                        : (locale === "th" ? "Request เดียว" : "Single request")}
+                  </span>
+                </div>
+              ) : null}
+              {metadata.audioReasonCode && metadata.audioReasonCode !== "ok" ? (
+                <div className="grid grid-cols-[7rem_1fr] gap-2">
+                  <span className="text-muted-foreground">{locale === "th" ? "เหตุผลเสียง" : "Audio reason"}</span>
+                  <span className="font-medium">{metadata.audioReasonCode}</span>
+                </div>
+              ) : null}
+              <div className="grid gap-1">
+                {metadata.voiceConfig.speakers.map((speaker, index) => (
+                  <div key={`${speaker.speaker}-${index}`} className="grid gap-1 rounded border bg-muted/30 px-2 py-1">
+                    <label className="grid gap-1">
+                      <span className="font-medium">{speaker.speaker}</span>
+                      <input
+                        value={speaker.voiceId || ""}
+                        placeholder={locale === "th" ? "ยังไม่ระบุ voice id" : "Missing voice ID"}
+                        disabled={!onUpdateTaskExtraParams || task.status === "generating"}
+                        onChange={(event) => updateVoice({ speakerVoiceIds: { [index]: event.target.value } })}
+                        className="h-8 rounded-md border bg-background px-2 text-xs text-foreground"
+                        aria-label={`${speaker.speaker} ${locale === "th" ? "voice id" : "voice ID"}`}
+                      />
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {metadata.warningCodes.includes("missing_voice_id_recoverable") ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-900">
+                  {locale === "th"
+                    ? "ยังขาด voice id บางตัว แก้ได้โดยตั้งค่าเสียงก่อนสร้าง voiceover"
+                    : "A voice ID is missing. Set the speaker voice before generating voiceover."}
+                </div>
+              ) : null}
+              {metadata.scriptSegments.length > 0 ? (
+                <div className="max-h-28 overflow-y-auto rounded border bg-muted/20 p-2 leading-5">
+                  {metadata.scriptSegments.map((segment, index) => (
+                    <p key={`${segment.shotId ?? "script"}-${index}`} className="mb-1 last:mb-0">
+                      {segment.speaker ? <span className="font-medium">{segment.speaker}: </span> : null}
+                      {segment.text}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-md border bg-background p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {locale === "th" ? "Character references" : "Character references"}
+            </h4>
+            {metadata.characterReferenceImages.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {metadata.characterReferenceImages.map((image) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    className="overflow-hidden rounded-md border bg-muted text-left"
+                    onClick={() => setLightboxMedia({ type: "image", url: image.url, title: image.label || image.id })}
+                  >
+                    <img src={image.url} alt={image.label || image.id} className="aspect-square w-full object-cover" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{locale === "th" ? "ไม่มีภาพตัวละครแนบ" : "No character reference attached."}</p>
+            )}
+          </div>
+
+          <div className="rounded-md border bg-background p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              {locale === "th" ? "Scene references" : "Scene references"}
+            </h4>
+            {metadata.selectedReferenceImages.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {metadata.selectedReferenceImages.map((image) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    className="overflow-hidden rounded-md border bg-muted text-left"
+                    onClick={() => setLightboxMedia({ type: "image", url: image.url, title: image.label || image.id })}
+                  >
+                    <img src={image.url} alt={image.label || image.id} className="aspect-square w-full object-cover" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{locale === "th" ? "ยังไม่มีภาพ scene reference ที่เลือก" : "No selected scene references."}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <Badge variant="outline" className="bg-white/70">
+            {locale === "th" ? "ความยาว planned" : "Planned"} {formatDuration(metadata.timing.plannedDurationSeconds)}
+          </Badge>
+          <Badge variant="outline" className="bg-white/70">
+            {locale === "th" ? "เสียงจริง" : "Measured audio"} {formatDuration(metadata.timing.measuredDurationSeconds)}
+          </Badge>
+          {metadata.warningCodes.includes("timing_mismatch") ? (
+            <Badge variant="destructive">
+              {locale === "th" ? "ความยาวเสียงไม่พอดีกับ shot" : "Audio length mismatch"}
+            </Badge>
+          ) : null}
+        </div>
+      </section>
+    );
+  };
   const confirmCopy = useMemo(() => {
     if (!confirmAction) return null;
     if (confirmAction === "generate") {
@@ -823,7 +1752,13 @@ export function StoryboardBatchReviewPanel({
   };
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-background", className)}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col bg-background",
+        tabletPageFlow ? "overflow-visible xl:overflow-hidden" : "overflow-hidden",
+        className,
+      )}
+    >
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b bg-background px-3 py-2 text-left sm:px-4">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold leading-none text-foreground sm:text-base">
@@ -1093,7 +2028,15 @@ export function StoryboardBatchReviewPanel({
           </div>
         </div>
 
-        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pr-2 sm:px-4 sm:pr-3", contentClassName)}>
+        <div
+          className={cn(
+            "min-h-0 flex-1 px-3 pr-2 sm:px-4 sm:pr-3",
+            tabletPageFlow
+              ? "overflow-visible xl:overflow-y-auto xl:overscroll-contain"
+              : "overflow-y-auto overscroll-contain",
+            contentClassName,
+          )}
+        >
           <div className="space-y-2">
             {companionAudio.length > 0 ? (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5">
@@ -1201,6 +2144,7 @@ export function StoryboardBatchReviewPanel({
               const isMediaOnlyInsertedShot = task.isImported && !firstLastFrameUrls && !canRegenerate;
               const showPromptWorkflowActions = !isMediaOnlyInsertedShot;
               const isQueuedForGeneration = task.status === "queued";
+              const articleStoryboardMetadata = getArticleStoryboardReviewMetadata(task.generationExtraParams);
               const marketplaceMetadata = task.marketplaceProduct
                 ?? (task.generationExtraParams?.marketplaceContext && typeof task.generationExtraParams.marketplaceContext === "object"
                   ? task.generationExtraParams.marketplaceContext as NonNullable<StoryboardReviewTask["marketplaceProduct"]>
@@ -1230,14 +2174,91 @@ export function StoryboardBatchReviewPanel({
               const selectedShotDuration = STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS.includes(task.durationSeconds as typeof STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS[number])
                 ? Number(task.durationSeconds)
                 : 8;
+              const taskSourceTrim = getTaskSourceTrim(task);
+              const sourceTrimDerivedStatus = readStoryboardSourceTrimDerivedStatus(task.generationExtraParams);
+              const trimDraft = trimDrafts[task.id] ?? createStoryboardTrimDraft(task);
+              const disabledRangeDraft = disabledRangeDrafts[task.id] ?? {
+                startSec: trimDraft.inSec,
+                endSec: Math.min(trimDraft.outSec, trimDraft.inSec + 1),
+              };
+              const disabledDurationSeconds = storyboardDisabledDurationSeconds(trimDraft.disabledRanges);
+              const trimDurationSeconds = Math.max(0, roundStoryboardTrimSecond(trimDraft.outSec - trimDraft.inSec));
+              const keptTrimDurationSeconds = Math.max(0, roundStoryboardTrimSecond(trimDurationSeconds - disabledDurationSeconds));
+              const disabledRangeCount = trimDraft.disabledRanges?.length ?? 0;
+              const nextDisabledRanges = normalizeStoryboardDisabledRanges(
+                [...(trimDraft.disabledRanges ?? []), disabledRangeDraft],
+                trimDraft.inSec,
+                trimDraft.outSec,
+              );
+              const nextKeptTrimDurationSeconds = roundStoryboardTrimSecond(
+                trimDraft.outSec - trimDraft.inSec - storyboardDisabledDurationSeconds(nextDisabledRanges),
+              );
+              const canAddDisabledRange =
+                disabledRangeDraft.endSec - disabledRangeDraft.startSec >= STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS &&
+                nextDisabledRanges.length <= STORYBOARD_TRIM_MAX_DISABLED_RANGES &&
+                nextKeptTrimDurationSeconds >= STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS &&
+                JSON.stringify(nextDisabledRanges) !== JSON.stringify(trimDraft.disabledRanges ?? []);
+              const trimSourceDuration = Math.max(0.1, trimDraft.sourceDurationSec ?? trimDraft.outSec);
+              const trimPreviewTime = Math.max(
+                trimDraft.inSec,
+                Math.min(trimDraft.outSec, trimPreviewTimes[task.id] ?? trimDraft.inSec),
+              );
+              const trimTimelineZoom = clampStoryboardTrimTimelineZoom(trimTimelineZooms[task.id] ?? STORYBOARD_TRIM_TIMELINE_MIN_ZOOM);
+              const trimTimelineCenter = Math.max(
+                0,
+                Math.min(trimSourceDuration, trimTimelineCenters[task.id] ?? trimPreviewTime),
+              );
+              const trimTimelineViewportDuration = trimTimelineZoom <= STORYBOARD_TRIM_TIMELINE_MIN_ZOOM
+                ? trimSourceDuration
+                : Math.max(1, trimSourceDuration / trimTimelineZoom);
+              const trimTimelineViewportStart = trimTimelineZoom <= STORYBOARD_TRIM_TIMELINE_MIN_ZOOM
+                ? 0
+                : Math.max(
+                    0,
+                    Math.min(
+                      Math.max(0, trimSourceDuration - trimTimelineViewportDuration),
+                      trimTimelineCenter - trimTimelineViewportDuration / 2,
+                    ),
+                  );
+              const trimTimelineViewportEnd = Math.min(
+                trimSourceDuration,
+                trimTimelineViewportStart + trimTimelineViewportDuration,
+              );
+              const trimTimelineViewportWidth = Math.max(0.1, trimTimelineViewportEnd - trimTimelineViewportStart);
+              const trimTimelinePercent = (value: number) => Math.max(
+                0,
+                Math.min(100, ((value - trimTimelineViewportStart) / trimTimelineViewportWidth) * 100),
+              );
+              const trimActiveVisibleStart = Math.max(trimDraft.inSec, trimTimelineViewportStart);
+              const trimActiveVisibleEnd = Math.min(trimDraft.outSec, trimTimelineViewportEnd);
+              const trimActiveLeftPercent = trimTimelinePercent(trimActiveVisibleStart);
+              const trimActiveWidthPercent = trimActiveVisibleEnd > trimActiveVisibleStart
+                ? Math.max(1, trimTimelinePercent(trimActiveVisibleEnd) - trimActiveLeftPercent)
+                : 0;
+              const trimDraftCutVisible =
+                disabledRangeDraft.endSec >= trimTimelineViewportStart &&
+                disabledRangeDraft.startSec <= trimTimelineViewportEnd;
+              const trimDraftCutLeftPercent = trimTimelinePercent(disabledRangeDraft.startSec);
+              const trimDraftCutWidthPercent = Math.max(
+                1,
+                trimTimelinePercent(disabledRangeDraft.endSec) - trimDraftCutLeftPercent,
+              );
+              const hasSourceTrim = Boolean(taskSourceTrim && !isFullStoryboardTrim({
+                ...taskSourceTrim,
+                sourceDurationSec: taskSourceTrim.sourceDurationSec ?? getTaskTrimSourceDuration(task, taskSourceTrim),
+              }));
+              const hasReadySourceTrimDerived = sourceTrimDerivedStatus?.status === "ready" && Boolean(sourceTrimDerivedStatus.url);
               const selectedTransitionName = task.transition?.name ?? "none";
               const selectedTransitionDuration = task.transition?.durationMs ?? STORYBOARD_DEFAULT_TRANSITION_DURATION_MS;
+              const isMediaAttachTarget = mediaAttachTargetTaskId === task.id;
               return (
                 <div
                   key={task.id}
                   className={cn(
                     "rounded-lg border bg-background p-2 transition-colors",
-                    isSelected ? "border-blue-300 ring-1 ring-blue-100" : "border-border",
+                    isMediaAttachTarget
+                      ? "border-sky-400 ring-2 ring-sky-100"
+                      : isSelected ? "border-blue-300 ring-1 ring-blue-100" : "border-border",
                     !isSelected && "opacity-70",
                   )}
                 >
@@ -1263,18 +2284,24 @@ export function StoryboardBatchReviewPanel({
                               {firstLastFrameUrls.map((url, frameIndex) => {
                                 const role = getReferenceFrameRole(task, frameIndex as 0 | 1);
                                 const label = referenceFrameRoleLabel(role, locale);
+                                const frameIndexValue = frameIndex as 0 | 1;
+                                const isFrameAttachTarget =
+                                  isMediaAttachTarget && mediaAttachTargetFrameIndex === frameIndexValue;
                                 return (
                                   <button
                                     key={`${task.id}-frame-${frameIndex}`}
                                     type="button"
-                                    className="group relative min-w-0 overflow-hidden border-r text-left last:border-r-0"
+                                    className={cn(
+                                      "group relative min-w-0 overflow-hidden border-r text-left last:border-r-0",
+                                      isFrameAttachTarget ? "ring-2 ring-inset ring-sky-400" : "",
+                                    )}
                                     onClick={() => setLightboxMedia({
                                       type: "image",
                                       url,
                                       title: `${t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })} · ${label}`,
                                     })}
                                     onDragOver={handleReferenceFrameDragOver}
-                                    onDrop={(event) => void handleReferenceFrameDrop(task.id, frameIndex as 0 | 1, event)}
+                                    onDrop={(event) => void handleReferenceFrameDrop(task.id, frameIndexValue, event)}
                                     title={locale === "th" ? "ขยายดูภาพเต็มจอ" : "Open full-size image"}
                                   >
                                     <img
@@ -1286,6 +2313,41 @@ export function StoryboardBatchReviewPanel({
                                     <div className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white">
                                       {referenceFrameRoleLabel(role, locale, true)}
                                     </div>
+                                    {onMediaAttachTargetChange ? (
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        className={cn(
+                                          "absolute inset-x-1 bottom-1 rounded-md px-1.5 py-1 text-center text-[10px] font-semibold shadow-sm xl:hidden",
+                                          isFrameAttachTarget
+                                            ? "bg-sky-600 text-white"
+                                            : "bg-white/90 text-sky-800",
+                                        )}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          onMediaAttachTargetChange(
+                                            isFrameAttachTarget ? null : task.id,
+                                            isFrameAttachTarget ? null : frameIndexValue,
+                                          );
+                                        }}
+                                        onKeyDown={(event) => {
+                                          if (event.key !== "Enter" && event.key !== " ") return;
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          onMediaAttachTargetChange(
+                                            isFrameAttachTarget ? null : task.id,
+                                            isFrameAttachTarget ? null : frameIndexValue,
+                                          );
+                                        }}
+                                      >
+                                        {isFrameAttachTarget
+                                          ? (locale === "th" ? "ช่องนี้" : "Selected")
+                                          : (locale === "th"
+                                            ? `ใส่รูปที่ ${referenceFrameRoleLabel(role, locale, true)}`
+                                            : `Use ${referenceFrameRoleLabel(role, locale, true)}`)}
+                                      </span>
+                                    ) : null}
                                     <div className="absolute bottom-1 right-1 rounded bg-black/55 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
                                       <Maximize2 className="h-3 w-3" />
                                     </div>
@@ -1373,6 +2435,11 @@ export function StoryboardBatchReviewPanel({
                         >
                           {taskStatusLabel(task.status)}
                         </Badge>
+                        {isMediaAttachTarget ? (
+                          <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-700">
+                            {locale === "th" ? "ปลายทางแนบภาพ" : "Attach target"}
+                          </Badge>
+                        ) : null}
                         {task.model ? <Badge variant="secondary">{task.model}</Badge> : null}
                         {segmentLabel ? (
                           <Badge variant={videoSegmentPromptStale ? "destructive" : "outline"}>
@@ -1385,9 +2452,21 @@ export function StoryboardBatchReviewPanel({
                           </Badge>
                         ) : null}
                         {task.isImported ? <Badge variant="outline">{t("mediaStudio.storyboardReviewImported")}</Badge> : null}
+                        {articleStoryboardMetadata ? (
+                          <Badge variant="outline" className="border-violet-300 bg-violet-50 text-violet-800">
+                            {locale === "th" ? "Article video" : "Article video"}
+                          </Badge>
+                        ) : null}
                         {hasMedia ? (
                           <Badge variant="outline">
                             {isImageShot ? (locale === "th" ? "ภาพนิ่ง" : "Image") : (locale === "th" ? "วิดีโอ" : "Video")}
+                          </Badge>
+                        ) : null}
+                        {hasSourceTrim && taskSourceTrim ? (
+                          <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
+                            {locale === "th"
+                              ? `ใช้ ${taskSourceTrim.inSec}-${taskSourceTrim.outSec}s`
+                              : `Trim ${taskSourceTrim.inSec}-${taskSourceTrim.outSec}s`}
                           </Badge>
                         ) : null}
                         <label className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-xs text-muted-foreground">
@@ -1461,6 +2540,19 @@ export function StoryboardBatchReviewPanel({
                             {hasAffiliateUrl ? "Affiliate" : "Metadata"}
                           </Button>
                         ) : null}
+                        {articleStoryboardMetadata ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={expandedArticleVideoMetadataTaskId === task.id ? "secondary" : "outline"}
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => setExpandedArticleVideoMetadataTaskId((current) => current === task.id ? null : task.id)}
+                            title={locale === "th" ? "ดูและแก้ข้อความ เสียง และ reference ของ Article video" : "Inspect and edit Article video text, audio, and references"}
+                          >
+                            <Mic2 className="h-3.5 w-3.5" />
+                            {locale === "th" ? "Article video" : "Article video"}
+                          </Button>
+                        ) : null}
                         {firstLastFrameUrls && onReplaceReferenceFrame ? (
                           <Button
                             type="button"
@@ -1473,7 +2565,600 @@ export function StoryboardBatchReviewPanel({
                             {locale === "th" ? "เฟรม" : "Frames"}
                           </Button>
                         ) : null}
+                        {hasMedia && !isImageShot && onUpdateTaskSourceTrim ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={expandedTrimTaskId === task.id ? "default" : hasSourceTrim ? "secondary" : "outline"}
+                            className={cn(
+                              "h-7 gap-1 px-2 text-xs",
+                              !hasSourceTrim && expandedTrimTaskId !== task.id ? "border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100" : "",
+                            )}
+                            onClick={() => openTrimPanel(task)}
+                            disabled={task.status === "generating"}
+                          >
+                            <Scissors className="h-3.5 w-3.5" />
+                            {locale === "th" ? "ตัดหัว/ท้าย" : "Trim start/end"}
+                          </Button>
+                        ) : null}
+                        {hasSourceTrim && hasMedia && !isImageShot ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-7 rounded-full px-2 text-[11px]",
+                              hasReadySourceTrimDerived
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : "border-amber-200 bg-amber-50 text-amber-800",
+                            )}
+                          >
+                            {hasReadySourceTrimDerived
+                              ? (locale === "th" ? "ใช้คลิปที่ตัดแล้ว" : "Prepared clip")
+                              : (locale === "th" ? "รอเตรียมคลิปตัด" : "Prepare trim clip")}
+                          </Badge>
+                        ) : null}
                       </div>
+
+                      {hasMedia && !isImageShot && onUpdateTaskSourceTrim && expandedTrimTaskId !== task.id ? (
+                        <button
+                          type="button"
+                          className="mt-2 flex w-full items-center justify-between rounded-lg border border-dashed border-sky-200 bg-sky-50/60 px-3 py-2 text-left text-xs text-sky-800 transition-colors hover:bg-sky-100"
+                          onClick={() => openTrimPanel(task)}
+                        >
+                          <span className="flex items-center gap-2 font-medium">
+                            <Scissors className="h-3.5 w-3.5" />
+                            {locale === "th"
+                              ? "เปิดแผงตัดหัว/ท้ายวิดีโอของ shot นี้"
+                              : "Open start/end trim controls for this shot"}
+                          </span>
+                          <span className="text-[11px] text-sky-700">
+                            {hasSourceTrim && taskSourceTrim
+                              ? `${taskSourceTrim.inSec}-${taskSourceTrim.outSec}s`
+                              : (locale === "th" ? "ยังใช้เต็มคลิป" : "Full clip")}
+                          </span>
+                        </button>
+                      ) : null}
+
+                      {expandedTrimTaskId === task.id && task.url && !isImageShot ? (
+                        <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/50 p-3 shadow-sm">
+                          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(220px,360px)_1fr]">
+                            <div className="flex min-h-[520px] items-center justify-center overflow-hidden rounded-lg border bg-black lg:min-h-[620px]">
+                              <video
+                                ref={(node) => {
+                                  trimVideoRef.current = node;
+                                }}
+                                src={task.url}
+                                muted={trimPreviewMuted}
+                                playsInline
+                                preload="metadata"
+                                className="h-full max-h-[78dvh] min-h-[520px] w-full bg-black object-contain lg:min-h-[620px]"
+                                onLoadedMetadata={(event) => {
+                                  const video = event.currentTarget ?? trimVideoRef.current;
+                                  if (!video) return;
+                                  video.muted = trimPreviewMuted;
+                                  video.defaultMuted = trimPreviewMuted;
+                                  if (!trimPreviewMuted) video.volume = 1;
+                                  const duration = video.duration;
+                                  if (!Number.isFinite(duration) || duration <= 0) return;
+                                  updateTrimDraft(task.id, (draft) => ({
+                                    ...draft,
+                                    outSec: draft.outSec >= (draft.sourceDurationSec ?? duration) - 0.05
+                                      ? duration
+                                      : Math.min(draft.outSec, duration),
+                                    sourceDurationSec: duration,
+                                  }));
+                                  syncTrimVideoToDraft(task.id);
+                                }}
+                                onTimeUpdate={(event) => {
+                                  const video = event.currentTarget ?? trimVideoRef.current;
+                                  if (!video) return;
+                                  const draft = trimDrafts[task.id] ?? trimDraft;
+                                  const currentTime = Number.isFinite(video.currentTime) ? video.currentTime : draft.inSec;
+                                  const nextPlayableTime = getStoryboardTrimPreviewPlayableTime(currentTime, draft);
+                                  if (nextPlayableTime > currentTime + 0.03) {
+                                    video.currentTime = nextPlayableTime;
+                                    setTrimPreviewTimes((current) => ({ ...current, [task.id]: roundStoryboardTrimSecond(nextPlayableTime) }));
+                                    return;
+                                  }
+                                  if (currentTime >= draft.outSec - 0.03) {
+                                    const resetTime = getStoryboardTrimPreviewPlayableTime(draft.inSec, draft);
+                                    video.pause();
+                                    video.currentTime = resetTime;
+                                    setTrimPreviewTimes((current) => ({ ...current, [task.id]: roundStoryboardTrimSecond(resetTime) }));
+                                    setPlayingTrimTaskId((current) => current === task.id ? null : current);
+                                    return;
+                                  }
+                                  setTrimPreviewTimes((current) => ({
+                                    ...current,
+                                    [task.id]: roundStoryboardTrimSecond(currentTime),
+                                  }));
+                                }}
+                                onPause={() => setPlayingTrimTaskId((current) => current === task.id ? null : current)}
+                              />
+                            </div>
+                            <div className="min-w-0 space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-800">
+                                    {locale === "th" ? "ตัดหัว/ท้ายวิดีโอของ shot นี้" : "Trim this shot source"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {locale === "th"
+                                      ? "บันทึกแล้วจะใช้ช่วงนี้ตอน Capture Preview และ Final Composite โดยไม่แก้ไฟล์ต้นฉบับ"
+                                      : "Saved trim is applied to Capture Preview and Final Composite without changing the original file."}
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="bg-background">
+                                  {locale === "th"
+                                    ? `ใช้จริง ${keptTrimDurationSeconds}s`
+                                    : `${keptTrimDurationSeconds}s kept`}
+                                </Badge>
+                              </div>
+                              <div className="rounded-lg border bg-background p-3">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                                  <span>{locale === "th" ? `ขอบเขตใช้งาน ${trimDraft.inSec}-${trimDraft.outSec}s` : `Kept boundary ${trimDraft.inSec}-${trimDraft.outSec}s`}</span>
+                                  <span>{locale === "th" ? `ตำแหน่งวิดีโอ ${roundStoryboardTrimSecond(trimPreviewTime)}s` : `Playhead ${roundStoryboardTrimSecond(trimPreviewTime)}s`}</span>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                                    {locale === "th" ? "ขอบซ้ายของช่วงใช้งาน" : "Kept range start"}
+                                    <input
+                                      type="range"
+                                      min={0}
+                                      max={Math.max(0.5, trimSourceDuration)}
+                                      step={0.1}
+                                      value={trimDraft.inSec}
+                                      onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        updateTrimDraft(task.id, (draft) => ({ ...draft, inSec: value }));
+                                        if (Number.isFinite(value)) {
+                                          setTrimTimelineCenters((current) => ({ ...current, [task.id]: value }));
+                                        }
+                                      }}
+                                      onPointerUp={() => syncTrimVideoToDraft(task.id)}
+                                      className="h-10 w-full accent-sky-500"
+                                    />
+                                  </label>
+                                  <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                                    {locale === "th" ? "ขอบขวาของช่วงใช้งาน" : "Kept range end"}
+                                    <input
+                                      type="range"
+                                      min={0.1}
+                                      max={Math.max(0.5, trimSourceDuration)}
+                                      step={0.1}
+                                      value={trimDraft.outSec}
+                                      onChange={(event) => {
+                                        const value = Number(event.target.value);
+                                        updateTrimDraft(task.id, (draft) => ({ ...draft, outSec: value }));
+                                        if (Number.isFinite(value)) {
+                                          setTrimTimelineCenters((current) => ({ ...current, [task.id]: value }));
+                                        }
+                                      }}
+                                      className="h-10 w-full accent-sky-500"
+                                    />
+                                  </label>
+                                </div>
+                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                                  <span>
+                                    {locale === "th"
+                                      ? `หน้าต่าง timeline ${roundStoryboardTrimSecond(trimTimelineViewportStart)}-${roundStoryboardTrimSecond(trimTimelineViewportEnd)}s`
+                                      : `Timeline window ${roundStoryboardTrimSecond(trimTimelineViewportStart)}-${roundStoryboardTrimSecond(trimTimelineViewportEnd)}s`}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => setTrimTimelineZoomLevel(
+                                        task.id,
+                                        trimDraft,
+                                        trimSourceDuration,
+                                        trimTimelineZoom / 1.6,
+                                      )}
+                                      disabled={trimTimelineZoom <= STORYBOARD_TRIM_TIMELINE_MIN_ZOOM}
+                                      aria-label={locale === "th" ? "ซูมออก timeline" : "Zoom timeline out"}
+                                    >
+                                      <ZoomOut className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Badge variant="outline" className="min-w-14 justify-center bg-background">
+                                      {trimTimelineZoom.toFixed(trimTimelineZoom % 1 === 0 ? 0 : 1)}x
+                                    </Badge>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => setTrimTimelineZoomLevel(
+                                        task.id,
+                                        trimDraft,
+                                        trimSourceDuration,
+                                        trimTimelineZoom * 1.6,
+                                      )}
+                                      disabled={trimTimelineZoom >= STORYBOARD_TRIM_TIMELINE_MAX_ZOOM}
+                                      aria-label={locale === "th" ? "ซูมเข้า timeline" : "Zoom timeline in"}
+                                    >
+                                      <ZoomIn className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-3 text-xs"
+                                      onClick={() => setTrimTimelineCenters((current) => ({
+                                        ...current,
+                                        [task.id]: roundStoryboardTrimSecond(
+                                          (disabledRangeDraft.startSec + disabledRangeDraft.endSec) / 2,
+                                        ),
+                                      }))}
+                                    >
+                                      {locale === "th" ? "ไปช่วงตัด" : "Cut"}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-3 text-xs"
+                                      onClick={() => setTrimTimelineZoomLevel(
+                                        task.id,
+                                        trimDraft,
+                                        trimSourceDuration,
+                                        STORYBOARD_TRIM_TIMELINE_MIN_ZOOM,
+                                      )}
+                                    >
+                                      {locale === "th" ? "เต็มคลิป" : "Full"}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div
+                                  className="relative mt-3 h-10 touch-none overflow-hidden rounded-full border bg-slate-100 cursor-crosshair"
+                                  role="slider"
+                                  aria-label={locale === "th" ? "Timeline สำหรับเลือกตำแหน่งตัดวิดีโอ" : "Video trim timeline"}
+                                  aria-valuemin={0}
+                                  aria-valuemax={trimSourceDuration}
+                                  aria-valuenow={roundStoryboardTrimSecond(trimPreviewTime)}
+                                  onPointerDown={(event) => {
+                                    const pointerTime = getTrimTimelinePointerTime(
+                                      event,
+                                      trimTimelineViewportStart,
+                                      trimTimelineViewportWidth,
+                                    );
+                                    const cutStartDistance = Math.abs(pointerTime - disabledRangeDraft.startSec);
+                                    const cutEndDistance = Math.abs(pointerTime - disabledRangeDraft.endSec);
+                                    const edgeThresholdSec = Math.max(0.2, trimTimelineViewportWidth * 0.025);
+                                    const isInsideDraftCut =
+                                      pointerTime >= disabledRangeDraft.startSec &&
+                                      pointerTime <= disabledRangeDraft.endSec;
+                                    const mode =
+                                      cutStartDistance <= edgeThresholdSec
+                                        ? "cut-start"
+                                        : cutEndDistance <= edgeThresholdSec
+                                          ? "cut-end"
+                                          : isInsideDraftCut
+                                            ? "cut-range"
+                                            : "playhead";
+                                    event.currentTarget.setPointerCapture(event.pointerId);
+                                    setTrimTimelineDrag({
+                                      taskId: task.id,
+                                      mode,
+                                      rangeOffsetSec: mode === "cut-range"
+                                        ? Math.max(0, pointerTime - disabledRangeDraft.startSec)
+                                        : undefined,
+                                    });
+                                    updateTrimTimelineFromPointer(
+                                      task.id,
+                                      trimDraft,
+                                      trimTimelineViewportStart,
+                                      trimTimelineViewportWidth,
+                                      event,
+                                      mode,
+                                      mode === "cut-range" ? Math.max(0, pointerTime - disabledRangeDraft.startSec) : 0,
+                                    );
+                                  }}
+                                  onPointerMove={(event) => {
+                                    if (!trimTimelineDrag || trimTimelineDrag.taskId !== task.id) return;
+                                    updateTrimTimelineFromPointer(
+                                      task.id,
+                                      trimDraft,
+                                      trimTimelineViewportStart,
+                                      trimTimelineViewportWidth,
+                                      event,
+                                      trimTimelineDrag.mode,
+                                      trimTimelineDrag.rangeOffsetSec ?? 0,
+                                    );
+                                  }}
+                                  onPointerUp={(event) => {
+                                    if (trimTimelineDrag?.taskId === task.id) {
+                                      try {
+                                        event.currentTarget.releasePointerCapture(event.pointerId);
+                                      } catch {
+                                        // Pointer capture may already be released by the browser.
+                                      }
+                                      setTrimTimelineDrag(null);
+                                    }
+                                  }}
+                                  onPointerCancel={() => {
+                                    if (trimTimelineDrag?.taskId === task.id) setTrimTimelineDrag(null);
+                                  }}
+                                >
+                                  {trimActiveWidthPercent > 0 ? (
+                                    <div
+                                      className="pointer-events-none absolute top-3 h-4 rounded-full bg-sky-500"
+                                      style={{ left: `${trimActiveLeftPercent}%`, width: `${trimActiveWidthPercent}%` }}
+                                    />
+                                  ) : null}
+                                  {(trimDraft.disabledRanges ?? []).map((range, rangeIndex) => {
+                                    if (range.endSec < trimTimelineViewportStart || range.startSec > trimTimelineViewportEnd) return null;
+                                    const left = trimTimelinePercent(range.startSec);
+                                    const width = Math.max(1, trimTimelinePercent(range.endSec) - left);
+                                    return (
+                                      <div
+                                        key={`${task.id}-disabled-${rangeIndex}`}
+                                        className="pointer-events-none absolute top-2 h-6 rounded-full bg-rose-500/90"
+                                        style={{ left: `${left}%`, width: `${width}%` }}
+                                      />
+                                    );
+                                  })}
+                                  {trimDraftCutVisible ? (
+                                    <>
+                                      <div
+                                        className="pointer-events-none absolute top-1 h-8 rounded-full border-2 border-rose-600 bg-rose-500/25"
+                                        style={{ left: `${trimDraftCutLeftPercent}%`, width: `${trimDraftCutWidthPercent}%` }}
+                                      />
+                                      <div
+                                        className="pointer-events-none absolute top-0 h-10 w-2 -translate-x-1/2 rounded-full bg-rose-600"
+                                        style={{ left: `${trimDraftCutLeftPercent}%` }}
+                                      />
+                                      <div
+                                        className="pointer-events-none absolute top-0 h-10 w-2 -translate-x-1/2 rounded-full bg-rose-600"
+                                        style={{ left: `${trimTimelinePercent(disabledRangeDraft.endSec)}%` }}
+                                      />
+                                    </>
+                                  ) : null}
+                                  <div
+                                    className="pointer-events-none absolute top-0 h-10 w-0.5 bg-slate-900"
+                                    style={{ left: `${trimTimelinePercent(trimPreviewTime)}%` }}
+                                  />
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1"><span className="h-2 w-4 rounded-full bg-sky-500" />{locale === "th" ? "ช่วงที่จะใช้" : "Kept"}</span>
+                                  <span className="inline-flex items-center gap-1"><span className="h-2 w-4 rounded-full bg-rose-500" />{locale === "th" ? "ตัดออกแล้ว" : "Disabled"}</span>
+                                  <span className="inline-flex items-center gap-1"><span className="h-2 w-4 rounded-full border border-rose-600 bg-rose-500/25" />{locale === "th" ? "ช่วงที่กำลัง mark" : "Draft cut"}</span>
+                                  <span className="inline-flex items-center gap-1"><span className="h-3 w-0.5 bg-slate-900" />{locale === "th" ? "ตำแหน่งวิดีโอ" : "Playhead"}</span>
+                                </div>
+                              </div>
+                              <div className="rounded-lg border border-rose-200 bg-rose-50/60 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-semibold text-rose-900">
+                                      {locale === "th" ? "ตัดช่วงกลางของ shot" : "Disable middle ranges"}
+                                    </p>
+                                    <p className="text-xs text-rose-800/80">
+                                      {locale === "th"
+                                        ? `เลือกได้สูงสุด ${STORYBOARD_TRIM_MAX_DISABLED_RANGES} ช่วง และต้องเหลือวิดีโออย่างน้อย ${STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS}s`
+                                        : `Up to ${STORYBOARD_TRIM_MAX_DISABLED_RANGES} ranges. At least ${STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS}s must remain.`}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline" className="border-rose-200 bg-background text-rose-800">
+                                    {locale === "th"
+                                      ? `ตัดออก ${disabledDurationSeconds}s`
+                                      : `${disabledDurationSeconds}s disabled`}
+                                  </Badge>
+                                </div>
+                                <div className="mt-3 rounded-lg border border-rose-200 bg-background/80 p-2.5">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-rose-900">
+                                    <span>
+                                      {locale === "th"
+                                        ? `ดูวิดีโอแล้วกด mark จากตำแหน่งปัจจุบัน (${roundStoryboardTrimSecond(trimPreviewTime)}s)`
+                                        : `Play the video, then mark from the current playhead (${roundStoryboardTrimSecond(trimPreviewTime)}s)`}
+                                    </span>
+                                    <span className="font-semibold">
+                                      {disabledRangeDraft.startSec}-{disabledRangeDraft.endSec}s
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 grid gap-2 md:grid-cols-[1fr_auto_1fr]">
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-rose-200 text-rose-800 hover:bg-rose-50"
+                                      onClick={() => markDisabledRangeDraftPoint(task.id, "start")}
+                                    >
+                                      {locale === "th" ? "ตั้งจุดเริ่มตัดจากเฟรมนี้" : "Mark cut start here"}
+                                    </Button>
+                                    <span className="hidden items-center text-xs text-rose-700 md:flex">
+                                      {locale === "th" ? "ถึง" : "to"}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-rose-200 text-rose-800 hover:bg-rose-50"
+                                      onClick={() => markDisabledRangeDraftPoint(task.id, "end")}
+                                    >
+                                      {locale === "th" ? "ตั้งจุดจบตัดจากเฟรมนี้" : "Mark cut end here"}
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <label className="grid gap-1 text-[11px] font-medium text-rose-900">
+                                      {locale === "th" ? "ปรับเวลาเริ่มตัด" : "Fine tune start"}
+                                      <input
+                                        type="number"
+                                        min={trimDraft.inSec}
+                                        max={trimDraft.outSec - STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS}
+                                        step={0.1}
+                                        value={disabledRangeDraft.startSec}
+                                        onChange={(event) => {
+                                          const value = Number(event.target.value);
+                                          if (Number.isFinite(value)) {
+                                            setTrimTimelineCenters((current) => ({ ...current, [task.id]: value }));
+                                            updateDisabledRangeDraft(task.id, (draft) => ({ ...draft, startSec: value }));
+                                          }
+                                        }}
+                                        className="h-9 rounded-md border bg-background px-2 text-sm text-slate-900"
+                                      />
+                                    </label>
+                                    <label className="grid gap-1 text-[11px] font-medium text-rose-900">
+                                      {locale === "th" ? "ปรับเวลาจบตัด" : "Fine tune end"}
+                                      <input
+                                        type="number"
+                                        min={trimDraft.inSec + STORYBOARD_TRIM_MIN_DISABLED_RANGE_SECONDS}
+                                        max={trimDraft.outSec}
+                                        step={0.1}
+                                        value={disabledRangeDraft.endSec}
+                                        onChange={(event) => {
+                                          const value = Number(event.target.value);
+                                          if (Number.isFinite(value)) {
+                                            setTrimTimelineCenters((current) => ({ ...current, [task.id]: value }));
+                                            updateDisabledRangeDraft(task.id, (draft) => ({ ...draft, endSec: value }));
+                                          }
+                                        }}
+                                        className="h-9 rounded-md border bg-background px-2 text-sm text-slate-900"
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <Badge variant="outline" className="border-rose-200 bg-background text-rose-800">
+                                    {disabledRangeDraft.startSec}-{disabledRangeDraft.endSec}s
+                                  </Badge>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    className="gap-1"
+                                    disabled={!canAddDisabledRange}
+                                    onClick={() => addDisabledRangeToTrimDraft(task.id)}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                    {locale === "th" ? "เพิ่มช่วงตัดออก" : "Add disabled range"}
+                                  </Button>
+                                  {!canAddDisabledRange ? (
+                                    <span className="text-[11px] text-rose-700">
+                                      {disabledRangeCount >= STORYBOARD_TRIM_MAX_DISABLED_RANGES
+                                        ? (locale === "th" ? "ครบจำนวนช่วงสูงสุดแล้ว" : "Maximum ranges reached")
+                                        : (locale === "th" ? "ช่วงนี้สั้นเกินไปหรือจะเหลือวิดีโอน้อยเกินไป" : "Range is too short or leaves too little video")}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {(trimDraft.disabledRanges ?? []).length > 0 ? (
+                                  <div className="mt-3 grid gap-2">
+                                    {(trimDraft.disabledRanges ?? []).map((range, rangeIndex) => (
+                                      <div
+                                        key={`${task.id}-range-row-${rangeIndex}`}
+                                        className="flex items-center justify-between rounded-md border border-rose-200 bg-background px-2 py-1.5 text-xs text-rose-900"
+                                      >
+                                        <span>
+                                          {locale === "th" ? `ช่วงที่ ${rangeIndex + 1}` : `Range ${rangeIndex + 1}`}: {range.startSec}-{range.endSec}s
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 px-2 text-rose-700 hover:text-rose-800"
+                                          onClick={() => removeDisabledRangeFromTrimDraft(task.id, rangeIndex)}
+                                        >
+                                          <X className="mr-1 h-3.5 w-3.5" />
+                                          {locale === "th" ? "ลบ" : "Remove"}
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="gap-1"
+                                  onClick={() => void toggleTrimPreviewPlayback(task.id)}
+                                >
+                                  {playingTrimTaskId === task.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                  {playingTrimTaskId === task.id
+                                    ? (locale === "th" ? "หยุด" : "Pause")
+                                    : (locale === "th" ? "เล่นช่วงนี้" : "Play range")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    const nextMuted = !trimPreviewMuted;
+                                    setTrimPreviewMuted(nextMuted);
+                                    const video = trimVideoRef.current;
+                                    if (video) {
+                                      video.muted = nextMuted;
+                                      video.defaultMuted = nextMuted;
+                                      if (!nextMuted) video.volume = 1;
+                                    }
+                                  }}
+                                  title={trimPreviewMuted
+                                    ? (locale === "th" ? "เปิดเสียง preview" : "Unmute preview")
+                                    : (locale === "th" ? "ปิดเสียง preview" : "Mute preview")}
+                                >
+                                  {trimPreviewMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                  {trimPreviewMuted
+                                    ? (locale === "th" ? "เปิดเสียง" : "Unmute")
+                                    : (locale === "th" ? "มีเสียง" : "Sound on")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const currentDraft = trimDrafts[task.id] ?? trimDraft;
+                                    const sourceDurationSec = Math.max(
+                                      0.5,
+                                      currentDraft.sourceDurationSec ?? getTaskTrimSourceDuration(task, currentDraft),
+                                    );
+                                    const next: StoryboardSourceTrimRange = {
+                                      inSec: 0,
+                                      outSec: roundStoryboardTrimSecond(sourceDurationSec),
+                                      sourceDurationSec: roundStoryboardTrimSecond(sourceDurationSec),
+                                      disabledRanges: [],
+                                    };
+                                    setTrimDrafts((current) => ({ ...current, [task.id]: next }));
+                                    window.setTimeout(() => syncTrimVideoToDraft(task.id, next), 0);
+                                  }}
+                                >
+                                  <RotateCcw className="mr-2 h-4 w-4" />
+                                  {locale === "th" ? "รีเซ็ตเต็มคลิป" : "Reset full clip"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setTrimDrafts((current) => ({
+                                      ...current,
+                                      [task.id]: createStoryboardTrimDraft(task),
+                                    }));
+                                    setExpandedTrimTaskId(null);
+                                    setPlayingTrimTaskId(null);
+                                  }}
+                                >
+                                  {locale === "th" ? "ยกเลิก" : "Cancel"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => void saveTrimDraft(task)}
+                                >
+                                  <Check className="h-4 w-4" />
+                                  {locale === "th" ? "บันทึกช่วง" : "Save trim"}
+                                </Button>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                {locale === "th"
+                                  ? "รองรับเฟสถัดไป: ช่วงที่ disable กลางคลิปจะถูกเก็บใน trim เดียวกัน และตอน render จะแปลงเป็นหลายช่วงต่อเนื่อง"
+                                  : "Future-ready: disabled middle ranges will be stored with this trim and expanded into contiguous render segments."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
 
                       {isEditing ? (
                         <p className="mt-1.5 text-sm font-medium leading-5">
@@ -1492,6 +3177,9 @@ export function StoryboardBatchReviewPanel({
                       )}
 
                       {expandedMetadataTaskId === task.id ? renderMarketplaceMetadataPanel(task) : null}
+                      {articleStoryboardMetadata && expandedArticleVideoMetadataTaskId === task.id
+                        ? renderArticleStoryboardVideoPanel(task, articleStoryboardMetadata)
+                        : null}
 
                       {isEditing ? (
                         <div className="mt-3 space-y-2">
@@ -1692,6 +3380,31 @@ export function StoryboardBatchReviewPanel({
                         ) : null}
                         {onUploadVideoSlot ? (
                           <>
+                            {onMediaAttachTargetChange ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={isMediaAttachTarget ? "default" : "outline"}
+                                className={cn(
+                                  "h-9 px-3 text-xs font-semibold xl:hidden",
+                                  isMediaAttachTarget
+                                    ? "bg-sky-600 text-white shadow-sm hover:bg-sky-700"
+                                    : "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100",
+                                )}
+                                onClick={() => onMediaAttachTargetChange(
+                                  isMediaAttachTarget ? null : task.id,
+                                  isMediaAttachTarget ? null : 0,
+                                )}
+                                title={locale === "th"
+                                  ? "เลือกช่องรูปด้านบนของ Shot นี้เป็นปลายทางสำหรับภาพจาก History Gallery หรือภาพที่ตัดแล้ว"
+                                  : "Use this shot's top image slot as the tap-to-attach target for History Gallery or cut images"}
+                              >
+                                <ImagePlus className="mr-2 h-4 w-4" />
+                                {isMediaAttachTarget
+                                  ? (locale === "th" ? `เลือกช่องรูป Shot ${task.index + 1}` : `Shot ${task.index + 1} image slot`)
+                                  : (locale === "th" ? "เลือกช่องรูปบนสำหรับภาพที่ตัด" : "Use top image slot for cut images")}
+                              </Button>
+                            ) : null}
                             <Button
                               type="button"
                               size="sm"

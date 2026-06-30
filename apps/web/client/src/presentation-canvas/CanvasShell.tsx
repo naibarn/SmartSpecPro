@@ -32,15 +32,49 @@ export function CanvasShell({
         <div
           className="grid h-full min-h-0 transition-[grid-template-columns] duration-300"
           style={{
-            gridTemplateColumns: `${leftCollapsed ? "0px 0px" : "74px minmax(280px,320px)"} minmax(0,1fr) ${rightCollapsed ? "0px" : "minmax(280px,320px)"}`,
+            gridTemplateColumns: `${leftCollapsed ? "44px 0px" : "74px minmax(280px,320px)"} minmax(0,1fr) ${rightCollapsed ? "44px" : "minmax(280px,320px)"}`,
           }}
         >
           <aside
             className={`min-h-0 min-w-0 overflow-hidden border-r border-slate-800 bg-slate-950 transition-all duration-300 ${
-              leftCollapsed ? "pointer-events-none opacity-0" : "px-2 py-3 opacity-100"
+              leftCollapsed ? "px-1.5 py-3 opacity-100" : "px-2 py-3 opacity-100"
             }`}
+            data-testid="canvas-shell-left-rail"
           >
-            {toolRail}
+            {leftCollapsed ? (
+              <div className="flex h-full flex-col items-center">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                  onClick={() => setLeftCollapsed(false)}
+                  aria-label="Expand Left Panel"
+                  title="Expand Left Panel"
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
+                <div className="mt-3 h-px w-7 bg-slate-800" aria-hidden="true" />
+                <span className="mt-3 [writing-mode:vertical-rl] rotate-180 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+                  Library
+                </span>
+              </div>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="mb-2 h-9 w-9 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                  onClick={() => setLeftCollapsed(true)}
+                  aria-label="Collapse Left Panel"
+                  title="Collapse Left Panel"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+                {toolRail}
+              </>
+            )}
           </aside>
           <aside
             className={`min-h-0 min-w-0 overflow-hidden border-r border-slate-800 bg-slate-900 transition-all duration-300 ${
@@ -52,30 +86,6 @@ export function CanvasShell({
             </div>
           </aside>
           <section className="relative flex min-h-0 flex-col gap-1.5 bg-slate-100/90 p-2">
-            <div className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="h-9 w-6 rounded-full bg-white/95 shadow"
-                onClick={() => setLeftCollapsed((prev) => !prev)}
-                aria-label={leftCollapsed ? "Expand Left Panel" : "Collapse Left Panel"}
-              >
-                {leftCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              </Button>
-            </div>
-            <div className="absolute right-0 top-1/2 z-30 translate-x-1/2 -translate-y-1/2">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="h-9 w-6 rounded-full bg-white/95 shadow"
-                onClick={() => setRightCollapsed((prev) => !prev)}
-                aria-label={rightCollapsed ? "Expand Right Panel" : "Collapse Right Panel"}
-              >
-                {rightCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
-              </Button>
-            </div>
             <div className="shrink-0">{canvasToolbar}</div>
             <div className="min-h-0 flex-1">{canvasStage}</div>
             {canvasFooter ? (
@@ -87,14 +97,50 @@ export function CanvasShell({
             ) : null}
           </section>
           <aside
-            className={`min-h-0 overflow-y-auto border-l border-slate-300 bg-slate-100 transition-all duration-300 ${
-              rightCollapsed ? "pointer-events-none opacity-0" : "p-3 opacity-100"
+            className={`min-h-0 overflow-hidden border-l border-slate-300 bg-slate-100 transition-all duration-300 ${
+              rightCollapsed ? "p-1.5 opacity-100" : "p-3 opacity-100"
             }`}
+            data-testid="canvas-shell-right-rail"
           >
-            <div className="space-y-2">
-              <h2 className="font-medium">Properties</h2>
-              {propertiesPanel}
-            </div>
+            {rightCollapsed ? (
+              <div className="flex h-full flex-col items-center">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 rounded-lg text-slate-700 hover:bg-white hover:text-slate-950"
+                  onClick={() => setRightCollapsed(false)}
+                  aria-label="Expand Right Panel"
+                  title="Expand Right Panel"
+                >
+                  <PanelRightOpen className="h-4 w-4" />
+                </Button>
+                <div className="mt-3 h-px w-7 bg-slate-300" aria-hidden="true" />
+                <span className="mt-3 [writing-mode:vertical-rl] text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+                  Properties
+                </span>
+              </div>
+            ) : (
+              <div className="flex h-full min-h-0 flex-col space-y-2 overflow-hidden">
+                <div className="flex shrink-0 items-center justify-between gap-2">
+                  <h2 className="font-medium">Properties</h2>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-slate-600 hover:bg-white hover:text-slate-950"
+                    onClick={() => setRightCollapsed(true)}
+                    aria-label="Collapse Right Panel"
+                    title="Collapse Right Panel"
+                  >
+                    <PanelRightClose className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {propertiesPanel}
+                </div>
+              </div>
+            )}
           </aside>
         </div>
       </div>

@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { detectGridFromDimensions } from "./imageGridSplitter";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { detectGridFromDimensions, loadImage } from "./imageGridSplitter";
+
+const originalImage = globalThis.Image;
+
+afterEach(() => {
+  globalThis.Image = originalImage;
+  vi.restoreAllMocks();
+});
 
 describe("detectGridFromDimensions", () => {
   it("prefers the 3x3 storyboard default for portrait storyboard dimensions", () => {
@@ -32,5 +39,37 @@ describe("detectGridFromDimensions", () => {
     });
 
     expect(detected).toBeNull();
+  });
+});
+
+describe("loadImage", () => {
+  it("falls back to the same-origin image proxy when a remote image is blocked by CORS", async () => {
+    const loadedSources: string[] = [];
+
+    class MockImage {
+      crossOrigin = "";
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+
+      set src(value: string) {
+        loadedSources.push(value);
+        queueMicrotask(() => {
+          if (value.startsWith("/api/media/image-proxy")) {
+            this.onload?.();
+          } else {
+            this.onerror?.();
+          }
+        });
+      }
+    }
+
+    globalThis.Image = MockImage as unknown as typeof Image;
+
+    await expect(loadImage("https://cdn.example.com/reference-sheet.png")).resolves.toBeInstanceOf(MockImage);
+
+    expect(loadedSources).toEqual([
+      "https://cdn.example.com/reference-sheet.png",
+      "/api/media/image-proxy?url=https%3A%2F%2Fcdn.example.com%2Freference-sheet.png",
+    ]);
   });
 });

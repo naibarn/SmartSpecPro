@@ -62,6 +62,25 @@ const NON_DEFAULT_GRID_MIN_MARGIN = 0.06;
 const STANDARD_CELL_ASPECTS = [1, 16 / 9, 9 / 16, 4 / 3, 3 / 4, 4 / 5, 5 / 4];
 const COMMON_AI_OUTPUT_SIZES = [512, 768, 1024, 1080, 1280, 1344, 1536, 1792, 2048];
 
+function shouldProxyImageUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    const currentOrigin = typeof window !== "undefined" && window.location?.origin
+      ? window.location.origin
+      : "";
+    return !currentOrigin || parsed.origin !== currentOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function getCanvasSafeImageProxyUrl(url: string): string {
+  return `/api/media/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 // Common grid patterns used by AI image generators
 export const COMMON_GRIDS: GridDimension[] = [
   { rows: 2, cols: 2, label: "2x2 (4 images)" },
@@ -96,8 +115,9 @@ export const COMMON_CROP_RATIOS: CropRatio[] = [
 export async function loadImage(url: string): Promise<HTMLImageElement> {
   // For data URLs or blob URLs, no CORS needed
   const isLocalUrl = url.startsWith("data:") || url.startsWith("blob:");
+  const canUseProxyFallback = !isLocalUrl && shouldProxyImageUrl(url);
 
-  return new Promise((resolve, reject) => {
+  const load = (sourceUrl: string, allowProxyFallback: boolean): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
     const img = new Image();
 
     // Only set crossOrigin for remote URLs that need it
@@ -108,6 +128,10 @@ export async function loadImage(url: string): Promise<HTMLImageElement> {
     img.onload = () => resolve(img);
 
     img.onerror = () => {
+      if (allowProxyFallback && canUseProxyFallback) {
+        load(getCanvasSafeImageProxyUrl(url), false).then(resolve, reject);
+        return;
+      }
       if (!isLocalUrl) {
         reject(new Error("Failed to load image (CORS blocked or unreachable source)"));
       } else {
@@ -115,8 +139,10 @@ export async function loadImage(url: string): Promise<HTMLImageElement> {
       }
     };
 
-    img.src = url;
+    img.src = sourceUrl;
   });
+
+  return load(url, true);
 }
 
 interface GridLineEvidence {

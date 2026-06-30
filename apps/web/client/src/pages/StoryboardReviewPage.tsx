@@ -19,11 +19,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions } from "@/components/media/StoryboardBatchReviewDialog";
+import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions, type StoryboardSourceTrimRange } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { HyperframesStoryboardReviewPanel } from "@/components/marketplaceCapture/HyperframesStoryboardReviewPanel";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
 import {
@@ -85,6 +86,15 @@ import {
   getHyperframesSubtitlePreviewText,
 } from "@shared/hyperframes/subtitleCues";
 import {
+  buildPreviewMatchCompositionPayloadFromHyperframesPreview,
+  computePreviewMatchCompositionHash,
+  computePreviewMatchTimelineHash,
+  MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
+  normalizeManualStoryboardProductId,
+  withPreviewMatchCompositionHashes,
+  type StoryboardPreviewMatchCaptureQuality,
+} from "@shared/storyboardPreviewMatchCapture";
+import {
   HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
   HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
   HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS,
@@ -102,6 +112,7 @@ import {
   applyStoryboardReviewVideoOptionsToDraft,
   applyRegeneratedVideoSegmentPromptToDraft,
   clearStoryboardReviewDraft,
+  deriveManualHyperframesIdentityFromStoryboardTasks,
   evaluateStoryboardVideoSegmentPromptGenerationGate,
   getStoryboardCompanionAudioUpdatedAt,
   getStoryboardReviewAutoReviewRunIdFromDraft,
@@ -128,6 +139,11 @@ import type { VideoSegment, VideoSegmentStructureMode } from "@shared/videoSegme
 import {
   extractStoryboardNativeSpeechText,
 } from "@shared/storyboardPromptAudio";
+import {
+  buildArticleStoryboardRenderTrackPlan,
+  getArticleStoryboardReviewMetadata,
+  updateArticleStoryboardCurrentPromptMetadata,
+} from "@shared/articleStoryboardVideo";
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
   "Reference image mode: use the attached image(s) only as material, identity, style, product, object, or scene references.",
@@ -167,12 +183,26 @@ function getTaskReferenceFrameRoles(task: StoryboardGenerationTask): StoryboardR
   return referenceImageCount === 1 ? ["reference"] : ["start", "stop"];
 }
 
+function getArticleStoryboardDraftAudioStrategy(reviewTasks: ReturnType<typeof storyboardDraftToReviewTasks>) {
+  for (const task of reviewTasks) {
+    const metadata = getArticleStoryboardReviewMetadata(task.generationExtraParams);
+    if (metadata) return metadata.audioStrategy;
+  }
+  return null;
+}
+
 function frameRolesUseExactFirstLast(roles: StoryboardReferenceFrameRole[]): boolean {
   return roles.length >= 2 && roles[0] === "start" && roles[1] === "stop";
 }
 
 function generationTypeForFrameRoles(roles: StoryboardReferenceFrameRole[]): string {
   return frameRolesUseExactFirstLast(roles) ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "REFERENCE_2_VIDEO";
+}
+
+function storyboardReferenceFrameRoleLabel(role: StoryboardReferenceFrameRole, locale: string, short = false): string {
+  if (role === "reference") return locale === "th" ? (short ? "Ref" : "ภาพ Reference") : (short ? "Ref" : "Reference image");
+  if (role === "stop") return locale === "th" ? (short ? "Stop" : "Stop Frame") : (short ? "Stop" : "Stop frame");
+  return locale === "th" ? (short ? "Start" : "Start Frame") : (short ? "Start" : "Start frame");
 }
 
 type StoryboardMediaPickerKind = "video" | "audio";
@@ -1114,6 +1144,8 @@ type HyperframesFinalSourceClip = StoryboardClipCandidate & {
   segmentIndex?: number;
   segmentCount?: number;
   originalDurationSeconds?: number;
+  derivedFromUrl?: string;
+  derivedSourceTrim?: StoryboardSourceTrimRange | null;
 };
 type HyperframesFinalResolvedPromptShot = {
   id: string;
@@ -1942,80 +1974,308 @@ function roundHyperframesTimelineSecond(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+const STORYBOARD_SOURCE_TRIM_MAX_DISABLED_RANGES = 5;
+const STORYBOARD_SOURCE_TRIM_MIN_DISABLED_RANGE_SECONDS = 0.3;
+const STORYBOARD_SOURCE_TRIM_MIN_KEPT_DURATION_SECONDS = 1;
+const STORYBOARD_SOURCE_TRIM_MERGE_GAP_SECONDS = 0.2;
+
+function readStoryboardSourceTrimFromExtraParams(extraParams: unknown): StoryboardSourceTrimRange | null {
+  if (!extraParams || typeof extraParams !== "object" || Array.isArray(extraParams)) return null;
+  const trim = (extraParams as Record<string, unknown>).sourceTrim;
+  if (!trim || typeof trim !== "object" || Array.isArray(trim)) return null;
+  const record = trim as Record<string, unknown>;
+  const inSec = Number(record.inSec);
+  const outSec = Number(record.outSec);
+  if (!Number.isFinite(inSec) || !Number.isFinite(outSec) || outSec <= inSec) return null;
+  const sourceDurationSec = Number(record.sourceDurationSec);
+  const normalized: StoryboardSourceTrimRange = {
+    inSec: Math.max(0, roundHyperframesTimelineSecond(inSec)),
+    outSec: Math.max(0.1, roundHyperframesTimelineSecond(outSec)),
+    ...(Number.isFinite(sourceDurationSec) && sourceDurationSec > 0
+      ? { sourceDurationSec: roundHyperframesTimelineSecond(sourceDurationSec) }
+      : {}),
+  };
+  if (Array.isArray(record.disabledRanges)) {
+    normalized.disabledRanges = record.disabledRanges
+      .map((range) => {
+        const rangeRecord = range && typeof range === "object" && !Array.isArray(range)
+          ? range as Record<string, unknown>
+          : {};
+        const startSec = Number(rangeRecord.startSec);
+        const endSec = Number(rangeRecord.endSec);
+        return Number.isFinite(startSec) && Number.isFinite(endSec) && endSec > startSec
+          ? {
+              startSec: roundHyperframesTimelineSecond(startSec),
+              endSec: roundHyperframesTimelineSecond(endSec),
+            }
+          : null;
+      })
+      .filter((range): range is { startSec: number; endSec: number } => Boolean(range));
+  }
+  return normalized;
+}
+
+function readStoryboardSourceTrimDerivedFromExtraParams(extraParams: unknown): {
+  url: string;
+  durationSeconds?: number;
+  sourceUrl?: string;
+} | null {
+  if (!extraParams || typeof extraParams !== "object" || Array.isArray(extraParams)) return null;
+  const derived = (extraParams as Record<string, unknown>).sourceTrimDerived;
+  if (!derived || typeof derived !== "object" || Array.isArray(derived)) return null;
+  const record = derived as Record<string, unknown>;
+  const status = typeof record.status === "string" ? record.status : "";
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  if (status !== "ready" || !url) return null;
+  const durationSeconds = Number(record.durationSeconds);
+  const sourceUrl = typeof record.sourceUrl === "string" ? record.sourceUrl.trim() : "";
+  return {
+    url,
+    ...(Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? { durationSeconds: roundHyperframesTimelineSecond(durationSeconds) }
+      : {}),
+    ...(sourceUrl ? { sourceUrl } : {}),
+  };
+}
+
+function normalizeStoryboardSourceTrimDisabledRanges(
+  ranges: Array<{ startSec: number; endSec: number }> | undefined,
+  inSec: number,
+  outSec: number,
+): Array<{ startSec: number; endSec: number }> {
+  const normalized = (ranges ?? [])
+    .map((range) => {
+      const startSec = Math.max(inSec, Math.min(outSec, roundHyperframesTimelineSecond(range.startSec)));
+      const endSec = Math.max(inSec, Math.min(outSec, roundHyperframesTimelineSecond(range.endSec)));
+      return endSec - startSec >= STORYBOARD_SOURCE_TRIM_MIN_DISABLED_RANGE_SECONDS
+        ? { startSec, endSec }
+        : null;
+    })
+    .filter((range): range is { startSec: number; endSec: number } => Boolean(range))
+    .sort((a, b) => a.startSec - b.startSec);
+
+  const merged: Array<{ startSec: number; endSec: number }> = [];
+  for (const range of normalized) {
+    const previous = merged[merged.length - 1];
+    if (previous && range.startSec <= previous.endSec + STORYBOARD_SOURCE_TRIM_MERGE_GAP_SECONDS) {
+      previous.endSec = Math.max(previous.endSec, range.endSec);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged.slice(0, STORYBOARD_SOURCE_TRIM_MAX_DISABLED_RANGES).map((range) => ({
+    startSec: roundHyperframesTimelineSecond(range.startSec),
+    endSec: roundHyperframesTimelineSecond(range.endSec),
+  }));
+}
+
+function getStoryboardSourceTrimKeepRanges(
+  trim: StoryboardSourceTrimRange | null,
+  fallbackDurationSeconds: number,
+): Array<{ sourceStartSec: number; durationSeconds: number }> {
+  const fallbackDuration = Math.max(0.5, roundHyperframesTimelineSecond(fallbackDurationSeconds));
+  if (!trim) {
+    return [{ sourceStartSec: 0, durationSeconds: fallbackDuration }];
+  }
+
+  const disabledRanges = normalizeStoryboardSourceTrimDisabledRanges(trim.disabledRanges, trim.inSec, trim.outSec);
+  const keepRanges: Array<{ sourceStartSec: number; durationSeconds: number }> = [];
+  let cursor = trim.inSec;
+  for (const disabledRange of disabledRanges) {
+    const durationSeconds = roundHyperframesTimelineSecond(disabledRange.startSec - cursor);
+    if (durationSeconds >= 0.5) {
+      keepRanges.push({ sourceStartSec: roundHyperframesTimelineSecond(cursor), durationSeconds });
+    }
+    cursor = Math.max(cursor, disabledRange.endSec);
+  }
+
+  const tailDurationSeconds = roundHyperframesTimelineSecond(trim.outSec - cursor);
+  if (tailDurationSeconds >= 0.5) {
+    keepRanges.push({ sourceStartSec: roundHyperframesTimelineSecond(cursor), durationSeconds: tailDurationSeconds });
+  }
+
+  return keepRanges.length > 0
+    ? keepRanges
+    : [{ sourceStartSec: trim.inSec, durationSeconds: Math.max(0.5, roundHyperframesTimelineSecond(trim.outSec - trim.inSec)) }];
+}
+
+function normalizeStoryboardSourceTrimForTask(
+  trim: StoryboardSourceTrimRange,
+  fallbackDurationSeconds: number,
+): StoryboardSourceTrimRange | null {
+  const sourceDurationSec = Math.max(
+    0.5,
+    roundHyperframesTimelineSecond(trim.sourceDurationSec ?? fallbackDurationSeconds)
+  );
+  const inSec = Math.max(0, Math.min(sourceDurationSec - 0.1, roundHyperframesTimelineSecond(trim.inSec)));
+  const outSec = Math.max(inSec + 0.1, Math.min(sourceDurationSec, roundHyperframesTimelineSecond(trim.outSec)));
+  const disabledRanges = normalizeStoryboardSourceTrimDisabledRanges(trim.disabledRanges, inSec, outSec);
+  const disabledDurationSeconds = disabledRanges.reduce(
+    (sum, range) => sum + Math.max(0, range.endSec - range.startSec),
+    0,
+  );
+  if (outSec - inSec - disabledDurationSeconds < STORYBOARD_SOURCE_TRIM_MIN_KEPT_DURATION_SECONDS) {
+    return null;
+  }
+  if (inSec <= 0.05 && outSec >= sourceDurationSec - 0.05 && disabledRanges.length === 0) return null;
+  return {
+    inSec,
+    outSec,
+    sourceDurationSec,
+    disabledRanges,
+  };
+}
+
 function splitHyperframesFinalSourceClips(
   clips: StoryboardClipCandidate[]
 ): {
   clips: HyperframesFinalSourceClip[];
   wasSplit: boolean;
   wasTrimmed: boolean;
+  wasLimitedByFinalCap: boolean;
+  usedSourceTrim: boolean;
   originalDurationSeconds: number;
   plannedDurationSeconds: number;
 } {
   const output: HyperframesFinalSourceClip[] = [];
   let wasSplit = false;
   let wasTrimmed = false;
+  let wasLimitedByFinalCap = false;
+  let usedSourceTrim = false;
   let originalDurationSeconds = 0;
   let plannedDurationSeconds = 0;
 
   for (const clip of clips) {
     if (output.length >= HYPERFRAMES_FINAL_COMPOSITE_MAX_SHOTS) {
       wasTrimmed = true;
+      wasLimitedByFinalCap = true;
       break;
     }
     const rawDuration = Number(clip.durationSeconds);
-    const clipDuration = Number.isFinite(rawDuration) && rawDuration > 0
+    const rawClipDuration = Number.isFinite(rawDuration) && rawDuration > 0
       ? rawDuration
       : DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
-    originalDurationSeconds += clipDuration;
-    let consumed = 0;
+    const derivedSource = readStoryboardSourceTrimDerivedFromExtraParams(clip.generationExtraParams);
+    const sourceTrim = readStoryboardSourceTrimFromExtraParams(clip.generationExtraParams);
+    const trim = derivedSource
+      ? null
+      : normalizeStoryboardSourceTrimForTask(
+          sourceTrim ?? {
+            inSec: 0,
+            outSec: rawClipDuration,
+            sourceDurationSec: rawClipDuration,
+          },
+          rawClipDuration,
+        );
+    if (trim || derivedSource) {
+      usedSourceTrim = true;
+    }
+    const effectiveClip = derivedSource
+      ? {
+          ...clip,
+          url: derivedSource.url,
+          durationSeconds: derivedSource.durationSeconds ?? rawClipDuration,
+        }
+      : clip;
+    const effectiveClipDuration = derivedSource?.durationSeconds ?? rawClipDuration;
+    const keepRanges = derivedSource
+      ? [{ sourceStartSec: 0, durationSeconds: Math.max(0.5, roundHyperframesTimelineSecond(effectiveClipDuration)) }]
+      : getStoryboardSourceTrimKeepRanges(trim, rawClipDuration);
+    const clipDuration = roundHyperframesTimelineSecond(
+      keepRanges.reduce((sum, range) => sum + range.durationSeconds, 0)
+    );
+    originalDurationSeconds += rawClipDuration;
+    let keepRangeIndex = 0;
+    let consumedWithinKeepRange = 0;
+    let consumedClipDuration = 0;
     let segmentIndex = 0;
+    const outputStartIndex = output.length;
     const segmentCount = Math.max(
       1,
       Math.ceil((Math.min(clipDuration, HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC) - 0.1) / HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC)
     );
 
     while (
-      consumed < clipDuration - 0.05 &&
+      consumedClipDuration < clipDuration - 0.05 &&
       plannedDurationSeconds < HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC - 0.05 &&
       output.length < HYPERFRAMES_FINAL_COMPOSITE_MAX_SHOTS
     ) {
-      const remainingClipSec = clipDuration - consumed;
+      const keepRange = keepRanges[keepRangeIndex];
+      if (!keepRange) break;
+      const remainingKeepRangeSec = keepRange.durationSeconds - consumedWithinKeepRange;
+      if (remainingKeepRangeSec < 0.05) {
+        keepRangeIndex += 1;
+        consumedWithinKeepRange = 0;
+        continue;
+      }
+      const remainingClipSec = clipDuration - consumedClipDuration;
       const remainingFinalSec = HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC - plannedDurationSeconds;
       const durationSeconds = roundHyperframesTimelineSecond(
         Math.min(
           HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
+          remainingKeepRangeSec,
           remainingClipSec,
           remainingFinalSec
         )
       );
       if (durationSeconds < 0.5) break;
       output.push({
-        ...clip,
+        ...effectiveClip,
         id: segmentIndex === 0 && clipDuration <= HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC + 0.1
           ? clip.id
           : `${clip.id}__hfseg_${segmentIndex + 1}`,
-        prompt: segmentCount > 1
-          ? `${clip.prompt || `Shot ${output.length + 1}`} (${segmentIndex + 1}/${segmentCount})`
-          : clip.prompt,
+        prompt: clip.prompt,
         durationSeconds,
-        mediaStartSec: roundHyperframesTimelineSecond(consumed),
+        mediaStartSec: roundHyperframesTimelineSecond(keepRange.sourceStartSec + consumedWithinKeepRange),
         sourceClipId: clip.id,
         segmentIndex,
         segmentCount,
-        originalDurationSeconds: clipDuration,
+        originalDurationSeconds: rawClipDuration,
+        ...(derivedSource
+          ? {
+              derivedFromUrl: derivedSource.sourceUrl || clip.url,
+              derivedSourceTrim: sourceTrim,
+            }
+          : {}),
       });
-      consumed = roundHyperframesTimelineSecond(consumed + durationSeconds);
+      consumedWithinKeepRange = roundHyperframesTimelineSecond(consumedWithinKeepRange + durationSeconds);
+      consumedClipDuration = roundHyperframesTimelineSecond(consumedClipDuration + durationSeconds);
       plannedDurationSeconds = roundHyperframesTimelineSecond(
         plannedDurationSeconds + durationSeconds
       );
       segmentIndex += 1;
     }
 
-    if (segmentIndex > 1) {
+    const actualSegmentCount = segmentIndex;
+    if (actualSegmentCount > 1) {
       wasSplit = true;
+      for (let localSegmentIndex = 0; localSegmentIndex < actualSegmentCount; localSegmentIndex += 1) {
+        const outputIndex = outputStartIndex + localSegmentIndex;
+        const outputClip = output[outputIndex];
+        if (!outputClip) continue;
+        output[outputIndex] = {
+          ...outputClip,
+          prompt: `${clip.prompt || `Shot ${outputIndex + 1}`} (${localSegmentIndex + 1}/${actualSegmentCount})`,
+          segmentIndex: localSegmentIndex,
+          segmentCount: actualSegmentCount,
+        };
+      }
+    } else if (actualSegmentCount === 1 && segmentCount > 1) {
+      const outputClip = output[outputStartIndex];
+      if (outputClip) {
+        output[outputStartIndex] = {
+          ...outputClip,
+          segmentIndex: 0,
+          segmentCount: 1,
+        };
+      }
     }
-    if (consumed < clipDuration - 0.05) {
+    if (trim || derivedSource || consumedClipDuration < clipDuration - 0.05) {
       wasTrimmed = true;
+    }
+    if (consumedClipDuration < clipDuration - 0.05) {
+      wasLimitedByFinalCap = true;
     }
   }
 
@@ -2023,9 +2283,32 @@ function splitHyperframesFinalSourceClips(
     clips: output,
     wasSplit,
     wasTrimmed,
+    wasLimitedByFinalCap,
+    usedSourceTrim,
     originalDurationSeconds: roundHyperframesTimelineSecond(originalDurationSeconds),
     plannedDurationSeconds: roundHyperframesTimelineSecond(plannedDurationSeconds),
   };
+}
+
+function resolveHyperframesSourceClipDurationSeconds(
+  task: StoryboardGenerationTask | null | undefined,
+  fallbackDurationSeconds?: number,
+): number | undefined {
+  const candidates = [
+    task?.durationSeconds,
+    task?.storyboardContext?.extraParams?.actualDurationSeconds,
+    task?.storyboardContext?.extraParams?.sourceDurationSeconds,
+    task?.storyboardContext?.extraParams?.mediaDurationSeconds,
+    task?.storyboardContext?.duration,
+    fallbackDurationSeconds,
+  ];
+  for (const candidate of candidates) {
+    const duration = Number(candidate);
+    if (Number.isFinite(duration) && duration > 0) {
+      return Math.round(duration * 100) / 100;
+    }
+  }
+  return undefined;
 }
 
 function formatHyperframesFinalSplitLabel(
@@ -2054,6 +2337,7 @@ function prepareHyperframesSegmentVideo(input: {
   endSec: number;
   restart?: boolean;
 }): void {
+  if (!input.video) return;
   const startSec = roundHyperframesTimelineSecond(input.startSec);
   const endSec = Math.max(startSec + 0.5, roundHyperframesTimelineSecond(input.endSec));
   input.video.muted = false;
@@ -2277,10 +2561,30 @@ function buildHyperframesSubtitleTextMapFromClips(
   );
 }
 
+function normalizeHyperframesFinalPreviewShotDurationSeconds(input: {
+  startSec?: number;
+  endSec?: number;
+  durationSeconds: number;
+}): number {
+  const explicitDuration = Math.max(0, Math.round(Number(input.durationSeconds || 0) * 10) / 10);
+  const startSec = Math.max(0, Math.round(Number(input.startSec ?? 0) * 10) / 10);
+  const endSec = Math.max(0, Math.round(Number(input.endSec ?? startSec + explicitDuration) * 10) / 10);
+  const timelineDuration = Math.max(0, Math.round((endSec - startSec) * 10) / 10);
+  return Math.max(1, Math.min(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC, timelineDuration || explicitDuration));
+}
+
 export const __STORYBOARD_REVIEW_HYPERFRAMES_TEXT_TESTS = {
+  buildPreviewMatchPayloadPreview,
+  buildPreviewMatchCompositionPayloadFromHyperframesPreview,
+  computePreviewMatchCompositionHash,
+  computePreviewMatchTimelineHash,
+  buildHyperframesFinalPayloadPreview,
   buildHyperframesShotOverlayDraft,
   buildHyperframesSubtitleTextMapFromClips,
   defaultHyperframesSubtitleText,
+  normalizeHyperframesFinalPreviewShotDurationSeconds,
+  resolveHyperframesSourceClipDurationSeconds,
+  splitHyperframesFinalSourceClips,
   resolveHyperframesFinalShotOverlayLines,
   sanitizeHyperframesShotTextMap,
 };
@@ -2355,42 +2659,54 @@ function buildHyperframesFinalPayloadPreview(input: {
         preserveNativeAudio: input.preserveNativeAudio,
         syntheticAudioFallback: input.syntheticAudioFallback,
       },
-      shots: input.shots.map((shot, index) => ({
-        index,
-        id: shot.id,
-        sourceClipId: shot.sourceClipId || shot.id,
-        sourceVideoRef: shot.sourceVideoRef || null,
-        mediaStartSec: Math.max(0, Math.round(Number(shot.mediaStartSec ?? 0) * 10) / 10),
-        startSec: Math.max(0, Math.round(Number(shot.startSec ?? 0) * 10) / 10),
-        endSec: Math.max(0, Math.round(Number(shot.endSec ?? shot.durationSeconds) * 10) / 10),
-        durationSeconds: Math.max(1, Math.round(shot.durationSeconds * 10) / 10),
-        overlayPreset: shot.overlayPreset ?? input.overlayPreset,
-        animationPreset: shot.animationPreset ?? "smooth_reveal",
-        transition: shot.transition ?? "fade",
-        textMotionPreset: shot.textMotionPreset ?? input.textMotionPreset,
-        sourcePrompt: firstThaiProductLine(shot.prompt, 180),
-        onScreenText: (shot.overlayLines ?? shot.overlayText.split(/\n+/))
-          .map(line => compactStoryboardText(line))
-          .filter(Boolean)
-          .slice(0, getHyperframesOverlayLineLimit(shot.overlayPreset ?? input.overlayPreset)),
-        subtitleCues: (shot.subtitleCues ?? [])
-          .map(cue => ({
-            startSec: Math.round(cue.startSec * 10) / 10,
-            endSec: Math.round(cue.endSec * 10) / 10,
-            text: compactStoryboardText(cue.text),
-          }))
-          .filter(cue => cue.text),
-        subtitleText: shot.subtitleText
-          .split(/\n+/)
-          .map(line => compactStoryboardText(line))
-          .filter(Boolean)
-          .slice(0, 4),
-        subtitleVtt: shot.subtitleVtt || null,
-        subtitleSrt: shot.subtitleSrt || null,
-      })),
+      shots: input.shots.map((shot, index) => {
+        const startSec = Math.max(0, Math.round(Number(shot.startSec ?? 0) * 10) / 10);
+        const durationSeconds = normalizeHyperframesFinalPreviewShotDurationSeconds(shot);
+        return {
+          index,
+          id: shot.id,
+          sourceClipId: shot.sourceClipId || shot.id,
+          sourceVideoRef: shot.sourceVideoRef || null,
+          mediaStartSec: Math.max(0, Math.round(Number(shot.mediaStartSec ?? 0) * 10) / 10),
+          startSec,
+          endSec: Math.max(startSec + durationSeconds, Math.round(Number(shot.endSec ?? startSec + durationSeconds) * 10) / 10),
+          durationSeconds,
+          overlayPreset: shot.overlayPreset ?? input.overlayPreset,
+          animationPreset: shot.animationPreset ?? "smooth_reveal",
+          transition: shot.transition ?? "fade",
+          textMotionPreset: shot.textMotionPreset ?? input.textMotionPreset,
+          sourcePrompt: firstThaiProductLine(shot.prompt, 180),
+          onScreenText: (shot.overlayLines ?? shot.overlayText.split(/\n+/))
+            .map(line => compactStoryboardText(line))
+            .filter(Boolean)
+            .slice(0, getHyperframesOverlayLineLimit(shot.overlayPreset ?? input.overlayPreset)),
+          subtitleCues: (shot.subtitleCues ?? [])
+            .map(cue => ({
+              startSec: Math.round(cue.startSec * 10) / 10,
+              endSec: Math.round(cue.endSec * 10) / 10,
+              text: compactStoryboardText(cue.text),
+            }))
+            .filter(cue => cue.text),
+          subtitleText: shot.subtitleText
+            .split(/\n+/)
+            .map(line => compactStoryboardText(line))
+            .filter(Boolean)
+            .slice(0, 4),
+          subtitleVtt: shot.subtitleVtt || null,
+          subtitleSrt: shot.subtitleSrt || null,
+        };
+      }),
     },
     null,
     2,
+  );
+}
+
+function buildPreviewMatchPayloadPreview(
+  input: Parameters<typeof buildHyperframesFinalPayloadPreview>[0],
+) {
+  return buildPreviewMatchCompositionPayloadFromHyperframesPreview(
+    JSON.parse(buildHyperframesFinalPayloadPreview(input)),
   );
 }
 
@@ -2520,6 +2836,27 @@ function formatHyperframesRenderElapsed(
     const hours = Math.floor(minutes / 60);
     const restMinutes = minutes % 60;
     return restMinutes > 0 ? `${hours}h ${restMinutes}m` : `${hours}h`;
+  }
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+function formatStoryboardCaptureElapsedSeconds(
+  totalSeconds: number | null | undefined,
+  locale: string,
+): string | null {
+  if (!Number.isFinite(totalSeconds ?? NaN)) return null;
+  const safeSeconds = Math.max(0, Math.round(totalSeconds ?? 0));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  if (locale === "th") {
+    if (hours > 0) {
+      return minutes > 0 ? `${hours} ชม. ${minutes} นาที` : `${hours} ชม.`;
+    }
+    return minutes > 0 ? `${minutes} นาที ${seconds} วิ` : `${seconds} วิ`;
+  }
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   }
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
@@ -3211,10 +3548,10 @@ function buildHyperframesSelectedVideoOverlayFrameVars(
   if (boxWidth <= 0 || boxHeight <= 0) return null;
 
   const safeX = Math.max(16, Math.round(boxWidth * 0.035));
-  const safeTop = Math.max(18, Math.round(boxHeight * 0.045));
-  const safeBottom = Math.max(116, Math.round(boxHeight * 0.27));
+  const safeTop = Math.max(48, Math.round(boxHeight * 0.125));
+  const safeBottom = Math.max(138, Math.round(boxHeight * 0.34));
   const subtitleX = Math.max(18, Math.round(boxWidth * 0.055));
-  const subtitleBottom = Math.max(30, Math.round(boxHeight * 0.07));
+  const subtitleBottom = Math.max(150, Math.round(boxHeight * 0.32));
   const statusX = Math.max(12, Math.round(boxWidth * 0.03));
   const statusTop = Math.max(12, Math.round(boxHeight * 0.03));
   return {
@@ -3267,7 +3604,7 @@ function createManualStoryboardReviewDraft(locale: string): StoryboardReviewDraf
     projectLink: null,
     renderJobId: null,
     marketplaceContext: null,
-    manualHyperframesProductId: `manual_storyboard_product_${suffix}`,
+    manualHyperframesProductId: MANUAL_STORYBOARD_MOCKUP_PRODUCT_ID,
     manualHyperframesRunId: `manual_storyboard_run_${suffix}`,
     productionContext: {
       productionRunId: `manual_storyboard_run_${suffix}`,
@@ -3329,9 +3666,13 @@ export default function StoryboardReviewPage() {
   const [isProjectSidebarCollapsed, setIsProjectSidebarCollapsed] = useState(false);
   const [isEditingProjectName, setIsEditingProjectName] = useState(false);
   const [projectNameDraft, setProjectNameDraft] = useState("");
+  const [isEditingVoiceoverSummary, setIsEditingVoiceoverSummary] = useState(false);
+  const [voiceoverSummaryDraft, setVoiceoverSummaryDraft] = useState("");
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [replacingReferenceFrameKey, setReplacingReferenceFrameKey] = useState<string | null>(null);
   const [uploadingVideoSlotKey, setUploadingVideoSlotKey] = useState<string | null>(null);
+  const [mediaAttachTargetTaskId, setMediaAttachTargetTaskId] = useState<string | null>(null);
+  const [mediaAttachTargetFrameIndex, setMediaAttachTargetFrameIndex] = useState<0 | 1 | null>(null);
   const [isCancellingGeneration, setIsCancellingGeneration] = useState(false);
   const [renderAspectRatioMode, setRenderAspectRatioMode] = useState<StoryboardRenderAspectRatioMode>("auto");
   const [imageToolsSourceUrl, setImageToolsSourceUrl] = useState("");
@@ -3393,6 +3734,26 @@ export default function StoryboardReviewPage() {
   const [hyperframesFinalShotTransitionById, setHyperframesFinalShotTransitionById] = useState<Record<string, HyperframesFinalShotTransition>>({});
   const [hyperframesFinalShotTextMotionById, setHyperframesFinalShotTextMotionById] = useState<Record<string, HyperframesFinalTextMotionPreset>>({});
   const [hyperframesFinalCompositeCooldownUntil, setHyperframesFinalCompositeCooldownUntil] = useState(0);
+  const [previewMatchCaptureQuality, setPreviewMatchCaptureQuality] =
+    useState<StoryboardPreviewMatchCaptureQuality>("standard");
+  const [previewMatchCaptureAudioEventsEnabled, setPreviewMatchCaptureAudioEventsEnabled] = useState(false);
+  const [previewMatchCaptureJobId, setPreviewMatchCaptureJobId] = useState<string | null>(null);
+  const tenantFeatureFlags = useTenantFeatureFlags();
+  const previewMatchCaptureFlags = useMemo(
+    () => ({
+      captureEnabled: tenantFeatureFlags.storyboardPreviewMatchCaptureEnabled,
+      highQualityEnabled:
+        tenantFeatureFlags.storyboardPreviewMatchCaptureEnabled &&
+        tenantFeatureFlags.storyboardPreviewMatchCaptureServerWorkerEnabled,
+      serverWorkerEnabled: tenantFeatureFlags.storyboardPreviewMatchCaptureServerWorkerEnabled,
+      clientExperimentEnabled: tenantFeatureFlags.storyboardClientCaptureExperimentEnabled,
+    }),
+    [
+      tenantFeatureFlags.storyboardClientCaptureExperimentEnabled,
+      tenantFeatureFlags.storyboardPreviewMatchCaptureEnabled,
+      tenantFeatureFlags.storyboardPreviewMatchCaptureServerWorkerEnabled,
+    ],
+  );
   const [hyperframesFinalPreviewShotIndex, setHyperframesFinalPreviewShotIndex] = useState(0);
   const [hyperframesFinalSfxDrafts, setHyperframesFinalSfxDrafts] = useState<HyperframesFinalSfxDraft[]>(() =>
     DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
@@ -3402,6 +3763,8 @@ export default function StoryboardReviewPage() {
   const [isHyperframesFinalAudioPreviewExpanded, setIsHyperframesFinalAudioPreviewExpanded] = useState(false);
   const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(false);
   const [hyperframesFinalTextPreviewReplayKey, setHyperframesFinalTextPreviewReplayKey] = useState(0);
+  const hyperframesFinalPreviewAudioEventsPlayedRef = useRef<Set<string>>(new Set());
+  const hyperframesFinalPreviewAudioNodesRef = useRef<Array<HTMLAudioElement | AudioContext>>([]);
   const [hyperframesFinalSelectedShotPreviewMode, setHyperframesFinalSelectedShotPreviewMode] =
     useState<HyperframesSelectedShotPreviewMode>("design");
   const [hyperframesFinalSelectedShotVideoLoadState, setHyperframesFinalSelectedShotVideoLoadState] =
@@ -3571,13 +3934,27 @@ export default function StoryboardReviewPage() {
       reviewMarketplaceContext.productId ??
         reviewMarketplaceContext.marketplaceProductId ??
         reviewMarketplaceContext.id
+    ) ||
+    normalizeManualStoryboardProductId(compactStoryboardText(reviewDataRecord.manualHyperframesProductId ?? "")) ||
+    undefined;
+  const reviewHyperframesRunId =
+    compactStoryboardText(
+      reviewRecord?.autoReview?.runId ??
+        reviewDataRecord.autoReviewRunId ??
+        reviewDataRecord.marketplaceAutoReviewRunId ??
+        reviewDataAutoReview.runId ??
+        reviewMarketplaceContext.autoReviewRunId ??
+        reviewMarketplaceContext.marketplaceAutoReviewRunId ??
+        reviewDataRecord.manualHyperframesRunId
     ) || undefined;
   const draftHyperframesProductId = getStoryboardReviewProductIdFromDraft(draft) || undefined;
   const draftHyperframesRunId = getStoryboardReviewAutoReviewRunIdFromDraft(draft) || undefined;
   const draftManualHyperframesProductId =
-    compactStoryboardText(draft?.manualHyperframesProductId ?? "") || undefined;
+    normalizeManualStoryboardProductId(compactStoryboardText(draft?.manualHyperframesProductId ?? "")) || undefined;
   const draftManualHyperframesRunId =
     compactStoryboardText(draft?.manualHyperframesRunId ?? "") || undefined;
+  const derivedManualHyperframesIdentity =
+    deriveManualHyperframesIdentityFromStoryboardTasks(draft?.tasks);
   const canUseHyperframesQueryContext =
     reviewRecordMatchesRoute &&
     (!canonicalReviewId || Boolean(reviewRecord)) &&
@@ -3587,19 +3964,51 @@ export default function StoryboardReviewPage() {
     reviewHyperframesProductId ??
     draftHyperframesProductId ??
     draftManualHyperframesProductId ??
-    (canUseHyperframesQueryContext ? hyperframesProductId : undefined);
+    (normalizeManualStoryboardProductId(derivedManualHyperframesIdentity?.productId) ||
+      (canUseHyperframesQueryContext ? hyperframesProductId : undefined));
   const effectiveHyperframesRunId =
-    compactStoryboardText(
-      reviewRecord?.autoReview?.runId ??
-        reviewDataRecord.autoReviewRunId ??
-        reviewDataRecord.marketplaceAutoReviewRunId ??
-        reviewDataAutoReview.runId ??
-        reviewMarketplaceContext.autoReviewRunId ??
-        reviewMarketplaceContext.marketplaceAutoReviewRunId
-    ) ||
+    reviewHyperframesRunId ||
     draftHyperframesRunId ||
     draftManualHyperframesRunId ||
+    derivedManualHyperframesIdentity?.runId ||
     (canUseHyperframesQueryContext ? hyperframesRunId : undefined);
+  const hyperframesFinalIdentityMismatchReason = useMemo(() => {
+    if (!canonicalReviewId || isReviewLoading || !reviewRecordMatchesRoute || !reviewRecord) return null;
+    if (reviewHyperframesProductId && effectiveHyperframesProductId && reviewHyperframesProductId !== effectiveHyperframesProductId) {
+      return locale === "th"
+        ? "ข้อมูลสินค้าใน Storyboard Review ไม่ตรงกับ HyperFrames input"
+        : "Storyboard Review product does not match the HyperFrames input.";
+    }
+    if (reviewHyperframesRunId && effectiveHyperframesRunId && reviewHyperframesRunId !== effectiveHyperframesRunId) {
+      return locale === "th"
+        ? "ข้อมูล run ใน Storyboard Review ไม่ตรงกับ HyperFrames input"
+        : "Storyboard Review run does not match the HyperFrames input.";
+    }
+    if (!reviewHyperframesProductId || !reviewHyperframesRunId) {
+      return locale === "th"
+        ? "Storyboard Review นี้ยังไม่มี product/run context ที่ผูกกับ HyperFrames"
+        : "This Storyboard Review does not have a HyperFrames product/run context.";
+    }
+    return null;
+  }, [
+    canonicalReviewId,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    isReviewLoading,
+    locale,
+    reviewHyperframesProductId,
+    reviewHyperframesRunId,
+    reviewRecord,
+    reviewRecordMatchesRoute,
+  ]);
+  const reviewHyperframesFinalCompositeMatchesIdentity =
+    Boolean(reviewHyperframesFinalComposite) &&
+    String(reviewHyperframesFinalComposite?.storyboardReviewProjectId ?? "") === String(canonicalReviewId ?? "") &&
+    String(reviewHyperframesFinalComposite?.canonicalProductId ?? "") === String(effectiveHyperframesProductId ?? "") &&
+    String(reviewHyperframesFinalComposite?.autoReviewRunId ?? "") === String(effectiveHyperframesRunId ?? "");
+  const canInitializeHyperframesFinalDefaultText =
+    (!canonicalReviewId || (!isReviewLoading && reviewRecordMatchesRoute && Boolean(reviewRecord))) &&
+    !reviewHyperframesFinalCompositeMatchesIdentity;
   const persistedHyperframesFinalRenderJobRef =
     reviewHyperframesFinalComposite?.latestRenderJobRef &&
     typeof reviewHyperframesFinalComposite.latestRenderJobRef === "object"
@@ -3610,10 +4019,7 @@ export default function StoryboardReviewPage() {
       typeof persistedHyperframesFinalRenderJobRef?.renderJobId === "string"
         ? persistedHyperframesFinalRenderJobRef.renderJobId
         : null,
-    ) &&
-    String(reviewHyperframesFinalComposite?.storyboardReviewProjectId ?? "") === String(canonicalReviewId ?? "") &&
-    String(reviewHyperframesFinalComposite?.canonicalProductId ?? "") === String(effectiveHyperframesProductId ?? "") &&
-    String(reviewHyperframesFinalComposite?.autoReviewRunId ?? "") === String(effectiveHyperframesRunId ?? "")
+    ) && reviewHyperframesFinalCompositeMatchesIdentity
       ? String(persistedHyperframesFinalRenderJobRef?.renderJobId)
       : null;
   const effectiveHyperframesRenderJobId = canUseHyperframesQueryContext
@@ -3683,6 +4089,36 @@ export default function StoryboardReviewPage() {
           runId: result.render?.runId,
         });
         toast.success(locale === "th" ? "เริ่ม render HyperFrames final composite แล้ว" : "HyperFrames final composite render started.");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const createPreviewMatchFinalCompositeCaptureMutation =
+    trpc.marketplaceCapture.createPreviewMatchFinalCompositeCapture.useMutation({
+      onSuccess: result => {
+        const nextCaptureJobId = result.capture.captureJobId ?? null;
+        setPreviewMatchCaptureJobId(nextCaptureJobId);
+        void trpcUtils.marketplaceCapture.getPreviewMatchCaptureJob.invalidate({
+          captureJobId: nextCaptureJobId ?? undefined,
+          productId: effectiveHyperframesProductId,
+          runId: effectiveHyperframesRunId,
+          storyboardReviewId: canonicalReviewId ? String(canonicalReviewId) : undefined,
+        });
+        toast.success(locale === "th" ? "เริ่ม Capture ตาม Preview แล้ว" : "Preview-match capture started.");
+      },
+      onError: error => toast.error(error.message),
+    });
+  const cancelPreviewMatchFinalCompositeCaptureMutation =
+    trpc.marketplaceCapture.cancelPreviewMatchCaptureJob.useMutation({
+      onSuccess: result => {
+        const nextCaptureJobId = result.capture.captureJobId ?? null;
+        setPreviewMatchCaptureJobId(nextCaptureJobId);
+        void trpcUtils.marketplaceCapture.getPreviewMatchCaptureJob.invalidate({
+          captureJobId: nextCaptureJobId ?? undefined,
+          productId: effectiveHyperframesProductId,
+          runId: effectiveHyperframesRunId,
+          storyboardReviewId: canonicalReviewId ? String(canonicalReviewId) : undefined,
+        });
+        toast.success(locale === "th" ? "ยกเลิก Capture ตาม Preview แล้ว" : "Preview-match capture cancelled.");
       },
       onError: error => toast.error(error.message),
     });
@@ -4007,25 +4443,31 @@ export default function StoryboardReviewPage() {
     recordingStreamRef.current = null;
   }, []);
 
-  const refreshAudioInputDevices = useCallback(async () => {
+  const refreshAudioInputDevices = useCallback(async (requestAccess = false) => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
       setMicrophoneStatus("error");
       setMicrophoneError(locale === "th" ? "เบราว์เซอร์นี้ยังไม่รองรับการเลือกไมก์" : "This browser does not support microphone device selection.");
       return;
     }
     setMicrophoneStatus("checking");
+    let permissionStream: MediaStream | null = null;
     try {
+      if (requestAccess && navigator.mediaDevices.getUserMedia) {
+        permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioDevices = devices.filter((device) => device.kind === "audioinput");
       setAudioInputDevices(audioDevices);
       setSelectedAudioInputDeviceId((current) => (
-        current || audioDevices[0]?.deviceId || ""
+        current && audioDevices.some((device) => device.deviceId === current) ? current : ""
       ));
       setMicrophoneStatus("ready");
       setMicrophoneError("");
     } catch (error) {
       setMicrophoneStatus("error");
       setMicrophoneError(error instanceof Error ? error.message : (locale === "th" ? "อ่านรายการไมก์ไม่สำเร็จ" : "Unable to read microphones."));
+    } finally {
+      permissionStream?.getTracks().forEach((track) => track.stop());
     }
   }, [locale]);
 
@@ -4542,6 +4984,33 @@ export default function StoryboardReviewPage() {
   const selectedTaskIds = activeDraft?.selectedTaskIds ?? [];
   const completedCount = tasks.filter((task) => task.status === "completed" && task.url).length;
   const selectedReviewId = reviewId ?? activeDraft?.reviewId ?? null;
+  const mediaAttachTargetTask = useMemo(
+    () => tasks.find((task) => task.id === mediaAttachTargetTaskId) ?? null,
+    [mediaAttachTargetTaskId, tasks],
+  );
+  const mediaAttachTargetResolvedFrameIndex = mediaAttachTargetFrameIndex ?? 0;
+  const mediaAttachTargetFrameRole = useMemo<StoryboardReferenceFrameRole>(() => {
+    if (!mediaAttachTargetTask) return "reference";
+    const role = mediaAttachTargetTask.referenceFrameRoles?.[mediaAttachTargetResolvedFrameIndex]
+      ?? (mediaAttachTargetTask.generationExtraParams?.referenceFrameRoles as unknown[] | undefined)?.[mediaAttachTargetResolvedFrameIndex];
+    return normalizeReferenceFrameRole(
+      role,
+      mediaAttachTargetTask.referenceUrls?.length === 1 ? "reference" : mediaAttachTargetResolvedFrameIndex === 0 ? "start" : "stop",
+    );
+  }, [mediaAttachTargetResolvedFrameIndex, mediaAttachTargetTask]);
+  const mediaAttachTargetLabel = mediaAttachTargetTask
+    ? `${storyboardReferenceFrameRoleLabel(mediaAttachTargetFrameRole, locale, true)} Shot ${mediaAttachTargetTask.index + 1}`
+    : "";
+  const setStoryboardMediaAttachTarget = useCallback((taskId: string | null, frameIndex?: 0 | 1 | null) => {
+    setMediaAttachTargetTaskId(taskId);
+    setMediaAttachTargetFrameIndex(taskId ? frameIndex ?? 0 : null);
+  }, []);
+  useEffect(() => {
+    if (!mediaAttachTargetTaskId) return;
+    if (tasks.some((task) => task.id === mediaAttachTargetTaskId)) return;
+    setMediaAttachTargetTaskId(null);
+    setMediaAttachTargetFrameIndex(null);
+  }, [mediaAttachTargetTaskId, tasks]);
   const librarySearchResults = (librarySearchData?.results ?? []) as LibrarySearchResultItem[];
   const historyMediaTasks = useMemo(
     () => ((mediaHistoryData?.tasks ?? []) as any[]).filter((task) => Boolean(extractStoryboardMediaUrl(task, mediaPickerKind))),
@@ -4572,6 +5041,10 @@ export default function StoryboardReviewPage() {
     () => getStoryboardDraftVoiceoverSummary(activeDraft, locale),
     [activeDraft, locale],
   );
+  useEffect(() => {
+    if (isEditingVoiceoverSummary) return;
+    setVoiceoverSummaryDraft(storyboardVoiceoverSummaryText);
+  }, [isEditingVoiceoverSummary, storyboardVoiceoverSummaryText]);
   const filteredReviewProjects = useMemo(() => {
     const reviews = (reviewProjectsData?.reviews ?? []) as any[];
     const query = projectSearchQuery.trim().toLowerCase();
@@ -5041,6 +5514,28 @@ export default function StoryboardReviewPage() {
     }));
   }, [setAndSaveDraft]);
 
+  const updateTaskExtraParams = useCallback((taskId: string, extraParams: Record<string, unknown>) => {
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      projectLink: null,
+      renderJobId: null,
+      compoundStatus: null,
+      tasks: current.tasks.map((task) => (
+        task.id === taskId && task.storyboardContext
+          ? {
+              ...task,
+              updatedAt: Date.now(),
+              storyboardContext: {
+                ...task.storyboardContext,
+                extraParams,
+              },
+            }
+          : task
+      )),
+    }));
+  }, [setAndSaveDraft]);
+
   const removeStoryboardAudio = useCallback((audioId: string) => {
     const now = Date.now();
     emitStoryboardReviewClientDebug("audio.remove.requested", {
@@ -5265,6 +5760,40 @@ export default function StoryboardReviewPage() {
       setUploadingVideoSlotKey(null);
     }
   }, [locale, persistDraftUpdate, t]);
+
+  const attachImageToSelectedReferenceFrame = useCallback(async (
+    imageUrl: string,
+    title: string,
+  ) => {
+    const targetTaskId = mediaAttachTargetTaskId?.trim();
+    if (!targetTaskId) {
+      toast.error(locale === "th"
+        ? "เลือกช่องรูปด้านบนของ Shot ก่อน แล้วแตะภาพเพื่อใส่ช่องนั้น"
+        : "Select a shot's top image slot first, then tap an image to attach it.");
+      return;
+    }
+    if (!tasks.some((task) => task.id === targetTaskId)) {
+      setMediaAttachTargetTaskId(null);
+      setMediaAttachTargetFrameIndex(null);
+      toast.error(locale === "th"
+        ? "Shot ปลายทางไม่อยู่ในโปรเจกต์นี้แล้ว กรุณาเลือกใหม่"
+        : "That target shot is no longer in this project. Please select another shot.");
+      return;
+    }
+    const url = imageUrl.trim();
+    if (!url) return;
+    await replaceReferenceFrame(targetTaskId, mediaAttachTargetResolvedFrameIndex, url);
+    toast.success(locale === "th"
+      ? `ใส่ภาพ "${title}" ใน ${mediaAttachTargetLabel || "ช่องรูปที่เลือก"} แล้ว`
+      : `Attached "${title}" to ${mediaAttachTargetLabel || "the selected image slot"}.`);
+  }, [
+    locale,
+    mediaAttachTargetLabel,
+    mediaAttachTargetResolvedFrameIndex,
+    mediaAttachTargetTaskId,
+    replaceReferenceFrame,
+    tasks,
+  ]);
 
   const addImportedAudioToStoryboard = useCallback(async (input: {
     idPrefix: string;
@@ -5842,13 +6371,14 @@ export default function StoryboardReviewPage() {
   const selectedRenderClips = useMemo<StoryboardClipCandidate[]>(() => {
     if (!draft) return [];
     const reviewTasks = storyboardDraftToReviewTasks(draft);
+    const sourceTaskById = new Map(draft.tasks.map((task) => [task.id, task]));
     const selected = reviewTasks.filter((task) => draft.selectedTaskIds.includes(task.id) && task.status === "completed" && task.url);
     return selected.map((task) => ({
       id: task.id,
       prompt: task.prompt,
       url: task.url!,
       model: task.model,
-      durationSeconds: task.durationSeconds,
+      durationSeconds: resolveHyperframesSourceClipDurationSeconds(sourceTaskById.get(task.id), task.durationSeconds),
       mediaType: task.mediaType,
       transition: task.transition,
       generationModelId: task.generationModelId,
@@ -5862,6 +6392,9 @@ export default function StoryboardReviewPage() {
     const isVideoClip = (clip: StoryboardClipCandidate) =>
       Boolean(clip.url) && clip.mediaType !== "image" && !isProbablyImageUrl(clip.url);
     const selectedVideos = selectedRenderClips.filter(isVideoClip);
+    const sourceTaskById = draft
+      ? new Map(draft.tasks.map((task) => [task.id, task]))
+      : new Map<string, StoryboardGenerationTask>();
     const sourceClips = selectedVideos.length > 0
       ? selectedVideos
       : draft
@@ -5872,7 +6405,7 @@ export default function StoryboardReviewPage() {
             prompt: task.prompt,
             url: task.url!,
             model: task.model,
-            durationSeconds: task.durationSeconds,
+            durationSeconds: resolveHyperframesSourceClipDurationSeconds(sourceTaskById.get(task.id), task.durationSeconds),
             mediaType: task.mediaType,
             transition: task.transition,
             generationModelId: task.generationModelId,
@@ -5887,7 +6420,7 @@ export default function StoryboardReviewPage() {
 
   useEffect(() => {
     if (hyperframesFinalSourceClips.length === 0) return;
-    if (hyperframesFinalSourceClipPlan.wasTrimmed) {
+    if (hyperframesFinalSourceClipPlan.wasLimitedByFinalCap) {
       toast.warning(
         locale === "th"
           ? `Final Composite รองรับสูงสุด ${HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC}s / ${HYPERFRAMES_FINAL_COMPOSITE_MAX_SHOTS} shots ระบบจะ render เฉพาะ ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}s แรก`
@@ -5898,7 +6431,7 @@ export default function StoryboardReviewPage() {
   }, [
     hyperframesFinalSourceClipPlan.plannedDurationSeconds,
     hyperframesFinalSourceClipPlan.wasSplit,
-    hyperframesFinalSourceClipPlan.wasTrimmed,
+    hyperframesFinalSourceClipPlan.wasLimitedByFinalCap,
     hyperframesFinalSourceClips.length,
     locale,
   ]);
@@ -5928,6 +6461,64 @@ export default function StoryboardReviewPage() {
     );
     setHyperframesFinalSelectedShotOverlayFrameVars(next);
   }, [hyperframesFinalSelectedShotPreviewMode]);
+
+  const stopHyperframesFinalPreviewAudioEvents = useCallback(() => {
+    for (const node of hyperframesFinalPreviewAudioNodesRef.current) {
+      try {
+        if ("pause" in node) {
+          node.pause();
+          node.currentTime = 0;
+        } else if (node.state !== "closed") {
+          void node.close();
+        }
+      } catch {
+        // Preview audio is best-effort; final capture uses FFmpeg mixing.
+      }
+    }
+    hyperframesFinalPreviewAudioNodesRef.current = [];
+  }, []);
+
+  const playHyperframesFinalPreviewAudioEvent = useCallback((event: HyperframesAudioEvent) => {
+    if (typeof window === "undefined") return;
+    const durationSec = Math.max(0.08, Math.min(8, Number(event.durationSec ?? 0.25) || 0.25));
+    const volume = Math.max(0, Math.min(0.6, Number(event.volume ?? 0.2) || 0.2));
+    const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    const context = new AudioContextCtor();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const presetId = String(event.presetId ?? event.role ?? "").toLowerCase();
+    const isMusic = event.role === "music" || presetId.includes("music");
+    const isCash = presetId.includes("cash") || presetId.includes("sales");
+    const isRiser = presetId.includes("riser") || presetId.includes("reveal");
+    oscillator.type = isMusic ? "triangle" : isCash ? "square" : "sine";
+    oscillator.frequency.setValueAtTime(isMusic ? 220 : isCash ? 880 : isRiser ? 360 : 520, context.currentTime);
+    if (isRiser) {
+      oscillator.frequency.exponentialRampToValueAtTime(980, context.currentTime + durationSec);
+    }
+    gain.gain.setValueAtTime(0.0001, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), context.currentTime + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + durationSec);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + durationSec);
+    hyperframesFinalPreviewAudioNodesRef.current.push(context);
+    window.setTimeout(() => {
+      void context.close().catch(() => undefined);
+      hyperframesFinalPreviewAudioNodesRef.current = hyperframesFinalPreviewAudioNodesRef.current.filter(node => node !== context);
+    }, Math.ceil((durationSec + 0.2) * 1000));
+  }, []);
+
+  useEffect(() => {
+    hyperframesFinalPreviewAudioEventsPlayedRef.current.clear();
+    stopHyperframesFinalPreviewAudioEvents();
+  }, [
+    hyperframesFinalPreviewShotIndex,
+    hyperframesFinalSelectedShotPreviewMode,
+    hyperframesFinalTextPreviewReplayKey,
+    previewMatchCaptureAudioEventsEnabled,
+    stopHyperframesFinalPreviewAudioEvents,
+  ]);
 
   useEffect(() => {
     if (hyperframesFinalSelectedShotPreviewMode !== "video") {
@@ -6361,6 +6952,7 @@ export default function StoryboardReviewPage() {
 
   useEffect(() => {
     if (!draft) return;
+    if (!canInitializeHyperframesFinalDefaultText) return;
     const didResetForCurrentIdentity =
       hyperframesFinalResetIdentityKeyRef.current === hyperframesFinalIdentityKey;
     const productContext = resolveStoryboardDraftMarketplaceProduct(draft) as Record<string, unknown> | null;
@@ -6432,6 +7024,7 @@ export default function StoryboardReviewPage() {
       hyperframesFinalResetIdentityKeyRef.current = null;
     }
   }, [
+    canInitializeHyperframesFinalDefaultText,
     draft,
     hyperframesFinalHookText,
     hyperframesFinalIdentityKey,
@@ -6815,6 +7408,61 @@ export default function StoryboardReviewPage() {
     resolvedHyperframesFinalOverlayPreset,
   ]);
 
+  useEffect(() => {
+    if (!previewMatchCaptureAudioEventsEnabled || hyperframesFinalSelectedShotPreviewMode !== "video") return;
+    const video = hyperframesFinalSelectedShotVideoRef.current;
+    if (!video || video.paused || video.ended) return;
+    const shot = hyperframesFinalResolvedPromptShots[hyperframesFinalPreviewShotIndex];
+    if (!shot) return;
+    const shotStartSec = Number(shot.startSec ?? 0);
+    const shotEndSec = shotStartSec + Number(shot.durationSeconds ?? 0);
+    const globalPlaybackSec = shotStartSec + hyperframesFinalSelectedShotPlaybackSec;
+    const audioPreviewShots: HyperframesFinalCompositeConfig["shots"] = hyperframesFinalResolvedPromptShots.map((resolvedShot, index) => ({
+      id: resolvedShot.id,
+      index,
+      title: firstThaiProductLine(resolvedShot.prompt, 80),
+      sourceVideoUrl: resolvedShot.sourceVideoRef,
+      sourceVideoRef: resolvedShot.sourceVideoRef,
+      mediaStartSec: resolvedShot.mediaStartSec,
+      startSec: resolvedShot.startSec,
+      durationSec: resolvedShot.durationSeconds,
+      onScreenText: resolvedShot.overlayLines,
+      subtitleCues: resolvedShot.subtitleCues,
+      overlayPreset: resolvedShot.overlayPreset,
+      animationPreset: resolvedShot.animationPreset,
+      transition: resolvedShot.transition,
+      textMotionPreset: resolvedShot.textMotionPreset,
+    }));
+    const events = buildHyperframesFinalAudioEvents({
+      finalVideoLengthSec: hyperframesFinalDurationSeconds,
+      shots: audioPreviewShots,
+      musicPresetId: hyperframesFinalMusicPresetId || undefined,
+      sfxPresetIds: hyperframesFinalSfxPresetIds,
+      sfxDrafts: hyperframesFinalSfxDrafts,
+    });
+    for (const event of events) {
+      const startSec = Number(event.startSec ?? 0);
+      if (startSec < shotStartSec - 0.05 || startSec > shotEndSec + 0.05) continue;
+      if (globalPlaybackSec + 0.08 < startSec || globalPlaybackSec - 0.35 > startSec) continue;
+      const key = `${hyperframesFinalTextPreviewReplayKey}:${event.id}:${startSec}`;
+      if (hyperframesFinalPreviewAudioEventsPlayedRef.current.has(key)) continue;
+      hyperframesFinalPreviewAudioEventsPlayedRef.current.add(key);
+      playHyperframesFinalPreviewAudioEvent(event);
+    }
+  }, [
+    hyperframesFinalDurationSeconds,
+    hyperframesFinalMusicPresetId,
+    hyperframesFinalPreviewShotIndex,
+    hyperframesFinalResolvedPromptShots,
+    hyperframesFinalSelectedShotPlaybackSec,
+    hyperframesFinalSelectedShotPreviewMode,
+    hyperframesFinalSfxDrafts,
+    hyperframesFinalSfxPresetIds,
+    hyperframesFinalTextPreviewReplayKey,
+    playHyperframesFinalPreviewAudioEvent,
+    previewMatchCaptureAudioEventsEnabled,
+  ]);
+
   const generatedHyperframesFinalRenderPrompt = useMemo(() => {
     return buildHyperframesFinalRenderPrompt({
       productTitle: hyperframesFinalProductPromptContext.productTitle,
@@ -7051,6 +7699,77 @@ export default function StoryboardReviewPage() {
       resolvedHyperframesFinalOverlayPreset,
     ],
   );
+  const previewMatchCompositionPayload = useMemo(
+    () => {
+      const payload = buildPreviewMatchCompositionPayloadFromHyperframesPreview(
+          JSON.parse(hyperframesFinalPayloadPreview),
+          {
+            tenantId: "default",
+            productId: effectiveHyperframesProductId,
+            runId: effectiveHyperframesRunId,
+            storyboardReviewId: canonicalReviewId ? String(canonicalReviewId) : null,
+            revision: hyperframesFinalStateRevisionRef.current,
+          },
+        );
+      return withPreviewMatchCompositionHashes({
+        ...payload,
+        audio: {
+          ...payload.audio,
+          includeAudioEventsInCapture: previewMatchCaptureAudioEventsEnabled,
+        },
+      });
+    },
+    [
+      canonicalReviewId,
+      effectiveHyperframesProductId,
+      effectiveHyperframesRunId,
+      hyperframesFinalPayloadPreview,
+      previewMatchCaptureAudioEventsEnabled,
+    ],
+  );
+  const previewMatchCompositionHash = useMemo(
+    () => previewMatchCompositionPayload.previewCompositionHash,
+    [previewMatchCompositionPayload],
+  );
+  const previewMatchTimelineHash = useMemo(
+    () => previewMatchCompositionPayload.timelineHash,
+    [previewMatchCompositionPayload],
+  );
+  const previewMatchFinalCompositeConfigHash = previewMatchCompositionPayload.finalCompositeConfigHash;
+  const previewMatchCaptureQuery = trpc.marketplaceCapture.getPreviewMatchCaptureJob.useQuery(
+    {
+      captureJobId: previewMatchCaptureJobId ?? undefined,
+      productId: effectiveHyperframesProductId,
+      runId: effectiveHyperframesRunId ?? "",
+      storyboardReviewId: canonicalReviewId ? String(canonicalReviewId) : undefined,
+    },
+    {
+      enabled: Boolean(
+        previewMatchCaptureJobId ||
+          (effectiveHyperframesProductId && effectiveHyperframesRunId),
+      ),
+      refetchInterval: query => {
+        const status = (query.state.data as any)?.capture?.status;
+        return [
+          "queued",
+          "preparing_assets",
+          "browser_ready",
+          "capturing",
+          "encoding",
+          "verifying",
+          "publishing",
+        ].includes(status) ? 2500 : false;
+      },
+    },
+  );
+  const previewMatchCaptureProjection =
+    previewMatchCaptureQuery.data?.capture ??
+    cancelPreviewMatchFinalCompositeCaptureMutation.data?.capture ??
+    createPreviewMatchFinalCompositeCaptureMutation.data?.capture ??
+    null;
+  useEffect(() => {
+    setPreviewMatchCaptureJobId(null);
+  }, [canonicalReviewId, effectiveHyperframesProductId, effectiveHyperframesRunId]);
 
   const hyperframesFinalHasUnsavedTextEdits = useMemo(
     () =>
@@ -7081,6 +7800,9 @@ export default function StoryboardReviewPage() {
         ? "กำลังรอ context จาก Marketplace Capture"
         : "Waiting for Marketplace Capture context";
     }
+    if (hyperframesFinalIdentityMismatchReason) {
+      return hyperframesFinalIdentityMismatchReason;
+    }
     if (
       !hyperframesFinalSyntheticAudioFallback &&
       (hyperframesFinalMusicPresetId || hyperframesFinalSfxPresetIds.length > 0)
@@ -7093,6 +7815,7 @@ export default function StoryboardReviewPage() {
   }, [
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalIdentityMismatchReason,
     hyperframesFinalHasUnsavedTextEdits,
     hyperframesFinalMissingVideoTitle,
     hyperframesFinalMusicPresetId,
@@ -7108,6 +7831,94 @@ export default function StoryboardReviewPage() {
     createHyperframesFinalCompositeMutation.isPending ||
       updateHyperframesFinalCompositeStateMutation.isPending ||
       hyperframesFinalCompositeRenderBlockedReason
+  );
+  const previewMatchCaptureIsActive = Boolean(
+    previewMatchCaptureProjection?.status &&
+      [
+        "queued",
+        "preparing_assets",
+        "browser_ready",
+        "capturing",
+        "encoding",
+        "verifying",
+        "publishing",
+      ].includes(previewMatchCaptureProjection.status),
+  );
+  const previewMatchCaptureIsComplete = Boolean(
+    previewMatchCaptureProjection?.status &&
+      ["completed", "saved_to_library"].includes(previewMatchCaptureProjection.status),
+  );
+  const previewMatchCaptureIsProblem = Boolean(
+    previewMatchCaptureProjection?.status &&
+      [
+        "blocked",
+        "failed_transient",
+        "failed_permanent",
+        "verification_failed",
+        "compliance_blocked",
+      ].includes(previewMatchCaptureProjection.status),
+  );
+  const previewMatchCaptureElapsedLabel = formatStoryboardCaptureElapsedSeconds(
+    previewMatchCaptureProjection?.captureElapsedSeconds,
+    locale,
+  );
+  const previewMatchCaptureStatusTitle = previewMatchCaptureProjection
+    ? previewMatchCaptureIsComplete
+      ? locale === "th" ? "Capture เสร็จแล้ว" : "Capture complete"
+      : previewMatchCaptureIsProblem
+        ? previewMatchCaptureProjection.status === "blocked"
+          ? locale === "th" ? "Capture ยังไม่พร้อมใช้งาน" : "Capture unavailable"
+          : locale === "th" ? "Capture ไม่สำเร็จ" : "Capture failed"
+        : previewMatchCaptureProjection.status === "cancelled"
+          ? locale === "th" ? "ยกเลิก Capture แล้ว" : "Capture cancelled"
+          : locale === "th" ? "กำลังทำงาน Capture ตาม Preview" : "Preview-match capture is running"
+    : locale === "th" ? "ยังไม่ได้เริ่ม Capture ตาม Preview" : "Preview-match capture has not started";
+  const previewMatchCaptureStatusDetail = previewMatchCaptureProjection
+    ? previewMatchCaptureProjection.safeMessage ??
+      (previewMatchCaptureProjection.status === "queued"
+        ? locale === "th"
+          ? "ส่งงานเข้า queue แล้ว ตอนนี้กำลังรอ server capture worker รับงาน"
+          : "The job is queued and waiting for a server capture worker."
+        : previewMatchCaptureIsComplete
+          ? locale === "th"
+            ? `Capture ตาม Preview เสร็จแล้ว${previewMatchCaptureElapsedLabel ? ` ใช้เวลา ${previewMatchCaptureElapsedLabel}` : ""} ผลลัพธ์ที่ผ่าน verification จะแสดงปุ่มเปิดไฟล์หรือ Library item ในแถบนี้`
+            : `Preview-match capture is complete${previewMatchCaptureElapsedLabel ? ` in ${previewMatchCaptureElapsedLabel}` : ""}. Verified output or Library item links appear in this status bar.`
+          : locale === "th"
+            ? "ระบบจะอัปเดตสถานะที่แถบนี้ระหว่าง capture, encode, verify และ publish"
+            : "This bar updates while the job captures, encodes, verifies, and publishes.")
+    : (locale === "th"
+        ? "กด Capture ตาม Preview เพื่อสร้าง job แล้วสถานะจะปรากฏตรงนี้"
+        : "Click Capture Final Composite to create a job; status appears here.");
+  const previewMatchCaptureDisabledReason =
+    (!previewMatchCaptureFlags.captureEnabled
+      ? locale === "th"
+        ? "Preview-match capture ถูกปิดไว้ชั่วคราว แต่ Render Final Composite ยังใช้งานได้"
+        : "Preview-match capture is temporarily disabled. Render Final Composite remains available."
+      : !previewMatchCaptureFlags.serverWorkerEnabled
+        ? locale === "th"
+          ? "Preview-match capture worker ถูกปิดไว้ชั่วคราว แต่ Render Final Composite ยังใช้งานได้"
+          : "Preview-match capture worker is temporarily disabled. Render Final Composite remains available."
+        : previewMatchCaptureQuality === "high" && !previewMatchCaptureFlags.highQualityEnabled
+          ? locale === "th"
+            ? "High quality capture ยังไม่เปิดใน rollout นี้"
+            : "High quality capture is not enabled for this rollout."
+          : null) ??
+    hyperframesFinalCompositeDisabledReason ??
+    (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId
+      ? locale === "th"
+        ? "กำลังรอ context จาก Marketplace Capture"
+        : "Waiting for Marketplace Capture context"
+      : previewMatchCaptureIsActive
+        ? locale === "th"
+          ? "มี Capture ตาม Preview กำลังทำงานอยู่"
+          : "A preview-match capture is already running"
+        : null);
+  const previewMatchHighQualityEnabled = previewMatchCaptureFlags.highQualityEnabled;
+  const previewMatchCaptureButtonDisabled = Boolean(
+    createPreviewMatchFinalCompositeCaptureMutation.isPending ||
+      cancelPreviewMatchFinalCompositeCaptureMutation.isPending ||
+      updateHyperframesFinalCompositeStateMutation.isPending ||
+      previewMatchCaptureDisabledReason,
   );
 
   const generateHyperframesFinalPromptWithSkill = useCallback(async () => {
@@ -7304,6 +8115,9 @@ export default function StoryboardReviewPage() {
     if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
       return null;
     }
+    if (hyperframesFinalIdentityMismatchReason) {
+      return null;
+    }
     const persistWithRevision = async (expectedRevision: number) => {
       const result = await updateHyperframesFinalCompositeStateMutation.mutateAsync({
         storyboardReviewProjectId: canonicalReviewId,
@@ -7334,6 +8148,7 @@ export default function StoryboardReviewPage() {
     canonicalReviewId,
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalIdentityMismatchReason,
     refetchStoryboardReview,
     updateHyperframesFinalCompositeStateMutation,
   ]);
@@ -7348,6 +8163,10 @@ export default function StoryboardReviewPage() {
 
   const flushHyperframesFinalCompositeAutosave = useCallback(async () => {
     if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return;
+    }
+    if (hyperframesFinalIdentityMismatchReason) {
+      setHyperframesFinalAutosaveStatus("error");
       return;
     }
     if (hyperframesFinalAutosaveInFlightRef.current) {
@@ -7402,6 +8221,7 @@ export default function StoryboardReviewPage() {
     canonicalReviewId,
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalIdentityMismatchReason,
     persistHyperframesFinalCompositeState,
   ]);
 
@@ -7411,6 +8231,12 @@ export default function StoryboardReviewPage() {
 
   useEffect(() => {
     if (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId) {
+      return;
+    }
+    if (hyperframesFinalIdentityMismatchReason) {
+      return;
+    }
+    if (isReviewLoading || !reviewRecordMatchesRoute || !reviewRecord) {
       return;
     }
     if (hyperframesFinalSourceClips.length === 0) {
@@ -7435,8 +8261,12 @@ export default function StoryboardReviewPage() {
     canonicalReviewId,
     effectiveHyperframesProductId,
     effectiveHyperframesRunId,
+    hyperframesFinalIdentityMismatchReason,
     hyperframesFinalAutosaveSnapshot.signature,
     hyperframesFinalSourceClips.length,
+    isReviewLoading,
+    reviewRecord,
+    reviewRecordMatchesRoute,
   ]);
 
   const createHyperframesFinalComposite = useCallback(async () => {
@@ -7507,6 +8337,12 @@ export default function StoryboardReviewPage() {
           sourceUrl: storedUrl,
           storageRef: storedUrl,
           durationSec,
+          ...(clip.derivedFromUrl
+            ? {
+                derivedFromUrl: clip.derivedFromUrl,
+                derivedSourceTrim: clip.derivedSourceTrim,
+              }
+            : {}),
           assignedByUserId: "storyboard_review_user",
           assignedAt: new Date().toISOString(),
         });
@@ -7611,7 +8447,7 @@ export default function StoryboardReviewPage() {
           textMotionPreset: hyperframesFinalTextMotionPreset,
           hookText: renderHookText,
           supportingText: renderSupportingText,
-          perShotText: renderPerShotTextById,
+          perShotText: hyperframesFinalShotTextById,
           perShotSubtitles: hyperframesFinalSubtitleById,
           perShotSubtitleVtt: hyperframesFinalSubtitleVttById,
           perShotSubtitleSrt: hyperframesFinalSubtitleSrtById,
@@ -7688,6 +8524,63 @@ export default function StoryboardReviewPage() {
     resolvedHyperframesFinalOverlayPreset,
   ]);
 
+  const createPreviewMatchFinalCompositeCapture = useCallback(async () => {
+    if (previewMatchCaptureDisabledReason) {
+      toast.info(previewMatchCaptureDisabledReason);
+      return;
+    }
+    if (!effectiveHyperframesProductId || !effectiveHyperframesRunId || !canonicalReviewId) {
+      toast.error(locale === "th" ? "ยังไม่มี product/run context สำหรับ Capture ตาม Preview" : "Missing product/run context for preview-match capture.");
+      return;
+    }
+    try {
+      await createPreviewMatchFinalCompositeCaptureMutation.mutateAsync({
+        productId: effectiveHyperframesProductId,
+        runId: effectiveHyperframesRunId,
+        storyboardReviewId: String(canonicalReviewId),
+        quality: previewMatchCaptureQuality,
+        expectedPreviewCompositionHash: previewMatchCompositionHash,
+        expectedTimelineHash: previewMatchTimelineHash,
+        finalCompositeConfigHash: previewMatchFinalCompositeConfigHash,
+        output: previewMatchCompositionPayload.output,
+        payload: previewMatchCompositionPayload,
+      });
+    } catch {
+      // mutation onError owns the user-facing toast
+    }
+  }, [
+    canonicalReviewId,
+    createPreviewMatchFinalCompositeCaptureMutation,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    locale,
+    previewMatchCaptureDisabledReason,
+    previewMatchCaptureQuality,
+    previewMatchCompositionHash,
+    previewMatchCompositionPayload,
+    previewMatchFinalCompositeConfigHash,
+    previewMatchTimelineHash,
+  ]);
+
+  const cancelPreviewMatchFinalCompositeCapture = useCallback(async () => {
+    const captureJobId = previewMatchCaptureProjection?.captureJobId;
+    if (!captureJobId) return;
+    try {
+      await cancelPreviewMatchFinalCompositeCaptureMutation.mutateAsync({
+        captureJobId,
+        productId: effectiveHyperframesProductId,
+        runId: effectiveHyperframesRunId,
+      });
+    } catch {
+      // mutation onError owns the user-facing toast
+    }
+  }, [
+    cancelPreviewMatchFinalCompositeCaptureMutation,
+    effectiveHyperframesProductId,
+    effectiveHyperframesRunId,
+    previewMatchCaptureProjection?.captureJobId,
+  ]);
+
   const inferredRenderAspectRatio = useMemo(
     () => inferStoryboardRenderAspectRatio(selectedRenderClips),
     [selectedRenderClips],
@@ -7710,12 +8603,28 @@ export default function StoryboardReviewPage() {
   const selectedRenderProject = useMemo(() => {
     if (!draft || selectedRenderClips.length === 0) return null;
     const reviewTasks = storyboardDraftToReviewTasks(draft);
+    const articleAudioStrategy = getArticleStoryboardDraftAudioStrategy(reviewTasks);
+    const renderTrackPlan = articleAudioStrategy
+      ? buildArticleStoryboardRenderTrackPlan({
+          audioStrategy: articleAudioStrategy,
+          hasSeparateVoiceoverAsset: draft.companionAudio.length > 0,
+          hasOverlay: true,
+          hasStaticSlideFallback: reviewTasks.some((task) => Boolean(
+            getArticleStoryboardReviewMetadata(task.generationExtraParams)?.staticSlideFallbackUrl,
+          )),
+        })
+      : null;
+    const companionAudioForRender = renderTrackPlan?.voiceover.attachExternalAudio === false
+      ? []
+      : draft.companionAudio;
     return buildStoryboardVideoProject(
       selectedRenderClips,
       {
         projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
-        companionAudio: draft.companionAudio,
-        muteVideoClipAudio: draft.companionAudio.length > 0 || reviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
+        companionAudio: companionAudioForRender,
+        muteVideoClipAudio: renderTrackPlan
+          ? renderTrackPlan.video.muteEmbeddedAudio
+          : draft.companionAudio.length > 0 || reviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
         outputAspectRatio: effectiveRenderAspectRatio,
       },
     );
@@ -7765,12 +8674,28 @@ export default function StoryboardReviewPage() {
     }
 
     const reviewTasks = storyboardDraftToReviewTasks(draft);
+    const articleAudioStrategy = getArticleStoryboardDraftAudioStrategy(reviewTasks);
+    const renderTrackPlan = articleAudioStrategy
+      ? buildArticleStoryboardRenderTrackPlan({
+          audioStrategy: articleAudioStrategy,
+          hasSeparateVoiceoverAsset: preparedAudio.length > 0,
+          hasOverlay: true,
+          hasStaticSlideFallback: reviewTasks.some((task) => Boolean(
+            getArticleStoryboardReviewMetadata(task.generationExtraParams)?.staticSlideFallbackUrl,
+          )),
+        })
+      : null;
+    const companionAudioForRender = renderTrackPlan?.voiceover.attachExternalAudio === false
+      ? []
+      : preparedAudio;
     return buildStoryboardVideoProject(
       preparedClips,
       {
         projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
-        companionAudio: preparedAudio,
-        muteVideoClipAudio: preparedAudio.length > 0 || reviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
+        companionAudio: companionAudioForRender,
+        muteVideoClipAudio: renderTrackPlan
+          ? renderTrackPlan.video.muteEmbeddedAudio
+          : preparedAudio.length > 0 || reviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
         outputAspectRatio: effectiveRenderAspectRatio,
       },
     );
@@ -8097,6 +9022,35 @@ export default function StoryboardReviewPage() {
           if (!planned || !prompt) return task;
           const taskProductionContext = getTaskEmbeddedProductionContext(task) ?? effectiveProductionContext;
           const productionExtraParams = buildReviewProductionExtraParams(taskProductionContext);
+          const nextExtraParams = updateArticleStoryboardCurrentPromptMetadata(
+            {
+              ...(task.storyboardContext?.extraParams ?? {}),
+              ...(effectiveConceptDetails ? { productionConceptDetails: effectiveConceptDetails } : {}),
+              ...(effectiveStoryboardGuide ? { storyboardGuide: effectiveStoryboardGuide } : {}),
+              ...(plannedVoiceoverFullScript ? { voiceoverFullScript: plannedVoiceoverFullScript } : {}),
+              ...productionExtraParams,
+              promptSource: "skill_generated",
+              videoSegmentPrompt: prompt,
+              videoSegmentPromptStale: false,
+              videoSegmentPromptGeneratedAt: new Date().toISOString(),
+              storyboardPromptPlanner: {
+                ...(task.storyboardContext?.extraParams?.storyboardPromptPlanner ?? {}),
+                skillId: "storyboard-video-customer-journey-prompt",
+                journeyStage: planned.journeyStage,
+                voiceoverScript: resolvedVoiceoverByTaskId.get(task.id) ?? planned.voiceoverScript,
+                speechMode: options.speechMode,
+                speechLanguage: options.speechLanguage,
+                soundBrief: planned.soundBrief,
+                qualityNotes: planned.qualityNotes,
+                globalVideoStrategy: result.globalVideoStrategy,
+                voiceoverFullScript: plannedVoiceoverFullScript,
+                soundFullBrief: result.soundFullBrief,
+                ...(taskProductionContext ? { productionContext: taskProductionContext } : {}),
+              },
+            },
+            prompt,
+            "skill_generated",
+          );
           return {
             ...task,
             prompt,
@@ -8110,31 +9064,7 @@ export default function StoryboardReviewPage() {
               ? {
                   ...task.storyboardContext,
                   productionContext: task.storyboardContext.productionContext ?? taskProductionContext,
-                  extraParams: {
-                    ...(task.storyboardContext.extraParams ?? {}),
-                    ...(effectiveConceptDetails ? { productionConceptDetails: effectiveConceptDetails } : {}),
-                    ...(effectiveStoryboardGuide ? { storyboardGuide: effectiveStoryboardGuide } : {}),
-                    ...(plannedVoiceoverFullScript ? { voiceoverFullScript: plannedVoiceoverFullScript } : {}),
-                    ...productionExtraParams,
-                    promptSource: "skill_generated",
-                    videoSegmentPrompt: prompt,
-                    videoSegmentPromptStale: false,
-                    videoSegmentPromptGeneratedAt: new Date().toISOString(),
-                    storyboardPromptPlanner: {
-                      ...(task.storyboardContext.extraParams?.storyboardPromptPlanner ?? {}),
-                      skillId: "storyboard-video-customer-journey-prompt",
-                      journeyStage: planned.journeyStage,
-                      voiceoverScript: resolvedVoiceoverByTaskId.get(task.id) ?? planned.voiceoverScript,
-                      speechMode: options.speechMode,
-                      speechLanguage: options.speechLanguage,
-                      soundBrief: planned.soundBrief,
-                      qualityNotes: planned.qualityNotes,
-                      globalVideoStrategy: result.globalVideoStrategy,
-                      voiceoverFullScript: plannedVoiceoverFullScript,
-                      soundFullBrief: result.soundFullBrief,
-                      ...(taskProductionContext ? { productionContext: taskProductionContext } : {}),
-                    },
-                  },
+                  extraParams: nextExtraParams,
                 }
               : task.storyboardContext,
           };
@@ -8176,17 +9106,28 @@ export default function StoryboardReviewPage() {
       ...current,
       updatedAt: Date.now(),
       tasks: current.tasks.map((task) => task.id === taskId
-        ? {
-            ...task,
-            prompt: normalizedPrompt,
-            status: task.status === "completed" ? "queued" : task.status,
-            url: task.status === "completed" ? undefined : task.url,
-            error: undefined,
-            backendTaskId: undefined,
-            providerTaskId: undefined,
-            statusDetail: locale === "th" ? "แก้ไข prompt แล้ว" : "Prompt edited",
-            updatedAt: Date.now(),
-          }
+        ? (() => {
+            const nextExtraParams = task.storyboardContext?.extraParams
+              ? updateArticleStoryboardCurrentPromptMetadata(task.storyboardContext.extraParams, normalizedPrompt)
+              : null;
+            return {
+              ...task,
+              prompt: normalizedPrompt,
+              status: task.status === "completed" ? "queued" : task.status,
+              url: task.status === "completed" ? undefined : task.url,
+              error: undefined,
+              backendTaskId: undefined,
+              providerTaskId: undefined,
+              statusDetail: locale === "th" ? "แก้ไข prompt แล้ว" : "Prompt edited",
+              updatedAt: Date.now(),
+              storyboardContext: task.storyboardContext && nextExtraParams
+                ? {
+                    ...task.storyboardContext,
+                    extraParams: nextExtraParams,
+                  }
+                : task.storyboardContext,
+            };
+          })()
         : task),
       compoundStatus: null,
     }));
@@ -8211,9 +9152,15 @@ export default function StoryboardReviewPage() {
             shotDurationSeconds: safeDuration,
           };
         }
+        const nextPrompt = applyStoryboardPromptDuration(task.prompt, safeDuration);
+        const nextArticlePromptExtraParams = updateArticleStoryboardCurrentPromptMetadata(
+          nextExtraParams,
+          nextPrompt,
+          "duration_adjusted",
+        );
         return {
           ...task,
-          prompt: applyStoryboardPromptDuration(task.prompt, safeDuration),
+          prompt: nextPrompt,
           durationSeconds: safeDuration,
           status: task.status === "generating" ? task.status : "queued",
           url: task.status === "generating" ? task.url : undefined,
@@ -8228,12 +9175,68 @@ export default function StoryboardReviewPage() {
             ? {
                 ...task.storyboardContext,
                 duration: safeDuration,
-                extraParams: nextExtraParams,
+                extraParams: nextArticlePromptExtraParams,
               }
             : task.storyboardContext,
         };
       }),
       compoundStatus: locale === "th" ? `ปรับความยาว shot เป็น ${safeDuration} วินาทีแล้ว` : `Shot duration set to ${safeDuration}s.`,
+      projectLink: null,
+      renderJobId: null,
+    }));
+  }, [locale, setAndSaveDraft]);
+
+  const updateTaskSourceTrim = useCallback((taskId: string, trim: StoryboardSourceTrimRange | null) => {
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      tasks: current.tasks.map((task) => {
+        if (task.id !== taskId) return task;
+        const fallbackDuration = resolveHyperframesSourceClipDurationSeconds(
+          task,
+          task.durationSeconds ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS,
+        ) ?? DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+        const normalizedTrim = trim
+          ? normalizeStoryboardSourceTrimForTask(trim, fallbackDuration)
+          : null;
+        const nextExtraParams: Record<string, any> = {
+          ...(task.storyboardContext?.extraParams ?? {}),
+        };
+        delete nextExtraParams.sourceTrimDerived;
+        if (normalizedTrim) {
+          nextExtraParams.sourceTrim = {
+            ...normalizedTrim,
+            disabledRanges: normalizedTrim.disabledRanges ?? [],
+          };
+          if (!task.storyboardContext) {
+            nextExtraParams.importedMediaContextOnly = true;
+          }
+        } else {
+          delete nextExtraParams.sourceTrim;
+        }
+        return {
+          ...task,
+          updatedAt: Date.now(),
+          storyboardContext: task.storyboardContext
+            ? {
+                ...task.storyboardContext,
+                extraParams: nextExtraParams,
+              }
+            : normalizedTrim
+              ? {
+                  aspectRatio: task.aspectRatio ?? "9:16",
+                  duration: task.durationSeconds,
+                  model: task.model,
+                  referenceImages: [],
+                  referenceVideos: [],
+                  extraParams: nextExtraParams,
+                }
+              : task.storyboardContext,
+        };
+      }),
+      compoundStatus: trim
+        ? (locale === "th" ? "บันทึกช่วงวิดีโอของ shot แล้ว" : "Shot source trim saved.")
+        : (locale === "th" ? "ล้างช่วงตัดวิดีโอของ shot แล้ว" : "Shot source trim cleared."),
       projectLink: null,
       renderJobId: null,
     }));
@@ -8264,6 +9267,21 @@ export default function StoryboardReviewPage() {
       useVoiceoverScriptAsConcept: nextValue ? true : false,
     }));
   }, [setAndSaveDraft]);
+
+  const startEditingVoiceoverSummary = useCallback(() => {
+    setVoiceoverSummaryDraft(storyboardVoiceoverSummaryText);
+    setIsEditingVoiceoverSummary(true);
+  }, [storyboardVoiceoverSummaryText]);
+
+  const cancelEditingVoiceoverSummary = useCallback(() => {
+    setVoiceoverSummaryDraft(storyboardVoiceoverSummaryText);
+    setIsEditingVoiceoverSummary(false);
+  }, [storyboardVoiceoverSummaryText]);
+
+  const saveVoiceoverSummaryDraft = useCallback(() => {
+    updateVoiceoverFullScript(voiceoverSummaryDraft);
+    setIsEditingVoiceoverSummary(false);
+  }, [updateVoiceoverFullScript, voiceoverSummaryDraft]);
 
   const updateUseVoiceoverScriptAsConcept = useCallback((value: boolean) => {
     setAndSaveDraft((current) => ({
@@ -8956,6 +9974,16 @@ export default function StoryboardReviewPage() {
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="h-8 px-2 text-xs xl:hidden"
+                        onClick={() => setLocation("/storyboard-review")}
+                      >
+                        <ChevronLeft className="mr-1.5 h-3.5 w-3.5" />
+                        {locale === "th" ? "เลือกโปรเจกต์อื่น" : "Choose another"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
                         className="h-8 px-2 text-xs"
                         onClick={() => {
                           setProjectNameDraft(currentProjectName);
@@ -9011,28 +10039,33 @@ export default function StoryboardReviewPage() {
       </header>
 
       {hyperframesContextAvailable ? (
-        <div className="border-b bg-sky-50 px-2 py-2 sm:px-3">
-          <HyperframesStoryboardReviewPanel
-            render={hyperframesRenderProjection}
-            snapshots={hyperframesSnapshots}
-            onCreatePreview={
-              !effectiveHyperframesRenderJobId && !hyperframesRenderProjection
-                ? createHyperframesPreview
-                : undefined
-            }
-            onRetry={repairHyperframesRender}
-            onSaveToLibrary={saveHyperframesRenderToLibrary}
-            loading={
-              hyperframesRenderQuery.isLoading ||
-              repairHyperframesRenderJobMutation.isPending
-            }
-            creatingPreview={createHyperframesPreviewMutation.isPending}
-            saving={saveHyperframesRenderToLibraryMutation.isPending}
-            manualFallbackVisible
-            compact
-            locale={locale}
-          />
-          <div className="mt-2 rounded-md border border-sky-200 bg-white px-2.5 py-2 shadow-sm">
+        <div className="border-b bg-sky-50 px-2 py-1.5 sm:px-3">
+          {isHyperframesFinalPanelExpanded ? (
+            <HyperframesStoryboardReviewPanel
+              render={hyperframesRenderProjection}
+              snapshots={hyperframesSnapshots}
+              onCreatePreview={
+                !effectiveHyperframesRenderJobId && !hyperframesRenderProjection
+                  ? createHyperframesPreview
+                  : undefined
+              }
+              onRetry={repairHyperframesRender}
+              onSaveToLibrary={saveHyperframesRenderToLibrary}
+              loading={
+                hyperframesRenderQuery.isLoading ||
+                repairHyperframesRenderJobMutation.isPending
+              }
+              creatingPreview={createHyperframesPreviewMutation.isPending}
+              saving={saveHyperframesRenderToLibraryMutation.isPending}
+              manualFallbackVisible
+              compact
+              locale={locale}
+            />
+          ) : null}
+          <div className={cn(
+            "rounded-md border border-sky-200 bg-white px-2.5 py-1.5 shadow-sm",
+            isHyperframesFinalPanelExpanded ? "mt-2" : "",
+          )}>
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -9090,13 +10123,65 @@ export default function StoryboardReviewPage() {
                 <h2 className="sr-only">
                   {locale === "th" ? "Render รวม MP4 จาก Storyboard Review พร้อมข้อความและ Subtitle" : "Render Storyboard Review MP4 shots with text and subtitles"}
                 </h2>
-                <p className="mt-1 line-clamp-1 text-[11px] leading-4 text-slate-600">
-                  {locale === "th"
-                    ? "ใช้คลิปที่เลือกไว้ก่อน ถ้าไม่ได้เลือกจะใช้ทุก shot ที่ completed แล้ว แยกจาก render เดิมของหน้า"
-                    : "Uses selected completed clips first, otherwise all completed shots. This is separate from the existing page render."}
-                </p>
+                {isHyperframesFinalPanelExpanded ? (
+                  <p className="mt-1 line-clamp-1 text-[11px] leading-4 text-slate-600">
+                    {locale === "th"
+                      ? "ใช้คลิปที่เลือกไว้ก่อน ถ้าไม่ได้เลือกจะใช้ทุก shot ที่ completed แล้ว แยกจาก render เดิมของหน้า"
+                      : "Uses selected completed clips first, otherwise all completed shots. This is separate from the existing page render."}
+                  </p>
+                ) : null}
               </div>
               <div className="flex shrink-0 flex-wrap gap-1.5">
+                <label className="flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700">
+                  <Layers className="h-3.5 w-3.5 text-emerald-700" />
+                  <span className="sr-only">
+                    {locale === "th" ? "คุณภาพ Capture ตาม Preview" : "Preview capture quality"}
+                  </span>
+                  <select
+                    value={previewMatchCaptureQuality}
+                    onChange={event =>
+                      setPreviewMatchCaptureQuality(
+                        event.target.value as StoryboardPreviewMatchCaptureQuality,
+                      )
+                    }
+                    className="h-6 bg-transparent text-[11px] font-semibold outline-none"
+                    aria-label={locale === "th" ? "คุณภาพ Capture ตาม Preview" : "Preview capture quality"}
+                  >
+                    <option value="standard">
+                      {locale === "th" ? "Standard" : "Standard"}
+                    </option>
+                    <option value="high" disabled={!previewMatchHighQualityEnabled}>
+                      {locale === "th" ? "High" : "High"}
+                    </option>
+                  </select>
+                </label>
+                <label className="flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded border-slate-300"
+                    checked={previewMatchCaptureAudioEventsEnabled}
+                    onChange={event => setPreviewMatchCaptureAudioEventsEnabled(event.target.checked)}
+                    aria-label={locale === "th" ? "สร้างเสียง SFX ตอน Capture" : "Include SFX and music during capture"}
+                  />
+                  <span>{locale === "th" ? "สร้าง SFX ตอน Capture" : "Capture SFX"}</span>
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void createPreviewMatchFinalCompositeCapture()}
+                  disabled={previewMatchCaptureButtonDisabled}
+                  className="h-8 border-emerald-200 bg-emerald-50 px-3 text-xs text-emerald-900 hover:bg-emerald-100"
+                  title={previewMatchCaptureDisabledReason ?? undefined}
+                  aria-disabled={previewMatchCaptureButtonDisabled}
+                >
+                  {createPreviewMatchFinalCompositeCaptureMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Layers className="mr-2 h-4 w-4" />
+                  )}
+                  {locale === "th" ? "Capture ตาม Preview" : "Capture Final Composite"}
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -9133,7 +10218,50 @@ export default function StoryboardReviewPage() {
                 </Button>
               </div>
             </div>
-            {hyperframesFinalCompositeStatusText ? (
+            {!isHyperframesFinalPanelExpanded ? (
+              <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-4 text-slate-600">
+                {hyperframesFinalCompositeStatusText ? (
+                  <span className={cn(
+                    "inline-flex min-w-0 items-center gap-1.5",
+                    hyperframesFinalCompositeIsProblem ? "text-amber-800" : "text-emerald-800",
+                  )}>
+                    {hyperframesFinalCompositeIsActive ? (
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                    ) : hyperframesFinalCompositeIsProblem ? (
+                      <X className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <Check className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="truncate font-medium">{hyperframesFinalCompositeStatusText}</span>
+                  </span>
+                ) : null}
+                <span className={cn(
+                  "inline-flex min-w-0 items-center gap-1.5",
+                  previewMatchCaptureIsProblem
+                    ? "text-red-800"
+                    : previewMatchCaptureIsActive
+                      ? "text-sky-800"
+                      : "text-emerald-800",
+                )}>
+                  {previewMatchCaptureIsActive ? (
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  ) : previewMatchCaptureIsProblem ? (
+                    <X className="h-3 w-3 shrink-0" />
+                  ) : previewMatchCaptureIsComplete ? (
+                    <Check className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <Layers className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="truncate font-medium">{previewMatchCaptureStatusTitle}</span>
+                </span>
+                {hyperframesFinalCompositeRenderBlockedReason ? (
+                  <span className="min-w-0 truncate text-amber-800">
+                    {hyperframesFinalCompositeRenderBlockedReason}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            {isHyperframesFinalPanelExpanded && hyperframesFinalCompositeStatusText ? (
               <div
                 className={cn(
                   "mt-2 flex flex-col gap-2 rounded-md border px-3 py-2 text-[11px] lg:flex-row lg:items-start lg:justify-between",
@@ -9249,7 +10377,139 @@ export default function StoryboardReviewPage() {
                 </div>
               </div>
             ) : null}
-            {hyperframesFinalCompositeRenderBlockedReason ? (
+            {isHyperframesFinalPanelExpanded ? (
+            <div
+              className={cn(
+                "mt-2 rounded-md border px-2 py-1.5 text-[11px]",
+                previewMatchCaptureIsProblem
+                  ? "border-red-200 bg-red-50 text-red-900"
+                  : previewMatchCaptureIsActive
+                    ? "border-sky-200 bg-sky-50 text-sky-900"
+                    : previewMatchCaptureIsComplete
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-950",
+              )}
+              aria-live="polite"
+            >
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-2">
+                  {previewMatchCaptureIsActive ? (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                  ) : previewMatchCaptureIsProblem ? (
+                    <X className="h-3.5 w-3.5 shrink-0" />
+                  ) : previewMatchCaptureIsComplete ? (
+                    <Check className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <Layers className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <p className="min-w-0 font-semibold">{previewMatchCaptureStatusTitle}</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[10px] text-emerald-800">
+                  <span>{previewMatchCaptureQuality}</span>
+                  <span>{previewMatchFinalCompositeConfigHash}</span>
+                  <span>{previewMatchCompositionHash}</span>
+                  <span>{previewMatchTimelineHash}</span>
+                </div>
+              </div>
+              <p className="mt-1 leading-relaxed text-emerald-800">
+                {previewMatchCaptureStatusDetail}
+              </p>
+              {previewMatchCaptureProjection ? (
+                <div className="mt-2 flex flex-col gap-2 rounded-md border border-emerald-200 bg-white/80 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap gap-1.5">
+                      {previewMatchCaptureProjection.captureJobId ? (
+                        <Badge variant="outline" className="h-6 rounded-full px-2 font-mono text-[10px]">
+                          Job {previewMatchCaptureProjection.captureJobId}
+                        </Badge>
+                      ) : null}
+                      <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                        {previewMatchCaptureProjection.status}
+                      </Badge>
+                      {previewMatchCaptureProjection.stage ? (
+                        <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                          {previewMatchCaptureProjection.stage}
+                        </Badge>
+                      ) : null}
+                      <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                        {Math.round(previewMatchCaptureProjection.progressPercent)}%
+                      </Badge>
+                      {previewMatchCaptureIsComplete && previewMatchCaptureElapsedLabel ? (
+                        <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                          {locale === "th"
+                            ? `ใช้เวลา ${previewMatchCaptureElapsedLabel}`
+                            : `Elapsed ${previewMatchCaptureElapsedLabel}`}
+                        </Badge>
+                      ) : null}
+                      {previewMatchCaptureProjection.libraryItemId ? (
+                        <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                          Library {previewMatchCaptureProjection.libraryItemId}
+                        </Badge>
+                      ) : null}
+                      {previewMatchCaptureProjection.evidenceRef ? (
+                        <Badge variant="outline" className="h-6 rounded-full px-2 text-[10px]">
+                          {previewMatchCaptureProjection.evidenceRef}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {previewMatchCaptureProjection.safeDiagnostics.length > 0 ? (
+                      <p className="line-clamp-2 text-[10px] text-emerald-800">
+                        {previewMatchCaptureProjection.safeDiagnostics[0]}
+                      </p>
+                    ) : null}
+                    {!previewMatchCaptureProjection.outputUrl && !previewMatchCaptureProjection.libraryItemId ? (
+                      <p className="text-[10px] text-emerald-800">
+                        {locale === "th"
+                          ? "เมื่อ worker encode และ verification ผ่าน ผลลัพธ์จะขึ้นเป็นปุ่มเปิดไฟล์หรือ Library item ตรงนี้"
+                          : "After worker encode and verification pass, the output link or Library item appears here."}
+                      </p>
+                    ) : null}
+                  </div>
+                  {previewMatchCaptureProjection.canCancel ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 shrink-0 bg-white/90"
+                      onClick={() => void cancelPreviewMatchFinalCompositeCapture()}
+                      disabled={cancelPreviewMatchFinalCompositeCaptureMutation.isPending}
+                    >
+                      {cancelPreviewMatchFinalCompositeCaptureMutation.isPending ? (
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <X className="mr-2 h-3.5 w-3.5" />
+                      )}
+                      {locale === "th" ? "ยกเลิก" : "Cancel"}
+                    </Button>
+                  ) : previewMatchCaptureProjection.outputUrl ? (
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 bg-white/90"
+                        onClick={() => downloadStoryboardMedia(
+                          previewMatchCaptureProjection.outputUrl!,
+                          `${draft ? getStoryboardReviewName(draft) : "storyboard-preview-match"}-capture`,
+                          "mp4",
+                        )}
+                      >
+                        <Download className="mr-2 h-3.5 w-3.5" />
+                        {locale === "th" ? "ดาวน์โหลด MP4" : "Download MP4"}
+                      </Button>
+                      <Button asChild type="button" size="sm" variant="outline" className="h-8 bg-white/90">
+                        <a href={previewMatchCaptureProjection.outputUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                          {locale === "th" ? "เปิดผลลัพธ์" : "Open output"}
+                        </a>
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            ) : null}
+            {isHyperframesFinalPanelExpanded && hyperframesFinalCompositeRenderBlockedReason ? (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -9287,8 +10547,24 @@ export default function StoryboardReviewPage() {
               </div>
             ) : null}
             {isHyperframesFinalPanelExpanded ? (
-              <div className="mt-3 max-h-[calc(100dvh-14rem)] overflow-y-auto pr-1">
-            <div className="grid gap-3 lg:grid-cols-6">
+              <div className="mt-3 overflow-visible pr-0 xl:max-h-[calc(100dvh-14rem)] xl:overflow-y-auto xl:pr-1">
+            <div className="rounded-lg border bg-white p-3 shadow-sm">
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">
+                    {locale === "th" ? "ตั้งค่า Render Final Composite" : "Final Composite render settings"}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    {locale === "th"
+                      ? "ปรับภาพ ข้อความ subtitle และเสียงก่อน generate prompt/render"
+                      : "Tune visuals, text, subtitles, and audio before prompt generation/render."}
+                  </p>
+                </div>
+                <Badge variant="outline" className="w-fit rounded-full text-[10px]">
+                  CSS/GSAP · 9:16 · MP4 1080x1920
+                </Badge>
+              </div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
               <label className="grid gap-1 text-xs font-medium text-slate-700">
                 {locale === "th" ? "Overlay preset" : "Overlay preset"}
                 <select
@@ -9321,7 +10597,7 @@ export default function StoryboardReviewPage() {
                   ))}
                 </select>
               </label>
-	              <label className="grid gap-1 text-xs font-medium text-slate-700">
+	              <label className="grid gap-1 text-xs font-medium text-slate-700 md:col-span-2 xl:col-span-1">
 	                {locale === "th" ? "ข้อความบนภาพ" : "Text layer"}
 	                <select
 	                  value={hyperframesFinalTextMode}
@@ -9354,7 +10630,7 @@ export default function StoryboardReviewPage() {
                   ))}
                 </select>
               </label>
-              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+              <label className="flex min-h-10 items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 xl:mt-5">
                 <input
                   type="checkbox"
                   checked={hyperframesFinalBurnInSubtitles}
@@ -9421,7 +10697,7 @@ export default function StoryboardReviewPage() {
                   ))}
                 </select>
               </label>
-              <label className="grid gap-1 text-xs font-medium text-slate-700 lg:col-span-2">
+              <label className="grid gap-1 text-xs font-medium text-slate-700 md:col-span-2 xl:col-span-2">
                 {locale === "th" ? "SFX triggers" : "SFX triggers"}
                 <select
                   multiple
@@ -9437,7 +10713,7 @@ export default function StoryboardReviewPage() {
                       return selected.map((id, index) => byPreset.get(id) ?? buildDefaultHyperframesFinalSfxDraft(id, index));
                     });
                   }}
-                  className="min-h-[5.5rem] rounded-md border bg-white px-2 py-1 text-sm"
+                  className="min-h-[5.5rem] max-h-32 rounded-md border bg-white px-2 py-1 text-sm"
                 >
                   {HYPERFRAMES_FINAL_SFX_PRESETS.map(preset => (
                     <option key={preset.id} value={preset.id}>
@@ -9449,7 +10725,7 @@ export default function StoryboardReviewPage() {
                   {locale === "th" ? "กด Ctrl/⌘ เพื่อเลือกหลายเสียง" : "Use Ctrl/⌘ to select multiple effects."}
                 </span>
               </label>
-              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+              <label className="flex min-h-10 items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 xl:mt-5">
                 <input
                   type="checkbox"
                   checked={hyperframesFinalPreserveNativeAudio}
@@ -9458,7 +10734,7 @@ export default function StoryboardReviewPage() {
                 />
                 {locale === "th" ? "เก็บเสียงเดิมของคลิป" : "Preserve native audio"}
               </label>
-              <label className="flex items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 lg:mt-5">
+              <label className="flex min-h-10 items-center gap-2 rounded-md border bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 xl:mt-5">
                 <input
                   type="checkbox"
                   checked={hyperframesFinalSyntheticAudioFallback}
@@ -9467,10 +10743,11 @@ export default function StoryboardReviewPage() {
                 />
                 {locale === "th" ? "ใช้เสียง fallback ถ้ายังไม่มี asset" : "Synthetic fallback"}
               </label>
-              <div className="rounded-md border bg-slate-50 px-3 py-2 text-xs text-slate-600 lg:mt-5">
-                CSS/GSAP timeline, 9:16, MP4 1080x1920
+              <div className="rounded-md border bg-slate-50 px-3 py-2 text-xs text-slate-600 md:col-span-2 xl:col-span-1 xl:mt-5">
+                {locale === "th" ? "Prompt และ payload ใช้ค่าชุดเดียวกัน" : "Prompt and payload use the same settings"}
               </div>
 	            </div>
+            </div>
             <div className="mt-3 rounded-lg border bg-white p-3 text-xs text-slate-700">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
@@ -9516,8 +10793,12 @@ export default function StoryboardReviewPage() {
 	                  {hyperframesFinalSourceClipPlan.wasTrimmed ? (
 	                    <Badge variant="outline" className="rounded-full border-amber-200 bg-amber-50 px-2 py-0 text-[10px] text-amber-800">
 	                      {locale === "th"
-	                        ? `Trim ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}/${HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC}s`
-	                        : `Trim ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}/${HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC}s`}
+	                        ? (hyperframesFinalSourceClipPlan.usedSourceTrim
+	                          ? `ใช้ช่วงที่ตัดไว้ ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}s`
+	                          : `Trim ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}/${HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC}s`)
+	                        : (hyperframesFinalSourceClipPlan.usedSourceTrim
+	                          ? `Using shot trims ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}s`
+	                          : `Trim ${hyperframesFinalSourceClipPlan.plannedDurationSeconds}/${HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC}s`)}
 	                    </Badge>
 	                  ) : null}
 		                  <Button
@@ -9576,7 +10857,7 @@ export default function StoryboardReviewPage() {
 		                        overlayPreset: shotPreviewPreset,
 		                        overlayText,
 		                        hookText: hyperframesFinalPreviewHookText,
-		                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+		                        supportingText: hyperframesFinalPreviewSupportingText,
 		                        maxLines: shotPreviewLineLimit,
 		                        maxLength: 34,
 		                        preferOpeningHook: index === 0,
@@ -9741,7 +11022,7 @@ export default function StoryboardReviewPage() {
 	                      overlayPreset: selectedOverlayPreset,
 	                      overlayText: selectedShotOverlay,
 	                      hookText: hyperframesFinalPreviewHookText,
-	                      supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                      supportingText: hyperframesFinalPreviewSupportingText,
 	                      maxLines: selectedPreviewLineLimit,
 	                      maxLength: 42,
 	                      playbackSec: hyperframesFinalSelectedShotPreviewMode === "video"
@@ -9862,7 +11143,7 @@ export default function StoryboardReviewPage() {
                         overlayPreset: selectedOverlayPreset,
                         overlayText: selectedShotOverlay,
                         hookText: hyperframesFinalPreviewHookText,
-                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        supportingText: hyperframesFinalPreviewSupportingText,
                         maxLines: selectedPreviewLineLimit,
                         maxLength: 42,
                         preferOpeningHook: true,
@@ -9875,7 +11156,7 @@ export default function StoryboardReviewPage() {
                         overlayPreset: selectedOverlayPreset,
                         overlayText: selectedShotOverlay,
                         hookText: hyperframesFinalPreviewHookText,
-                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        supportingText: hyperframesFinalPreviewSupportingText,
                         maxLines: selectedPreviewLineLimit,
                         maxLength: 42,
                         playbackSec: HYPERFRAMES_FINAL_HOOK_DURATION_SEC + 0.1,
@@ -9905,9 +11186,6 @@ export default function StoryboardReviewPage() {
                           input.className,
                         )}>
                           <div className="hf-preview-copy-top">
-                            <div className="hf-preview-layer-tag mb-2 inline-flex rounded-full bg-white/90 px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-900 shadow-sm">
-                              {input.layerLabel}
-                            </div>
                             <div className={cn(
                               "hf-preview-title max-w-[92%] font-black",
                               selectedOverlayPreset === "neon_gaming_specs" ? "text-cyan-100" : "",
@@ -10194,31 +11472,33 @@ export default function StoryboardReviewPage() {
                                 }
                               }}
 	                              onTimeUpdate={(event) => {
+                                  const video = event.currentTarget;
+                                  if (!video) return;
 	                                if (hyperframesFinalSelectedShotPreviewMode === "video") {
 	                                  const segmentStart = selectedClip.mediaStartSec ?? 0;
 	                                  const segmentEnd = segmentStart + getHyperframesFinalClipDurationSec(selectedClip);
-	                                  const relativeSec = Math.max(0, event.currentTarget.currentTime - segmentStart);
+	                                  const relativeSec = Math.max(0, video.currentTime - segmentStart);
 	                                  if (Math.abs(relativeSec - hyperframesFinalSelectedShotPlaybackLastSecRef.current) >= 0.1) {
 	                                    hyperframesFinalSelectedShotPlaybackLastSecRef.current = relativeSec;
 	                                    setHyperframesFinalSelectedShotPlaybackSec(roundHyperframesTimelineSecond(relativeSec));
 	                                  }
-	                                  if (event.currentTarget.currentTime < segmentStart - 0.25) {
-	                                    event.currentTarget.currentTime = segmentStart;
+	                                  if (video.currentTime < segmentStart - 0.25) {
+	                                    video.currentTime = segmentStart;
 	                                  }
-	                                  if (event.currentTarget.currentTime >= segmentEnd - 0.05) {
+	                                  if (video.currentTime >= segmentEnd - 0.05) {
 	                                    hyperframesFinalSelectedShotPlaybackLastSecRef.current = 0;
 	                                    setHyperframesFinalSelectedShotPlaybackSec(0);
 	                                    prepareHyperframesSegmentVideo({
-	                                      video: event.currentTarget,
+	                                      video,
 	                                      startSec: segmentStart,
 	                                      endSec: segmentEnd,
 	                                      restart: true,
 	                                    });
-	                                    void event.currentTarget.play().catch(() => undefined);
+	                                    void video.play().catch(() => undefined);
 	                                    return;
 	                                  }
 	                                }
-	                                if (event.currentTarget.currentTime <= 0.02) return;
+	                                if (video.currentTime <= 0.02) return;
                                 setHyperframesFinalSelectedShotVideoLoadState("ready");
                                 setHyperframesFinalSelectedShotVideoError("");
                               }}
@@ -10267,7 +11547,8 @@ export default function StoryboardReviewPage() {
                                     : "No poster is available for this shot. Loading the MP4 directly."}
                                 </div>
                             ) : null}
-                            {hyperframesFinalSelectedShotPreviewMode === "video" ? (
+                            {hyperframesFinalSelectedShotPreviewMode === "video" &&
+                              hyperframesFinalSelectedShotVideoLoadState !== "ready" ? (
                               <div className="hf-preview-video-playback-status absolute inset-x-3 top-3 z-30 rounded-full bg-slate-950/85 px-3 py-2 text-center text-[11px] font-bold leading-tight text-white shadow-lg">
                                 <span>{selectedVideoStatusText}</span>
                               </div>
@@ -10301,9 +11582,6 @@ export default function StoryboardReviewPage() {
 	                              >
 	                                {hyperframesFinalSubtitlePreset === "karaoke_word" ? (
 	                                  <div className="hf-sub-line" style={{ fontSize: selectedSubtitlePreviewFontSize }}>
-	                                    <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-	                                      {locale === "th" ? "Subtitle" : "Subtitle"}
-	                                    </span>
 	                                    {selectedSubtitleLine.split(/\s+/).filter(Boolean).map((word, wordIndex) => (
 	                                      <span key={`${word}-${wordIndex}`} className="hf-sub-word">
 	                                        {word}
@@ -10312,9 +11590,6 @@ export default function StoryboardReviewPage() {
 	                                  </div>
 	                                ) : (
 	                                  <div className="hf-sub-line" style={{ fontSize: selectedSubtitlePreviewFontSize }}>
-	                                    <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-	                                      {locale === "th" ? "Subtitle" : "Subtitle"}
-	                                    </span>
 	                                    {selectedSubtitleLine}
 	                                  </div>
 	                                )}
@@ -10718,7 +11993,7 @@ export default function StoryboardReviewPage() {
 	                              overlayPreset: railOverlayPreset,
 	                              overlayText: railOverlayText,
 		                              hookText: hyperframesFinalPreviewHookText,
-	                              supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                              supportingText: hyperframesFinalPreviewSupportingText,
 	                              maxLines: 1,
 	                              maxLength: 32,
 	                              preferOpeningHook: railIndex === 0,
@@ -11233,7 +12508,7 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-has-media="true"][data-preset="premium_product_hero"]::before { background: radial-gradient(circle at 50% 18%, rgba(255,255,255,.42), transparent 32%), linear-gradient(180deg, rgba(255,255,255,.18), rgba(15,23,42,.32)); }
                 .hf-preview-stage[data-preview-mode="video"]::before { background: transparent !important; animation: none !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-overlay-copy { position: absolute !important; inset: 16px !important; z-index: 18 !important; width: auto !important; height: auto !important; min-height: 0 !important; max-width: none !important; margin: 0 !important; transform: none !important; padding: 0 0 18% !important; }
-                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy { inset: 28px 30px 24% !important; }
+                .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy { inset: 12% 9% 34% !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-copy-top,
                 .hf-preview-stage[data-has-media="true"] .hf-preview-chip-list { max-width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; transform: none !important; }
                 .hf-preview-stage[data-has-media="true"] .hf-preview-title,
@@ -11401,7 +12676,7 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-hook { margin-top: 6px; border-radius: 999px; background: #facc15; padding: 6px 10px; color: #020617; font-size: clamp(10px, 2.8cqw, 13px); line-height: 1.16; }
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip-list { margin-left: 0 !important; width: min(50%, 12rem) !important; max-width: 50% !important; }
                 .hf-preview-stage[data-preset="split_product_specs"] .hf-preview-chip { border-radius: 999px; background: #facc15; color: #020617; font-size: clamp(10px, 2.8cqw, 13px); line-height: 1.14; }
-                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy { inset: 32px 42px 28% !important; }
+                .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy { inset: 12% 10% 34% !important; }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list { width: 48% !important; max-width: 48% !important; }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-title { font-size: clamp(12px, 3.2cqw, 16px); }
@@ -11543,13 +12818,13 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage--thumb[data-preset="price_impact"] .hf-preview-price,
                 .hf-preview-stage--thumb[data-preset="hero_price_billboard"] .hf-preview-price { font-size: 14px !important; line-height: 1.02 !important; }
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-overlay-copy {
-                  inset: 16px 16px 24% !important;
+                  inset: 10% 16px 30% !important;
                   min-height: 0 !important;
                   padding: 0 !important;
                   overflow: hidden !important;
                 }
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset="lower_third"] .hf-preview-overlay-copy {
-                  bottom: 34% !important;
+                  bottom: 38% !important;
                 }
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-copy-top,
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-chip-list {
@@ -11571,19 +12846,19 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"])[data-preset="price_impact"] .hf-preview-overlay-copy,
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"])[data-preset="hero_price_billboard"] .hf-preview-overlay-copy,
                 .hf-preview-stage[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"])[data-preset="lower_third_review"] .hf-preview-overlay-copy {
-                  bottom: 30% !important;
+                  bottom: 34% !important;
                 }
                 .hf-preview-stage--modal[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-overlay-copy {
-                  inset: clamp(16px, 3.7cqw, 36px) clamp(16px, 3.7cqw, 36px) 24% !important;
+                  inset: clamp(48px, 12cqw, 120px) clamp(16px, 3.7cqw, 36px) 34% !important;
                 }
                 .hf-preview-stage--modal[data-has-media="true"][data-subtitle-preset="lower_third"] .hf-preview-overlay-copy {
-                  bottom: 34% !important;
+                  bottom: 38% !important;
                 }
                 .hf-preview-stage--thumb[data-has-media="true"][data-subtitle-preset]:not([data-subtitle-preset="no_subtitle_style"]) .hf-preview-overlay-copy {
                   inset: 6px 6px 24% !important;
                 }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy {
-                  inset: 32px 42px 28% !important;
+                  inset: 12% 10% 34% !important;
                 }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list {
@@ -11591,10 +12866,10 @@ export default function StoryboardReviewPage() {
                   max-width: 48% !important;
                 }
                 .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy {
-                  inset: 6% 9% 26% !important;
+                  inset: 12% 9% 34% !important;
                 }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-overlay-copy {
-                  inset: 6% 10% 28% !important;
+                  inset: 12% 10% 34% !important;
                 }
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-copy-top,
                 .hf-preview-stage[data-preview-mode="video"][data-preset="split_product_specs"] .hf-preview-chip-list {
@@ -11604,13 +12879,13 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preview-mode="video"] .hf-preview-overlay-copy {
                   inset: auto !important;
                   left: var(--hf-video-overlay-left, 9%) !important;
-                  top: var(--hf-video-overlay-top, 6%) !important;
+                  top: var(--hf-video-overlay-top, 12.5%) !important;
                   right: auto !important;
                   bottom: auto !important;
                   width: var(--hf-video-overlay-width, 82%) !important;
-                  height: var(--hf-video-overlay-height, 48%) !important;
+                  height: var(--hf-video-overlay-height, 52%) !important;
                   min-height: 0 !important;
-                  max-height: var(--hf-video-overlay-height, 48%) !important;
+                  max-height: var(--hf-video-overlay-height, 52%) !important;
                   padding: 0 !important;
                   overflow: hidden !important;
                 }
@@ -11629,13 +12904,13 @@ export default function StoryboardReviewPage() {
                 .hf-preview-stage[data-preview-mode="video"] .hf-sub-preview-inline {
                   left: var(--hf-video-subtitle-left, 7%) !important;
                   right: auto !important;
-                  bottom: var(--hf-video-subtitle-bottom, 5.5%) !important;
+                  bottom: var(--hf-video-subtitle-bottom, 32%) !important;
                   width: var(--hf-video-subtitle-width, 86%) !important;
                   max-width: var(--hf-video-subtitle-width, 86%) !important;
                 }
                 .hf-sub-preview { min-height: 198px; position: relative; overflow: hidden; }
                 .hf-sub-preview .hf-preview-media { opacity: .68; }
-                .hf-sub-preview-inline { position: absolute; left: 7%; right: 7%; bottom: 5.5%; z-index: 20; display: flex; justify-content: center; text-align: center; pointer-events: none; }
+                .hf-sub-preview-inline { position: absolute; left: 7%; right: 7%; bottom: 18%; z-index: 20; display: flex; justify-content: center; text-align: center; pointer-events: none; }
                 .hf-sub-line { animation: hfPreviewRise .52s cubic-bezier(.2,.9,.2,1) both; }
                 .hf-sub-preview-inline .hf-sub-line { box-sizing: border-box; max-width: 100%; font-size: 15px; font-weight: 800; line-height: 1.22; }
                 .hf-preview-stage--large .hf-sub-preview-inline .hf-sub-line { font-size: 18px; }
@@ -11750,7 +13025,7 @@ export default function StoryboardReviewPage() {
 	                    overlayPreset: previewPreset,
 	                    overlayText: selectedShotOverlay,
 		                    hookText: hyperframesFinalPreviewHookText,
-	                    supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+	                    supportingText: hyperframesFinalPreviewSupportingText,
 	                    maxLines: previewLineLimit,
 	                    maxLength: 42,
 	                    preferOpeningHook: selectedPreviewIndex === 0,
@@ -11897,9 +13172,6 @@ export default function StoryboardReviewPage() {
 	                      <div className="absolute inset-x-4 bottom-5 z-10 flex justify-center text-center text-sm font-bold leading-relaxed">
 	                        {hyperframesFinalSubtitlePreset === "karaoke_word" ? (
 	                          <div className="hf-sub-line max-w-[92%]" style={{ fontSize: subtitlePreviewFontSize }}>
-	                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-	                              {locale === "th" ? "Subtitle" : "Subtitle"}
-	                            </span>
 	                            {line.split(/\s+/).filter(Boolean).map((word, index) => (
 	                              <span
                                 key={`${word}-${index}`}
@@ -11912,9 +13184,6 @@ export default function StoryboardReviewPage() {
 	                          </div>
 	                        ) : (
 	                          <div className="hf-sub-line max-w-[92%]" style={{ fontSize: subtitlePreviewFontSize }}>
-	                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-	                              {locale === "th" ? "Subtitle" : "Subtitle"}
-	                            </span>
 	                            {line}
 	                          </div>
 	                        )}
@@ -11963,7 +13232,7 @@ export default function StoryboardReviewPage() {
                         overlayPreset: modalOverlayPreset,
                         overlayText: modalOverlayText,
                         hookText: hyperframesFinalPreviewHookText,
-                        supportingText: hyperframesFinalPreviewSupportingText || (draft ? getStoryboardReviewName(draft) : ""),
+                        supportingText: hyperframesFinalPreviewSupportingText,
                         maxLines: modalPreviewLineLimit,
                         maxLength: 42,
                         preferOpeningHook: modalIndex === 0,
@@ -12055,7 +13324,7 @@ export default function StoryboardReviewPage() {
             ) : null}
               </div>
             ) : (
-              <p className="mt-2 text-xs text-slate-600">
+              <p className="sr-only">
                 {locale === "th"
                   ? "ย่อไว้เพื่อลดพื้นที่ กดตั้งค่าเพื่อแก้ Hook, ข้อความบนจอ, subtitle และฟอนต์ไทย"
                   : "Collapsed to save space. Open settings to edit hook text, on-screen text, subtitles, and Thai font."}
@@ -12067,16 +13336,20 @@ export default function StoryboardReviewPage() {
 
       <main
         className={cn(
-          "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-y-auto p-2",
+          "grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-visible p-2 xl:overflow-y-auto",
           !isHyperframesFinalPanelExpanded ? "xl:overflow-hidden" : "",
           isProjectSidebarCollapsed
-            ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_auto]"
-            : "xl:grid-cols-[18rem_minmax(0,1fr)_auto] 2xl:grid-cols-[20rem_minmax(0,1fr)_auto]",
+            ? "xl:grid-cols-[3.25rem_minmax(0,1fr)_auto] xl:grid-rows-none"
+            : "xl:grid-cols-[18rem_minmax(0,1fr)_auto] xl:grid-rows-none 2xl:grid-cols-[20rem_minmax(0,1fr)_auto]",
         )}
       >
         <aside
           className={cn(
-            "flex min-h-[12rem] flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0",
+            "flex flex-col overflow-hidden rounded-lg border bg-white xl:order-none xl:col-span-1 xl:h-full xl:min-h-0 xl:max-h-none",
+            activeDraft
+              ? "min-h-[12rem] max-h-[min(36rem,76dvh)]"
+              : "h-[min(58rem,calc(100dvh-7rem))] min-h-[min(42rem,calc(100dvh-7rem))] max-h-[min(58rem,calc(100dvh-7rem))]",
+            activeDraft ? "order-3" : "order-1",
             isProjectSidebarCollapsed ? "min-h-0" : "",
           )}
         >
@@ -12160,16 +13433,50 @@ export default function StoryboardReviewPage() {
                       const thumbnailUrl = getStoryboardReviewProjectThumbnail(item);
                       const showVideoThumbnail = thumbnailUrl ? isProbablyVideoUrl(thumbnailUrl) : false;
                       const showImageThumbnail = thumbnailUrl ? isProbablyImageUrl(thumbnailUrl) || !showVideoThumbnail : false;
+                      const openReviewProject = () => {
+                        const nextReviewId = Number(item.id);
+                        if (!Number.isFinite(nextReviewId) || nextReviewId <= 0) {
+                          emitStoryboardReviewClientDebug("route.openProjectInvalidId", {
+                            itemId: item.id ?? null,
+                          });
+                          return;
+                        }
+                        emitStoryboardReviewClientDebug("route.openProjectClick", {
+                          nextReviewId,
+                          previousDraft: summarizeStoryboardDraftForDebug(draftRef.current),
+                          itemHasReviewData: Boolean(item?.reviewData),
+                        });
+                        draftRef.current = null;
+                        setDraft(null);
+                        setRenderJobId(null);
+                        setSelectedLibraryItemId(null);
+                        setVideoPreview(null);
+                        setGalleryLightbox(null);
+                        setLocation(`/storyboard-review/${nextReviewId}`);
+                      };
                       return (
                         <div
                           key={item.id}
+                          role="button"
+                          tabIndex={0}
                           className={cn(
-                            "rounded-lg border p-3 transition-colors",
+                            "cursor-pointer rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2",
+                            activeDraft ? "p-3" : "p-2",
                             item.id === selectedReviewId ? "border-cyan-300 bg-cyan-50" : "bg-white hover:bg-slate-50",
                           )}
+                          onClick={openReviewProject}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openReviewProject();
+                            }
+                          }}
                         >
-                          <div className="flex gap-3 xl:flex-col 2xl:flex-row">
-                            <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md border bg-slate-100 xl:h-24 xl:w-full 2xl:h-14 2xl:w-20">
+                          <div className={cn("flex gap-3", activeDraft ? "xl:flex-col 2xl:flex-row" : "items-center")}>
+                            <div className={cn(
+                              "shrink-0 overflow-hidden rounded-md border bg-slate-100",
+                              activeDraft ? "h-14 w-20 xl:h-24 xl:w-full 2xl:h-14 2xl:w-20" : "h-12 w-16",
+                            )}>
                               {showVideoThumbnail && thumbnailUrl ? (
                                 <video src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
                               ) : showImageThumbnail && thumbnailUrl ? (
@@ -12188,40 +13495,42 @@ export default function StoryboardReviewPage() {
                                   total: item.clipCount ?? 0,
                                 })}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className={cn("mt-1 text-xs text-slate-500", !activeDraft ? "line-clamp-1" : "")}>
                                 {item.updatedAt ? new Date(item.updatedAt).toLocaleString(locale === "th" ? "th-TH" : "en-US") : "-"}
                               </div>
                             </div>
+                            {!activeDraft ? (
+                              <Button
+                                size="sm"
+                                className="ml-auto h-8 shrink-0 px-3 text-xs"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openReviewProject();
+                                }}
+                              >
+                                {t("mediaStudio.storyboardReviewOpen")}
+                              </Button>
+                            ) : null}
                           </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className={cn("mt-3 flex flex-wrap gap-2", !activeDraft ? "hidden" : "")}>
                             <Button
                               size="sm"
-                              onClick={() => {
-                                const nextReviewId = Number(item.id);
-                                if (!Number.isFinite(nextReviewId) || nextReviewId <= 0) {
-                                  emitStoryboardReviewClientDebug("route.openProjectInvalidId", {
-                                    itemId: item.id ?? null,
-                                  });
-                                  return;
-                                }
-                                emitStoryboardReviewClientDebug("route.openProjectClick", {
-                                  nextReviewId,
-                                  previousDraft: summarizeStoryboardDraftForDebug(draftRef.current),
-                                  itemHasReviewData: Boolean(item?.reviewData),
-                                });
-                                draftRef.current = null;
-                                setDraft(null);
-                                setRenderJobId(null);
-                                setSelectedLibraryItemId(null);
-                                setVideoPreview(null);
-                                setGalleryLightbox(null);
-                                setLocation(`/storyboard-review/${nextReviewId}`);
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openReviewProject();
                               }}
                             >
                               {t("mediaStudio.storyboardReviewOpen")}
                             </Button>
                             {item.videoEditorProjectId ? (
-                              <Button size="sm" variant="outline" onClick={() => setLocation(`/video-editor?projectId=${item.videoEditorProjectId}`)}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setLocation(`/video-editor?projectId=${item.videoEditorProjectId}`);
+                                }}
+                              >
                                 <ExternalLink className="mr-2 h-4 w-4" />
                                 {t("mediaStudio.storyboardReviewOpenEditor")}
                               </Button>
@@ -12229,7 +13538,10 @@ export default function StoryboardReviewPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              onClick={() => setDeleteTarget({ id: item.id, name: String(item.name ?? "") })}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setDeleteTarget({ id: item.id, name: String(item.name ?? "") });
+                              }}
                               disabled={deleteReviewMutation.isPending}
                               aria-label={locale === "th" ? "ลบโปรเจกต์" : "Delete project"}
                             >
@@ -12245,7 +13557,14 @@ export default function StoryboardReviewPage() {
             </>
           )}
         </aside>
-        <section className="min-h-[72dvh] overflow-hidden rounded-lg border bg-white sm:min-h-[calc(100dvh-6rem)] xl:h-full xl:min-h-0">
+        <section
+          className={cn(
+            "rounded-lg border bg-white xl:order-none xl:h-full xl:min-h-0 xl:overflow-hidden",
+            activeDraft
+              ? "order-1 min-h-0 overflow-visible"
+              : "order-2 min-h-[18rem] overflow-hidden sm:min-h-[22rem]",
+          )}
+        >
           {reviewUnavailable ? (
             <div className="flex h-full min-h-[24rem] flex-col items-center justify-center p-6 text-center">
               <Video className="mb-3 h-10 w-10 text-slate-400" />
@@ -12309,7 +13628,9 @@ export default function StoryboardReviewPage() {
               onRegenerateVideoSegmentPrompt={regenerateVideoSegmentPromptForTask}
               onSplitVideoSegmentToPerShot={requestSplitVideoSegmentToPerShot}
               onUpdateTaskPrompt={updateTaskPrompt}
+              onUpdateTaskExtraParams={updateTaskExtraParams}
               onUpdateTaskDuration={updateTaskDuration}
+              onUpdateTaskSourceTrim={updateTaskSourceTrim}
               onUpdateTaskTransition={updateStoryboardTaskTransition}
               conceptDetails={activeDraft.conceptDetails ?? ""}
               onConceptDetailsChange={updateConceptDetails}
@@ -12331,6 +13652,9 @@ export default function StoryboardReviewPage() {
               replacingReferenceFrameKey={replacingReferenceFrameKey}
               onUploadVideoSlot={uploadVideoToStoryboardSlot}
               uploadingVideoSlotKey={uploadingVideoSlotKey}
+              mediaAttachTargetTaskId={mediaAttachTargetTaskId}
+              mediaAttachTargetFrameIndex={mediaAttachTargetFrameIndex}
+              onMediaAttachTargetChange={setStoryboardMediaAttachTarget}
               onMoveTask={moveStoryboardTask}
               onRemoveTask={removeStoryboardTask}
               onAutoCompound={autoCompound}
@@ -12360,7 +13684,8 @@ export default function StoryboardReviewPage() {
               renderAspectRatioSourceLabel={renderAspectRatioSourceLabel}
               closeLabel={t("mediaStudio.storyboardReviewBackToDashboard")}
               showCloseButton={false}
-              className="h-full"
+              className="min-h-0 xl:h-full"
+              tabletPageFlow
             />
           ) : (
             <div className="flex h-full min-h-[14rem] flex-col items-center justify-center p-5 text-center sm:min-h-[18rem] xl:min-h-[24rem]">
@@ -12381,14 +13706,17 @@ export default function StoryboardReviewPage() {
           onWidthChange={setRightPanelWidth}
           minWidth={STORYBOARD_REVIEW_RIGHT_PANEL_MIN_WIDTH}
           maxWidth={STORYBOARD_REVIEW_RIGHT_PANEL_MAX_WIDTH}
-          className="max-h-[calc(100dvh-1rem)] xl:max-h-none"
+          className={cn(
+            "max-h-[min(48rem,82dvh)] xl:order-none xl:h-full xl:min-h-0 xl:max-h-none",
+            activeDraft ? "order-2" : "order-3",
+          )}
           collapsedContent={locale === "th" ? "สื่อและตัวเลือก" : "Media and options"}
           collapseLabel={locale === "th" ? "ยุบ panel ด้านขวา" : "Collapse right panel"}
           expandLabel={locale === "th" ? "เปิด panel ด้านขวา" : "Open right panel"}
           resizeLabel={locale === "th" ? "ปรับขนาด panel ด้านขวา" : "Resize right panel"}
           testId="storyboard-review-right-panel"
         >
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-2.5 sm:p-3">
+          <div className="min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-contain p-2.5 sm:p-3">
             <div className="rounded-lg border bg-white p-3 shadow-sm">
               <div className="mb-3 flex items-start justify-between gap-8 pr-9">
                 <div className="min-w-0">
@@ -12576,6 +13904,78 @@ export default function StoryboardReviewPage() {
                   </Button>
                 </div>
               ) : null}
+              {rightPanelTab !== "audio" ? (
+                <div className="mb-3 rounded-lg border border-cyan-100 bg-cyan-50/50 p-2.5 shadow-sm xl:hidden">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="flex items-center gap-1.5 text-xs font-semibold text-cyan-950">
+                        <Mic className={cn("h-3.5 w-3.5", isRecordingVoiceover ? "animate-pulse text-red-600" : "text-cyan-700")} />
+                        {locale === "th" ? "อัดเสียงพากย์" : "Record voiceover"}
+                      </h3>
+                      <p className="mt-0.5 text-[11px] text-cyan-800/80">
+                        {locale === "th" ? "ใช้ได้ทั้งไมก์ในเครื่องและไมก์ภายนอก" : "Supports internal and external microphones."}
+                      </p>
+                    </div>
+                    {isRecordingVoiceover ? (
+                      <Badge className="shrink-0 gap-1 rounded-full bg-red-600 px-2 py-0.5 text-white hover:bg-red-600">
+                        {formatStoryboardRecordingElapsed(recordingElapsedSeconds)}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <select
+                      value={selectedAudioInputDeviceId}
+                      onChange={(event) => setSelectedAudioInputDeviceId(event.target.value)}
+                      disabled={isRecordingVoiceover}
+                      className="h-10 min-w-0 rounded-md border border-cyan-200 bg-white px-3 text-sm text-slate-900 shadow-sm outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:opacity-60"
+                      aria-label={locale === "th" ? "เลือกไมก์" : "Select microphone"}
+                    >
+                      <option value="">{locale === "th" ? "ไมก์เริ่มต้นของระบบ" : "System default microphone"}</option>
+                      {audioInputDevices.map((device, index) => (
+                        <option key={device.deviceId || `tablet-mic-${index}`} value={device.deviceId}>
+                          {formatAudioInputDeviceLabel(device, index, locale)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="grid grid-cols-[1fr_1fr_2.5rem] gap-2 sm:w-[22rem]">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-10 min-w-0 rounded-md bg-cyan-600 px-2 text-white hover:bg-cyan-700"
+                        onClick={() => void startVoiceoverRecording()}
+                        disabled={isRecordingVoiceover || storyboardAudioLimitReached || !canRecordVoiceover}
+                      >
+                        <Mic className="mr-1.5 h-4 w-4 shrink-0" />
+                        <span className="truncate">{locale === "th" ? "เริ่มอัด" : "Record"}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-10 min-w-0 rounded-md border-cyan-200 bg-white px-2"
+                        onClick={stopVoiceoverRecording}
+                        disabled={!isRecordingVoiceover}
+                      >
+                        <Square className="mr-1.5 h-4 w-4 shrink-0" />
+                        <span className="truncate">{locale === "th" ? "หยุด" : "Stop"}</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="h-10 w-10 rounded-md border-cyan-200 bg-white"
+                        onClick={() => void refreshAudioInputDevices(true)}
+                        disabled={microphoneStatus === "checking" || isRecordingVoiceover}
+                        aria-label={locale === "th" ? "ค้นหาไมก์อีกครั้ง" : "Refresh microphones"}
+                      >
+                        {microphoneStatus === "checking"
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <RefreshCw className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               {rightPanelTab === "audio" ? (
                 <div className="mb-3 space-y-3">
                   <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -12588,16 +13988,60 @@ export default function StoryboardReviewPage() {
                           {locale === "th" ? "ใช้เป็นสคริปต์อ่านขณะอัดเสียงจากไมก์" : "Use this as the read-along script while recording."}
                         </p>
                       </div>
-                      <Badge variant={storyboardVoiceoverSummaryText.trim() ? "secondary" : "outline"} className="rounded-full px-3">
-                        {storyboardVoiceoverSummaryText.trim()
-                          ? (locale === "th" ? "พร้อมอ่าน" : "Ready")
-                          : (locale === "th" ? "ยังไม่มีบทพูด" : "No script")}
-                      </Badge>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Badge variant={storyboardVoiceoverSummaryText.trim() ? "secondary" : "outline"} className="rounded-full px-3">
+                          {isEditingVoiceoverSummary
+                            ? (locale === "th" ? "กำลังแก้ไข" : "Editing")
+                            : storyboardVoiceoverSummaryText.trim()
+                              ? (locale === "th" ? "พร้อมอ่าน" : "Ready")
+                              : (locale === "th" ? "ยังไม่มีบทพูด" : "No script")}
+                        </Badge>
+                        {isEditingVoiceoverSummary ? (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-3 text-xs"
+                              onClick={cancelEditingVoiceoverSummary}
+                            >
+                              <X className="mr-1.5 h-3.5 w-3.5" />
+                              {locale === "th" ? "ยกเลิก" : "Cancel"}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-8 px-3 text-xs"
+                              onClick={saveVoiceoverSummaryDraft}
+                            >
+                              <Check className="mr-1.5 h-3.5 w-3.5" />
+                              {locale === "th" ? "บันทึก" : "Save"}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            onClick={startEditingVoiceoverSummary}
+                          >
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                            {locale === "th" ? "แก้ไข" : "Edit"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <Textarea
-                      value={storyboardVoiceoverSummaryText}
-                      readOnly
-                      className="min-h-[142px] resize-y rounded-lg border-slate-200 bg-slate-50/80 text-sm leading-6 text-slate-700 shadow-inner"
+                      value={isEditingVoiceoverSummary ? voiceoverSummaryDraft : storyboardVoiceoverSummaryText}
+                      onChange={(event) => setVoiceoverSummaryDraft(event.target.value)}
+                      readOnly={!isEditingVoiceoverSummary}
+                      className={cn(
+                        "min-h-[142px] resize-y rounded-lg text-sm leading-6 shadow-inner",
+                        isEditingVoiceoverSummary
+                          ? "border-sky-300 bg-white text-slate-900 ring-2 ring-sky-100"
+                          : "border-slate-200 bg-slate-50/80 text-slate-700",
+                      )}
                       placeholder={locale === "th"
                         ? "บทพูดจากแต่ละช็อตจะแสดงรวมตรงนี้ สำหรับอ่านพากย์หรืออัดเสียงเอง"
                         : "Shot voiceover lines will appear here for reading or recording manually."}
@@ -12675,7 +14119,7 @@ export default function StoryboardReviewPage() {
                           size="icon"
                           variant="outline"
                           className="h-10 w-10 rounded-md border-slate-200 bg-white"
-                          onClick={() => void refreshAudioInputDevices()}
+                          onClick={() => void refreshAudioInputDevices(true)}
                           disabled={microphoneStatus === "checking" || isRecordingVoiceover}
                           aria-label={locale === "th" ? "โหลดรายการไมก์ใหม่" : "Refresh microphones"}
                         >
@@ -12830,11 +14274,19 @@ export default function StoryboardReviewPage() {
                   className={cn(
                     "space-y-3",
                     imageToolsSourceUrl && isImageToolsPanelOpen
+                      ? "lg:flex lg:flex-col lg:gap-3 lg:space-y-0"
+                      : "",
+                    imageToolsSourceUrl && isImageToolsPanelOpen
                       ? "xl:grid xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start xl:gap-3 xl:space-y-0 2xl:grid-cols-[minmax(0,1fr)_25rem]"
                       : "",
                   )}
                 >
-                  <div className="rounded-lg border bg-white p-2">
+                  <div
+                    className={cn(
+                      "rounded-lg border bg-white p-2",
+                      imageToolsSourceUrl && isImageToolsPanelOpen ? "lg:order-2 xl:order-none" : "",
+                    )}
+                  >
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500">
                         <History className="h-3.5 w-3.5" />
@@ -12884,6 +14336,35 @@ export default function StoryboardReviewPage() {
                         {historyGalleryProductFilterLabel ? ` · ${historyGalleryProductFilterLabel}` : ""}
                       </span>
                       </div>
+                    <div className={cn(
+                      "mb-2 rounded-md border px-2 py-1.5 text-[11px] xl:hidden",
+                      mediaAttachTargetTask
+                        ? "border-sky-200 bg-sky-50 text-sky-800"
+                        : "border-amber-200 bg-amber-50 text-amber-800",
+                    )}>
+                      {mediaAttachTargetTask ? (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate">
+                            {locale === "th"
+                              ? `เลือกช่อง ${mediaAttachTargetLabel} อยู่: แตะรูปด้านล่างเพื่อใส่ช่องรูปด้านบนนี้`
+                              : `${mediaAttachTargetLabel} selected: tap an image below to attach it to the top image slot`}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 shrink-0 px-2 text-[11px]"
+                            onClick={() => setMediaAttachTargetTaskId(null)}
+                          >
+                            {locale === "th" ? "ล้าง" : "Clear"}
+                          </Button>
+                        </div>
+                      ) : (
+                        locale === "th"
+                          ? "ขั้นตอนบนแท็บเล็ต: กดปุ่มบนช่องรูปด้านบนของ Shot เช่น Ref / Start / Stop ก่อน แล้วแตะรูปด้านล่าง"
+                          : "Tablet flow: tap a top image slot first, such as Ref / Start / Stop, then tap an image below."
+                      )}
+                    </div>
                     {visibleImageHistoryTasks.length === 0 && !isImageHistoryLoading ? (
                       <div className="rounded-md border border-dashed p-3 text-xs text-slate-500">
                         {isHistoryGalleryProductFilterActive
@@ -12909,7 +14390,7 @@ export default function StoryboardReviewPage() {
                           return (
                             <div
                               key={cardKey}
-                              className="self-start overflow-hidden rounded-lg border bg-white shadow-sm"
+                              className="self-start touch-pan-y select-none overflow-hidden rounded-lg border bg-white shadow-sm"
                               draggable
                               onDragStart={(event) => startStoryboardImageDrag(event, {
                                 url,
@@ -12959,6 +14440,26 @@ export default function StoryboardReviewPage() {
                                 <ImagePlus className="mr-1 h-3.5 w-3.5" />
                                 {locale === "th" ? "เพิ่มเป็น shot ภาพนิ่ง" : "Add image shot"}
                               </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={mediaAttachTargetTask ? "default" : "secondary"}
+                                className="h-8 w-full rounded-none border-x-0 border-b-0 text-[11px] xl:hidden"
+                                disabled={!mediaAttachTargetTask || Boolean(replacingReferenceFrameKey)}
+                                onClick={() => void attachImageToSelectedReferenceFrame(url, title)}
+                                title={mediaAttachTargetTask
+                                  ? (locale === "th" ? "แทนที่ช่องรูปด้านบนที่เลือกด้วยภาพนี้" : "Replace the selected top image slot with this image")
+                                  : (locale === "th" ? "เลือกช่องรูปด้านบนก่อน" : "Select a top image slot first")}
+                              >
+                                {replacingReferenceFrameKey && mediaAttachTargetTask ? (
+                                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Check className="mr-1 h-3.5 w-3.5" />
+                                )}
+                                {mediaAttachTargetTask
+                                  ? (locale === "th" ? `ใส่ ${mediaAttachTargetLabel}` : `Attach to ${mediaAttachTargetLabel}`)
+                                  : (locale === "th" ? "เลือกช่องรูปก่อน" : "Select image slot first")}
+                              </Button>
                             </div>
                           );
                         })}
@@ -12980,13 +14481,26 @@ export default function StoryboardReviewPage() {
                   ) : null}
 
                   {isImageToolsPanelOpen ? (
-                  <div ref={imageToolsPanelRef} className="rounded-lg border border-sky-200 bg-white p-2 shadow-sm xl:sticky xl:top-2 xl:max-h-[calc(100dvh-5rem)] xl:overflow-y-auto xl:overscroll-contain">
+                  <div
+                    ref={imageToolsPanelRef}
+                    className="min-h-0 max-h-[min(34rem,calc(100dvh-9rem))] touch-pan-y overflow-y-auto overscroll-contain rounded-lg border border-sky-200 bg-white p-2 shadow-sm lg:order-1 lg:max-h-[calc(100dvh-7rem)] xl:sticky xl:top-2 xl:order-none xl:max-h-[calc(100dvh-13rem)]"
+                  >
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500">
                         <Scissors className="h-3.5 w-3.5" />
                         {locale === "th" ? "เครื่องมือตัดภาพ" : "Image Tools"}
                       </h3>
                       <div className="flex min-w-0 items-center gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 shrink-0 border-sky-200 px-2 text-[11px] text-sky-700"
+                          onClick={() => setIsImageToolsPanelOpen(false)}
+                        >
+                          <History className="mr-1 h-3.5 w-3.5" />
+                          {locale === "th" ? "เลือกรูปอื่น" : "Choose another"}
+                        </Button>
                         {imageToolsSourceUrl ? (
                           <Badge variant="outline" className="max-w-[10rem] truncate text-[10px]">
                             {imageToolsSourceTitle || "Image"}
@@ -13098,13 +14612,13 @@ export default function StoryboardReviewPage() {
                                     {locale === "th" ? "ทั้งหมด" : "All"}
                                   </Button>
                                 </div>
-                                <div className="grid grid-cols-3 gap-1.5">
+                                <div className="grid max-h-[42dvh] grid-cols-3 gap-1.5 overflow-y-auto overscroll-contain pr-1">
                                   {splitResults.map((result, index) => {
                                     const sequenceNumber = index + 1;
                                     return (
                                       <div
                                         key={result.index}
-                                        className="group relative aspect-square cursor-grab overflow-hidden rounded-md border bg-slate-100 active:cursor-grabbing"
+                                        className="group relative aspect-square touch-pan-y select-none overflow-hidden rounded-md border bg-slate-100 md:cursor-grab md:active:cursor-grabbing"
                                         draggable
                                         onDragStart={(event) => startStoryboardImageDrag(event, {
                                           url: result.dataUrl,
@@ -13120,6 +14634,21 @@ export default function StoryboardReviewPage() {
                                         </Button>
                                         <Button type="button" size="icon" variant="secondary" className="absolute left-1 top-8 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" onClick={() => void addImageUrlAsStoryboardShot(result.dataUrl, `Split ${sequenceNumber}`)} title={locale === "th" ? "เพิ่มเป็น shot ภาพนิ่ง" : "Add image shot"}>
                                           <ImagePlus className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant={mediaAttachTargetTask ? "default" : "secondary"}
+                                          className="absolute inset-x-1 bottom-1 h-7 px-1 text-[10px] shadow-sm xl:hidden"
+                                          disabled={!mediaAttachTargetTask || Boolean(replacingReferenceFrameKey)}
+                                          onClick={() => void attachImageToSelectedReferenceFrame(result.dataUrl, `Split ${sequenceNumber}`)}
+                                          title={mediaAttachTargetTask
+                                            ? (locale === "th" ? "ใส่ภาพตัดนี้ในช่องรูปด้านบนที่เลือก" : "Attach this cut image to the selected top image slot")
+                                            : (locale === "th" ? "เลือกช่องรูปด้านบนก่อน" : "Select a top image slot first")}
+                                        >
+                                          {mediaAttachTargetTask
+                                            ? (locale === "th" ? `ใส่ ${mediaAttachTargetLabel}` : mediaAttachTargetLabel)
+                                            : (locale === "th" ? "เลือกช่องรูป" : "Select slot")}
                                         </Button>
                                       </div>
                                     );
@@ -13198,7 +14727,7 @@ export default function StoryboardReviewPage() {
                             {cropResult ? (
                               <div className="space-y-2 border-t pt-2">
                                 <div
-                                  className="cursor-grab overflow-hidden rounded-md border bg-slate-100 active:cursor-grabbing"
+                                  className="touch-pan-y select-none overflow-hidden rounded-md border bg-slate-100 md:cursor-grab md:active:cursor-grabbing"
                                   draggable
                                   onDragStart={(event) => startStoryboardImageDrag(event, {
                                     url: cropResult.dataUrl,
@@ -13223,6 +14752,23 @@ export default function StoryboardReviewPage() {
                                     {locale === "th" ? "เพิ่ม shot" : "Add shot"}
                                   </Button>
                                 </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={mediaAttachTargetTask ? "default" : "secondary"}
+                                  className="h-8 w-full text-xs xl:hidden"
+                                  disabled={!mediaAttachTargetTask || Boolean(replacingReferenceFrameKey)}
+                                  onClick={() => void attachImageToSelectedReferenceFrame(cropResult.dataUrl, `Crop ${cropAspectRatio}`)}
+                                >
+                                  {replacingReferenceFrameKey && mediaAttachTargetTask ? (
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="mr-1.5 h-3.5 w-3.5" />
+                                  )}
+                                  {mediaAttachTargetTask
+                                    ? (locale === "th" ? `ใส่ ${mediaAttachTargetLabel}` : `Attach to ${mediaAttachTargetLabel}`)
+                                    : (locale === "th" ? "เลือกช่องรูปก่อน" : "Select image slot first")}
+                                </Button>
                               </div>
                             ) : null}
                           </div>
@@ -13496,7 +15042,9 @@ export default function StoryboardReviewPage() {
                         setVideoPreviewError("");
                       }}
                       onPlay={(event) => {
-                        if (videoPreviewEndedRef.current || event.currentTarget.currentTime <= 0.25) {
+                        const video = event.currentTarget;
+                        if (!video) return;
+                        if (videoPreviewEndedRef.current || video.currentTime <= 0.25) {
                           videoPreviewEndedRef.current = false;
                           restartVideoPreviewOverlayAnimation();
                         }
@@ -13506,12 +15054,15 @@ export default function StoryboardReviewPage() {
                         setVideoPreviewError("");
                       }}
                       onSeeked={(event) => {
-                        if (event.currentTarget.currentTime <= 0.25) {
+                        const video = event.currentTarget;
+                        if (!video) return;
+                        if (video.currentTime <= 0.25) {
                           restartVideoPreviewOverlayAnimation();
                         }
                       }}
                       onTimeUpdate={(event) => {
-                        if (event.currentTarget.currentTime <= 0.02) return;
+                        const video = event.currentTarget;
+                        if (!video || video.currentTime <= 0.02) return;
                         videoPreviewEndedRef.current = false;
                         setVideoPreviewPlaybackReady(true);
                         setVideoPreviewError("");
@@ -13598,9 +15149,6 @@ export default function StoryboardReviewPage() {
                       >
                         {overlay?.subtitlePreset === "karaoke_word" ? (
                           <div className="hf-sub-line" style={{ fontSize: modalSubtitleFontSizeCss }}>
-                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-                              {locale === "th" ? "Subtitle" : "Subtitle"}
-                            </span>
                             {(overlay.subtitleText ?? "").split(/\s+/).filter(Boolean).map((word, wordIndex) => (
                               <span key={`${word}-${wordIndex}`} className="hf-sub-word">
                                 {word}
@@ -13609,9 +15157,6 @@ export default function StoryboardReviewPage() {
                           </div>
                         ) : (
                           <div className="hf-sub-line" style={{ fontSize: modalSubtitleFontSizeCss }}>
-                            <span className="hf-preview-layer-tag hf-preview-layer-tag--subtitle">
-                              {locale === "th" ? "Subtitle" : "Subtitle"}
-                            </span>
                             {overlay?.subtitleText}
                           </div>
                         )}

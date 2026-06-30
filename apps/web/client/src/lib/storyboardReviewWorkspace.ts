@@ -10,6 +10,7 @@ import {
   extractStoryboardNativeSpeechText,
   type StoryboardPromptSpeechMode,
 } from "@shared/storyboardPromptAudio";
+import { updateArticleStoryboardCurrentPromptMetadata } from "@shared/articleStoryboardVideo";
 import type { MediaTaskTransportMetadata } from "@shared/mcpConnectTypes";
 import {
   normalizeVideoSegmentCreativeBrief,
@@ -135,6 +136,26 @@ export interface StoryboardReviewDraft {
   videoSegmentState?: StoryboardVideoSegmentState | null;
 }
 
+const MANUAL_STORYBOARD_TASK_ID_PATTERN = /^manual-shot-\d+-(.+)$/;
+
+export function deriveManualHyperframesIdentityFromStoryboardTasks(
+  tasks: Array<Pick<StoryboardGenerationTask, "id">> | null | undefined,
+): { productId: string; runId: string } | null {
+  if (!Array.isArray(tasks)) return null;
+  const suffixes = new Set<string>();
+  for (const task of tasks) {
+    const id = typeof task.id === "string" ? task.id.trim() : "";
+    const suffix = id.match(MANUAL_STORYBOARD_TASK_ID_PATTERN)?.[1]?.trim();
+    if (suffix) suffixes.add(suffix);
+  }
+  if (suffixes.size !== 1) return null;
+  const [suffix] = [...suffixes];
+  return {
+    productId: `manual_storyboard_product_${suffix}`,
+    runId: `manual_storyboard_run_${suffix}`,
+  };
+}
+
 export interface StoryboardVideoSegmentState {
   schemaVersion: 1;
   videoSegmentPlan: VideoSegmentPlan;
@@ -220,6 +241,20 @@ export function applyRegeneratedVideoSegmentPromptToDraft(
       : matchesSegment;
     if (!shouldUpdate) return task;
     targetTaskIds.add(task.id);
+    const nextExtraParams = updateArticleStoryboardCurrentPromptMetadata(
+      {
+        ...extraParams,
+        promptSource: "regenerated",
+        videoSegmentPrompt: prompt,
+        videoSegmentPromptStale: false,
+        videoSegmentPromptGeneratedAt: generatedAt,
+        ...(input.creativeBriefHash
+          ? { videoSegmentPromptCreativeBriefHash: input.creativeBriefHash }
+          : {}),
+      },
+      prompt,
+      "regenerated",
+    );
     return {
       ...task,
       prompt,
@@ -227,16 +262,7 @@ export function applyRegeneratedVideoSegmentPromptToDraft(
       storyboardContext: task.storyboardContext
         ? {
             ...task.storyboardContext,
-            extraParams: {
-              ...extraParams,
-              promptSource: "regenerated",
-              videoSegmentPrompt: prompt,
-              videoSegmentPromptStale: false,
-              videoSegmentPromptGeneratedAt: generatedAt,
-              ...(input.creativeBriefHash
-                ? { videoSegmentPromptCreativeBriefHash: input.creativeBriefHash }
-                : {}),
-            },
+            extraParams: nextExtraParams,
           }
         : task.storyboardContext,
     };
@@ -521,6 +547,7 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
 export const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
 const STORYBOARD_REVIEW_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 export const DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS = 8;
+const STORYBOARD_VIDEO_SEGMENT_MAX_SHOT_DURATION_SECONDS = 60;
 export const STORYBOARD_REVIEW_LEGACY_VIDEO_MODEL_REPLACEMENTS: Record<string, string> = {
   "higgsfield/seedance_unlimited": "higgsfield/seedance_2_0_fast",
   "higgsfield-mcp/enhanced-seedance-2-fast-unlimited": "higgsfield/seedance_2_0_fast",
@@ -621,9 +648,13 @@ function normalizeStoryboardProductionContext(value: unknown): StoryboardProduct
 
 function normalizeStoryboardShotDurationSeconds(value: unknown): number {
   const duration = Number(value);
-  return Number.isFinite(duration) && duration > 0
-    ? duration
-    : DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+  if (!Number.isFinite(duration) || duration <= 0) {
+    return DEFAULT_STORYBOARD_REVIEW_SHOT_DURATION_SECONDS;
+  }
+  return Math.min(
+    STORYBOARD_VIDEO_SEGMENT_MAX_SHOT_DURATION_SECONDS,
+    Math.round(duration * 100) / 100,
+  );
 }
 
 function normalizeStoryboardVideoStructureModeValue(
@@ -1860,7 +1891,7 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
           ? extraParams.referenceFrameRoles.filter((role): role is StoryboardReferenceFrameRole => role === "start" || role === "stop" || role === "reference")
           : undefined,
         marketplaceProduct: task.marketplaceProduct ?? draft.marketplaceContext ?? null,
-        canRegenerate: Boolean(context),
+        canRegenerate: Boolean(context) && extraParams.importedMediaContextOnly !== true,
         isImported: task.source === "imported" || !context,
         status: task.status,
         error: task.error,

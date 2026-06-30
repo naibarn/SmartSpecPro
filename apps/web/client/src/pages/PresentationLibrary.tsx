@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { formatRelativeTime } from "@smartspec/shared";
 import type { LucideIcon } from "lucide-react";
-import { ChevronLeft, FileStack, LayoutTemplate, Loader2, Plus, Presentation, Search, Share2, Trash2, Users } from "lucide-react";
+import { ChevronLeft, FileStack, LayoutTemplate, Loader2, PanelLeftClose, PanelLeftOpen, Plus, Presentation, Search, Share2, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -398,6 +398,7 @@ export default function PresentationLibrary() {
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [useTemplateItemId, setUseTemplateItemId] = useState<number | null>(null);
   const [shareTarget, setShareTarget] = useState<{ id: number; title: string } | null>(null);
+  const [librarySidebarCollapsed, setLibrarySidebarCollapsed] = useState(false);
   const limit = 50;
 
   useEffect(() => {
@@ -640,6 +641,94 @@ export default function PresentationLibrary() {
     }
   }
 
+  const libraryControls = (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600 shadow-sm backdrop-blur-sm">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t("library.title")}
+          </p>
+          <p className="text-base font-semibold text-slate-900">
+            {t("library.showing", { count: filteredGrouped.projects.length + filteredGrouped.templates.length, total: activeTotal })}
+          </p>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-slate-500">{t("library.projects.title")}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{filteredGrouped.projects.length}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-slate-500">{t("library.templates.title")}</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{filteredGrouped.templates.length}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t("library.searchAll")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant={searchMode === "split" ? "default" : "outline"}
+            onClick={() => setSearchMode("split")}
+            aria-label={t("library.splitSearch")}
+          >
+            {t("library.splitSearch")}
+          </Button>
+          <Button
+            size="sm"
+            variant={searchMode === "global" ? "default" : "outline"}
+            onClick={() => setSearchMode("global")}
+            aria-label={t("library.globalSearch")}
+          >
+            {t("library.globalSearch")}
+          </Button>
+        </div>
+        {searchMode === "global" ? (
+          <div className="relative mt-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={globalQuery}
+              onChange={(event) => setGlobalQuery(event.target.value)}
+              className="pl-9"
+              placeholder={t("library.searchAll")}
+              aria-label={t("library.searchAll")}
+            />
+          </div>
+        ) : (
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            {t("library.projects.search")} / {t("library.templates.search")}
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t("library.previous")} / {t("library.next")}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={hasSemanticSearch || offset === 0 || listQuery.isFetching}
+            onClick={() => setOffset((previous) => Math.max(0, previous - limit))}
+          >
+            {t("library.previous")}
+          </Button>
+          <Button
+            size="sm"
+            disabled={hasSemanticSearch || !listQuery.data?.has_more || listQuery.isFetching}
+            onClick={() => setOffset((previous) => previous + limit)}
+          >
+            {t("library.next")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (authLoading || (!isAuthenticated && !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -683,114 +772,118 @@ export default function PresentationLibrary() {
         </div>
       </header>
 
-      <main className="w-full space-y-4 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="rounded-2xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600 backdrop-blur-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              {t("library.showing", { count: filteredGrouped.projects.length + filteredGrouped.templates.length, total: activeTotal })}
-            </div>
-            <div className="flex items-center gap-2">
+      <main className="flex min-h-[calc(100vh-73px)] w-full overflow-hidden">
+        <aside
+          className={`hidden shrink-0 border-r border-slate-200 bg-white/65 backdrop-blur-xl transition-[width] duration-300 lg:block ${
+            librarySidebarCollapsed ? "w-14" : "w-80"
+          }`}
+          aria-label={t("library.title")}
+        >
+          {librarySidebarCollapsed ? (
+            <div className="flex h-full flex-col items-center px-2 py-4">
               <Button
-                size="sm"
-                variant={searchMode === "split" ? "default" : "outline"}
-                onClick={() => setSearchMode("split")}
-                aria-label={t("library.splitSearch")}
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-10 w-10 rounded-xl text-slate-600 hover:bg-white hover:text-slate-950"
+                onClick={() => setLibrarySidebarCollapsed(false)}
+                aria-label="Expand Presentation Library Panel"
+                title="Expand Presentation Library Panel"
               >
-                {t("library.splitSearch")}
+                <PanelLeftOpen className="h-4 w-4" />
               </Button>
-              <Button
-                size="sm"
-                variant={searchMode === "global" ? "default" : "outline"}
-                onClick={() => setSearchMode("global")}
-                aria-label={t("library.globalSearch")}
-              >
-                {t("library.globalSearch")}
-              </Button>
+              <div className="mt-4 h-px w-8 bg-slate-200" aria-hidden="true" />
+              <span className="mt-4 [writing-mode:vertical-rl] rotate-180 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {t("library.title")}
+              </span>
             </div>
-          </div>
-          {searchMode === "global" ? (
-            <div className="relative mt-3 w-full md:max-w-md">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={globalQuery}
-                onChange={(event) => setGlobalQuery(event.target.value)}
-                className="pl-9"
-                placeholder={t("library.searchAll")}
-                aria-label={t("library.searchAll")}
-              />
+          ) : (
+            <div className="flex h-full min-h-0 flex-col p-4">
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t("library.title")}
+                  </p>
+                  <p className="truncate text-sm text-slate-600">{t("library.subtitle")}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 rounded-xl text-slate-600 hover:bg-white hover:text-slate-950"
+                  onClick={() => setLibrarySidebarCollapsed(true)}
+                  aria-label="Collapse Presentation Library Panel"
+                  title="Collapse Presentation Library Panel"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+                {libraryControls}
+              </div>
             </div>
-          ) : null}
-        </div>
+          )}
+        </aside>
 
-        {activeError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {t("library.loadingError", { message: activeError.message })}
-          </div>
-        ) : null}
-        {activeLoading ? (
-          <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("library.loading")}
+        <section className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="space-y-4">
+            <div className="lg:hidden">
+              {libraryControls}
             </div>
+
+            {activeError ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {t("library.loadingError", { message: activeError.message })}
+              </div>
+            ) : null}
+            {activeLoading ? (
+              <div className="rounded-xl border border-slate-200 bg-white/70 p-4 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("library.loading")}
+                </div>
+              </div>
+            ) : null}
+
+            <PresentationGroup
+              title={t("library.projects.title")}
+              description={t("library.projects.desc")}
+              icon={FileStack}
+              items={filteredGrouped.projects}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              onOpen={handleOpenPresentation}
+              onUseTemplate={handleUseTemplate}
+              onShare={handleShareItem}
+              onDelete={handleDeleteItem}
+              deletingItemId={deletingItemId}
+              useTemplateItemId={useTemplateItemId}
+              searchValue={projectQuery}
+              onSearchChange={(value) => setProjectQuery(value)}
+              searchPlaceholder={t("library.projects.search")}
+              showSearch={searchMode === "split"}
+            />
+
+            <PresentationGroup
+              title={t("library.templates.title")}
+              description={t("library.templates.desc")}
+              icon={LayoutTemplate}
+              items={filteredGrouped.templates}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              onOpen={handleOpenPresentation}
+              onUseTemplate={handleUseTemplate}
+              onShare={handleShareItem}
+              onDelete={handleDeleteItem}
+              deletingItemId={deletingItemId}
+              useTemplateItemId={useTemplateItemId}
+              searchValue={templateQuery}
+              onSearchChange={(value) => setTemplateQuery(value)}
+              searchPlaceholder={t("library.templates.search")}
+              showSearch={searchMode === "split"}
+            />
           </div>
-        ) : null}
-
-        <PresentationGroup
-          title={t("library.projects.title")}
-          description={t("library.projects.desc")}
-          icon={FileStack}
-          items={filteredGrouped.projects}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-          onOpen={handleOpenPresentation}
-          onUseTemplate={handleUseTemplate}
-          onShare={handleShareItem}
-          onDelete={handleDeleteItem}
-          deletingItemId={deletingItemId}
-          useTemplateItemId={useTemplateItemId}
-          searchValue={projectQuery}
-          onSearchChange={(value) => setProjectQuery(value)}
-          searchPlaceholder={t("library.projects.search")}
-          showSearch={searchMode === "split"}
-        />
-
-        <PresentationGroup
-          title={t("library.templates.title")}
-          description={t("library.templates.desc")}
-          icon={LayoutTemplate}
-          items={filteredGrouped.templates}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-          onOpen={handleOpenPresentation}
-          onUseTemplate={handleUseTemplate}
-          onShare={handleShareItem}
-          onDelete={handleDeleteItem}
-          deletingItemId={deletingItemId}
-          useTemplateItemId={useTemplateItemId}
-          searchValue={templateQuery}
-          onSearchChange={(value) => setTemplateQuery(value)}
-          searchPlaceholder={t("library.templates.search")}
-          showSearch={searchMode === "split"}
-        />
-
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={hasSemanticSearch || offset === 0 || listQuery.isFetching}
-            onClick={() => setOffset((previous) => Math.max(0, previous - limit))}
-          >
-            {t("library.previous")}
-          </Button>
-          <Button
-            size="sm"
-            disabled={hasSemanticSearch || !listQuery.data?.has_more || listQuery.isFetching}
-            onClick={() => setOffset((previous) => previous + limit)}
-          >
-            {t("library.next")}
-          </Button>
-        </div>
+        </section>
       </main>
       {shareTarget ? (
         <ShareDialog

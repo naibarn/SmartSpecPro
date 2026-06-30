@@ -46,7 +46,7 @@ function applyPlaywrightGlobalKillSwitch(flags: TenantFeatureFlags): TenantFeatu
  * When these flags are updated in the DB, we sync to Redis so that
  * getTenantFeatureFlag() in featureFlags.ts picks up the admin toggle.
  */
-const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
+const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeatureFlagKey>([
   "browserTool",
   "automationCopilot",
   "liveBrowser",
@@ -89,6 +89,10 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
+  "storyboardPreviewMatchCaptureEnabled",
+  "storyboardPreviewMatchCaptureServerWorkerEnabled",
+  "storyboardPreviewMatchCaptureHighEnabled",
+  "storyboardClientCaptureExperimentEnabled",
   "mcpConnectEnabled",
   "mcpConnectMagnificEnabled",
   "mcpConnectHiggsfieldEnabled",

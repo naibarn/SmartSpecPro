@@ -4,12 +4,13 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
 const mockClipboardWriteText = vi.fn();
-const { toastMocks } = vi.hoisted(() => ({
+const { toastMocks, tenantFeatureFlagOverrides } = vi.hoisted(() => ({
   toastMocks: {
     success: vi.fn(),
     error: vi.fn(),
     info: vi.fn(),
   },
+  tenantFeatureFlagOverrides: {} as Record<string, boolean>,
 }));
 
 vi.mock("react-i18next", async () => {
@@ -31,9 +32,21 @@ vi.mock("react-i18next", async () => {
   };
 });
 
-vi.mock("@/hooks/useTenantFeatureFlag", () => ({
-  useTenantFeatureFlag: () => false,
-}));
+vi.mock("@/hooks/useTenantFeatureFlag", async () => {
+  const featureFlags = await vi.importActual<typeof import("@shared/featureFlags")>("@shared/featureFlags");
+  const disabledFeatureFlags = Object.fromEntries(
+    Object.keys(featureFlags.FEATURE_FLAG_DEFAULTS).map((flag) => [flag, false]),
+  ) as typeof featureFlags.FEATURE_FLAG_DEFAULTS;
+  return {
+    useTenantFeatureFlag: (flag: keyof typeof featureFlags.FEATURE_FLAG_DEFAULTS) => (
+      tenantFeatureFlagOverrides[flag] ?? false
+    ),
+    useTenantFeatureFlags: () => ({
+      ...disabledFeatureFlags,
+      ...tenantFeatureFlagOverrides,
+    }),
+  };
+});
 
 vi.mock("@/components/chat/skill/hooks/useSkillExecution", () => ({
   useSkillExecution: () => ({
@@ -300,6 +313,22 @@ function buildSkillCatalog() {
       executionMode: "llm-only",
     },
   ];
+}
+
+function enableArticleStoryboardVideoFlags() {
+  Object.assign(tenantFeatureFlagOverrides, {
+    presentationArticleStoryboardVideo: true,
+    presentationArticleStoryboardVideoPreview: true,
+    presentationArticleStoryboardVideoOverlay: true,
+    presentationArticleStoryboardVideoReferenceFrames: true,
+    presentationArticleStoryboardVideoCharacterReferences: true,
+    presentationArticleStoryboardVideoSeedancePrompt: true,
+    presentationArticleStoryboardVideoVoiceScript: true,
+    presentationArticleStoryboardVideoUvoiceVoiceover: true,
+    presentationArticleStoryboardVideoElevenLabsDialogue: true,
+    presentationArticleStoryboardVideoNativeAudio: true,
+    presentationArticleStoryboardVideoNativeAudioPromptComposer: true,
+  });
 }
 
 const queryState = {
@@ -742,6 +771,12 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      fetchTaskResult: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: queryState.mediaGetTaskFetch,
+          isPending: false,
+        })),
+      },
       addTaskToLibrary: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.addTaskToLibrary,
@@ -854,6 +889,9 @@ describe("PresentationEditor", () => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     vi.useRealTimers();
+    for (const key of Object.keys(tenantFeatureFlagOverrides)) {
+      delete tenantFeatureFlagOverrides[key];
+    }
     localStorage.clear();
     sessionStorage.clear();
     queryState.sandboxJobStatus = null;
@@ -3943,6 +3981,175 @@ describe("PresentationEditor", () => {
 
     expect(screen.getByDisplayValue("Resume Sleep Guide")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Generated presentation article")).toBeInTheDocument();
+  });
+
+  it("collapses the article and opens the shot workspace after preparing an article video plan on tablet", async () => {
+    enableArticleStoryboardVideoFlags();
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 768 });
+    queryState.skillCatalog = [
+      ...buildSkillCatalog(),
+      {
+        id: 303,
+        slug: "seedance-multishot-review",
+        name: "Seedance Multishot Review",
+        category: "video_prompt_generation",
+        executionMode: "llm-only",
+      },
+      {
+        id: 404,
+        slug: "article-storytelling-voiceover-script",
+        name: "Article Storytelling Voiceover Script",
+        category: "article_generation",
+        executionMode: "llm-only",
+      },
+    ];
+    mutationMocks.prepareSlideBundle.mockResolvedValueOnce({
+      maxPages: 2,
+      plannedImageCount: 2,
+      slideSkillLabel: "Modern Editorial Slide",
+      imagePrompts: [],
+      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+      modelId: "gpt-5.4",
+      preflightPages: [
+        {
+          pageNumber: 1,
+          titleHint: "Sleep Basics",
+          compiledText: "Build a steady bedtime rhythm.",
+          pageIntentHint: "cover",
+          recommendedImageCount: 1,
+          maxImagesOverride: 1,
+          warnings: [],
+        },
+        {
+          pageNumber: 2,
+          titleHint: "Bedtime Routine",
+          compiledText: "Create a calm repeatable routine.",
+          pageIntentHint: "content",
+          recommendedImageCount: 1,
+          maxImagesOverride: 1,
+          warnings: [],
+        },
+      ],
+    });
+
+    render(
+      <PresentationArticleGeneratorDialog
+        open
+        onClose={vi.fn()}
+        deckId={7}
+        initialTopic="Product Pitch"
+        initialArticle="Generated presentation article"
+        initialCanvasRatio="16:9"
+        onUseArticle={vi.fn()}
+        onInsertSlides={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /video project|โปรเจกต์วิดีโอ/i }));
+    fireEvent.click(screen.getByRole("button", { name: /prepare video shot plan|prepare slide bundle|เตรียมแผน video shot/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.prepareSlideBundle).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText(/article is collapsed|บทความถูกยุบ/i)).toBeInTheDocument();
+    expect(await screen.findByText(/shot workbench|พื้นที่ทำงานราย shot/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/Shot [12]/i).length).toBeGreaterThanOrEqual(2);
+    });
+    expect(await screen.findByText(/Click Use with Shot 1|กดใช้กับ Shot 1/i)).toBeInTheDocument();
+  });
+
+  it("passes character reference images into article video reference image generation", async () => {
+    enableArticleStoryboardVideoFlags();
+    mediaModelState.imageModels = [
+      {
+        id: "flux-refs",
+        name: "Flux References",
+        provider: "fal",
+        creditCost: 5,
+        configJson: {
+          generateType: "image-to-image",
+          inputFields: [
+            { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images" },
+          ],
+        },
+      },
+    ];
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-refs",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideVisualMode: "article-storyboard-video",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        articleStoryboardCharacterReferenceUrlsByPageId: {
+          "page-1": ["https://cdn.example.com/character-reference.png"],
+        },
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+          preflightPages: [
+            {
+              pageNumber: 1,
+              titleHint: "Sleep Basics",
+              compiledText: "Build a steady bedtime rhythm.",
+              pageIntentHint: "cover",
+              recommendedImageCount: 1,
+              maxImagesOverride: 1,
+              warnings: [],
+            },
+          ],
+        },
+        generatedImages: [],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(
+      <PresentationArticleGeneratorDialog
+        open
+        onClose={vi.fn()}
+        deckId={7}
+        initialTopic="Product Pitch"
+        initialArticle="Generated presentation article"
+        initialCanvasRatio="16:9"
+        onUseArticle={vi.fn()}
+        onInsertSlides={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /generate.*shot 1.*reference|สร้างภาพ reference Shot 1/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
+      referenceImageUrls: ["https://cdn.example.com/character-reference.png"],
+      extraParams: expect.objectContaining({
+        image_urls: ["https://cdn.example.com/character-reference.png"],
+      }),
+    }));
   });
 
   it("does not restore stale PPTX preparation jobs after reloading the article builder", async () => {

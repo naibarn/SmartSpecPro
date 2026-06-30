@@ -1,0 +1,26 @@
+{
+  "product_category": "furniture_home_decor",
+  "product_name": "minimalist coffee table",
+  "product_reference_images": [
+    "product-image-1",
+    "product-image-2"
+  ],
+  "character_images": [
+    "character-reference-1"
+  ],
+  "clip_direction": "lifestyle_story",
+  "story_structure": "routine_step_by_step",
+  "visual_mood": "airy_minimal_neutral",
+  "music_mood": "soft_piano",
+  "randomize_mood": false,
+  "shot_count": 5,
+  "aspect_ratio": "9:16",
+  "camera_style": "home_lifestyle",
+  "strict_sanitization": true,
+  "sanitize_level": "ultra",
+  "remove_all_visible_text": true,
+  "disallow_named_style_references": true,
+  "include_generator_name_in_prompt": false,
+  "banned_output_terms": [],
+  "prompt_language": "english"
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { CanvasShell } from "./CanvasShell";
 
@@ -25,5 +25,35 @@ describe("CanvasShell", () => {
     expect(asides[1]?.className).toContain("min-h-0");
     expect(asides[1]?.className).toContain("min-w-0");
     expect(screen.getByTestId("asset-panel-content").parentElement?.className).toContain("flex h-full min-h-0 min-w-0 flex-col overflow-hidden");
+  });
+
+  it("collapses side panels into edge rails without hiding the canvas workspace", () => {
+    render(
+      <div style={{ height: 900 }}>
+        <CanvasShell
+          slidesPanel={<div>Slides</div>}
+          toolRail={<div>Tools</div>}
+          assetPanel={<div data-testid="asset-panel-content">Assets</div>}
+          canvasToolbar={<div>Toolbar</div>}
+          canvasStage={<div data-testid="canvas-stage">Stage</div>}
+          propertiesPanel={<div>Properties body</div>}
+        />
+      </div>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Left Panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Right Panel" }));
+
+    expect(screen.getByRole("button", { name: "Expand Left Panel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand Right Panel" })).toBeInTheDocument();
+    expect(screen.getByTestId("canvas-stage")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand Left Panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand Right Panel" }));
+
+    expect(screen.getByRole("button", { name: "Collapse Left Panel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Collapse Right Panel" })).toBeInTheDocument();
+    expect(screen.getByText("Assets")).toBeInTheDocument();
+    expect(screen.getByText("Properties body")).toBeInTheDocument();
   });
 });

@@ -1,0 +1,24 @@
+{
+  "name": "seedance-multishot-review-prompt-generator",
+  "title": "Seedance Multi-Shot Review Prompt Generator",
+  "version": "1.1.0",
+  "description": "Generate a sanitized plain-text multi-shot video prompt for silent product review videos based on category, direction, and uploaded reference images.",
+  "entry": "skill.instructions.md",
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "output": "schemas/output.schema.json"
+  },
+  "output_mode": "plain_text",
+  "tags": [
+    "video",
+    "prompt-generator",
+    "product-review",
+    "multi-shot",
+    "silent-video",
+    "ecommerce",
+    "ugc",
+    "sanitized-output",
+    "strict-filter"
+  ]
+}

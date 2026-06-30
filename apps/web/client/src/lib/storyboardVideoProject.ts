@@ -47,6 +47,10 @@ export const STORYBOARD_RENDER_TRANSITION_OPTIONS: Array<{
 const STORYBOARD_RENDER_TRANSITION_NAMES = new Set<StoryboardClipTransitionName>(
   STORYBOARD_RENDER_TRANSITION_OPTIONS.map((option) => option.name),
 );
+const STORYBOARD_SOURCE_TRIM_MAX_DISABLED_RANGES = 5;
+const STORYBOARD_SOURCE_TRIM_MIN_DISABLED_RANGE_SECONDS = 0.3;
+const STORYBOARD_SOURCE_TRIM_MIN_KEPT_DURATION_SECONDS = 1;
+const STORYBOARD_SOURCE_TRIM_MERGE_GAP_SECONDS = 0.2;
 
 export interface StoryboardClipCandidate {
   id: string;
@@ -279,6 +283,145 @@ export function inferStoryboardDurationSeconds(prompt: string, fallbackSeconds: 
   return Math.max(0.25, fallbackSeconds);
 }
 
+function roundStoryboardProjectSecond(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function readStoryboardClipSourceTrim(extraParams: Record<string, unknown> | undefined): {
+  inSec: number;
+  outSec: number;
+  sourceDurationSec?: number;
+  disabledRanges?: Array<{ startSec: number; endSec: number }>;
+} | null {
+  const trim = extraParams?.sourceTrim;
+  if (!trim || typeof trim !== "object" || Array.isArray(trim)) return null;
+  const record = trim as Record<string, unknown>;
+  const inSec = Number(record.inSec);
+  const outSec = Number(record.outSec);
+  if (!Number.isFinite(inSec) || !Number.isFinite(outSec) || outSec <= inSec) return null;
+  const sourceDurationSec = Number(record.sourceDurationSec);
+  const normalized: {
+    inSec: number;
+    outSec: number;
+    sourceDurationSec?: number;
+    disabledRanges?: Array<{ startSec: number; endSec: number }>;
+  } = {
+    inSec: Math.max(0, roundStoryboardProjectSecond(inSec)),
+    outSec: Math.max(0.25, roundStoryboardProjectSecond(outSec)),
+    ...(Number.isFinite(sourceDurationSec) && sourceDurationSec > 0
+      ? { sourceDurationSec: roundStoryboardProjectSecond(sourceDurationSec) }
+      : {}),
+  };
+  if (Array.isArray(record.disabledRanges)) {
+    normalized.disabledRanges = record.disabledRanges
+      .map((range) => {
+        const rangeRecord = range && typeof range === "object" && !Array.isArray(range)
+          ? range as Record<string, unknown>
+          : {};
+        const startSec = Number(rangeRecord.startSec);
+        const endSec = Number(rangeRecord.endSec);
+        return Number.isFinite(startSec) && Number.isFinite(endSec) && endSec > startSec
+          ? { startSec: roundStoryboardProjectSecond(startSec), endSec: roundStoryboardProjectSecond(endSec) }
+          : null;
+      })
+      .filter((range): range is { startSec: number; endSec: number } => Boolean(range));
+  }
+  return normalized;
+}
+
+function readStoryboardClipDerivedSource(extraParams: Record<string, unknown> | undefined): {
+  url: string;
+  durationSeconds?: number;
+} | null {
+  const derived = extraParams?.sourceTrimDerived;
+  if (!derived || typeof derived !== "object" || Array.isArray(derived)) return null;
+  const record = derived as Record<string, unknown>;
+  const status = typeof record.status === "string" ? record.status : "";
+  const url = typeof record.url === "string" ? record.url.trim() : "";
+  if (status !== "ready" || !url) return null;
+  const durationSeconds = Number(record.durationSeconds);
+  return {
+    url,
+    ...(Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? { durationSeconds: roundStoryboardProjectSecond(durationSeconds) }
+      : {}),
+  };
+}
+
+function normalizeStoryboardSourceTrimDisabledRanges(
+  ranges: Array<{ startSec: number; endSec: number }> | undefined,
+  inSec: number,
+  outSec: number,
+): Array<{ startSec: number; endSec: number }> {
+  const normalized = (ranges ?? [])
+    .map((range) => {
+      const startSec = Math.max(inSec, Math.min(outSec, roundStoryboardProjectSecond(range.startSec)));
+      const endSec = Math.max(inSec, Math.min(outSec, roundStoryboardProjectSecond(range.endSec)));
+      return endSec - startSec >= STORYBOARD_SOURCE_TRIM_MIN_DISABLED_RANGE_SECONDS
+        ? { startSec, endSec }
+        : null;
+    })
+    .filter((range): range is { startSec: number; endSec: number } => Boolean(range))
+    .sort((a, b) => a.startSec - b.startSec);
+
+  const merged: Array<{ startSec: number; endSec: number }> = [];
+  for (const range of normalized) {
+    const previous = merged[merged.length - 1];
+    if (previous && range.startSec <= previous.endSec + STORYBOARD_SOURCE_TRIM_MERGE_GAP_SECONDS) {
+      previous.endSec = Math.max(previous.endSec, range.endSec);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged.slice(0, STORYBOARD_SOURCE_TRIM_MAX_DISABLED_RANGES).map((range) => ({
+    startSec: roundStoryboardProjectSecond(range.startSec),
+    endSec: roundStoryboardProjectSecond(range.endSec),
+  }));
+}
+
+function getStoryboardClipKeepRanges(
+  sourceTrim: ReturnType<typeof readStoryboardClipSourceTrim>,
+  fallbackDurationSeconds: number,
+): Array<{ sourceStartSec: number; durationSeconds: number }> {
+  const fallbackDuration = Math.max(0.25, roundStoryboardProjectSecond(fallbackDurationSeconds));
+  if (!sourceTrim) {
+    return [{ sourceStartSec: 0, durationSeconds: fallbackDuration }];
+  }
+
+  const disabledRanges = normalizeStoryboardSourceTrimDisabledRanges(
+    sourceTrim.disabledRanges,
+    sourceTrim.inSec,
+    sourceTrim.outSec,
+  );
+  const disabledDuration = disabledRanges.reduce(
+    (sum, range) => sum + Math.max(0, range.endSec - range.startSec),
+    0,
+  );
+  if (sourceTrim.outSec - sourceTrim.inSec - disabledDuration < STORYBOARD_SOURCE_TRIM_MIN_KEPT_DURATION_SECONDS) {
+    return [{ sourceStartSec: sourceTrim.inSec, durationSeconds: Math.max(0.25, sourceTrim.outSec - sourceTrim.inSec) }];
+  }
+
+  const keepRanges: Array<{ sourceStartSec: number; durationSeconds: number }> = [];
+  let cursor = sourceTrim.inSec;
+  for (const disabledRange of disabledRanges) {
+    const durationSeconds = roundStoryboardProjectSecond(disabledRange.startSec - cursor);
+    if (durationSeconds >= 0.25) {
+      keepRanges.push({ sourceStartSec: roundStoryboardProjectSecond(cursor), durationSeconds });
+    }
+    cursor = Math.max(cursor, disabledRange.endSec);
+  }
+
+  const tailDurationSeconds = roundStoryboardProjectSecond(sourceTrim.outSec - cursor);
+  if (tailDurationSeconds >= 0.25) {
+    keepRanges.push({ sourceStartSec: roundStoryboardProjectSecond(cursor), durationSeconds: tailDurationSeconds });
+  }
+
+  return keepRanges.length > 0
+    ? keepRanges
+    : [{ sourceStartSec: sourceTrim.inSec, durationSeconds: Math.max(0.25, sourceTrim.outSec - sourceTrim.inSec) }];
+}
+
 function normalizeReferenceUrl(url: unknown): string {
   return String(url || "").trim();
 }
@@ -324,27 +467,23 @@ export function buildStoryboardVideoProject(
   for (let index = 0; index < completed.length; index += 1) {
     const clipSource = completed[index];
     const nextClipSource = completed[index + 1];
-    const duration = typeof clipSource.durationSeconds === "number" && Number.isFinite(clipSource.durationSeconds) && clipSource.durationSeconds > 0
+    const derivedSource = readStoryboardClipDerivedSource(clipSource.generationExtraParams);
+    const sourceTrim = derivedSource ? null : readStoryboardClipSourceTrim(clipSource.generationExtraParams);
+    const sourceFallbackDuration = typeof clipSource.durationSeconds === "number" && Number.isFinite(clipSource.durationSeconds) && clipSource.durationSeconds > 0
       ? Math.max(0.25, clipSource.durationSeconds)
       : inferStoryboardDurationSeconds(clipSource.prompt, fallbackDuration);
-    const boundaryTrim = shouldRemoveDuplicateBoundaryFrames && hasDuplicateFirstLastFrameBoundary(clipSource, nextClipSource)
-      ? Math.min(boundaryFrameDuration, Math.max(0, duration - 0.25))
-      : 0;
-    const visibleDuration = duration - boundaryTrim;
-    const mediaType = inferStoryboardClipMediaType(clipSource.url, clipSource.mediaType);
-    const transition = index > 0 ? normalizeStoryboardClipTransition(clipSource.transition) : undefined;
-    const transitionSeconds = transition
-      ? Math.min(transition.durationMs / 1000, visibleDuration, previousVisibleDuration)
-      : 0;
-    const clipStartTime = Math.max(0, cursor - transitionSeconds);
-    const inferredFormat = inferFormatFromUrl(clipSource.url);
-    const mediaAsset: MediaLibraryAsset = {
+    const effectiveUrl = derivedSource?.url ?? clipSource.url;
+    const effectiveDuration = derivedSource?.durationSeconds ?? sourceFallbackDuration;
+    const keepRanges = getStoryboardClipKeepRanges(sourceTrim, effectiveDuration);
+    const mediaType = inferStoryboardClipMediaType(effectiveUrl, clipSource.mediaType);
+    const inferredFormat = inferFormatFromUrl(effectiveUrl);
+    const baseMediaAsset: MediaLibraryAsset = {
       id: `storyboard-${clipSource.id}`,
       type: mediaType,
       title: clipSource.prompt.trim().slice(0, 60) || `Clip ${index + 1}`,
-      thumbnailUrl: clipSource.url,
-      duration,
-      url: clipSource.url,
+      thumbnailUrl: effectiveUrl,
+      duration: derivedSource?.durationSeconds ?? sourceTrim?.sourceDurationSec ?? sourceFallbackDuration,
+      url: effectiveUrl,
       model: clipSource.model || "",
       createdAt: new Date(clipSource.createdAt || Date.now()),
       format: mediaType === "image" && inferredFormat === "mp4" ? "jpg" : inferredFormat,
@@ -355,27 +494,52 @@ export function buildStoryboardVideoProject(
       generationExtraParams: clipSource.generationExtraParams,
     };
 
-    const asset = addAssetToProject(project, mediaAsset, clipSource.url);
-    const clip = addClipToTrack(videoTrack, asset, clipStartTime);
-    clip.groupId = groupId;
-    clip.duration = visibleDuration;
-    clip.trimOut = visibleDuration;
-    if (boundaryTrim > 0) {
-      clip.duplicateBoundaryFrameTrim = {
-        frameCount: 1,
-        seconds: boundaryTrim,
-        fps: project.settings.fps || 30,
-        reason: "matching_first_last_frame_boundary",
-      };
+    for (let keepRangeIndex = 0; keepRangeIndex < keepRanges.length; keepRangeIndex += 1) {
+      const keepRange = keepRanges[keepRangeIndex];
+      const isFirstKeepRangeForSource = keepRangeIndex === 0;
+      const isLastKeepRangeForSource = keepRangeIndex === keepRanges.length - 1;
+      const boundaryTrim = shouldRemoveDuplicateBoundaryFrames && isLastKeepRangeForSource && hasDuplicateFirstLastFrameBoundary(clipSource, nextClipSource)
+        ? Math.min(boundaryFrameDuration, Math.max(0, keepRange.durationSeconds - 0.25))
+        : 0;
+      const visibleDuration = keepRange.durationSeconds - boundaryTrim;
+      const transition = index > 0 && isFirstKeepRangeForSource
+        ? normalizeStoryboardClipTransition(clipSource.transition)
+        : undefined;
+      const transitionSeconds = transition
+        ? Math.min(transition.durationMs / 1000, visibleDuration, previousVisibleDuration)
+        : 0;
+      const clipStartTime = Math.max(0, cursor - transitionSeconds);
+      const mediaAsset: MediaLibraryAsset = keepRanges.length > 1
+        ? {
+            ...baseMediaAsset,
+            id: `${baseMediaAsset.id}__keep_${keepRangeIndex + 1}`,
+            title: `${baseMediaAsset.title} (${keepRangeIndex + 1}/${keepRanges.length})`,
+          }
+    : baseMediaAsset;
+
+      const asset = addAssetToProject(project, mediaAsset, effectiveUrl);
+      const clip = addClipToTrack(videoTrack, asset, clipStartTime);
+      clip.groupId = groupId;
+      clip.duration = visibleDuration;
+      clip.trimIn = keepRange.sourceStartSec;
+      clip.trimOut = keepRange.sourceStartSec + visibleDuration;
+      if (boundaryTrim > 0) {
+        clip.duplicateBoundaryFrameTrim = {
+          frameCount: 1,
+          seconds: boundaryTrim,
+          fps: project.settings.fps || 30,
+          reason: "matching_first_last_frame_boundary",
+        };
+      }
+      if (options.muteVideoClipAudio) {
+        clip.volume = 0;
+      }
+      if (transition) {
+        clip.inTransition = transition;
+      }
+      cursor = clipStartTime + visibleDuration;
+      previousVisibleDuration = visibleDuration;
     }
-    if (options.muteVideoClipAudio) {
-      clip.volume = 0;
-    }
-    if (transition) {
-      clip.inTransition = transition;
-    }
-    cursor = clipStartTime + visibleDuration;
-    previousVisibleDuration = visibleDuration;
   }
 
   const audioTrack = findTrackByType(project.timeline, "audio");

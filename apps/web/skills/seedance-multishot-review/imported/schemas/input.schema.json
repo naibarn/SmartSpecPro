@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/seedance-multishot-review-input.schema.json",
+  "title": "Multi-Shot Product Video Prompt Skill Input",
+  "description": "Inputs for generating a sanitized multi-shot silent product review prompt grounded in uploaded images.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_category",
+    "product_reference_images",
+    "clip_direction",
+    "shot_count",
+    "prompt_language"
+  ],
+  "properties": {
+    "product_category": {
+      "type": "string",
+      "title": "Product category",
+      "enum": [
+        "mother_baby",
+        "cosmetics",
+        "makeup_tools",
+        "electronics",
+        "sports_equipment",
+        "fitness_equipment",
+        "furniture_home_decor",
+        "food_beverage",
+        "apparel_fashion",
+        "kids_toys",
+        "mobile_tablet_accessories",
+        "pet_products",
+        "household_goods",
+        "travel_accessories",
+        "other"
+      ],
+      "default": "mother_baby"
+    },
+    "custom_product_category": {
+      "type": "string",
+      "title": "Custom product category",
+      "maxLength": 120
+    },
+    "product_name": {
+      "type": "string",
+      "title": "Generic product name",
+      "description": "Use a generic product name, e.g. minimalist coffee table, baby walker, black computer desk.",
+      "maxLength": 200
+    },
+    "product_mark_name": {
+      "type": "string",
+      "title": "Internal name to remove from output",
+      "description": "Optional internal input only. When strict sanitization is on, this value must never appear in the final prompt.",
+      "maxLength": 120
+    },
+    "brand_name": {
+      "type": "string",
+      "title": "Legacy internal name field",
+      "description": "Backward-compatible internal input only. When strict sanitization is on, this value must never appear in the final prompt.",
+      "maxLength": 120
+    },
+    "product_reference_images": {
+      "type": "array",
+      "title": "Product reference images",
+      "description": "Upload 1-4 product reference images. Product visual identity is more important than recreating the same background.",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "title": "Product image",
+        "minLength": 1
+      }
+    },
+    "character_images": {
+      "type": "array",
+      "title": "Character images",
+      "description": "Optional images of the person/character who should appear in the video.",
+      "minItems": 0,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "title": "Character image",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "supporting_images": {
+      "type": "array",
+      "title": "Supporting images",
+      "description": "Optional supporting images such as child/baby, use case, room mood, ingredients, or lifestyle context.",
+      "minItems": 0,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "title": "Supporting image",
+        "minLength": 1
+      },
+      "default": []
+    },
+    "clip_direction": {
+      "type": "string",
+      "title": "Clip direction",
+      "enum": [
+        "new_mom_advice",
+        "before_after_review",
+        "family_warm_commercial",
+        "ugc_mobile_review",
+        "short_form_shopping_hook",
+        "tiktok_affiliate_hook",
+        "product_demo",
+        "feature_focus",
+        "comparison_style",
+        "lifestyle_story",
+        "problem_solution",
+        "custom"
+      ],
+      "default": "product_demo"
+    },
+    "custom_clip_direction": {
+      "type": "string",
+      "title": "Custom clip direction",
+      "maxLength": 300
+    },
+    "story_structure": {
+      "type": "string",
+      "title": "Story structure",
+      "enum": [
+        "auto",
+        "hook_problem_solution_result",
+        "demo_benefit_lifestyle",
+        "before_after_close",
+        "beauty_closeup_hero_end",
+        "unbox_use_result",
+        "social_proof_style",
+        "routine_step_by_step",
+        "emotional_day_in_life",
+        "feature_1_feature_2_feature_3_close",
+        "custom"
+      ],
+      "default": "auto"
+    },
+    "custom_story_structure": {
+      "type": "string",
+      "title": "Custom story structure",
+      "maxLength": 300
+    },
+    "key_features": {
+      "type": "array",
+      "title": "Visible points to highlight",
+      "description": "Use visible, descriptive points only. Avoid promises or result wording.",
+      "minItems": 0,
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "default": []
+    },
+    "target_audience": {
+      "type": "string",
+      "title": "Target audience",
+      "maxLength": 200
+    },
+    "music_mood": {
+      "type": "string",
+      "title": "Music mood",
+      "enum": [
+        "auto",
+        "soft_piano",
+        "light_uplifting",
+        "playful_cute",
+        "clean_commercial",
+        "elegant_premium",
+        "energetic_active",
+        "cozy_home",
+        "fresh_appetizing",
+        "stylish_modern"
+      ],
+      "default": "auto"
+    },
+    "visual_mood": {
+      "type": "string",
+      "title": "Visual mood",
+      "enum": [
+        "auto",
+        "soft_warm",
+        "clean_premium",
+        "playful_cute",
+        "energetic_active",
+        "expert_trustworthy",
+        "cozy_home",
+        "elegant_minimal",
+        "fresh_appetizing",
+        "stylish_modern",
+        "uplifting_family",
+        "airy_minimal_neutral",
+        "dark_premium_room",
+        "bright_modern_workspace"
+      ],
+      "default": "auto"
+    },
+    "randomize_mood": {
+      "type": "boolean",
+      "title": "Randomize mood",
+      "default": true
+    },
+    "shot_count": {
+      "type": "integer",
+      "title": "Number of shots",
+      "enum": [
+        4,
+        5
+      ],
+      "default": 5
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect ratio",
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "default": "9:16"
+    },
+    "camera_style": {
+      "type": "string",
+      "title": "Camera style",
+      "enum": [
+        "auto",
+        "cinematic_clean",
+        "handheld_ugc",
+        "beauty_closeup",
+        "macro_product",
+        "home_lifestyle",
+        "dynamic_sport",
+        "mixed"
+      ],
+      "default": "auto"
+    },
+    "include_generator_name_in_prompt": {
+      "type": "boolean",
+      "title": "Include target generator name in final prompt",
+      "description": "Usually false when sanitization is strict. The prompt can still be used in the intended video generator without naming it.",
+      "default": false
+    },
+    "show_child_if_relevant": {
+      "type": "boolean",
+      "title": "Show child/baby when relevant",
+      "default": true
+    },
+    "preserve_product_identity": {
+      "type": "boolean",
+      "title": "Preserve product appearance",
+      "default": true
+    },
+    "preserve_character_identity": {
+      "type": "boolean",
+      "title": "Preserve character appearance",
+      "default": true
+    },
+    "background_must_match_reference": {
+      "type": "boolean",
+      "title": "Background must match reference",
+      "default": false
+    },
+    "strict_sanitization": {
+      "type": "boolean",
+      "title": "Strict sanitization",
+      "description": "Recommended on. Removes company names, named style references, and high-risk wording from final prompt.",
+      "default": true
+    },
+    "sanitize_level": {
+      "type": "string",
+      "title": "Sanitization level",
+      "enum": [
+        "standard",
+        "strict",
+        "ultra"
+      ],
+      "default": "ultra"
+    },
+    "remove_all_visible_text": {
+      "type": "boolean",
+      "title": "Keep generated objects free of readable writing",
+      "default": true
+    },
+    "disallow_named_style_references": {
+      "type": "boolean",
+      "title": "Disallow named style references",
+      "description": "Converts named mood/style references into generic visual descriptors.",
+      "default": true
+    },
+    "banned_output_terms": {
+      "type": "array",
+      "title": "Extra blocked output words or phrases",
+      "description": "Optional extra words/phrases that must not appear in the final prompt.",
+      "minItems": 0,
+      "maxItems": 100,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80
+      },
+      "default": []
+    },
+    "avoid_elements": {
+      "type": "array",
+      "title": "Avoid elements",
+      "description": "Semantic avoid list. The final prompt should not repeat restricted words from this field.",
+      "minItems": 0,
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 120
+      },
+      "default": []
+    },
+    "special_constraints": {
+      "type": "string",
+      "title": "Special constraints",
+      "maxLength": 1000
+    },
+    "prompt_language": {
+      "type": "string",
+      "title": "Prompt language",
+      "enum": [
+        "english",
+        "thai",
+        "bilingual"
+      ],
+      "default": "english"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "product_category": {
+            "const": "other"
+          }
+        },
+        "required": [
+          "product_category"
+        ]
+      },
+      "then": {
+        "required": [
+          "custom_product_category"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "clip_direction": {
+            "const": "custom"
+          }
+        },
+        "required": [
+          "clip_direction"
+        ]
+      },
+      "then": {
+        "required": [
+          "custom_clip_direction"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "story_structure": {
+            "const": "custom"
+          }
+        },
+        "required": [
+          "story_structure"
+        ]
+      },
+      "then": {
+        "required": [
+          "custom_story_structure"
+        ]
+      }
+    }
+  ]
+}

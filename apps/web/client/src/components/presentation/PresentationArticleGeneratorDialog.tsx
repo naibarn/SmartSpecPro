@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   Copy,
+  Crop,
   Download,
   CheckCircle2,
   ExternalLink,
@@ -15,7 +16,9 @@ import {
   PencilLine,
   RefreshCw,
   Maximize2,
+  Minimize2,
   Music,
+  Scissors,
   Sparkles,
   Trash2,
   Video,
@@ -25,6 +28,7 @@ import {
 import { toast } from "sonner";
 
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
+import ImageSourcePicker from "@/components/media/ImageSourcePicker";
 import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
 import { ImageModelCombobox } from "@/components/presentation/ImageModelCombobox";
 import {
@@ -60,8 +64,25 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
+import { cropImageToAspect, splitImage } from "@/lib/imageGridSplitter";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import { cn } from "@/lib/utils";
+import {
+  buildArticleStoryboardReviewDraft,
+  buildArticleStoryboardReferenceCandidatePrompt,
+  buildArticleStoryboardSourceDraftId,
+  buildArticleStoryboardRequiredFeatureFlags,
+  buildArticleStoryboardSeedancePromptText,
+  buildArticleStoryboardVideoPreview,
+  buildArticleStoryboardVideoShotPlans,
+  buildArticleStorytellingVoiceScript,
+  isDuplicateArticleStoryboardVideoHandoff,
+  resolveArticleStoryboardAudioStrategy,
+  type ArticleStoryboardAudioStrategy,
+  type ArticleStoryboardReferenceImage,
+  type ArticleStoryboardVoiceMode,
+} from "@shared/articleStoryboardVideo";
 import {
   hasImportableGeneratedSlides,
   inspectGeneratedSlideImportability,
@@ -78,6 +99,7 @@ import {
   type MediaModelOption,
 } from "@/lib/mediaModelInputs";
 import { trpc } from "@/lib/trpc";
+import { readStoryboardReviewDraft, writeStoryboardReviewDraft } from "@/lib/storyboardReviewWorkspace";
 import {
   PRESENTATION_CANVAS_PRESETS,
   type PresentationCanvasPresetId,
@@ -102,7 +124,7 @@ type ExecutionSource = "skill" | "agency";
 type ArticleLanguage = "th" | "en";
 type SlideCanvasRatio = PresentationCanvasPresetId;
 type SlideOutputFormat = "json" | "md" | "pptx" | "pdf";
-type SlideVisualMode = "editable" | "full-slide-image";
+type SlideVisualMode = "editable" | "full-slide-image" | "article-storyboard-video";
 type FullSlideImageStyleId = string;
 
 type FullSlideImageStylePreset = {
@@ -175,6 +197,20 @@ type GeneratedImageAsset = PreparedImagePrompt & {
   canvasRatio?: SlideCanvasRatio;
   model?: string;
   updatedAt?: string;
+};
+
+type ArticleStoryboardReferenceHistoryAsset = {
+  id: string;
+  sourceUrl: string;
+  url: string;
+  label: string;
+  pageNumber: number;
+  shotId?: string;
+  kind: "generated" | "split" | "crop";
+  index?: number;
+  canvasRatio?: SlideCanvasRatio;
+  prompt?: string;
+  createdAt: string;
 };
 
 type ImportableGeneratedImageAsset = PreparedImagePrompt & {
@@ -732,6 +768,10 @@ function detectArticleLanguage(text: string): ArticleLanguage {
   return "en";
 }
 
+function normalizeComparableArticleText(value: string | null | undefined): string {
+  return (value ?? "").trim().replace(/\s+/g, " ");
+}
+
 function normalizeCanvasRatio(value?: string | null): SlideCanvasRatio {
   return SUPPORTED_SLIDE_RATIOS.includes(value as SlideCanvasRatio)
     ? value as SlideCanvasRatio
@@ -758,6 +798,76 @@ function normalizeModelStringList(value: unknown): string[] {
       .filter(Boolean);
   }
   return [];
+}
+
+function normalizeStringRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const normalized: Record<string, string> = {};
+  for (const [key, recordValue] of Object.entries(value)) {
+    if (typeof recordValue === "string") {
+      normalized[key] = recordValue;
+    }
+  }
+  return normalized;
+}
+
+function normalizeStringArrayRecord(value: unknown, maxItems?: number): Record<string, string[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const normalized: Record<string, string[]> = {};
+  for (const [key, recordValue] of Object.entries(value)) {
+    if (!Array.isArray(recordValue)) {
+      continue;
+    }
+    const urls = recordValue
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    normalized[key] = typeof maxItems === "number" ? urls.slice(0, maxItems) : urls;
+  }
+  return normalized;
+}
+
+function normalizeArticleStoryboardReferenceHistoryAssets(value: unknown): ArticleStoryboardReferenceHistoryAsset[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item): ArticleStoryboardReferenceHistoryAsset[] => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+    const record = item as Record<string, unknown>;
+    const id = typeof record.id === "string" ? record.id.trim() : "";
+    const url = typeof record.url === "string" ? record.url.trim() : "";
+    const sourceUrl = typeof record.sourceUrl === "string" ? record.sourceUrl.trim() : url;
+    const label = typeof record.label === "string" && record.label.trim() ? record.label.trim() : "Reference image";
+    const pageNumber = Number(record.pageNumber);
+    const kind = record.kind === "split" || record.kind === "crop" ? record.kind : "generated";
+    const canvasRatio = SUPPORTED_SLIDE_RATIOS.includes(record.canvasRatio as SlideCanvasRatio)
+      ? record.canvasRatio as SlideCanvasRatio
+      : undefined;
+    if (!id || !url || !sourceUrl || !Number.isFinite(pageNumber)) {
+      return [];
+    }
+    return [{
+      id,
+      sourceUrl,
+      url,
+      label,
+      pageNumber,
+      shotId: typeof record.shotId === "string" && record.shotId.trim() ? record.shotId.trim() : undefined,
+      kind,
+      index: Number.isFinite(Number(record.index)) ? Number(record.index) : undefined,
+      canvasRatio,
+      prompt: typeof record.prompt === "string" ? record.prompt : undefined,
+      createdAt: typeof record.createdAt === "string" && record.createdAt.trim()
+        ? record.createdAt.trim()
+        : new Date().toISOString(),
+    }];
+  });
 }
 
 function getSizeRatio(size: string): SlideCanvasRatio | null {
@@ -811,6 +921,17 @@ function getSupportedCanvasRatiosForModel(model: MediaModelOption | null | undef
 
 function getCanvasRatioCss(value: SlideCanvasRatio): string {
   return value.replace(":", " / ");
+}
+
+function normalizeReferenceImageUrl(value: string | null | undefined): string {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (/^(?:data:image\/|blob:|https?:\/\/)/i.test(trimmed)) {
+    return trimmed;
+  }
+  return normalizeMediaSourceUrl(trimmed);
 }
 
 function isPortraitCanvasRatio(value: SlideCanvasRatio): boolean {
@@ -1086,6 +1207,16 @@ function formatAuditTimestamp(value: string | null | undefined): string | null {
   return Number.isNaN(parsed.getTime()) ? trimmed : parsed.toISOString();
 }
 
+function normalizeSlideVisualMode(value: unknown): SlideVisualMode {
+  if (value === "article-storyboard-video") {
+    return "article-storyboard-video";
+  }
+  if (value === "full-slide-image") {
+    return "full-slide-image";
+  }
+  return "editable";
+}
+
 type PersistedArticleBuilderDraft = {
   topic: string;
   article: string;
@@ -1130,6 +1261,15 @@ type PersistedArticleBuilderDraft = {
   videoDurationSeconds?: number;
   videoDisableSpeech?: boolean;
   videoDisableSoundtrack?: boolean;
+  articleStoryboardAudioStrategy?: ArticleStoryboardAudioStrategy;
+  articleStoryboardVoiceMode?: ArticleStoryboardVoiceMode;
+  articleStoryboardPrimaryVoiceId?: string;
+  articleStoryboardSecondaryVoiceId?: string;
+  articleStoryboardSceneReferenceUrlsByPageId?: Record<string, string[]>;
+  articleStoryboardCharacterReferenceUrlsByPageId?: Record<string, string[]>;
+  articleStoryboardReferenceHistoryAssets?: ArticleStoryboardReferenceHistoryAsset[];
+  articleStoryboardImagePromptOverridesByShotId?: Record<string, string>;
+  articleStoryboardVideoPromptOverridesByShotId?: Record<string, string>;
   generatedSlideDraft: GeneratedSlideDraft | null;
   generatedSlideDraftSkillId?: string;
   slidePayloadEditorJson: string;
@@ -2389,6 +2529,7 @@ export function PresentationArticleGeneratorDialog({
 }: PresentationArticleGeneratorDialogProps) {
   const { t } = useScopedTranslation("presentation");
   const { user } = useAuth();
+  const tenantFeatureFlags = useTenantFeatureFlags();
   const trpcUtils = trpc.useUtils();
   const wasOpenRef = useRef(false);
   const autoFetchedImageTaskIdsRef = useRef<Set<string>>(new Set());
@@ -2444,6 +2585,35 @@ export function PresentationArticleGeneratorDialog({
   const [videoDurationSeconds, setVideoDurationSeconds] = useState(5);
   const [videoDisableSpeech, setVideoDisableSpeech] = useState(true);
   const [videoDisableSoundtrack, setVideoDisableSoundtrack] = useState(true);
+  const [articleStoryboardAudioStrategy, setArticleStoryboardAudioStrategy] =
+    useState<ArticleStoryboardAudioStrategy>("separate_tts_voiceover");
+  const [articleStoryboardVoiceMode, setArticleStoryboardVoiceMode] =
+    useState<ArticleStoryboardVoiceMode>("single_narrator");
+  const [articleStoryboardPrimaryVoiceId, setArticleStoryboardPrimaryVoiceId] =
+    useState("TH-KantapongPremiumHD");
+  const [articleStoryboardSecondaryVoiceId, setArticleStoryboardSecondaryVoiceId] =
+    useState("TH-FemaleVoiceID");
+  const [articleStoryboardSceneReferenceUrlsByPageId, setArticleStoryboardSceneReferenceUrlsByPageId] =
+    useState<Record<string, string[]>>({});
+  const [articleStoryboardCharacterReferenceUrlsByPageId, setArticleStoryboardCharacterReferenceUrlsByPageId] =
+    useState<Record<string, string[]>>({});
+  const [articleStoryboardReferenceHistoryAssets, setArticleStoryboardReferenceHistoryAssets] =
+    useState<ArticleStoryboardReferenceHistoryAsset[]>([]);
+  const [articleStoryboardImagePromptOverridesByShotId, setArticleStoryboardImagePromptOverridesByShotId] =
+    useState<Record<string, string>>({});
+  const [articleStoryboardVideoPromptOverridesByShotId, setArticleStoryboardVideoPromptOverridesByShotId] =
+    useState<Record<string, string>>({});
+  const [articleStoryboardWorkflowCollapsed, setArticleStoryboardWorkflowCollapsed] = useState(false);
+  const [articleStoryboardArticleCollapsed, setArticleStoryboardArticleCollapsed] = useState(false);
+  const [articleStoryboardReferenceGenerationShotId, setArticleStoryboardReferenceGenerationShotId] = useState<string | null>(null);
+  const [articleStoryboardReferenceToolAssetId, setArticleStoryboardReferenceToolAssetId] = useState<string | null>(null);
+  const [articleStoryboardActiveReferenceShotId, setArticleStoryboardActiveReferenceShotId] = useState<string | null>(null);
+  const [articleStoryboardReferenceLibraryCollapsed, setArticleStoryboardReferenceLibraryCollapsed] = useState(false);
+  const [articleStoryboardReferenceLibraryWidth, setArticleStoryboardReferenceLibraryWidth] = useState(360);
+  const articleStoryboardReferenceLibraryResizeRef = useRef<{
+    startX: number;
+    startWidth: number;
+  } | null>(null);
   const [generatedSlideDraft, setGeneratedSlideDraft] = useState<GeneratedSlideDraft | null>(null);
   const [generatedSlideDraftSkillId, setGeneratedSlideDraftSkillId] = useState("");
   const [generatedSlideDraftSessionSource, setGeneratedSlideDraftSessionSource] = useState<GeneratedSlideDraftSessionSource>("empty");
@@ -2541,6 +2711,19 @@ export function PresentationArticleGeneratorDialog({
     () => allSkillOptions.filter(isVideoPromptGenerationSkill),
     [allSkillOptions],
   );
+  const articleStoryboardRequiredSkills = useMemo(() => {
+    if (!skillsQuery.isSuccess) {
+      return { seedancePrompt: true, voiceScript: true };
+    }
+    const hasSkill = (needle: string) => allSkillOptions.some((skill) => {
+      const haystack = `${skill.id} ${skill.name}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+    return {
+      seedancePrompt: hasSkill("seedance-multishot-review"),
+      voiceScript: hasSkill("article-storytelling-voiceover-script"),
+    };
+  }, [allSkillOptions, skillsQuery.isSuccess]);
   const imageModels = useMemo(
     () => ((mediaModelsQuery.data?.models ?? []) as MediaModelOption[]),
     [mediaModelsQuery.data?.models],
@@ -2636,6 +2819,18 @@ export function PresentationArticleGeneratorDialog({
     return preparedBundleMatchesSelectedSkill;
   }, [generatedSlideDraft, generatedSlideDraftSkillId, preparedBundleMatchesSelectedSkill, slideSkillId]);
   const bundleNeedsRefreshAfterSkillChange = Boolean(preparedBundle) && !preparedBundleMatchesSelectedSkill;
+  const preparedBundleMatchesArticle = useMemo(() => {
+    if (!preparedBundle) {
+      return false;
+    }
+    const preparedBundleArticle = normalizeComparableArticleText(preparedBundle.article);
+    if (!preparedBundleArticle) {
+      return true;
+    }
+    return preparedBundleArticle === normalizeComparableArticleText(article);
+  }, [article, preparedBundle]);
+  const bundleNeedsRefreshAfterArticleChange = Boolean(preparedBundle) && !preparedBundleMatchesArticle;
+  const bundleNeedsRefresh = bundleNeedsRefreshAfterSkillChange || bundleNeedsRefreshAfterArticleChange;
   const slideDraftNeedsRefreshAfterSkillChange = Boolean(generatedSlideDraft) && !generatedSlideDraftMatchesSelectedSkill;
   const activeEditorialPlannerQuickPresetId = useMemo(
     () => EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => (
@@ -2840,6 +3035,460 @@ export function PresentationArticleGeneratorDialog({
     () => generatedImagesMatchPrompts(activeImagePrompts, normalizedGeneratedImages, canvasRatio),
     [activeImagePrompts, canvasRatio, normalizedGeneratedImages],
   );
+  const isArticleStoryboardVideoEnabled = tenantFeatureFlags.presentationArticleStoryboardVideo === true;
+  const isArticleStoryboardVideoMode = isArticleStoryboardVideoEnabled && slideVisualMode === "article-storyboard-video";
+
+  useEffect(() => {
+    if (!isArticleStoryboardVideoEnabled && slideVisualMode === "article-storyboard-video") {
+      setSlideVisualMode("editable");
+    }
+  }, [isArticleStoryboardVideoEnabled, slideVisualMode]);
+  const articleStoryboardPages = useMemo(
+    () => {
+      const preflightPages = preparedBundle?.preflightPages ?? [];
+      if (preflightPages.length > 0) {
+        return preflightPages.map((page) => ({
+          id: `page-${page.pageNumber}`,
+          pageNumber: page.pageNumber,
+          title: page.titleHint,
+          keyText: page.pageIntentHint,
+          body: page.compiledText,
+        }));
+      }
+      const trimmedArticle = article.trim();
+      return trimmedArticle
+        ? [{
+          id: "page-1",
+          pageNumber: 1,
+          title: topic.trim() || "Article video",
+          body: trimmedArticle,
+        }]
+        : [];
+    },
+    [article, preparedBundle?.preflightPages, topic],
+  );
+  const articleStoryboardAutoSceneReferencesByPageId = useMemo(
+    () => {
+      const grouped: Record<string, ArticleStoryboardReferenceImage[]> = {};
+      const candidateAssets = isArticleStoryboardVideoMode ? [] : normalizedGeneratedImages;
+      for (const asset of candidateAssets) {
+        if (!asset.url || asset.status === "failed") {
+          continue;
+        }
+        if (asset.canvasRatio && asset.canvasRatio !== canvasRatio) {
+          continue;
+        }
+        const pageId = `page-${asset.pageNumber}`;
+        const existing = grouped[pageId] ?? [];
+        if (existing.length >= 5) {
+          continue;
+        }
+        existing.push({
+          id: `scene-${asset.pageNumber}-${asset.imageIndex}`,
+          url: asset.url,
+          label: asset.shortLabel,
+          source: "generated_3x3",
+          safetyStatus: "approved",
+          confirmed: true,
+          primary: existing.length === 0,
+        });
+        grouped[pageId] = existing;
+      }
+      return grouped;
+    },
+    [canvasRatio, isArticleStoryboardVideoMode, normalizedGeneratedImages],
+  );
+  const articleStoryboardSelectedReferencesByPageId = useMemo(
+    () => Object.fromEntries(
+      articleStoryboardPages.map((page) => {
+        const pageId = page.id ?? `page-${page.pageNumber}`;
+        const autoReferences = articleStoryboardAutoSceneReferencesByPageId[pageId] ?? [];
+        const hasManualSelection = Object.prototype.hasOwnProperty.call(
+          articleStoryboardSceneReferenceUrlsByPageId,
+          pageId,
+        );
+        const selectedUrls = hasManualSelection
+          ? articleStoryboardSceneReferenceUrlsByPageId[pageId] ?? []
+          : autoReferences.map((reference) => reference.url);
+        return [
+          pageId,
+          selectedUrls
+            .slice(0, 5)
+            .map((url, index): ArticleStoryboardReferenceImage | null => {
+              const normalizedUrl = url.trim();
+              if (!normalizedUrl) return null;
+              const autoReference = autoReferences.find((reference) => reference.url === normalizedUrl);
+              return autoReference
+                ? { ...autoReference, primary: index === 0 }
+                : {
+                    id: `scene-${page.pageNumber}-${index + 1}`,
+                    url: normalizedUrl,
+                    label: `Scene reference ${index + 1}`,
+                    source: "library",
+                    confirmed: true,
+                    safetyStatus: "approved",
+                    primary: index === 0,
+                  };
+            })
+            .filter((reference): reference is ArticleStoryboardReferenceImage => Boolean(reference)),
+        ];
+      }),
+    ),
+    [
+      articleStoryboardAutoSceneReferencesByPageId,
+      articleStoryboardPages,
+      articleStoryboardSceneReferenceUrlsByPageId,
+    ],
+  );
+  const articleStoryboardCharacterReferencesByPageId = useMemo(
+    () => Object.fromEntries(
+      articleStoryboardPages.map((page) => {
+        const urls = articleStoryboardCharacterReferenceUrlsByPageId[page.id ?? `page-${page.pageNumber}`] ?? [];
+        return [
+          page.id ?? `page-${page.pageNumber}`,
+          urls
+            .map((url, index): ArticleStoryboardReferenceImage | null => {
+              const normalizedUrl = url.trim();
+              if (!normalizedUrl) return null;
+              return {
+                id: `character-${page.pageNumber}-${index + 1}`,
+                url: normalizedUrl,
+                label: `Character ${index + 1}`,
+                source: "character",
+                confirmed: true,
+                safetyStatus: "approved",
+              };
+            })
+            .filter((reference): reference is ArticleStoryboardReferenceImage => Boolean(reference)),
+        ];
+      }),
+    ),
+    [articleStoryboardCharacterReferenceUrlsByPageId, articleStoryboardPages],
+  );
+  const articleStoryboardShotPlans = useMemo(
+    () => buildArticleStoryboardVideoShotPlans({
+      pages: articleStoryboardPages,
+      selectedReferenceImagesByPageId: articleStoryboardSelectedReferencesByPageId,
+      characterReferenceImagesByPageId: articleStoryboardCharacterReferencesByPageId,
+      durationSeconds: videoDurationSeconds,
+    }),
+    [
+      articleStoryboardCharacterReferencesByPageId,
+      articleStoryboardPages,
+      articleStoryboardSelectedReferencesByPageId,
+      videoDurationSeconds,
+    ],
+  );
+  const articleStoryboardReferenceHistoryItems = useMemo(() => {
+    const generatedItems: ArticleStoryboardReferenceHistoryAsset[] = generatedImages.flatMap((asset) => {
+      const url = normalizeReferenceImageUrl(asset.url);
+      if (!url || asset.status === "failed") {
+        return [];
+      }
+      if (asset.canvasRatio && asset.canvasRatio !== canvasRatio) {
+        return [];
+      }
+      const shot = articleStoryboardShotPlans.find((candidate) => candidate.pageNumber === asset.pageNumber);
+      return [{
+        id: `generated-${getPreparedImageSlotKey(asset)}-${asset.taskId ?? asset.updatedAt ?? asset.id}`,
+        sourceUrl: url,
+        url,
+        label: asset.shortLabel || `Shot ${asset.pageNumber} reference sheet`,
+        pageNumber: asset.pageNumber,
+        shotId: shot?.id,
+        kind: "generated" as const,
+        canvasRatio: asset.canvasRatio,
+        prompt: asset.prompt,
+        createdAt: asset.updatedAt ?? "",
+      }];
+    });
+    const persistedItems = articleStoryboardReferenceHistoryAssets.filter((asset) => (
+      normalizeReferenceImageUrl(asset.url)
+      && (!asset.canvasRatio || asset.canvasRatio === canvasRatio)
+    ));
+    return [...persistedItems, ...generatedItems]
+      .filter((asset, index, all) => (
+        all.findIndex((candidate) => candidate.id === asset.id || candidate.url === asset.url) === index
+      ))
+      .sort((left, right) => (
+        (Date.parse(right.createdAt) || 0) - (Date.parse(left.createdAt) || 0)
+      ));
+  }, [
+    articleStoryboardReferenceHistoryAssets,
+    articleStoryboardShotPlans,
+    canvasRatio,
+    generatedImages,
+  ]);
+  const articleStoryboardVoiceConfig = useMemo(
+    () => ({
+      mode: articleStoryboardVoiceMode,
+      provider: selectedAudioModelId.toLowerCase().includes("eleven") ? "elevenlabs" as const : "uvoice_premium" as const,
+      voiceModelId: selectedAudioModelId || "uvoice-premium",
+      speakers: articleStoryboardVoiceMode === "two_speaker_dialogue"
+        ? [
+          { speaker: "พิธีกรชาย", voiceModelId: selectedAudioModelId || "uvoice-premium", voiceId: articleStoryboardPrimaryVoiceId.trim() },
+          { speaker: "ผู้ช่วยหญิง", voiceModelId: selectedAudioModelId || "uvoice-premium", voiceId: articleStoryboardSecondaryVoiceId.trim() },
+        ]
+        : [
+          { speaker: "ผู้บรรยาย", voiceModelId: selectedAudioModelId || "uvoice-premium", voiceId: articleStoryboardPrimaryVoiceId.trim() },
+        ],
+    }),
+    [
+      articleStoryboardPrimaryVoiceId,
+      articleStoryboardSecondaryVoiceId,
+      articleStoryboardVoiceMode,
+      selectedAudioModelId,
+    ],
+  );
+  const articleStoryboardRequiredFlags = useMemo(
+    () => buildArticleStoryboardRequiredFeatureFlags({
+      audioStrategy: articleStoryboardAudioStrategy,
+      voiceProvider: articleStoryboardVoiceConfig.provider,
+      hasCharacterReferences: Object.values(articleStoryboardCharacterReferencesByPageId)
+        .some((references) => references.length > 0),
+    }),
+    [
+      articleStoryboardAudioStrategy,
+      articleStoryboardCharacterReferencesByPageId,
+      articleStoryboardVoiceConfig.provider,
+    ],
+  );
+  const articleStoryboardVideoModelCapability = useMemo(
+    () => ({
+      provider: selectedVideoModelConfig?.provider,
+      modelId: selectedVideoModelId || "video-model",
+      accessible: Boolean(selectedVideoModelConfig || selectedVideoModelId),
+      supportsNativeAudio: /(?:veo|omni|seedance)/i.test(`${selectedVideoModelId} ${selectedVideoModelConfig?.name ?? ""}`),
+      supportedSpeechLanguages: ["th-TH", "en-US"],
+    }),
+    [selectedVideoModelConfig, selectedVideoModelId],
+  );
+  const articleStoryboardVoiceModelCapability = useMemo(
+    () => ({
+      provider: selectedAudioModelId.toLowerCase().includes("eleven")
+        ? "elevenlabs" as const
+        : "uvoice_premium" as const,
+      modelId: selectedAudioModelId || "uvoice-premium",
+      accessible: Boolean(selectedAudioModelConfig || selectedAudioModelId),
+      available: Boolean(selectedAudioModelConfig || selectedAudioModelId),
+      supportsDialogue: selectedAudioModelId.toLowerCase().includes("eleven"),
+    }),
+    [selectedAudioModelConfig, selectedAudioModelId],
+  );
+  const articleStoryboardAudioResolution = useMemo(
+    () => resolveArticleStoryboardAudioStrategy({
+      featureFlags: tenantFeatureFlags,
+      requiredFlags: articleStoryboardRequiredFlags,
+      videoModel: articleStoryboardVideoModelCapability,
+      voiceModel: articleStoryboardVoiceModelCapability,
+      requestedAudioStrategy: articleStoryboardAudioStrategy,
+      voiceConfig: articleStoryboardVoiceConfig,
+      spokenLanguage: detectedLanguage === "th" ? "th-TH" : "en-US",
+    }),
+    [
+      articleStoryboardAudioStrategy,
+      articleStoryboardRequiredFlags,
+      articleStoryboardVideoModelCapability,
+      articleStoryboardVoiceConfig,
+      articleStoryboardVoiceModelCapability,
+      detectedLanguage,
+      tenantFeatureFlags,
+    ],
+  );
+  const articleStoryboardVoiceScript = useMemo(
+    () => buildArticleStorytellingVoiceScript({
+      shots: articleStoryboardShotPlans,
+      voiceConfig: articleStoryboardVoiceConfig,
+      language: detectedLanguage === "th" ? "th-TH" : "en-US",
+    }),
+    [articleStoryboardShotPlans, articleStoryboardVoiceConfig, detectedLanguage],
+  );
+  const articleStoryboardScriptSegmentsByShotId = useMemo(() => {
+    const grouped: Record<string, typeof articleStoryboardVoiceScript.segments> = {};
+    for (const segment of articleStoryboardVoiceScript.segments) {
+      grouped[segment.shotId] = [...(grouped[segment.shotId] ?? []), segment];
+    }
+    return grouped;
+  }, [articleStoryboardVoiceScript.segments]);
+  const articleStoryboardGeneratedImagePromptByShotId = useMemo(
+    () => Object.fromEntries(
+      articleStoryboardShotPlans.map((shot) => [shot.id, buildArticleStoryboardReferenceCandidatePrompt(shot)]),
+    ),
+    [articleStoryboardShotPlans],
+  );
+  const articleStoryboardGeneratedVideoPromptByShotId = useMemo(
+    () => Object.fromEntries(
+      articleStoryboardShotPlans.map((shot) => [
+        shot.id,
+        buildArticleStoryboardSeedancePromptText({
+          shot,
+          audioResolution: articleStoryboardAudioResolution,
+          scriptSegments: articleStoryboardScriptSegmentsByShotId[shot.id] ?? [],
+        }),
+      ]),
+    ),
+    [
+      articleStoryboardAudioResolution,
+      articleStoryboardScriptSegmentsByShotId,
+      articleStoryboardShotPlans,
+    ],
+  );
+  const articleStoryboardEffectiveImagePromptByShotId = useMemo(
+    () => Object.fromEntries(
+      articleStoryboardShotPlans.map((shot) => [
+        shot.id,
+        articleStoryboardImagePromptOverridesByShotId[shot.id]?.trim()
+          || articleStoryboardGeneratedImagePromptByShotId[shot.id]
+          || "",
+      ]),
+    ),
+    [
+      articleStoryboardGeneratedImagePromptByShotId,
+      articleStoryboardImagePromptOverridesByShotId,
+      articleStoryboardShotPlans,
+    ],
+  );
+  const articleStoryboardEffectiveVideoPromptOverridesByShotId = useMemo(
+    () => Object.fromEntries(
+      Object.entries(articleStoryboardVideoPromptOverridesByShotId)
+        .map(([shotId, prompt]) => [shotId, prompt.trim()] as const)
+        .filter(([, prompt]) => prompt.length > 0),
+    ),
+    [articleStoryboardVideoPromptOverridesByShotId],
+  );
+  const articleStoryboardHasEmptyPromptOverride = useMemo(
+    () => articleStoryboardShotPlans.some((shot) => {
+      const hasImageOverride = Object.prototype.hasOwnProperty.call(
+        articleStoryboardImagePromptOverridesByShotId,
+        shot.id,
+      );
+      const hasVideoOverride = Object.prototype.hasOwnProperty.call(
+        articleStoryboardVideoPromptOverridesByShotId,
+        shot.id,
+      );
+      return (
+        (hasImageOverride && !articleStoryboardImagePromptOverridesByShotId[shot.id]?.trim())
+        || (hasVideoOverride && !articleStoryboardVideoPromptOverridesByShotId[shot.id]?.trim())
+      );
+    }),
+    [
+      articleStoryboardImagePromptOverridesByShotId,
+      articleStoryboardShotPlans,
+      articleStoryboardVideoPromptOverridesByShotId,
+    ],
+  );
+  const articleStoryboardNeedsPagePlan = Boolean(
+    isArticleStoryboardVideoMode
+    && article.trim()
+    && (!preparedBundle || bundleNeedsRefresh),
+  );
+  const articleStoryboardPreview = useMemo(
+    () => buildArticleStoryboardVideoPreview(articleStoryboardShotPlans, {
+      featureFlags: tenantFeatureFlags,
+      requiredFlags: articleStoryboardRequiredFlags,
+      videoModel: articleStoryboardVideoModelCapability,
+      voiceModel: articleStoryboardVoiceModelCapability,
+      requestedAudioStrategy: articleStoryboardAudioStrategy,
+      voiceConfig: articleStoryboardVoiceConfig,
+      spokenLanguage: detectedLanguage === "th" ? "th-TH" : "en-US",
+      requiredSkills: articleStoryboardRequiredSkills,
+      creditEstimateAvailable: true,
+    }),
+    [
+      articleStoryboardAudioStrategy,
+      articleStoryboardRequiredFlags,
+      articleStoryboardRequiredSkills,
+      articleStoryboardShotPlans,
+      articleStoryboardVideoModelCapability,
+      articleStoryboardVoiceConfig,
+      articleStoryboardVoiceModelCapability,
+      detectedLanguage,
+      tenantFeatureFlags,
+    ],
+  );
+  const articleStoryboardActiveReferenceShot = useMemo(
+    () => articleStoryboardPreview.shots.find((shot) => shot.id === articleStoryboardActiveReferenceShotId)
+      ?? articleStoryboardPreview.shots[0]
+      ?? null,
+    [articleStoryboardActiveReferenceShotId, articleStoryboardPreview.shots],
+  );
+  const handleCreateArticleStoryboardReviewProject = (options?: { focusShotId?: string }) => {
+    if (articleStoryboardNeedsPagePlan) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardPagePlanRequired"));
+      return;
+    }
+    if (!articleStoryboardPreview.accessDecision.allowed) {
+      toast.error(articleStoryboardPreview.accessDecision.message);
+      return;
+    }
+    if (articleStoryboardHasEmptyPromptOverride) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardPromptRequired"));
+      return;
+    }
+    const audioResolution = articleStoryboardAudioResolution;
+    if (!audioResolution.resolved) {
+      toast.error(audioResolution.message);
+      return;
+    }
+    const voiceScript = articleStoryboardVoiceScript;
+    const sourceDraftId = buildArticleStoryboardSourceDraftId({
+      deckId,
+      topic,
+      aspectRatio: canvasRatio,
+      videoModelId: selectedVideoModelId || "video-model",
+      audioStrategy: audioResolution.resolved ?? audioResolution.requested,
+      voiceConfig: articleStoryboardVoiceConfig,
+      shots: articleStoryboardShotPlans,
+      imagePromptByShotId: articleStoryboardEffectiveImagePromptByShotId,
+      videoPromptOverridesByShotId: articleStoryboardEffectiveVideoPromptOverridesByShotId,
+    });
+    const existingDraft = readStoryboardReviewDraft();
+    if (isDuplicateArticleStoryboardVideoHandoff(existingDraft, sourceDraftId)) {
+      if (options?.focusShotId && Array.isArray(existingDraft?.tasks)) {
+        const focusedTask = existingDraft.tasks.find((task) => {
+          const extraParams = task.storyboardContext?.extraParams as Record<string, unknown> | undefined;
+          return extraParams?.shotId === options.focusShotId ||
+            (extraParams?.articleStoryboardVideo as { shotId?: string } | undefined)?.shotId === options.focusShotId;
+        });
+        if (focusedTask?.id) {
+          writeStoryboardReviewDraft({
+            ...existingDraft,
+            selectedTaskIds: [focusedTask.id],
+            updatedAt: Date.now(),
+          } as Parameters<typeof writeStoryboardReviewDraft>[0]);
+        }
+      }
+      toast.success(t("dialog.articleBuilder.articleStoryboardOpenExistingProject"));
+      window.location.assign("/storyboard-review?source=presentation-article-video");
+      return;
+    }
+    const draft = buildArticleStoryboardReviewDraft({
+      sourceDraftId,
+      projectName: topic.trim() || "Article video project",
+      aspectRatio: canvasRatio,
+      videoModelId: selectedVideoModelId || "video-model",
+      videoProvider: selectedVideoModelConfig?.provider,
+      audioResolution,
+      voiceConfig: articleStoryboardVoiceConfig,
+      shots: articleStoryboardShotPlans,
+      scriptSegments: voiceScript.segments,
+      imagePromptByShotId: articleStoryboardEffectiveImagePromptByShotId,
+      videoPromptOverridesByShotId: articleStoryboardEffectiveVideoPromptOverridesByShotId,
+    });
+    const focusedTask = options?.focusShotId
+      ? draft.tasks.find((task) => {
+          const extraParams = task.storyboardContext?.extraParams as Record<string, unknown> | undefined;
+          return extraParams?.shotId === options.focusShotId ||
+            (extraParams?.articleStoryboardVideo as { shotId?: string } | undefined)?.shotId === options.focusShotId;
+        })
+      : null;
+    writeStoryboardReviewDraft({
+      ...draft,
+      selectedTaskIds: focusedTask?.id ? [focusedTask.id] : draft.selectedTaskIds,
+    } as Parameters<typeof writeStoryboardReviewDraft>[0]);
+    toast.success(t("dialog.articleBuilder.articleStoryboardCreateSuccess"));
+    window.location.assign("/storyboard-review?source=presentation-article-video");
+  };
   const articleStepStatus = useMemo<WizardStepStatus>(() => {
     if (generateArticleMutation.isPending) {
       return "running";
@@ -2853,26 +3502,26 @@ export function PresentationArticleGeneratorDialog({
     if (prepareSlideBundleMutation.isPending) {
       return "running";
     }
-    if (bundleNeedsRefreshAfterSkillChange) {
+    if (bundleNeedsRefresh) {
       return "stale";
     }
     if (preparedBundle) {
       return "done";
     }
     return article.trim() ? "ready" : "idle";
-  }, [article, bundleNeedsRefreshAfterSkillChange, prepareSlideBundleMutation.isPending, preparedBundle]);
+  }, [article, bundleNeedsRefresh, prepareSlideBundleMutation.isPending, preparedBundle]);
   const imageStepStatus = useMemo<WizardStepStatus>(() => {
     if (isGeneratingImages || generateImageAsyncMutation.isPending) {
       return "running";
     }
-    if (bundleNeedsRefreshAfterSkillChange) {
+    if (bundleNeedsRefresh) {
       return "stale";
     }
     if (preparedBundle && generatedImagesAreCurrentForBundle) {
       return "done";
     }
     return preparedBundle ? "ready" : "idle";
-  }, [bundleNeedsRefreshAfterSkillChange, generateImageAsyncMutation.isPending, generatedImagesAreCurrentForBundle, isGeneratingImages, preparedBundle]);
+  }, [bundleNeedsRefresh, generateImageAsyncMutation.isPending, generatedImagesAreCurrentForBundle, isGeneratingImages, preparedBundle]);
   const availableSlideArtifacts = useMemo(
     () => (generatedSlideDraft?.artifacts ?? []).map(normalizeSlideArtifact).filter((artifact): artifact is SlideArtifact => Boolean(artifact)),
     [generatedSlideDraft?.artifacts],
@@ -3141,19 +3790,19 @@ export function PresentationArticleGeneratorDialog({
     if (generateSlideDraftMutation.isPending) {
       return "running";
     }
-    if (bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange) {
+    if (bundleNeedsRefresh || slideDraftNeedsRefreshAfterSkillChange) {
       return "stale";
     }
     if (hasImportableSlides) {
       return "done";
     }
     return preparedBundle ? "ready" : "idle";
-  }, [bundleNeedsRefreshAfterSkillChange, generateSlideDraftMutation.isPending, hasImportableSlides, preparedBundle, slideDraftNeedsRefreshAfterSkillChange]);
+  }, [bundleNeedsRefresh, generateSlideDraftMutation.isPending, hasImportableSlides, preparedBundle, slideDraftNeedsRefreshAfterSkillChange]);
   const slotAudioStepStatus = useMemo<WizardStepStatus>(() => {
     if (isGeneratingSlotAudio || generateAudioAsyncMutation.isPending) {
       return "running";
     }
-    if (bundleNeedsRefreshAfterSkillChange) {
+    if (bundleNeedsRefresh) {
       return "stale";
     }
     if (slotVideoCanvasRatioBlockedHint) {
@@ -3176,7 +3825,7 @@ export function PresentationArticleGeneratorDialog({
     return preflightSlotPlans.length > 0 ? "ready" : "idle";
   }, [
     audioGenerationMode,
-    bundleNeedsRefreshAfterSkillChange,
+    bundleNeedsRefresh,
     fullAudioTextChunks.length,
     generateAudioAsyncMutation.isPending,
     generatedFullAudioAssets.length,
@@ -3189,7 +3838,7 @@ export function PresentationArticleGeneratorDialog({
     if (isGeneratingSlotVideos || generateVideoAsyncMutation.isPending || executeSkillMutation.isPending) {
       return "running";
     }
-    if (bundleNeedsRefreshAfterSkillChange) {
+    if (bundleNeedsRefresh) {
       return "stale";
     }
     if (slotVideoCanvasRatioBlockedHint) {
@@ -3200,7 +3849,7 @@ export function PresentationArticleGeneratorDialog({
     }
     return normalizedGeneratedImages.length > 0 ? "ready" : "idle";
   }, [
-    bundleNeedsRefreshAfterSkillChange,
+    bundleNeedsRefresh,
     executeSkillMutation.isPending,
     generateVideoAsyncMutation.isPending,
     isGeneratingSlotVideos,
@@ -3209,14 +3858,18 @@ export function PresentationArticleGeneratorDialog({
     slotVideoImportAssets.length,
     slotVideoCanvasRatioBlockedHint,
   ]);
-  const bundleRefreshHint = bundleNeedsRefreshAfterSkillChange
-    ? "เปลี่ยน slide skill แล้ว Bundle เดิมไม่ตรงกับ skill ปัจจุบัน กรุณา Prepare Bundle ใหม่"
-    : null;
-  const imageRefreshHint = bundleNeedsRefreshAfterSkillChange
+  const bundleRefreshHint = bundleNeedsRefreshAfterArticleChange
+    ? (isArticleStoryboardVideoMode
+        ? t("dialog.articleBuilder.articleStoryboardPagePlannerArticleChanged")
+        : "บทความเปลี่ยนแล้ว Bundle เดิมไม่ตรงกับบทความปัจจุบัน กรุณา Prepare Bundle ใหม่")
+    : bundleNeedsRefreshAfterSkillChange
+      ? "เปลี่ยน slide skill แล้ว Bundle เดิมไม่ตรงกับ skill ปัจจุบัน กรุณา Prepare Bundle ใหม่"
+      : null;
+  const imageRefreshHint = bundleNeedsRefresh
     ? "รูปเดิมจะ reuse ได้เท่าที่ slot ยังตรงกัน แต่ควร Prepare Bundle ใหม่ก่อน"
     : null;
-  const slideRefreshHint = bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange
-    ? "Slide JSON เดิมมาจาก skill ก่อนหน้า กรุณา Generate Slide JSON ใหม่ก่อนนำเข้า"
+  const slideRefreshHint = bundleNeedsRefresh || slideDraftNeedsRefreshAfterSkillChange
+    ? "Slide JSON เดิมไม่ตรงกับ source ล่าสุด กรุณา Generate Slide JSON ใหม่ก่อนนำเข้า"
     : null;
   const slotAudioBlockedHint = slotVideoCanvasRatioBlockedHint
     ?? (preflightSlotPlans.length === 0
@@ -3251,13 +3904,15 @@ export function PresentationArticleGeneratorDialog({
     && slotVideoImportAssets.length > 0
     && !isGeneratingSlotVideos
     && !generateVideoAsyncMutation.isPending;
-  const guidedWorkflowMessage = guidedWorkflowStep === 2
-    ? "Recommended next step: Refresh bundle เพื่อให้ layout plan และ payload ตรงกับ slide skill ใหม่"
-    : guidedWorkflowStep === 4
-      ? "Recommended next step: Generate Slide JSON ใหม่จาก bundle ล่าสุดก่อนนำเข้า"
-      : guidedFooterAction === "insert"
-        ? "Recommended next step: Insert Slides เพื่อใช้งานผลลัพธ์ล่าสุดใน Presentation Editor"
-        : null;
+  const guidedWorkflowMessage = isArticleStoryboardVideoMode
+    ? null
+    : guidedWorkflowStep === 2
+      ? "Recommended next step: Refresh bundle เพื่อให้ layout plan และ payload ตรงกับ slide skill ใหม่"
+      : guidedWorkflowStep === 4
+        ? "Recommended next step: Generate Slide JSON ใหม่จาก bundle ล่าสุดก่อนนำเข้า"
+        : guidedFooterAction === "insert"
+          ? "Recommended next step: Insert Slides เพื่อใช้งานผลลัพธ์ล่าสุดใน Presentation Editor"
+          : null;
   useEffect(() => {
     if (!open) {
       return;
@@ -3530,6 +4185,7 @@ export function PresentationArticleGeneratorDialog({
     }
     setCanvasRatio(supportedCanvasRatioIds[0] ?? "16:9");
     setGeneratedImages([]);
+    setArticleStoryboardReferenceHistoryAssets([]);
     setImagePromptOverrides({});
     setEditingPromptSlotKey(null);
     setPromptEditDraft("");
@@ -3565,9 +4221,7 @@ export function PresentationArticleGeneratorDialog({
       setTargetImageCount(clampImageCount(persistedDraft.targetImageCount));
       setImageModel(persistedDraft.imageModel);
       setCanvasRatio(normalizeCanvasRatio(persistedDraft.canvasRatio));
-      const restoredSlideVisualMode: SlideVisualMode = persistedDraft.slideVisualMode === "full-slide-image"
-        ? "full-slide-image"
-        : "editable";
+      const restoredSlideVisualMode = normalizeSlideVisualMode(persistedDraft.slideVisualMode);
       setSlideVisualMode(restoredSlideVisualMode);
       setFullSlideImageStyleId(normalizeFullSlideImageStyleId(persistedDraft.fullSlideImageStyleId));
       setAdvancedMediaOptionsEnabled(Boolean(persistedDraft.advancedMediaOptionsEnabled));
@@ -3616,12 +4270,47 @@ export function PresentationArticleGeneratorDialog({
       setAudioModelExtraParams(persistedDraft.audioModelExtraParams ?? {});
       setVideoModelId(persistedDraft.videoModelId ?? "");
       setVideoModelExtraParams(persistedDraft.videoModelExtraParams ?? {});
-      setVideoPromptSkillId("");
+      setVideoPromptSkillId(persistedDraft.videoPromptSkillId ?? "");
       setVideoDurationSeconds(Number.isFinite(persistedDraft.videoDurationSeconds)
         ? Math.max(1, Math.min(60, Math.round(persistedDraft.videoDurationSeconds ?? 5)))
         : 5);
       setVideoDisableSpeech(persistedDraft.videoDisableSpeech !== false);
       setVideoDisableSoundtrack(persistedDraft.videoDisableSoundtrack !== false);
+      setArticleStoryboardAudioStrategy(
+        persistedDraft.articleStoryboardAudioStrategy === "native_video_audio"
+          ? "native_video_audio"
+          : "separate_tts_voiceover",
+      );
+      setArticleStoryboardVoiceMode(
+        persistedDraft.articleStoryboardVoiceMode === "two_speaker_dialogue"
+          ? "two_speaker_dialogue"
+          : "single_narrator",
+      );
+      setArticleStoryboardPrimaryVoiceId(
+        typeof persistedDraft.articleStoryboardPrimaryVoiceId === "string" && persistedDraft.articleStoryboardPrimaryVoiceId.trim()
+          ? persistedDraft.articleStoryboardPrimaryVoiceId.trim()
+          : "TH-KantapongPremiumHD",
+      );
+      setArticleStoryboardSecondaryVoiceId(
+        typeof persistedDraft.articleStoryboardSecondaryVoiceId === "string" && persistedDraft.articleStoryboardSecondaryVoiceId.trim()
+          ? persistedDraft.articleStoryboardSecondaryVoiceId.trim()
+          : "TH-FemaleVoiceID",
+      );
+      setArticleStoryboardSceneReferenceUrlsByPageId(
+        normalizeStringArrayRecord(persistedDraft.articleStoryboardSceneReferenceUrlsByPageId, 5),
+      );
+      setArticleStoryboardCharacterReferenceUrlsByPageId(
+        normalizeStringArrayRecord(persistedDraft.articleStoryboardCharacterReferenceUrlsByPageId, 3),
+      );
+      setArticleStoryboardReferenceHistoryAssets(
+        normalizeArticleStoryboardReferenceHistoryAssets(persistedDraft.articleStoryboardReferenceHistoryAssets),
+      );
+      setArticleStoryboardImagePromptOverridesByShotId(
+        normalizeStringRecord(persistedDraft.articleStoryboardImagePromptOverridesByShotId),
+      );
+      setArticleStoryboardVideoPromptOverridesByShotId(
+        normalizeStringRecord(persistedDraft.articleStoryboardVideoPromptOverridesByShotId),
+      );
       setGeneratedSlideDraft(persistedDraft.generatedSlideDraft);
       setGeneratedSlideDraftSkillId(
         persistedDraft.generatedSlideDraft
@@ -3697,6 +4386,15 @@ export function PresentationArticleGeneratorDialog({
     setVideoDurationSeconds(5);
     setVideoDisableSpeech(true);
     setVideoDisableSoundtrack(true);
+    setArticleStoryboardAudioStrategy("separate_tts_voiceover");
+    setArticleStoryboardVoiceMode("single_narrator");
+    setArticleStoryboardPrimaryVoiceId("TH-KantapongPremiumHD");
+    setArticleStoryboardSecondaryVoiceId("TH-FemaleVoiceID");
+    setArticleStoryboardSceneReferenceUrlsByPageId({});
+    setArticleStoryboardCharacterReferenceUrlsByPageId({});
+    setArticleStoryboardReferenceHistoryAssets([]);
+    setArticleStoryboardImagePromptOverridesByShotId({});
+    setArticleStoryboardVideoPromptOverridesByShotId({});
     setGeneratedSlideDraft(null);
     setGeneratedSlideDraftSkillId("");
     setGeneratedSlideDraftSessionSource("empty");
@@ -3769,6 +4467,15 @@ export function PresentationArticleGeneratorDialog({
       videoDurationSeconds,
       videoDisableSpeech,
       videoDisableSoundtrack,
+      articleStoryboardAudioStrategy,
+      articleStoryboardVoiceMode,
+      articleStoryboardPrimaryVoiceId,
+      articleStoryboardSecondaryVoiceId,
+      articleStoryboardSceneReferenceUrlsByPageId,
+      articleStoryboardCharacterReferenceUrlsByPageId,
+      articleStoryboardReferenceHistoryAssets,
+      articleStoryboardImagePromptOverridesByShotId,
+      articleStoryboardVideoPromptOverridesByShotId,
       generatedSlideDraft,
       generatedSlideDraftSkillId,
       slidePayloadEditorJson,
@@ -3779,6 +4486,15 @@ export function PresentationArticleGeneratorDialog({
     agencyId,
     agencyName,
     article,
+    articleStoryboardAudioStrategy,
+    articleStoryboardCharacterReferenceUrlsByPageId,
+    articleStoryboardImagePromptOverridesByShotId,
+    articleStoryboardPrimaryVoiceId,
+    articleStoryboardReferenceHistoryAssets,
+    articleStoryboardSceneReferenceUrlsByPageId,
+    articleStoryboardSecondaryVoiceId,
+    articleStoryboardVideoPromptOverridesByShotId,
+    articleStoryboardVoiceMode,
     audioGenerationMode,
     audioModelExtraParams,
     audioModelId,
@@ -4126,10 +4842,14 @@ export function PresentationArticleGeneratorDialog({
         normalizeSlidePayloadJson(preparedBundle?.slidePayloadJson, normalizeSlidePayloadJson(slidePayloadEditorJson)),
       );
       const rewrittenArticle = typeof result.article === "string" ? result.article.trim() : "";
+      const preparedArticleSnapshot = rewrittenArticle || trimmedArticle;
       if (rewrittenArticle && rewrittenArticle !== trimmedArticle) {
         setArticle(rewrittenArticle);
       }
-      setPreparedBundle(result);
+      setPreparedBundle({
+        ...result,
+        article: preparedArticleSnapshot,
+      });
       setPreparedBundleSkillId(generationPlan.slideSkillId);
       setSlidePayloadEditorJson(nextPayloadJson);
       setSlidePayloadEditorDirty(false);
@@ -4139,6 +4859,10 @@ export function PresentationArticleGeneratorDialog({
       setImagePromptOverrides({});
       setEditingPromptSlotKey(null);
       setPromptEditDraft("");
+      if (isArticleStoryboardVideoMode) {
+        setArticleStoryboardArticleCollapsed(true);
+        setArticleStoryboardActiveReferenceShotId(null);
+      }
       setGuidedWorkflowStep(4);
       setGuidedFooterAction(null);
       if (result.slidePayloadJson && nextPayloadJson !== result.slidePayloadJson.trim()) {
@@ -4873,6 +5597,427 @@ export function PresentationArticleGeneratorDialog({
       toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateImagesError")));
     } finally {
       setIsGeneratingImages(false);
+      setImageGenerationProgress("");
+    }
+  };
+
+  const buildArticleStoryboardReferencePromptPlan = (
+    shot: typeof articleStoryboardShotPlans[number],
+  ): PreparedImagePrompt => ({
+    id: `article-storyboard-reference-${shot.id}`,
+    pageNumber: shot.pageNumber,
+    imageIndex: 1,
+    placementRole: "hero",
+    shortLabel: `Shot ${shot.pageNumber} 3x3 reference`,
+    prompt: articleStoryboardEffectiveImagePromptByShotId[shot.id] ?? buildArticleStoryboardReferenceCandidatePrompt(shot),
+  });
+
+  const getArticleStoryboardReferenceGenerationUrls = (
+    shot: typeof articleStoryboardShotPlans[number] | undefined,
+  ): string[] => {
+    if (!shot) {
+      return [];
+    }
+    const urls = [
+      ...shot.characterReferenceImages.map((reference) => reference.url),
+      ...shot.selectedReferenceImages.map((reference) => reference.url),
+    ]
+      .map(normalizeReferenceImageUrl)
+      .filter(Boolean);
+    return Array.from(new Set(urls)).slice(0, 5);
+  };
+
+  const getArticleStoryboardShotForReferencePrompt = (
+    promptPlan: PreparedImagePrompt,
+  ): typeof articleStoryboardShotPlans[number] | undefined => (
+    articleStoryboardShotPlans.find((shot) => (
+      promptPlan.id === `article-storyboard-reference-${shot.id}`
+      || promptPlan.pageNumber === shot.pageNumber
+    ))
+  );
+
+  const startArticleStoryboardReferenceDrag = (
+    event: DragEvent<HTMLElement>,
+    asset: ArticleStoryboardReferenceHistoryAsset,
+  ) => {
+    const safeTitle = asset.label.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+    const filename = `${safeTitle || "article-storyboard-reference"}.jpg`;
+    const url = normalizeReferenceImageUrl(asset.url);
+    const storageKey = url.startsWith("data:image/")
+      ? `smartaihub:storyboard-drag-image:${Date.now()}:${Math.random().toString(36).slice(2)}`
+      : "";
+    if (storageKey) {
+      try {
+        window.sessionStorage.setItem(storageKey, JSON.stringify({
+          mediaType: "image",
+          url,
+          title: asset.label,
+          filename,
+          createdAt: Date.now(),
+        }));
+      } catch {
+        // Continue with inline drag payloads when sessionStorage is unavailable.
+      }
+    }
+    const dragUrl = storageKey ? `storyboard-drag:${storageKey}` : url;
+    const setDragData = (type: string, value: string) => {
+      try {
+        event.dataTransfer.setData(type, value);
+      } catch {
+        // Some browsers reject large data URLs for standard drag payload types.
+      }
+    };
+    event.dataTransfer.effectAllowed = "copy";
+    setDragData("text/uri-list", dragUrl);
+    setDragData("text/plain", dragUrl);
+    setDragData("application/x-smartspec-storyboard-image", JSON.stringify({
+      mediaType: "image",
+      url: storageKey ? undefined : url,
+      storageKey: storageKey || undefined,
+      title: asset.label,
+      filename,
+    }));
+    setDragData("application/x-smartspec-media-url", dragUrl);
+    setDragData("application/x-smartspec-media-type", "image");
+    setDragData("text/x-smartspec-media-type", "image");
+    setDragData("DownloadURL", `image/jpeg:${filename}:${dragUrl}`);
+  };
+
+  const resolveArticleStoryboardDraggedReferenceUrl = (event: DragEvent<HTMLElement>): string => {
+    const readStoredUrl = (storageKey: string): string => {
+      try {
+        const parsed = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "{}") as { mediaType?: string; url?: string };
+        return parsed.mediaType === "image" ? normalizeReferenceImageUrl(parsed.url) : "";
+      } catch {
+        return "";
+      }
+    };
+    const storyboardPayload = event.dataTransfer.getData("application/x-smartspec-storyboard-image");
+    if (storyboardPayload) {
+      try {
+        const parsed = JSON.parse(storyboardPayload) as { mediaType?: string; storageKey?: string; url?: string };
+        if (parsed.mediaType && parsed.mediaType !== "image") {
+          return "";
+        }
+        if (parsed.storageKey) {
+          const storedUrl = readStoredUrl(parsed.storageKey);
+          if (storedUrl) {
+            return storedUrl;
+          }
+        }
+        const payloadUrl = normalizeReferenceImageUrl(parsed.url);
+        if (payloadUrl) {
+          return payloadUrl;
+        }
+      } catch {
+        // Fall through to standard drag payloads.
+      }
+    }
+    const mediaType = event.dataTransfer.getData("application/x-smartspec-media-type")
+      || event.dataTransfer.getData("text/x-smartspec-media-type");
+    if (mediaType && mediaType !== "image") {
+      return "";
+    }
+    const rawUrl = event.dataTransfer.getData("application/x-smartspec-media-url")
+      || event.dataTransfer.getData("text/uri-list")
+      || event.dataTransfer.getData("text/plain");
+    if (rawUrl.startsWith("storyboard-drag:")) {
+      return readStoredUrl(rawUrl.replace(/^storyboard-drag:/, ""));
+    }
+    return normalizeReferenceImageUrl(rawUrl);
+  };
+
+  const addArticleStoryboardReferenceToShot = (
+    shot: typeof articleStoryboardShotPlans[number],
+    url: string,
+  ) => {
+    const normalizedUrl = normalizeReferenceImageUrl(url);
+    if (!normalizedUrl) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardReferenceDropInvalid"));
+      return;
+    }
+    const pageId = shot.pageId;
+    setArticleStoryboardSceneReferenceUrlsByPageId((current) => {
+      const currentUrls = Object.prototype.hasOwnProperty.call(current, pageId)
+        ? current[pageId] ?? []
+        : (articleStoryboardAutoSceneReferencesByPageId[pageId] ?? []).map((reference) => reference.url);
+      const reusableUrls = currentUrls.filter((candidate) => candidate !== normalizedUrl);
+      const nextUrls = reusableUrls.length >= 5
+        ? [...reusableUrls.slice(0, 4), normalizedUrl]
+        : [...reusableUrls, normalizedUrl];
+      return {
+        ...current,
+        [pageId]: nextUrls,
+      };
+    });
+    toast.success(t("dialog.articleBuilder.articleStoryboardReferenceAdded", { number: shot.pageNumber }));
+  };
+
+  const handleSplitArticleStoryboardReference = async (asset: ArticleStoryboardReferenceHistoryAsset) => {
+    const url = normalizeReferenceImageUrl(asset.url);
+    if (!url) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardCutError"));
+      return;
+    }
+    setArticleStoryboardReferenceToolAssetId(`${asset.id}:split`);
+    try {
+      const results = await splitImage(url, 3, 3, "image/jpeg", 0.92);
+      const createdAt = new Date().toISOString();
+      const splitAssets = results.map((result): ArticleStoryboardReferenceHistoryAsset => ({
+        id: `split-${asset.id}-${result.index}-${Date.now()}`,
+        sourceUrl: url,
+        url: result.dataUrl,
+        label: `${asset.label} #${result.index}`,
+        pageNumber: asset.pageNumber,
+        shotId: asset.shotId,
+        kind: "split",
+        index: result.index,
+        canvasRatio,
+        prompt: asset.prompt,
+        createdAt,
+      }));
+      setArticleStoryboardReferenceHistoryAssets((previous) => [...splitAssets, ...previous].slice(0, 96));
+      toast.success(t("dialog.articleBuilder.articleStoryboardCutSuccess", { count: splitAssets.length }));
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("dialog.articleBuilder.articleStoryboardCutError")));
+    } finally {
+      setArticleStoryboardReferenceToolAssetId(null);
+    }
+  };
+
+  const handleCropArticleStoryboardReference = async (asset: ArticleStoryboardReferenceHistoryAsset) => {
+    const url = normalizeReferenceImageUrl(asset.url);
+    if (!url) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardCutError"));
+      return;
+    }
+    setArticleStoryboardReferenceToolAssetId(`${asset.id}:crop`);
+    try {
+      const result = await cropImageToAspect(url, canvasRatio, "image/jpeg", 0.92);
+      const createdAt = new Date().toISOString();
+      const cropAsset: ArticleStoryboardReferenceHistoryAsset = {
+        id: `crop-${asset.id}-${Date.now()}`,
+        sourceUrl: url,
+        url: result.dataUrl,
+        label: `${asset.label} ${canvasRatio}`,
+        pageNumber: asset.pageNumber,
+        shotId: asset.shotId,
+        kind: "crop",
+        canvasRatio,
+        prompt: asset.prompt,
+        createdAt,
+      };
+      setArticleStoryboardReferenceHistoryAssets((previous) => [cropAsset, ...previous].slice(0, 96));
+      toast.success(t("dialog.articleBuilder.articleStoryboardCropSuccess", { ratio: canvasRatio }));
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("dialog.articleBuilder.articleStoryboardCutError")));
+    } finally {
+      setArticleStoryboardReferenceToolAssetId(null);
+    }
+  };
+
+  const handleArticleStoryboardReferenceLibraryResizeMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    articleStoryboardReferenceLibraryResizeRef.current = {
+      startX: event.clientX,
+      startWidth: articleStoryboardReferenceLibraryWidth,
+    };
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const resizeState = articleStoryboardReferenceLibraryResizeRef.current;
+      if (!resizeState) return;
+      const maxWidth = Math.min(620, Math.max(360, Math.floor(window.innerWidth * 0.42)));
+      const nextWidth = resizeState.startWidth + (resizeState.startX - moveEvent.clientX);
+      setArticleStoryboardReferenceLibraryWidth(Math.min(maxWidth, Math.max(280, nextWidth)));
+    };
+    const handleMouseUp = () => {
+      articleStoryboardReferenceLibraryResizeRef.current = null;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  }, [articleStoryboardReferenceLibraryWidth]);
+
+  useEffect(() => () => {
+    articleStoryboardReferenceLibraryResizeRef.current = null;
+  }, []);
+
+  const handleGenerateArticleStoryboardReferenceImages = async (options?: {
+    focusShotId?: string;
+    repair?: boolean;
+  }) => {
+    if (articleStoryboardNeedsPagePlan) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardPagePlanRequired"));
+      return;
+    }
+    const shots = options?.focusShotId
+      ? articleStoryboardShotPlans.filter((shot) => shot.id === options.focusShotId)
+      : articleStoryboardShotPlans;
+    if (shots.length === 0) {
+      toast.error(t("dialog.articleBuilder.articleStoryboardShotWorkbenchEmpty"));
+      return;
+    }
+    const validationReferenceUrls = options?.focusShotId
+      ? getArticleStoryboardReferenceGenerationUrls(shots[0])
+      : shots.flatMap(getArticleStoryboardReferenceGenerationUrls).slice(0, 5);
+    const missingRequiredFields = getMissingRequiredModelFields(
+      selectedMediaModelFields,
+      {
+        extraParams: syncedMediaModelExtraParams,
+        prompt: "__auto_prompt__",
+        aspectRatio: canvasRatio,
+        referenceImageUrls: validationReferenceUrls,
+      },
+      {
+        treatPromptSyncAsAuto: true,
+      },
+    );
+    if (missingRequiredFields.length > 0) {
+      toast.error(`${t("dialog.articleBuilder.mediaFieldsRequired")}: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
+
+    const promptPlans = shots.map(buildArticleStoryboardReferencePromptPlan);
+    const existingAssetsForPrompts = normalizeGeneratedImagesForPrompts(promptPlans, generatedImages, canvasRatio);
+    const existingSlotKeys = new Set(existingAssetsForPrompts.map((asset) => getPreparedImageSlotKey(asset)));
+    const promptsToGenerate = promptPlans.filter((prompt) => (
+      options?.repair || !existingSlotKeys.has(getPreparedImageSlotKey(prompt))
+    ));
+
+    if (promptsToGenerate.length === 0) {
+      toast.info(t("dialog.articleBuilder.articleStoryboardReferencesAlreadyReady"));
+      return;
+    }
+
+    setIsGeneratingImages(true);
+    setArticleStoryboardReferenceGenerationShotId(options?.focusShotId ?? "__all__");
+    setImageGenerationProgress(`0/${promptsToGenerate.length}`);
+
+    try {
+      let completedCount = 0;
+      const generatedAssets: GeneratedImageAsset[] = [];
+      const generatePromptImage = async (promptPlan: PreparedImagePrompt): Promise<GeneratedImageAsset> => {
+        const promptShot = getArticleStoryboardShotForReferencePrompt(promptPlan);
+        const referenceImageUrls = getArticleStoryboardReferenceGenerationUrls(promptShot);
+        const extraParams = applyModelSyncTargets(
+          selectedImageModelConfig,
+          syncedMediaModelExtraParams,
+          {
+            prompt: promptPlan.prompt,
+            aspectRatio: canvasRatio,
+            referenceImageUrls,
+          },
+        );
+        const requestPayload = {
+          prompt: promptPlan.prompt,
+          model: imageModel.trim() || undefined,
+          aspectRatio: canvasRatio,
+          numImages: 1 as const,
+          ...(referenceImageUrls.length > 0 ? { referenceImageUrls } : {}),
+          ...(extraParams ? { extraParams } : {}),
+        };
+        let taskResult;
+        try {
+          taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+        } catch (initialError) {
+          const initialMessage = getErrorMessage(initialError, t("dialog.articleBuilder.generateImagesError"));
+          const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
+          const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
+          if (!isBurstAnomalyError || !retryAfterSeconds) {
+            throw initialError;
+          }
+          toast.info(`Rate limit reached, retrying in ${retryAfterSeconds}s...`);
+          await sleepMs((retryAfterSeconds + 1) * 1000);
+          taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+        }
+
+        let resultUrl = extractTaskResultUrl(taskResult);
+        let taskId = extractTaskId(taskResult);
+        if (!resultUrl) {
+          if (!taskId) {
+            throw new Error("Image generation started but task ID was not returned.");
+          }
+          try {
+            const terminalTask = await pollTaskUntilTerminal(
+              taskId,
+              async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+              { mediaLabel: "Image" },
+            );
+            resultUrl = extractTaskResultUrl(terminalTask);
+            taskId = extractTaskId(terminalTask) ?? taskId;
+          } catch (error) {
+            if (!(error instanceof TaskPollingTimeoutError)) {
+              throw error;
+            }
+            toast.info(t("dialog.articleBuilder.articleStoryboardReferenceStillProcessing", {
+              number: promptPlan.pageNumber,
+            }));
+            return {
+              ...promptPlan,
+              taskId: error.taskId,
+              status: "processing",
+              canvasRatio,
+              model: imageModel.trim() || undefined,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        }
+        if (!resultUrl) {
+          throw new Error("Image provider returned no URL");
+        }
+        return {
+          ...promptPlan,
+          taskId,
+          url: resultUrl,
+          status: "completed",
+          canvasRatio,
+          model: imageModel.trim() || undefined,
+          updatedAt: new Date().toISOString(),
+        };
+      };
+
+      for (const promptPlan of promptsToGenerate) {
+        const generatedAsset = await generatePromptImage(promptPlan);
+        generatedAssets.push(generatedAsset);
+        completedCount += 1;
+        setImageGenerationProgress(`${completedCount}/${promptsToGenerate.length}`);
+      }
+
+      const replacingPromptSlotKeys = new Set(
+        generatedAssets
+          .filter((asset) => Boolean(asset.url?.trim()) || asset.status === "failed")
+          .map((asset) => getPreparedImageSlotKey(asset)),
+      );
+      const generatedTaskIds = new Set(
+        generatedAssets
+          .map((asset) => asset.taskId?.trim())
+          .filter((taskId): taskId is string => Boolean(taskId)),
+      );
+      setGeneratedImages((previous) => [
+        ...previous.filter((asset) => (
+          !replacingPromptSlotKeys.has(getPreparedImageSlotKey(asset))
+          && (!asset.taskId || !generatedTaskIds.has(asset.taskId))
+        )),
+        ...generatedAssets,
+      ]);
+      const completedReferenceCount = generatedAssets.filter((asset) => Boolean(asset.url?.trim())).length;
+      if (completedReferenceCount >= promptsToGenerate.length) {
+        toast.success(options?.focusShotId
+          ? t("dialog.articleBuilder.articleStoryboardShotReferenceReady", {
+              number: shots[0]?.pageNumber ?? 1,
+            })
+          : t("dialog.articleBuilder.articleStoryboardAllReferencesReady"));
+      } else {
+        toast.info(t("dialog.articleBuilder.articleStoryboardReferencesProcessingSummary", {
+          completed: completedReferenceCount,
+          total: promptsToGenerate.length,
+        }));
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateImagesError")));
+    } finally {
+      setIsGeneratingImages(false);
+      setArticleStoryboardReferenceGenerationShotId(null);
       setImageGenerationProgress("");
     }
   };
@@ -5718,29 +6863,37 @@ export function PresentationArticleGeneratorDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-        <DialogContent className="h-[92vh] w-[96vw] max-w-[96vw] overflow-hidden p-0 sm:max-w-[96vw]">
+        <DialogContent className="h-[96dvh] w-[100dvw] max-w-none overflow-hidden rounded-none p-0 sm:h-[94vh] sm:w-[96vw] sm:max-w-[96vw] sm:rounded-lg xl:h-[92vh]">
           <div className="flex h-full flex-col">
-            <DialogHeader className="shrink-0 border-b px-6 pb-4 pt-6">
-              <DialogTitle className="flex items-center gap-2">
+            <DialogHeader className="shrink-0 border-b px-4 py-3 sm:px-6 sm:pb-4 sm:pt-6">
+              <DialogTitle className="flex min-w-0 items-center gap-2 text-base sm:text-lg">
                 <FileText className="h-4 w-4" />
-                {t("dialog.articleBuilder.title")}
+                <span className="truncate">
+                  {isArticleStoryboardVideoMode
+                    ? t("dialog.articleBuilder.articleStoryboardDialogTitle")
+                    : t("dialog.articleBuilder.title")}
+                </span>
               </DialogTitle>
-              <DialogDescription>
-                {t("dialog.articleBuilder.description")}
+              <DialogDescription className="line-clamp-2 text-xs sm:text-sm">
+                {isArticleStoryboardVideoMode
+                  ? t("dialog.articleBuilder.articleStoryboardDialogDescription")
+                  : t("dialog.articleBuilder.description")}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 lg:overflow-hidden">
-              <div className="grid gap-6 lg:grid-cols-[minmax(440px,520px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(500px,580px)_minmax(0,1fr)]">
-                <section className="min-h-0 lg:flex lg:h-[calc(92vh-13rem)] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:bg-background/60 lg:p-3">
-                  <div className="space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-6 sm:py-5 xl:overflow-hidden">
+              <div className="grid gap-4 xl:grid-cols-[minmax(440px,520px)_minmax(0,1fr)] xl:gap-6 2xl:grid-cols-[minmax(500px,580px)_minmax(0,1fr)]">
+                <section className="min-h-0 xl:flex xl:h-[calc(92vh-12.25rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden xl:rounded-2xl xl:border xl:bg-background/60 xl:p-3">
+                  <div className="space-y-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2">
                   <div className="space-y-2">
                     <Label htmlFor="presentation-article-topic">{t("dialog.articleBuilder.topicLabel")}</Label>
                     <Textarea
                       id="presentation-article-topic"
                       value={topic}
                       onChange={(event) => setTopic(event.target.value)}
-                      placeholder={t("dialog.articleBuilder.topicPlaceholder")}
+                      placeholder={isArticleStoryboardVideoMode
+                        ? t("dialog.articleBuilder.articleStoryboardTopicPlaceholder")
+                        : t("dialog.articleBuilder.topicPlaceholder")}
                       rows={5}
                     />
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -5818,14 +6971,26 @@ export function PresentationArticleGeneratorDialog({
 
                   <fieldset className="space-y-3 rounded-xl border p-4">
                     <legend className="flex items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                      <Images className="h-3.5 w-3.5 text-teal-500" />
-                      {t("dialog.articleBuilder.mediaOutputLegend")}
+                      {isArticleStoryboardVideoMode ? (
+                        <Video className="h-3.5 w-3.5 text-sky-500" />
+                      ) : (
+                        <Images className="h-3.5 w-3.5 text-teal-500" />
+                      )}
+                      {isArticleStoryboardVideoMode
+                        ? t("dialog.articleBuilder.articleStoryboardSetupLegend")
+                        : t("dialog.articleBuilder.mediaOutputLegend")}
                     </legend>
 
                     <div className="space-y-1.5">
-                      <Label>{t("dialog.articleBuilder.mediaModelLabel")}</Label>
+                      <Label>
+                        {isArticleStoryboardVideoMode
+                          ? t("dialog.articleBuilder.articleStoryboardReferenceImageModelLabel")
+                          : t("dialog.articleBuilder.mediaModelLabel")}
+                      </Label>
                       <p className="text-xs text-muted-foreground">
-                        {t("dialog.articleBuilder.mediaModelHint")}
+                        {isArticleStoryboardVideoMode
+                          ? t("dialog.articleBuilder.articleStoryboardReferenceImageModelHint")
+                          : t("dialog.articleBuilder.mediaModelHint")}
                       </p>
                       <ImageModelCombobox
                         value={imageModel}
@@ -5834,41 +6999,71 @@ export function PresentationArticleGeneratorDialog({
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label>{t("dialog.articleBuilder.slideVisualModeLabel")}</Label>
-                      <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("dialog.articleBuilder.slideVisualModeLabel")}>
-                        {(["editable", "full-slide-image"] as SlideVisualMode[]).map((mode) => (
-                          <Button
-                            key={mode}
-                            type="button"
-                            variant={slideVisualMode === mode ? "default" : "outline"}
-                            size="sm"
-                            aria-pressed={slideVisualMode === mode}
-                            onClick={() => {
-                              if (slideVisualMode === mode) {
-                                return;
-                              }
+	                    <div className="space-y-1.5">
+	                      <Label>
+	                        {isArticleStoryboardVideoMode
+	                          ? t("dialog.articleBuilder.articleStoryboardOutputTypeLabel")
+	                          : t("dialog.articleBuilder.slideVisualModeLabel")}
+	                      </Label>
+		                      <div
+		                        className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+		                        role="group"
+		                        aria-label={isArticleStoryboardVideoMode
+		                          ? t("dialog.articleBuilder.articleStoryboardOutputTypeLabel")
+		                          : t("dialog.articleBuilder.slideVisualModeLabel")}
+		                      >
+		                        {([
+		                          "editable",
+		                          "full-slide-image",
+		                          "article-storyboard-video",
+		                        ] as SlideVisualMode[]).map((mode) => (
+		                          <Button
+		                            key={mode}
+		                            type="button"
+		                            variant={slideVisualMode === mode ? "default" : "outline"}
+		                            size="sm"
+		                            disabled={mode === "article-storyboard-video" && !isArticleStoryboardVideoEnabled}
+	                            aria-pressed={slideVisualMode === mode}
+	                            onClick={() => {
+	                              if (mode === "article-storyboard-video" && !isArticleStoryboardVideoEnabled) {
+	                                return;
+	                              }
+	                              if (slideVisualMode === mode) {
+	                                return;
+	                              }
                               setSlideVisualMode(mode);
                               setGeneratedImages([]);
                               setImagePromptOverrides({});
+                              setArticleStoryboardImagePromptOverridesByShotId({});
+                              setArticleStoryboardVideoPromptOverridesByShotId({});
                               setEditingPromptSlotKey(null);
                               setPromptEditDraft("");
                               setGeneratedSlideDraft(null);
                               setGeneratedSlideDraftSkillId("");
                             }}
                           >
-                            {mode === "full-slide-image"
-                              ? t("dialog.articleBuilder.fullSlideImageMode")
-                              : t("dialog.articleBuilder.editableSlideMode")}
-                          </Button>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {slideVisualMode === "full-slide-image"
-                          ? t("dialog.articleBuilder.fullSlideImageModeHint")
-                          : t("dialog.articleBuilder.editableSlideModeHint")}
-                      </p>
-                    </div>
+		                            {mode === "article-storyboard-video"
+			                              ? (
+			                                isArticleStoryboardVideoEnabled
+			                                  ? t("dialog.articleBuilder.articleStoryboardVideoMode")
+			                                  : t("dialog.articleBuilder.articleStoryboardVideoModeLocked")
+			                              )
+		                              : mode === "full-slide-image"
+		                              ? t("dialog.articleBuilder.fullSlideImageMode")
+		                              : t("dialog.articleBuilder.editableSlideMode")}
+	                          </Button>
+	                        ))}
+	                      </div>
+	                      <p className="text-xs text-muted-foreground">
+		                        {!isArticleStoryboardVideoEnabled
+		                          ? t("dialog.articleBuilder.articleStoryboardVideoModeLockedHint")
+		                          : slideVisualMode === "article-storyboard-video"
+			                          ? t("dialog.articleBuilder.articleStoryboardVideoModeHint")
+		                          : slideVisualMode === "full-slide-image"
+		                          ? t("dialog.articleBuilder.fullSlideImageModeHint")
+	                          : t("dialog.articleBuilder.editableSlideModeHint")}
+	                      </p>
+	                    </div>
 
                     {isFullSlideImageMode ? (
                       <div className="space-y-1.5">
@@ -5907,8 +7102,8 @@ export function PresentationArticleGeneratorDialog({
                       </div>
                     ) : null}
 
-                    <div className="space-y-1.5">
-                      <Label htmlFor="presentation-article-aspect-ratio">{t("dialog.articleBuilder.aspectRatioLabel")}</Label>
+	                    <div className="space-y-1.5">
+	                      <Label htmlFor="presentation-article-aspect-ratio">{t("dialog.articleBuilder.aspectRatioLabel")}</Label>
                       <select
                         id="presentation-article-aspect-ratio"
                         aria-label={t("dialog.articleBuilder.aspectRatioLabel")}
@@ -5923,45 +7118,369 @@ export function PresentationArticleGeneratorDialog({
                         ))}
                       </select>
                       <p className="text-xs text-muted-foreground">
-                        {isFullSlideImageMode
-                          ? t("dialog.articleBuilder.fullSlideAspectRatioHint")
-                          : t("dialog.articleBuilder.aspectRatioHint")}
-                      </p>
-                    </div>
+	                        {isArticleStoryboardVideoMode
+	                          ? t("dialog.articleBuilder.articleStoryboardAspectRatioHint")
+	                          : isFullSlideImageMode
+	                            ? t("dialog.articleBuilder.fullSlideAspectRatioHint")
+	                            : t("dialog.articleBuilder.aspectRatioHint")}
+	                      </p>
+	                    </div>
 
-                    <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <Label className="text-sm">{t("dialog.articleBuilder.advancedMediaLabel")}</Label>
-                          <p className="text-xs text-muted-foreground">
-                            {t("dialog.articleBuilder.advancedMediaHint")}
-                          </p>
+	                    {isArticleStoryboardVideoMode ? (
+	                      <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/60 p-3">
+	                        <div className="flex items-start justify-between gap-3">
+	                          <div>
+	                            <div className="flex items-center gap-2 text-sm font-semibold text-sky-950">
+	                              <Video className="h-4 w-4" />
+		                              {t("dialog.articleBuilder.articleStoryboardTitle")}
+	                            </div>
+	                            <p className="mt-1 text-xs leading-5 text-sky-900/80">
+		                              {t("dialog.articleBuilder.articleStoryboardDescription", { count: articleStoryboardPreview.shots.length })}
+	                            </p>
+	                          </div>
+	                          <Badge variant={articleStoryboardPreview.accessDecision.allowed ? "default" : "outline"}>
+		                            {articleStoryboardPreview.accessDecision.allowed
+		                              ? t("dialog.articleBuilder.articleStoryboardReady")
+		                              : t("dialog.articleBuilder.articleStoryboardNeedsSetup")}
+	                          </Badge>
+	                        </div>
+
+	                        <div className="grid gap-2 text-xs sm:grid-cols-3">
+	                          <div className="rounded-md bg-background/80 p-2">
+		                            <div className="text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardShots")}</div>
+	                            <div className="font-semibold">{articleStoryboardPreview.shots.length}</div>
+	                          </div>
+	                          <div className="rounded-md bg-background/80 p-2">
+		                            <div className="text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardEstimatedDuration")}</div>
+	                            <div className="font-semibold">
+	                              {articleStoryboardPreview.shots.reduce((sum, shot) => sum + shot.durationSeconds, 0)}s
+	                            </div>
+	                          </div>
+	                          <div className="rounded-md bg-background/80 p-2">
+		                            <div className="text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardCreditsLater")}</div>
+	                            <div className="font-semibold">
+	                              {articleStoryboardPreview.creditBreakdown
+	                                .reduce((sum, item) => sum + (item.estimatedCredits ?? 0), 0)
+	                                .toFixed(2)}
+	                            </div>
+	                          </div>
+	                        </div>
+
+	                        <div className="grid gap-3 sm:grid-cols-2">
+	                          <div className="space-y-1.5">
+		                            <Label htmlFor="presentation-article-video-model">{t("dialog.articleBuilder.videoModelLabel")}</Label>
+	                            <select
+	                              id="presentation-article-video-model"
+	                              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+	                              value={selectedVideoModelId}
+	                              onChange={(event) => setVideoModelId(event.target.value)}
+	                            >
+	                              {videoModels.map((model) => (
+	                                <option key={model.id} value={model.id}>
+	                                  {model.name || model.id}
+	                                </option>
+	                              ))}
+		                              {videoModels.length === 0 ? <option value="">{t("dialog.articleBuilder.articleStoryboardNoVideoModel")}</option> : null}
+	                            </select>
+	                          </div>
+	                          <div className="space-y-1.5">
+		                            <Label htmlFor="presentation-article-audio-strategy">{t("dialog.articleBuilder.articleStoryboardAudioLabel")}</Label>
+	                            <select
+	                              id="presentation-article-audio-strategy"
+	                              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+	                              value={articleStoryboardAudioStrategy}
+	                              onChange={(event) => setArticleStoryboardAudioStrategy(event.target.value as ArticleStoryboardAudioStrategy)}
+	                            >
+		                              <option value="separate_tts_voiceover">{t("dialog.articleBuilder.articleStoryboardSeparateVoiceover")}</option>
+		                              <option value="native_video_audio">{t("dialog.articleBuilder.articleStoryboardNativeAudio")}</option>
+	                            </select>
+	                          </div>
+	                        </div>
+
+	                        {articleStoryboardAudioStrategy === "separate_tts_voiceover" ? (
+	                          <div className="grid gap-3 sm:grid-cols-2">
+	                            <div className="space-y-1.5">
+		                              <Label htmlFor="presentation-article-voice-model">{t("dialog.articleBuilder.articleStoryboardVoiceModelLabel")}</Label>
+	                              <select
+	                                id="presentation-article-voice-model"
+	                                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+	                                value={selectedAudioModelId}
+	                                onChange={(event) => setAudioModelId(event.target.value)}
+	                              >
+	                                {audioModels.map((model) => (
+	                                  <option key={model.id} value={model.id}>
+	                                    {model.name || model.id}
+	                                  </option>
+	                                ))}
+		                                {audioModels.length === 0 ? <option value="">{t("dialog.articleBuilder.articleStoryboardNoVoiceModel")}</option> : null}
+	                              </select>
+	                            </div>
+	                            <div className="space-y-1.5">
+		                              <Label htmlFor="presentation-article-voice-mode">{t("dialog.articleBuilder.articleStoryboardVoiceModeLabel")}</Label>
+	                              <select
+	                                id="presentation-article-voice-mode"
+	                                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+	                                value={articleStoryboardVoiceMode}
+	                                onChange={(event) => setArticleStoryboardVoiceMode(event.target.value as ArticleStoryboardVoiceMode)}
+	                              >
+		                                <option value="single_narrator">{t("dialog.articleBuilder.articleStoryboardOneNarrator")}</option>
+		                                <option value="two_speaker_dialogue">{t("dialog.articleBuilder.articleStoryboardTwoSpeakerDialogue")}</option>
+	                              </select>
+	                            </div>
+	                            <div className="space-y-1.5">
+		                              <Label htmlFor="presentation-article-primary-voice">{t("dialog.articleBuilder.articleStoryboardVoiceIdLabel")}</Label>
+	                              <Input
+	                                id="presentation-article-primary-voice"
+	                                value={articleStoryboardPrimaryVoiceId}
+	                                onChange={(event) => setArticleStoryboardPrimaryVoiceId(event.target.value)}
+	                              />
+	                            </div>
+	                            {articleStoryboardVoiceMode === "two_speaker_dialogue" ? (
+	                              <div className="space-y-1.5">
+		                                <Label htmlFor="presentation-article-secondary-voice">{t("dialog.articleBuilder.articleStoryboardSecondVoiceIdLabel")}</Label>
+	                                <Input
+	                                  id="presentation-article-secondary-voice"
+	                                  value={articleStoryboardSecondaryVoiceId}
+	                                  onChange={(event) => setArticleStoryboardSecondaryVoiceId(event.target.value)}
+	                                />
+	                              </div>
+	                            ) : null}
+	                          </div>
+	                        ) : (
+	                          <p className="rounded-md bg-background/80 p-2 text-xs leading-5 text-sky-900">
+		                            {t("dialog.articleBuilder.articleStoryboardNativeAudioHint")}
+	                          </p>
+	                        )}
+
+		                        <div className="space-y-2">
+			                          <div className="text-xs font-medium text-sky-950">{t("dialog.articleBuilder.articleStoryboardShotReview")}</div>
+		                          <div className="max-h-[34rem] space-y-2 overflow-y-auto pr-1">
+		                            {articleStoryboardPreview.shots.map((shot) => {
+		                              const imagePromptEdited = Object.prototype.hasOwnProperty.call(
+		                                articleStoryboardImagePromptOverridesByShotId,
+		                                shot.id,
+		                              );
+		                              const videoPromptEdited = Object.prototype.hasOwnProperty.call(
+		                                articleStoryboardVideoPromptOverridesByShotId,
+		                                shot.id,
+		                              );
+		                              const imagePromptEmpty = imagePromptEdited && !articleStoryboardImagePromptOverridesByShotId[shot.id]?.trim();
+		                              const videoPromptEmpty = videoPromptEdited && !articleStoryboardVideoPromptOverridesByShotId[shot.id]?.trim();
+		                              const imagePromptValue = imagePromptEdited
+		                                ? articleStoryboardImagePromptOverridesByShotId[shot.id] ?? ""
+		                                : articleStoryboardGeneratedImagePromptByShotId[shot.id] ?? "";
+		                              const videoPromptValue = videoPromptEdited
+		                                ? articleStoryboardVideoPromptOverridesByShotId[shot.id] ?? ""
+		                                : articleStoryboardGeneratedVideoPromptByShotId[shot.id] ?? "";
+		                              return (
+		                              <div key={shot.id} className="rounded-md bg-background/80 p-2 text-xs">
+			                                <div className="font-semibold">
+			                                  {t("dialog.articleBuilder.articleStoryboardShotLabel", { number: shot.pageNumber })}: {shot.overlay.headline}
+			                                </div>
+			                                <div className="text-muted-foreground">{shot.overlay.subtext || t("dialog.articleBuilder.articleStoryboardNoSubtext")}</div>
+		                                <div className="mt-2 grid gap-2">
+		                                  <div className="rounded-md border border-sky-100 bg-white/70 p-2">
+		                                    <div className="mb-1 flex items-center justify-between gap-2">
+		                                      <div className="text-[11px] font-medium text-sky-950">
+		                                        {t("dialog.articleBuilder.articleStoryboardImagePromptLabel")}
+		                                      </div>
+		                                      {imagePromptEdited ? (
+		                                        <Button
+		                                          type="button"
+		                                          variant="ghost"
+		                                          size="sm"
+		                                          className="h-7 px-2 text-[11px]"
+		                                          onClick={() => setArticleStoryboardImagePromptOverridesByShotId((current) => {
+		                                            const next = { ...current };
+		                                            delete next[shot.id];
+		                                            return next;
+		                                          })}
+		                                        >
+		                                          {t("dialog.articleBuilder.articleStoryboardPromptReset")}
+		                                        </Button>
+		                                      ) : null}
+		                                    </div>
+		                                    <Textarea
+		                                      value={imagePromptValue}
+		                                      rows={4}
+		                                      className={cn(
+		                                        "min-h-24 resize-y bg-background text-[11px] leading-4",
+		                                        imagePromptEmpty ? "border-destructive focus-visible:ring-destructive" : "",
+		                                      )}
+		                                      onChange={(event) => setArticleStoryboardImagePromptOverridesByShotId((current) => ({
+		                                        ...current,
+		                                        [shot.id]: event.target.value,
+		                                      }))}
+		                                    />
+		                                    <div className="mt-1 text-[11px] text-muted-foreground">
+		                                      {imagePromptEmpty
+		                                        ? t("dialog.articleBuilder.articleStoryboardPromptRequired")
+		                                        : t("dialog.articleBuilder.articleStoryboardImagePromptHelp")}
+		                                      {imagePromptEdited ? ` · ${t("dialog.articleBuilder.articleStoryboardPromptEdited")}` : ""}
+		                                    </div>
+		                                  </div>
+		                                  <div className="rounded-md border border-sky-100 bg-white/70 p-2">
+		                                    <div className="mb-1 flex items-center justify-between gap-2">
+		                                      <div className="text-[11px] font-medium text-sky-950">
+		                                        {t("dialog.articleBuilder.articleStoryboardVideoPromptLabel")}
+		                                      </div>
+		                                      {videoPromptEdited ? (
+		                                        <Button
+		                                          type="button"
+		                                          variant="ghost"
+		                                          size="sm"
+		                                          className="h-7 px-2 text-[11px]"
+		                                          onClick={() => setArticleStoryboardVideoPromptOverridesByShotId((current) => {
+		                                            const next = { ...current };
+		                                            delete next[shot.id];
+		                                            return next;
+		                                          })}
+		                                        >
+		                                          {t("dialog.articleBuilder.articleStoryboardPromptReset")}
+		                                        </Button>
+		                                      ) : null}
+		                                    </div>
+		                                    <Textarea
+		                                      value={videoPromptValue}
+		                                      rows={6}
+		                                      className={cn(
+		                                        "min-h-32 resize-y bg-background text-[11px] leading-4",
+		                                        videoPromptEmpty ? "border-destructive focus-visible:ring-destructive" : "",
+		                                      )}
+		                                      onChange={(event) => setArticleStoryboardVideoPromptOverridesByShotId((current) => ({
+		                                        ...current,
+		                                        [shot.id]: event.target.value,
+		                                      }))}
+		                                    />
+		                                    <div className="mt-1 text-[11px] text-muted-foreground">
+		                                      {videoPromptEmpty
+		                                        ? t("dialog.articleBuilder.articleStoryboardPromptRequired")
+		                                        : t("dialog.articleBuilder.articleStoryboardVideoPromptHelp")}
+		                                      {videoPromptEdited ? ` · ${t("dialog.articleBuilder.articleStoryboardPromptEdited")}` : ""}
+		                                    </div>
+		                                  </div>
+		                                </div>
+		                                <div className="mt-2 rounded-md border border-dashed border-sky-200 bg-sky-50/40 p-2">
+		                                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+			                                    <div className="text-[11px] font-medium text-sky-950">{t("dialog.articleBuilder.articleStoryboardSceneReferences")}</div>
+		                                    {Object.prototype.hasOwnProperty.call(articleStoryboardSceneReferenceUrlsByPageId, shot.pageId) ? (
+		                                      <Button
+		                                        type="button"
+		                                        variant="outline"
+		                                        size="sm"
+		                                        className="h-7 px-2 text-[11px]"
+		                                        onClick={() => setArticleStoryboardSceneReferenceUrlsByPageId((current) => {
+		                                          const next = { ...current };
+		                                          delete next[shot.pageId];
+		                                          return next;
+		                                        })}
+		                                      >
+			                                        {t("dialog.articleBuilder.articleStoryboardUseAuto3x3")}
+		                                      </Button>
+		                                    ) : null}
+		                                  </div>
+		                                  <ImageSourcePicker
+		                                    value={shot.selectedReferenceImages.map((reference) => reference.url)}
+		                                    maxImages={5}
+		                                    onChange={(urls) => setArticleStoryboardSceneReferenceUrlsByPageId((current) => ({
+		                                      ...current,
+		                                      [shot.pageId]: urls.slice(0, 5),
+		                                    }))}
+			                                    label={t("dialog.articleBuilder.articleStoryboardSelectedSceneReferences")}
+			                                    helpText={t("dialog.articleBuilder.articleStoryboardSceneReferencesHelp")}
+		                                    language={detectedLanguage === "th" ? "th" : "en"}
+		                                    disabled={!isArticleStoryboardVideoEnabled}
+		                                  />
+		                                </div>
+		                                <div className="mt-2 rounded-md border border-dashed border-sky-200 bg-sky-50/40 p-2">
+		                                  <ImageSourcePicker
+		                                    value={articleStoryboardCharacterReferenceUrlsByPageId[shot.pageId] ?? []}
+		                                    maxImages={3}
+		                                    onChange={(urls) => setArticleStoryboardCharacterReferenceUrlsByPageId((current) => ({
+		                                      ...current,
+		                                      [shot.pageId]: urls,
+		                                    }))}
+			                                    label={t("dialog.articleBuilder.articleStoryboardCharacterReferences")}
+			                                    helpText={t("dialog.articleBuilder.articleStoryboardCharacterReferencesHelp")}
+		                                    language={detectedLanguage === "th" ? "th" : "en"}
+		                                    disabled={!isArticleStoryboardVideoEnabled}
+		                                  />
+		                                </div>
+		                                <div className="mt-1 text-[11px] text-muted-foreground">
+			                                  {t("dialog.articleBuilder.articleStoryboardReferenceCounts", {
+			                                    sceneCount: shot.selectedReferenceImages.length,
+			                                    characterCount: shot.characterReferenceImages.length,
+			                                  })}
+		                                </div>
+		                              </div>
+		                              );
+		                            })}
+	                          </div>
+	                        </div>
+
+	                        {!articleStoryboardPreview.accessDecision.allowed ? (
+	                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+	                            {articleStoryboardPreview.accessDecision.message}
+	                          </div>
+	                        ) : null}
+	                        {articleStoryboardNeedsPagePlan ? (
+	                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+	                            {t("dialog.articleBuilder.articleStoryboardPagePlanRequired")}
+	                          </div>
+	                        ) : null}
+	                        {articleStoryboardHasEmptyPromptOverride ? (
+	                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+	                            {t("dialog.articleBuilder.articleStoryboardPromptRequired")}
+	                          </div>
+	                        ) : null}
+	                        <Button
+	                          type="button"
+	                          className="w-full"
+	                          disabled={!articleStoryboardPreview.accessDecision.allowed || articleStoryboardHasEmptyPromptOverride || articleStoryboardNeedsPagePlan}
+	                          onClick={() => handleCreateArticleStoryboardReviewProject()}
+	                        >
+	                          <ExternalLink className="mr-2 h-4 w-4" />
+		                          {t("dialog.articleBuilder.articleStoryboardCreateProject")}
+	                        </Button>
+	                      </div>
+	                    ) : null}
+
+	                    {!isArticleStoryboardVideoMode ? (
+	                      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <Label className="text-sm">{t("dialog.articleBuilder.advancedMediaLabel")}</Label>
+                            <p className="text-xs text-muted-foreground">
+                              {t("dialog.articleBuilder.advancedMediaHint")}
+                            </p>
+                          </div>
+                          <Switch
+                            aria-label={t("dialog.articleBuilder.advancedMediaLabel")}
+                            checked={advancedMediaOptionsEnabled}
+                            onCheckedChange={setAdvancedMediaOptionsEnabled}
+                          />
                         </div>
-                        <Switch
-                          aria-label={t("dialog.articleBuilder.advancedMediaLabel")}
-                          checked={advancedMediaOptionsEnabled}
-                          onCheckedChange={setAdvancedMediaOptionsEnabled}
-                        />
+                        {advancedMediaOptionsEnabled ? (
+                          <ModelInputFieldsPanel
+                            enabled
+                            model={selectedImageModelConfig}
+                            fields={selectedMediaModelFields}
+                            extraParams={mediaModelExtraParams}
+                            onChange={(key, value) => {
+                              setMediaModelExtraParams((prev) => ({ ...prev, [key]: value }));
+                            }}
+                            promptPreview="Auto from slide image prompts"
+                            aspectRatioPreview={canvasRatio}
+                            panelTestId="article-builder-advanced-media-model-inputs"
+                            emptyTestId="article-builder-advanced-media-model-inputs-empty"
+                          />
+                        ) : null}
                       </div>
-                      {advancedMediaOptionsEnabled ? (
-                        <ModelInputFieldsPanel
-                          enabled
-                          model={selectedImageModelConfig}
-                          fields={selectedMediaModelFields}
-                          extraParams={mediaModelExtraParams}
-                          onChange={(key, value) => {
-                            setMediaModelExtraParams((prev) => ({ ...prev, [key]: value }));
-                          }}
-                          promptPreview="Auto from slide image prompts"
-                          aspectRatioPreview={canvasRatio}
-                          panelTestId="article-builder-advanced-media-model-inputs"
-                          emptyTestId="article-builder-advanced-media-model-inputs-empty"
-                        />
-                      ) : null}
-                    </div>
+	                    ) : null}
                   </fieldset>
 
-                  <fieldset className="space-y-3 rounded-xl border p-4">
+                  {!isArticleStoryboardVideoMode ? (
+                    <fieldset className="space-y-3 rounded-xl border p-4">
                     <legend className="flex items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                       <Palette className="h-3.5 w-3.5 text-teal-500" />
                       {t("dialog.articleBuilder.visualReferencesLegend")}
@@ -5979,15 +7498,22 @@ export function PresentationArticleGeneratorDialog({
                         rows={4}
                       />
                     </div>
-                  </fieldset>
+                    </fieldset>
+                  ) : null}
 
                   <div className="space-y-3 rounded-xl border p-4">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <LayoutTemplate className="h-4 w-4" />
-                      {t("dialog.articleBuilder.slideSkillSectionTitle")}
+                      {isArticleStoryboardVideoMode
+                        ? t("dialog.articleBuilder.articleStoryboardPagePlannerSectionTitle")
+                        : t("dialog.articleBuilder.slideSkillSectionTitle")}
                     </div>
                     <div className="space-y-2">
-                      <Label>{t("dialog.articleBuilder.slideSkillLabel")}</Label>
+                      <Label>
+                        {isArticleStoryboardVideoMode
+                          ? t("dialog.articleBuilder.articleStoryboardPagePlannerSkillLabel")
+                          : t("dialog.articleBuilder.slideSkillLabel")}
+                      </Label>
                       <Select
                         value={slideSkillId}
                         onValueChange={handleSlideSkillChange}
@@ -6007,10 +7533,16 @@ export function PresentationArticleGeneratorDialog({
                     {selectedSlideSkill?.category ? (
                       <Badge variant="outline">{selectedSlideSkill.category}</Badge>
                     ) : null}
-                    {bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange ? (
+                    {bundleNeedsRefresh || slideDraftNeedsRefreshAfterSkillChange ? (
                       <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-xs leading-5 text-rose-800">
                         <div>
-                          เปลี่ยน slide skill แล้ว: ทำ `Prepare Bundle` ใหม่ และ `Generate Slide JSON` ใหม่ก่อนนำเข้า ส่วนรูปจะพยายาม reuse ให้เท่าที่ slot เดิมยังตรงกัน
+                          {isArticleStoryboardVideoMode
+                            ? (bundleNeedsRefreshAfterArticleChange
+                                ? t("dialog.articleBuilder.articleStoryboardPagePlannerArticleChanged")
+                                : t("dialog.articleBuilder.articleStoryboardPagePlannerChanged"))
+                            : bundleNeedsRefreshAfterArticleChange
+                              ? "บทความเปลี่ยนแล้ว: ทำ `Prepare Bundle` ใหม่ และ `Generate Slide JSON` ใหม่ก่อนนำเข้า ส่วนรูปจะพยายาม reuse ให้เท่าที่ slot เดิมยังตรงกัน"
+                              : "เปลี่ยน slide skill แล้ว: ทำ `Prepare Bundle` ใหม่ และ `Generate Slide JSON` ใหม่ก่อนนำเข้า ส่วนรูปจะพยายาม reuse ให้เท่าที่ slot เดิมยังตรงกัน"}
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                           <Button
@@ -6029,33 +7561,41 @@ export function PresentationArticleGeneratorDialog({
                             ) : (
                               <LayoutTemplate className="mr-2 h-4 w-4" />
                             )}
-                            Refresh bundle now
+                            {isArticleStoryboardVideoMode
+                              ? t("dialog.articleBuilder.articleStoryboardRefreshPlan")
+                              : "Refresh bundle now"}
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
-                            onClick={() => void handleGenerateSlideDraft({
-                              successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
-                            })}
-                            disabled={
-                              !article.trim()
-                              || !preparedBundle
-                              || bundleNeedsRefreshAfterSkillChange
-                              || generateSlideDraftMutation.isPending
-                            }
-                          >
-                            {generateSlideDraftMutation.isPending ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <FileJson className="mr-2 h-4 w-4" />
-                            )}
-                            Regenerate slides now
-                          </Button>
+                          {!isArticleStoryboardVideoMode ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-rose-300 bg-white text-rose-900 hover:bg-rose-100"
+                              onClick={() => void handleGenerateSlideDraft({
+                                successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
+                              })}
+                              disabled={
+                                !article.trim()
+                                || !preparedBundle
+                                || bundleNeedsRefresh
+                                || generateSlideDraftMutation.isPending
+                              }
+                            >
+                              {generateSlideDraftMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <FileJson className="mr-2 h-4 w-4" />
+                              )}
+                              Regenerate slides now
+                            </Button>
+                          ) : null}
                         </div>
                         <div className="text-[11px] text-rose-700/90">
-                          ถ้าเพิ่งเปลี่ยน skill มาใหม่ แนะนำให้กด `Refresh bundle now` ก่อน แล้วค่อย `Regenerate slides now`
+                          {isArticleStoryboardVideoMode
+                            ? (bundleNeedsRefreshAfterArticleChange
+                                ? t("dialog.articleBuilder.articleStoryboardPagePlannerArticleChangedHint")
+                                : t("dialog.articleBuilder.articleStoryboardPagePlannerChangedHint"))
+                            : "แนะนำให้กด `Refresh bundle now` ก่อน แล้วค่อย `Regenerate slides now`"}
                         </div>
                       </div>
                     ) : null}
@@ -6415,27 +7955,29 @@ export function PresentationArticleGeneratorDialog({
                         </div>
                       </div>
                     ) : null}
-                    <div className="space-y-2">
-                      <Label>{t("dialog.articleBuilder.slideOutputFormatLabel")}</Label>
-                      <Select
-                        value={slideOutputFormat}
-                        onValueChange={(value) => setSlideOutputFormat(value as SlideOutputFormat)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={t("dialog.articleBuilder.slideOutputFormatPlaceholder")} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {selectableSlideOutputFormats.map((format) => (
-                            <SelectItem key={format} value={format}>
-                              {format.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        {t("dialog.articleBuilder.slideOutputFormatHint")}
-                      </p>
-                    </div>
+                    {!isArticleStoryboardVideoMode ? (
+                      <div className="space-y-2">
+                        <Label>{t("dialog.articleBuilder.slideOutputFormatLabel")}</Label>
+                        <Select
+                          value={slideOutputFormat}
+                          onValueChange={(value) => setSlideOutputFormat(value as SlideOutputFormat)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t("dialog.articleBuilder.slideOutputFormatPlaceholder")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectableSlideOutputFormats.map((format) => (
+                              <SelectItem key={format} value={format}>
+                                {format.toUpperCase()}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {t("dialog.articleBuilder.slideOutputFormatHint")}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="space-y-3 rounded-xl border p-4">
@@ -6459,26 +8001,181 @@ export function PresentationArticleGeneratorDialog({
                   </div>
                 </section>
 
-                <section className="min-h-0 lg:flex lg:h-[calc(92vh-13rem)] lg:min-h-0 lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:bg-background/60 lg:p-3">
-                  <div className="flex min-h-0 flex-col space-y-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-2">
-                    <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+                <section className="min-h-0 xl:flex xl:h-[calc(92vh-12.25rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden xl:rounded-2xl xl:border xl:bg-background/60 xl:p-3">
+                  <div className="flex min-h-0 flex-col gap-4 xl:h-full xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2">
+                    <div className={cn(
+                      "rounded-2xl border bg-muted/20",
+                      isArticleStoryboardVideoMode ? "space-y-2 p-3" : "space-y-3 p-4",
+                    )}>
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                         <div className="text-sm font-semibold">{t("dialog.articleBuilder.workflowTitle")}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {t("dialog.articleBuilder.workflowDescription")}
+                        <div className={cn(
+                          "text-xs text-muted-foreground",
+                          isArticleStoryboardVideoMode && "max-w-3xl truncate",
+                        )}>
+                          {isArticleStoryboardVideoMode
+                            ? t("dialog.articleBuilder.articleStoryboardWorkflowDescription")
+                            : t("dialog.articleBuilder.workflowDescription")}
                         </div>
                         </div>
-                      <Badge variant="outline">{slideOutputFormats.join(", ").toUpperCase()}</Badge>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Badge variant="outline">
+                          {isArticleStoryboardVideoMode
+                            ? t("dialog.articleBuilder.articleStoryboardWorkflowBadge")
+                            : slideOutputFormats.join(", ").toUpperCase()}
+                        </Badge>
+                        {isArticleStoryboardVideoMode ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 rounded-full px-3 text-xs"
+                            onClick={() => setArticleStoryboardWorkflowCollapsed((current) => !current)}
+                            aria-expanded={!articleStoryboardWorkflowCollapsed}
+                          >
+                            {articleStoryboardWorkflowCollapsed ? (
+                              <Maximize2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <Minimize2 className="h-3.5 w-3.5" />
+                            )}
+                            {articleStoryboardWorkflowCollapsed
+                              ? t("dialog.articleBuilder.articleStoryboardWorkflowExpand")
+                              : t("dialog.articleBuilder.articleStoryboardWorkflowCollapse")}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    {guidedWorkflowMessage ? (
+                    {guidedWorkflowMessage && !articleStoryboardWorkflowCollapsed ? (
                       <div className="sticky top-0 z-10 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-medium text-primary shadow-sm">
                         {guidedWorkflowMessage}
                       </div>
                     ) : null}
 
-                    <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                      {[
+                    {articleStoryboardWorkflowCollapsed && isArticleStoryboardVideoMode ? (
+                      <button
+                        type="button"
+                        className="grid w-full gap-2 rounded-xl border border-dashed bg-background/75 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-3"
+                        onClick={() => setArticleStoryboardWorkflowCollapsed(false)}
+                      >
+                        <span className="font-medium text-foreground">
+                          {t("dialog.articleBuilder.articleStoryboardWorkflowCollapsedHint")}
+                        </span>
+                        <span>
+                          {t("dialog.articleBuilder.articleStoryboardShots")}: {articleStoryboardPreview.shots.length}
+                        </span>
+                        <span>
+                          {articleStoryboardNeedsPagePlan
+                            ? t("dialog.articleBuilder.articleStoryboardNeedsSetup")
+                            : t("dialog.articleBuilder.articleStoryboardReady")}
+                        </span>
+                      </button>
+                    ) : (
+                    <div className={cn(
+                      isArticleStoryboardVideoMode
+                        ? "grid gap-2 lg:grid-cols-3"
+                        : "grid gap-3 md:grid-cols-2 2xl:grid-cols-3",
+                    )}>
+                      {(isArticleStoryboardVideoMode ? [
+                        {
+                          step: 1,
+                          title: t("dialog.articleBuilder.workflowStep1Title"),
+                          description: t("dialog.articleBuilder.workflowStep1Description"),
+                          status: articleStepStatus,
+                          action: (
+                            <Button
+                              type="button"
+                              className="w-full"
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[1] = node;
+                              }}
+                              onClick={() => void handleGenerate()}
+                              disabled={generateArticleMutation.isPending}
+                            >
+                              {generateArticleMutation.isPending ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {t("dialog.articleBuilder.generating")}
+                                </>
+                              ) : (
+                                <>
+                                  <WandSparkles className="mr-2 h-4 w-4" />
+                                  {article.trim()
+                                    ? t("dialog.articleBuilder.regenerate")
+                                    : t("dialog.articleBuilder.generate")}
+                                </>
+                              )}
+                            </Button>
+                          ),
+                        },
+                        {
+                          step: 2,
+                          title: t("dialog.articleBuilder.articleStoryboardWorkflowStep2Title"),
+                          description: t("dialog.articleBuilder.articleStoryboardWorkflowStep2Description"),
+                          status: !article.trim()
+                            ? "idle"
+                            : prepareSlideBundleMutation.isPending
+                              ? "running"
+                              : articleStoryboardNeedsPagePlan
+                                ? "ready"
+                                : articleStoryboardHasEmptyPromptOverride || !articleStoryboardPreview.accessDecision.allowed
+                              ? "ready"
+                              : "done",
+                          hint: articleStoryboardNeedsPagePlan
+                            ? t("dialog.articleBuilder.articleStoryboardPagePlanRequired")
+                            : articleStoryboardHasEmptyPromptOverride
+                            ? t("dialog.articleBuilder.articleStoryboardPromptRequired")
+                            : !articleStoryboardPreview.accessDecision.allowed
+                              ? articleStoryboardPreview.accessDecision.message
+                              : undefined,
+                          action: (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="w-full"
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[2] = node;
+                              }}
+                              onClick={() => void handlePrepareSlideBundle({
+                                successMessage: t("dialog.articleBuilder.articleStoryboardPreparePlanSuccess"),
+                                preserveExistingImages: true,
+                              })}
+                              disabled={!article.trim() || prepareSlideBundleMutation.isPending}
+                            >
+                              {prepareSlideBundleMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <LayoutTemplate className="mr-2 h-4 w-4" />
+                              )}
+                              {preparedBundle && !bundleNeedsRefresh
+                                ? t("dialog.articleBuilder.articleStoryboardRefreshPlan")
+                                : t("dialog.articleBuilder.articleStoryboardPreparePlan")}
+                            </Button>
+                          ),
+                        },
+                        {
+                          step: 3,
+                          title: t("dialog.articleBuilder.articleStoryboardWorkflowStep3Title"),
+                          description: t("dialog.articleBuilder.articleStoryboardWorkflowStep3Description"),
+                          status: articleStoryboardPreview.accessDecision.allowed && !articleStoryboardHasEmptyPromptOverride && !articleStoryboardNeedsPagePlan
+                            ? "ready"
+                            : "disabled",
+                          action: (
+                            <Button
+                              type="button"
+                              className="w-full"
+                              ref={(node) => {
+                                workflowPrimaryActionRefs.current[3] = node;
+                              }}
+                              onClick={() => handleCreateArticleStoryboardReviewProject()}
+                              disabled={!articleStoryboardPreview.accessDecision.allowed || articleStoryboardHasEmptyPromptOverride || articleStoryboardNeedsPagePlan}
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              {t("dialog.articleBuilder.articleStoryboardCreateProject")}
+                            </Button>
+                          ),
+                        },
+                      ] : [
                         {
                           step: 1,
                           title: t("dialog.articleBuilder.workflowStep1Title"),
@@ -6679,8 +8376,8 @@ export function PresentationArticleGeneratorDialog({
                             </Button>
                           ),
                         },
-                      ].map((stepCard) => {
-                        const statusBadge = renderWizardStatusBadge(stepCard.status);
+                      ]).map((stepCard) => {
+                        const statusBadge = renderWizardStatusBadge(stepCard.status as WizardStepStatus);
                         const isGuidedStep = guidedWorkflowStep === stepCard.step;
                         return (
                           <div
@@ -6689,14 +8386,18 @@ export function PresentationArticleGeneratorDialog({
                               workflowStepRefs.current[stepCard.step] = node;
                             }}
                             className={cn(
-                              "rounded-2xl border bg-background p-4 shadow-sm transition-all",
+                              "border bg-background shadow-sm transition-all",
+                              isArticleStoryboardVideoMode ? "rounded-xl p-3" : "rounded-2xl p-4",
                               isGuidedStep && "ring-2 ring-primary/50 shadow-md shadow-primary/10",
                               stepCard.status === "disabled" && "opacity-70",
                             )}
                           >
-                            <div className="mb-3 flex items-start justify-between gap-3">
+                            <div className={cn(
+                              "flex items-start justify-between gap-3",
+                              isArticleStoryboardVideoMode ? "mb-2" : "mb-3",
+                            )}>
                               <div className="flex items-center gap-3">
-                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${
+                                <div className={`flex shrink-0 items-center justify-center rounded-full border text-sm font-semibold ${isArticleStoryboardVideoMode ? "h-8 w-8" : "h-9 w-9"} ${
                                   stepCard.status === "done"
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                     : stepCard.status === "running"
@@ -6712,7 +8413,10 @@ export function PresentationArticleGeneratorDialog({
                                 </div>
                                 <div>
                                   <div className="text-sm font-semibold">{stepCard.title}</div>
-                                  <div className="text-xs text-muted-foreground">
+                                  <div className={cn(
+                                    "text-xs text-muted-foreground",
+                                    isArticleStoryboardVideoMode && "hidden sm:block",
+                                  )}>
                                     {t("dialog.articleBuilder.workflowStepLabel", { step: stepCard.step })}
                                   </div>
                                 </div>
@@ -6721,16 +8425,25 @@ export function PresentationArticleGeneratorDialog({
                                 {statusBadge.label}
                               </Badge>
                             </div>
-                            <p className="mb-4 text-xs leading-5 text-muted-foreground">
+                            <p className={cn(
+                              "text-xs leading-5 text-muted-foreground",
+                              isArticleStoryboardVideoMode ? "mb-2 line-clamp-2" : "mb-4",
+                            )}>
                               {stepCard.description}
                             </p>
                             {stepCard.hint ? (
-                              <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
+                              <div className={cn(
+                                "rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800",
+                                isArticleStoryboardVideoMode ? "mb-2 line-clamp-2" : "mb-4",
+                              )}>
                                 {stepCard.hint}
                               </div>
                             ) : null}
                             {isGuidedStep ? (
-                              <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium leading-5 text-primary">
+                              <div className={cn(
+                                "rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium leading-5 text-primary",
+                                isArticleStoryboardVideoMode ? "mb-2" : "mb-4",
+                              )}>
                                 ขั้นตอนถัดไปที่แนะนำสำหรับตอนนี้
                               </div>
                             ) : null}
@@ -6739,20 +8452,554 @@ export function PresentationArticleGeneratorDialog({
                         );
                       })}
                     </div>
+                    )}
                   </div>
 
-                  <Textarea
-                    value={article}
-                    onChange={(event) => setArticle(event.target.value)}
-                    placeholder={t("dialog.articleBuilder.articlePlaceholder")}
-                    rows={18}
-                    className="h-[42vh] min-h-[320px] resize-none overflow-y-auto font-medium"
-                  />
+                  <div className={cn("space-y-2", isArticleStoryboardVideoMode && "rounded-xl border bg-background/70 p-2")}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium">
+                          {isArticleStoryboardVideoMode
+                            ? t("dialog.articleBuilder.articleStoryboardArticleLabel")
+                            : t("dialog.articleBuilder.articleLabel")}
+                        </div>
+                        <p className={cn(
+                          "text-xs text-muted-foreground",
+                          isArticleStoryboardVideoMode && "max-w-4xl truncate",
+                        )}>
+                          {isArticleStoryboardVideoMode
+                            ? t("dialog.articleBuilder.articleStoryboardArticleHint")
+                            : t("dialog.articleBuilder.articleHint")}
+                        </p>
+                      </div>
+                      {isArticleStoryboardVideoMode ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-2 rounded-full px-3 text-xs"
+                          onClick={() => setArticleStoryboardArticleCollapsed((current) => !current)}
+                          aria-expanded={!articleStoryboardArticleCollapsed}
+                        >
+                          {articleStoryboardArticleCollapsed ? (
+                            <Maximize2 className="h-3.5 w-3.5" />
+                          ) : (
+                            <Minimize2 className="h-3.5 w-3.5" />
+                          )}
+                          {articleStoryboardArticleCollapsed
+                            ? t("dialog.articleBuilder.articleStoryboardArticleExpand")
+                            : t("dialog.articleBuilder.articleStoryboardArticleCollapse")}
+                        </Button>
+                      ) : null}
+                    </div>
+                    {articleStoryboardArticleCollapsed && isArticleStoryboardVideoMode ? (
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-lg border border-dashed bg-muted/20 px-3 py-2 text-left text-xs text-muted-foreground hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={() => setArticleStoryboardArticleCollapsed(false)}
+                      >
+                        <span>{t("dialog.articleBuilder.articleStoryboardArticleCollapsedHint")}</span>
+                        <Maximize2 className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <Textarea
+                        value={article}
+                        onChange={(event) => setArticle(event.target.value)}
+                        placeholder={isArticleStoryboardVideoMode
+                          ? t("dialog.articleBuilder.articleStoryboardArticlePlaceholder")
+                          : t("dialog.articleBuilder.articlePlaceholder")}
+                        rows={isArticleStoryboardVideoMode ? 5 : 18}
+                        className={cn(
+                          "h-[32vh] min-h-[260px] overflow-y-auto font-medium sm:h-[36vh] xl:h-[42vh] xl:min-h-[320px]",
+                          isArticleStoryboardVideoMode
+                            ? "h-[16vh] max-h-[34vh] min-h-[110px] resize-y sm:h-[18vh] xl:h-[20vh] xl:min-h-[120px]"
+                            : "resize-none",
+                        )}
+                      />
+                    )}
+                  </div>
 
+                  {isArticleStoryboardVideoMode ? (
+                    <div className="flex min-h-[58vh] flex-1 flex-col gap-4 xl:min-h-[420px]">
+                      <div
+                        className={cn(
+                          "relative flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-sky-200 bg-sky-50/60 p-4",
+                          articleStoryboardReferenceLibraryCollapsed
+                            ? "xl:pr-20"
+                            : "xl:pr-[calc(var(--article-storyboard-reference-library-width)+1.5rem)]",
+                        )}
+                        style={{
+                          "--article-storyboard-reference-library-width": `${articleStoryboardReferenceLibraryWidth}px`,
+                        } as CSSProperties}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-sky-950">
+                              {t("dialog.articleBuilder.articleStoryboardLowerSummaryTitle")}
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-sky-900/80">
+                              {t("dialog.articleBuilder.articleStoryboardLowerSummaryHint")}
+                            </p>
+                          </div>
+                          <Badge variant={articleStoryboardNeedsPagePlan ? "outline" : "default"}>
+                            {articleStoryboardNeedsPagePlan
+                              ? t("dialog.articleBuilder.articleStoryboardNeedsSetup")
+                              : t("dialog.articleBuilder.articleStoryboardReady")}
+                          </Badge>
+                        </div>
+                        <div className="grid gap-2 text-sm sm:grid-cols-4">
+                          <div className="rounded-md bg-background/80 p-3">
+                            <div className="text-xs text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardShots")}</div>
+                            <div className="text-lg font-semibold">{articleStoryboardPreview.shots.length}</div>
+                          </div>
+                          <div className="rounded-md bg-background/80 p-3">
+                            <div className="text-xs text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardEstimatedDuration")}</div>
+                            <div className="text-lg font-semibold">
+                              {articleStoryboardPreview.shots.reduce((sum, shot) => sum + shot.durationSeconds, 0)}s
+                            </div>
+                          </div>
+                          <div className="rounded-md bg-background/80 p-3">
+                            <div className="text-xs text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardPagePlannerSkillLabel")}</div>
+                            <div className="truncate font-medium">{preparedBundle?.slideSkillLabel ?? selectedSlideSkill?.name ?? "-"}</div>
+                          </div>
+                          <div className="rounded-md bg-background/80 p-3">
+                            <div className="text-xs text-muted-foreground">{t("dialog.articleBuilder.articleStoryboardOutputLabel")}</div>
+                            <div className="font-medium">{t("dialog.articleBuilder.articleStoryboardWorkflowBadge")}</div>
+                          </div>
+                        </div>
+                        {articleStoryboardNeedsPagePlan ? (
+                          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                            {t("dialog.articleBuilder.articleStoryboardPagePlanRequired")}
+                          </div>
+                        ) : null}
+                        <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-lg border border-sky-200 bg-background/85 p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-sky-950">
+                                {t("dialog.articleBuilder.articleStoryboardShotWorkbenchTitle")}
+                              </div>
+                              <p className="mt-1 text-xs leading-5 text-sky-900/80">
+                                {t("dialog.articleBuilder.articleStoryboardShotWorkbenchHint")}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => void handleGenerateArticleStoryboardReferenceImages()}
+                                disabled={articleStoryboardNeedsPagePlan || isGeneratingImages || generateImageAsyncMutation.isPending}
+                              >
+                                {articleStoryboardReferenceGenerationShotId === "__all__" ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Images className="mr-2 h-4 w-4" />
+                                )}
+                                {t("dialog.articleBuilder.articleStoryboardGenerateAllReferences")}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => handleCreateArticleStoryboardReviewProject()}
+                                disabled={!articleStoryboardPreview.accessDecision.allowed || articleStoryboardHasEmptyPromptOverride || articleStoryboardNeedsPagePlan}
+                              >
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                {t("dialog.articleBuilder.articleStoryboardCreateProject")}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid min-h-0 flex-1 gap-3 xl:block">
+                            <div className="min-h-0 space-y-2 overflow-y-auto pr-1 md:max-h-[min(56vh,36rem)] xl:max-h-none">
+                              {articleStoryboardPreview.shots.length > 0 ? articleStoryboardPreview.shots.map((shot) => {
+                              const hasSceneReferences = shot.selectedReferenceImages.length > 0;
+                              const isActiveReferenceShot = articleStoryboardActiveReferenceShot?.id === shot.id;
+                              const isGeneratingThisReference = articleStoryboardReferenceGenerationShotId === shot.id;
+                              const referencePromptPlan = buildArticleStoryboardReferencePromptPlan(shot);
+                              const referenceSlotKey = getPreparedImageSlotKey(referencePromptPlan);
+                              const pendingReferenceAsset = generatedImages
+                                .filter((asset) => (
+                                  getPreparedImageSlotKey(asset) === referenceSlotKey
+                                  && !asset.url
+                                  && (asset.status === "processing" || asset.status === "failed")
+                                ))
+                                .sort((left, right) => (
+                                  Date.parse(right.updatedAt ?? "") - Date.parse(left.updatedAt ?? "")
+                                ))[0] ?? null;
+                              const shotCanOpen = hasSceneReferences
+                                && articleStoryboardPreview.accessDecision.allowed
+                                && !articleStoryboardHasEmptyPromptOverride
+                                && !articleStoryboardNeedsPagePlan;
+                              return (
+                              <div
+                                key={shot.id}
+                                className={cn(
+                                  "rounded-md border bg-background p-3",
+                                  !hasSceneReferences ? "border-amber-200 bg-amber-50/40" : "",
+                                  isActiveReferenceShot ? "ring-2 ring-primary/35" : "",
+                                )}
+                                onFocusCapture={() => setArticleStoryboardActiveReferenceShotId(shot.id)}
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-semibold">
+                                      {t("dialog.articleBuilder.articleStoryboardShotLabel", { number: shot.pageNumber })}: {shot.overlay.headline}
+                                    </div>
+                                    <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                                      {shot.overlay.subtext || t("dialog.articleBuilder.articleStoryboardNoSubtext")}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline">
+                                    {shot.durationSeconds}s
+                                  </Badge>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                  <Badge variant={isActiveReferenceShot ? "default" : "outline"} className="text-[11px]">
+                                    {isActiveReferenceShot
+                                      ? t("dialog.articleBuilder.articleStoryboardSelectedReferenceShot")
+                                      : t("dialog.articleBuilder.articleStoryboardReferenceShotTarget")}
+                                  </Badge>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={isActiveReferenceShot ? "secondary" : "outline"}
+                                    className="min-h-10 px-3 text-[11px] xl:h-7 xl:min-h-0 xl:px-2"
+                                    onClick={() => setArticleStoryboardActiveReferenceShotId(shot.id)}
+                                  >
+                                    {t("dialog.articleBuilder.articleStoryboardSelectReferenceShot", { number: shot.pageNumber })}
+                                  </Button>
+                                </div>
+                                <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className={cn(
+                                    "rounded p-2",
+                                    hasSceneReferences ? "bg-emerald-50 text-emerald-900" : "bg-amber-100/70 text-amber-950",
+                                  )}>
+                                    {t("dialog.articleBuilder.articleStoryboardSelectedSceneReferences")}: {shot.selectedReferenceImages.length}/5
+                                  </div>
+                                  <div className="rounded bg-muted/40 p-2">
+                                    {t("dialog.articleBuilder.articleStoryboardCharacterReferences")}: {shot.characterReferenceImages.length}
+                                  </div>
+                                  <div className="rounded bg-muted/40 p-2">
+                                    {t("dialog.articleBuilder.articleStoryboardVideoPromptLabel")}: {articleStoryboardVideoPromptOverridesByShotId[shot.id]?.trim()
+                                      ? t("dialog.articleBuilder.articleStoryboardPromptEdited")
+                                      : t("dialog.articleBuilder.articleStoryboardReady")}
+                                  </div>
+                                  <div className="rounded bg-muted/40 p-2">
+                                    {hasSceneReferences
+                                      ? t("dialog.articleBuilder.articleStoryboardReferenceReady")
+                                      : t("dialog.articleBuilder.articleStoryboardReferenceMissing")}
+                                  </div>
+                                </div>
+                                <div
+                                  className="mt-2 rounded border border-dashed border-sky-300 bg-sky-50/70 px-3 py-2 text-xs leading-5 text-sky-950 transition-colors hover:border-primary/60 hover:bg-primary/5"
+                                  onDragOver={(event) => {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "copy";
+                                  }}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    const droppedUrl = resolveArticleStoryboardDraggedReferenceUrl(event);
+                                    if (droppedUrl) {
+                                      addArticleStoryboardReferenceToShot(shot, droppedUrl);
+                                    } else {
+                                      toast.error(t("dialog.articleBuilder.articleStoryboardReferenceDropInvalid"));
+                                    }
+                                  }}
+                                >
+                                  {hasSceneReferences
+                                    ? t("dialog.articleBuilder.articleStoryboardShotGenerationHint", { number: shot.pageNumber })
+                                    : t("dialog.articleBuilder.articleStoryboardShotReferenceRequiredHint", { number: shot.pageNumber })}
+                                  <div className="mt-1 font-medium text-sky-900">
+                                    {t("dialog.articleBuilder.articleStoryboardDropReferenceHint", { number: shot.pageNumber })}
+                                  </div>
+                                </div>
+                                {pendingReferenceAsset ? (
+                                  <div className={cn(
+                                    "mt-2 rounded border px-3 py-2 text-xs leading-5",
+                                    pendingReferenceAsset.status === "failed"
+                                      ? "border-rose-200 bg-rose-50 text-rose-800"
+                                      : "border-amber-200 bg-amber-50 text-amber-900",
+                                  )}>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <span>
+                                        {pendingReferenceAsset.status === "failed"
+                                          ? (pendingReferenceAsset.errorMessage || t("dialog.articleBuilder.articleStoryboardReferenceFailed"))
+                                          : t("dialog.articleBuilder.articleStoryboardReferenceProcessing")}
+                                      </span>
+                                      {pendingReferenceAsset.status === "processing" ? (
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 px-2 text-[11px]"
+                                          onClick={() => void refreshGeneratedImageResult(pendingReferenceAsset)}
+                                          disabled={regeneratingSlotKey === referenceSlotKey || fetchTaskResultMutation.isPending}
+                                        >
+                                          {regeneratingSlotKey === referenceSlotKey || fetchTaskResultMutation.isPending ? (
+                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                                          )}
+                                          {t("dialog.articleBuilder.articleStoryboardRefreshReference")}
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                {hasSceneReferences ? (
+                                  <div className="mt-3">
+                                    <div className="mb-2 text-[11px] font-medium text-muted-foreground">
+                                      {t("dialog.articleBuilder.articleStoryboardReferencePreview")}
+                                    </div>
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                      {shot.selectedReferenceImages.slice(0, 5).map((reference, index) => (
+                                        <button
+                                          key={`${shot.id}-${reference.url}-${index}`}
+                                          type="button"
+                                          className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                          onClick={() => setPreviewImageAsset({
+                                            id: reference.id,
+                                            pageNumber: shot.pageNumber,
+                                            imageIndex: index + 1,
+                                            placementRole: "hero",
+                                            shortLabel: reference.label || `Reference ${index + 1}`,
+                                            prompt: articleStoryboardEffectiveImagePromptByShotId[shot.id] ?? "",
+                                            url: reference.url,
+                                            status: "completed",
+                                            canvasRatio,
+                                          })}
+                                          aria-label={t("dialog.articleBuilder.articleStoryboardPreviewReference", {
+                                            number: shot.pageNumber,
+                                            index: index + 1,
+                                          })}
+                                        >
+                                          <img
+                                            src={reference.url}
+                                            alt=""
+                                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                          />
+                                          {index === 0 ? (
+                                            <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-medium text-foreground">
+                                              {t("dialog.articleBuilder.articleStoryboardStartFrame")}
+                                            </span>
+                                          ) : null}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={hasSceneReferences ? "outline" : "default"}
+                                    onClick={() => void handleGenerateArticleStoryboardReferenceImages({
+                                      focusShotId: shot.id,
+                                      repair: true,
+                                    })}
+                                    disabled={articleStoryboardNeedsPagePlan || isGeneratingImages || generateImageAsyncMutation.isPending}
+                                  >
+                                    {isGeneratingThisReference ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Images className="mr-2 h-4 w-4" />
+                                    )}
+                                    {hasSceneReferences
+                                      ? t("dialog.articleBuilder.articleStoryboardRepairShotReference", { number: shot.pageNumber })
+                                      : t("dialog.articleBuilder.articleStoryboardGenerateShotReference", { number: shot.pageNumber })}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCreateArticleStoryboardReviewProject({ focusShotId: shot.id })}
+                                    disabled={!shotCanOpen}
+                                  >
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.articleStoryboardOpenShotTask", { number: shot.pageNumber })}
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                              }) : (
+                                <div className="rounded-md border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground">
+                                  {t("dialog.articleBuilder.articleStoryboardShotWorkbenchEmpty")}
+                                </div>
+                              )}
+                            </div>
+                            <aside className={cn(
+                              "flex min-h-0 flex-col rounded-lg border border-sky-200 bg-background/90 p-3",
+                              "xl:absolute xl:bottom-4 xl:right-4 xl:top-4 xl:z-10 xl:shadow-sm",
+                              articleStoryboardReferenceLibraryCollapsed
+                                ? "xl:w-12 xl:items-center xl:px-2"
+                                : "xl:w-[var(--article-storyboard-reference-library-width)]",
+                            )}>
+                              {!articleStoryboardReferenceLibraryCollapsed ? (
+                                <div
+                                  role="separator"
+                                  aria-orientation="vertical"
+                                  aria-label={t("dialog.articleBuilder.articleStoryboardReferenceHistoryTitle")}
+                                  className="absolute -left-1 top-3 bottom-3 hidden w-2 cursor-ew-resize rounded-full transition-colors hover:bg-sky-300/80 active:bg-sky-400 xl:block"
+                                  onMouseDown={handleArticleStoryboardReferenceLibraryResizeMouseDown}
+                                />
+                              ) : null}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className={articleStoryboardReferenceLibraryCollapsed ? "sr-only" : ""}>
+                                  <div className="text-sm font-semibold text-sky-950">
+                                    {t("dialog.articleBuilder.articleStoryboardReferenceHistoryTitle")}
+                                  </div>
+                                  <p className="mt-1 text-xs leading-5 text-sky-900/75">
+                                    {t("dialog.articleBuilder.articleStoryboardReferenceHistoryHint")}
+                                  </p>
+                                  {articleStoryboardActiveReferenceShot ? (
+                                    <p className="mt-1 text-xs font-medium text-sky-950">
+                                      {t("dialog.articleBuilder.articleStoryboardActiveReferenceShotHint", {
+                                        number: articleStoryboardActiveReferenceShot.pageNumber,
+                                      })}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {!articleStoryboardReferenceLibraryCollapsed ? (
+                                    <Badge variant="outline">{articleStoryboardReferenceHistoryItems.length}</Badge>
+                                  ) : null}
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setArticleStoryboardReferenceLibraryCollapsed((current) => !current)}
+                                    aria-label={articleStoryboardReferenceLibraryCollapsed
+                                      ? t("dialog.articleBuilder.articleStoryboardReferenceLibraryExpand")
+                                      : t("dialog.articleBuilder.articleStoryboardReferenceLibraryCollapse")}
+                                  >
+                                    {articleStoryboardReferenceLibraryCollapsed ? (
+                                      <Maximize2 className="h-4 w-4" />
+                                    ) : (
+                                      <Minimize2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              {articleStoryboardReferenceLibraryCollapsed ? (
+                                <div className="mt-3 flex flex-1 flex-col items-center gap-2 text-center text-[11px] text-muted-foreground xl:[writing-mode:vertical-rl]">
+                                  {t("dialog.articleBuilder.articleStoryboardReferenceHistoryTitle")}
+                                </div>
+                              ) : (
+                              <div className="mt-3 grid min-h-0 flex-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2 lg:grid-cols-3 xl:block xl:space-y-2">
+                                {articleStoryboardReferenceHistoryItems.length > 0 ? articleStoryboardReferenceHistoryItems.map((asset) => {
+                                  const isSplitting = articleStoryboardReferenceToolAssetId === `${asset.id}:split`;
+                                  const isCropping = articleStoryboardReferenceToolAssetId === `${asset.id}:crop`;
+                                  return (
+                                    <div key={asset.id} className="rounded-lg border bg-muted/15 p-2">
+                                      <button
+                                        type="button"
+                                        draggable
+                                        onDragStart={(event) => startArticleStoryboardReferenceDrag(event, asset)}
+                                        onClick={() => setPreviewImageAsset({
+                                          id: asset.id,
+                                          pageNumber: asset.pageNumber,
+                                          imageIndex: asset.index ?? 1,
+                                          placementRole: "hero",
+                                          shortLabel: asset.label,
+                                          prompt: asset.prompt ?? "",
+                                          url: asset.url,
+                                          status: "completed",
+                                          canvasRatio,
+                                        })}
+                                        aria-label={t("dialog.articleBuilder.articleStoryboardPreviewHistoryReference", {
+                                          label: asset.label,
+                                        })}
+                                        className="group relative block aspect-video w-full overflow-hidden rounded-md border bg-background text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                      >
+                                        <img src={asset.url} alt={asset.label} className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" loading="lazy" />
+                                        <span className="absolute left-2 top-2 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm">
+                                          {asset.kind === "generated"
+                                            ? t("dialog.articleBuilder.articleStoryboardReferenceHistoryGenerated")
+                                            : asset.kind === "split"
+                                              ? t("dialog.articleBuilder.articleStoryboardReferenceHistoryCut")
+                                              : t("dialog.articleBuilder.articleStoryboardReferenceHistoryCrop")}
+                                        </span>
+                                        <span className="absolute bottom-2 right-2 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                                          {t("dialog.articleBuilder.articleStoryboardDragReferenceHint")}
+                                        </span>
+                                      </button>
+                                      <div className="mt-2 min-w-0">
+                                        <div className="truncate text-xs font-medium">{asset.label}</div>
+                                        <div className="text-[11px] text-muted-foreground">
+                                          {t("dialog.articleBuilder.articleStoryboardShotLabel", { number: asset.pageNumber })}
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 grid grid-cols-2 gap-2">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          className="col-span-2 min-h-10 px-2 text-[11px] xl:h-8 xl:min-h-0"
+                                          onClick={() => {
+                                            const targetShot = articleStoryboardActiveReferenceShot;
+                                            if (targetShot) {
+                                              addArticleStoryboardReferenceToShot(targetShot, asset.url);
+                                            }
+                                          }}
+                                          disabled={!articleStoryboardActiveReferenceShot}
+                                        >
+                                          {t("dialog.articleBuilder.articleStoryboardUseReferenceForShot", {
+                                            number: articleStoryboardActiveReferenceShot?.pageNumber ?? "-",
+                                          })}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          className="min-h-10 px-2 text-[11px] xl:h-8 xl:min-h-0"
+                                          onClick={() => void handleSplitArticleStoryboardReference(asset)}
+                                          disabled={Boolean(articleStoryboardReferenceToolAssetId)}
+                                        >
+                                          {isSplitting ? (
+                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Scissors className="mr-1.5 h-3.5 w-3.5" />
+                                          )}
+                                          {t("dialog.articleBuilder.articleStoryboardCut3x3")}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          className="min-h-10 px-2 text-[11px] xl:h-8 xl:min-h-0"
+                                          onClick={() => void handleCropArticleStoryboardReference(asset)}
+                                          disabled={Boolean(articleStoryboardReferenceToolAssetId)}
+                                        >
+                                          {isCropping ? (
+                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Crop className="mr-1.5 h-3.5 w-3.5" />
+                                          )}
+                                          {t("dialog.articleBuilder.articleStoryboardCropReference", { ratio: canvasRatio })}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                }) : (
+                                  <div className="rounded-md border border-dashed bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
+                                    {t("dialog.articleBuilder.articleStoryboardReferenceHistoryEmpty")}
+                                  </div>
+                                )}
+                              </div>
+                              )}
+                            </aside>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="grid min-h-0 gap-4 xl:grid-cols-2">
                     <div className="space-y-2 rounded-xl border p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-medium">{t("dialog.articleBuilder.bundleSummaryLabel")}</div>
+                        <div className="text-sm font-medium">
+                          {isArticleStoryboardVideoMode
+                            ? t("dialog.articleBuilder.articleStoryboardBundleSummaryLabel")
+                            : t("dialog.articleBuilder.bundleSummaryLabel")}
+                        </div>
                         {preparedBundle?.modelId ? <Badge variant="secondary">{preparedBundle.modelId}</Badge> : null}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -6769,8 +9016,16 @@ export function PresentationArticleGeneratorDialog({
                           <div className="font-medium">{preparedBundle?.slideSkillLabel ?? selectedSlideSkill?.name ?? "-"}</div>
                         </div>
                         <div className="rounded-lg bg-muted/40 p-3">
-                          <div className="text-xs text-muted-foreground">{t("dialog.articleBuilder.slideOutputFormatLabel")}</div>
-                          <div className="font-medium">{slideOutputFormats.join(", ").toUpperCase()}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {isArticleStoryboardVideoMode
+                              ? t("dialog.articleBuilder.articleStoryboardOutputLabel")
+                              : t("dialog.articleBuilder.slideOutputFormatLabel")}
+                          </div>
+                          <div className="font-medium">
+                            {isArticleStoryboardVideoMode
+                              ? t("dialog.articleBuilder.articleStoryboardWorkflowBadge")
+                              : slideOutputFormats.join(", ").toUpperCase()}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -7151,13 +9406,21 @@ export function PresentationArticleGeneratorDialog({
                           const leadPrompt = leadPromptByPage.get(page.pageNumber) ?? null;
                           const leadSlotKey = leadPrompt ? getPreparedImageSlotKey(leadPrompt) : null;
                           const isLeadSlotRegenerating = leadSlotKey !== null && regeneratingSlotKey === leadSlotKey;
+                          const structure = page.structure ?? {
+                            paragraphCount: 0,
+                            bulletCount: 0,
+                            workflowStepCount: 0,
+                            timelinePhaseCount: 0,
+                          };
+                          const warnings = Array.isArray(page.warnings) ? page.warnings : [];
+                          const archetypeMode = page.archetypeMode ?? "guided";
                           return (
                           <div key={page.pageNumber} className="rounded-lg border bg-muted/20 p-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="secondary">Page {page.pageNumber}</Badge>
                               <Badge variant="outline">{page.pageIntentHint}</Badge>
-                              <Badge variant={page.archetypeMode === "forced" ? "default" : "secondary"}>
-                                {page.archetypeMode === "forced" ? "Forced" : "Guided"}: {page.forceArchetype ?? page.preferredArchetype}
+                              <Badge variant={archetypeMode === "forced" ? "default" : "secondary"}>
+                                {archetypeMode === "forced" ? "Forced" : "Guided"}: {page.forceArchetype ?? page.preferredArchetype ?? "-"}
                               </Badge>
                               <Badge variant="outline">{pageSlotCounts.get(page.pageNumber) ?? page.recommendedImageCount} images</Badge>
                               {leadPrompt ? (
@@ -7202,7 +9465,7 @@ export function PresentationArticleGeneratorDialog({
                             </div>
                             <div className="mt-2 text-sm font-medium">{page.titleHint}</div>
                             <div className="mt-2 text-xs text-muted-foreground">
-                              Structure: {page.structure.paragraphCount} paragraphs, {page.structure.bulletCount} bullets, {page.structure.workflowStepCount} steps, {page.structure.timelinePhaseCount} phases
+                              Structure: {structure.paragraphCount} paragraphs, {structure.bulletCount} bullets, {structure.workflowStepCount} steps, {structure.timelinePhaseCount} phases
                             </div>
                             <Textarea
                               readOnly
@@ -7210,9 +9473,9 @@ export function PresentationArticleGeneratorDialog({
                               rows={7}
                               className="mt-3 min-h-[150px] resize-none font-mono text-xs"
                             />
-                            {page.warnings.length ? (
+                            {warnings.length ? (
                               <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
-                                {page.warnings.join(" ")}
+                                {warnings.join(" ")}
                               </div>
                             ) : null}
                           </div>
@@ -7883,12 +10146,13 @@ export function PresentationArticleGeneratorDialog({
                       />
                     </div>
                   </div>
+                  )}
                   </div>
                 </section>
               </div>
             </div>
 
-            <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
+            <DialogFooter className="shrink-0 flex-col-reverse items-stretch gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:px-6 sm:py-4 [&>button]:w-full sm:[&>button]:w-auto">
               <Button
                 type="button"
                 variant="outline"
@@ -7904,80 +10168,93 @@ export function PresentationArticleGeneratorDialog({
               <Button type="button" variant="outline" onClick={onClose}>
                 {t("dialog.articleBuilder.close")}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                ref={insertSlidesButtonRef}
-                onClick={() => {
-                  if (!generatedSlideDraft || !canInsertGeneratedSlides) {
-                    toast.error("ยังไม่มี slides ที่นำเข้าได้ กรุณา Generate Slide JSON ใหม่อีกครั้ง");
-                    return;
-                  }
-                  const activeDraft = generatedSlideDraft;
-                  void (async () => {
-                    const insertResult = await onInsertSlides(activeDraft, { closeDialog: false });
-                    if (!insertResult.inserted || !insertResult.importedSlideJson?.trim()) {
-                      return;
-                    }
-                    setGeneratedSlideDraft((previous) => {
-                      if (!previous) {
-                        return previous;
+              {isArticleStoryboardVideoMode ? (
+                <Button
+                  type="button"
+                  onClick={() => handleCreateArticleStoryboardReviewProject()}
+                  disabled={!articleStoryboardPreview.accessDecision.allowed || articleStoryboardHasEmptyPromptOverride || articleStoryboardNeedsPagePlan}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  {t("dialog.articleBuilder.articleStoryboardCreateProject")}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    ref={insertSlidesButtonRef}
+                    onClick={() => {
+                      if (!generatedSlideDraft || !canInsertGeneratedSlides) {
+                        toast.error("ยังไม่มี slides ที่นำเข้าได้ กรุณา Generate Slide JSON ใหม่อีกครั้ง");
+                        return;
                       }
-                      const previousGeneratedAt = typeof previous.generatedAt === "string" ? previous.generatedAt.trim() : "";
-                      const activeGeneratedAt = typeof activeDraft.generatedAt === "string" ? activeDraft.generatedAt.trim() : "";
-                      const matchesActiveDraft = (
-                        (previousGeneratedAt && activeGeneratedAt && previousGeneratedAt === activeGeneratedAt)
-                        || previous.slideJson === activeDraft.slideJson
-                      );
-                      if (!matchesActiveDraft) {
-                        return previous;
+                      const activeDraft = generatedSlideDraft;
+                      void (async () => {
+                        const insertResult = await onInsertSlides(activeDraft, { closeDialog: false });
+                        if (!insertResult.inserted || !insertResult.importedSlideJson?.trim()) {
+                          return;
+                        }
+                        setGeneratedSlideDraft((previous) => {
+                          if (!previous) {
+                            return previous;
+                          }
+                          const previousGeneratedAt = typeof previous.generatedAt === "string" ? previous.generatedAt.trim() : "";
+                          const activeGeneratedAt = typeof activeDraft.generatedAt === "string" ? activeDraft.generatedAt.trim() : "";
+                          const matchesActiveDraft = (
+                            (previousGeneratedAt && activeGeneratedAt && previousGeneratedAt === activeGeneratedAt)
+                            || previous.slideJson === activeDraft.slideJson
+                          );
+                          if (!matchesActiveDraft) {
+                            return previous;
+                          }
+                          return {
+                            ...previous,
+                            importedSlideJson: insertResult.importedSlideJson ?? previous.importedSlideJson ?? null,
+                            importedAt: insertResult.importedAt ?? new Date().toISOString(),
+                            importedFromArtifact: Boolean(insertResult.importedFromArtifact),
+                            importedArtifactUrl: insertResult.importedArtifactUrl ?? null,
+                          };
+                        });
+                      })();
+                    }}
+                    disabled={!generatedSlideDraft || !canInsertGeneratedSlides}
+                  >
+                    <LayoutTemplate className="mr-2 h-4 w-4" />
+                    {t("dialog.articleBuilder.insertSlides")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!onInsertSlotVideos || !canInsertGeneratedSlotVideos) {
+                        toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
+                        return;
                       }
-                      return {
-                        ...previous,
-                        importedSlideJson: insertResult.importedSlideJson ?? previous.importedSlideJson ?? null,
-                        importedAt: insertResult.importedAt ?? new Date().toISOString(),
-                        importedFromArtifact: Boolean(insertResult.importedFromArtifact),
-                        importedArtifactUrl: insertResult.importedArtifactUrl ?? null,
-                      };
-                    });
-                  })();
-                }}
-                disabled={!generatedSlideDraft || !canInsertGeneratedSlides}
-              >
-                <LayoutTemplate className="mr-2 h-4 w-4" />
-                {t("dialog.articleBuilder.insertSlides")}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (!onInsertSlotVideos || !canInsertGeneratedSlotVideos) {
-                    toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
-                    return;
-                  }
-                  if (slotVideoImportIssueMessage) {
-                    setSlotVideoGenerationError(slotVideoImportIssueMessage);
-                    toast.error(slotVideoImportIssueMessage);
-                    return;
-                  }
-                  void onInsertSlotVideos(slotVideoImportAssets, {
-                    closeDialog: false,
-                    projectAudioAssets: audioGenerationMode === "full" ? projectAudioImportAssets : [],
-                  });
-                }}
-                disabled={!canInsertGeneratedSlotVideos}
-              >
-                <Video className="mr-2 h-4 w-4" />
-                {t("dialog.articleBuilder.insertSlotVideos")}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => void onUseArticle(article)}
-                disabled={!article.trim() || generateArticleMutation.isPending}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {t("dialog.articleBuilder.useAsPresentationNote")}
-              </Button>
+                      if (slotVideoImportIssueMessage) {
+                        setSlotVideoGenerationError(slotVideoImportIssueMessage);
+                        toast.error(slotVideoImportIssueMessage);
+                        return;
+                      }
+                      void onInsertSlotVideos(slotVideoImportAssets, {
+                        closeDialog: false,
+                        projectAudioAssets: audioGenerationMode === "full" ? projectAudioImportAssets : [],
+                      });
+                    }}
+                    disabled={!canInsertGeneratedSlotVideos}
+                  >
+                    <Video className="mr-2 h-4 w-4" />
+                    {t("dialog.articleBuilder.insertSlotVideos")}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void onUseArticle(article)}
+                    disabled={!article.trim() || generateArticleMutation.isPending}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("dialog.articleBuilder.useAsPresentationNote")}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </div>
         </DialogContent>

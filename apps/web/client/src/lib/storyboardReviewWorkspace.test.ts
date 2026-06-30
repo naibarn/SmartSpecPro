@@ -3,6 +3,7 @@ import {
   applyStoryboardReviewVideoOptionsToDraft,
   applyRegeneratedVideoSegmentPromptToDraft,
   buildFirstLastFrameStoryboardTasks,
+  deriveManualHyperframesIdentityFromStoryboardTasks,
   evaluateStoryboardVideoSegmentPromptGenerationGate,
   getStoryboardReviewAutoReviewRunIdFromDraft,
   getStoryboardReviewProductIdFromDraft,
@@ -24,6 +25,33 @@ afterEach(() => {
 });
 
 describe("Storyboard Review video segment state", () => {
+  it("clamps imported media duration before synthesizing video segment plans", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 94,
+      updatedAt: 123_456,
+      taskIds: ["manual-shot-1"],
+      selectedTaskIds: ["manual-shot-1"],
+      tasks: [
+        {
+          id: "manual-shot-1",
+          type: "video",
+          status: "completed",
+          prompt: "Manual storyboard source clip",
+          url: "/api/storage/files/media-jobs/assets/source.mp4",
+          model: "veo3/generate-veo-3-video-lite",
+          durationSeconds: 238.28,
+        },
+      ],
+    });
+
+    expect(draft?.tasks[0]?.durationSeconds).toBe(238.28);
+    expect(draft?.videoSegmentState?.videoSegmentPlan.segments[0]?.durationSeconds).toBe(60);
+    expect(
+      draft?.videoSegmentState?.videoSegmentPlan.segments[0]?.subShots[0]?.durationSeconds,
+    ).toBe(60);
+  });
+
   it("keeps MCP provider route metadata while normalizing drafts", () => {
     expect(normalizeStoryboardTransportMetadata({
       transport: "mcp",
@@ -1767,5 +1795,17 @@ describe("Storyboard Review HyperFrames context helpers", () => {
     expect(manualDraft?.manualHyperframesRunId).toBe("manual_run_1");
     expect(getStoryboardReviewProductIdFromDraft(manualDraft)).toBe("");
     expect(getStoryboardReviewAutoReviewRunIdFromDraft(manualDraft)).toBe("");
+  });
+
+  it("derives legacy manual HyperFrames identity from manual storyboard task ids", () => {
+    const identity = deriveManualHyperframesIdentityFromStoryboardTasks([
+      { id: "manual-shot-1-1782006453374-k5236d" },
+      { id: "manual-shot-2-1782006453374-k5236d" },
+    ]);
+
+    expect(identity).toEqual({
+      productId: "manual_storyboard_product_1782006453374-k5236d",
+      runId: "manual_storyboard_run_1782006453374-k5236d",
+    });
   });
 });
