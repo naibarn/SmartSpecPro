@@ -381,7 +381,7 @@ type AudioWorkflow =
 type MarketplaceStudioPlatformFilter = "all" | "shopee" | "tiktok_shop";
 type MarketplaceStudioMode = "images" | "products";
 type LibraryMediaItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
-type StudioSidebarTab = "history" | "library" | "marketplace";
+type StudioSidebarTab = "history" | "library" | "marketplace" | "tools";
 type StudioWorkspaceTab = "production" | "video_shot" | MediaType;
 type HistoryGalleryTab = "image" | "video" | "audio";
 type VideoAudioWorkflow =
@@ -6582,12 +6582,15 @@ async function persistGeneratedStoryboardAudioUrl(
 
 function getDefaultSplitToolsPanelWidth(): number {
   if (typeof window === "undefined") return 560;
+  if (window.innerWidth <= 1024) {
+    return Math.max(320, window.innerWidth - 24);
+  }
   return Math.min(760, Math.max(420, Math.round(window.innerWidth * 0.38)));
 }
 
 function clampSplitToolsPanelWidth(width: number): number {
   if (typeof window === "undefined") return width;
-  const minWidth = 360;
+  const minWidth = window.innerWidth <= 640 ? 320 : 360;
   const maxWidth = Math.min(920, Math.max(minWidth, window.innerWidth - 48));
   return Math.min(Math.max(width, minWidth), maxWidth);
 }
@@ -12637,6 +12640,14 @@ export default function MediaStudio() {
   const [isSplitToolsPanelCollapsed, setIsSplitToolsPanelCollapsed] =
     useState(false);
   const [isSplitScissorsDragOver, setIsSplitScissorsDragOver] = useState(false);
+
+  useEffect(() => {
+    if (showSplitDialog) {
+      setActiveSidebarTab("tools");
+      setIsRightPanelCollapsed(false);
+    }
+  }, [showSplitDialog]);
+
   const [splitToolsPanelWidth, setSplitToolsPanelWidth] = useState(() =>
     getDefaultSplitToolsPanelWidth()
   );
@@ -12695,6 +12706,15 @@ export default function MediaStudio() {
     isUploadingProductionShotSplitFrames,
     setIsUploadingProductionShotSplitFrames,
   ] = useState(false);
+
+  useEffect(() => {
+    if (!showSplitDialog || typeof window === "undefined") return;
+    if (window.innerWidth <= 1024) {
+      setSplitToolsPanelTop(12);
+      setSplitToolsPanelWidth(getDefaultSplitToolsPanelWidth());
+    }
+  }, [showSplitDialog]);
+
   const [cropAspectRatio, setCropAspectRatio] = useState("1:1");
   const [cropResult, setCropResult] = useState<CropResult | null>(null);
   const [isCropping, setIsCropping] = useState(false);
@@ -16568,10 +16588,58 @@ export default function MediaStudio() {
     }
   };
 
+  const readStoredDraggedImageUrl = (storageKey: string): string => {
+    try {
+      const parsed = JSON.parse(
+        window.sessionStorage.getItem(storageKey) ?? "{}"
+      ) as { mediaType?: string; url?: string };
+      return parsed.mediaType === "image" && typeof parsed.url === "string"
+        ? parsed.url
+        : "";
+    } catch {
+      return "";
+    }
+  };
+
   const getDraggedMediaUrl = (dataTransfer: DataTransfer) => {
+    const mediaImagePayload = dataTransfer.getData(
+      "application/x-smartspec-storyboard-image"
+    );
+    if (mediaImagePayload) {
+      try {
+        const parsed = JSON.parse(mediaImagePayload) as {
+          mediaType?: string;
+          storageKey?: string;
+          url?: string;
+        };
+        if (parsed.mediaType && parsed.mediaType !== "image") {
+          return "";
+        }
+        if (parsed.storageKey) {
+          const storedUrl = readStoredDraggedImageUrl(parsed.storageKey);
+          if (storedUrl) return storedUrl;
+        }
+        if (typeof parsed.url === "string" && parsed.url.trim()) {
+          return parsed.url;
+        }
+      } catch {
+        // Fall through to the standard drag payloads.
+      }
+    }
     const directUrl =
+      dataTransfer.getData("application/x-smartspec-media-url") ||
       dataTransfer.getData("text/uri-list") ||
       dataTransfer.getData("text/plain");
+    if (directUrl?.startsWith("storyboard-drag:")) {
+      return readStoredDraggedImageUrl(
+        directUrl.replace(/^storyboard-drag:/, "")
+      );
+    }
+    if (directUrl?.startsWith("media-studio-drag:")) {
+      return readStoredDraggedImageUrl(
+        directUrl.replace(/^media-studio-drag:/, "")
+      );
+    }
     if (directUrl) return directUrl;
     const asset = getDraggedProductionAsset(dataTransfer);
     return typeof asset?.url === "string" ? asset.url : "";
@@ -22784,6 +22852,28 @@ export default function MediaStudio() {
     event: React.DragEvent<HTMLElement>,
     input: SplitToolsDragImageInput
   ) => {
+    const storageKey = input.url.startsWith("data:image/")
+      ? `smartaihub:media-studio-drag-image:${Date.now()}:${Math.random()
+          .toString(36)
+          .slice(2)}`
+      : "";
+    if (storageKey) {
+      try {
+        window.sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            mediaType: "image",
+            url: input.url,
+            title: input.title,
+            filename: input.filename,
+            createdAt: Date.now(),
+          })
+        );
+      } catch {
+        // Continue with inline drag payloads if storage is unavailable.
+      }
+    }
+    const dragUrl = storageKey ? `media-studio-drag:${storageKey}` : input.url;
     const productionAsset: ProductionReferenceInput = {
       id: `image-tools-${input.index ?? "crop"}-${Date.now()}`,
       kind: "generated_media",
@@ -22794,22 +22884,40 @@ export default function MediaStudio() {
       zone: "scene_mood",
       role: "visual_reference",
     };
+    const setDragData = (type: string, value: string) => {
+      try {
+        event.dataTransfer.setData(type, value);
+      } catch {
+        // Some browsers reject large data URLs for standard drag payload types.
+      }
+    };
     event.dataTransfer.effectAllowed = "copy";
-    event.dataTransfer.setData("text/uri-list", input.url);
-    event.dataTransfer.setData("text/plain", input.url);
-    event.dataTransfer.setData("application/x-smartspec-media-type", "image");
-    event.dataTransfer.setData("text/x-smartspec-media-type", "image");
-    event.dataTransfer.setData(
+    setDragData("text/uri-list", dragUrl);
+    setDragData("text/plain", dragUrl);
+    setDragData("application/x-smartspec-media-url", dragUrl);
+    setDragData("application/x-smartspec-media-type", "image");
+    setDragData("text/x-smartspec-media-type", "image");
+    setDragData(
+      "application/x-smartspec-storyboard-image",
+      JSON.stringify({
+        mediaType: "image",
+        url: storageKey ? undefined : input.url,
+        storageKey: storageKey || undefined,
+        title: input.title,
+        filename: input.filename,
+      })
+    );
+    setDragData(
       "application/x-production-asset-id",
       productionAsset.id
     );
-    event.dataTransfer.setData(
+    setDragData(
       "application/x-production-asset-json",
       JSON.stringify(productionAsset)
     );
-    event.dataTransfer.setData(
+    setDragData(
       "DownloadURL",
-      `image/jpeg:${input.filename}:${input.url}`
+      `image/jpeg:${input.filename}:${dragUrl}`
     );
   };
 
@@ -23367,6 +23475,56 @@ export default function MediaStudio() {
       toast.success(t("mediaStudio.addedCroppedImageAsReference"));
     } catch (error) {
       console.error("Failed to upload cropped image:", error);
+      toast.error(t("mediaStudio.failedToAddAsReference"));
+    }
+  };
+
+  const addAllSplitsAsReference = async () => {
+    if (splitResults.length === 0) return;
+
+    const availableSlots = maxReferenceImages - referenceImages.length;
+    if (availableSlots <= 0) {
+      toast.error(
+        t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
+      );
+      return;
+    }
+
+    const imagesToAdd = splitResults.slice(0, availableSlots);
+    toast.info(
+      t("mediaStudio.addingToCurrentReference", { count: imagesToAdd.length })
+    );
+
+    try {
+      const effectiveSplitMarketplaceContext =
+        splitMarketplaceContext ?? getMarketplaceContextFromProduction();
+      const uploadedImages: ReferenceImage[] = [];
+
+      for (const [position, result] of imagesToAdd.entries()) {
+        const sequenceNumber =
+          getSplitResultSequenceNumber(result) || position + 1;
+        const uploadResult = await uploadMutation.mutateAsync({
+          fileName: `split-image-${sequenceNumber}.jpg`,
+          fileType: "image/jpeg",
+          fileBase64: result.dataUrl,
+        });
+        uploadedImages.push({
+          url: uploadResult.url,
+          name: `Split ${sequenceNumber}`,
+          ...(effectiveSplitMarketplaceContext
+            ? { marketplaceProduct: effectiveSplitMarketplaceContext }
+            : {}),
+        });
+      }
+
+      setReferenceImages(prev => [...prev, ...uploadedImages]);
+      toast.success(
+        t("mediaStudio.addedImagesToCurrentReference", {
+          count: uploadedImages.length,
+        })
+      );
+    } catch (error) {
+      console.error("Failed to upload split images:", error);
       toast.error(t("mediaStudio.failedToAddAsReference"));
     }
   };
@@ -35409,10 +35567,10 @@ export default function MediaStudio() {
         )}
         <div
           className={cn(
-            "grid grid-cols-1 gap-6 lg:items-start",
+            "grid grid-cols-1 gap-6 md:items-start",
             isRightPanelCollapsed
-              ? "lg:grid-cols-[minmax(0,1fr)_3.5rem]"
-              : "lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]"
+              ? "md:grid-cols-[minmax(0,1fr)_3.5rem]"
+              : "md:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.85fr)] xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]"
           )}
         >
           {/* Left Panel - Controls */}
@@ -37879,19 +38037,19 @@ export default function MediaStudio() {
                             "opacity-60"
                         )}
                         onDragOver={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.imageUrls
                             ? handleDragOver
                             : undefined
                         }
                         onDragLeave={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.imageUrls
                             ? handleDragLeave
                             : undefined
                         }
                         onDrop={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.imageUrls
                             ? handleDrop
                             : undefined
@@ -38019,19 +38177,19 @@ export default function MediaStudio() {
                               : "border-gray-200 hover:border-gray-300"
                         )}
                         onDragOver={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.videoUrls
                             ? handleVideoDragOver
                             : undefined
                         }
                         onDragLeave={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.videoUrls
                             ? handleVideoDragLeave
                             : undefined
                         }
                         onDrop={
-                          selectedModel &&
+                          !selectedModel ||
                           selectedMediaModelReferenceSupport.videoUrls
                             ? handleVideoDrop
                             : undefined
@@ -40739,16 +40897,16 @@ export default function MediaStudio() {
             data-testid="media-studio-right-panel"
             data-collapsed={isRightPanelCollapsed ? "true" : "false"}
             className={cn(
-              "lg:sticky lg:top-24 lg:min-h-0",
+              "md:sticky md:top-24 md:min-h-0",
               isRightPanelCollapsed
-                ? "lg:flex lg:h-[calc(100vh-7rem)] lg:justify-start"
-                : "space-y-4 lg:flex lg:h-[calc(100vh-7rem)] lg:flex-col lg:gap-4 lg:space-y-0"
+                ? "md:flex md:h-[calc(100dvh-7rem)] md:justify-start"
+                : "space-y-4 md:flex md:h-[calc(100dvh-7rem)] md:flex-col md:gap-4 md:space-y-0"
             )}
           >
             {isRightPanelCollapsed ? (
               <div
                 data-testid="media-studio-right-panel-collapsed"
-                className="flex min-h-14 items-start justify-end rounded-xl border border-slate-200 bg-white/90 p-2 shadow-sm backdrop-blur lg:h-full lg:w-14"
+                className="flex min-h-14 items-start justify-end rounded-xl border border-slate-200 bg-white/90 p-2 shadow-sm backdrop-blur md:h-full md:w-14"
               >
                 <Button
                   type="button"
@@ -40798,11 +40956,11 @@ export default function MediaStudio() {
                   onValueChange={value =>
                     setActiveSidebarTab(value as StudioSidebarTab)
                   }
-                  className="relative z-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
+                  className="relative z-0 md:min-h-0 md:flex-1 md:overflow-hidden"
                 >
                   <TabsList
                     data-testid="media-studio-sidebar-tabs"
-                    className="grid h-auto w-full grid-cols-3 items-stretch bg-muted/50 p-1"
+                    className="grid h-auto w-full grid-cols-4 items-stretch bg-muted/50 p-1"
                   >
                     <TabsTrigger
                       value="history"
@@ -40841,6 +40999,21 @@ export default function MediaStudio() {
                       </span>
                       <span className="block max-w-full text-center leading-tight xl:hidden">
                         {t("mediaStudio.marketplaceImagesShort")}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="tools"
+                      aria-label={
+                        isThaiLocale ? "เครื่องมือตัดภาพ" : "Image cut tools"
+                      }
+                      className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1.5 py-2 text-xs leading-tight sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm"
+                    >
+                      <Scissors className="h-4 w-4" />
+                      <span className="hidden max-w-full text-center leading-tight xl:inline">
+                        {isThaiLocale ? "ตัดภาพ" : "Cut"}
+                      </span>
+                      <span className="block max-w-full text-center leading-tight xl:hidden">
+                        Cut
                       </span>
                     </TabsTrigger>
                   </TabsList>
@@ -40882,7 +41055,7 @@ export default function MediaStudio() {
 
                   <TabsContent
                     value="history"
-                    className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
+                    className="mt-4 touch-pan-y md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pr-1"
                   >
                     <div className="pr-0 sm:pr-3">
                       <Tabs
@@ -41611,7 +41784,7 @@ export default function MediaStudio() {
 
                   <TabsContent
                     value="library"
-                    className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
+                    className="mt-4 touch-pan-y md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pr-1"
                   >
                     <LibrarySearchPanel
                       query={librarySearchQuery}
@@ -41706,7 +41879,7 @@ export default function MediaStudio() {
                   <TabsContent
                     ref={marketplaceScrollContainerRef}
                     value="marketplace"
-                    className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
+                    className="mt-4 touch-pan-y md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pr-1"
                   >
                     <div className="space-y-3 pr-0 sm:pr-3">
                       <div className="sticky top-0 z-10 space-y-2 bg-background/95 pb-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -42829,6 +43002,284 @@ export default function MediaStudio() {
                       )}
                     </div>
                   </TabsContent>
+
+                  <TabsContent
+                    value="tools"
+                    className="mt-4 touch-pan-y md:min-h-0 md:overflow-y-auto md:overscroll-contain md:pr-1"
+                  >
+                    <div className="space-y-3 pr-0 sm:pr-3">
+                      <div
+                        className={cn(
+                          "rounded-lg border border-dashed bg-sky-50/70 p-3 text-sm text-sky-950 transition-colors",
+                          isSplitScissorsDragOver &&
+                            "border-sky-500 bg-sky-100 ring-2 ring-sky-200"
+                        )}
+                        onDragOver={handleSplitScissorsDragOver}
+                        onDragLeave={() => setIsSplitScissorsDragOver(false)}
+                        onDrop={event => void handleSplitScissorsDrop(event)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <Scissors className="mt-0.5 h-4 w-4 shrink-0" />
+                          <div className="min-w-0 space-y-1">
+                            <p className="font-semibold">
+                              {isThaiLocale ? "Cut / Crop" : "Cut / Crop"}
+                            </p>
+                            <p className="text-xs leading-5 text-sky-800">
+                              {isThaiLocale
+                                ? "วางรูปเพื่อส่งเข้าเครื่องมือตัดภาพ หรือแตะปุ่มแนบจากผลลัพธ์ด้านล่าง"
+                                : "Drop an image for cut tools, or tap attach from the results below."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="min-h-10 gap-2 whitespace-normal"
+                          onClick={() => {
+                            setShowSplitDialog(true);
+                            setIsSplitToolsPanelCollapsed(false);
+                          }}
+                        >
+                          <Scissors className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0">
+                            {isThaiLocale ? "เปิด Cut" : "Open Cut"}
+                          </span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="min-h-10 gap-2 whitespace-normal"
+                          onClick={() => {
+                            setShowSplitDialog(true);
+                            setIsSplitToolsPanelCollapsed(false);
+                            setImageEditorMode("crop");
+                            if (splitImageUrl) {
+                              void updateCropPreview(cropAspectRatio);
+                            }
+                          }}
+                        >
+                          <Crop className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0">
+                            {isThaiLocale ? "เปิด Crop" : "Open Crop"}
+                          </span>
+                        </Button>
+                      </div>
+
+                      {splitResults.length > 0 ? (
+                        <div className="space-y-3 rounded-lg border bg-background p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">
+                                {t("mediaStudio.resultsCount", {
+                                  count: splitResults.length,
+                                })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {isThaiLocale
+                                  ? "แตะ + เพื่อแนบ ไม่ต้องลากข้ามหน้าจอ"
+                                  : "Tap + to attach without a long drag."}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                aria-label={t(
+                                  "mediaStudio.addAllToCurrentReference"
+                                )}
+                                disabled={
+                                  referenceImages.length >= maxReferenceImages ||
+                                  uploadMutation.isPending
+                                }
+                                onClick={() => void addAllSplitsAsReference()}
+                              >
+                                <ImagePlus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                aria-label={
+                                  isThaiLocale
+                                    ? "ดาวน์โหลดภาพที่ตัดทั้งหมด"
+                                    : "Download all cut images"
+                                }
+                                onClick={handleDownloadAllSplits}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {splitResults.map((result, position) => {
+                              const sequenceNumber = position + 1;
+                              return (
+                                <div
+                                  key={`dock-${result.index}`}
+                                  className="group overflow-hidden rounded-lg border bg-muted/20"
+                                  draggable
+                                  onDragStart={event =>
+                                    handleSplitResultDragStart(
+                                      event,
+                                      result,
+                                      sequenceNumber
+                                    )
+                                  }
+                                >
+                                  <div className="relative aspect-square bg-muted">
+                                    <img
+                                      src={result.dataUrl}
+                                      alt={`Split ${sequenceNumber}`}
+                                      className="h-full w-full object-cover"
+                                      draggable={false}
+                                    />
+                                    <div className="absolute bottom-1 right-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] text-white">
+                                      {sequenceNumber}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-1 p-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-full rounded-md"
+                                      aria-label={
+                                        isThaiLocale
+                                          ? `ดาวน์โหลดภาพที่ ${sequenceNumber}`
+                                          : `Download image ${sequenceNumber}`
+                                      }
+                                      onClick={() =>
+                                        handleDownloadSplit(
+                                          result,
+                                          sequenceNumber
+                                        )
+                                      }
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-full rounded-md"
+                                      aria-label={
+                                        isThaiLocale
+                                          ? `แนบภาพที่ ${sequenceNumber} เป็น reference`
+                                          : `Attach image ${sequenceNumber} as reference`
+                                      }
+                                      disabled={
+                                        referenceImages.length >=
+                                        maxReferenceImages
+                                      }
+                                      onClick={() =>
+                                        void addSplitAsReference(
+                                          result,
+                                          sequenceNumber
+                                        )
+                                      }
+                                    >
+                                      <ImagePlus className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-full rounded-md text-red-600 hover:bg-red-50 hover:text-red-700"
+                                      aria-label={
+                                        isThaiLocale
+                                          ? `ลบภาพที่ ${sequenceNumber}`
+                                          : `Remove image ${sequenceNumber}`
+                                      }
+                                      onClick={() => handleRemoveSplit(result)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+                          {isThaiLocale
+                            ? "ยังไม่มีผลลัพธ์จากการตัดภาพ"
+                            : "No cut results yet."}
+                        </div>
+                      )}
+
+                      {cropResult && (
+                        <div className="space-y-3 rounded-lg border bg-background p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">
+                                {t("mediaStudio.cropResult")}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {cropResult.width}x{cropResult.height} (
+                                {cropResult.ratio})
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 shrink-0 px-2"
+                              aria-label={
+                                isThaiLocale
+                                  ? "ดาวน์โหลดภาพ crop"
+                                  : "Download crop result"
+                              }
+                              onClick={handleDownloadCrop}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div
+                            className="overflow-hidden rounded-lg border bg-muted/20"
+                            draggable
+                            onDragStart={event =>
+                              startSplitToolsImageDrag(event, {
+                                url: cropResult.dataUrl,
+                                title: `Crop ${cropAspectRatio}`,
+                                filename: `crop-${cropAspectRatio.replace(":", "x")}.jpg`,
+                              })
+                            }
+                          >
+                            <img
+                              src={cropResult.dataUrl}
+                              alt="Cropped result preview"
+                              className="max-h-[260px] w-full object-contain"
+                              draggable={false}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="min-h-10 w-full gap-2 whitespace-normal"
+                            disabled={
+                              referenceImages.length >= maxReferenceImages
+                            }
+                            onClick={addCropAsReference}
+                          >
+                            <ImagePlus className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0">
+                              {t("mediaStudio.useAsReference")}
+                            </span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
                 </Tabs>
               </>
             )}
@@ -43459,6 +43910,7 @@ export default function MediaStudio() {
               <div className="w-full xl:max-w-[560px] space-y-4">
                 <div className="grid grid-cols-2 gap-2">
                   <Button
+                    type="button"
                     variant={
                       imageEditorMode === "split" ? "default" : "outline"
                     }
@@ -43469,6 +43921,7 @@ export default function MediaStudio() {
                     {t("mediaStudio.splitGrid")}
                   </Button>
                   <Button
+                    type="button"
                     variant={imageEditorMode === "crop" ? "default" : "outline"}
                     onClick={() => {
                       setImageEditorMode("crop");
@@ -43533,6 +43986,7 @@ export default function MediaStudio() {
                         <div className="grid grid-cols-2 gap-2">
                           {(["9:16", "16:9"] as const).map(ratio => (
                             <Button
+                              type="button"
                               key={ratio}
                               variant={
                                 splitFrameCropAspectRatio === ratio
@@ -43562,6 +44016,7 @@ export default function MediaStudio() {
                       <div className="grid grid-cols-3 gap-1.5">
                         {COMMON_GRIDS.map(grid => (
                           <Button
+                            type="button"
                             key={`${grid.rows}x${grid.cols}`}
                             variant={
                               splitGridRows === grid.rows &&
@@ -43623,6 +44078,7 @@ export default function MediaStudio() {
                       </div>
                       <div className="flex-1 pt-5">
                         <Button
+                          type="button"
                           className="w-full"
                           onClick={executeSplit}
                           disabled={
@@ -43674,6 +44130,7 @@ export default function MediaStudio() {
                               )}
                             </div>
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
                               onClick={handleDownloadAllSplits}
@@ -43856,6 +44313,27 @@ export default function MediaStudio() {
                             </div>
                             <div className="grid grid-cols-1 gap-2">
                               <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void addAllSplitsAsReference()}
+                                className="min-h-10 w-full justify-center gap-2 whitespace-normal px-3 py-2 text-center leading-snug"
+                                disabled={
+                                  referenceImages.length >= maxReferenceImages ||
+                                  uploadMutation.isPending
+                                }
+                              >
+                                {uploadMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                ) : (
+                                  <ImagePlus className="h-4 w-4 shrink-0" />
+                                )}
+                                <span className="min-w-0 break-words">
+                                  {t("mediaStudio.addAllToCurrentReference")}
+                                </span>
+                              </Button>
+                              <Button
+                                type="button"
                                 variant="default"
                                 size="sm"
                                 onClick={createStoryboardReviewFromSplits}
@@ -43884,6 +44362,7 @@ export default function MediaStudio() {
                                 </span>
                               </Button>
                               <Button
+                                type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={addAllSplitsToVideoReference}
@@ -43903,7 +44382,7 @@ export default function MediaStudio() {
                           </div>
                         </div>
                         <div className="pb-6">
-                          <div className="grid grid-cols-3 gap-3 pr-2">
+                          <div className="grid grid-cols-2 gap-3 pr-1 md:grid-cols-3 md:pr-2">
                             {splitResults.map((result, position) => {
                               const sequenceNumber = position + 1;
                               const isDraggingSplitResult =
@@ -43949,14 +44428,15 @@ export default function MediaStudio() {
                                     className="w-full h-full object-cover"
                                     draggable={false}
                                   />
-                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                  <div className="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-black/55 p-1 opacity-100 transition-opacity xl:inset-0 xl:rounded-none xl:bg-black/50 xl:p-0 xl:opacity-0 xl:group-hover:opacity-100 xl:group-focus-within:opacity-100">
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-7 w-7 text-white hover:bg-white/20"
+                                            className="h-9 w-9 text-white hover:bg-white/20 xl:h-7 xl:w-7"
                                             onClick={() =>
                                               handleDownloadSplit(
                                                 result,
@@ -43978,9 +44458,10 @@ export default function MediaStudio() {
                                         <Tooltip>
                                           <TooltipTrigger asChild>
                                             <Button
+                                              type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-7 w-7 text-white hover:bg-white/20"
+                                              className="h-9 w-9 text-white hover:bg-white/20 xl:h-7 xl:w-7"
                                               onClick={() =>
                                                 addSplitAsReference(
                                                   result,
@@ -44001,9 +44482,10 @@ export default function MediaStudio() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <Button
+                                            type="button"
                                             size="icon"
                                             variant="ghost"
-                                            className="h-7 w-7 text-white hover:bg-red-500/80"
+                                            className="h-9 w-9 text-white hover:bg-red-500/80 xl:h-7 xl:w-7"
                                             onClick={() =>
                                               handleRemoveSplit(result)
                                             }
@@ -44058,6 +44540,7 @@ export default function MediaStudio() {
                       <div className="grid grid-cols-4 gap-2">
                         {COMMON_CROP_RATIOS.map(ratio => (
                           <Button
+                            type="button"
                             key={ratio.value}
                             variant={
                               cropAspectRatio === ratio.value
@@ -44137,6 +44620,7 @@ export default function MediaStudio() {
                     </div>
 
                     <Button
+                      type="button"
                       className="w-full"
                       onClick={executeCrop}
                       disabled={isCropping || !splitImageUrl}
@@ -44158,6 +44642,7 @@ export default function MediaStudio() {
 
                     <div className="space-y-2">
                       <Button
+                        type="button"
                         variant="outline"
                         className="w-full"
                         onClick={handleDownloadCrop}
@@ -44210,6 +44695,7 @@ export default function MediaStudio() {
                         <div className="flex gap-2">
                           {referenceImages.length < maxReferenceImages && (
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
                               onClick={addCropAsReference}
