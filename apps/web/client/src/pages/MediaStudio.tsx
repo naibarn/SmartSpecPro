@@ -217,11 +217,9 @@ import {
   type MediaStudioVisionModelOption,
 } from "@/lib/mediaStudioAutoPromptSelection";
 import {
-  buildMediaStudioDynamicReferenceImageMirror,
   buildMediaStudioAutoPromptReferenceImageSync,
   buildMediaStudioAutoPromptIdea,
   extractMediaStudioDynamicImageUrls,
-  hasMediaStudioDynamicImageFields,
 } from "@/lib/mediaStudioAutoPromptIdea";
 import {
   composePromptWithNotes,
@@ -16237,64 +16235,16 @@ export default function MediaStudio() {
           maxImages: maxReferenceImages,
         }
       );
-      if (sync.changed) {
-        setReferenceImages(sync.items);
-      }
       return sync.items.map(image => image.url);
     },
-    [maxReferenceImages, referenceImages, setReferenceImages]
+    [maxReferenceImages, referenceImages]
   );
-
-  useEffect(() => {
-    if (!selectedMediaModelReferenceSupport.imageUrls) {
-      return;
-    }
-    if (dynamicFormReferenceImageUrls.length === 0) {
-      return;
-    }
-    syncAutoPromptReferenceImages(dynamicFormReferenceImageUrls);
-  }, [
-    dynamicFormReferenceImageUrls,
-    selectedMediaModelReferenceSupport.imageUrls,
-    syncAutoPromptReferenceImages,
-  ]);
 
   const handleDynamicFormValuesChange = useCallback(
     (nextValues: Record<string, any>) => {
       setDynamicFormValues(nextValues);
-
-      if (!useAdvancedMode) {
-        return;
-      }
-
-      const nextDynamicImageUrls =
-        extractMediaStudioDynamicImageUrls(nextValues);
-      const skillControlsReferenceImages =
-        hasMediaStudioDynamicImageFields(nextValues) ||
-        dynamicFormReferenceImageUrls.length > 0;
-
-      if (!skillControlsReferenceImages) {
-        return;
-      }
-
-      const sync = buildMediaStudioDynamicReferenceImageMirror<ReferenceImage>({
-        referenceImages,
-        dynamicImageUrls: nextDynamicImageUrls,
-        maxImages: maxReferenceImages,
-      });
-
-      if (sync.changed) {
-        setReferenceImages(sync.items);
-      }
     },
-    [
-      dynamicFormReferenceImageUrls.length,
-      maxReferenceImages,
-      referenceImages,
-      setDynamicFormValues,
-      setReferenceImages,
-      useAdvancedMode,
-    ]
+    [setDynamicFormValues]
   );
 
   useEffect(() => {
