@@ -465,12 +465,21 @@ function isSkillImageAttachField(field: Record<string, any>): boolean {
     return false;
   }
   const accept = String(field.accept ?? "").toLowerCase();
-  return accept.includes("image") || accept.includes(".jpg") || accept.includes(".png");
+  return (
+    accept.includes("image") ||
+    accept.includes(".jpg") ||
+    accept.includes(".jpeg") ||
+    accept.includes(".png") ||
+    accept.includes(".webp")
+  );
 }
 
 function getSkillImageAttachFieldMaxItems(field: Record<string, any>): number | null {
   const value = Number(field.maxImages ?? field.maxCount ?? field.maxItems);
-  return Number.isFinite(value) && value > 0 ? value : null;
+  if (Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  return isMultiSkillImageAttachField(field) ? 5 : null;
 }
 
 function isMultiSkillImageAttachField(field: Record<string, any>): boolean {
@@ -478,7 +487,7 @@ function isMultiSkillImageAttachField(field: Record<string, any>): boolean {
   return (
     type === "images" ||
     type === "files" ||
-    (type === "imageUpload" && field.multiple !== false)
+    type === "imageUpload"
   );
 }
 
@@ -16082,7 +16091,8 @@ export default function MediaStudio() {
   const canAttachImageToSelectedTarget =
     selectedImageAttachTargetOption?.kind === "skill_field"
       ? (selectedSkillImageAttachRemainingSlots ?? 0) > 0
-      : referenceImages.length < maxReferenceImages;
+      : (!selectedModel || selectedMediaModelReferenceSupport.imageUrls) &&
+        referenceImages.length < maxReferenceImages;
 
   const attachImageUrlToSelectedTarget = useCallback(
     (input: {
