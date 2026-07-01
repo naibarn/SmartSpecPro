@@ -1,8 +1,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockRoute = vi.hoisted(() => ({
+  location: "/dashboard",
+  setLocation: vi.fn(),
+}));
+
 vi.mock("wouter", () => ({
-  useLocation: () => ["/dashboard", vi.fn()],
+  useLocation: () => [mockRoute.location, mockRoute.setLocation],
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -24,6 +29,13 @@ describe("FeedbackButton placement", () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
+    mockRoute.location = "/dashboard";
+    mockRoute.setLocation.mockClear();
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1024,
+    });
   });
 
   it("docks to the bottom right by default", () => {
@@ -53,5 +65,35 @@ describe("FeedbackButton placement", () => {
     expect(button.style.left).toBe("");
     expect(button.style.top).toBe("");
     expect(localStorage.getItem("feedback-button-position")).toBeNull();
+  });
+
+  it("keeps the default dock on tablet and desktop widths", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 768,
+    });
+
+    render(<FeedbackButton />);
+
+    const button = screen.getByLabelText("Open feedback dialog");
+    expect(button.style.right).toBe("16px");
+    expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
+    expect(button.style.left).toBe("");
+  });
+
+  it("docks to the bottom left on mobile to avoid right-side controls", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 390,
+    });
+
+    render(<FeedbackButton />);
+
+    const button = screen.getByLabelText("Open feedback dialog");
+    expect(button.style.left).toBe("16px");
+    expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
+    expect(button.style.right).toBe("");
   });
 });

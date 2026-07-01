@@ -11000,7 +11000,7 @@ export default function MediaStudio() {
     useState<StudioWorkspaceTab>("production");
   const [productionProjectSearch, setProductionProjectSearch] = useState("");
   const [productionProjectPickerOpen, setProductionProjectPickerOpen] =
-    useState(true);
+    useState(false);
   const [productionProjectPickerExpanded, setProductionProjectPickerExpanded] =
     useState(false);
   const [locallyDeletedProductionRunIds, setLocallyDeletedProductionRunIds] =
@@ -35459,18 +35459,6 @@ export default function MediaStudio() {
                     {t("mediaStudio.description")}
                   </p>
                 </div>
-                {studioWorkspaceTab === "production" ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={createNewProductionRun}
-                    className="hidden border-sky-200 bg-white/90 text-sky-800 shadow-sm hover:bg-sky-50 sm:inline-flex"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {isThaiLocale ? "สร้าง Project ใหม่" : "New Project"}
-                  </Button>
-                ) : null}
               </div>
             </div>
             <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:justify-end">
@@ -35509,19 +35497,20 @@ export default function MediaStudio() {
               </Button>
             </div>
           </div>
-          {shouldShowActiveProductionProject ? (
+          <div className="mt-3 flex w-full flex-col gap-2 rounded-xl border border-slate-200/80 bg-white/75 px-3 py-2 text-sm text-slate-700 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
-              className="mt-3 flex w-full items-center gap-3 rounded-lg border bg-white/90 p-2 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left transition hover:text-sky-800"
               onClick={() => setStudioWorkspaceTab("production")}
               title={
                 isThaiLocale
-                  ? "เปิดแท็บ Production ของโปรเจกต์นี้"
-                  : "Open this project's Production tab"
+                  ? "เปิดแท็บ Production"
+                  : "Open Production workspace"
               }
             >
-              <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-slate-100">
-                {activeProductionBannerThumbnail ? (
+              <div className="flex h-10 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-slate-100">
+                {shouldShowActiveProductionProject &&
+                activeProductionBannerThumbnail ? (
                   <img
                     src={activeProductionBannerThumbnail}
                     alt={activeProductionBannerTitle || "Production project"}
@@ -35529,78 +35518,64 @@ export default function MediaStudio() {
                     loading="lazy"
                   />
                 ) : (
-                  <Layers className="h-5 w-5 text-slate-400" />
+                  <Layers className="h-4 w-4 text-slate-400" />
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-base font-semibold text-slate-950">
-                  {activeProductionBannerTitle ||
-                    (isThaiLocale
-                      ? "โปรเจกต์ Production"
-                      : "Production project")}
-                </div>
-                {activeProductionBannerSummary ? (
-                  <div className="mt-0.5 truncate text-sm text-slate-600">
-                    {activeProductionBannerSummary}
-                  </div>
-                ) : null}
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {activeProductionBannerStatus ? (
-                    <Badge variant="outline" className="bg-white text-xs">
-                      {activeProductionBannerStatus}
-                    </Badge>
-                  ) : null}
-                  {activeProductionBannerPlatform ? (
-                    <Badge variant="outline" className="bg-white text-xs">
-                      {activeProductionBannerPlatform}
-                    </Badge>
-                  ) : null}
-                </div>
-              </div>
-            </button>
-          ) : (
-            <div className="mt-3 flex w-full flex-col gap-2 rounded-lg border border-slate-200 bg-white/80 p-3 text-sm text-slate-700 shadow-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <div className="font-semibold text-slate-950">
-                  {isThaiLocale
-                    ? "ยังไม่ได้เลือก Production Project"
-                    : "No Production project selected"}
-                </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {studioWorkspaceTab === "production"
-                    ? isThaiLocale
-                      ? "สร้างโปรเจกต์ใหม่หรือเปิดโปรเจกต์เดิมเพื่อใช้ workspace ของ Production"
-                      : "Create a new project or open an existing one to use the Production workspace."
+                <div className="truncate text-sm font-semibold text-slate-950">
+                  {shouldShowActiveProductionProject
+                    ? activeProductionBannerTitle ||
+                      (isThaiLocale
+                        ? "โปรเจกต์ Production"
+                        : "Production project")
                     : isThaiLocale
-                      ? "ตอนนี้กำลังใช้โหมดสร้างทั่วไปโดยไม่ผูกกับ Production Project"
-                      : "You are using standalone generation without a linked Production project."}
+                      ? "ยังไม่ได้เลือก Production Project"
+                      : "No Production project selected"}
+                </div>
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {shouldShowActiveProductionProject
+                    ? activeProductionBannerSummary ||
+                      (isThaiLocale
+                        ? "เชื่อมกับ workspace ปัจจุบัน"
+                        : "Linked to the current workspace")
+                    : isThaiLocale
+                      ? "ใช้โหมดสร้างทั่วไป หรือเปิดโปรเจกต์เมื่อต้องการทำงานแบบ Production"
+                      : "Use standalone generation, or open a project when Production context is needed."}
                 </div>
               </div>
-              {studioWorkspaceTab === "production" ? (
-                <div className="flex shrink-0 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setProductionProjectPickerOpen(true)}
-                    className="border-sky-200 bg-white text-sky-800 hover:bg-sky-50"
-                  >
-                    <Search className="mr-2 h-4 w-4" />
-                    {isThaiLocale ? "เปิดโปรเจกต์เดิม" : "Open Project"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={createNewProductionRun}
-                    className="bg-sky-700 text-white hover:bg-sky-800"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    {isThaiLocale ? "สร้าง Project ใหม่" : "New Project"}
-                  </Button>
-                </div>
+              {activeProductionBannerStatus ? (
+                <Badge variant="outline" className="hidden bg-white text-xs md:inline-flex">
+                  {activeProductionBannerStatus}
+                </Badge>
               ) : null}
+              {activeProductionBannerPlatform ? (
+                <Badge variant="outline" className="hidden bg-white text-xs md:inline-flex">
+                  {activeProductionBannerPlatform}
+                </Badge>
+              ) : null}
+            </button>
+            <div className="flex shrink-0 flex-wrap gap-2 sm:flex-nowrap">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setProductionProjectPickerOpen(true)}
+                className="min-w-0 flex-1 border-sky-200 bg-white text-sky-800 hover:bg-sky-50 sm:flex-none"
+              >
+                <Search className="mr-2 h-4 w-4" />
+                {isThaiLocale ? "เปิดโปรเจกต์เดิม" : "Open Project"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={createNewProductionRun}
+                className="min-w-0 flex-1 bg-sky-700 text-white hover:bg-sky-800 sm:flex-none"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {isThaiLocale ? "สร้าง Project ใหม่" : "New Project"}
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       </header>
 
@@ -35699,8 +35674,8 @@ export default function MediaStudio() {
             </div>
           </div>
         )}
-        {studioWorkspaceTab === "production" && productionProjectPickerOpen && (
-          <div className="mb-4 rounded-xl border border-sky-200 bg-white/95 p-4 shadow-sm">
+        {productionProjectPickerOpen && (
+          <div className="mb-4 rounded-xl border border-sky-200 bg-white/95 p-3 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -35713,8 +35688,8 @@ export default function MediaStudio() {
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {isThaiLocale
-                    ? "เลือกโปรเจกต์เดิมเพื่อทำต่อ หรือปิดแผงนี้เพื่อกลับไปแก้ workspace ปัจจุบัน"
-                    : "Open an existing production project, or close this panel to continue editing the current workspace."}
+                    ? "เลือกโปรเจกต์เดิมเมื่อต้องการบริบท Production แผงนี้จะไม่เปิดค้างเอง"
+                    : "Open a project when Production context is needed. This panel stays closed until you ask for it."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row lg:w-[520px]">
@@ -35745,9 +35720,9 @@ export default function MediaStudio() {
                 </Button>
               </div>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-3 grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
               {productionRunsQuery.isFetching && (
-                <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+                <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground lg:col-span-2 2xl:col-span-3">
                   <Loader2 className="mr-2 inline h-4 w-4 motion-safe:animate-spin motion-reduce:animate-none" />
                   {isThaiLocale
                     ? "กำลังค้นหาโปรเจกต์..."
@@ -35756,7 +35731,7 @@ export default function MediaStudio() {
               )}
               {!productionRunsQuery.isFetching &&
                 productionRuns.length === 0 && (
-                  <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+                  <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground lg:col-span-2 2xl:col-span-3">
                     {isThaiLocale
                       ? "ยังไม่พบโปรเจกต์เดิม"
                       : "No existing projects found."}
@@ -35771,14 +35746,14 @@ export default function MediaStudio() {
                 return (
                   <div
                     key={run.productionRunId}
-                    className="flex min-w-0 gap-3 rounded-md border bg-white p-2 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                    className="flex min-w-0 gap-2 rounded-md border bg-white p-2 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
                   >
                     <button
                       type="button"
                       className="flex min-w-0 flex-1 gap-3 text-left"
                       onClick={() => openProductionRun(run.productionRunId)}
                     >
-                      <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
+                      <div className="flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
                         {thumbnailUrl ? (
                           <img
                             src={thumbnailUrl}
@@ -35793,7 +35768,7 @@ export default function MediaStudio() {
                         <div className="truncate text-sm font-medium text-slate-900">
                           {run.title}
                         </div>
-                        <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        <div className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                           {run.summary || run.productionRunId}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-1">
@@ -35833,7 +35808,7 @@ export default function MediaStudio() {
                 );
               })}
               {!productionProjectPickerExpanded && productionRuns.length > 6 ? (
-                <div className="md:col-span-2 xl:col-span-3 flex justify-center pt-1">
+                <div className="flex justify-center pt-1 lg:col-span-2 2xl:col-span-3">
                   <Button
                     type="button"
                     variant="ghost"
@@ -35865,12 +35840,12 @@ export default function MediaStudio() {
             >
               <TabsList
                 data-testid="media-studio-workspace-tabs"
-                className="grid h-auto w-full grid-cols-5 items-stretch bg-muted/50 p-1"
+                className="grid h-auto w-full grid-cols-5 items-stretch rounded-xl border border-slate-200 bg-white/85 p-1 shadow-sm"
               >
                 <TabsTrigger
                   value="production"
                   aria-label="Production"
-                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Bot className="h-4 w-4 shrink-0" />
                   <span className="hidden max-w-full text-center leading-tight sm:inline">
@@ -35883,7 +35858,7 @@ export default function MediaStudio() {
                 <TabsTrigger
                   value="video_shot"
                   aria-label="Video Shot"
-                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-emerald-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Film className="h-4 w-4 shrink-0" />
                   <span className="hidden max-w-full text-center leading-tight sm:inline">
@@ -35895,7 +35870,7 @@ export default function MediaStudio() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="image"
-                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Image className="h-4 w-4 shrink-0" />
                   <span className="block max-w-full text-center leading-tight">
@@ -35904,7 +35879,7 @@ export default function MediaStudio() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="video"
-                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-blue-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Video className="h-4 w-4 shrink-0" />
                   <span className="block max-w-full text-center leading-tight">
@@ -35913,7 +35888,7 @@ export default function MediaStudio() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="audio"
-                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-orange-800 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
+                  className="!h-auto !whitespace-normal min-h-11 min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight transition-all data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-md sm:min-h-10 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm"
                 >
                   <Music className="h-4 w-4 shrink-0" />
                   <span className="block max-w-full text-center leading-tight">

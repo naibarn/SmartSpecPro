@@ -134,6 +134,9 @@ export function FeedbackButton() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [feedbackPlacement, setFeedbackPlacement] = useState<FeedbackPlacement>(() => getInitialFeedbackPlacement());
   const [isButtonDragging, setIsButtonDragging] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1024 : window.innerWidth,
+  );
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,6 +207,7 @@ export function FeedbackButton() {
 
   useEffect(() => {
     const handleResize = () => {
+      setViewportWidth(window.innerWidth);
       const rect = feedbackButtonRef.current?.getBoundingClientRect();
       setFeedbackPlacement((current) => {
         if (current.mode !== "custom") {
@@ -357,11 +361,17 @@ export function FeedbackButton() {
   );
 
   const isSubmitting = submitMutation.isPending || uploading;
+  const shouldDockLeftOnMobile = viewportWidth < 640;
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
       left: `${feedbackPlacement.x}px`,
       top: `${feedbackPlacement.y}px`,
     }
+    : shouldDockLeftOnMobile
+      ? {
+        left: `${FEEDBACK_MARGIN}px`,
+        bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
+      }
     : {
       right: `${FEEDBACK_MARGIN}px`,
       bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
