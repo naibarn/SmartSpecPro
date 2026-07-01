@@ -408,6 +408,8 @@ type VideoAudioWorkflow =
   | "separate_voice_music";
 type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
 const CURRENT_REFERENCE_ATTACH_TARGET_ID = "current_reference";
+const DEFAULT_REFERENCE_IMAGE_LIMIT = 10;
+const DEFAULT_VIDEO_REFERENCE_IMAGE_LIMIT = 25;
 const MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID =
   "media-production-storyboard-planner";
 const MEDIA_PRODUCTS_STORYBOARD_PLANNER_SKILL_ID =
@@ -16045,12 +16047,15 @@ export default function MediaStudio() {
     visionModels?.models,
   ]);
 
-  // Reference image limits per tab, further constrained by model metadata when present.
+  // Reference image attach capacity; provider send limits are applied later when building payloads.
   const maxReferenceImages = useMemo(() => {
-    const tabLimit = activeTab === "video" ? 25 : 5;
+    const tabLimit =
+      activeTab === "video"
+        ? DEFAULT_VIDEO_REFERENCE_IMAGE_LIMIT
+        : DEFAULT_REFERENCE_IMAGE_LIMIT;
     return selectedMediaModelReferenceImageLimit === null
       ? tabLimit
-      : Math.min(tabLimit, selectedMediaModelReferenceImageLimit);
+      : Math.max(tabLimit, selectedMediaModelReferenceImageLimit);
   }, [activeTab, selectedMediaModelReferenceImageLimit]);
   const maxReferenceVideos = useMemo(() => {
     if (activeTab !== "video") return 0;
@@ -16258,26 +16263,6 @@ export default function MediaStudio() {
     },
     [setDynamicFormValues]
   );
-
-  useEffect(() => {
-    const clamped = clampReferenceImagesToModelLimit(
-      selectedMediaModelForInputFields as any,
-      referenceImages
-    );
-    if (clamped.droppedCount <= 0 || clamped.maxItems === null) {
-      return;
-    }
-
-    setReferenceImages(clamped.items);
-    toast.error(
-      t("mediaStudio.maxReferenceImagesError", { max: clamped.maxItems })
-    );
-  }, [
-    referenceImages,
-    selectedMediaModelForInputFields,
-    setReferenceImages,
-    t,
-  ]);
 
   // Handle file upload for reference images
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -23827,7 +23812,10 @@ export default function MediaStudio() {
 
     // Get video tab's current reference images count
     const videoReferenceCount = tabStates.video.referenceImages.length;
-    const videoMaxImages = activeTab === "video" ? maxReferenceImages : 25;
+    const videoMaxImages =
+      activeTab === "video"
+        ? maxReferenceImages
+        : DEFAULT_VIDEO_REFERENCE_IMAGE_LIMIT;
     const availableSlots = videoMaxImages - videoReferenceCount;
 
     if (availableSlots <= 0) {
@@ -31979,7 +31967,8 @@ export default function MediaStudio() {
           return;
         }
         const maxImages =
-          getModelReferenceImageLimit(normalizedModel as any) ?? 5;
+          getModelReferenceImageLimit(normalizedModel as any) ??
+          DEFAULT_REFERENCE_IMAGE_LIMIT;
         const referenceLimit = Math.max(0, Math.min(20, maxImages));
         const referenceUrls = selectProductionRoleBalancedReferenceImageUrls({
           product: skillPackage.referenceProductImageUrls,
@@ -32318,7 +32307,8 @@ export default function MediaStudio() {
         const aspect =
           productionWorkspaceSpace.brief.aspectRatio ?? aspectRatio;
         const maxImages =
-          getModelReferenceImageLimit(normalizedModel as any) ?? 5;
+          getModelReferenceImageLimit(normalizedModel as any) ??
+          DEFAULT_REFERENCE_IMAGE_LIMIT;
         const referenceLimit = Math.max(0, Math.min(20, maxImages));
         const continuityReferenceUrls =
           getProductionShotFrameContinuityReferenceUrls(
@@ -33113,7 +33103,8 @@ export default function MediaStudio() {
           toast.warning(readinessNotes[0]);
         }
         const maxImages =
-          getModelReferenceImageLimit(normalizedModel as any) ?? 5;
+          getModelReferenceImageLimit(normalizedModel as any) ??
+          DEFAULT_REFERENCE_IMAGE_LIMIT;
         const primaryReferenceUrls =
           startFrameUrl && stopFrameUrl
             ? [startFrameUrl, stopFrameUrl]
