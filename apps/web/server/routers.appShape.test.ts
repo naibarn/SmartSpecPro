@@ -40,6 +40,7 @@ describe("appRouter compatibility shape", () => {
     expect(procedureKeys).toEqual(
       expect.arrayContaining([
         "marketplaceCapture.startAutoReview",
+        "marketplaceCapture.searchSimilarProductsByImage",
         "marketplaceCapture.getAutoReviewRun",
         "marketplaceCapture.listAutoReviewRuns",
         "marketplaceCapture.advanceAutoReviewRun",

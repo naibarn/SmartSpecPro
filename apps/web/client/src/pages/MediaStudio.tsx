@@ -16038,9 +16038,33 @@ export default function MediaStudio() {
       ? Math.min(5, fieldMax)
       : 5;
   }, [activeTab, selectedMediaModelParsedInputFields]);
+  const selectedSkillImageAttachTargetCount = useMemo(() => {
+    if (selectedImageAttachTargetOption?.kind !== "skill_field") return 0;
+    const value = dynamicFormValues[selectedImageAttachTargetOption.fieldId];
+    if (Array.isArray(value)) {
+      return value.filter(
+        (entry): entry is string =>
+          typeof entry === "string" && entry.trim().length > 0
+      ).length;
+    }
+    return typeof value === "string" && value.trim() ? 1 : 0;
+  }, [dynamicFormValues, selectedImageAttachTargetOption]);
+  const selectedSkillImageAttachRemainingSlots = useMemo(() => {
+    if (selectedImageAttachTargetOption?.kind !== "skill_field") return null;
+    if (!selectedImageAttachTargetOption.multiple) return 1;
+    if (selectedImageAttachTargetOption.maxItems === null) {
+      return Number.POSITIVE_INFINITY;
+    }
+    return Math.max(
+      0,
+      selectedImageAttachTargetOption.maxItems -
+        selectedSkillImageAttachTargetCount
+    );
+  }, [selectedImageAttachTargetOption, selectedSkillImageAttachTargetCount]);
   const canAttachImageToSelectedTarget =
-    selectedImageAttachTargetOption?.kind === "skill_field" ||
-    referenceImages.length < maxReferenceImages;
+    selectedImageAttachTargetOption?.kind === "skill_field"
+      ? (selectedSkillImageAttachRemainingSlots ?? 0) > 0
+      : referenceImages.length < maxReferenceImages;
 
   const attachImageUrlToSelectedTarget = useCallback(
     (input: {
@@ -16125,6 +16149,49 @@ export default function MediaStudio() {
       t,
       toast,
     ]
+  );
+  const renderImageAttachTargetSelector = (compact = false) => (
+    <div
+      className={cn(
+        "rounded-lg border border-sky-200 bg-sky-50/70 p-3",
+        compact && "p-2"
+      )}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <Label className="text-xs font-semibold text-sky-950">
+            {t("mediaStudio.imageAttachTarget")}
+          </Label>
+          <p className="mt-0.5 line-clamp-2 text-xs text-sky-800">
+            {selectedImageAttachTargetOption?.description ||
+              t("mediaStudio.imageAttachTargetHelp")}
+          </p>
+        </div>
+        <Select
+          value={selectedImageAttachTarget}
+          onValueChange={setSelectedImageAttachTarget}
+        >
+          <SelectTrigger className="h-9 w-full bg-white sm:w-[220px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="max-h-[320px]">
+            <SelectGroup>
+              <SelectLabel>{t("mediaStudio.imageAttachTarget")}</SelectLabel>
+              {imageAttachTargetOptions.map(option => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+      {skillImageAttachTargetOptions.length === 0 ? (
+        <p className="mt-2 text-[11px] text-sky-700">
+          {t("mediaStudio.noSkillImageTargets")}
+        </p>
+      ) : null}
+    </div>
   );
 
   const syncAutoPromptReferenceImages = useCallback(
@@ -23655,7 +23722,10 @@ export default function MediaStudio() {
 
     const availableSlots =
       selectedImageAttachTargetOption?.kind === "skill_field"
-        ? (selectedImageAttachTargetOption.maxItems ?? splitResults.length)
+        ? Math.min(
+            splitResults.length,
+            selectedSkillImageAttachRemainingSlots ?? splitResults.length
+          )
         : maxReferenceImages - referenceImages.length;
     if (availableSlots <= 0) {
       toast.error(
@@ -40706,6 +40776,8 @@ export default function MediaStudio() {
                           t("mediaStudio.configureSkillParameters")}
                       </p>
 
+                      {renderImageAttachTargetSelector()}
+
                       {/* LLM Model Selector for Auto Prompt */}
                       <div className="space-y-1.5 pt-2 border-t">
                         <label className="text-sm font-medium flex items-center gap-2">
@@ -41012,6 +41084,7 @@ export default function MediaStudio() {
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
+                                        type="button"
                                         size="icon"
                                         variant="ghost"
                                         className="h-8 w-8 text-white hover:bg-white/20"
@@ -42056,7 +42129,9 @@ export default function MediaStudio() {
                         }
                         if (itemType === "image") {
                           return (
-                            (!selectedModel ||
+                            (selectedImageAttachTargetOption?.kind ===
+                              "skill_field" ||
+                              !selectedModel ||
                               selectedMediaModelReferenceSupport.imageUrls) &&
                             canAttachImageToSelectedTarget
                           );
@@ -43229,6 +43304,8 @@ export default function MediaStudio() {
                           </div>
                         </div>
                       </div>
+
+                      {renderImageAttachTargetSelector(true)}
 
                       <div className="grid grid-cols-2 gap-2">
                         <Button
@@ -44507,6 +44584,7 @@ export default function MediaStudio() {
                                 </select>
                               </div>
                             </div>
+                            {renderImageAttachTargetSelector(true)}
                             <div className="grid grid-cols-1 gap-2">
                               <Button
                                 type="button"

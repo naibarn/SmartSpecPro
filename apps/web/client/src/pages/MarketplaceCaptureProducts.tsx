@@ -369,6 +369,7 @@ export default function MarketplaceCaptureProducts() {
   const categoryQuickFilters = useMemo(() => categories.slice(0, 8), [categories]);
 
   useEffect(() => {
+    if (visualSearchResults) return;
     const node = productListSentinelRef.current;
     if (!node || !products.hasNextPage || products.isFetchingNextPage) return;
     const observer = new IntersectionObserver(
@@ -381,7 +382,7 @@ export default function MarketplaceCaptureProducts() {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage, filteredProducts.length]);
+  }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage, filteredProducts.length, visualSearchResults]);
 
   useEffect(() => {
     return () => {
@@ -799,13 +800,13 @@ export default function MarketplaceCaptureProducts() {
           <section className="rounded-xl border border-slate-200 bg-white/85 p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">{copy.products} ({filteredProducts.length})</h2>
-              <span className="text-xs text-slate-500">{copy.loaded} {visibleProducts.length}</span>
+              <span className="text-xs text-slate-500">{copy.loaded} {productSource.length}</span>
             </div>
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
               {filteredProducts.length > 0 ? filteredProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
             </div>
             <div ref={productListSentinelRef} className="mt-5 flex min-h-12 items-center justify-center">
-              {products.isFetchingNextPage ? (
+              {visualSearchResults ? null : products.isFetchingNextPage ? (
                 <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {copy.loadingMore}
