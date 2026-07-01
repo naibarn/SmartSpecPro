@@ -203,7 +203,7 @@ export function resolveSkillUiLanguage(explicitLanguage?: "en" | "th"): "en" | "
   return "en";
 }
 
-function evaluateFieldDependency(
+export function evaluateFieldDependency(
   dependency: SkillFieldDependency | undefined,
   values: Record<string, any>,
 ): boolean {
@@ -260,7 +260,7 @@ function getContextualFieldDefault(
   return undefined;
 }
 
-function buildEffectiveFieldValues(
+export function buildEffectiveFieldValues(
   schema: SkillInputSchema,
   values: Record<string, any>,
   uiLanguage: "en" | "th",

@@ -346,6 +346,8 @@ import { sanitizeProjectName } from "@smartspec/shared";
 import type { MarketplaceStorytellingHandoff } from "@shared/marketplaceCapture";
 
 import DynamicSkillForm, {
+  buildEffectiveFieldValues,
+  evaluateFieldDependency,
   type SkillInputSchema,
   type StyleAction,
 } from "@/components/media/DynamicSkillForm";
@@ -482,14 +484,26 @@ function isMultiSkillImageAttachField(field: Record<string, any>): boolean {
 
 function buildSkillImageAttachTargetOptions(params: {
   schema: SkillInputSchema | null;
+  values: Record<string, any>;
   isThaiLocale: boolean;
 }): ImageAttachTargetOption[] {
   const fields =
     params.schema?.sections.flatMap(section => section.fields ?? []) ?? [];
+  const effectiveValues = params.schema
+    ? buildEffectiveFieldValues(
+        params.schema,
+        params.values,
+        params.isThaiLocale ? "th" : "en"
+      )
+    : params.values;
   return fields
     .filter(field => {
       const schemaField = field as Record<string, any>;
-      return !schemaField.hidden && isSkillImageAttachField(schemaField);
+      return (
+        !schemaField.hidden &&
+        evaluateFieldDependency(field.dependsOn, effectiveValues) &&
+        isSkillImageAttachField(schemaField)
+      );
     })
     .map(field => {
       const label = getSkillFieldLocalizedLabel(field, params.isThaiLocale);
@@ -14765,10 +14779,11 @@ export default function MediaStudio() {
       useAdvancedMode
         ? buildSkillImageAttachTargetOptions({
             schema: skillSchema,
+            values: dynamicFormValues,
             isThaiLocale,
           })
         : [],
-    [isThaiLocale, skillSchema, useAdvancedMode]
+    [dynamicFormValues, isThaiLocale, skillSchema, useAdvancedMode]
   );
   const imageAttachTargetOptions = useMemo<ImageAttachTargetOption[]>(
     () => [
