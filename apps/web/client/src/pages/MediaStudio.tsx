@@ -16107,6 +16107,17 @@ export default function MediaStudio() {
 
       if (selectedImageAttachTargetOption?.kind === "skill_field") {
         const target = selectedImageAttachTargetOption;
+        if (
+          target.multiple &&
+          (selectedSkillImageAttachRemainingSlots ?? 0) <= 0
+        ) {
+          toast.error(
+            t("mediaStudio.maxReferenceImagesError", {
+              max: target.maxItems ?? maxReferenceImages,
+            })
+          );
+          return false;
+        }
         setUseAdvancedMode(true);
         setDynamicFormValues((prev: Record<string, any>) => {
           const current = prev[target.fieldId];
@@ -16170,6 +16181,7 @@ export default function MediaStudio() {
       selectedImageAttachTargetOption,
       selectedModel,
       selectedMediaModelReferenceSupport.imageUrls,
+      selectedSkillImageAttachRemainingSlots,
       setDynamicFormValues,
       setReferenceImages,
       setUseAdvancedMode,
