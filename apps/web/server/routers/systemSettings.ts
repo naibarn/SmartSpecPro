@@ -46,6 +46,7 @@ const settingCategorySchema = z.enum([
   "desktop_release",
   "document_ocr",
   "finance",
+  "marketplace_capture",
 ]);
 
 const desktopReleaseSettingsUpdateSchema = z.object({

@@ -1,4 +1,4 @@
-import { type DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   Copy,

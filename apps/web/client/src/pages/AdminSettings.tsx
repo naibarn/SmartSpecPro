@@ -69,6 +69,7 @@ import {
   Bot,
   FileText,
   Cable,
+  Store,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -1107,12 +1108,24 @@ export default function AdminSettings() {
   const [aiSummaryModel, setAiSummaryModel] = useState("");
   const [allowUserOwnLlmApiKeys, setAllowUserOwnLlmApiKeys] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [marketplaceImageIndexAllowedHosts, setMarketplaceImageIndexAllowedHosts] = useState("");
   const { data: aiSettings, refetch: refetchAi } = trpc.systemSettings.getSettingsByCategory.useQuery(
     { category: "ai" as any },
     { enabled: !!user && user.role === "admin" }
   );
+  const { data: marketplaceCaptureSettings, refetch: refetchMarketplaceCaptureSettings } = trpc.systemSettings.getSettingsByCategory.useQuery(
+    { category: "marketplace_capture" as any },
+    { enabled: !!user && user.role === "admin" }
+  );
   const updateAiSettingMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => { toast.success("AI setting saved"); refetchAi(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateMarketplaceCaptureSettingMutation = trpc.systemSettings.updateSetting.useMutation({
+    onSuccess: () => {
+      toast.success("Marketplace Capture setting saved");
+      refetchMarketplaceCaptureSettings();
+    },
     onError: (err: any) => toast.error(err.message),
   });
   const updateAiPolicyMutation = trpc.systemSettings.updateSetting.useMutation({
@@ -1147,6 +1160,11 @@ export default function AdminSettings() {
     );
     setAllowUserOwnLlmApiKeys(userOwnKeysSetting?.value === "true");
   }, [aiSettings, defaultAiSummaryModelId, enabledAiSummaryModelIds, modelsData?.models]);
+
+  useEffect(() => {
+    const allowedHostsSetting = marketplaceCaptureSettings?.find((s: any) => s.key === "image_index_allowed_hosts");
+    setMarketplaceImageIndexAllowedHosts(allowedHostsSetting?.value ?? "");
+  }, [marketplaceCaptureSettings]);
 
   const resolvedAiSummaryModel = pickEnabledModelId({
     preferredId: aiSummaryModel,
@@ -1489,6 +1507,7 @@ export default function AdminSettings() {
     { key: "stt", label: copy.nav.stt.label, sublabel: copy.nav.stt.sublabel, icon: Mic },
     { key: "ai", label: copy.nav.ai.label, sublabel: copy.nav.ai.sublabel, icon: Brain },
     { key: "document_ocr", label: copy.nav.documentOcr.label, sublabel: copy.nav.documentOcr.sublabel, icon: FileText },
+    { key: "marketplace_capture", label: "Marketplace Capture", sublabel: "Visual search", icon: Store },
     { key: "mcp_connect", label: "MCP Connect", sublabel: "Provider config", icon: Cable },
     { key: "finance_rules", label: copy.nav.financeRules.label, sublabel: copy.nav.financeRules.sublabel, icon: CheckSquare },
     { key: "vectordb", label: copy.nav.vectordb.label, sublabel: copy.nav.vectordb.sublabel, icon: Database },
@@ -1524,8 +1543,8 @@ export default function AdminSettings() {
             </div>
             <HelpButton page="/admin/settings" variant="ghost" size="sm" />
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 shadow-sm">
+          <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto sm:flex-nowrap">
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 shadow-sm sm:flex-none">
               <div className="hidden sm:flex items-center gap-2 text-slate-600">
                 <Globe className="h-4 w-4" />
                 <div className="leading-tight">
@@ -1537,7 +1556,7 @@ export default function AdminSettings() {
               </div>
               <LocaleToggle className="shrink-0" />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setLocation("/admin/billing")}>
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setLocation("/admin/billing")}>
               <CreditCard className="mr-2 h-4 w-4" />
               {copy.billingConsole}
             </Button>
@@ -1546,10 +1565,10 @@ export default function AdminSettings() {
       </div>
 
       <div className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-6">
+        <div className="flex flex-col gap-6 lg:flex-row">
           {/* Sidebar Navigation */}
-          <nav className="w-56 flex-shrink-0">
-            <div className="sticky top-24 space-y-1">
+          <nav className="w-full flex-shrink-0 lg:w-56">
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:sticky lg:top-24 lg:block lg:space-y-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.key;
@@ -3787,6 +3806,59 @@ export default function AdminSettings() {
           {/* Document OCR Settings Tab */}
           <TabsContent value="document_ocr">
             <DocumentOcrSettingsPanel />
+          </TabsContent>
+
+          <TabsContent value="marketplace_capture">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<Store className="w-5 h-5 text-blue-600" />}
+              title="Marketplace Capture"
+              description="Configure visual product search and image indexing safety."
+              bodyClassName="p-6 space-y-6"
+            >
+              <div className="space-y-2">
+                <Label htmlFor="marketplace-image-index-hosts">Image index allowed hosts</Label>
+                <Textarea
+                  id="marketplace-image-index-hosts"
+                  value={marketplaceImageIndexAllowedHosts}
+                  onChange={(event) => setMarketplaceImageIndexAllowedHosts(event.target.value)}
+                  placeholder="cdn.example.com&#10;storage.example.com"
+                  className="min-h-28 font-mono text-sm"
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  One host per line or comma-separated. Production visual image indexing is fail-closed until at least one host is saved here.
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                Only image URLs from these HTTPS hosts, including their subdomains, can be fetched for Marketplace Capture visual search indexing.
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    const normalizedHosts = marketplaceImageIndexAllowedHosts
+                      .split(/[\n,]/)
+                      .map((value) => value.trim().toLowerCase())
+                      .filter(Boolean)
+                      .join(",");
+                    updateMarketplaceCaptureSettingMutation.mutate({
+                      category: "marketplace_capture" as any,
+                      key: "image_index_allowed_hosts",
+                      value: normalizedHosts,
+                      description: "Allowed HTTPS hosts for Marketplace Capture visual image indexing",
+                    });
+                  }}
+                  disabled={updateMarketplaceCaptureSettingMutation.isPending}
+                  className="gap-2"
+                >
+                  {updateMarketplaceCaptureSettingMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Save Marketplace Capture Settings
+                </Button>
+              </div>
+            </DashboardCard>
           </TabsContent>
 
           <TabsContent value="mcp_connect">

@@ -1,6 +1,6 @@
-import { getDb } from "./db/index.js";
+import { getDb } from "./db.js";
 import { workerJobs } from "../drizzle/schema.js";
-import { eq, like } from "drizzle-orm";
+import { like } from "drizzle-orm";
 
 async function run() {
   const db = await getDb();

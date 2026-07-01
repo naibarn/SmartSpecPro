@@ -165,6 +165,9 @@ function decodeVisualSearchImage(input: { imageBase64: string; mimeType: string 
   if (!cleaned) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่พบข้อมูลรูปภาพ" });
   }
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned) || cleaned.length % 4 !== 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "ข้อมูลรูปภาพไม่ใช่ base64 ที่ถูกต้อง" });
+  }
   const buffer = Buffer.from(cleaned, "base64");
   if (!buffer.length) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่สามารถอ่านรูปภาพได้" });
@@ -176,6 +179,10 @@ function decodeVisualSearchImage(input: { imageBase64: string; mimeType: string 
     throw new TRPCError({ code: "BAD_REQUEST", message: "ชนิดไฟล์รูปภาพไม่ตรงกับข้อมูลจริง" });
   }
   return buffer;
+}
+
+export function decodeVisualSearchImageForTest(input: { imageBase64: string; mimeType: string }): Buffer {
+  return decodeVisualSearchImage(input);
 }
 
 const editableProductDetailsSchema = z.object({

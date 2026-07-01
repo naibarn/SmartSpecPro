@@ -13,13 +13,14 @@ import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import type { ProductReferenceCategory } from "@shared/marketplaceCapture";
-import { AlertTriangle, Camera, ChevronLeft, Copy, Download, ExternalLink, Eye, ImageIcon, Loader2, Plus, Search, Store, Trash2, TrendingUp, Upload, X } from "lucide-react";
+import { AlertTriangle, Camera, ChevronLeft, Copy, Download, ExternalLink, Eye, ImageIcon, Loader2, Plus, RefreshCw, Search, Store, Trash2, TrendingUp, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 type PlatformFilter = "all" | "shopee" | "tiktok_shop";
 type HealthFilter = "all" | "active" | "needs_update" | "inactive" | "low_rating";
+type CameraFacingMode = "environment" | "user";
 
 function parseCompact(raw: string | null | undefined): number {
   if (!raw) return 0;
@@ -80,6 +81,8 @@ function productCategory(product: any) {
 }
 
 function primaryProductImageUrl(product: any): string {
+  const matched = typeof product.matchedImage?.url === "string" ? product.matchedImage.url.trim() : "";
+  if (matched) return matched;
   const direct = typeof product.imageUrl === "string" ? product.imageUrl.trim() : "";
   if (direct) return direct;
   const imageUrls = Array.isArray(product.imageUrls) ? product.imageUrls : [];
@@ -168,6 +171,12 @@ function copyFor(language: string) {
     openCamera: th ? "เปิดกล้อง" : "Open camera",
     capturePhoto: th ? "ถ่ายรูป" : "Capture photo",
     stopCamera: th ? "ปิดกล้อง" : "Stop camera",
+    switchCamera: th ? "สลับกล้อง" : "Switch camera",
+    rearCamera: th ? "กล้องหลัง" : "Rear camera",
+    frontCamera: th ? "กล้องหน้า" : "Front camera",
+    cameraStarting: th ? "กำลังเปิดกล้อง..." : "Opening camera...",
+    cameraUnsupported: th ? "เบราว์เซอร์หรืออุปกรณ์นี้ไม่รองรับการเปิดกล้อง กรุณาแนบรูปแทน" : "This browser or device does not support camera capture. Please upload an image instead.",
+    cameraPermissionDenied: th ? "ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้องในเบราว์เซอร์" : "Camera permission was denied. Please allow camera access in your browser.",
     clearVisualSearch: th ? "ล้างผลค้นหาด้วยภาพ" : "Clear visual search",
     visualResults: th ? "ผลค้นหาด้วยภาพ" : "Visual search results",
     similarScore: th ? "ความคล้าย" : "Similarity",
@@ -204,10 +213,15 @@ export default function MarketplaceCaptureProducts() {
   const [visualSearchPreviewUrl, setVisualSearchPreviewUrl] = useState<string | null>(null);
   const [visualSearchResults, setVisualSearchResults] = useState<any[] | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<CameraFacingMode>("environment");
   const visualSearchFileInputRef = useRef<HTMLInputElement | null>(null);
   const visualSearchVideoRef = useRef<HTMLVideoElement | null>(null);
   const visualSearchCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const visualSearchStreamRef = useRef<MediaStream | null>(null);
+  const visualSearchPreviewUrlRef = useRef<string | null>(null);
+  const visualSearchOpenRef = useRef(false);
+  const visualSearchCameraRequestRef = useRef(0);
   const [manualProductForm, setManualProductForm] = useState({
     platform: "shopee" as "shopee" | "tiktok_shop",
     productName: "",
@@ -302,7 +316,11 @@ export default function MarketplaceCaptureProducts() {
     onSuccess: (result: any) => {
       const items = Array.isArray(result?.items) ? result.items : [];
       setVisualSearchResults(items);
+      setSelectedProductId(null);
+      setCategory("all");
+      setHealth("all");
       setVisualSearchOpen(false);
+      stopVisualSearchCamera();
       toast.success(items.length > 0 ? `${copy.visualResults}: ${items.length}` : copy.noVisualResults);
     },
     onError: error => toast.error(error.message),
@@ -320,18 +338,27 @@ export default function MarketplaceCaptureProducts() {
     [deletedProductIds, loadedProducts],
   );
 
-  const productSource = visualSearchResults ?? visibleProducts;
+  const productSource = useMemo(
+    () => (visualSearchResults ?? visibleProducts).filter((product: any) => !deletedProductIds.has(product.id)),
+    [deletedProductIds, visibleProducts, visualSearchResults],
+  );
+
+  const scopedProducts = useMemo(
+    () => productSource
+      .filter((product: any) => !ownerOnly || product.accessType !== "group")
+      .filter((product: any) => platform === "all" || product.platform === platform),
+    [ownerOnly, platform, productSource],
+  );
 
   const categories = useMemo(() => {
     const values = new Set<string>();
-    for (const product of productSource) values.add(String(productCategory(product)));
+    for (const product of scopedProducts) values.add(String(productCategory(product)));
     return Array.from(values).sort((a, b) => a.localeCompare(b));
-  }, [productSource]);
+  }, [scopedProducts]);
 
   const filteredProducts = useMemo(() => {
     const needle = visualSearchResults ? "" : query.trim().toLowerCase();
-    return productSource
-      .filter((product: any) => platform === "all" || product.platform === platform)
+    return scopedProducts
       .filter((product: any) => category === "all" || productCategory(product) === category)
       .filter((product: any) => {
         if (!needle) return true;
@@ -347,25 +374,30 @@ export default function MarketplaceCaptureProducts() {
         return true;
       })
       .sort((a: any, b: any) => {
+        if (visualSearchResults) {
+          const leftScore = Number(a.visualMatchScore ?? -1);
+          const rightScore = Number(b.visualMatchScore ?? -1);
+          if (rightScore !== leftScore) return rightScore - leftScore;
+        }
         if (sortMode === "sold") return Number(b.soldCountNormalized ?? 0) - Number(a.soldCountNormalized ?? 0);
         if (sortMode === "rating") return Number(b.ratingScore ?? 0) - Number(a.ratingScore ?? 0);
         if (sortMode === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         return interestScore(b) - interestScore(a);
       });
-  }, [category, health, platform, productSource, query, sortMode, visualSearchResults]);
+  }, [category, health, query, scopedProducts, sortMode, visualSearchResults]);
 
   const filteredCaptures = useMemo(() => (captures.data ?? []).filter((capture: any) => platform === "all" || capture.platform === platform), [captures.data, platform]);
   const filteredBatches = useMemo(() => (batches.data ?? []).filter((batch: any) => platform === "all" || batch.platform === platform), [batches.data, platform]);
   const recommendedProducts = filteredProducts.filter((product: any) => isActiveProduct(product)).slice(0, 8);
   const healthCounts = useMemo(() => {
-    const rows = productSource;
+    const rows = scopedProducts;
     return {
       active: rows.filter((product: any) => isActiveProduct(product)).length,
       stale: rows.filter((product: any) => isStale(product)).length,
       lowRating: rows.filter((product: any) => isLowRating(product)).length,
       inactive: rows.filter((product: any) => product.health?.warnings?.some((warning: any) => warning.code === "sold_not_growing" || warning.code === "low_sold_velocity")).length,
     };
-  }, [productSource]);
+  }, [scopedProducts]);
   const categoryQuickFilters = useMemo(() => categories.slice(0, 8), [categories]);
 
   useEffect(() => {
@@ -385,11 +417,14 @@ export default function MarketplaceCaptureProducts() {
   }, [products.fetchNextPage, products.hasNextPage, products.isFetchingNextPage, filteredProducts.length, visualSearchResults]);
 
   useEffect(() => {
-    return () => {
-      stopVisualSearchCamera();
-      if (visualSearchPreviewUrl) URL.revokeObjectURL(visualSearchPreviewUrl);
-    };
-  }, [visualSearchPreviewUrl]);
+    visualSearchOpenRef.current = visualSearchOpen;
+  }, [visualSearchOpen]);
+
+  useEffect(() => () => {
+    visualSearchStreamRef.current?.getTracks().forEach((track) => track.stop());
+    const previewUrl = visualSearchPreviewUrlRef.current;
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+  }, []);
 
   function downloadJson(name: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -458,10 +493,10 @@ export default function MarketplaceCaptureProducts() {
   }
 
   function setVisualSearchPreview(url: string | null) {
-    setVisualSearchPreviewUrl((current) => {
-      if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
-      return url;
-    });
+    const current = visualSearchPreviewUrlRef.current;
+    if (current?.startsWith("blob:")) URL.revokeObjectURL(current);
+    visualSearchPreviewUrlRef.current = url;
+    setVisualSearchPreviewUrl(url);
   }
 
   function fileToBase64(file: File): Promise<string> {
@@ -485,9 +520,17 @@ export default function MarketplaceCaptureProducts() {
       toast.error("รองรับเฉพาะรูป PNG, JPEG หรือ WebP");
       return;
     }
+    stopVisualSearchCamera();
     const preview = URL.createObjectURL(file);
     setVisualSearchPreview(preview);
-    const imageBase64 = await fileToBase64(file);
+    let imageBase64 = "";
+    try {
+      imageBase64 = await fileToBase64(file);
+    } catch {
+      setVisualSearchPreview(null);
+      toast.error("อ่านไฟล์รูปภาพไม่สำเร็จ");
+      return;
+    }
     visualSearchMutation.mutate({
       imageBase64,
       mimeType: file.type as "image/png" | "image/jpeg" | "image/webp",
@@ -504,29 +547,81 @@ export default function MarketplaceCaptureProducts() {
     void submitVisualSearchImage(file);
   }
 
-  async function startVisualSearchCamera() {
+  async function getVisualSearchCameraStream(facingMode: CameraFacingMode): Promise<MediaStream> {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("camera_unsupported");
+    }
+    const attempts: MediaStreamConstraints[] = [
+      { video: { facingMode: { exact: facingMode } }, audio: false },
+      { video: { facingMode: { ideal: facingMode } }, audio: false },
+      { video: true, audio: false },
+    ];
+    let lastError: unknown = null;
+    for (const constraints of attempts) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        const errorName = error instanceof DOMException ? error.name : "";
+        if (errorName === "NotAllowedError" || errorName === "SecurityError") {
+          throw error;
+        }
+        lastError = error;
+      }
+    }
+    throw lastError ?? new Error("camera_unavailable");
+  }
+
+  async function startVisualSearchCamera(facingMode: CameraFacingMode = cameraFacingMode) {
+    const requestId = visualSearchCameraRequestRef.current + 1;
+    visualSearchCameraRequestRef.current = requestId;
+    setCameraStarting(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-        audio: false,
-      });
+      stopVisualSearchCamera(false, false);
+      const stream = await getVisualSearchCameraStream(facingMode);
+      if (!visualSearchOpenRef.current || visualSearchCameraRequestRef.current !== requestId) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       visualSearchStreamRef.current = stream;
+      setCameraFacingMode(facingMode);
       setCameraActive(true);
       if (visualSearchVideoRef.current) {
         visualSearchVideoRef.current.srcObject = stream;
         await visualSearchVideoRef.current.play();
       }
-    } catch {
-      toast.error(copy.cameraError);
+    } catch (error) {
+      const errorName = error instanceof DOMException ? error.name : "";
+      const errorMessage = error instanceof Error ? error.message : "";
+      if (errorMessage === "camera_unsupported") {
+        toast.error(copy.cameraUnsupported);
+      } else if (errorName === "NotAllowedError" || errorName === "SecurityError") {
+        toast.error(copy.cameraPermissionDenied);
+      } else {
+        toast.error(copy.cameraError);
+      }
+    } finally {
+      if (visualSearchCameraRequestRef.current === requestId) {
+        setCameraStarting(false);
+      }
     }
   }
 
-  function stopVisualSearchCamera() {
+  function stopVisualSearchCamera(cancelPending = true, resetStarting = true) {
+    if (cancelPending) visualSearchCameraRequestRef.current += 1;
     visualSearchStreamRef.current?.getTracks().forEach((track) => track.stop());
     visualSearchStreamRef.current = null;
     setCameraActive(false);
+    if (resetStarting) setCameraStarting(false);
     if (visualSearchVideoRef.current) {
       visualSearchVideoRef.current.srcObject = null;
+    }
+  }
+
+  function switchVisualSearchCamera() {
+    const nextFacingMode = cameraFacingMode === "environment" ? "user" : "environment";
+    setCameraFacingMode(nextFacingMode);
+    if (cameraActive || cameraStarting) {
+      void startVisualSearchCamera(nextFacingMode);
     }
   }
 
@@ -569,8 +664,8 @@ export default function MarketplaceCaptureProducts() {
         }`}
         onClick={() => setSelectedProductId(product.id)}
       >
-        <div className="grid gap-3 p-3 sm:grid-cols-[9rem_minmax(0,1fr)]">
-          <div className="flex aspect-square min-h-36 w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-36 sm:w-36">
+        <div className="grid gap-3 p-3 2xl:grid-cols-[9rem_minmax(0,1fr)]">
+          <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 2xl:aspect-square 2xl:h-36 2xl:w-36">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -581,11 +676,16 @@ export default function MarketplaceCaptureProducts() {
             ) : (
               <ImageIcon className="h-10 w-10 text-slate-300" aria-hidden="true" />
             )}
+            {typeof product.visualMatchScore === "number" ? (
+              <span className="absolute left-2 top-2 rounded-full bg-cyan-600 px-2 py-1 text-[11px] font-semibold text-white shadow-sm">
+                {copy.visualSearch}
+              </span>
+            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="line-clamp-2 font-semibold text-slate-950">{product.productName}</div>
+                <div className="line-clamp-3 font-semibold leading-6 text-slate-950">{product.productName}</div>
                 <div className="mt-1 truncate text-xs text-slate-500">{productCategory(product)}</div>
                 {typeof product.visualMatchScore === "number" ? (
                   <div className="mt-2 inline-flex items-center rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-100">
@@ -677,18 +777,18 @@ export default function MarketplaceCaptureProducts() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20 text-slate-900">
       <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")}>
-                <ChevronLeft className="mr-1 h-4 w-4" />
-                {copy.back}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")} aria-label={copy.back}>
+                <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">{copy.back}</span>
               </Button>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                 <Store className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-lg font-bold">{copy.title}</h1>
-                <p className="text-xs text-slate-500">{copy.subtitle}</p>
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-bold">{copy.title}</h1>
+                <p className="line-clamp-2 text-xs text-slate-500 sm:line-clamp-1">{copy.subtitle}</p>
               </div>
             </div>
             <LocaleToggle className="hidden sm:inline-flex" />
@@ -724,36 +824,36 @@ export default function MarketplaceCaptureProducts() {
               </select>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={() => setManualProductOpen(true)}>
+              <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setManualProductOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add manual product
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setVisualSearchOpen(true)}>
+              <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setVisualSearchOpen(true)}>
                 <Camera className="mr-2 h-4 w-4" />
                 {copy.visualSearch}
               </Button>
               {(["all", "shopee", "tiktok_shop"] as PlatformFilter[]).map((item) => (
                 <button
                   key={item}
-                  className={`rounded-md border px-3 py-2 text-sm ${platform === item ? "border-blue-300 bg-blue-50 text-blue-700" : "bg-white"}`}
+                  className={`min-h-9 flex-1 rounded-md border px-3 py-2 text-sm sm:flex-none ${platform === item ? "border-blue-300 bg-blue-50 text-blue-700" : "bg-white"}`}
                   onClick={() => setPlatform(item)}
                 >
                   {item === "all" ? copy.platformAll : item === "shopee" ? "Shopee" : "TikTok Shop"}
                 </button>
               ))}
-              <label className="rounded-md border bg-white px-3 py-2 text-sm">
+              <label className="inline-flex min-h-9 w-full items-center rounded-md border bg-white px-3 py-2 text-sm sm:w-auto">
                 <input className="mr-2" type="checkbox" checked={ownerOnly} onChange={(e) => setOwnerOnly(e.target.checked)} />
                 {copy.ownOnly}
               </label>
-              <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => downloadCsv("marketplace-products.csv", filteredProducts)}><Download className="mr-1 inline h-4 w-4" />{copy.exportCsv}</button>
-              <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => downloadJson("marketplace-capture-export.json", { products: filteredProducts, captures: filteredCaptures, batches: filteredBatches })}>{copy.exportJson}</button>
+              <button className="min-h-9 flex-1 rounded-md border bg-white px-3 py-2 text-sm sm:flex-none" onClick={() => downloadCsv("marketplace-products.csv", filteredProducts)}><Download className="mr-1 inline h-4 w-4" />{copy.exportCsv}</button>
+              <button className="min-h-9 flex-1 rounded-md border bg-white px-3 py-2 text-sm sm:flex-none" onClick={() => downloadJson("marketplace-capture-export.json", { products: filteredProducts, captures: filteredCaptures, batches: filteredBatches })}>{copy.exportJson}</button>
             </div>
             {visualSearchResults ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900">
                 <div className="flex min-w-0 items-center gap-2">
                   <ImageIcon className="h-4 w-4 shrink-0" />
                   <span className="font-medium">{copy.visualResults}</span>
-                  <span className="text-cyan-700">{visualSearchResults.length} รายการ</span>
+                  <span className="text-cyan-700">{filteredProducts.length} รายการ</span>
                 </div>
                 <button
                   type="button"
@@ -803,7 +903,7 @@ export default function MarketplaceCaptureProducts() {
               <span className="text-xs text-slate-500">{copy.loaded} {productSource.length}</span>
             </div>
             <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              {filteredProducts.length > 0 ? filteredProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
+              {filteredProducts.length > 0 ? filteredProducts.map(productCard) : <p className="text-sm text-slate-500">{visualSearchResults ? copy.noVisualResults : copy.empty}</p>}
             </div>
             <div ref={productListSentinelRef} className="mt-5 flex min-h-12 items-center justify-center">
               {visualSearchResults ? null : products.isFetchingNextPage ? (
@@ -860,14 +960,14 @@ export default function MarketplaceCaptureProducts() {
                 </div>
               </div>
               <div className="space-y-3">
-                {recommendedProducts.length > 0 ? recommendedProducts.map(productCard) : <p className="text-sm text-slate-500">{copy.empty}</p>}
+                {recommendedProducts.length > 0 ? recommendedProducts.map(productCard) : <p className="text-sm text-slate-500">{visualSearchResults ? copy.noVisualResults : copy.empty}</p>}
               </div>
             </section>
           </aside>
         </div>
       </main>
       {panelProduct ? (
-        <aside className="fixed inset-y-0 right-0 z-30 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl">
+        <aside className="fixed inset-y-0 right-0 z-30 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl sm:inset-y-4 sm:right-4 sm:rounded-xl sm:border">
           <div className="flex items-start justify-between gap-3 border-b p-4">
             <div className="min-w-0 flex-1 pr-2">
               <div className="text-xs font-medium uppercase text-slate-500">{panelProduct.platform === "shopee" ? "Shopee" : "TikTok Shop"}</div>
@@ -878,7 +978,7 @@ export default function MarketplaceCaptureProducts() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Price</div><div className="font-medium">{panelProduct.priceCurrent ?? "-"} {panelProduct.currency ?? "THB"}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{formatCommissionRate(panelProduct.commissionRatePercent)}</div><div className="text-xs text-slate-500">{formatCommissionAmount(panelProduct)}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(panelProduct.soldCountNormalized, panelProduct.soldCountText)}</div></div>
@@ -927,7 +1027,7 @@ export default function MarketplaceCaptureProducts() {
             {panelImages.length > 0 ? (
               <section className="mt-5">
                 <h3 className="text-sm font-semibold text-slate-900">{copy.images}</h3>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {panelImages.slice(0, 12).map((image: any) => (
                     <img key={image.id} className="h-24 w-full rounded-md border object-contain" src={image.url} alt={image.type} loading="lazy" />
                   ))}
@@ -939,7 +1039,7 @@ export default function MarketplaceCaptureProducts() {
                 <h3 className="text-sm font-semibold text-slate-900">{copy.history}</h3>
                 <div className="mt-2 divide-y rounded-md border text-sm">
                   {panelHistory.slice(0, 5).map((snapshot: any) => (
-                    <div key={snapshot.id} className="grid grid-cols-3 gap-2 p-2">
+                    <div key={snapshot.id} className="grid grid-cols-1 gap-1 p-2 sm:grid-cols-3 sm:gap-2">
                       <div>{new Date(snapshot.capturedAt).toLocaleDateString()}</div>
                       <div>{formatCompactCount(snapshot.soldCountNormalized, snapshot.soldCountText)}</div>
                       <div>{snapshot.ratingScore ?? "-"}</div>
@@ -956,8 +1056,8 @@ export default function MarketplaceCaptureProducts() {
         </aside>
       ) : null}
       {visualSearchOpen ? (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-4">
-          <section className="mx-auto my-8 max-w-3xl rounded-xl bg-white p-5 shadow-2xl">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-3 sm:p-4">
+          <section className="mx-auto my-3 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col rounded-xl bg-white p-4 shadow-2xl sm:my-8 sm:max-h-[calc(100dvh-4rem)] sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">{copy.visualSearchTitle}</h2>
@@ -975,26 +1075,26 @@ export default function MarketplaceCaptureProducts() {
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+            <div className="mt-5 grid min-h-0 gap-4 overflow-y-auto pr-1 md:grid-cols-[minmax(0,1fr)_16rem]">
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button
                     type="button"
-                    className="inline-flex min-h-24 items-center justify-center rounded-lg border border-dashed border-blue-300 bg-blue-50 px-4 py-5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                    className="inline-flex min-h-20 items-center justify-center rounded-lg border border-dashed border-blue-300 bg-blue-50 px-4 py-4 text-sm font-semibold text-blue-700 hover:bg-blue-100 sm:min-h-24 sm:py-5"
                     onClick={() => visualSearchFileInputRef.current?.click()}
-                    disabled={visualSearchMutation.isPending}
+                    disabled={visualSearchMutation.isPending || cameraStarting}
                   >
                     <Upload className="mr-2 h-5 w-5" />
                     {copy.uploadImage}
                   </button>
                   <button
                     type="button"
-                    className="inline-flex min-h-24 items-center justify-center rounded-lg border border-dashed border-cyan-300 bg-cyan-50 px-4 py-5 text-sm font-semibold text-cyan-700 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={cameraActive ? stopVisualSearchCamera : () => void startVisualSearchCamera()}
-                    disabled={visualSearchMutation.isPending}
+                    className="inline-flex min-h-20 items-center justify-center rounded-lg border border-dashed border-cyan-300 bg-cyan-50 px-4 py-4 text-sm font-semibold text-cyan-700 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-24 sm:py-5"
+                    onClick={cameraActive ? () => stopVisualSearchCamera() : () => void startVisualSearchCamera()}
+                    disabled={visualSearchMutation.isPending || cameraStarting}
                   >
-                    <Camera className="mr-2 h-5 w-5" />
-                    {cameraActive ? copy.stopCamera : copy.openCamera}
+                    {cameraStarting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Camera className="mr-2 h-5 w-5" />}
+                    {cameraStarting ? copy.cameraStarting : cameraActive ? copy.stopCamera : copy.openCamera}
                   </button>
                 </div>
                 <input
@@ -1012,7 +1112,14 @@ export default function MarketplaceCaptureProducts() {
                     playsInline
                     muted
                   />
-                  {!cameraActive ? (
+                  {cameraStarting ? (
+                    <div className="flex aspect-video items-center justify-center bg-slate-100 text-sm text-slate-500">
+                      <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {copy.cameraStarting}
+                      </div>
+                    </div>
+                  ) : !cameraActive ? (
                     <div className="flex aspect-video items-center justify-center bg-slate-100 text-sm text-slate-500">
                       {visualSearchPreviewUrl ? (
                         <img src={visualSearchPreviewUrl} alt={copy.visualSearch} className="h-full w-full object-contain" />
@@ -1028,15 +1135,27 @@ export default function MarketplaceCaptureProducts() {
                 <canvas ref={visualSearchCanvasRef} className="hidden" />
 
                 {cameraActive ? (
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={captureVisualSearchPhoto}
-                    disabled={visualSearchMutation.isPending}
-                  >
-                    <Camera className="mr-2 h-4 w-4" />
-                    {copy.capturePhoto}
-                  </Button>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={captureVisualSearchPhoto}
+                      disabled={visualSearchMutation.isPending || cameraStarting}
+                    >
+                      <Camera className="mr-2 h-4 w-4" />
+                      {copy.capturePhoto}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={switchVisualSearchCamera}
+                      disabled={visualSearchMutation.isPending || cameraStarting}
+                      title={`${copy.switchCamera}: ${cameraFacingMode === "environment" ? copy.rearCamera : copy.frontCamera}`}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      {copy.switchCamera}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
 
@@ -1046,7 +1165,7 @@ export default function MarketplaceCaptureProducts() {
                   {visualSearchMutation.isPending
                     ? "กำลังวิเคราะห์รูปและค้นหาสินค้าที่คล้ายกัน..."
                     : visualSearchResults
-                      ? `${visualSearchResults.length} รายการ`
+                      ? `${filteredProducts.length} รายการ`
                       : "เลือกรูปสินค้าเพื่อเริ่มค้นหา"}
                 </div>
                 {visualSearchMutation.isPending ? (
@@ -1070,8 +1189,8 @@ export default function MarketplaceCaptureProducts() {
         </div>
       ) : null}
       {manualProductOpen ? (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-4">
-          <section className="mx-auto my-8 max-w-4xl rounded-xl bg-white p-5 shadow-2xl">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-slate-950/40 p-3 sm:p-4">
+          <section className="mx-auto my-3 max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl overflow-y-auto rounded-xl bg-white p-4 shadow-2xl sm:my-8 sm:max-h-[calc(100dvh-4rem)] sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold">Add manual product</h2>
@@ -1143,9 +1262,9 @@ export default function MarketplaceCaptureProducts() {
                 <textarea className="mt-1 min-h-48 w-full rounded-md border px-3 py-2" value={manualProductForm.descriptionText} onChange={event => updateManualProductField("descriptionText", event.target.value)} />
               </label>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setManualProductOpen(false)}>Cancel</Button>
-              <Button type="button" disabled={createManualProductMutation.isPending} onClick={submitManualProduct}>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setManualProductOpen(false)}>Cancel</Button>
+              <Button type="button" className="w-full sm:w-auto" disabled={createManualProductMutation.isPending} onClick={submitManualProduct}>
                 {createManualProductMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Create product
               </Button>

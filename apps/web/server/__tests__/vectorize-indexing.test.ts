@@ -120,6 +120,34 @@ describe("Vectorize Indexing", () => {
     expect(vectors[0].metadata.description).toBeTruthy();
   });
 
+  it("indexes marketplace product images with searchable metadata", async () => {
+    await indexImage({
+      id: "marketplace-asset-1",
+      imageUrl: "https://cdn.example.com/product.jpg",
+      tenantId: "tenant-1",
+      filename: "Baby bottle main",
+      type: "marketplace_image",
+      metadata: {
+        productId: "mp-1",
+        imageId: "mpi-1",
+        captureAssetId: "asset-1",
+        productName: "Baby bottle",
+        productCategory: "Baby Bottles",
+        platform: "shopee",
+        imageKind: "main",
+      },
+    });
+
+    expect(upsertCalls).toHaveLength(1);
+    const vector = upsertCalls[0][0];
+    expect(vector.id).toBe("marketplace-asset-1");
+    expect(vector.metadata.type).toBe("marketplace_image");
+    expect(vector.metadata.captureAssetId).toBe("asset-1");
+    expect(vector.metadata.productId).toBe("mp-1");
+    expect(vector.metadata.productName).toBe("Baby bottle");
+    expect(vector.metadata.platform).toBe("shopee");
+  });
+
   it("removes vectors when gallery item is deleted", async () => {
     await removeVector("images-index", "img-1");
     expect(deleteCalls).toHaveLength(1);

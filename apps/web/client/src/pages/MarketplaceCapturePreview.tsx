@@ -114,7 +114,7 @@ export default function MarketplaceCapturePreview() {
   const savedProductUrl = confirmMutation.data?.productUrl ?? null;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-6 text-slate-900">
+    <main className="min-h-screen bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 sm:py-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -134,7 +134,7 @@ export default function MarketplaceCapturePreview() {
               </div>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-end">
             <LocaleToggle className="shrink-0" />
             <button className="rounded-md border bg-white px-3 py-2 text-sm" onClick={() => analyzeMutation.mutate({ captureId, analyze: { forceRerun: true } })}>
               Re-run LLM
@@ -211,7 +211,7 @@ export default function MarketplaceCapturePreview() {
               </div>
               {savedProductUrl ? (
                 <a
-                  className="shrink-0 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                  className="w-full shrink-0 rounded-md bg-emerald-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-emerald-800 sm:w-auto"
                   href={savedProductUrl}
                 >
                   View saved product

@@ -83,7 +83,7 @@ export default function MarketplaceCaptureCandidateBatch() {
   if (!batch) return <main className="p-8">Candidate batch not found</main>;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-8 text-slate-900">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -93,7 +93,7 @@ export default function MarketplaceCaptureCandidateBatch() {
               {batch.sourceUrl}
             </a>
           </div>
-          <a className="rounded-md border bg-white px-3 py-2 text-sm" href="/marketplace-capture">Back to captures</a>
+          <a className="w-full rounded-md border bg-white px-3 py-2 text-center text-sm sm:w-auto" href="/marketplace-capture">Back to captures</a>
         </header>
 
         <section className="rounded-lg border bg-white p-4 shadow-sm">
@@ -143,14 +143,14 @@ export default function MarketplaceCaptureCandidateBatch() {
               <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
                 {(item.scoreReasonsJson ?? []).map((reason: string) => <li key={reason}>{reason}</li>)}
               </ul>
-              <div className="mt-4 flex gap-2">
-                <a className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white" href={item.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <a className="rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white" href={item.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
                 {itemAffiliateUrl(item) ? (
                   <button className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700" type="button" onClick={() => navigator.clipboard?.writeText(itemAffiliateUrl(item))}>
                     Copy affiliate
                   </button>
                 ) : null}
-                <a className="rounded-md border bg-white px-3 py-2 text-sm" href={`/marketplace-capture?candidate=${encodeURIComponent(item.id)}`}>Keep for later</a>
+                <a className="rounded-md border bg-white px-3 py-2 text-center text-sm" href={`/marketplace-capture?candidate=${encodeURIComponent(item.id)}`}>Keep for later</a>
               </div>
             </article>
           ))}

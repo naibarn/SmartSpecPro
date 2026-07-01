@@ -9,12 +9,15 @@ import {
   marketplaceProductImages,
   marketplaceProductPriceSnapshots,
   marketplaceProducts,
+  systemSettings,
   marketplaceUserShareSettings,
   userGroups,
 } from "../../drizzle/schema";
 import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, productReferenceCategorySchema, type LocalInsightType, type MarketplacePlatform } from "@shared/marketplaceCapture";
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { searchImages, searchImagesByBuffer } from "./vectorize-search";
+import { indexImage } from "./vectorize-indexing";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 type MarketplaceProductEditableFields = {
   productName: string;
@@ -693,6 +696,159 @@ async function replaceCaptureProductImages(productId: string, product: any, asse
   if (rows.length > 0) {
     await db.insert(marketplaceProductImages).values(rows);
   }
+  return rows;
+}
+
+type MarketplaceImageVectorSource = {
+  id: string;
+  productId: string;
+  captureAssetId: string | null;
+  type: string;
+  url: string;
+  originalSourceUrl?: string | null;
+};
+
+const MARKETPLACE_CAPTURE_SETTINGS_CATEGORY = "marketplace_capture";
+const MARKETPLACE_IMAGE_INDEX_ALLOWED_HOSTS_KEY = "image_index_allowed_hosts";
+
+function parseMarketplaceImageIndexAllowedHosts(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .filter((entry): entry is string => typeof entry === "string")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+async function getMarketplaceImageIndexAllowedHosts(): Promise<string[]> {
+  const db = getDb();
+  const [row] = await db.select({
+    value: systemSettings.value,
+    valueJson: systemSettings.valueJson,
+  })
+    .from(systemSettings)
+    .where(and(
+      eq(systemSettings.category, MARKETPLACE_CAPTURE_SETTINGS_CATEGORY),
+      eq(systemSettings.key, MARKETPLACE_IMAGE_INDEX_ALLOWED_HOSTS_KEY),
+    ))
+    .limit(1);
+  const jsonHosts = parseMarketplaceImageIndexAllowedHosts(row?.valueJson?.hosts);
+  return jsonHosts.length > 0 ? jsonHosts : parseMarketplaceImageIndexAllowedHosts(row?.value);
+}
+
+async function resolveMarketplaceImageIndexUrl(rawUrl: string): Promise<string> {
+  const trimmed = rawUrl.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (!trimmed.startsWith("/")) return trimmed;
+  const runtime = await getAppRuntimeConfig();
+  const baseUrl = runtime.publicUrl || runtime.appPublicUrl || runtime.appUrl || "https://smartaihub.app";
+  return new URL(trimmed, `${baseUrl.replace(/\/+$/, "")}/`).toString();
+}
+
+function isSafeMarketplaceImageIndexUrl(rawUrl: string, allowedHosts: string[]): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    if (allowedHosts.length > 0 && !allowedHosts.some((allowedHost) => host === allowedHost || host.endsWith(`.${allowedHost}`))) {
+      return false;
+    }
+    if (process.env.NODE_ENV === "production" && allowedHosts.length === 0) return false;
+    if (host === "localhost" || host.endsWith(".localhost")) return false;
+    if (/^(127\.|10\.|192\.168\.|169\.254\.)/.test(host)) return false;
+    const private172 = host.match(/^172\.(\d{1,3})\./);
+    if (private172) {
+      const octet = Number(private172[1]);
+      if (octet >= 16 && octet <= 31) return false;
+    }
+    if (host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isSafeMarketplaceImageIndexUrlForTest(rawUrl: string, allowedHosts: string[] = []): boolean {
+  return isSafeMarketplaceImageIndexUrl(rawUrl, allowedHosts);
+}
+
+function queueMarketplaceProductImageIndexing(
+  images: MarketplaceImageVectorSource[],
+  auth: { userId: number; tenantId?: string },
+  product: {
+    productId?: string | null;
+    productName?: string | null;
+    descriptionText?: string | null;
+    platform?: MarketplacePlatform | string | null;
+    productCategory?: string | null;
+  },
+) {
+  void indexMarketplaceProductImagesForVisualSearch(images, auth, product).catch((error) => {
+    console.warn("[marketplaceCapture] visual image indexing failed", {
+      productId: product.productId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+}
+
+async function indexMarketplaceProductImagesForVisualSearch(
+  images: MarketplaceImageVectorSource[],
+  auth: { userId: number; tenantId?: string },
+  product: {
+    productId?: string | null;
+    productName?: string | null;
+    descriptionText?: string | null;
+    platform?: MarketplacePlatform | string | null;
+    productCategory?: string | null;
+  },
+) {
+  const tenantId = auth.tenantId ?? `user:${auth.userId}`;
+  const allowedHosts = await getMarketplaceImageIndexAllowedHosts();
+  const imagesWithResolvedUrls = await Promise.all(images.map(async (image) => ({
+    ...image,
+    resolvedUrl: image.url ? await resolveMarketplaceImageIndexUrl(image.url) : "",
+  })));
+  const indexableImages = imagesWithResolvedUrls.filter((image) => image.captureAssetId && image.resolvedUrl && isSafeMarketplaceImageIndexUrl(image.resolvedUrl, allowedHosts));
+  if (indexableImages.length === 0) return { attempted: 0, succeeded: 0, failed: 0 };
+
+  const results = await Promise.allSettled(indexableImages.map((image) => indexImage({
+    id: `marketplace-${image.captureAssetId}`,
+    imageUrl: image.resolvedUrl,
+    tenantId,
+    filename: `${product.productName ?? "Marketplace product"} ${image.type}`,
+    type: "marketplace_image",
+    metadata: {
+      productId: image.productId,
+      imageId: image.id,
+      captureAssetId: image.captureAssetId ?? undefined,
+      platform: product.platform ?? undefined,
+      imageKind: image.type,
+      productName: product.productName ?? undefined,
+      productDescription: product.descriptionText ?? undefined,
+      productCategory: product.productCategory ?? undefined,
+      originalSourceUrl: image.originalSourceUrl ?? undefined,
+    },
+  })));
+  const failed = results.filter((result) => result.status === "rejected");
+  if (failed.length > 0) {
+    console.warn("[marketplaceCapture] visual image indexing partially failed", {
+      attempted: indexableImages.length,
+      failed: failed.length,
+      productId: product.productId,
+    });
+  }
+  return {
+    attempted: indexableImages.length,
+    succeeded: results.length - failed.length,
+    failed: failed.length,
+  };
 }
 
 export async function confirmMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
@@ -824,7 +980,14 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
         })
         .where(eq(marketplaceProducts.id, existing.id));
 
-      await replaceCaptureProductImages(existing.id, product, assetById);
+      const indexedRows = await replaceCaptureProductImages(existing.id, product, assetById);
+      queueMarketplaceProductImageIndexing(indexedRows, auth, {
+        productId: existing.id,
+        productName: product.productName,
+        descriptionText: product.description.rawText ?? "",
+        platform: capture.platform,
+        productCategory,
+      });
       await insertMetricSnapshot(existing.id, captureId, product, auth, { commissionRatePercent });
       await linkCaptureInsightsToProduct(captureId, existing.id, auth);
       await db.update(marketplaceCaptureSessions)
@@ -890,6 +1053,13 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
   const rows = buildProductImageRows(productId, product, assetById);
   if (rows.length > 0) {
     await db.insert(marketplaceProductImages).values(rows);
+    queueMarketplaceProductImageIndexing(rows, auth, {
+      productId,
+      productName: product.productName,
+      descriptionText: product.description.rawText ?? "",
+      platform: capture.platform,
+      productCategory,
+    });
   }
 
   await insertMetricSnapshot(productId, captureId, product, auth);
@@ -905,6 +1075,85 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     status: sharedGroupIds.length > 0 ? "saved_and_shared" : "saved",
     productUrl: `/marketplace-capture/products/${productId}`,
     sharedGroupIds,
+  };
+}
+
+export async function backfillMarketplaceProductImageVectors(options: {
+  tenantId?: string;
+  userId?: number;
+  platform?: MarketplacePlatform | "all";
+  limit?: number;
+  offset?: number;
+  dryRun?: boolean;
+} = {}) {
+  const db = getDb();
+  const limit = Math.min(Math.max(options.limit ?? 100, 1), 1000);
+  const offset = Math.max(options.offset ?? 0, 0);
+  const platform = options.platform && options.platform !== "all" ? options.platform : null;
+  const rows = await db.select({
+    image: marketplaceProductImages,
+    product: marketplaceProducts,
+  })
+    .from(marketplaceProductImages)
+    .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+    .where(and(
+      sql`${marketplaceProductImages.captureAssetId} IS NOT NULL`,
+      options.tenantId ? eq(marketplaceProducts.tenantId, options.tenantId) : undefined,
+      options.userId ? eq(marketplaceProducts.userId, options.userId) : undefined,
+      platform ? eq(marketplaceProducts.platform, platform) : undefined,
+      excludeSyntheticStoryboardProductsWhere(),
+    ))
+    .orderBy(desc(marketplaceProductImages.createdAt), desc(marketplaceProductImages.id))
+    .offset(offset)
+    .limit(limit);
+
+  if (options.dryRun ?? true) {
+    return {
+      dryRun: true,
+      scanned: rows.length,
+      nextOffset: rows.length === limit ? offset + limit : null,
+      attempted: 0,
+      succeeded: 0,
+      failed: 0,
+    };
+  }
+
+  let attempted = 0;
+  let succeeded = 0;
+  let failed = 0;
+  const rowsByProduct = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const bucket = rowsByProduct.get(row.product.id) ?? [];
+    bucket.push(row);
+    rowsByProduct.set(row.product.id, bucket);
+  }
+
+  for (const [productId, productRows] of rowsByProduct) {
+    const product = productRows[0]?.product;
+    if (!product) continue;
+    const result = await indexMarketplaceProductImagesForVisualSearch(
+      productRows.map((row) => row.image),
+      { userId: product.userId, tenantId: product.tenantId ?? undefined },
+      {
+        productId,
+        productName: product.productName,
+        descriptionText: product.descriptionText,
+        platform: product.platform,
+        productCategory: product.productCategory,
+      },
+    );
+    attempted += result.attempted;
+    succeeded += result.succeeded;
+    failed += result.failed;
+  }
+
+  return {
+    dryRun: false,
+    scanned: rows.length,
+    nextOffset: rows.length === limit ? offset + limit : null,
+    attempted,
+    succeeded,
+    failed,
   };
 }
 
