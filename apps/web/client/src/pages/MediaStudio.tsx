@@ -487,7 +487,10 @@ function buildSkillImageAttachTargetOptions(params: {
   const fields =
     params.schema?.sections.flatMap(section => section.fields ?? []) ?? [];
   return fields
-    .filter(field => isSkillImageAttachField(field as Record<string, any>))
+    .filter(field => {
+      const schemaField = field as Record<string, any>;
+      return !schemaField.hidden && isSkillImageAttachField(schemaField);
+    })
     .map(field => {
       const label = getSkillFieldLocalizedLabel(field, params.isThaiLocale);
       return {
@@ -16113,7 +16116,7 @@ export default function MediaStudio() {
         return true;
       }
 
-      if (!selectedMediaModelReferenceSupport.imageUrls) {
+      if (selectedModel && !selectedMediaModelReferenceSupport.imageUrls) {
         toast.error("The selected model does not accept image references.");
         return false;
       }
@@ -16142,6 +16145,7 @@ export default function MediaStudio() {
       maxReferenceImages,
       referenceImages.length,
       selectedImageAttachTargetOption,
+      selectedModel,
       selectedMediaModelReferenceSupport.imageUrls,
       setDynamicFormValues,
       setReferenceImages,
@@ -16293,10 +16297,38 @@ export default function MediaStudio() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Limit reference images based on the active tab and any model-declared cap.
-    const remainingSlots = maxReferenceImages - referenceImages.length;
-    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    if (
+      selectedImageAttachTargetOption?.kind !== "skill_field" &&
+      selectedModel &&
+      !selectedMediaModelReferenceSupport.imageUrls
+    ) {
+      toast.error("The selected model does not accept image references.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
 
+    // Limit uploads based on the active attach target and any model-declared cap.
+    const remainingSlots =
+      selectedImageAttachTargetOption?.kind === "skill_field"
+        ? selectedSkillImageAttachRemainingSlots
+        : maxReferenceImages - referenceImages.length;
+    const filesToUpload = Array.from(files).slice(
+      0,
+      Math.max(0, remainingSlots ?? files.length)
+    );
+    if (filesToUpload.length === 0) {
+      toast.error(
+        t("mediaStudio.maxReferenceImagesError", { max: maxReferenceImages })
+      );
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    let uploadedCount = 0;
     for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
         continue;
@@ -16316,13 +16348,30 @@ export default function MediaStudio() {
           fileBase64: base64,
         });
 
-        setReferenceImages(prev => [
-          ...prev,
-          { url: result.url, name: file.name },
-        ]);
+        const added = attachImageUrlToSelectedTarget({
+          url: result.url,
+          name: file.name,
+          silent: filesToUpload.length > 1,
+        });
+        if (added) {
+          uploadedCount += 1;
+        }
       } catch (error) {
         console.error("Upload failed:", error);
       }
+    }
+
+    if (filesToUpload.length > 1 && uploadedCount > 0) {
+      toast.success(
+        selectedImageAttachTargetOption?.kind === "skill_field"
+          ? t("mediaStudio.addedImagesToAttachTarget", {
+              count: uploadedCount,
+              target: selectedImageAttachTargetOption.label,
+            })
+          : t("mediaStudio.addedImagesToCurrentReference", {
+              count: uploadedCount,
+            })
+      );
     }
 
     // Reset input

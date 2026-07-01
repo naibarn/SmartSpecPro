@@ -311,7 +311,7 @@
   "addedImagesToCurrentReference": "เพิ่มรูป {{count}} รูปเข้า reference ปัจจุบันแล้ว",
   "addingToCurrentReference": "กำลังเพิ่มรูป {{count}} รูปเข้า reference ปัจจุบัน...",
   "imageAttachTarget": "ปลายทางแนบภาพ",
-  "imageAttachTargetHelp": "เลือกว่าปุ่ม + ถัดไปจะส่งภาพไปช่องไหน",
+  "imageAttachTargetHelp": "เลือกว่าปุ่ม + หรือการวางรูปถัดไปจะส่งภาพไปช่องไหน",
   "currentReferenceTarget": "Reference Images ปัจจุบัน",
   "currentReferenceTargetHelp": "ส่งภาพเข้า Reference Images รวมของแท็บปัจจุบัน",
   "noSkillImageTargets": "Skill นี้ไม่มีช่องภาพแยก ปุ่ม + จะใช้ reference รวม",
