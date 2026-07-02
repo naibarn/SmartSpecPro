@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/129-ai-marketplace-app-ingestion-marketplace-intelligence/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-connector-lab-ui",
+    "section-02-auth-grants-browser-flow",
+    "section-03-fixture-replay-contracts",
+    "section-04-database-ingestion-model",
+    "section-05-internal-api-services",
+    "section-06-mcp-tools",
+    "section-07-security-observability-retention",
+    "section-08-reports-watchlists-handoff"
+  ],
+  "sections_state": {
+    "section-01-connector-lab-ui": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-02-auth-grants-browser-flow": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-03-fixture-replay-contracts": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-04-database-ingestion-model": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-05-internal-api-services": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-06-mcp-tools": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-07-security-observability-retention": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    },
+    "section-08-reports-watchlists-handoff": {
+      "status": "complete",
+      "commit_hash": "uncommitted-working-tree"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-01T18:38:50.521829+00:00"
+}

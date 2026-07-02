@@ -11,6 +11,10 @@ import {
   llmProviders,
   modelProviderMap,
 } from "../../drizzle/schema";
+import {
+  marketplaceIntelligenceReportTypeSchema,
+  marketplaceReportAspectRatioSchema,
+} from "../../shared/marketplaceIntelligence";
 import type { DelegatedCapabilityManifest } from "../../shared/workerDelegation";
 import { createInternalTokenFromAuth } from "./tokens";
 import {
@@ -76,6 +80,7 @@ import { generateAIDraft } from "../services/aiPresentationService";
 import { resolveExportDownloadTarget } from "../routes/exportDownloadTarget";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlag } from "../services/featureFlags";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import {
   assertDelegatedWorkerGrant,
   type DelegatedWorkerAuthContext,
@@ -87,6 +92,15 @@ import {
   requestWorkItemChangesByAssistant,
 } from "../services/orchestratorRoomActionsService";
 import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
+import {
+  createMarketplaceCaptureCandidateBatchFromSnapshot,
+  createMarketplaceIntelligenceReport,
+  createMarketplaceWatchlist,
+  getMarketplaceSnapshot,
+  listMarketplaceSnapshots,
+  listMarketplaceWatchlists,
+} from "../services/marketplaceIntelligenceService";
+import { saveOpenAiHostedShopeeSearchSnapshot } from "../services/marketplaceOpenAiShopeeWritebackService";
 
 export type McpSessionMode = "api_key" | "session" | "bearer" | "delegated_worker";
 export type McpToolActionClass = "read" | "compute" | "media" | "mcp_write";
@@ -102,6 +116,7 @@ export type McpToolFamily =
   | "workspace"
   | "drive"
   | "orchestrator"
+  | "marketplace_intelligence"
   | "browser";
 export type McpToolGroup =
   | "gateway_read"
@@ -120,6 +135,8 @@ export type McpToolGroup =
   | "workspace_access"
   | "drive_access"
   | "orchestrator_write"
+  | "marketplace_intelligence_read"
+  | "marketplace_intelligence_write"
   | "browser_automation";
 export type McpExecutionMode = "implemented" | "legacy_adapter" | "gated";
 export type McpResultSafetyClass = "structured_json" | "artifact_ref" | "safe_text" | "download_ref";
@@ -221,6 +238,7 @@ const MCP_TOOL_FAMILIES: McpToolFamily[] = [
   "workspace",
   "drive",
   "orchestrator",
+  "marketplace_intelligence",
   "browser",
 ];
 const MCP_TOOL_GROUPS: McpToolGroup[] = [
@@ -240,6 +258,8 @@ const MCP_TOOL_GROUPS: McpToolGroup[] = [
   "workspace_access",
   "drive_access",
   "orchestrator_write",
+  "marketplace_intelligence_read",
+  "marketplace_intelligence_write",
   "browser_automation",
 ];
 
@@ -1906,6 +1926,218 @@ async function executeBrowserActions(args: Record<string, unknown>, ctx: McpExec
   };
 }
 
+function marketplaceActorFromSession(ctx: McpExecutionContext) {
+  return {
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+  };
+}
+
+async function assertMarketplaceMcpWriteEnabled(
+  ctx: McpExecutionContext,
+  specificFlag?: "marketplaceIntelligenceImportsEnabled" | "marketplaceIntelligenceReportsEnabled" | "marketplaceIntelligenceWatchlistsEnabled",
+) {
+  if (!process.env.DATABASE_URL) return;
+  const flags = await getTenantFeatureFlags(ctx.session.tenantId);
+  if (!flags.marketplaceIntelligenceMcpWritesEnabled || (specificFlag && !flags[specificFlag])) {
+    throw Object.assign(new Error("Marketplace Intelligence MCP writes are not enabled for this tenant."), {
+      code: -32003,
+      flag: specificFlag ?? "marketplaceIntelligenceMcpWritesEnabled",
+    });
+  }
+}
+
+function mcpStringArg(args: Record<string, unknown>, key: string, fallback?: string): string {
+  const value = args[key];
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (fallback !== undefined) return fallback;
+  throw Object.assign(new Error(`Missing required string argument: ${key}`), { code: -32602 });
+}
+
+function mcpIntegerArg(args: Record<string, unknown>, key: string, fallback: number, min: number, max: number): number {
+  const raw = args[key];
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : fallback;
+  if (!Number.isInteger(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
+}
+
+function marketplaceSessionAuthFromMcp(ctx: McpExecutionContext) {
+  return {
+    ok: true as const,
+    mode: "session" as const,
+    user: { id: ctx.session.userId, currentTenantId: ctx.session.tenantId },
+    sub: `mcp:${ctx.session.userId}`,
+    scopes: ctx.session.scopes,
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+  };
+}
+
+function marketplaceWritebackPayloadFromArgs(args: Record<string, unknown>) {
+  const nestedPayload = args.payload && typeof args.payload === "object"
+    ? args.payload as Record<string, unknown>
+    : null;
+  if (nestedPayload) {
+    return {
+      sourceProvider: "openai_hosted_shopee_mcp",
+      platform: "shopee",
+      ...nestedPayload,
+    };
+  }
+  return {
+    sourceProvider: "openai_hosted_shopee_mcp",
+    platform: "shopee",
+    keyword: args.keyword,
+    region: args.region ?? "TH",
+    locale: args.locale ?? "th-TH",
+    capturedAt: args.capturedAt,
+    sourceCapturedAt: args.sourceCapturedAt,
+    sourceMetadata: args.sourceMetadata ?? {
+      executionHost: "openai_chatgpt",
+      upstreamAppId: args.upstreamAppId,
+      upstreamToolName: args.upstreamToolName,
+      requestId: args.requestId,
+    },
+    items: args.items,
+    rawPayload: args.rawPayload,
+    idempotencyKey: args.idempotencyKey,
+  };
+}
+
+async function marketplaceWebUrl(pathname: string): Promise<string> {
+  const runtime = await getAppRuntimeConfig();
+  const baseUrl = runtime.publicUrl || runtime.appPublicUrl || runtime.appUrl;
+  return baseUrl ? `${baseUrl}${pathname}` : pathname;
+}
+
+async function executeMarketplaceSnapshotSave(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  await assertMarketplaceMcpWriteEnabled(ctx, "marketplaceIntelligenceImportsEnabled");
+  const result = await saveOpenAiHostedShopeeSearchSnapshot({
+    auth: marketplaceSessionAuthFromMcp(ctx),
+    context: { requestTenantId: ctx.session.tenantId },
+    payload: marketplaceWritebackPayloadFromArgs(args),
+  });
+  const snapshot = result.snapshot;
+  const snapshotUrl = await marketplaceWebUrl(`/marketplace-capture/intelligence/snapshots/${encodeURIComponent(snapshot.id)}`);
+  return {
+    snapshotId: snapshot.id,
+    snapshotUrl,
+    keyword: snapshot.keyword,
+    provider: snapshot.provider,
+    sourceMode: snapshot.source,
+    sourceCapturedAt: snapshot.sourceCapturedAt,
+    itemCount: snapshot.itemCount,
+    fieldCoveragePercent: snapshot.fieldCoveragePercent,
+    unknownFieldCount: snapshot.unknownFieldCount,
+    metrics: snapshot.metrics,
+    warnings: result.warnings,
+    message: "Saved OpenAI-hosted Shopee MCP search results into SmartSpecPro Marketplace Intelligence.",
+  };
+}
+
+async function executeMarketplaceSnapshotsList(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const limit = mcpIntegerArg(args, "limit", 20, 1, 100);
+  const snapshots = await listMarketplaceSnapshots(marketplaceActorFromSession(ctx));
+  return {
+    snapshots: await Promise.all(snapshots.slice(0, limit).map(async (snapshot) => ({
+      id: snapshot.id,
+      url: await marketplaceWebUrl(`/marketplace-capture/intelligence/snapshots/${encodeURIComponent(snapshot.id)}`),
+      keyword: snapshot.keyword,
+      provider: snapshot.provider,
+      sourceMode: snapshot.source,
+      capturedAt: snapshot.capturedAt,
+      itemCount: snapshot.itemCount,
+      fieldCoveragePercent: snapshot.fieldCoveragePercent,
+      medianPrice: snapshot.metrics.medianPrice,
+      totalMonthlySold: snapshot.metrics.totalMonthlySold,
+      topBrand: snapshot.metrics.shareOfShelfByBrand[0]?.brand ?? null,
+      topSeller: snapshot.metrics.shareOfShelfBySeller[0]?.sellerName ?? null,
+    }))),
+  };
+}
+
+async function executeMarketplaceSnapshotGet(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const snapshotId = mcpStringArg(args, "snapshotId");
+  const snapshot = await getMarketplaceSnapshot(marketplaceActorFromSession(ctx), snapshotId);
+  return {
+    snapshot,
+    snapshotUrl: await marketplaceWebUrl(`/marketplace-capture/intelligence/snapshots/${encodeURIComponent(snapshot.id)}`),
+    rawPayloadStored: false,
+  };
+}
+
+async function executeMarketplaceReportGenerate(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  await assertMarketplaceMcpWriteEnabled(ctx, "marketplaceIntelligenceReportsEnabled");
+  const snapshotId = mcpStringArg(args, "snapshotId");
+  const reportType = marketplaceIntelligenceReportTypeSchema.parse(mcpStringArg(args, "reportType", "executive_image_summary"));
+  const aspectRatio = marketplaceReportAspectRatioSchema.parse(mcpStringArg(args, "aspectRatio", "1:1"));
+  const imageModel = mcpStringArg(args, "imageModel", "gpt-image-2");
+  const report = await createMarketplaceIntelligenceReport({
+    ...marketplaceActorFromSession(ctx),
+    snapshotId,
+    reportType,
+    aspectRatio,
+    imageModel,
+  });
+  return {
+    reportId: report.id,
+    reportUrl: await marketplaceWebUrl(`/marketplace-capture/intelligence/reports/${encodeURIComponent(report.id)}`),
+    snapshotId: report.snapshotId,
+    snapshotUrl: await marketplaceWebUrl(`/marketplace-capture/intelligence/snapshots/${encodeURIComponent(report.snapshotId)}`),
+    title: report.title,
+    reportType: report.reportType,
+    aspectRatio: report.aspectRatio,
+    imageModel: report.imageModel,
+    executiveSummary: report.executiveSummary,
+    kpis: report.kpis,
+    winners: report.winners,
+    recommendations: report.recommendations,
+    imagePrompt: report.promptPayload.prompt,
+    promptPayload: report.promptPayload,
+  };
+}
+
+async function executeMarketplaceCaptureBatchCreate(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  await assertMarketplaceMcpWriteEnabled(ctx, "marketplaceIntelligenceImportsEnabled");
+  const snapshotId = mcpStringArg(args, "snapshotId");
+  const handoff = await createMarketplaceCaptureCandidateBatchFromSnapshot(marketplaceActorFromSession(ctx), snapshotId);
+  return {
+    ...handoff,
+    marketplaceCaptureBatchUrl: await marketplaceWebUrl(`/marketplace-capture/candidates/${encodeURIComponent(handoff.marketplaceCaptureBatchId)}`),
+  };
+}
+
+async function executeMarketplaceWatchlistsList(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const limit = mcpIntegerArg(args, "limit", 20, 1, 100);
+  const watchlists = await listMarketplaceWatchlists(marketplaceActorFromSession(ctx));
+  return {
+    watchlists: await Promise.all(watchlists.slice(0, limit).map(async (watchlist) => ({
+      ...watchlist,
+      url: await marketplaceWebUrl(`/marketplace-capture/intelligence/watchlists/${encodeURIComponent(watchlist.id)}`),
+    }))),
+  };
+}
+
+async function executeMarketplaceWatchlistUpsert(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  await assertMarketplaceMcpWriteEnabled(ctx, "marketplaceIntelligenceWatchlistsEnabled");
+  const keyword = mcpStringArg(args, "keyword");
+  const region = mcpStringArg(args, "region", "TH");
+  const cadence = mcpStringArg(args, "cadence", "daily");
+  if (!["daily", "weekly", "manual"].includes(cadence)) {
+    throw Object.assign(new Error("Invalid cadence. Use daily, weekly, or manual."), { code: -32602 });
+  }
+  const watchlist = await createMarketplaceWatchlist({
+    ...marketplaceActorFromSession(ctx),
+    keyword,
+    region,
+    cadence: cadence as "daily" | "weekly" | "manual",
+  });
+  return {
+    watchlist,
+    watchlistUrl: await marketplaceWebUrl(`/marketplace-capture/intelligence/watchlists/${encodeURIComponent(watchlist.id)}`),
+  };
+}
+
 function attachContextStateToResult(
   toolName: string,
   ctx: McpExecutionContext,
@@ -1974,6 +2206,198 @@ function attachContextStateToResult(
 }
 
 const TOOL_REGISTRY: McpToolDefinition[] = [
+  {
+    name: "smartspec.marketplace_intelligence.search_snapshot.save",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_write",
+    description: "Save Shopee search results obtained by the OpenAI-hosted Shopee app into SmartSpecPro Marketplace Intelligence. Call this only after the upstream Shopee app has returned real search result items.",
+    requiredScope: "mcp:write",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["keyword", "items"],
+      properties: {
+        keyword: { type: "string", minLength: 1, maxLength: 120 },
+        region: { type: "string", default: "TH" },
+        locale: { type: "string", default: "th-TH" },
+        sourceProvider: { type: "string", enum: ["openai_hosted_shopee_mcp"], default: "openai_hosted_shopee_mcp" },
+        capturedAt: { type: "string", description: "When the OpenAI host obtained or prepared the search result." },
+        sourceCapturedAt: { type: "string", description: "When the upstream Shopee search result was captured, if known." },
+        sourceMetadata: {
+          type: "object",
+          properties: {
+            executionHost: { type: "string", enum: ["openai_chatgpt"], default: "openai_chatgpt" },
+            upstreamAppId: { type: "string" },
+            upstreamToolName: { type: "string" },
+            requestId: { type: "string" },
+            sourceUrl: { type: "string" },
+          },
+          additionalProperties: true,
+        },
+        items: {
+          type: "array",
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: "object",
+            additionalProperties: true,
+            description: "One Shopee search result item. Prefer raw nested Shopee fields when available; flattened itemid/shopid/name/price/rating fields are also accepted.",
+          },
+        },
+        rawPayload: { type: "object", additionalProperties: true },
+        idempotencyKey: { type: "string" },
+      },
+      additionalProperties: true,
+    },
+    execute: executeMarketplaceSnapshotSave,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.snapshots.list",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_read",
+    description: "List saved marketplace keyword search snapshots for the current user",
+    requiredScope: "mcp:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceSnapshotsList,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.snapshot.get",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_read",
+    description: "Read a saved marketplace keyword snapshot, normalized items, metrics, and field coverage",
+    requiredScope: "mcp:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["snapshotId"],
+      properties: {
+        snapshotId: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceSnapshotGet,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.report.generate",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_write",
+    description: "Generate an evidence-bound marketplace competitive intelligence report payload",
+    requiredScope: "mcp:write",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["snapshotId"],
+      properties: {
+        snapshotId: { type: "string", minLength: 1 },
+        reportType: { type: "string", default: "executive_image_summary" },
+        aspectRatio: { type: "string", enum: ["1:1", "9:16", "16:9"], default: "1:1" },
+        imageModel: { type: "string", default: "gpt-image-2" },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceReportGenerate,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.capture_batch.create",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_write",
+    description: "Create a Marketplace Capture candidate batch from a keyword search snapshot",
+    requiredScope: "mcp:write",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["snapshotId"],
+      properties: {
+        snapshotId: { type: "string", minLength: 1 },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceCaptureBatchCreate,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.watchlists.list",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_read",
+    description: "List saved marketplace intelligence watchlists for the current user",
+    requiredScope: "mcp:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceWatchlistsList,
+  },
+  {
+    name: "smartspec.marketplace_intelligence.watchlist.upsert",
+    family: "marketplace_intelligence",
+    namespace: "marketplace_intelligence",
+    toolGroup: "marketplace_intelligence_write",
+    description: "Create or update a user-scoped marketplace keyword watchlist",
+    requiredScope: "mcp:write",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["keyword"],
+      properties: {
+        keyword: { type: "string", minLength: 1, maxLength: 120 },
+        region: { type: "string", default: "TH" },
+        cadence: { type: "string", enum: ["daily", "weekly", "manual"], default: "daily" },
+      },
+      additionalProperties: false,
+    },
+    execute: executeMarketplaceWatchlistUpsert,
+  },
   {
     name: "smartspec.gateway.models.list",
     family: "gateway",

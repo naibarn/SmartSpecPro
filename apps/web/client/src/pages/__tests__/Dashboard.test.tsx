@@ -13,6 +13,7 @@ const {
   chatListConversationsUseQuery,
   getPersonalConversationUseQuery,
   reviewDashboardUseQuery,
+  getMenuVisibilityUseQuery,
 } = vi.hoisted(() => ({
   chatListConversationsUseQuery: vi.fn(() => ({
     data: {
@@ -100,6 +101,7 @@ const {
     },
     isLoading: false,
   })),
+  getMenuVisibilityUseQuery: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 const desktopGovernanceStatusState = {
   status: {
@@ -265,6 +267,7 @@ const translationMap: Record<string, string> = {
   "dashboard:notices.reviewCoverageDetail": "Review the agencies list and open any agency review that needs attention.",
   "dashboard:allAgencies": "All Agencies",
   "dashboard:sections.documents": "Documents",
+  "dashboard:sections.social": "Social",
   "dashboard:review.coverage": "{{percent}}% coverage",
   "dashboard:review.metrics.agencies": "Agencies",
   "dashboard:review.metrics.reviewed": "Reviewed",
@@ -919,7 +922,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     systemSettings: {
       getMenuVisibility: {
-        useQuery: vi.fn(() => ({ data: [], isLoading: false })),
+        useQuery: getMenuVisibilityUseQuery,
       },
     },
   },
@@ -931,6 +934,7 @@ describe("Dashboard", () => {
   beforeEach(() => {
     setLocationMock.mockClear();
     changeLanguageMock.mockClear();
+    getMenuVisibilityUseQuery.mockReturnValue({ data: [], isLoading: false });
     authState.role = "user";
     tenantFeatureFlagsState.desktopHostEnabled = false;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -964,6 +968,24 @@ describe("Dashboard", () => {
     fireEvent.click(socialAutomationButton);
 
     expect(setLocationMock).toHaveBeenCalledWith("/social/automation");
+  });
+
+  it("does not show hidden social menu items in the fallback social section", () => {
+    getMenuVisibilityUseQuery.mockReturnValue({
+      data: [
+        { menuItemId: "social-channels", visible: false },
+        { menuItemId: "social-inbox", visible: false },
+        { menuItemId: "social-publishing", visible: false },
+        { menuItemId: "social-moderation", visible: false },
+        { menuItemId: "social-automation", visible: false },
+      ],
+      isLoading: false,
+    });
+
+    render(<Dashboard />);
+
+    expect(screen.queryByText("Social")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /social automation/i })).not.toBeInTheDocument();
   });
 
   it("shows agency review summary on the dashboard", () => {

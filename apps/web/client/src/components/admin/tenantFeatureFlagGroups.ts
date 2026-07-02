@@ -133,6 +133,20 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Marketplace Intelligence",
+    icon: "🛒",
+    flags: [
+      { key: "marketplaceConnectorLabEnabled", label: "Marketplace Connector Lab", description: "Enable Shopee connector authorization and fixture replay discovery UI under Marketplace Capture Intelligence" },
+      { key: "marketplaceIntelligenceImportsEnabled", label: "Connector Imports", description: "Allow users to save field samples and marketplace search snapshots from connector output" },
+      { key: "marketplaceKeywordDiscoveryEnabled", label: "Keyword Discovery", description: "Enable broad keyword/category clustering, opportunities, and refresh flows" },
+      { key: "marketplaceIntelligenceReportsEnabled", label: "Marketplace Reports", description: "Enable deterministic competitive intelligence reports from stored snapshots" },
+      { key: "marketplaceReportImageSkillsEnabled", label: "Report Image Skills", description: "Enable report-specific prompt payload generation for image providers" },
+      { key: "marketplaceIntelligenceShareableImageEnabled", label: "Shareable Image Exports", description: "Allow shareable image export records for marketplace reports" },
+      { key: "marketplaceIntelligenceWatchlistsEnabled", label: "Watchlists", description: "Enable keyword, seller, brand, and SKU monitoring events" },
+      { key: "marketplaceIntelligenceMcpWritesEnabled", label: "MCP Writes", description: "Allow MCP tools to write marketplace snapshots, reports, and watchlists into this tenant" },
+    ],
+  },
+  {
     title: "Planner & Orchestrator",
     icon: "🎯",
     flags: [

@@ -54,4 +54,21 @@ describe("MarketplaceCaptureProductDetail auto review polling", () => {
       "onSettled: () => setPendingAutoReviewAction(null)"
     );
   });
+
+  it("surfaces a Marketplace Intelligence bridge from product detail", () => {
+    expect(source).toContain('aria-label="Market Intelligence"');
+    expect(source).toContain("MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS");
+    expect(source).toContain("marketplaceIntelligenceEnabled ? (");
+    expect(source).toContain("Boolean(productId) && marketplaceIntelligenceEnabled");
+    expect(source).toContain("marketplaceIntelligenceKeyword");
+    expect(source).toContain("/marketplace-capture/intelligence?keyword=");
+    expect(source).toContain("&auto=1");
+    expect(source).toContain("Find competitors");
+    expect(source).toContain("/settings?tab=integrations");
+    expect(source).toContain("Product evidence remains provenance-only");
+    expect(source).toContain("createProductMetricEnrichment");
+    expect(source).toContain("listProductMetricEnrichments");
+    expect(source).toContain("Confirm metric enrichment");
+    expect(source).toContain("Enrichment history");
+  });
 });

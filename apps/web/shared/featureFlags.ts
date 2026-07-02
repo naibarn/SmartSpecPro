@@ -105,6 +105,14 @@ export interface TenantFeatureFlags {
   storyboardPreviewMatchCaptureServerWorkerEnabled: boolean; // F94B — Preview-match capture server worker
   storyboardPreviewMatchCaptureHighEnabled: boolean; // F94C — Preview-match capture high-quality output
   storyboardClientCaptureExperimentEnabled: boolean; // F94D — Experimental client capture gate
+  marketplaceConnectorLabEnabled: boolean; // F129 — Marketplace Connector Lab and browser authorization discovery UI
+  marketplaceIntelligenceImportsEnabled: boolean; // F129A — Persist connector-derived field samples and search snapshots
+  marketplaceKeywordDiscoveryEnabled: boolean; // F129B — Keyword/category discovery clustering and refresh
+  marketplaceIntelligenceReportsEnabled: boolean; // F129C — Deterministic marketplace intelligence report generation
+  marketplaceReportImageSkillsEnabled: boolean; // F129D — Report-specific image prompt skill handoff
+  marketplaceIntelligenceShareableImageEnabled: boolean; // F129E — Shareable image export records for marketplace reports
+  marketplaceIntelligenceWatchlistsEnabled: boolean; // F129F — Keyword/seller/brand/SKU watchlists and change events
+  marketplaceIntelligenceMcpWritesEnabled: boolean; // F129G — MCP write tools for marketplace intelligence ingestion/report creation
   mcpConnectEnabled: boolean; // F95 — MCP Connect master rollout gate
   mcpConnectMagnificEnabled: boolean; // F96 — Magnific MCP provider rollout gate
   mcpConnectHiggsfieldEnabled: boolean; // F97 — Higgsfield MCP provider rollout gate
@@ -251,6 +259,14 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "storyboardPreviewMatchCaptureServerWorkerEnabled",
   "storyboardPreviewMatchCaptureHighEnabled",
   "storyboardClientCaptureExperimentEnabled",
+  "marketplaceConnectorLabEnabled",
+  "marketplaceIntelligenceImportsEnabled",
+  "marketplaceKeywordDiscoveryEnabled",
+  "marketplaceIntelligenceReportsEnabled",
+  "marketplaceReportImageSkillsEnabled",
+  "marketplaceIntelligenceShareableImageEnabled",
+  "marketplaceIntelligenceWatchlistsEnabled",
+  "marketplaceIntelligenceMcpWritesEnabled",
   "mcpConnectEnabled",
   "mcpConnectMagnificEnabled",
   "mcpConnectHiggsfieldEnabled",
@@ -396,6 +412,14 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   storyboardPreviewMatchCaptureServerWorkerEnabled: false,
   storyboardPreviewMatchCaptureHighEnabled: false,
   storyboardClientCaptureExperimentEnabled: false,
+  marketplaceConnectorLabEnabled: false,
+  marketplaceIntelligenceImportsEnabled: false,
+  marketplaceKeywordDiscoveryEnabled: false,
+  marketplaceIntelligenceReportsEnabled: false,
+  marketplaceReportImageSkillsEnabled: false,
+  marketplaceIntelligenceShareableImageEnabled: false,
+  marketplaceIntelligenceWatchlistsEnabled: false,
+  marketplaceIntelligenceMcpWritesEnabled: false,
   mcpConnectEnabled: false,
   mcpConnectMagnificEnabled: false,
   mcpConnectHiggsfieldEnabled: false,

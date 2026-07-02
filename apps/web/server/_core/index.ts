@@ -78,6 +78,7 @@ import { registerTenantRoutes } from "../routers/tenant";
 import { registerBlogRoutes } from "../routers/blog";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { registerMarketplaceCaptureRoutes } from "../routes/marketplaceCapture";
+import { registerMarketplaceConnectorAuthRoutes } from "../routes/marketplaceConnectorAuth";
 import { isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
@@ -1315,6 +1316,9 @@ registerAdminTenantsRoutes(app);
 
 // Blog routes
 registerBlogRoutes(app);
+
+// Marketplace connector browser authorization routes
+registerMarketplaceConnectorAuthRoutes(app);
 
 // Marketplace capture extension REST API
 registerMarketplaceCaptureRoutes(app);

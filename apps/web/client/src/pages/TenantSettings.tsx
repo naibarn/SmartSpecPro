@@ -59,6 +59,13 @@ interface InvoiceConfig {
   isActive?: boolean;
 }
 
+interface MarketplaceConnectorConfigForm {
+  liveProbeUrl: string;
+  liveProbeToken: string;
+  fixtureFallbackEnabled: boolean;
+  activeGrantTtlDays: number;
+}
+
 export default function TenantSettings() {
   const { user, isLoading: authLoading } = useAuth();
   const { tenant } = useTenant();
@@ -69,6 +76,12 @@ export default function TenantSettings() {
   // Invoice config state
   const [invoiceForm, setInvoiceForm] = useState<InvoiceConfig>({
     customFields: [],
+  });
+  const [marketplaceConnectorForm, setMarketplaceConnectorForm] = useState<MarketplaceConnectorConfigForm>({
+    liveProbeUrl: "",
+    liveProbeToken: "",
+    fixtureFallbackEnabled: false,
+    activeGrantTtlDays: 90,
   });
 
   // Query tenant-specific invoice config
@@ -116,6 +129,23 @@ export default function TenantSettings() {
     },
     onError: err => toast.error(`Failed to save rollout settings: ${err.message}`),
   });
+  const marketplaceConnectorConfigQuery = trpc.marketplaceConnectorTenantConfig.getConfig.useQuery(
+    { tenantId: tenant?.id == null ? undefined : String(tenant.id) },
+    {
+      enabled:
+        !!user &&
+        !!tenant?.id &&
+        (user.role === "domain_admin" || user.role === "admin"),
+    },
+  );
+  const updateMarketplaceConnectorConfig = trpc.marketplaceConnectorTenantConfig.updateConfig.useMutation({
+    onSuccess: () => {
+      toast.success("Marketplace connector config saved");
+      setMarketplaceConnectorForm((prev) => ({ ...prev, liveProbeToken: "" }));
+      marketplaceConnectorConfigQuery.refetch();
+    },
+    onError: err => toast.error(`Failed to save connector config: ${err.message}`),
+  });
 
   // Load settings into form
   useEffect(() => {
@@ -123,6 +153,17 @@ export default function TenantSettings() {
       setInvoiceForm(invoiceConfig as InvoiceConfig);
     }
   }, [invoiceConfig]);
+
+  useEffect(() => {
+    if (marketplaceConnectorConfigQuery.data) {
+      setMarketplaceConnectorForm({
+        liveProbeUrl: marketplaceConnectorConfigQuery.data.liveProbeUrl ?? "",
+        liveProbeToken: "",
+        fixtureFallbackEnabled: Boolean(marketplaceConnectorConfigQuery.data.fixtureFallbackEnabled),
+        activeGrantTtlDays: Number(marketplaceConnectorConfigQuery.data.activeGrantTtlDays ?? 90),
+      });
+    }
+  }, [marketplaceConnectorConfigQuery.data]);
 
   useEffect(() => {
     const tab = new URLSearchParams(search).get("tab");
@@ -156,6 +197,17 @@ export default function TenantSettings() {
     upsertInvoiceMutation.mutate({
       tenantId: tenant.id,
       ...invoiceForm,
+    });
+  };
+
+  const handleSaveMarketplaceConnectorConfig = () => {
+    if (!tenant?.id) {
+      toast.error("No tenant ID found. Please ensure your domain is configured.");
+      return;
+    }
+    updateMarketplaceConnectorConfig.mutate({
+      tenantId: String(tenant.id),
+      config: marketplaceConnectorForm,
     });
   };
 
@@ -742,7 +794,7 @@ export default function TenantSettings() {
                 <DashboardCard
                   className="overflow-hidden"
                   title="MCP Connect rollout"
-                  description="Enable MCP Connect by tenant, provider, surface, asset type, and group sharing. Provider configuration is managed in Admin Settings."
+                  description="Enable MCP Connect by tenant, provider, surface, asset type, and group sharing. Marketplace live connector runtime is managed here per tenant."
                   leading={<Cable className="w-5 h-5 text-blue-500" />}
                 >
                   {featureFlagsQuery.isLoading ? (
@@ -783,6 +835,101 @@ export default function TenantSettings() {
                           />
                         </label>
                       ))}
+                    </div>
+                  )}
+                </DashboardCard>
+
+                <DashboardCard
+                  className="mt-6 overflow-hidden"
+                  title="Marketplace live connector"
+                  description="Tenant-scoped runtime settings used by Marketplace Intelligence and Connector Lab. These values are not read from environment variables."
+                  leading={<Cable className="w-5 h-5 text-teal-500" />}
+                >
+                  {marketplaceConnectorConfigQuery.isLoading ? (
+                    <div className="py-8 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="marketplace-live-probe-url">Shopee live probe URL</Label>
+                        <Input
+                          id="marketplace-live-probe-url"
+                          value={marketplaceConnectorForm.liveProbeUrl}
+                          onChange={(event) => setMarketplaceConnectorForm((prev) => ({
+                            ...prev,
+                            liveProbeUrl: event.target.value,
+                          }))}
+                          placeholder="https://connector-host.example.com/shopee/probe"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="marketplace-live-probe-token">Bearer token</Label>
+                        <Input
+                          id="marketplace-live-probe-token"
+                          type="password"
+                          value={marketplaceConnectorForm.liveProbeToken}
+                          onChange={(event) => setMarketplaceConnectorForm((prev) => ({
+                            ...prev,
+                            liveProbeToken: event.target.value,
+                          }))}
+                          placeholder={
+                            marketplaceConnectorConfigQuery.data?.liveProbeTokenConfigured
+                              ? `Configured (${marketplaceConnectorConfigQuery.data.liveProbeTokenHint ?? "hidden"})`
+                              : "Optional"
+                          }
+                        />
+                      </div>
+                      <label className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3">
+                        <div>
+                          <div className="text-sm font-medium text-gray-950">Allow recorded sample fallback</div>
+                          <div className="text-xs text-gray-500">
+                            Use only for development/schema review. Production live search should fail closed when the connector is unavailable.
+                          </div>
+                        </div>
+                        <Switch
+                          checked={marketplaceConnectorForm.fixtureFallbackEnabled}
+                          disabled={updateMarketplaceConnectorConfig.isPending}
+                          onCheckedChange={(checked) => setMarketplaceConnectorForm((prev) => ({
+                            ...prev,
+                            fixtureFallbackEnabled: checked,
+                          }))}
+                        />
+                      </label>
+                      <div className="grid gap-2">
+                        <Label htmlFor="marketplace-active-grant-ttl-days">Grant lifetime (days)</Label>
+                        <Input
+                          id="marketplace-active-grant-ttl-days"
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={marketplaceConnectorForm.activeGrantTtlDays}
+                          onChange={(event) => setMarketplaceConnectorForm((prev) => ({
+                            ...prev,
+                            activeGrantTtlDays: Math.max(1, Math.min(365, Number(event.target.value) || 90)),
+                          }))}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Default is 90 days. Existing active grants are extended on refresh when this value is increased.
+                        </p>
+                      </div>
+                      <div className="flex justify-end border-t pt-4">
+                        <Button
+                          onClick={handleSaveMarketplaceConnectorConfig}
+                          disabled={updateMarketplaceConnectorConfig.isPending || !tenant?.id}
+                          className="bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-500 hover:from-blue-700 hover:via-cyan-700 hover:to-teal-600"
+                        >
+                          {updateMarketplaceConnectorConfig.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="mr-2 h-4 w-4" /> Save Marketplace Connector
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </DashboardCard>

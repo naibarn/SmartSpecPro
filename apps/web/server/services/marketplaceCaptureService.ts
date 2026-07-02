@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   marketplaceCandidateBatches,
@@ -527,6 +527,42 @@ export async function getMarketplaceCandidateBatchForUser(batchId: string, auth:
   const items = await db.select().from(marketplaceCandidateItems)
     .where(and(eq(marketplaceCandidateItems.batchId, batchId), eq(marketplaceCandidateItems.userId, auth.userId)))
     .orderBy(desc(marketplaceCandidateItems.score), marketplaceCandidateItems.position);
+  return { batch, items };
+}
+
+export async function getLatestMarketplaceCandidateBatchForKeyword(
+  input: { platform: "shopee" | "tiktok_shop"; keyword: string; limit?: number },
+  auth: { userId: number; tenantId?: string },
+) {
+  const keyword = input.keyword.trim();
+  if (!keyword) return null;
+  const db = getDb();
+  const keywordPattern = `%${keyword.replace(/[%_]/g, "\\$&")}%`;
+  const [batch] = await db.select().from(marketplaceCandidateBatches)
+    .where(and(
+      eq(marketplaceCandidateBatches.userId, auth.userId),
+      eq(marketplaceCandidateBatches.platform, input.platform),
+      auth.tenantId
+        ? or(eq(marketplaceCandidateBatches.tenantId, auth.tenantId), isNull(marketplaceCandidateBatches.tenantId))
+        : undefined,
+      or(
+        ilike(marketplaceCandidateBatches.categoryName, keywordPattern),
+        ilike(marketplaceCandidateBatches.sourceUrl, keywordPattern),
+        sql`${marketplaceCandidateBatches.filtersJson}->>'keyword' ILIKE ${keywordPattern}`,
+        sql`${marketplaceCandidateBatches.filtersJson}->>'searchKeyword' ILIKE ${keywordPattern}`,
+      ),
+    ))
+    .orderBy(desc(marketplaceCandidateBatches.createdAt))
+    .limit(1);
+  if (!batch) return null;
+  const items = await db.select().from(marketplaceCandidateItems)
+    .where(and(
+      eq(marketplaceCandidateItems.batchId, batch.id),
+      eq(marketplaceCandidateItems.userId, auth.userId),
+    ))
+    .orderBy(marketplaceCandidateItems.position, desc(marketplaceCandidateItems.score))
+    .limit(Math.min(Math.max(input.limit ?? 10, 1), 25));
+  if (!items.length) return null;
   return { batch, items };
 }
 

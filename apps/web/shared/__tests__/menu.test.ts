@@ -1,6 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { getMenuItemsByGroup } from "@smartspec/shared";
 
+const marketplaceIntelligenceFeatureFlags = {
+  marketplaceConnectorLabEnabled: false,
+  marketplaceIntelligenceImportsEnabled: false,
+  marketplaceKeywordDiscoveryEnabled: false,
+  marketplaceIntelligenceReportsEnabled: false,
+  marketplaceReportImageSkillsEnabled: false,
+  marketplaceIntelligenceShareableImageEnabled: false,
+  marketplaceIntelligenceWatchlistsEnabled: false,
+  marketplaceIntelligenceMcpWritesEnabled: false,
+};
+
 describe("Private Files menu entry", () => {
   it("appears in the main menu for web users as a free shared menu item", () => {
     const items = getMenuItemsByGroup("web", "user", "main");
@@ -55,5 +66,25 @@ describe("Private Files menu entry", () => {
     expect(adminItem?.roles).toEqual(["admin"]);
     expect(userAdminItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
     expect(userMainItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
+  });
+
+  it("hides Marketplace Intelligence when all tenant intelligence flags are disabled", () => {
+    const items = getMenuItemsByGroup("web", "user", "main", undefined, {
+      MARKETPLACE_CAPTURE_ENABLED: true,
+      ...marketplaceIntelligenceFeatureFlags,
+    });
+
+    expect(items.find((menuItem) => menuItem.id === "marketplace-capture")).toBeDefined();
+    expect(items.find((menuItem) => menuItem.id === "marketplace-intelligence")).toBeUndefined();
+  });
+
+  it("shows Marketplace Intelligence when at least one tenant intelligence flag is enabled", () => {
+    const items = getMenuItemsByGroup("web", "user", "main", undefined, {
+      MARKETPLACE_CAPTURE_ENABLED: true,
+      ...marketplaceIntelligenceFeatureFlags,
+      marketplaceIntelligenceImportsEnabled: true,
+    });
+
+    expect(items.find((menuItem) => menuItem.id === "marketplace-intelligence")?.path).toBe("/marketplace-capture/intelligence");
   });
 });

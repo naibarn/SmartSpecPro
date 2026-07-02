@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
@@ -70,6 +71,16 @@ type ProductMediaTab = "image" | "video" | "audio";
 type ProductPanelTab = "history" | "library" | "product";
 const AUTO_STORYBOARD_OVERRIDES_STORAGE_KEY =
   "smartSpecPro.marketplaceCapture.autoStoryboardOverrides.v1";
+const MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS = [
+  "marketplaceConnectorLabEnabled",
+  "marketplaceIntelligenceImportsEnabled",
+  "marketplaceKeywordDiscoveryEnabled",
+  "marketplaceIntelligenceReportsEnabled",
+  "marketplaceReportImageSkillsEnabled",
+  "marketplaceIntelligenceShareableImageEnabled",
+  "marketplaceIntelligenceWatchlistsEnabled",
+  "marketplaceIntelligenceMcpWritesEnabled",
+] as const;
 
 function loadStoredAutoStoryboardOverrides(): HyperframesAutoPlanOverrideInput {
   if (typeof window === "undefined") return {};
@@ -2436,6 +2447,10 @@ export default function MarketplaceCaptureProductDetail() {
   const suppressAddImageToastRef = useRef(false);
   const requestedLibraryPageRef = useRef(0);
   const utils = trpc.useUtils();
+  const tenantFeatureFlags = useTenantFeatureFlags();
+  const marketplaceIntelligenceEnabled = MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS.some(
+    flag => tenantFeatureFlags[flag] === true
+  );
 
   const product = trpc.marketplaceCapture.getProduct.useQuery(
     { productId },
@@ -2448,6 +2463,25 @@ export default function MarketplaceCaptureProductDetail() {
       { productId },
       { enabled: Boolean(productId) }
     );
+  const marketplaceSnapshotsQuery =
+    trpc.marketplaceIntelligence.listSnapshots.useQuery(undefined, {
+      enabled: Boolean(productId) && marketplaceIntelligenceEnabled,
+    });
+  const marketplaceMetricEnrichmentsQuery =
+    trpc.marketplaceIntelligence.listProductMetricEnrichments.useQuery(
+      { productId },
+      { enabled: Boolean(productId) && marketplaceIntelligenceEnabled }
+    );
+  const createMarketplaceMetricEnrichment =
+    trpc.marketplaceIntelligence.createProductMetricEnrichment.useMutation({
+      onSuccess: async () => {
+        toast.success("Marketplace metric enrichment saved");
+        await marketplaceMetricEnrichmentsQuery.refetch();
+      },
+      onError: (error: any) => {
+        toast.error(error?.message || "Unable to save marketplace metric enrichment");
+      },
+    });
   const imageMediaModelsQuery = trpc.mediaModels.list.useQuery({
     type: "image",
   });
@@ -3090,6 +3124,51 @@ export default function MarketplaceCaptureProductDetail() {
     itemPlatformRaw.marketplaceCategoryPath,
     itemPlatformRaw.breadcrumbs
   );
+  const marketplaceIntelligenceKeyword = firstCompactText(
+    item.productName,
+    itemPlatformRaw.productName,
+    capturedCategoryText,
+    item.shopName,
+    item.externalProductId,
+    productId
+  );
+  const marketplaceIntelligenceHref = `/marketplace-capture/intelligence?keyword=${encodeURIComponent(marketplaceIntelligenceKeyword || productId)}&sourceProductId=${encodeURIComponent(productId)}&auto=1`;
+  const marketplaceIntelligenceEvidence = [
+    {
+      label: "Price",
+      value: `${compactText(item.priceCurrent) || "-"} ${compactText(item.currency) || "THB"}`,
+    },
+    {
+      label: "Sold",
+      value: formatCount(item.soldCountNormalized as any, item.soldCountText as any),
+    },
+    {
+      label: "Rating",
+      value: compactText(item.ratingScore) || "-",
+    },
+    {
+      label: "Reviews",
+      value: formatCount(item.reviewCountText as any, itemPlatformRaw.reviewCountNormalized as any),
+    },
+  ];
+  const marketplaceSnapshots = marketplaceSnapshotsQuery.data?.snapshots ?? [];
+  const marketplaceMetricEnrichments = marketplaceMetricEnrichmentsQuery.data ?? [];
+  const productExternalProductId = compactText(item.externalProductId);
+  const productExternalShopId = compactText(item.externalShopId);
+  const matchingMarketplaceSnapshotItem = useMemo(() => {
+    if (!productExternalProductId) return null;
+    for (const snapshot of marketplaceSnapshots) {
+      const match = (snapshot.items ?? []).find((snapshotItem: any) => {
+        const itemIdMatches = String(snapshotItem.itemId ?? "") === productExternalProductId;
+        const shopIdMatches = productExternalShopId
+          ? String(snapshotItem.shopId ?? "") === productExternalShopId
+          : true;
+        return itemIdMatches && shopIdMatches;
+      });
+      if (match) return { snapshot, item: match };
+    }
+    return null;
+  }, [marketplaceSnapshots, productExternalProductId, productExternalShopId]);
   const productFormFromCurrent = useCallback(
     (): ProductEditForm => ({
       productName: compactText(item.productName),
@@ -5706,6 +5785,149 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
             </dl>
           </section>
+
+          {marketplaceIntelligenceEnabled ? (
+          <section
+            className="rounded-lg border border-sky-200 bg-white p-6 shadow-sm"
+            aria-label="Market Intelligence"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                  <Search className="h-3.5 w-3.5" />
+                  Market Intelligence
+                </div>
+                <h2 className="mt-3 text-xl font-semibold">
+                  วิเคราะห์ตลาดจาก keyword ก่อนผูกกับ SKU นี้
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                  ใช้ชื่อสินค้า ร้าน หรือหมวดหมู่จาก Marketplace Capture
+                  เพื่อสร้าง keyword snapshot, report, watchlist และ candidate batch
+                  โดยข้อมูล connector/evidence เป็นสิทธิ์ของ user ที่เชื่อมต่อเท่านั้น
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href={marketplaceIntelligenceHref}>
+                  <Button type="button" variant="outline" size="sm">
+                    <Search className="mr-2 h-4 w-4" />
+                    Find competitors
+                  </Button>
+                </Link>
+                <Link href="/marketplace-capture/intelligence/reports">
+                  <Button type="button" variant="outline" size="sm">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Reports
+                  </Button>
+                </Link>
+                <Link href="/settings?tab=integrations">
+                  <Button type="button" variant="outline" size="sm">
+                    <Settings2 className="mr-2 h-4 w-4" />
+                    Connector settings
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              {marketplaceIntelligenceEvidence.map(metric => (
+                <div key={metric.label} className="rounded-lg border bg-slate-50 p-3">
+                  <div className="text-xs font-medium text-slate-500">
+                    {metric.label}
+                  </div>
+                  <div className="mt-1 break-words text-sm font-semibold text-slate-900">
+                    {metric.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-900">
+                  Linked snapshot metric update
+                </div>
+                {matchingMarketplaceSnapshotItem ? (
+                  <div className="mt-2 space-y-3 text-sm text-slate-600">
+                    <p>
+                      พบ exact snapshot item จาก keyword{" "}
+                      <span className="font-medium text-slate-900">
+                        {matchingMarketplaceSnapshotItem.snapshot.keyword}
+                      </span>{" "}
+                      rank #{matchingMarketplaceSnapshotItem.item.rank} · {matchingMarketplaceSnapshotItem.snapshot.capturedAt}
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-md bg-slate-50 p-2">
+                        <div className="text-xs text-slate-500">Snapshot price</div>
+                        <div className="font-semibold text-slate-900">
+                          {Number(matchingMarketplaceSnapshotItem.item.price ?? 0).toLocaleString()} THB
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-slate-50 p-2">
+                        <div className="text-xs text-slate-500">Monthly sold</div>
+                        <div className="font-semibold text-slate-900">
+                          {formatCount(matchingMarketplaceSnapshotItem.item.monthlySoldCount as any, null)}
+                        </div>
+                      </div>
+                      <div className="rounded-md bg-slate-50 p-2">
+                        <div className="text-xs text-slate-500">Rating</div>
+                        <div className="font-semibold text-slate-900">
+                          {compactText(matchingMarketplaceSnapshotItem.item.rating) || "-"}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => createMarketplaceMetricEnrichment.mutate({
+                        productId,
+                        snapshotId: matchingMarketplaceSnapshotItem.snapshot.id,
+                        itemId: matchingMarketplaceSnapshotItem.item.itemId,
+                      })}
+                      disabled={createMarketplaceMetricEnrichment.isPending}
+                    >
+                      {createMarketplaceMetricEnrichment.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      Confirm metric enrichment
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">
+                    ยังไม่พบ snapshot item ที่ match ด้วย shop_id + item_id สำหรับ product นี้ ให้สร้าง keyword snapshot หรือ candidate batch ก่อนยืนยัน metric update.
+                  </p>
+                )}
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-900">
+                  Enrichment history
+                </div>
+                <div className="mt-2 space-y-2">
+                  {marketplaceMetricEnrichments.length > 0 ? marketplaceMetricEnrichments.slice(0, 3).map((entry: any) => (
+                    <div key={entry.id} className="rounded-md bg-slate-50 p-2 text-sm">
+                      <div className="font-medium text-slate-900">
+                        {entry.provenance?.title || entry.snapshotItemId}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {entry.capturedAt} · rank #{entry.metrics?.rank ?? "-"} · confidence {Math.round(Number(entry.confidence ?? 0) * 100)}%
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-slate-600">
+                      ยังไม่มี metric enrichment ที่ user นี้ยืนยันไว้
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+              Keyword seed:{" "}
+              <span className="font-medium text-slate-900">
+                {marketplaceIntelligenceKeyword || productId}
+              </span>
+              {" "}· Product evidence remains provenance-only until a snapshot item is explicitly linked or converted into a candidate batch.
+            </div>
+          </section>
+          ) : null}
 
           <section className="rounded-lg border bg-white p-6 shadow-sm">
             {showStandardOrderControlPanel ? (

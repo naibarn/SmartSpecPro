@@ -17,9 +17,21 @@ export interface MenuItem {
   parentId?: string;
   external?: boolean;
   requiresFeature?: string;
+  requiresAnyFeature?: string[];
   children?: MenuItem[];
   sortOrder: number;
 }
+
+const marketplaceIntelligenceMenuFeatureFlags = [
+  'marketplaceConnectorLabEnabled',
+  'marketplaceIntelligenceImportsEnabled',
+  'marketplaceKeywordDiscoveryEnabled',
+  'marketplaceIntelligenceReportsEnabled',
+  'marketplaceReportImageSkillsEnabled',
+  'marketplaceIntelligenceShareableImageEnabled',
+  'marketplaceIntelligenceWatchlistsEnabled',
+  'marketplaceIntelligenceMcpWritesEnabled',
+];
 
 export const defaultMenuItems: MenuItem[] = [
   // === Main group (shared across web & desktop) ===
@@ -44,6 +56,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'role-monitor',  label: 'Role Monitor',   labelTh: 'มอนิเตอร์บทบาท', icon: 'Radar',         path: '/role-monitor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.76, requiresFeature: 'orchestratorEnabled' },
   { id: 'automation',    label: 'Automation Copilot', labelTh: 'ระบบอัตโนมัติ', icon: 'Bot', path: '/automation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.8, requiresFeature: 'automationCopilot' },
   { id: 'marketplace-capture', label: 'Marketplace Capture', labelTh: 'เก็บข้อมูล Marketplace', icon: 'Store', path: '/marketplace-capture', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.9, requiresFeature: 'MARKETPLACE_CAPTURE_ENABLED' },
+  { id: 'marketplace-intelligence', label: 'Marketplace Intelligence', labelTh: 'วิเคราะห์ Marketplace', icon: 'BarChart3', path: '/marketplace-capture/intelligence', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.91, requiresFeature: 'MARKETPLACE_CAPTURE_ENABLED', requiresAnyFeature: marketplaceIntelligenceMenuFeatureFlags },
   { id: 'social-channels', label: 'Social Channels', icon: 'Share2', path: '/social/channels', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.0, requiresFeature: 'META_CHANNELS_ENABLED' },
   { id: 'social-inbox', label: 'Social Inbox', icon: 'MessageCircleMore', path: '/social/inbox', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.1, requiresFeature: 'META_CHANNELS_ENABLED' },
   { id: 'social-publishing', label: 'Social Publishing', icon: 'Send', path: '/social/publishing', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.2, requiresFeature: 'META_CHANNELS_ENABLED' },
@@ -130,10 +143,15 @@ export function getVisibleMenuItems(
     .filter(item => item.platforms.includes(platform))
     .filter(item => !item.roles || item.roles.includes(role))
     .filter(item => {
-      if (!item.requiresFeature) return true;
       if (!enabledFeatures) return true; // No feature info = show all (backward compat)
+      if (item.requiresFeature && enabledFeatures[item.requiresFeature] === false) {
+        return false;
+      }
+      if (item.requiresAnyFeature?.length) {
+        return item.requiresAnyFeature.some(feature => enabledFeatures[feature] === true);
+      }
       // Default to true — features are shown unless explicitly disabled
-      return enabledFeatures[item.requiresFeature] !== false;
+      return true;
     })
     .map(item => {
       const override = overrides?.find(o => o.menuItemId === item.id);

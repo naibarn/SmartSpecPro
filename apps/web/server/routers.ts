@@ -50,6 +50,8 @@ import { accountSecurityRouter } from "./routers/accountSecurity";
 import { translationRouter } from "./routers/translation";
 import { marketplaceRouter } from "./routers/marketplace";
 import { marketplaceCaptureRouter } from "./routers/marketplaceCapture";
+import { marketplaceIntelligenceRouter } from "./routers/marketplaceIntelligence";
+import { marketplaceConnectorTenantConfigRouter } from "./routers/marketplaceConnectorTenantConfig";
 import { skillRepositoriesRouter } from "./routers/skillRepositories";
 import { sttProvidersRouter } from "./routers/sttProviders";
 import { multiProviderRouter } from "./routers/multiProvider";
@@ -1952,6 +1954,8 @@ type AppRouterShape = {
   translation: typeof translationRouter;
   marketplace: typeof marketplaceRouter;
   marketplaceCapture: typeof marketplaceCaptureRouter;
+  marketplaceIntelligence: typeof marketplaceIntelligenceRouter;
+  marketplaceConnectorTenantConfig: typeof marketplaceConnectorTenantConfigRouter;
   skillRepositories: typeof skillRepositoriesRouter;
   sttProviders: typeof sttProvidersRouter;
   queues: typeof queuesRouter;
@@ -2110,6 +2114,8 @@ const appRouterInternal = router<AppRouterShape>({
   translation: translationRouter,
   marketplace: marketplaceRouter,
   marketplaceCapture: marketplaceCaptureRouter,
+  marketplaceIntelligence: marketplaceIntelligenceRouter,
+  marketplaceConnectorTenantConfig: marketplaceConnectorTenantConfigRouter,
   skillRepositories: skillRepositoriesRouter,
 
   // Speech-to-Text provider management (admin)

@@ -82,6 +82,9 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const MarketplaceCaptureConnect = lazy(() => import("./pages/MarketplaceCaptureConnect"));
+const MarketplaceIntelligence = lazy(() => import("./pages/MarketplaceIntelligence"));
+const MarketplaceConnectorConnect = lazy(() => import("./pages/MarketplaceConnectorConnect"));
+const MarketplaceConnectorLab = lazy(() => import("./pages/MarketplaceConnectorLab"));
 const WorkerAppConnect = lazy(() => import("./pages/WorkerAppConnect"));
 const MarketplaceCapturePreview = lazy(() => import("./pages/MarketplaceCapturePreview"));
 const MarketplaceCaptureProducts = lazy(() => import("./pages/MarketplaceCaptureProducts"));
@@ -301,6 +304,11 @@ function Router() {
         <Route path="/blog/:slug" component={BlogPost} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/marketplace/:slug" component={Marketplace} />
+        <Route path="/marketplace-capture/intelligence/connect/authorize"><RequireAuth><MarketplaceConnectorConnect /></RequireAuth></Route>
+        <Route path="/marketplace-capture/intelligence/connect/shopee"><RequireAuth><MarketplaceConnectorConnect /></RequireAuth></Route>
+        <Route path="/marketplace-capture/intelligence/connector-lab"><RequireAuth><MarketplaceConnectorLab /></RequireAuth></Route>
+        <Route path="/marketplace-capture/intelligence/:section+"><RequireAuth><MarketplaceIntelligence /></RequireAuth></Route>
+        <Route path="/marketplace-capture/intelligence"><RequireAuth><MarketplaceIntelligence /></RequireAuth></Route>
         <Route path="/marketplace-capture/connect"><RequireAuth><MarketplaceCaptureConnect /></RequireAuth></Route>
         <Route path="/marketplace-capture/insights/:insightId"><RequireAuth><MarketplaceCaptureInsight /></RequireAuth></Route>
         <Route path="/marketplace-capture/captures/:captureId/preview"><RequireAuth><MarketplaceCapturePreview /></RequireAuth></Route>

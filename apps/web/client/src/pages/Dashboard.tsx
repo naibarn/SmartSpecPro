@@ -508,6 +508,13 @@ export default function Dashboard() {
     menuOverrides,
     tenantFlags
   );
+  const hiddenMenuItemIds = new Set(
+    (menuOverrides ?? [])
+      .filter(item => item.visible === false)
+      .map(item => item.menuItemId)
+  );
+  const socialMenuAllowed =
+    tenantFlags.META_CHANNELS_ENABLED !== false;
   const adminOpsMenuItems = adminMenuItems.filter(item =>
     consolidatedAdminOpsIds.has(item.id)
   );
@@ -553,7 +560,11 @@ export default function Dashboard() {
       icon: Workflow,
       href: "/social/automation",
     },
-  ].filter(item => !mainMenuItems.some(menuItem => menuItem.id === item.id));
+  ].filter(item =>
+    socialMenuAllowed &&
+    !hiddenMenuItemIds.has(item.id) &&
+    !mainMenuItems.some(menuItem => menuItem.id === item.id)
+  );
   const mainMenuSectionLabels = {
     documents: t("dashboard:sections.documents"),
     social: t("dashboard:sections.social"),
@@ -1250,6 +1261,7 @@ export default function Dashboard() {
     "media-studio",
     "storyboard-review",
     "marketplace-capture",
+    "marketplace-intelligence",
     "skills",
     "media-history",
     "render-jobs",
@@ -1269,6 +1281,7 @@ export default function Dashboard() {
     "media-studio": "from-slate-700 to-slate-900",
     "storyboard-review": "from-slate-700 to-cyan-700",
     "marketplace-capture": "from-slate-700 to-emerald-700",
+    "marketplace-intelligence": "from-slate-700 to-sky-700",
     skills: "from-slate-700 to-violet-700",
     "media-history": "from-slate-700 to-sky-700",
     "render-jobs": "from-slate-700 to-indigo-700",

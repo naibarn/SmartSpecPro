@@ -12447,6 +12447,315 @@ export const marketplaceUserShareSettings = pgTable("marketplace_user_share_sett
   index("idx_marketplace_user_share_settings_user").on(t.userId, t.tenantId),
 ]);
 
+// ---------------------------------------------------------------------------
+// Marketplace Intelligence Connector Tables
+// ---------------------------------------------------------------------------
+
+export const marketplaceConnectorGrants = pgTable("marketplace_connector_grants", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  status: varchar("status", { length: 40 }).default("not_connected").notNull(),
+  grantHash: varchar("grantHash", { length: 128 }),
+  authorizationAttemptHash: varchar("authorizationAttemptHash", { length: 128 }),
+  scopesJson: jsonb("scopesJson").$type<string[]>().default([]).notNull(),
+  providerAccountLabel: text("providerAccountLabel"),
+  defaultRegion: varchar("defaultRegion", { length: 10 }).default("TH").notNull(),
+  defaultLocale: varchar("defaultLocale", { length: 20 }).default("th-TH").notNull(),
+  defaultResultLimit: integer("defaultResultLimit").default(10).notNull(),
+  preferredSourceMode: varchar("preferredSourceMode", { length: 40 }).default("recorded_mcp_sample").notNull(),
+  lastStatusRefreshAt: timestamp("lastStatusRefreshAt", { withTimezone: true }),
+  lastProbeAt: timestamp("lastProbeAt", { withTimezone: true }),
+  lastMarketplaceCaptureEnrichmentAt: timestamp("lastMarketplaceCaptureEnrichmentAt", { withTimezone: true }),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  revokedAt: timestamp("revokedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_connector_grants_user_provider_unique").on(t.tenantId, t.userId, t.provider),
+  index("marketplace_connector_grants_status_idx").on(t.tenantId, t.provider, t.status, t.expiresAt),
+  index("marketplace_connector_grants_user_idx").on(t.userId, t.updatedAt),
+]);
+
+export const marketplaceConnectorGrantEvents = pgTable("marketplace_connector_grant_events", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  grantId: varchar("grantId", { length: 64 }).notNull().references(() => marketplaceConnectorGrants.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  eventType: varchar("eventType", { length: 80 }).notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+  safeMessage: text("safeMessage"),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("marketplace_connector_grant_events_grant_idx").on(t.grantId, t.createdAt),
+  index("marketplace_connector_grant_events_user_idx").on(t.tenantId, t.userId, t.createdAt),
+]);
+
+export const marketplaceConnectorFieldSamples = pgTable("marketplace_connector_field_samples", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  sourceMode: varchar("sourceMode", { length: 40 }).notNull(),
+  keyword: varchar("keyword", { length: 160 }).notNull(),
+  region: varchar("region", { length: 10 }).notNull(),
+  locale: varchar("locale", { length: 20 }).notNull(),
+  capabilityVersion: varchar("capabilityVersion", { length: 120 }).notNull(),
+  payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
+  shapeHash: varchar("shapeHash", { length: 128 }).notNull(),
+  fieldCoverageJson: jsonb("fieldCoverageJson").$type<unknown[]>().default([]).notNull(),
+  capabilitySummaryJson: jsonb("capabilitySummaryJson").$type<Record<string, unknown>>().default({}).notNull(),
+  redactionState: varchar("redactionState", { length: 40 }).default("raw_not_stored").notNull(),
+  rawPayloadExpiresAt: timestamp("rawPayloadExpiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_connector_field_samples_payload_unique").on(t.tenantId, t.userId, t.provider, t.payloadHash),
+  index("marketplace_connector_field_samples_user_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("marketplace_connector_field_samples_keyword_idx").on(t.provider, t.keyword, t.createdAt),
+]);
+
+export const marketplaceSearchSnapshots = pgTable("marketplace_search_snapshots", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  sourceMode: varchar("sourceMode", { length: 40 }).notNull(),
+  keyword: varchar("keyword", { length: 160 }).notNull(),
+  region: varchar("region", { length: 10 }).notNull(),
+  locale: varchar("locale", { length: 20 }).notNull(),
+  status: varchar("status", { length: 40 }).default("ready").notNull(),
+  capabilityVersion: varchar("capabilityVersion", { length: 120 }).notNull(),
+  itemCount: integer("itemCount").default(0).notNull(),
+  fieldCoveragePercent: integer("fieldCoveragePercent").default(0).notNull(),
+  unknownFieldCount: integer("unknownFieldCount").default(0).notNull(),
+  metricsJson: jsonb("metricsJson").$type<Record<string, unknown>>().default({}).notNull(),
+  payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 192 }).notNull(),
+  sourceCapturedAt: timestamp("sourceCapturedAt", { withTimezone: true }),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).defaultNow().notNull(),
+  rawPayloadRedactedAt: timestamp("rawPayloadRedactedAt", { withTimezone: true }),
+  rawPayloadExpiresAt: timestamp("rawPayloadExpiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_search_snapshots_idempotency_unique").on(t.tenantId, t.userId, t.provider, t.idempotencyKey),
+  index("marketplace_search_snapshots_user_idx").on(t.tenantId, t.userId, t.capturedAt),
+  index("marketplace_search_snapshots_keyword_idx").on(t.provider, t.region, t.keyword, t.capturedAt),
+  index("marketplace_search_snapshots_source_idx").on(t.sourceMode, t.status, t.capturedAt),
+]);
+
+export const marketplaceSearchSnapshotItems = pgTable("marketplace_search_snapshot_items", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  snapshotId: varchar("snapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  rank: integer("rank").notNull(),
+  title: text("title").notNull(),
+  sellerName: text("sellerName"),
+  brand: text("brand"),
+  price: numeric("price", { precision: 14, scale: 2 }),
+  originalPrice: numeric("originalPrice", { precision: 14, scale: 2 }),
+  discount: integer("discount"),
+  monthlySoldCount: integer("monthlySoldCount"),
+  historicalSoldCount: integer("historicalSoldCount"),
+  rating: numeric("rating", { precision: 6, scale: 4 }),
+  reviewCount: integer("reviewCount"),
+  shopeeVerified: boolean("shopeeVerified").default(false).notNull(),
+  estimatedDeliveryTimeText: text("estimatedDeliveryTimeText"),
+  image: text("image"),
+  externalProductId: varchar("externalProductId", { length: 128 }),
+  externalShopId: varchar("externalShopId", { length: 128 }),
+  externalModelId: varchar("externalModelId", { length: 128 }),
+  itemType: varchar("itemType", { length: 80 }),
+  matchedKeywordsJson: jsonb("matchedKeywordsJson").$type<string[]>().default([]).notNull(),
+  normalizedJson: jsonb("normalizedJson").$type<Record<string, unknown>>().default({}).notNull(),
+  rawDiagnosticJson: jsonb("rawDiagnosticJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_search_snapshot_items_rank_unique").on(t.snapshotId, t.rank),
+  index("marketplace_search_snapshot_items_snapshot_idx").on(t.snapshotId, t.rank),
+  index("marketplace_search_snapshot_items_user_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("marketplace_search_snapshot_items_external_idx").on(t.provider, t.externalShopId, t.externalProductId, t.externalModelId),
+  check("marketplace_search_snapshot_items_rank_positive", sql`${t.rank} > 0`),
+]);
+
+export const marketplaceSearchSnapshotProductLinks = pgTable("marketplace_search_snapshot_product_links", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  snapshotId: varchar("snapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  snapshotItemId: varchar("snapshotItemId", { length: 80 }).notNull().references(() => marketplaceSearchSnapshotItems.id, { onDelete: "cascade" }),
+  productId: varchar("productId", { length: 64 }).references(() => marketplaceProducts.id, { onDelete: "set null" }),
+  candidateItemId: varchar("candidateItemId", { length: 64 }).references(() => marketplaceCandidateItems.id, { onDelete: "set null" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  confidence: numeric("confidence", { precision: 5, scale: 4 }).notNull(),
+  linkBasis: varchar("linkBasis", { length: 80 }).notNull(),
+  reviewState: varchar("reviewState", { length: 40 }).default("needs_review").notNull(),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_snapshot_product_links_unique").on(t.snapshotItemId, t.productId, t.candidateItemId),
+  index("marketplace_snapshot_product_links_snapshot_idx").on(t.snapshotId, t.reviewState),
+  index("marketplace_snapshot_product_links_product_idx").on(t.productId, t.createdAt),
+  index("marketplace_snapshot_product_links_user_idx").on(t.tenantId, t.userId, t.createdAt),
+]);
+
+export const marketplaceProductMetricConnectorSnapshots = pgTable("marketplace_product_metric_connector_snapshots", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  productId: varchar("productId", { length: 64 }).notNull().references(() => marketplaceProducts.id, { onDelete: "cascade" }),
+  snapshotId: varchar("snapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  snapshotItemId: varchar("snapshotItemId", { length: 80 }).notNull().references(() => marketplaceSearchSnapshotItems.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).notNull(),
+  price: numeric("price", { precision: 14, scale: 2 }),
+  monthlySoldCount: integer("monthlySoldCount"),
+  historicalSoldCount: integer("historicalSoldCount"),
+  rating: numeric("rating", { precision: 6, scale: 4 }),
+  reviewCount: integer("reviewCount"),
+  rank: integer("rank"),
+  confidence: numeric("confidence", { precision: 5, scale: 4 }).notNull(),
+  provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_product_metric_connector_unique").on(t.productId, t.snapshotItemId),
+  index("marketplace_product_metric_connector_product_idx").on(t.productId, t.capturedAt),
+  index("marketplace_product_metric_connector_user_idx").on(t.tenantId, t.userId, t.capturedAt),
+]);
+
+export const marketplaceKeywordDiscoveries = pgTable("marketplace_keyword_discoveries", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  snapshotId: varchar("snapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  keyword: varchar("keyword", { length: 160 }).notNull(),
+  status: varchar("status", { length: 40 }).default("ready").notNull(),
+  opportunitiesJson: jsonb("opportunitiesJson").$type<unknown[]>().default([]).notNull(),
+  summaryJson: jsonb("summaryJson").$type<Record<string, unknown>>().default({}).notNull(),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_keyword_discoveries_snapshot_unique").on(t.snapshotId, t.userId),
+  index("marketplace_keyword_discoveries_user_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("marketplace_keyword_discoveries_keyword_idx").on(t.provider, t.keyword, t.createdAt),
+]);
+
+export const marketplaceKeywordDiscoveryClusters = pgTable("marketplace_keyword_discovery_clusters", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  discoveryId: varchar("discoveryId", { length: 64 }).notNull().references(() => marketplaceKeywordDiscoveries.id, { onDelete: "cascade" }),
+  snapshotId: varchar("snapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clusterType: varchar("clusterType", { length: 60 }).default("brand_family").notNull(),
+  label: text("label").notNull(),
+  rank: integer("rank").notNull(),
+  confidence: numeric("confidence", { precision: 5, scale: 4 }).default("0.7000").notNull(),
+  representativeSnapshotItemIdsJson: jsonb("representativeSnapshotItemIdsJson").$type<string[]>().default([]).notNull(),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, unknown>>().default({}).notNull(),
+  metricsJson: jsonb("metricsJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_keyword_discovery_clusters_rank_unique").on(t.discoveryId, t.rank, t.label),
+  index("marketplace_keyword_discovery_clusters_discovery_idx").on(t.discoveryId, t.rank),
+  index("marketplace_keyword_discovery_clusters_user_idx").on(t.tenantId, t.userId, t.createdAt),
+]);
+
+export const marketplaceSearchReports = pgTable("marketplace_search_reports", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  reportType: varchar("reportType", { length: 80 }).notNull(),
+  status: varchar("status", { length: 40 }).default("ready").notNull(),
+  title: text("title").notNull(),
+  latestSnapshotId: varchar("latestSnapshotId", { length: 64 }).notNull().references(() => marketplaceSearchSnapshots.id, { onDelete: "cascade" }),
+  baselineSnapshotId: varchar("baselineSnapshotId", { length: 64 }).references(() => marketplaceSearchSnapshots.id, { onDelete: "set null" }),
+  intermediateSnapshotIdsJson: jsonb("intermediateSnapshotIdsJson").$type<string[]>().default([]).notNull(),
+  aspectRatio: varchar("aspectRatio", { length: 12 }).default("1:1").notNull(),
+  imageModel: varchar("imageModel", { length: 80 }).default("gpt-image-2").notNull(),
+  payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
+  reportJson: jsonb("reportJson").$type<Record<string, unknown>>().default({}).notNull(),
+  promptPayloadJson: jsonb("promptPayloadJson").$type<Record<string, unknown>>().default({}).notNull(),
+  sourceSummaryJson: jsonb("sourceSummaryJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_search_reports_payload_unique").on(t.tenantId, t.userId, t.reportType, t.payloadHash),
+  index("marketplace_search_reports_snapshot_idx").on(t.latestSnapshotId, t.createdAt),
+  index("marketplace_search_reports_user_idx").on(t.tenantId, t.userId, t.createdAt),
+]);
+
+export const marketplaceSearchReportExports = pgTable("marketplace_search_report_exports", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  reportId: varchar("reportId", { length: 64 }).notNull().references(() => marketplaceSearchReports.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  exportType: varchar("exportType", { length: 40 }).notNull(),
+  templateKey: varchar("templateKey", { length: 120 }).notNull(),
+  aspectRatio: varchar("aspectRatio", { length: 12 }).notNull(),
+  status: varchar("status", { length: 40 }).default("queued").notNull(),
+  providerModel: varchar("providerModel", { length: 80 }).default("gpt-image-2").notNull(),
+  promptHash: varchar("promptHash", { length: 128 }).notNull(),
+  payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
+  storageKey: text("storageKey"),
+  storageUrl: text("storageUrl"),
+  sourceSummaryJson: jsonb("sourceSummaryJson").$type<Record<string, unknown>>().default({}).notNull(),
+  errorMessage: text("errorMessage"),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_search_report_exports_payload_unique").on(t.reportId, t.exportType, t.payloadHash),
+  index("marketplace_search_report_exports_user_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("marketplace_search_report_exports_status_idx").on(t.status, t.createdAt),
+]);
+
+export const marketplaceIntelligenceWatchlists = pgTable("marketplace_intelligence_watchlists", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  keyword: varchar("keyword", { length: 160 }).notNull(),
+  region: varchar("region", { length: 10 }).default("TH").notNull(),
+  cadence: varchar("cadence", { length: 40 }).default("daily").notNull(),
+  status: varchar("status", { length: 40 }).default("active").notNull(),
+  alertRulesJson: jsonb("alertRulesJson").$type<string[]>().default([]).notNull(),
+  lastSnapshotId: varchar("lastSnapshotId", { length: 64 }).references(() => marketplaceSearchSnapshots.id, { onDelete: "set null" }),
+  lastRunAt: timestamp("lastRunAt", { withTimezone: true }),
+  nextRunAt: timestamp("nextRunAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("marketplace_intelligence_watchlists_unique").on(t.tenantId, t.userId, t.provider, t.keyword, t.region),
+  index("marketplace_intelligence_watchlists_user_idx").on(t.tenantId, t.userId, t.status, t.createdAt),
+  index("marketplace_intelligence_watchlists_due_idx").on(t.status, t.nextRunAt),
+]);
+
+export const marketplaceIntelligenceWatchlistEvents = pgTable("marketplace_intelligence_watchlist_events", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  watchlistId: varchar("watchlistId", { length: 64 }).notNull().references(() => marketplaceIntelligenceWatchlists.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventType: varchar("eventType", { length: 80 }).notNull(),
+  severity: varchar("severity", { length: 40 }).default("info").notNull(),
+  baselineSnapshotId: varchar("baselineSnapshotId", { length: 64 }).references(() => marketplaceSearchSnapshots.id, { onDelete: "set null" }),
+  latestSnapshotId: varchar("latestSnapshotId", { length: 64 }).references(() => marketplaceSearchSnapshots.id, { onDelete: "set null" }),
+  summary: text("summary").notNull(),
+  evidenceJson: jsonb("evidenceJson").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("marketplace_watchlist_events_watchlist_idx").on(t.watchlistId, t.createdAt),
+  index("marketplace_watchlist_events_user_idx").on(t.tenantId, t.userId, t.createdAt),
+]);
+
 export type MarketplaceExtensionPairing = typeof marketplaceExtensionPairings.$inferSelect;
 export type InsertMarketplaceExtensionPairing = typeof marketplaceExtensionPairings.$inferInsert;
 export type MarketplaceCaptureSession = typeof marketplaceCaptureSessions.$inferSelect;
@@ -12481,3 +12790,15 @@ export type MarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifact
 export type InsertMarketplaceAutoReviewArtifact = typeof marketplaceAutoReviewArtifacts.$inferInsert;
 export type MarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferSelect;
 export type InsertMarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferInsert;
+export type MarketplaceConnectorGrant = typeof marketplaceConnectorGrants.$inferSelect;
+export type InsertMarketplaceConnectorGrant = typeof marketplaceConnectorGrants.$inferInsert;
+export type MarketplaceSearchSnapshot = typeof marketplaceSearchSnapshots.$inferSelect;
+export type InsertMarketplaceSearchSnapshot = typeof marketplaceSearchSnapshots.$inferInsert;
+export type MarketplaceSearchSnapshotItem = typeof marketplaceSearchSnapshotItems.$inferSelect;
+export type InsertMarketplaceSearchSnapshotItem = typeof marketplaceSearchSnapshotItems.$inferInsert;
+export type MarketplaceKeywordDiscoveryRecord = typeof marketplaceKeywordDiscoveries.$inferSelect;
+export type InsertMarketplaceKeywordDiscoveryRecord = typeof marketplaceKeywordDiscoveries.$inferInsert;
+export type MarketplaceSearchReport = typeof marketplaceSearchReports.$inferSelect;
+export type InsertMarketplaceSearchReport = typeof marketplaceSearchReports.$inferInsert;
+export type MarketplaceIntelligenceWatchlistRecord = typeof marketplaceIntelligenceWatchlists.$inferSelect;
+export type InsertMarketplaceIntelligenceWatchlistRecord = typeof marketplaceIntelligenceWatchlists.$inferInsert;

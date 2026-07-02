@@ -14,14 +14,38 @@ function parseNumber(raw: string | null | undefined): number | null {
 
 function parseSold(raw: string | null | undefined): number | null {
   if (!raw) return null;
-  const text = raw.toLowerCase().replace(/,/g, "").replace(/\s+/g, "");
-  const m = text.match(/\d+(?:\.\d+)?/);
-  if (!m) return null;
-  const value = Number(m[0]);
-  if (/m|ล้าน/.test(text)) return Math.round(value * 1_000_000);
-  if (/k|พัน/.test(text)) return Math.round(value * 1_000);
-  if (/หมื่น/.test(text)) return Math.round(value * 10_000);
+  const text = raw.toLowerCase().replace(/,/g, "");
+  const compact = text.replace(/\s+/g, "");
+  const withUnit = compact.match(/(\d+(?:\.\d+)?)(m|k|ล้าน|พัน|หมื่น)(?![a-z])/);
+  const numeric = withUnit ?? compact.match(/(\d+(?:\.\d+)?)/);
+  if (!numeric) return null;
+  const value = Number(numeric[1]);
+  const unit = withUnit?.[2] ?? "";
+  if (unit === "m" || unit === "ล้าน") return Math.round(value * 1_000_000);
+  if (unit === "k" || unit === "พัน") return Math.round(value * 1_000);
+  if (unit === "หมื่น") return Math.round(value * 10_000);
   return Math.round(value);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function marketplaceSnapshotId(batch: any, items: any[]): string | null {
+  const filters = asRecord(batch?.filtersJson);
+  const fromFilters = stringValue(filters.snapshotId);
+  if (fromFilters) return fromFilters;
+  for (const item of items) {
+    const raw = asRecord(item.rawJson);
+    const platformRaw = asRecord(raw.platformRawJson);
+    const fromItem = stringValue(platformRaw.marketplaceIntelligenceSnapshotId);
+    if (fromItem) return fromItem;
+  }
+  return null;
 }
 
 export default function MarketplaceCaptureCandidateBatch() {
@@ -36,6 +60,10 @@ export default function MarketplaceCaptureCandidateBatch() {
 
   const batch = query.data?.batch as any;
   const items = (query.data?.items as any[] | undefined) ?? [];
+  const snapshotId = marketplaceSnapshotId(batch, items);
+  const filters = asRecord(batch?.filtersJson);
+  const sourceCapturedAt = stringValue(filters.capturedAt) ?? stringValue(asRecord(asRecord(items[0]?.rawJson).platformRawJson).sourceCapturedAt);
+  const batchKeyword = stringValue(batch?.categoryName) ?? stringValue(filters.keyword) ?? "";
   const filtered = useMemo(() => {
     const q = keyword.trim().toLowerCase();
     const score = Number(minScore) || 0;
@@ -49,6 +77,26 @@ export default function MarketplaceCaptureCandidateBatch() {
       .filter((item) => !mallOnly || (item.badgesJson ?? []).some((badge: string) => /mall|official/i.test(badge)))
       .sort((a, b) => b.score - a.score);
   }, [items, keyword, maxPrice, minScore, minSold, mallOnly]);
+  const intelligenceSummary = useMemo(() => {
+    const prices = items.map((item) => parseNumber(item.priceText)).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const soldSignals = items.map((item) => parseSold(item.soldCountText)).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const sortedPrices = [...prices].sort((a, b) => a - b);
+    const medianPrice = sortedPrices.length ? sortedPrices[Math.floor(sortedPrices.length / 2)] : null;
+    const officialLikeCount = items.filter((item) => (item.badgesJson ?? []).some((badge: string) => /mall|official|verified/i.test(badge))).length;
+    const sellers = new Map<string, number>();
+    for (const item of items) {
+      const raw = asRecord(item.rawJson);
+      const sellerName = stringValue(asRecord(raw.platformRawJson).sellerName) ?? "Unknown seller";
+      sellers.set(sellerName, (sellers.get(sellerName) ?? 0) + 1);
+    }
+    const topSeller = [...sellers.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+    return {
+      medianPrice,
+      soldTotal: soldSignals.reduce((sum, value) => sum + value, 0),
+      officialLikeCount,
+      topSeller,
+    };
+  }, [items]);
 
   function exportBatch(format: "json" | "csv") {
     if (format === "json") {
@@ -113,6 +161,48 @@ export default function MarketplaceCaptureCandidateBatch() {
           </div>
         </section>
 
+        <section aria-label="Marketplace Intelligence handoff" className="rounded-lg border border-sky-100 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="mb-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+                Marketplace Intelligence
+              </div>
+              <h2 className="text-lg font-semibold">
+                {snapshotId ? "Candidate batch created from keyword snapshot" : "Manual candidate batch"}
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                {snapshotId
+                  ? "ชุด candidate นี้เก็บ provenance จาก keyword search snapshot เพื่อใช้ตรวจสอบ share of shelf, seller visibility, pricing band และต่อยอดเป็น report หรือ exact SKU monitor ได้"
+                  : "ชุด candidate นี้ยังไม่ได้ผูกกับ keyword snapshot โดยตรง สามารถสร้าง snapshot จาก Marketplace Intelligence เพื่อเก็บ field coverage และ evidence สำหรับวิเคราะห์ต่อได้"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {snapshotId ? (
+                <>
+                  <a className="rounded-md border bg-white px-3 py-2 text-center text-sm" href={`/marketplace-capture/intelligence/snapshots/${encodeURIComponent(snapshotId)}`}>Open snapshot</a>
+                  <a className="rounded-md border bg-white px-3 py-2 text-center text-sm" href="/marketplace-capture/intelligence/reports">Create report</a>
+                  <a className="rounded-md border bg-white px-3 py-2 text-center text-sm" href={`/marketplace-capture/intelligence/discovery?keyword=${encodeURIComponent(batchKeyword)}`}>Discovery map</a>
+                </>
+              ) : (
+                <a className="rounded-md border bg-white px-3 py-2 text-center text-sm" href="/marketplace-capture/intelligence/discovery">Open Discovery</a>
+              )}
+              <a className="rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white" href="/marketplace-capture/intelligence/connector-lab">Connector Lab</a>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <InfoTile label="Snapshot" value={snapshotId ?? "-"} />
+            <InfoTile label="Captured at" value={sourceCapturedAt ? new Date(sourceCapturedAt).toLocaleString() : "-"} />
+            <InfoTile label="Median price" value={intelligenceSummary.medianPrice == null ? "-" : `${intelligenceSummary.medianPrice.toLocaleString()} THB`} />
+            <InfoTile label="Sold signal" value={intelligenceSummary.soldTotal ? intelligenceSummary.soldTotal.toLocaleString() : "-"} />
+            <InfoTile label="Official-like" value={`${intelligenceSummary.officialLikeCount}/${items.length}`} />
+          </div>
+          {intelligenceSummary.topSeller ? (
+            <p className="mt-3 text-sm text-slate-600">
+              Top seller visibility: <span className="font-medium text-slate-900">{intelligenceSummary.topSeller[0]}</span> ({intelligenceSummary.topSeller[1]} listings).
+            </p>
+          ) : null}
+        </section>
+
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((item) => (
             <article key={item.id} className="rounded-lg border bg-white p-4 shadow-sm">
@@ -157,5 +247,14 @@ export default function MarketplaceCaptureCandidateBatch() {
         </section>
       </div>
     </main>
+  );
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-semibold text-slate-950" title={value}>{value}</div>
+    </div>
   );
 }
