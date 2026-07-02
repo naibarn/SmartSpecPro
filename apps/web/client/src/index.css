@@ -5,6 +5,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.ssp-switch {
+  background: hsl(220 13% 91%);
+}
+
+.ssp-switch[data-state="checked"] {
+  background: hsl(222 100% 55%);
+}
+
+.ssp-switch-thumb {
+  transform: translateX(0);
+  border-color: hsl(220 13% 78%);
+  --tw-ring-color: hsl(220 13% 78%);
+}
+
+.ssp-switch[data-state="checked"] .ssp-switch-thumb {
+  transform: translateX(1rem);
+}
+
+.dark .ssp-switch {
+  background: hsl(215 16% 35%);
+}
+
+.dark .ssp-switch[data-state="checked"] {
+  background: hsl(217 100% 60%);
+}
+
+.dark .ssp-switch-thumb {
+  border-color: hsl(215 16% 55%);
+  --tw-ring-color: hsl(215 16% 55%);
+}
+
 /* Enterprise Glass Design System
  * - Crisp glassmorphism with restrained motion
  * - Blue / teal / emerald accent system
