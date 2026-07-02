@@ -1,8 +1,10 @@
 # Orchestra Contracts
 
-## Dashboard Responsive Contract
+No cross-agent contracts. Direct conductor implementation only.
 
-- Core dashboard content must not be hidden solely because viewport width is below 1280px.
-- The 1280px media query may control fixed desktop sidebar and desktop-only visual motion.
-- Analytics/admin sections remain governed by auth, role, tenant, and feature flags, not by tablet/mobile width.
-- Tests must include a tablet-style `matchMedia("(min-width: 1280px)") === false` regression case.
+## Stable Behavioral Contract
+- Do not change tRPC request/response shapes.
+- Do not change chat message send/stream behavior.
+- Do not change skill/local AI/media routing behavior.
+- Preserve `/chat?c=<conversationId>` deep-link behavior.
+- Preserve sidebar conversation selection, new chat, personal chat, team room open, trash, and bulk select behavior.

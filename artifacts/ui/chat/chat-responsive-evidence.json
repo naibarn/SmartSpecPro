@@ -1,0 +1,59 @@
+[
+  {
+    "viewport": {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    },
+    "overflowBefore": {
+      "sw": 390,
+      "cw": 390,
+      "overflow": false
+    },
+    "overflowAfter": {
+      "sw": 390,
+      "cw": 390,
+      "overflow": false
+    },
+    "inputVisible": true,
+    "consoleErrors": []
+  },
+  {
+    "viewport": {
+      "name": "tablet",
+      "width": 834,
+      "height": 1112
+    },
+    "overflowBefore": {
+      "sw": 834,
+      "cw": 834,
+      "overflow": false
+    },
+    "overflowAfter": {
+      "sw": 834,
+      "cw": 834,
+      "overflow": false
+    },
+    "inputVisible": true,
+    "consoleErrors": []
+  },
+  {
+    "viewport": {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000
+    },
+    "overflowBefore": {
+      "sw": 1440,
+      "cw": 1440,
+      "overflow": false
+    },
+    "overflowAfter": {
+      "sw": 1440,
+      "cw": 1440,
+      "overflow": false
+    },
+    "inputVisible": true,
+    "consoleErrors": []
+  }
+]

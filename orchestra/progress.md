@@ -1,38 +1,23 @@
-Loop policy:
-  orchestra_id: fable_style_coding_orchestra
-  purpose: coding webapp with an agent loop
-  iteration: 2/12
-  tool_call_batches: unknown/30
-  estimated_cost_usd: unknown <= 0.50
-  dispatch_waves: 0/6
-  active_subagents: 0/4
-  parallel_writers: 0/2
-  required_subagent_wait: 0/10 minutes
-  background_subagent_wait: 0/15 minutes
-  repair_rounds: 0/5
-  stop_conditions: success_criteria_met, tests_passed, no_open_blockers
-  stop_reason: active
+# Orchestra Progress
 
-[COMPLETE] step-0-session-start — Fresh Orchestra session created; previous local orchestra artifacts archived automatically.
-[COMPLETE] step-1-discovery — SocratiCode status green; dashboard files narrowed.
-[COMPLETE] wave-1-implementation — Restored core dashboard sections below 1280px and added tablet regression coverage.
-[COMPLETE] wave-2-verification — Focused dashboard tests passed; typecheck failed on unrelated existing files; unauthenticated browser viewport evidence captured redirect-to-login state.
+[COMPLETE] step-0-session-setup — Archived prior Orchestra session and created a fresh standard-mode session for chat UI work.
+[COMPLETE] step-1-analysis — Classified task as medium / low risk, route visual-ui-flow.
+[COMPLETE] design-approval — Presented AstryX-based UI direction and received user approval.
+[COMPLETE] wave-1-implementation — Applied responsive UI polish to chat route files.
+[COMPLETE] wave-2-verification — Ran typecheck, production build, diff whitespace check, and Playwright responsive evidence.
 
-## Dirty Worktree Advisory
-Fresh-start git status showed many pre-existing modified/untracked files, including `Dashboard.tsx` and `Dashboard.test.tsx`. This task is constrained to the dashboard surface and does not revert unrelated changes.
+## Dirty Worktree Note
+The repository had many unrelated modified/untracked files before this session, including existing changes in `Chat.tsx` and `ChatView.tsx`. This session will preserve those changes and only add focused chat UI/UX edits.
 
-## SocratiCode
-- Active: yes.
-- Status: green.
-- Search narrowed to dashboard page and dashboard test.
-- Impact closure: `Dashboard.tsx` depth 2 reported 0 impacted files.
+## Implementation Summary
+- `apps/web/client/src/pages/Chat.tsx`: token-aware chat shell, compact responsive top bar, mobile sidebar drawer, right settings overlay on mobile/tablet, and desktop inline panel sizing.
+- `apps/web/client/src/components/chat/ChatView.tsx`: responsive chat header, max-width-safe messages, tokenized empty/work-start states, mobile-safe composer controls, and duplicate selected-library preview removal.
+- `apps/web/client/src/components/chat/ChatSidebar.tsx`: tokenized sidebar surfaces, touch-friendly list rows/actions, and safer scrolling/density for mobile drawers.
 
-Loop policy final:
-  iterations_used: 4/12
-  tool_call_batches_used: unknown/30
-  estimated_cost_usd: unknown/0.50
-  dispatch_waves_used: 0/6
-  timed_out_subagents: none
-  repair_rounds_used: 0/5
-  stop_conditions_met: success_criteria_met, tests_passed_with_unrelated_typecheck_warning, no_open_blockers
-  stop_reason: success_with_unrelated_repository_typecheck_failures
+## Verification
+- `npm --prefix apps/web run check` passed.
+- `npm --prefix apps/web run build` passed.
+- `git diff --check` passed.
+- Playwright evidence against production server on `http://127.0.0.1:3018/chat?c=102` passed for mobile `390x844`, tablet `834x1112`, and desktop `1440x1000`.
+- Evidence JSON: `artifacts/ui/chat/chat-responsive-evidence.json`.
+- Screenshots: `artifacts/ui/chat/selected-*-after.png` and `artifacts/ui/chat/skills-panel-*-after.png`.

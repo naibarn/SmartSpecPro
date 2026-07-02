@@ -3,7 +3,15 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import {
+  ChatSidebar,
+  ChatView,
+  MemoryPanel,
+  SkillSettings,
+  ArtifactPanel,
+  SchedulePanel,
+  type Artifact,
+} from "@/components/chat";
 import { FinanceHub } from "@/components/finance/FinanceHub";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
@@ -23,7 +31,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users, Play, X, ChevronDown, ChevronUp, ReceiptText } from "lucide-react";
+import {
+  ChevronLeft,
+  PanelLeftClose,
+  Brain,
+  Wand2,
+  Layers,
+  Bell,
+  Menu,
+  MonitorPlay,
+  Loader2,
+  Send,
+  Users,
+  Play,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ReceiptText,
+} from "lucide-react";
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
@@ -33,9 +58,7 @@ import {
   trackBrowserSessionOpened,
   trackBrowserSessionReopened,
 } from "@/lib/analytics/browserSessionEvents";
-import {
-  buildBrowserSessionPath,
-} from "@/lib/browserSessionRouting";
+import { buildBrowserSessionPath } from "@/lib/browserSessionRouting";
 import {
   detectBrowserSessionLaunchSuggestion,
   type BrowserSessionLaunchSuggestion,
@@ -58,21 +81,42 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
-
-type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas" | "finance";
-type AgencyRunPhase = "idle" | "connecting" | "running" | "completed" | "failed";
+type RightPanel =
+  | "none"
+  | "memory"
+  | "skills"
+  | "artifacts"
+  | "schedule"
+  | "canvas"
+  | "finance";
+type AgencyRunPhase =
+  | "idle"
+  | "connecting"
+  | "running"
+  | "completed"
+  | "failed";
 
 export default function Chat() {
   const { isLoading, isAuthenticated, user } = useAuth();
-  const { t } = useScopedTranslation('chat');
+  const { t } = useScopedTranslation("chat");
   const [, setLocation] = useLocation();
 
-  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    number | null
+  >(null);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.innerWidth >= 1024
+  );
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
   const [agencyPickerOpen, setAgencyPickerOpen] = useState(false);
-  const [targetAgency, setTargetAgency] = useState<{ id: string; name: string } | null>(null);
-  const [agencySuggestion, setAgencySuggestion] = useState<{ agencyId: string; agencyName: string } | null>(null);
+  const [targetAgency, setTargetAgency] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [agencySuggestion, setAgencySuggestion] = useState<{
+    agencyId: string;
+    agencyName: string;
+  } | null>(null);
   const [agencyInput, setAgencyInput] = useState("");
   const [agencyRunPhase, setAgencyRunPhase] = useState<AgencyRunPhase>("idle");
   const [agencyPanelCollapsed, setAgencyPanelCollapsed] = useState(false);
@@ -89,19 +133,32 @@ export default function Chat() {
   const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
   const [initialDmUserName, setInitialDmUserName] = useState<string>("");
   const [initialAlertId, setInitialAlertId] = useState<number | null>(null);
-  const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<string | null>(null);
-  const [browserSessionSuggestion, setBrowserSessionSuggestion] = useState<BrowserSessionLaunchSuggestion | null>(null);
-  const [browserSessionArtifactOverride, setBrowserSessionArtifactOverride] = useState<BrowserSessionArtifact | null>(null);
+  const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<
+    string | null
+  >(null);
+  const [browserSessionSuggestion, setBrowserSessionSuggestion] =
+    useState<BrowserSessionLaunchSuggestion | null>(null);
+  const [browserSessionArtifactOverride, setBrowserSessionArtifactOverride] =
+    useState<BrowserSessionArtifact | null>(null);
   const [browserCommandDraft, setBrowserCommandDraft] = useState("");
-  const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() => inferBrowserSkillId(""));
-  const [browserCommandSkillSelectionMode, setBrowserCommandSkillSelectionMode] = useState<"auto" | "manual">("auto");
+  const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() =>
+    inferBrowserSkillId("")
+  );
+  const [
+    browserCommandSkillSelectionMode,
+    setBrowserCommandSkillSelectionMode,
+  ] = useState<"auto" | "manual">("auto");
   const [browserCommandBusy, setBrowserCommandBusy] = useState(false);
-  const [browserCommandNotice, setBrowserCommandNotice] = useState<string | null>(null);
+  const [browserCommandNotice, setBrowserCommandNotice] = useState<
+    string | null
+  >(null);
 
   const utils = trpc.useUtils();
 
   // Agency trigger data for auto-detection in chat
-  const { data: agencyTriggersData } = (trpc as any).agency?.listTriggers?.useQuery?.(undefined, {
+  const { data: agencyTriggersData } = (
+    trpc as any
+  ).agency?.listTriggers?.useQuery?.(undefined, {
     staleTime: 60_000,
   }) ?? { data: undefined };
   // Fetch messages to extract artifacts
@@ -109,13 +166,17 @@ export default function Chat() {
     { conversationId: selectedConversationId!, limit: 100 },
     { enabled: !!selectedConversationId }
   );
-  const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
-  const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
-  const { data: tenantFlags } = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(undefined, {
-    enabled: isAuthenticated,
-    staleTime: 60_000,
-  });
-  const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
+  const createLiveBrowserSessionMutation =
+    trpc.liveBrowser.createSession.useMutation();
+  const sendLiveBrowserCommandMutation =
+    trpc.liveBrowser.sendCommand.useMutation();
+  const { data: tenantFlags } =
+    trpc.tenantFeatureFlags.getFeatureFlags.useQuery(undefined, {
+      enabled: isAuthenticated,
+      staleTime: 60_000,
+    });
+  const saveAssistantMessageMutation =
+    trpc.chat.saveAssistantMessage.useMutation();
   const mirrorFinanceActivity = async (message: {
     content: string;
     artifacts: Array<{
@@ -135,42 +196,52 @@ export default function Chat() {
       content: message.content,
       artifacts: message.artifacts,
     });
-    utils.chat.getMessages.invalidate({ conversationId: selectedConversationId });
+    utils.chat.getMessages.invalidate({
+      conversationId: selectedConversationId,
+    });
   };
 
   const browserSessionArtifacts = useMemo(
-    () => (messagesData || [])
-      .flatMap((message) => (message.artifacts || []))
-      .map((artifact) => parseBrowserSessionArtifact(artifact.metadata?.browserSession))
-      .filter((artifact) => artifact !== null),
-    [messagesData],
+    () =>
+      (messagesData || [])
+        .flatMap(message => message.artifacts || [])
+        .map(artifact =>
+          parseBrowserSessionArtifact(artifact.metadata?.browserSession)
+        )
+        .filter(artifact => artifact !== null),
+    [messagesData]
   );
   const latestBrowserSessionArtifact = browserSessionArtifacts.at(-1) ?? null;
-  const activeBrowserSessionArtifact = browserSessionArtifactOverride ?? latestBrowserSessionArtifact;
+  const activeBrowserSessionArtifact =
+    browserSessionArtifactOverride ?? latestBrowserSessionArtifact;
   const chatBrowserSessionEnabled = Boolean(
-    tenantFlags?.chatBrowserSessionEntry
-      && tenantFlags.liveBrowser,
+    tenantFlags?.chatBrowserSessionEntry && tenantFlags.liveBrowser
   );
+  const workpacksEnabled = Boolean(tenantFlags?.workpacksEnabled);
 
   // Extract artifacts from messages
   const artifacts: Artifact[] = (messagesData || [])
-    .flatMap((m) => (m.artifacts as Artifact[]) || [])
-    .filter((a): a is Artifact => !!a && typeof a === "object" && !a.metadata?.browserSession);
+    .flatMap(m => (m.artifacts as Artifact[]) || [])
+    .filter(
+      (a): a is Artifact =>
+        !!a && typeof a === "object" && !a.metadata?.browserSession
+    );
 
   // Create conversation mutation
   const createConversationMutation = trpc.chat.createConversation.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       setSelectedConversationId(data.id);
       utils.chat.listConversations.invalidate();
     },
   });
 
-  const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation({
-    onSuccess: (data) => {
-      setSelectedConversationId(data.id);
-      utils.chat.listConversations.invalidate();
-    },
-  });
+  const createPersonalConversationMutation =
+    trpc.chat.createPersonalConversation.useMutation({
+      onSuccess: data => {
+        setSelectedConversationId(data.id);
+        utils.chat.listConversations.invalidate();
+      },
+    });
 
   // Update conversation mutation
   const updateConversationMutation = trpc.chat.updateConversation.useMutation({
@@ -220,7 +291,7 @@ export default function Chat() {
 
   const buildChatLaunchContext = (
     sessionId: string,
-    conversationId: number | null = selectedConversationId,
+    conversationId: number | null = selectedConversationId
   ): BrowserSessionLaunchContext | null => {
     if (!conversationId) {
       return null;
@@ -228,11 +299,11 @@ export default function Chat() {
 
     return {
       originSurface: "chat",
-      originLabel: t('chat.browserSession'),
+      originLabel: t("chat.browserSession"),
       sourceId: String(conversationId),
       returnContext: {
         path: `/chat?c=${conversationId}&browserSessionId=${encodeURIComponent(sessionId)}`,
-        label: t('chat.browserSession.returnLabel'),
+        label: t("chat.browserSession.returnLabel"),
       },
     };
   };
@@ -240,7 +311,7 @@ export default function Chat() {
   const buildChatBrowserSessionArtifact = async (
     sessionId: string,
     launchContext: BrowserSessionLaunchContext | null,
-    conversationId: number | null = selectedConversationId,
+    conversationId: number | null = selectedConversationId
   ): Promise<BrowserSessionArtifact | null> => {
     if (!conversationId || !user?.id) {
       return null;
@@ -250,10 +321,12 @@ export default function Chat() {
       actorType: "user" as const,
       actorId: String(user.id),
     };
-    const session = liveBrowserSessionSchema.parse(await utils.liveBrowser.getSession.fetch({
-      sessionId,
-      actor,
-    }));
+    const session = liveBrowserSessionSchema.parse(
+      await utils.liveBrowser.getSession.fetch({
+        sessionId,
+        actor,
+      })
+    );
     return {
       sessionId: session.sessionId,
       summary: buildBrowserSessionSummary(session, { launchContext }),
@@ -266,9 +339,13 @@ export default function Chat() {
     sessionId: string,
     launchContext: BrowserSessionLaunchContext | null,
     content: string,
-    conversationId: number | null = selectedConversationId,
+    conversationId: number | null = selectedConversationId
   ) => {
-    const artifact = await buildChatBrowserSessionArtifact(sessionId, launchContext, conversationId);
+    const artifact = await buildChatBrowserSessionArtifact(
+      sessionId,
+      launchContext,
+      conversationId
+    );
     if (!conversationId || !artifact) {
       return;
     }
@@ -281,7 +358,7 @@ export default function Chat() {
         {
           id: `browser-session-${artifact.sessionId}-${artifact.updatedAt ?? "latest"}`,
           type: "markdown",
-          title: t('chat.browserSession'),
+          title: t("chat.browserSession"),
           content: artifact.summary.statusLine,
           metadata: {
             browserSession: {
@@ -306,7 +383,7 @@ export default function Chat() {
     persistBrowserSessionSummary(
       returnBrowserSessionId,
       launchContext,
-      t('chat.browserSession.returned'),
+      t("chat.browserSession.returned")
     ).finally(() => {
       setReturnBrowserSessionId(null);
     });
@@ -336,18 +413,25 @@ export default function Chat() {
     setBrowserCommandSkillSelectionMode(nextSelection.selectionMode);
   };
 
-  const handleBrowserCommandSkillChange = (value: typeof browserCommandSkillId) => {
+  const handleBrowserCommandSkillChange = (
+    value: typeof browserCommandSkillId
+  ) => {
     setBrowserCommandSkillId(value);
     setBrowserCommandSkillSelectionMode("manual");
   };
 
-  const createConversationWithDefaultModel = async (title = t('chat.newChat')) => {
+  const createConversationWithDefaultModel = async (
+    title = t("chat.newChat")
+  ) => {
     return createConversationMutation.mutateAsync({
       title,
     });
   };
 
-  const activateConversation = (conversationId: number, options?: { closeSidebar?: boolean }) => {
+  const activateConversation = (
+    conversationId: number,
+    options?: { closeSidebar?: boolean }
+  ) => {
     setSelectedConversationId(conversationId);
     setRightPanel("none");
     setLocation(`/chat?c=${conversationId}`);
@@ -379,8 +463,9 @@ export default function Chat() {
     const launchIntent = options?.launchIntent;
 
     if (
-      latestBrowserSessionArtifact?.sessionId
-      && latestBrowserSessionArtifact.launchContext?.sourceId === String(conversationId)
+      latestBrowserSessionArtifact?.sessionId &&
+      latestBrowserSessionArtifact.launchContext?.sourceId ===
+        String(conversationId)
     ) {
       trackBrowserSessionReopened({
         origin_surface: "chat",
@@ -389,8 +474,16 @@ export default function Chat() {
         launch_path: launchPath,
         launch_intent: launchIntent,
       });
-      const launchContext = buildChatLaunchContext(latestBrowserSessionArtifact.sessionId, conversationId);
-      setLocation(buildBrowserSessionPath(latestBrowserSessionArtifact.sessionId, launchContext));
+      const launchContext = buildChatLaunchContext(
+        latestBrowserSessionArtifact.sessionId,
+        conversationId
+      );
+      setLocation(
+        buildBrowserSessionPath(
+          latestBrowserSessionArtifact.sessionId,
+          launchContext
+        )
+      );
       return;
     }
 
@@ -405,12 +498,15 @@ export default function Chat() {
       mode: "observe",
       executionIntent: options?.executionIntent,
     });
-    const launchContext = buildChatLaunchContext(created.sessionId, conversationId);
+    const launchContext = buildChatLaunchContext(
+      created.sessionId,
+      conversationId
+    );
     await persistBrowserSessionSummary(
       created.sessionId,
       launchContext,
-      t('chat.browserSession.opened'),
-      conversationId,
+      t("chat.browserSession.opened"),
+      conversationId
     );
     trackBrowserSessionOpened({
       origin_surface: "chat",
@@ -432,10 +528,15 @@ export default function Chat() {
           for (const phrase of phrases) {
             try {
               if (new RegExp(phrase, "i").test(message)) {
-                setAgencySuggestion({ agencyId: (agency as any).id, agencyName: (agency as any).name });
+                setAgencySuggestion({
+                  agencyId: (agency as any).id,
+                  agencyName: (agency as any).name,
+                });
                 break;
               }
-            } catch { /* invalid regex */ }
+            } catch {
+              /* invalid regex */
+            }
           }
           if (agencySuggestion) break;
         }
@@ -452,12 +553,13 @@ export default function Chat() {
         message,
         originSurface: "chat",
         sourceId: String(selectedConversationId),
-      }),
+      })
     );
   };
 
   const handleAgencySend = () => {
-    if (!targetAgency || !agencyInput.trim() || agencyStream.isStreaming) return;
+    if (!targetAgency || !agencyInput.trim() || agencyStream.isStreaming)
+      return;
     setAgencyRunPhase("connecting");
     setAgencyPanelCollapsed(false);
     agencyStream.connect({
@@ -468,7 +570,7 @@ export default function Chat() {
   };
 
   const handleConfirmBrowserSessionSuggestion = async (
-    suggestion: BrowserSessionLaunchSuggestion,
+    suggestion: BrowserSessionLaunchSuggestion
   ) => {
     setBrowserSessionSuggestion(null);
     await handleOpenBrowserSession({
@@ -483,13 +585,18 @@ export default function Chat() {
   };
 
   const handleDismissBrowserSessionSuggestion = (suggestionId: string) => {
-    setBrowserSessionSuggestion((current) => (
+    setBrowserSessionSuggestion(current =>
       current?.suggestionId === suggestionId ? null : current
-    ));
+    );
   };
 
   const handleSendBrowserSessionCommand = async () => {
-    if (!activeBrowserSessionArtifact?.sessionId || !selectedConversationId || !user?.id || !browserCommandDraft.trim()) {
+    if (
+      !activeBrowserSessionArtifact?.sessionId ||
+      !selectedConversationId ||
+      !user?.id ||
+      !browserCommandDraft.trim()
+    ) {
       return;
     }
 
@@ -521,7 +628,8 @@ export default function Chat() {
 
       const refreshedArtifact = await buildChatBrowserSessionArtifact(
         activeBrowserSessionArtifact.sessionId,
-        activeBrowserSessionArtifact.launchContext ?? buildChatLaunchContext(activeBrowserSessionArtifact.sessionId),
+        activeBrowserSessionArtifact.launchContext ??
+          buildChatLaunchContext(activeBrowserSessionArtifact.sessionId)
       );
       if (refreshedArtifact) {
         setBrowserSessionArtifactOverride(refreshedArtifact);
@@ -529,10 +637,12 @@ export default function Chat() {
       setBrowserCommandDraft("");
       setBrowserCommandSkillId(inferBrowserSkillId(""));
       setBrowserCommandSkillSelectionMode("auto");
-      setBrowserCommandNotice(t('chat.browserSession.queued'));
+      setBrowserCommandNotice(t("chat.browserSession.queued"));
     } catch (error) {
       setBrowserCommandNotice(
-        error instanceof Error ? error.message : t('chat.browserSession.queueFailed'),
+        error instanceof Error
+          ? error.message
+          : t("chat.browserSession.queueFailed")
       );
     } finally {
       setBrowserCommandBusy(false);
@@ -544,7 +654,11 @@ export default function Chat() {
       const result = await createConversationWithDefaultModel();
       activateConversation(result.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("chat.createConversationFailed")
+      );
     }
   };
 
@@ -555,7 +669,11 @@ export default function Chat() {
       });
       activateConversation(result.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("chat.createConversationFailed")
+      );
     }
   };
 
@@ -566,7 +684,10 @@ export default function Chat() {
   const upsertMemoryMutation = trpc.memory.upsertEntityMemory.useMutation();
 
   // Create new chat continuing the same project, with summary from previous chat
-  const handleNewChatFromProject = async (projectId: string, summary: string) => {
+  const handleNewChatFromProject = async (
+    projectId: string,
+    summary: string
+  ) => {
     const result = await createConversationMutation.mutateAsync({
       title: `${projectId} - continued`,
       projectId,
@@ -579,9 +700,13 @@ export default function Chat() {
     if (summary) {
       try {
         const summaryLines = summary.split("\n").filter(l => l.trim());
-        const facts = summaryLines.length > 0
-          ? summaryLines.map(l => l.replace(/^[-•]\s*/, "").trim()).filter(Boolean).slice(0, 20)
-          : [summary.slice(0, 1000)];
+        const facts =
+          summaryLines.length > 0
+            ? summaryLines
+                .map(l => l.replace(/^[-•]\s*/, "").trim())
+                .filter(Boolean)
+                .slice(0, 20)
+            : [summary.slice(0, 1000)];
 
         await upsertMemoryMutation.mutateAsync({
           entityType: "project",
@@ -617,29 +742,50 @@ export default function Chat() {
 
   useEffect(() => {
     if (agencyStream.isStreaming) {
-      setAgencyRunPhase((current) => (current === "running" ? current : "running"));
+      setAgencyRunPhase(current =>
+        current === "running" ? current : "running"
+      );
     }
   }, [agencyStream.isStreaming]);
 
   useEffect(() => {
     if (agencyStream.error) {
-      setAgencyRunPhase((current) => (current === "connecting" || current === "running" ? "failed" : current));
+      setAgencyRunPhase(current =>
+        current === "connecting" || current === "running" ? "failed" : current
+      );
     }
   }, [agencyStream.error]);
 
   useEffect(() => {
-    if (!agencyStream.isStreaming && agencyStream.messages.length > 0 && !agencyStream.error) {
-      setAgencyRunPhase((current) => (current === "connecting" || current === "running" ? "completed" : current));
+    if (
+      !agencyStream.isStreaming &&
+      agencyStream.messages.length > 0 &&
+      !agencyStream.error
+    ) {
+      setAgencyRunPhase(current =>
+        current === "connecting" || current === "running"
+          ? "completed"
+          : current
+      );
     }
-  }, [agencyStream.isStreaming, agencyStream.messages.length, agencyStream.error]);
+  }, [
+    agencyStream.isStreaming,
+    agencyStream.messages.length,
+    agencyStream.error,
+  ]);
 
   const agencyStatusLabel = (() => {
     switch (agencyRunPhase) {
-      case "connecting": return t('agency.status.connecting');
-      case "running":    return t('agency.status.running');
-      case "completed":  return t('agency.status.completed');
-      case "failed":     return t('agency.status.failed');
-      default:           return t('agency.status.ready');
+      case "connecting":
+        return t("agency.status.connecting");
+      case "running":
+        return t("agency.status.running");
+      case "completed":
+        return t("agency.status.completed");
+      case "failed":
+        return t("agency.status.failed");
+      default:
+        return t("agency.status.ready");
     }
   })();
 
@@ -654,31 +800,37 @@ export default function Chat() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="flex h-dvh items-center justify-center bg-[var(--color-background-body)]">
+        <div className="rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] px-5 py-3 text-sm text-[var(--color-text-secondary)] shadow-[var(--shadow-low)]">
+          <Loader2 className="mr-2 inline h-4 w-4 animate-spin text-[var(--color-icon-accent)]" />
+          Loading...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[var(--color-background-body)] text-[var(--color-text-primary)]">
       {/* Top Bar */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b bg-background px-4 z-50 relative">
-        <div className="flex items-center gap-3">
+      <div className="relative z-50 flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 shadow-sm sm:px-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLocation("/dashboard")}
-            className="gap-1"
+            className="h-9 shrink-0 gap-1 px-2 sm:px-3"
           >
             <ChevronLeft className="h-4 w-4" />
-            {t('common.back')}
+            <span className="hidden sm:inline">{t("common.back")}</span>
           </Button>
           <Button
             variant="outline"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden"
+            className="h-9 w-9 shrink-0 lg:hidden"
+            aria-label={
+              sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")
+            }
           >
             {sidebarOpen ? (
               <PanelLeftClose className="h-5 w-5" />
@@ -686,32 +838,40 @@ export default function Chat() {
               <Menu className="h-5 w-5" />
             )}
           </Button>
-          <h1 className="text-lg font-semibold hidden sm:block">{t('chat.title')}</h1>
+          <h1 className="hidden truncate text-base font-semibold sm:block sm:text-lg">
+            {t("chat.title")}
+          </h1>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 flex-1 basis-0 items-center justify-start gap-1 overflow-x-auto pl-2 md:justify-end [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <LocaleToggle className="hidden xl:inline-flex" />
           <HelpButton page="/chat" variant="ghost" size="sm" />
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setRightPanel(rightPanel === "skills" ? "none" : "skills")}
-            className="gap-2"
+            onClick={() =>
+              setRightPanel(rightPanel === "skills" ? "none" : "skills")
+            }
+            className="h-9 shrink-0 gap-2"
             disabled={!selectedConversationId}
+            aria-label={t("chat.skills")}
           >
             <Wand2 className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.skills')}</span>
+            <span className="hidden md:inline">{t("chat.skills")}</span>
           </Button>
           <Button
             variant={rightPanel === "artifacts" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setRightPanel(rightPanel === "artifacts" ? "none" : "artifacts")}
-            className="gap-2"
+            onClick={() =>
+              setRightPanel(rightPanel === "artifacts" ? "none" : "artifacts")
+            }
+            className="h-9 shrink-0 gap-2"
             disabled={!selectedConversationId || artifacts.length === 0}
+            aria-label={t("chat.artifacts")}
           >
             <Layers className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.artifacts')}</span>
+            <span className="hidden md:inline">{t("chat.artifacts")}</span>
             {artifacts.length > 0 && (
-              <span className="text-xs bg-primary/20 px-1.5 rounded-full">
+              <span className="rounded-full bg-primary/20 px-1.5 text-xs">
                 {artifacts.length}
               </span>
             )}
@@ -719,41 +879,55 @@ export default function Chat() {
           <Button
             variant={rightPanel === "schedule" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setRightPanel(rightPanel === "schedule" ? "none" : "schedule")}
-            className="gap-2"
+            onClick={() =>
+              setRightPanel(rightPanel === "schedule" ? "none" : "schedule")
+            }
+            className="h-9 shrink-0 gap-2"
+            aria-label={t("chat.alerts")}
           >
             <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.alerts')}</span>
+            <span className="hidden lg:inline">{t("chat.alerts")}</span>
           </Button>
           <Button
             variant={rightPanel === "memory" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setRightPanel(rightPanel === "memory" ? "none" : "memory")}
-            className="gap-2"
+            onClick={() =>
+              setRightPanel(rightPanel === "memory" ? "none" : "memory")
+            }
+            className="h-9 shrink-0 gap-2"
+            aria-label={t("chat.memory")}
           >
             <Brain className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.memory')}</span>
+            <span className="hidden lg:inline">{t("chat.memory")}</span>
           </Button>
           <Button
             variant={rightPanel === "finance" ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setRightPanel(rightPanel === "finance" ? "none" : "finance")}
-            className="gap-2"
+            onClick={() =>
+              setRightPanel(rightPanel === "finance" ? "none" : "finance")
+            }
+            className="h-9 shrink-0 gap-2"
+            aria-label={t("chat.finance")}
           >
             <ReceiptText className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.finance')}</span>
+            <span className="hidden lg:inline">{t("chat.finance")}</span>
           </Button>
           {chatBrowserSessionEnabled && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void handleOpenBrowserSession()}
-              className="gap-2"
+              className="h-9 shrink-0 gap-2"
               disabled={createLiveBrowserSessionMutation.isPending}
+              aria-label={
+                latestBrowserSessionArtifact?.summary.primaryActionLabel ??
+                t("chat.openBrowserSession")
+              }
             >
               <MonitorPlay className="h-4 w-4" />
-              <span className="hidden sm:inline">
-                {latestBrowserSessionArtifact?.summary.primaryActionLabel ?? t('chat.openBrowserSession')}
+              <span className="hidden xl:inline">
+                {latestBrowserSessionArtifact?.summary.primaryActionLabel ??
+                  t("chat.openBrowserSession")}
               </span>
             </Button>
           )}
@@ -761,45 +935,48 @@ export default function Chat() {
             variant="ghost"
             size="sm"
             onClick={() => setAgencyPickerOpen(true)}
-            className="gap-2"
-            title={t('chat.runAgencyInline')}
+            className="h-9 shrink-0 gap-2"
+            title={t("chat.runAgencyInline")}
+            aria-label={t("chat.runAgency")}
           >
             <Play className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.runAgency')}</span>
+            <span className="hidden xl:inline">{t("chat.runAgency")}</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setLocation("/agencies")}
-            className="gap-2"
+            className="h-9 shrink-0 gap-2"
+            aria-label={t("chat.agencies")}
           >
             <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('chat.agencies')}</span>
+            <span className="hidden xl:inline">{t("chat.agencies")}</span>
           </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar - mobile: overlay drawer, desktop: inline */}
         {/* Mobile backdrop */}
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 top-14 z-30 bg-black/40 lg:hidden"
+          <button
+            type="button"
+            aria-label={t("chat.hideSidebar")}
+            className="fixed inset-x-0 bottom-0 top-14 z-30 bg-[var(--color-overlay)] lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
         {/* Mobile sidebar drawer — always in DOM, slides in/out via CSS */}
         <div
           className={cn(
-            "fixed left-0 z-40 w-80 bg-background transition-transform duration-300 ease-in-out lg:hidden",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            "fixed bottom-2 left-2 top-16 z-40 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-high)] transition-transform duration-300 ease-in-out lg:hidden",
+            sidebarOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]"
           )}
-          style={{ top: "3.5rem", height: "calc(100dvh - 3.5rem)" }}
         >
           <ChatSidebar
             selectedConversationId={selectedConversationId}
-            onSelectConversation={(id) => {
+            onSelectConversation={id => {
               activateConversation(id, { closeSidebar: true });
               setSidebarOpen(false);
             }}
@@ -811,14 +988,17 @@ export default function Chat() {
         {/* Desktop sidebar inline */}
         <div
           className={cn(
-            "hidden lg:block w-80 flex-shrink-0 overflow-hidden transition-all duration-200",
+            "hidden flex-shrink-0 overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-background-surface)] transition-all duration-200 lg:block",
+            sidebarOpen && "w-80 xl:w-[22rem]",
             !sidebarOpen && "w-0"
           )}
         >
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
-              onSelectConversation={(id) => activateConversation(id, { closeSidebar: false })}
+              onSelectConversation={id =>
+                activateConversation(id, { closeSidebar: false })
+              }
               onNewChat={handleNewChat}
               onNewPersonalChat={handleNewPersonalChat}
               onOpenTeamRoom={handleOpenTeamRoom}
@@ -829,28 +1009,31 @@ export default function Chat() {
         {/* Sidebar Toggle for Desktop */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="hidden lg:flex h-full w-5 items-center justify-center hover:bg-primary/10 transition-colors group border-r"
-          title={sidebarOpen ? t('chat.hideSidebar') : t('chat.showSidebar')}
+          className="group hidden h-full w-5 shrink-0 items-center justify-center border-r border-[var(--color-border)] transition-colors hover:bg-[var(--color-overlay-hover)] lg:flex"
+          title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
+          aria-label={
+            sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")
+          }
         >
-          <div className="h-8 w-1.5 rounded-full bg-border group-hover:bg-primary/40 transition-colors" />
+          <div className="h-8 w-1.5 rounded-full bg-[var(--color-border-emphasized)] transition-colors group-hover:bg-[var(--color-accent-muted)]" />
         </button>
 
         {/* Chat View */}
-        <div className="flex-1 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden bg-background">
           {selectedConversationId ? (
             <div className="flex h-full flex-col">
               {chatBrowserSessionEnabled && !activeBrowserSessionArtifact ? (
-                <div className="border-b border-cyan-100 bg-cyan-50/20 px-4 py-3">
-                  <div className="flex flex-col gap-3 rounded-xl border border-cyan-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                <div className="border-b border-[var(--color-border-cyan)] bg-[var(--color-background-cyan)]/40 px-3 py-3 sm:px-4">
+                  <div className="flex flex-col gap-3 rounded-[var(--radius-container)] border border-[var(--color-border-cyan)] bg-[var(--color-background-surface)] p-4 shadow-[var(--shadow-low)] md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
-                        {t('chat.browserSession')}
+                        {t("chat.browserSession")}
                       </p>
                       <p className="text-sm font-semibold text-slate-900">
-                        {t('chat.browserSessionDescription')}
+                        {t("chat.browserSessionDescription")}
                       </p>
                       <p className="text-xs text-slate-600">
-                        {t('chat.browserSessionHint')}
+                        {t("chat.browserSessionHint")}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -865,40 +1048,58 @@ export default function Chat() {
                         ) : (
                           <MonitorPlay className="h-4 w-4" />
                         )}
-                        {t('chat.startBrowserSession')}
+                        {t("chat.startBrowserSession")}
                       </Button>
-                      <HelpButton page="/chat" topic="browser-session" variant="ghost" size="sm" />
+                      <HelpButton
+                        page="/chat"
+                        topic="browser-session"
+                        variant="ghost"
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </div>
               ) : null}
               {chatBrowserSessionEnabled && activeBrowserSessionArtifact ? (
-                <div className="border-b border-cyan-100 bg-cyan-50/30 px-4 py-3">
+                <div className="border-b border-[var(--color-border-cyan)] bg-[var(--color-background-cyan)]/50 px-3 py-3 sm:px-4">
                   <BrowserSessionSummaryCard
                     artifact={activeBrowserSessionArtifact}
-                    onOpen={(artifact) => {
-                      const launchContext = artifact.launchContext ?? buildChatLaunchContext(artifact.sessionId);
-                      setLocation(buildBrowserSessionPath(artifact.sessionId, launchContext));
+                    onOpen={artifact => {
+                      const launchContext =
+                        artifact.launchContext ??
+                        buildChatLaunchContext(artifact.sessionId);
+                      setLocation(
+                        buildBrowserSessionPath(
+                          artifact.sessionId,
+                          launchContext
+                        )
+                      );
                     }}
                   >
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
-                        {t('chat.quickBrowserInstruction')}
+                          {t("chat.quickBrowserInstruction")}
                         </p>
                         <p className="mt-1 text-xs text-slate-600">
-                          {t('chat.quickBrowserInstructionDesc')}
+                          {t("chat.quickBrowserInstructionDesc")}
                         </p>
                       </div>
                       <Select
                         value={browserCommandSkillId}
-                        onValueChange={(value) => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}
+                        onValueChange={value =>
+                          handleBrowserCommandSkillChange(
+                            value as typeof browserCommandSkillId
+                          )
+                        }
                       >
                         <SelectTrigger className="bg-white">
-                          <SelectValue placeholder={t('chat.chooseBrowserSkill')} />
+                          <SelectValue
+                            placeholder={t("chat.chooseBrowserSkill")}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          {BROWSER_SKILL_PRESETS.map((preset) => (
+                          {BROWSER_SKILL_PRESETS.map(preset => (
                             <SelectItem key={preset.id} value={preset.id}>
                               {preset.label}
                             </SelectItem>
@@ -907,22 +1108,34 @@ export default function Chat() {
                       </Select>
                       <Textarea
                         value={browserCommandDraft}
-                        onChange={(event) => handleBrowserCommandDraftChange(event.target.value)}
-                        placeholder={t('chat.browserInstructionPlaceholder')}
+                        onChange={event =>
+                          handleBrowserCommandDraftChange(event.target.value)
+                        }
+                        placeholder={t("chat.browserInstructionPlaceholder")}
                         className="min-h-[88px] bg-white"
                       />
                       {browserCommandNotice ? (
-                        <p className="text-xs text-slate-600">{browserCommandNotice}</p>
+                        <p className="text-xs text-slate-600">
+                          {browserCommandNotice}
+                        </p>
                       ) : null}
                       <Button
                         type="button"
                         size="sm"
                         className="gap-2 bg-cyan-700 text-white hover:bg-cyan-800"
                         onClick={() => void handleSendBrowserSessionCommand()}
-                        disabled={!browserCommandDraft.trim() || browserCommandBusy}
+                        disabled={
+                          !browserCommandDraft.trim() || browserCommandBusy
+                        }
                       >
-                        {browserCommandBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        {browserCommandBusy ? t('chat.queuingInstruction') : t('chat.sendBrowserInstruction')}
+                        {browserCommandBusy ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                        {browserCommandBusy
+                          ? t("chat.queuingInstruction")
+                          : t("chat.sendBrowserInstruction")}
                       </Button>
                     </div>
                   </BrowserSessionSummaryCard>
@@ -935,54 +1148,77 @@ export default function Chat() {
                   browserSessionSuggestion={browserSessionSuggestion}
                   showBrowserSessionEntry={chatBrowserSessionEnabled}
                   onStartBrowserSession={() => void handleOpenBrowserSession()}
-                  browserSessionEntryPending={createLiveBrowserSessionMutation.isPending}
+                  browserSessionEntryPending={
+                    createLiveBrowserSessionMutation.isPending
+                  }
                   onUserMessageSent={handleUserMessageSent}
-                  onConfirmBrowserSessionSuggestion={handleConfirmBrowserSessionSuggestion}
-                  onDismissBrowserSessionSuggestion={handleDismissBrowserSessionSuggestion}
+                  onConfirmBrowserSessionSuggestion={
+                    handleConfirmBrowserSessionSuggestion
+                  }
+                  onDismissBrowserSessionSuggestion={
+                    handleDismissBrowserSessionSuggestion
+                  }
+                  showWorkStartEntry={workpacksEnabled}
                   onRunAgency={() => setAgencyPickerOpen(true)}
                   onOpenFinancePanel={() => setRightPanel("finance")}
                 />
                 {/* Agency suggestion card (auto-detected) */}
                 {agencySuggestion && !targetAgency && (
-                  <div className="mx-auto max-w-3xl px-4 pb-2">
-                    <div className="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm dark:border-indigo-800 dark:bg-indigo-950">
+                  <div className="mx-auto max-w-3xl px-3 pb-2 sm:px-4">
+                    <div className="flex flex-col gap-3 rounded-[var(--radius-container)] border border-[var(--color-border-purple)] bg-[var(--color-background-purple)] px-4 py-3 text-sm sm:flex-row sm:items-center">
                       <Users className="h-4 w-4 shrink-0 text-indigo-600" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-indigo-900 dark:text-indigo-100">
-                          {t('chat.agencyDetected', { name: agencySuggestion.agencyName })}
+                          {t("chat.agencyDetected", {
+                            name: agencySuggestion.agencyName,
+                          })}
                         </p>
                         <p className="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5">
-                          {t('chat.agencyDetectedHint')}
+                          {t("chat.agencyDetectedHint")}
                         </p>
                       </div>
                       <Button
                         size="sm"
-                        className="shrink-0 bg-indigo-600 hover:bg-indigo-700"
+                        className="shrink-0"
                         onClick={() => {
-                          setTargetAgency({ id: agencySuggestion.agencyId, name: agencySuggestion.agencyName });
+                          setTargetAgency({
+                            id: agencySuggestion.agencyId,
+                            name: agencySuggestion.agencyName,
+                          });
                           setAgencySuggestion(null);
                           setAgencyRunPhase("idle");
                           setAgencyPanelCollapsed(false);
                         }}
                       >
-                          {t('chat.useAgency')}
+                        {t("chat.useAgency")}
                       </Button>
-                      <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setAgencySuggestion(null)}>
-                        {t('chat.dismiss')}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="shrink-0"
+                        onClick={() => setAgencySuggestion(null)}
+                      >
+                        {t("chat.dismiss")}
                       </Button>
                     </div>
                   </div>
                 )}
                 {/* Inline agency run panel */}
                 {targetAgency && (
-                  <div className="sticky bottom-0 z-20 border-t bg-indigo-50/80 px-4 py-3 shadow-[0_-8px_24px_rgba(79,70,229,0.08)] backdrop-blur dark:bg-indigo-950/80">
+                  <div className="sticky bottom-0 z-20 border-t border-[var(--color-border)] bg-[var(--color-background-surface)]/90 px-3 py-3 shadow-[var(--shadow-med)] backdrop-blur sm:px-4">
                     <div className="mx-auto max-w-3xl space-y-3">
                       <div className="flex items-center gap-2">
                         <Users className="h-4 w-4 text-indigo-600" />
                         <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
                           {targetAgency.name}
                         </span>
-                        <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5", agencyStatusTone)}>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-2 py-0.5",
+                            agencyStatusTone
+                          )}
+                        >
                           {agencyStatusLabel}
                         </Badge>
                         <div className="ml-auto flex items-center gap-1">
@@ -990,8 +1226,14 @@ export default function Chat() {
                             variant="ghost"
                             size="icon"
                             className="h-5 w-5"
-                            onClick={() => setAgencyPanelCollapsed((value) => !value)}
-                            title={agencyPanelCollapsed ? t('chat.expandAgencyPanel') : t('chat.collapseAgencyPanel')}
+                            onClick={() =>
+                              setAgencyPanelCollapsed(value => !value)
+                            }
+                            title={
+                              agencyPanelCollapsed
+                                ? t("chat.expandAgencyPanel")
+                                : t("chat.collapseAgencyPanel")
+                            }
                           >
                             {agencyPanelCollapsed ? (
                               <ChevronDown className="h-3 w-3" />
@@ -1017,7 +1259,7 @@ export default function Chat() {
                       {!agencyPanelCollapsed ? (
                         <>
                           <p className="text-xs text-muted-foreground">
-                            {t('chat.agencyPanelHint')}
+                            {t("chat.agencyPanelHint")}
                           </p>
                           <div className="rounded-md border border-indigo-200 bg-white/70 px-3 py-3 shadow-sm dark:border-indigo-900 dark:bg-slate-950/40">
                             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -1026,13 +1268,18 @@ export default function Chat() {
                                   Desktop handoff
                                 </p>
                                 <p className="mt-1 text-xs text-muted-foreground">
-                                  Open this agency in Desktop Host for governed local package sync,
-                                  Pi preparation, and Agency Swarm execution.
+                                  Open this agency in Desktop Host for governed
+                                  local package sync, Pi preparation, and Agency
+                                  Swarm execution.
                                 </p>
                               </div>
                               <DesktopAgencyHandoffLinks
                                 agencyId={targetAgency.id}
-                                runId={selectedConversationId ? `chat-${selectedConversationId}` : undefined}
+                                runId={
+                                  selectedConversationId
+                                    ? `chat-${selectedConversationId}`
+                                    : undefined
+                                }
                               />
                             </div>
                           </div>
@@ -1049,74 +1296,107 @@ export default function Chat() {
                                 toolCalls={agencyStream.toolCalls}
                                 guardrailEvents={agencyStream.guardrailEvents}
                                 pendingApproval={agencyStream.pendingApproval}
-                                isPollingFallback={agencyStream.isPollingFallback}
-                                hybridSummary={agencyStream.hybridSummary ?? null}
-                                stepAttemptSnapshots={agencyStream.stepAttemptSnapshots ?? []}
+                                isPollingFallback={
+                                  agencyStream.isPollingFallback
+                                }
+                                hybridSummary={
+                                  agencyStream.hybridSummary ?? null
+                                }
+                                stepAttemptSnapshots={
+                                  agencyStream.stepAttemptSnapshots ?? []
+                                }
                               />
                             </div>
                           ) : (
                             <div className="rounded-md border border-dashed bg-background/70 px-4 py-6 text-sm text-muted-foreground">
-                              {t('chat.agencyNoActivity')}
+                              {t("chat.agencyNoActivity")}
                             </div>
                           )}
                           {agencyStream.error && (
-                            <p className="text-xs text-destructive">{agencyStream.error}</p>
+                            <p className="text-xs text-destructive">
+                              {agencyStream.error}
+                            </p>
                           )}
                           {/* Agency input */}
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-2 sm:flex-row">
                             <Textarea
                               value={agencyInput}
-                              onChange={(e) => setAgencyInput(e.target.value)}
-                              onKeyDown={(e) => {
+                              onChange={e => setAgencyInput(e.target.value)}
+                              onKeyDown={e => {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                   e.preventDefault();
                                   handleAgencySend();
                                 }
                               }}
-                              placeholder={t('chat.agencyMessagePlaceholder', { name: targetAgency.name })}
-                              className="min-h-[44px] max-h-[120px] resize-none flex-1"
+                              placeholder={t("chat.agencyMessagePlaceholder", {
+                                name: targetAgency.name,
+                              })}
+                              className="min-h-11 max-h-[120px] flex-1 resize-none"
                               rows={1}
-                              disabled={agencyStream.isStreaming || agencyRunPhase === "connecting"}
+                              disabled={
+                                agencyStream.isStreaming ||
+                                agencyRunPhase === "connecting"
+                              }
                             />
                             <Button
                               onClick={handleAgencySend}
-                              disabled={!agencyInput.trim() || agencyStream.isStreaming || agencyRunPhase === "connecting"}
-                              className="h-11 shrink-0 bg-indigo-600 px-4 hover:bg-indigo-700"
+                              disabled={
+                                !agencyInput.trim() ||
+                                agencyStream.isStreaming ||
+                                agencyRunPhase === "connecting"
+                              }
+                              className="h-11 shrink-0 px-4"
                             >
-                              {agencyRunPhase === "connecting" || agencyStream.isStreaming ? (
+                              {agencyRunPhase === "connecting" ||
+                              agencyStream.isStreaming ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Send className="h-4 w-4" />
                               )}
                               <span className="ml-2">
                                 {agencyRunPhase === "completed"
-                                  ? t('chat.runAgain')
+                                  ? t("chat.runAgain")
                                   : agencyRunPhase === "failed"
-                                    ? t('chat.retry')
+                                    ? t("chat.retry")
                                     : agencyRunPhase === "connecting"
-                                      ? t('chat.connecting')
+                                      ? t("chat.connecting")
                                       : agencyStream.isStreaming
-                                        ? t('chat.running')
-                                        : t('chat.startRun')}
+                                        ? t("chat.running")
+                                        : t("chat.startRun")}
                               </span>
                             </Button>
                           </div>
                           {agencyStream.isStreaming && (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Loader2 className="h-3 w-3 animate-spin" />
-                              <span>{t('chat.agencyRunning', { agent: agencyStream.activeAgent || "" })}</span>
+                              <span>
+                                {t("chat.agencyRunning", {
+                                  agent: agencyStream.activeAgent || "",
+                                })}
+                              </span>
                             </div>
                           )}
                         </>
                       ) : (
                         <div className="flex items-center gap-2 rounded-md border border-dashed bg-background/70 px-4 py-2 text-xs text-muted-foreground shadow-sm">
-                          <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5", agencyStatusTone)}>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] px-2 py-0.5",
+                              agencyStatusTone
+                            )}
+                          >
                             {agencyStatusLabel}
                           </Badge>
-                          <span className="font-medium text-foreground">{targetAgency.name}</span>
+                          <span className="font-medium text-foreground">
+                            {targetAgency.name}
+                          </span>
                           <span>
-                            {t('chat.agencyPanelCollapsed')}
-                            {agencyStream.isStreaming && agencyStream.activeAgent ? ` ${t('chat.currentAgent', { agent: agencyStream.activeAgent })}` : ""}
+                            {t("chat.agencyPanelCollapsed")}
+                            {agencyStream.isStreaming &&
+                            agencyStream.activeAgent
+                              ? ` ${t("chat.currentAgent", { agent: agencyStream.activeAgent })}`
+                              : ""}
                           </span>
                         </div>
                       )}
@@ -1126,73 +1406,87 @@ export default function Chat() {
               </div>
             </div>
           ) : (
-            <DashboardSurface className="mx-auto flex max-w-xl flex-col items-center gap-4 p-8 text-center">
-              <DashboardSectionHeader
-                eyebrow={t('chat.conversationEyebrow')}
-                title={t('chat.welcomeTitle')}
-                description={t('chat.welcomeDescription')}
-              />
-              <Button onClick={handleNewChat} size="lg" className="mt-2">
-                {t('chat.startNewChat')}
-              </Button>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {chatBrowserSessionEnabled ? (
-                  <>
+            <div className="flex h-full items-center justify-center p-4 sm:p-6">
+              <DashboardSurface className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-[var(--radius-page)] border border-[var(--color-border)] bg-[var(--color-background-surface)] p-6 text-center shadow-[var(--shadow-low)] sm:p-8">
+                <DashboardSectionHeader
+                  eyebrow={t("chat.conversationEyebrow")}
+                  title={t("chat.welcomeTitle")}
+                  description={t("chat.welcomeDescription")}
+                />
+                <Button
+                  onClick={handleNewChat}
+                  size="lg"
+                  className="mt-2 w-full sm:w-auto"
+                >
+                  {t("chat.startNewChat")}
+                </Button>
+                <div className="flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                  {chatBrowserSessionEnabled ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => void handleOpenBrowserSession()}
+                        disabled={createLiveBrowserSessionMutation.isPending}
+                      >
+                        {createLiveBrowserSessionMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MonitorPlay className="h-4 w-4" />
+                        )}
+                        {t("chat.startBrowserSession")}
+                      </Button>
+                      <HelpButton
+                        page="/chat"
+                        topic="browser-session"
+                        size="default"
+                      />
+                    </>
+                  ) : null}
+                  {workpacksEnabled ? (
                     <Button
                       type="button"
                       size="lg"
                       variant="outline"
                       className="gap-2"
-                      onClick={() => void handleOpenBrowserSession()}
-                      disabled={createLiveBrowserSessionMutation.isPending}
+                      onClick={() =>
+                        setLocation(
+                          buildWorkpackEntrypointHref({
+                            entrypoint: "chat",
+                            surface: "intake",
+                          })
+                        )
+                      }
                     >
-                      {createLiveBrowserSessionMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <MonitorPlay className="h-4 w-4" />
-                      )}
-                      {t('chat.startBrowserSession')}
+                      <Layers className="h-4 w-4" />
+                      Open Workpack Intake
                     </Button>
-                    <HelpButton page="/chat" topic="browser-session" size="default" />
-                  </>
-                ) : null}
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => setLocation("/agencies")}
-                >
-                  <Users className="h-4 w-4" />
-                  {t('chat.exploreAgencies')}
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => setLocation(buildWorkpackEntrypointHref({
-                    entrypoint: "chat",
-                    surface: "intake",
-                  }))}
-                >
-                  <Layers className="h-4 w-4" />
-                  Open Workpack Intake
-                </Button>
-              </div>
-            </DashboardSurface>
+                  ) : null}
+                </div>
+              </DashboardSurface>
+            </div>
           )}
         </div>
 
         {/* Right Panel (Memory or Skills) */}
+        {rightPanel !== "none" ? (
+          <button
+            type="button"
+            aria-label={t("chat.dismiss")}
+            className="fixed inset-x-0 bottom-0 top-14 z-40 bg-[var(--color-overlay)] lg:hidden"
+            onClick={() => setRightPanel("none")}
+          />
+        ) : null}
         <div
           data-testid="chat-right-panel"
           aria-hidden={rightPanel === "none"}
           className={cn(
-            "flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden transition-all duration-200",
+            "min-h-0 flex-shrink-0 flex-col overflow-hidden bg-[var(--color-background-surface)] transition-all duration-200",
             rightPanel !== "none"
-              ? "w-full translate-x-0 border-l sm:w-[26rem] lg:w-[36rem] xl:w-[40rem]"
-              : "pointer-events-none w-0 translate-x-full border-l-0"
+              ? "fixed bottom-2 left-2 right-2 top-16 z-50 flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:static lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
+              : "pointer-events-none hidden w-0 translate-x-full border-l-0 lg:flex"
           )}
         >
           {rightPanel === "memory" && (
@@ -1255,7 +1549,7 @@ export default function Chat() {
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel
-              onNavigateToChat={(id) => {
+              onNavigateToChat={id => {
                 setSelectedConversationId(id);
                 setRightPanel("none");
               }}
@@ -1271,7 +1565,7 @@ export default function Chat() {
       <AgencyPickerModal
         open={agencyPickerOpen}
         onClose={() => setAgencyPickerOpen(false)}
-        onSelect={(agency) => {
+        onSelect={agency => {
           setAgencyPickerOpen(false);
           setTargetAgency({ id: agency.id, name: agency.name });
           setAgencyRunPhase("idle");

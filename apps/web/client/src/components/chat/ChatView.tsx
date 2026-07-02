@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, useCallback, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { VoiceAgentPanel } from "./voice/VoiceAgentPanel";
@@ -142,6 +150,11 @@ import { useSkillExecution } from "@/components/chat/skill/hooks/useSkillExecuti
 import { TelegramBindingButton } from "./TelegramBindingButton";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { MediaPromptPreview } from "./MediaPromptPreview";
+import {
+  collectImageAttachmentUrls,
+  mergeReferenceImagesIntoParams,
+  shouldUseAttachedImagesAsReference,
+} from "./chatAttachmentReferences";
 import { AgencyEscalationCard } from "./AgencyEscalationCard";
 import { HybridOrchestrationCard } from "./HybridOrchestrationCard";
 import { toast } from "sonner";
@@ -206,6 +219,7 @@ import { buildWorkRequestLaunchPath } from "@/lib/workRequestLinks";
 import {
   resolveChatLocalRuntimeReadiness,
   looksLikeSkillRequest,
+  getDirectMediaGenerationRequestType,
   resolveDetectedSkillForSend,
   shouldAutoRunDetectedSkill,
   shouldBlockPendingCloudKeepInChat,
@@ -536,7 +550,9 @@ function looksLikeScheduleIntent(text: string): boolean {
   );
 }
 
-function getOcrRoutingShortLabel(providerLabel: string): "Typhoon" | "Google AI" | "LandingAI" | "Native" {
+function getOcrRoutingShortLabel(
+  providerLabel: string
+): "Typhoon" | "Google AI" | "LandingAI" | "Native" {
   const normalized = providerLabel.toLowerCase();
   if (normalized.includes("typhoon")) {
     return "Typhoon";
@@ -615,7 +631,7 @@ function normalizeMediaModelMention(value: string): string {
 
 function findMentionedMediaModelId(
   text: string,
-  models: MediaModelOption[],
+  models: MediaModelOption[]
 ): string | null {
   const normalizedText = normalizeMediaModelMention(text);
   if (!normalizedText) return null;
@@ -629,9 +645,12 @@ function findMentionedMediaModelId(
       model.name.replace(/text-to-image$/i, ""),
     ];
     if (
-      candidates.some((candidate) => {
+      candidates.some(candidate => {
         const normalizedCandidate = normalizeMediaModelMention(candidate);
-        return normalizedCandidate.length > 0 && normalizedText.includes(normalizedCandidate);
+        return (
+          normalizedCandidate.length > 0 &&
+          normalizedText.includes(normalizedCandidate)
+        );
       })
     ) {
       return model.id;
@@ -655,16 +674,20 @@ const CHAT_IMAGE_ASPECT_RATIO_VALUES = new Set([
   "9:21",
 ]);
 
-function normalizeChatImageAspectRatio(value: string | null | undefined): string | null {
+function normalizeChatImageAspectRatio(
+  value: string | null | undefined
+): string | null {
   const normalized = value?.replace(/\s+/g, "") ?? "";
   return CHAT_IMAGE_ASPECT_RATIO_VALUES.has(normalized) ? normalized : null;
 }
 
-function inferImageAspectRatioFromText(text: string | null | undefined): string | null {
+function inferImageAspectRatioFromText(
+  text: string | null | undefined
+): string | null {
   if (!text) return null;
 
   const labeledMatch = text.match(
-    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i,
+    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i
   );
   const labeledRatio = normalizeChatImageAspectRatio(labeledMatch?.[1]);
   if (labeledRatio) return labeledRatio;
@@ -726,6 +749,7 @@ interface ChatViewProps {
     suggestion: BrowserSessionLaunchSuggestion
   ) => void;
   onDismissBrowserSessionSuggestion?: (suggestionId: string) => void;
+  showWorkStartEntry?: boolean;
   onRunAgency?: () => void;
   onOpenFinancePanel?: () => void;
 }
@@ -742,6 +766,7 @@ export function ChatView({
   onUserMessageSent,
   onConfirmBrowserSessionSuggestion,
   onDismissBrowserSessionSuggestion,
+  showWorkStartEntry = true,
   onOpenFinancePanel,
 }: ChatViewProps) {
   const [, navigate] = useLocation();
@@ -771,7 +796,8 @@ export function ChatView({
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [ocrOnlyMode, setOcrOnlyMode] = useState(false);
   const [workStartDismissed, setWorkStartDismissed] = useState(false);
-  const [workStartPosition, setWorkStartPosition] = useState<WorkStartCardPosition>({ x: 0, y: 0 });
+  const [workStartPosition, setWorkStartPosition] =
+    useState<WorkStartCardPosition>({ x: 0, y: 0 });
   const [isWorkStartDragging, setIsWorkStartDragging] = useState(false);
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
@@ -790,17 +816,20 @@ export function ChatView({
   const { user } = useAuth();
   const workStartDragStateRef = useRef<WorkStartDragState | null>(null);
   const workStartStorageKey = useMemo(() => {
-    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const tenantId =
+      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
     const userId = user?.id != null ? String(user.id) : "anonymous";
     return `smartspec_chat_workstart_hidden:${tenantId}:${userId}`;
   }, [user?.currentTenantId, user?.id]);
   const workStartPositionStorageKey = useMemo(() => {
-    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const tenantId =
+      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
     const userId = user?.id != null ? String(user.id) : "anonymous";
     return `smartspec_chat_workstart_position:${tenantId}:${userId}`;
   }, [user?.currentTenantId, user?.id]);
   const ocrOnlyModeStorageKey = useMemo(() => {
-    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const tenantId =
+      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
     const userId = user?.id != null ? String(user.id) : "anonymous";
     return `smartspec_chat_ocr_only_mode:${tenantId}:${userId}`;
   }, [user?.currentTenantId, user?.id]);
@@ -824,7 +853,10 @@ export function ChatView({
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(workStartStorageKey, workStartDismissed ? "1" : "0");
+    window.localStorage.setItem(
+      workStartStorageKey,
+      workStartDismissed ? "1" : "0"
+    );
   }, [workStartDismissed, workStartStorageKey]);
 
   useEffect(() => {
@@ -850,7 +882,10 @@ export function ChatView({
       return;
     }
     try {
-      window.localStorage.setItem(workStartPositionStorageKey, JSON.stringify(workStartPosition));
+      window.localStorage.setItem(
+        workStartPositionStorageKey,
+        JSON.stringify(workStartPosition)
+      );
     } catch {
       // Ignore storage failures.
     }
@@ -915,7 +950,7 @@ export function ChatView({
       setIsWorkStartDragging(true);
       event.preventDefault();
     },
-    [workStartPosition.x, workStartPosition.y],
+    [workStartPosition.x, workStartPosition.y]
   );
 
   const utils = trpc.useUtils();
@@ -930,6 +965,8 @@ export function ChatView({
   );
   const conversationProjectId = (conversation as any)?.projectId ?? null;
   const isPersonalConversation = conversationProjectId === "personal";
+  const shouldShowWorkStartEntry =
+    showWorkStartEntry && !isPersonalConversation;
   const handleOpenBrowserSession = useCallback(
     (artifact: BrowserSessionArtifact) => {
       const path = buildBrowserSessionPath(
@@ -1006,21 +1043,23 @@ export function ChatView({
     { platform: localAiRuntimePlatform },
     { enabled: localClientLlmModeEnabled }
   );
-  const { data: documentOcrPreview } = trpc.localAi.getDocumentOcrPreview.useQuery(
-    undefined,
-    { enabled: !!user },
-  );
+  const { data: documentOcrPreview } =
+    trpc.localAi.getDocumentOcrPreview.useQuery(undefined, { enabled: !!user });
   const analyzeAttachmentAssistMutation =
     trpc.localAi.analyzeAttachmentAssist.useMutation();
 
   // Load the model catalog only when the user actually opens the selector.
   // This keeps the chat shell resilient if the catalog endpoint is unhealthy.
-  const { data: modelsData, isLoading: modelsLoading, error: modelsError, refetch: refetchModels } =
-    trpc.llmProviders.availableModels.useQuery(undefined, {
-      enabled: modelDialogOpen,
-      retry: false,
-      staleTime: 300_000,
-    });
+  const {
+    data: modelsData,
+    isLoading: modelsLoading,
+    error: modelsError,
+    refetch: refetchModels,
+  } = trpc.llmProviders.availableModels.useQuery(undefined, {
+    enabled: modelDialogOpen,
+    retry: false,
+    staleTime: 300_000,
+  });
 
   // Get media generation models (image/video/audio)
   const { data: allMediaModelsData } = trpc.media.getModels.useQuery(
@@ -1078,27 +1117,28 @@ export function ChatView({
   );
   const conversationSkillSettings = useMemo(
     () => readClientConversationSkillSettings(conversation?.skillSettings),
-    [conversation?.skillSettings],
+    [conversation?.skillSettings]
   );
   const conversationLocalAiOverride =
     conversationSkillSettings.localAiConversation ?? null;
   const conversationForcesLocalOnly =
     conversationLocalAiOverride?.disableForConversation !== true &&
     conversationLocalAiOverride?.mode === "local_only";
-  const effectiveLocalAiPreferences = useMemo(
-    () => {
-      const merged = applyConversationLocalAiOverride(
-        localAiPreferences,
-        conversationLocalAiOverride,
-      );
-      return {
-        ...merged,
-        useForGeneralChat:
-          merged.useForGeneralChat || conversationForcesLocalOnly,
-      };
-    },
-    [conversationForcesLocalOnly, conversationLocalAiOverride, localAiPreferences],
-  );
+  const effectiveLocalAiPreferences = useMemo(() => {
+    const merged = applyConversationLocalAiOverride(
+      localAiPreferences,
+      conversationLocalAiOverride
+    );
+    return {
+      ...merged,
+      useForGeneralChat:
+        merged.useForGeneralChat || conversationForcesLocalOnly,
+    };
+  }, [
+    conversationForcesLocalOnly,
+    conversationLocalAiOverride,
+    localAiPreferences,
+  ]);
 
   const attachmentOcrBadges = useMemo(() => {
     if (!documentOcrPreview || attachments.length === 0) {
@@ -1110,11 +1150,11 @@ export function ChatView({
       }>;
     }
 
-    const hasImageAttachments = attachments.some((attachment) =>
-      attachment.fileType.toLowerCase().startsWith("image/"),
+    const hasImageAttachments = attachments.some(attachment =>
+      attachment.fileType.toLowerCase().startsWith("image/")
     );
-    const hasPdfAttachments = attachments.some((attachment) =>
-      attachment.fileType.toLowerCase() === "application/pdf",
+    const hasPdfAttachments = attachments.some(
+      attachment => attachment.fileType.toLowerCase() === "application/pdf"
     );
     const badges: Array<{
       key: string;
@@ -1126,7 +1166,9 @@ export function ChatView({
     if (hasImageAttachments) {
       badges.push({
         key: "image",
-        shortLabel: getOcrRoutingShortLabel(documentOcrPreview.image.providerLabel),
+        shortLabel: getOcrRoutingShortLabel(
+          documentOcrPreview.image.providerLabel
+        ),
         detailLabel: `Image OCR · ${documentOcrPreview.image.providerLabel}`,
         className: documentOcrPreview.image.ready
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -1137,7 +1179,9 @@ export function ChatView({
     if (hasPdfAttachments) {
       badges.push({
         key: "pdf",
-        shortLabel: getOcrRoutingShortLabel(documentOcrPreview.pdf.providerLabel),
+        shortLabel: getOcrRoutingShortLabel(
+          documentOcrPreview.pdf.providerLabel
+        ),
         detailLabel: `PDF OCR · ${documentOcrPreview.pdf.providerLabel}`,
         className: documentOcrPreview.pdf.ready
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -1148,7 +1192,7 @@ export function ChatView({
     return badges;
   }, [attachments, documentOcrPreview]);
   const attachmentOcrRateLimitNote = attachmentOcrBadges.some(
-    (badge) => badge.shortLabel === "Typhoon",
+    badge => badge.shortLabel === "Typhoon"
   )
     ? `Typhoon OCR is capped at ${TYPHOON_OCR_RATE_LIMIT_PER_MINUTE} requests per minute across the system.`
     : null;
@@ -1174,7 +1218,7 @@ export function ChatView({
   }, [conversationLocalAiOverride]);
   const effectiveChatSessionLocalAiMode = useMemo(
     () => resolveExplicitChatSessionLocalAiMode(conversationLocalAiOverride),
-    [conversationLocalAiOverride],
+    [conversationLocalAiOverride]
   );
   const sessionUsesExplicitLocalAi =
     effectiveChatSessionLocalAiMode === "local_only" &&
@@ -1192,7 +1236,7 @@ export function ChatView({
       effectiveChatSessionLocalAiMode,
       effectiveLocalAiPreferences,
       sessionUsesExplicitLocalAi,
-    ],
+    ]
   );
   const sessionLocalOnlyEnabled = sessionUsesExplicitLocalAi;
   const localAiDeviceScope = useMemo<LocalAiDeviceStateScope | null>(() => {
@@ -1212,68 +1256,79 @@ export function ChatView({
     }
 
     const handleLocalAiDeviceStateUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{
-        scope?: LocalAiDeviceStateScope;
-      }>).detail;
+      const detail = (
+        event as CustomEvent<{
+          scope?: LocalAiDeviceStateScope;
+        }>
+      ).detail;
       const eventScope = detail?.scope;
       if (!eventScope) {
-        setLocalAiDeviceStateNonce((current) => current + 1);
+        setLocalAiDeviceStateNonce(current => current + 1);
         return;
       }
       if (
         eventScope.runtimeNamespace === localAiDeviceScope.runtimeNamespace &&
-        (eventScope.tenantId ?? null) === (localAiDeviceScope.tenantId ?? null) &&
+        (eventScope.tenantId ?? null) ===
+          (localAiDeviceScope.tenantId ?? null) &&
         (eventScope.userId ?? null) === (localAiDeviceScope.userId ?? null)
       ) {
-        setLocalAiDeviceStateNonce((current) => current + 1);
+        setLocalAiDeviceStateNonce(current => current + 1);
       }
     };
 
     window.addEventListener(
       LOCAL_AI_DEVICE_STATE_UPDATED_EVENT,
-      handleLocalAiDeviceStateUpdated as EventListener,
+      handleLocalAiDeviceStateUpdated as EventListener
     );
     return () => {
       window.removeEventListener(
         LOCAL_AI_DEVICE_STATE_UPDATED_EVENT,
-        handleLocalAiDeviceStateUpdated as EventListener,
+        handleLocalAiDeviceStateUpdated as EventListener
       );
     };
   }, [localAiDeviceScope]);
   const localAiDeviceState = useMemo(
     () =>
       localAiDeviceScope ? readLocalAiDeviceState(localAiDeviceScope) : null,
-    [localAiDeviceScope, localAiDeviceStateNonce],
+    [localAiDeviceScope, localAiDeviceStateNonce]
   );
   const configuredExternalLocalTextBackend = useMemo(
     () =>
       localAiDeviceScope
         ? readConfiguredExternalLocalTextBackend(localAiDeviceScope)
         : null,
-    [localAiDeviceScope, localAiDeviceStateNonce, localAiDeviceState?.externalTextBackend],
+    [
+      localAiDeviceScope,
+      localAiDeviceStateNonce,
+      localAiDeviceState?.externalTextBackend,
+    ]
   );
   const externalLocalTextBackendReason = useMemo(
     () =>
       localAiDeviceScope
         ? readConfiguredExternalLocalTextBackendReason(localAiDeviceScope)
         : resolveExternalLocalTextBackendReason(
-            localAiDeviceState?.externalTextBackend,
+            localAiDeviceState?.externalTextBackend
           ),
-    [localAiDeviceScope, localAiDeviceState?.externalTextBackend, localAiDeviceStateNonce],
+    [
+      localAiDeviceScope,
+      localAiDeviceState?.externalTextBackend,
+      localAiDeviceStateNonce,
+    ]
   );
   const browserReadyOnDeviceProfileIds = useMemo(() => {
     if (localAiRuntimePlatform !== "web") {
       return [] as string[];
     }
     const installedProfileIdSet = new Set(
-      localAiDeviceState?.installedModelIds ?? [],
+      localAiDeviceState?.installedModelIds ?? []
     );
     const eligibleProfileIdSet =
       localAiCapability.eligibleProfiles.length > 0
         ? new Set(localAiCapability.eligibleProfiles)
         : null;
     return (localAiCatalogQuery.data?.catalog ?? [])
-      .filter((entry) => {
+      .filter(entry => {
         if (
           entry.status !== "allowed" ||
           !entry.supportedPlatforms.includes("web") ||
@@ -1286,7 +1341,7 @@ export function ChatView({
         }
         return eligibleProfileIdSet.has(entry.id);
       })
-      .map((entry) => entry.id);
+      .map(entry => entry.id);
   }, [
     localAiCapability.eligibleProfiles,
     localAiCatalogQuery.data?.catalog,
@@ -1301,16 +1356,16 @@ export function ChatView({
       return [] as string[];
     }
     const installedProfileIdSet = new Set(
-      tauriRuntimeStatus.installedGemmaProfileIds ?? [],
+      tauriRuntimeStatus.installedGemmaProfileIds ?? []
     );
     return (localAiCatalogQuery.data?.catalog ?? [])
       .filter(
-        (entry) =>
+        entry =>
           entry.status === "allowed" &&
           entry.supportedPlatforms.includes("tauri") &&
-          installedProfileIdSet.has(entry.id),
+          installedProfileIdSet.has(entry.id)
       )
-      .map((entry) => entry.id);
+      .map(entry => entry.id);
   }, [
     localAiCatalogQuery.data?.catalog,
     localAiRuntimePlatform,
@@ -1323,8 +1378,7 @@ export function ChatView({
         localAiEnabled: localAiPreferences.enabled,
         forceCloudOnly: localAiForceCloudOnly,
         runtimePlatform: localAiRuntimePlatform,
-        enginePreference:
-          localAiDeviceState?.localEnginePreference ?? "auto",
+        enginePreference: localAiDeviceState?.localEnginePreference ?? "auto",
         hasPreparedOnDeviceRuntime:
           localAiRuntimePlatform === "tauri"
             ? tauriReadyOnDeviceProfileIds.length > 0
@@ -1345,7 +1399,7 @@ export function ChatView({
       localAiPreferences.enabled,
       localAiRuntimePlatform,
       tauriReadyOnDeviceProfileIds.length,
-    ],
+    ]
   );
   const sessionLocalOnlySelectionDisabledReason = useMemo(() => {
     if (localAiForceCloudOnly) {
@@ -1436,11 +1490,10 @@ export function ChatView({
     localVoiceAvailability.ready;
 
   // Current selected model (auto by default for new chats when smart routing is enabled).
-  const [selectedModel, setSelectedModel] = useState<string>(
-    () =>
-      chatAutoModelSelectionEnabled
-        ? AUTO_MODEL
-        : localStorage.getItem("smartspec_lastModel") || ""
+  const [selectedModel, setSelectedModel] = useState<string>(() =>
+    chatAutoModelSelectionEnabled
+      ? AUTO_MODEL
+      : localStorage.getItem("smartspec_lastModel") || ""
   );
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(
     null
@@ -2418,9 +2471,7 @@ export function ChatView({
   };
 
   const updateConversationLocalAiOverride = useCallback(
-    async (
-      nextMode: "account_default" | "local_only" | "cloud_only",
-    ) => {
+    async (nextMode: "account_default" | "local_only" | "cloud_only") => {
       if (!conversationId || isStreaming) {
         return;
       }
@@ -2429,10 +2480,9 @@ export function ChatView({
         nextMode === "account_default"
           ? null
           : {
-              mode:
-                (nextMode === "local_only"
-                  ? "local_only"
-                  : "cloud_only") as "local_only" | "cloud_only",
+              mode: (nextMode === "local_only"
+                ? "local_only"
+                : "cloud_only") as "local_only" | "cloud_only",
               disableForConversation: nextMode === "cloud_only",
               updatedAt: new Date().toISOString(),
               preferredProfileId:
@@ -2445,7 +2495,7 @@ export function ChatView({
           conversation?.skillSettings,
           {
             localAiConversation,
-          },
+          }
         ),
       });
       await utils.chat.getConversation.invalidate({ id: conversationId });
@@ -2457,7 +2507,7 @@ export function ChatView({
       isStreaming,
       updateConversationMutation,
       utils.chat.getConversation,
-    ],
+    ]
   );
 
   const handleSessionRuntimeModeSelection = useCallback(
@@ -2480,7 +2530,7 @@ export function ChatView({
             ? "This chat session now uses Local AI for supported text replies and local-safe text skills."
             : nextMode === "cloud_only"
               ? "This chat session now stays on the cloud/API path."
-              : "This chat session is back on the account default runtime mode.",
+              : "This chat session is back on the account default runtime mode."
         );
       } catch {
         toast.error("Failed to update the chat runtime mode");
@@ -2491,7 +2541,7 @@ export function ChatView({
       sessionRuntimeControlDisabled,
       sessionLocalOnlySelectionDisabledReason,
       updateConversationLocalAiOverride,
-    ],
+    ]
   );
 
   // Group models by provider for display
@@ -2884,9 +2934,16 @@ export function ChatView({
   } | null>(null);
 
   useEffect(() => {
-    setSkillIntentEnabled(false);
+    setSkillIntentEnabled(
+      conversationSkillSettings.autoDetect &&
+        conversationSkillSettings.detectionMode !== "explicit"
+    );
     setDetectedSkill(null);
-  }, [conversationId]);
+  }, [
+    conversationId,
+    conversationSkillSettings.autoDetect,
+    conversationSkillSettings.detectionMode,
+  ]);
 
   // Filter media models by detected skill type (image / video)
   const filteredMediaModels = useMemo<MediaModelOption[]>(() => {
@@ -3196,10 +3253,7 @@ export function ChatView({
 
     setIsEnhancingPrompt(true);
     try {
-      const referenceImages = attachments
-        .filter(a => a.fileType.startsWith("image/"))
-        .map(a => a.url)
-        .slice(0, 5);
+      const referenceImages = collectImageAttachmentUrls(attachments);
 
       const { cleanInput, language, aspectRatio } = parseEnhanceIntent(input);
 
@@ -3518,7 +3572,7 @@ export function ChatView({
 
   const mergeRuntimeMetadataHints = (
     baseHint: Partial<MessageRuntimeMetadata> | null,
-    overrideHint: Partial<MessageRuntimeMetadata> | null,
+    overrideHint: Partial<MessageRuntimeMetadata> | null
   ): Partial<MessageRuntimeMetadata> | null => {
     if (!baseHint && !overrideHint) {
       return null;
@@ -3537,7 +3591,7 @@ export function ChatView({
     retrievalQueryText?: string,
     options?: {
       runtimeMetadataHint?: Partial<MessageRuntimeMetadata> | null;
-    },
+    }
   ): Promise<string> => {
     if (!conversationId) return "";
 
@@ -3628,7 +3682,7 @@ export function ChatView({
 
     let runtimeMetadataHint = mergeRuntimeMetadataHints(
       null,
-      options?.runtimeMetadataHint ?? null,
+      options?.runtimeMetadataHint ?? null
     );
     try {
       const compactionResult = await compactMessagesForProviderSubmission({
@@ -3646,7 +3700,7 @@ export function ChatView({
         apiMessages = compactionResult.messages;
         runtimeMetadataHint = mergeRuntimeMetadataHints(
           compactionResult.runtimeMetadataHint,
-          runtimeMetadataHint,
+          runtimeMetadataHint
         );
         logTiming("context_compacted_locally", {
           compactedMessageCount: compactionResult.compactedMessageCount,
@@ -4143,9 +4197,8 @@ export function ChatView({
             type: skill.type,
             confidence: 1,
             suggestedPrompt:
-              text
-                .trim()
-                .replace(new RegExp(`^/${slashMatch[1]}\\s*`), "") || text,
+              text.trim().replace(new RegExp(`^/${slashMatch[1]}\\s*`), "") ||
+              text,
             executionMode: skill.executionMode || "llm-only",
             chainTo: skill.chainTo || null,
             patternChainTo: null,
@@ -4158,7 +4211,7 @@ export function ChatView({
     if (
       !resolvedSkill &&
       !sessionLocalOnlyEnabled &&
-      isSlashCommand &&
+      (isSlashCommand || isExplicitSkillRequest) &&
       conversationId
     ) {
       try {
@@ -4180,6 +4233,22 @@ export function ChatView({
         }
       } catch {
         // Skill detection failed — continue with normal LLM flow
+      }
+    }
+    if (!resolvedSkill && !sessionLocalOnlyEnabled && skillIntentEnabled) {
+      const directMediaType = getDirectMediaGenerationRequestType(text);
+      if (directMediaType) {
+        const isVideo = directMediaType === "video";
+        resolvedSkill = {
+          id: isVideo ? "video-creator" : "image-creator",
+          name: isVideo ? "Video Creator" : "Image Creator",
+          type: isVideo ? "video-generation" : "image-generation",
+          confidence: 1,
+          suggestedPrompt: text,
+          executionMode: "media-generate",
+          chainTo: null,
+          patternChainTo: null,
+        };
       }
     }
 
@@ -4291,16 +4360,19 @@ export function ChatView({
     // Detect image reference patterns — image edit OR video-from-image requests
     const imageReferencePattern =
       /(?:แก้ไขภาพนี้|ช่วยแก้ไขภาพ|แก้ไขภาพ|ด้วยรูปนี้|ด้วยภาพนี้|จากรูปนี้|จากภาพนี้|ตามรูปนี้|ตามภาพนี้|ด้วยรูป|ด้วยภาพ|ตามรูป|ตามภาพ|รูปอ้างอิง|ภาพอ้างอิง|ภาพ\s*ref(?:erence)?|รูป\s*ref(?:erence)?|edit\s*(?:this\s*)?image|modify\s*(?:this\s*)?image|change\s*(?:this\s*)?image|with\s+this\s+image|from\s+this\s+image|using\s+this\s+image|based\s+on\s+this\s+image|image\s+ref(?:erence)?|ref(?:erence)?\s+image|img\s+ref(?:erence)?|use\s+(?:the\s+)?(?:above|previous|last)\s+image)/i;
-    const isImageEditRequest = imageReferencePattern.test(text);
+    const isImageEditRequest =
+      imageReferencePattern.test(text) ||
+      shouldUseAttachedImagesAsReference(text);
 
     // Find reference image for image-to-image or image-to-video generation
     let referenceImageUrl: string | null = null;
     if (isImageEditRequest) {
-      const userImageAttachment = messageAttachments.find(attachment =>
-        attachment.fileType.startsWith("image/")
-      );
-      if (userImageAttachment) {
-        referenceImageUrl = userImageAttachment.url;
+      const userImageAttachmentUrl = collectImageAttachmentUrls(
+        messageAttachments,
+        1
+      )[0];
+      if (userImageAttachmentUrl) {
+        referenceImageUrl = userImageAttachmentUrl;
       } else {
         const messagesReversed = [...messages].reverse();
         for (const msg of messagesReversed) {
@@ -4376,13 +4448,18 @@ export function ChatView({
         }
 
         if (extractedPrompt && extractedPrompt.length > 10) {
-          const requestedMediaModel = findMentionedMediaModelId(text, filteredMediaModels);
+          const requestedMediaModel = findMentionedMediaModelId(
+            text,
+            filteredMediaModels
+          );
           const requestedAspectRatio =
-            normalizeChatImageAspectRatio(extractedParams.aspectRatio)
-            ?? inferImageAspectRatioFromText(`${msgContent}\n${extractedPrompt}`);
+            normalizeChatImageAspectRatio(extractedParams.aspectRatio) ??
+            inferImageAspectRatioFromText(`${msgContent}\n${extractedPrompt}`);
           const executionParams = {
             ...extractedParams,
-            ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+            ...(requestedAspectRatio
+              ? { aspectRatio: requestedAspectRatio }
+              : {}),
             modelIntentText: text,
             ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
           };
@@ -4404,7 +4481,9 @@ export function ChatView({
               prompt: extractedPrompt,
               dynamicParams: executionParams,
               mutationInput: {
-                ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+                ...(requestedAspectRatio
+                  ? { aspectRatio: requestedAspectRatio }
+                  : {}),
                 ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
                 ...(referenceImageUrl
                   ? { referenceImageUrls: [referenceImageUrl] }
@@ -4868,22 +4947,25 @@ export function ChatView({
 
     // Execution mode determines skill behavior (from DB, no hardcoded patterns)
     const executionMode = resolvedSkill?.executionMode || "llm-only";
-    const shouldForceOcrAssist = messageAttachments.some((attachment) =>
-      looksLikeDocumentAttachment({
-        attachment: {
-          url: attachment.url,
-          fileType: attachment.fileType,
-          fileName: attachment.fileName,
-        },
-        userText: text,
-      }),
-    ) || (ocrOnlyMode && messageAttachments.length > 0);
-    let attachmentAssistContext:
-      | Awaited<ReturnType<typeof buildHybridAttachmentAssist>>
-      | null = null;
+    const shouldForceOcrAssist =
+      messageAttachments.some(attachment =>
+        looksLikeDocumentAttachment({
+          attachment: {
+            url: attachment.url,
+            fileType: attachment.fileType,
+            fileName: attachment.fileName,
+          },
+          userText: text,
+        })
+      ) ||
+      (ocrOnlyMode && messageAttachments.length > 0);
+    let attachmentAssistContext: Awaited<
+      ReturnType<typeof buildHybridAttachmentAssist>
+    > | null = null;
     if (
       messageAttachments.length > 0 &&
-      (shouldForceOcrAssist || (executionMode === "llm-only" && !currentSkillId)) &&
+      (shouldForceOcrAssist ||
+        (executionMode === "llm-only" && !currentSkillId)) &&
       messageAttachments.length > 0
     ) {
       try {
@@ -4903,7 +4985,7 @@ export function ChatView({
               url: attachment.url,
               fileType: attachment.fileType,
               fileName: attachment.fileName,
-            }),
+            })
           ),
           userText: text,
           analyzeAttachmentAssist: payload =>
@@ -4915,9 +4997,12 @@ export function ChatView({
     }
 
     if (shouldForceOcrAssist) {
-      const ocrText = attachmentAssistContext?.ocrResult?.extractedText?.trim() || "";
-      const ocrCaption = attachmentAssistContext?.ocrResult?.caption?.trim() || "";
-      const ocrWarning = attachmentAssistContext?.ocrResult?.warning?.trim() || "";
+      const ocrText =
+        attachmentAssistContext?.ocrResult?.extractedText?.trim() || "";
+      const ocrCaption =
+        attachmentAssistContext?.ocrResult?.caption?.trim() || "";
+      const ocrWarning =
+        attachmentAssistContext?.ocrResult?.warning?.trim() || "";
       const ocrFileName = messageAttachments[0]?.fileName || "attachment";
       const ocrContent = ocrText
         ? [
@@ -4930,7 +5015,8 @@ export function ChatView({
             .join("\n\n")
         : [
             `OCR result for ${ocrFileName}`,
-            ocrWarning || "Could not extract readable text from this attachment.",
+            ocrWarning ||
+              "Could not extract readable text from this attachment.",
           ]
             .filter(Boolean)
             .join("\n\n");
@@ -4942,7 +5028,9 @@ export function ChatView({
           runtimeMetadata: {
             source: "hybrid",
             taskClass: "document_ocr",
-            profileId: attachmentAssistContext?.runtimeMetadataHint?.profileId ?? undefined,
+            profileId:
+              attachmentAssistContext?.runtimeMetadataHint?.profileId ??
+              undefined,
           },
         })
         .catch(() => null);
@@ -4957,7 +5045,9 @@ export function ChatView({
           runtimeMetadata: saved?.runtimeMetadata ?? {
             source: "hybrid",
             taskClass: "document_ocr",
-            profileId: attachmentAssistContext?.runtimeMetadataHint?.profileId ?? undefined,
+            profileId:
+              attachmentAssistContext?.runtimeMetadataHint?.profileId ??
+              undefined,
           },
           createdAt: new Date(),
         },
@@ -5054,9 +5144,7 @@ export function ChatView({
           catalog: localAiCatalogQuery.data?.catalog ?? [],
           capability: localAiCapability,
           scope: localAiDeviceScope,
-          recentMessages: buildRecentLocalReplyContext(
-            localReplyUserText
-          ),
+          recentMessages: buildRecentLocalReplyContext(localReplyUserText),
           userText: localReplyUserText,
           onPartialText: partialText => {
             setStreamingContent(
@@ -5193,7 +5281,7 @@ export function ChatView({
         text,
         {
           runtimeMetadataHint: attachmentAssistContext?.runtimeMetadataHint,
-        },
+        }
       );
 
       if (generatedContent) {
@@ -5232,13 +5320,13 @@ export function ChatView({
         // Show prompt preview for user confirmation instead of auto-executing.
         // The user can edit the prompt, then confirm to trigger media generation.
         const requestedAspectRatio =
-          normalizeChatImageAspectRatio(mediaParams.aspectRatio)
-          ?? inferImageAspectRatioFromText(`${generatedContent}\n${mediaPrompt}`);
+          normalizeChatImageAspectRatio(mediaParams.aspectRatio) ??
+          inferImageAspectRatioFromText(`${generatedContent}\n${mediaPrompt}`);
         const requestedMediaModel =
-          findMentionedMediaModelId(text, filteredMediaModels)
-          ?? (typeof mediaParams.model === "string" ? mediaParams.model : null)
-          ?? selectedMediaModel
-          ?? "";
+          findMentionedMediaModelId(text, filteredMediaModels) ??
+          (typeof mediaParams.model === "string" ? mediaParams.model : null) ??
+          selectedMediaModel ??
+          "";
         setPendingMediaPrompt({
           prompt: mediaPrompt,
           skillId: currentSkillId,
@@ -5246,7 +5334,9 @@ export function ChatView({
           skillCategory: resolvedSkill?.type || "",
           mediaParams: {
             ...mediaParams,
-            ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+            ...(requestedAspectRatio
+              ? { aspectRatio: requestedAspectRatio }
+              : {}),
             modelIntentText: text,
             ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
             ...(referenceImageUrl
@@ -5270,7 +5360,7 @@ export function ChatView({
         text,
         {
           runtimeMetadataHint: attachmentAssistContext?.runtimeMetadataHint,
-        },
+        }
       );
 
       // Handle skill chaining:
@@ -5328,13 +5418,20 @@ export function ChatView({
         await new Promise(r => setTimeout(r, 800));
 
         // Now trigger the chained skill (e.g., image-creator)
-        const requestedMediaModel = findMentionedMediaModelId(text, filteredMediaModels);
+        const requestedMediaModel = findMentionedMediaModelId(
+          text,
+          filteredMediaModels
+        );
         const requestedAspectRatio =
-          normalizeChatImageAspectRatio(chainedParams.aspectRatio)
-          ?? inferImageAspectRatioFromText(`${generatedContent}\n${chainedPrompt}`);
+          normalizeChatImageAspectRatio(chainedParams.aspectRatio) ??
+          inferImageAspectRatioFromText(
+            `${generatedContent}\n${chainedPrompt}`
+          );
         const executionParams = {
           ...chainedParams,
-          ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+          ...(requestedAspectRatio
+            ? { aspectRatio: requestedAspectRatio }
+            : {}),
           modelIntentText: text,
           ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
         };
@@ -5355,7 +5452,9 @@ export function ChatView({
             prompt: chainedPrompt,
             dynamicParams: executionParams,
             mutationInput: {
-              ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+              ...(requestedAspectRatio
+                ? { aspectRatio: requestedAspectRatio }
+                : {}),
               ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
               ...(referenceImageUrl
                 ? { referenceImageUrls: [referenceImageUrl] }
@@ -5470,13 +5569,35 @@ export function ChatView({
     setPendingMediaPrompt(null);
 
     try {
+      const referenceImageUrls = Array.isArray(params.referenceImageUrls)
+        ? params.referenceImageUrls
+            .filter(
+              (url): url is string => typeof url === "string" && url.length > 0
+            )
+            .slice(0, 5)
+        : collectImageAttachmentUrls(
+            Array.isArray(params.reference_images)
+              ? (params.reference_images as unknown[]).map(url => ({
+                  url: String(url),
+                }))
+              : []
+          );
+      const dynamicParams = mergeReferenceImagesIntoParams(
+        params,
+        referenceImageUrls
+      );
       const result = await preferredSkillExecution.execute({
         skillId,
         prompt: editedPrompt,
-        dynamicParams: params,
+        dynamicParams,
         mutationInput:
           typeof convId === "number" && convId > 0
-            ? { conversationId: convId }
+            ? {
+                conversationId: convId,
+                ...(referenceImageUrls.length > 0
+                  ? { referenceImageUrls }
+                  : {}),
+              }
             : undefined,
       });
 
@@ -5590,7 +5711,7 @@ export function ChatView({
     if (shouldBlockPendingCloudKeepInChat(sessionLocalOnlyEnabled)) {
       setPendingHybridOrchestration(null);
       toast.info(
-        "This chat is pinned to Local AI. Switch it back to account default or cloud/API before using a hybrid plan in chat.",
+        "This chat is pinned to Local AI. Switch it back to account default or cloud/API before using a hybrid plan in chat."
       );
       return;
     }
@@ -5675,8 +5796,8 @@ export function ChatView({
 
   if (!conversationId) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
+      <div className="flex h-full items-center justify-center bg-[var(--color-background-body)] p-4">
+        <div className="max-w-sm rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] p-5 text-center shadow-[var(--shadow-low)]">
           <h3 className="text-lg font-medium">No conversation selected</h3>
           <p className="text-sm text-muted-foreground">
             Select a conversation from the sidebar or start a new chat
@@ -5687,22 +5808,26 @@ export function ChatView({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full max-w-full flex-col overflow-hidden bg-[var(--color-background-surface)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-3 py-1.5 gap-2 shrink-0">
-        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+      <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 py-2 sm:flex-nowrap sm:px-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-hidden sm:flex-nowrap">
           <h2 className="font-semibold truncate text-sm shrink min-w-0">
             {conversation?.title || "Chat"}
           </h2>
           <ConversationScopeBadge
             projectId={conversationProjectId}
-            className={isPersonalConversation ? "bg-amber-500/10 text-amber-700" : undefined}
+            className={
+              isPersonalConversation
+                ? "bg-amber-500/10 text-amber-700"
+                : undefined
+            }
           />
           {/* Model Selector */}
           <Button
             variant="outline"
             size="sm"
-            className="h-8 max-w-[220px] sm:max-w-[340px] justify-start gap-1.5 text-xs font-normal shrink-0"
+            className="h-8 max-w-[min(17rem,calc(100vw-7rem))] justify-start gap-1.5 text-xs font-normal shrink-0 sm:max-w-[340px]"
             onClick={() => setModelDialogOpen(true)}
             disabled={
               isStreaming ||
@@ -5759,7 +5884,8 @@ export function ChatView({
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Choose a model</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Search by model, provider, or price. Auto keeps routing flexible.
+                    Search by model, provider, or price. Auto keeps routing
+                    flexible.
                   </p>
                 </div>
                 {selectedModelDisplay.providerLabel ? (
@@ -5863,7 +5989,7 @@ export function ChatView({
                       className="w-full justify-between"
                       onClick={() => {
                         void handleSessionRuntimeModeSelection(
-                          "account_default",
+                          "account_default"
                         );
                       }}
                       disabled={sessionRuntimeControlDisabled}
@@ -5889,7 +6015,9 @@ export function ChatView({
                         sessionRuntimeControlDisabled ||
                         !!sessionLocalOnlySelectionDisabledReason
                       }
-                      title={sessionLocalOnlySelectionDisabledReason ?? undefined}
+                      title={
+                        sessionLocalOnlySelectionDisabledReason ?? undefined
+                      }
                     >
                       <span>Use Local AI for this chat</span>
                       {explicitSessionRuntimeMode === "local_only" ? (
@@ -5946,7 +6074,7 @@ export function ChatView({
             />
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5">
           {/* Session credits (total used in this conversation) */}
           {conversation?.totalCreditsUsed &&
             Number(conversation.totalCreditsUsed) > 0 && (
@@ -5963,7 +6091,7 @@ export function ChatView({
             {credits?.credits || 0}
           </Badge>
           {isStreaming && (
-            <Badge variant="secondary" className="gap-1">
+            <Badge variant="secondary" className="hidden gap-1 sm:flex">
               <Loader2 className="h-3 w-3 animate-spin" />
               Streaming
             </Badge>
@@ -5972,7 +6100,7 @@ export function ChatView({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto relative">
+      <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--color-background-body)]">
         {/* Floating scroll buttons */}
         {messages.length > 3 && (
           <div className="sticky top-2 right-2 z-10 flex flex-col gap-1 float-right mr-2">
@@ -5996,20 +6124,20 @@ export function ChatView({
             </Button>
           </div>
         )}
-        <div className="flex flex-col gap-4 p-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-3 sm:p-4 lg:p-5">
           <div ref={topRef} />
           {loadingMessages ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : messages.length === 0 && !streamingContent ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-[var(--radius-page)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-10 text-center shadow-[var(--shadow-low)] sm:py-16">
               <h3 className="text-lg font-medium">Start a conversation</h3>
               <p className="text-sm text-muted-foreground">
                 Type a message below to begin
               </p>
               {showBrowserSessionEntry ? (
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <div className="mt-4 flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                   <Button
                     type="button"
                     variant="outline"
@@ -6032,16 +6160,18 @@ export function ChatView({
                   />
                 </div>
               ) : null}
-              {!workStartDismissed ? (
+              {shouldShowWorkStartEntry && !workStartDismissed ? (
                 <div
                   className={cn(
-                    "mt-4 w-full max-w-xl rounded-2xl border border-sky-200 bg-sky-50/70 p-4 text-left shadow-sm select-none",
-                    isWorkStartDragging ? "cursor-grabbing" : "cursor-grab",
+                    "mt-4 w-full max-w-xl rounded-[var(--radius-container)] border border-[var(--color-border-blue)] bg-[var(--color-background-blue)] p-4 text-left shadow-sm select-none",
+                    isWorkStartDragging ? "cursor-grabbing" : "cursor-grab"
                   )}
                   style={
                     {
                       transform: `translate(${workStartPosition.x}px, ${workStartPosition.y}px)`,
-                      transition: isWorkStartDragging ? "none" : "transform 180ms ease",
+                      transition: isWorkStartDragging
+                        ? "none"
+                        : "transform 180ms ease",
                       zIndex: isWorkStartDragging ? 30 : 1,
                       position: "relative",
                     } as CSSProperties
@@ -6092,7 +6222,8 @@ export function ChatView({
                       <p className="mt-2 text-sm text-slate-600">
                         {t("workStart.userBody")}
                       </p>
-                      {user?.role === "admin" || user?.role === "domain_admin" ? (
+                      {user?.role === "admin" ||
+                      user?.role === "domain_admin" ? (
                         <p className="mt-2 text-sm text-slate-600">
                           {t("workStart.adminBody")}
                         </p>
@@ -6107,9 +6238,7 @@ export function ChatView({
                             navigate(
                               buildWorkRequestLaunchPath({
                                 sourceType:
-                                  conversationId !== null
-                                    ? "chat"
-                                    : null,
+                                  conversationId !== null ? "chat" : null,
                                 sourceRef:
                                   conversationId !== null
                                     ? String(conversationId)
@@ -6118,7 +6247,7 @@ export function ChatView({
                                   conversationId !== null
                                     ? [String(conversationId)]
                                     : [],
-                              }),
+                              })
                             )
                           }
                         >
@@ -6135,7 +6264,8 @@ export function ChatView({
                           <ClipboardList className="h-4 w-4" />
                           {t("workStart.openRequests")}
                         </Button>
-                        {(user?.role === "admin" || user?.role === "domain_admin") ? (
+                        {user?.role === "admin" ||
+                        user?.role === "domain_admin" ? (
                           <Button
                             type="button"
                             variant="outline"
@@ -6158,22 +6288,26 @@ export function ChatView({
                         </Button>
                       </div>
                       <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-600">
-                        <p className="font-medium text-slate-800">Permalink tips</p>
+                        <p className="font-medium text-slate-800">
+                          Permalink tips
+                        </p>
                         <p className="mt-1">
-                          Use <code>caseId</code> to reopen the same case later. Use{" "}
-                          <code>timelineSource</code> to jump to a specific evidence slice such as{" "}
-                          <code>work_os</code>, <code>role_routine</code>, <code>team_run</code>, or{" "}
+                          Use <code>caseId</code> to reopen the same case later.
+                          Use <code>timelineSource</code> to jump to a specific
+                          evidence slice such as <code>work_os</code>,{" "}
+                          <code>role_routine</code>, <code>team_run</code>, or{" "}
                           <code>workpack_record</code>.
                         </p>
                         <p className="mt-1">
-                          If you need the guide, the button above opens `/help/work-os`.
+                          If you need the guide, the button above opens
+                          `/help/work-os`.
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="mt-4 flex w-full max-w-xl items-center justify-between rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-3 text-left shadow-sm">
+              ) : shouldShowWorkStartEntry ? (
+                <div className="mt-4 flex w-full max-w-xl flex-col gap-3 rounded-[var(--radius-container)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-3 text-left shadow-sm sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="font-medium text-slate-900">
                       {t("workStart.hiddenTitle")}
@@ -6192,7 +6326,7 @@ export function ChatView({
                     {t("workStart.show")}
                   </Button>
                 </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <>
@@ -6216,7 +6350,7 @@ export function ChatView({
                 const messageBubble = (
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-lg px-4 py-3",
+                      "max-w-full sm:max-w-[85%] rounded-lg px-4 py-3",
                       m.role === "user"
                         ? "ml-auto bg-primary text-primary-foreground"
                         : m.skillUsed === "brainstorm" &&
@@ -6337,8 +6471,10 @@ export function ChatView({
                           />
                         ))}
                         {(m.artifacts ?? [])
-                          .filter((artifact) => Boolean(artifact?.metadata?.finance))
-                          .map((artifact) => (
+                          .filter(artifact =>
+                            Boolean(artifact?.metadata?.finance)
+                          )
+                          .map(artifact => (
                             <FinanceActivityCard
                               key={`finance-${artifact.id}`}
                               title={artifact.title}
@@ -6444,7 +6580,7 @@ export function ChatView({
                         </ContextMenuContent>
                       </ContextMenu>
                       {translatedMessages[m.id] && (
-                        <div className="mt-1 mr-auto max-w-[85%] bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                        <div className="mt-1 mr-auto max-w-full sm:max-w-[85%] bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
                               <Languages className="h-3 w-3" /> Translation
@@ -6476,7 +6612,7 @@ export function ChatView({
 
               {/* Schedule Confirm Card */}
               {pendingSchedule && (
-                <div className="mr-auto max-w-[85%]">
+                <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <ScheduleConfirmCard
                     parsed={pendingSchedule}
                     conversationId={conversationId || undefined}
@@ -6502,7 +6638,7 @@ export function ChatView({
 
               {/* Media prompt preview — confirm before generating */}
               {pendingMediaPrompt && (
-                <div className="mr-auto max-w-[85%]">
+                <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <MediaPromptPreview
                     prompt={pendingMediaPrompt.prompt}
                     skillName={pendingMediaPrompt.skillName}
@@ -6517,7 +6653,7 @@ export function ChatView({
 
               {/* Agency escalation — complex multi-step request */}
               {pendingAgencyEscalation && (
-                <div className="mr-auto max-w-[85%]">
+                <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <AgencyEscalationCard
                     message={pendingAgencyEscalation.message}
                     reason={pendingAgencyEscalation.reason}
@@ -6530,7 +6666,7 @@ export function ChatView({
               )}
 
               {pendingHybridOrchestration && (
-                <div className="mr-auto max-w-[85%]">
+                <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <HybridOrchestrationCard
                     message={pendingHybridOrchestration.message}
                     reason={pendingHybridOrchestration.reason}
@@ -6541,7 +6677,7 @@ export function ChatView({
               )}
 
               {browserSessionSuggestion ? (
-                <div className="mr-auto max-w-[85%]">
+                <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <BrowserSessionLaunchSuggestionCard
                     suggestion={browserSessionSuggestion}
                     onConfirm={suggestion =>
@@ -6556,7 +6692,7 @@ export function ChatView({
 
               {/* Streaming message */}
               {streamingContent && (
-                <div className="mr-auto max-w-[85%] rounded-lg px-4 py-3 bg-muted">
+                <div className="mr-auto max-w-full sm:max-w-[85%] rounded-lg px-4 py-3 bg-muted">
                   <SafeMarkdown
                     onImageClick={(images, index) =>
                       openImageLightbox(images, index)
@@ -6741,12 +6877,12 @@ export function ChatView({
       </div>
 
       {/* Input Area */}
-      <div className="shrink-0 border-t px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t border-[var(--color-border)] bg-[var(--color-background-surface)] px-3 py-3 shadow-[var(--shadow-low)] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
         <VoiceAgentPanel conversationId={conversation?.id ?? null} />
 
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -6781,7 +6917,7 @@ export function ChatView({
         {detectedSkill && (
           <div
             className={cn(
-              "mb-3 flex items-center gap-2 rounded-lg border px-3 py-2",
+              "mb-3 flex flex-wrap items-center gap-2 rounded-[var(--radius-container)] border px-3 py-2",
               detectedSkill.executionMode === "media-generate"
                 ? "border-purple-300 bg-purple-50 dark:bg-purple-900/20"
                 : "border-primary/30 bg-primary/5"
@@ -6908,38 +7044,16 @@ export function ChatView({
         )}
 
         {/* Attachment Previews */}
-        {selectedLibrarySources.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {selectedLibrarySources.map(item => (
-              <Badge
-                key={item.item_id}
-                variant="secondary"
-                className="gap-2 pr-1"
-              >
-                <Search className="h-3 w-3" />
-                {item.title}
-                <button
-                  className="rounded-full p-0.5 hover:bg-black/10"
-                  onClick={() => toggleLibrarySource(item)}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* Attachment Previews */}
         {attachments.length > 0 && (
           <div className="mb-3 space-y-2">
             {attachmentOcrBadges.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {attachmentOcrBadges.map((badge) => (
+                {attachmentOcrBadges.map(badge => (
                   <div
                     key={badge.key}
                     className={cn(
                       "rounded-2xl border px-3 py-2 text-xs shadow-sm",
-                      badge.className,
+                      badge.className
                     )}
                   >
                     <div className="flex items-center gap-2 font-medium">
@@ -7017,7 +7131,7 @@ export function ChatView({
           </div>
         ) : null}
 
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
           <TooltipProvider>
             <DropdownMenu>
               <Tooltip>
@@ -7028,10 +7142,10 @@ export function ChatView({
                       size="icon"
                       disabled={uploadMutation.isPending || isStreaming}
                       className={cn(
-                        "shrink-0",
+                        "h-11 w-11 shrink-0",
                         ocrOnlyMode
                           ? "bg-amber-500 text-white hover:bg-amber-600"
-                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
                       )}
                     >
                       <ImagePlus className="h-5 w-5" />
@@ -7070,7 +7184,7 @@ export function ChatView({
                       size="icon"
                       onClick={() => setLibraryPickerOpen(true)}
                       disabled={isStreaming}
-                      className="shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      className="h-11 w-11 shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
                     >
                       <Search className="h-4 w-4" />
                     </Button>
@@ -7196,7 +7310,7 @@ export function ChatView({
                     )
                   }
                   disabled={isStreaming}
-                  className="shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 hidden sm:inline-flex"
+                  className="hidden h-11 w-11 shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 sm:inline-flex"
                 >
                   <Palette className="h-5 w-5" />
                 </Button>
@@ -7218,7 +7332,7 @@ export function ChatView({
                     )
                   }
                   disabled={isStreaming}
-                  className="shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hidden sm:inline-flex"
+                  className="hidden h-11 w-11 shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex"
                 >
                   <Video className="h-5 w-5" />
                 </Button>
@@ -7236,7 +7350,7 @@ export function ChatView({
                   size="icon"
                   onClick={handleAutoPrompt}
                   disabled={isStreaming || isEnhancingPrompt || !input.trim()}
-                  className="shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 hidden sm:inline-flex"
+                  className="hidden h-11 w-11 shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 sm:inline-flex"
                 >
                   {isEnhancingPrompt ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -7265,7 +7379,7 @@ export function ChatView({
             className="hidden"
             onChange={e => onFiles(e.target.files)}
           />
-          <div className="relative flex-1">
+          <div className="relative min-w-[min(100%,14rem)] flex-[1_1_14rem]">
             <SlashCommandMenu
               filter={slashFilter}
               visible={showSlashMenu}
@@ -7297,7 +7411,7 @@ export function ChatView({
                 }
               }}
               placeholder="Type a message or / for skills..."
-              className="!min-h-[36px] max-h-[240px] resize-none !py-2 text-sm overflow-y-auto"
+              className="!min-h-11 max-h-[240px] resize-none !py-2 text-sm overflow-y-auto"
               onKeyDown={e => {
                 if (showSlashMenu) return; // Let SlashCommandMenu handle keys
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -7315,6 +7429,7 @@ export function ChatView({
             onPointerUp={handleMicPointerUp}
             onPointerLeave={isRecording ? handleMicPointerUp : undefined}
             disabled={isTranscribing || isStreaming || !!fallbackRequest}
+            className="h-11 w-11 shrink-0"
             title={
               chatMicProvider.effectiveMode === "legacy_stt"
                 ? chatMicProvider.fallbackApplied
@@ -7358,6 +7473,7 @@ export function ChatView({
                 });
               }}
               disabled={isTranscribing || isStreaming || !!fallbackRequest}
+              className="h-11 w-11 shrink-0"
               title={
                 handsFreeListening
                   ? "Stop hands-free wake phrase listening"
@@ -7389,6 +7505,7 @@ export function ChatView({
                 ? "Cancel local reply"
                 : undefined
             }
+            className="h-11 shrink-0 px-4"
           >
             {isStreaming && activeLocalReplyKind ? (
               <X className="h-4 w-4" />

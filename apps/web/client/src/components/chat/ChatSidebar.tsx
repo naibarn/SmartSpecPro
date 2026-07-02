@@ -59,7 +59,9 @@ export function ChatSidebar({
   const { t } = useScopedTranslation("chat");
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<number | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<
+    number | null
+  >(null);
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
@@ -81,10 +83,10 @@ export function ChatSidebar({
     search: search || undefined,
   });
 
-  const { data: trashData, isLoading: trashLoading } = trpc.chat.listTrashedConversations.useQuery(
-    undefined,
-    { enabled: showTrash }
-  );
+  const { data: trashData, isLoading: trashLoading } =
+    trpc.chat.listTrashedConversations.useQuery(undefined, {
+      enabled: showTrash,
+    });
 
   const deleteMutation = trpc.chat.deleteConversation.useMutation({
     onSuccess: () => {
@@ -110,17 +112,19 @@ export function ChatSidebar({
     },
   });
 
-  const deleteMultipleMutation = trpc.chat.deleteMultipleConversations.useMutation({
-    onSuccess: () => {
-      utils.chat.listConversations.invalidate();
-      utils.chat.listTrashedConversations.invalidate();
-      setBulkDeleteDialogOpen(false);
-      const hadSelected = selectedConversationId && selectedIds.has(selectedConversationId);
-      setSelectedIds(new Set());
-      setSelectMode(false);
-      if (hadSelected) onNewChat();
-    },
-  });
+  const deleteMultipleMutation =
+    trpc.chat.deleteMultipleConversations.useMutation({
+      onSuccess: () => {
+        utils.chat.listConversations.invalidate();
+        utils.chat.listTrashedConversations.invalidate();
+        setBulkDeleteDialogOpen(false);
+        const hadSelected =
+          selectedConversationId && selectedIds.has(selectedConversationId);
+        setSelectedIds(new Set());
+        setSelectMode(false);
+        if (hadSelected) onNewChat();
+      },
+    });
 
   const restoreMutation = trpc.chat.restoreConversation.useMutation({
     onSuccess: () => {
@@ -129,11 +133,12 @@ export function ChatSidebar({
     },
   });
 
-  const permanentDeleteMutation = trpc.chat.permanentlyDeleteConversation.useMutation({
-    onSuccess: () => {
-      utils.chat.listTrashedConversations.invalidate();
-    },
-  });
+  const permanentDeleteMutation =
+    trpc.chat.permanentlyDeleteConversation.useMutation({
+      onSuccess: () => {
+        utils.chat.listTrashedConversations.invalidate();
+      },
+    });
 
   const emptyTrashMutation = trpc.chat.emptyTrash.useMutation({
     onSuccess: () => {
@@ -176,7 +181,7 @@ export function ChatSidebar({
   };
 
   const toggleSelect = (id: number) => {
-    setSelectedIds((prev) => {
+    setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -192,7 +197,9 @@ export function ChatSidebar({
   const formatDate = (date: Date) => {
     const now = new Date();
     const d = new Date(date);
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(
+      (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
@@ -203,32 +210,40 @@ export function ChatSidebar({
   const formatDaysLeft = (trashedAt: Date | string) => {
     const trashed = new Date(trashedAt);
     const deleteDate = new Date(trashed.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const daysLeft = Math.ceil((deleteDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.ceil(
+      (deleteDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
     return daysLeft > 0 ? `${daysLeft}d left` : "Expiring";
   };
 
   const conversations = data?.conversations || [];
   const trashedConversations = trashData?.conversations || [];
-  const emptyCount = conversations.filter((c) => c.messageCount === 0).length;
+  const emptyCount = conversations.filter(c => c.messageCount === 0).length;
 
   // Group conversations by date
-  const groupedConversations = conversations.reduce((groups, conv) => {
-    const dateKey = formatDate(conv.updatedAt);
-    if (!groups[dateKey]) groups[dateKey] = [];
-    groups[dateKey].push(conv);
-    return groups;
-  }, {} as Record<string, typeof conversations>);
+  const groupedConversations = conversations.reduce(
+    (groups, conv) => {
+      const dateKey = formatDate(conv.updatedAt);
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(conv);
+      return groups;
+    },
+    {} as Record<string, typeof conversations>
+  );
 
   // ==================== TRASH VIEW ====================
   if (showTrash) {
     return (
-      <div className="flex h-full flex-col border-r bg-background">
-        <div className="flex items-center justify-between border-b p-3">
+      <div className="flex h-full min-h-0 flex-col bg-[var(--color-background-surface)]">
+        <div className="flex min-h-14 items-center justify-between border-b border-[var(--color-border)] px-3 py-2">
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => { setShowTrash(false); exitSelectMode(); }}
+              onClick={() => {
+                setShowTrash(false);
+                exitSelectMode();
+              }}
               className="h-8 w-8 p-0"
             >
               <X className="h-4 w-4" />
@@ -247,7 +262,7 @@ export function ChatSidebar({
           )}
         </div>
 
-        <ScrollArea className="flex-1 min-h-0">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="p-2">
             {trashLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -262,10 +277,10 @@ export function ChatSidebar({
                 <p className="px-2 text-xs text-muted-foreground mb-3">
                   Items are permanently deleted after 30 days.
                 </p>
-                {trashedConversations.map((conv) => (
+                {trashedConversations.map(conv => (
                   <div
                     key={conv.id}
-                    className="group flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-muted"
+                    className="group flex min-h-11 items-center gap-2 rounded-[var(--radius-element)] px-3 py-2 hover:bg-[var(--color-overlay-hover)]"
                   >
                     <div className="flex-1 min-w-0">
                       <span className="truncate text-sm font-medium text-muted-foreground block">
@@ -293,7 +308,9 @@ export function ChatSidebar({
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                        onClick={() => permanentDeleteMutation.mutate({ id: conv.id })}
+                        onClick={() =>
+                          permanentDeleteMutation.mutate({ id: conv.id })
+                        }
                         title="Delete permanently"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -306,12 +323,17 @@ export function ChatSidebar({
           </div>
         </ScrollArea>
 
-        <AlertDialog open={emptyTrashDialogOpen} onOpenChange={setEmptyTrashDialogOpen}>
+        <AlertDialog
+          open={emptyTrashDialogOpen}
+          onOpenChange={setEmptyTrashDialogOpen}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Empty trash?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete all {trashedConversations.length} conversation{trashedConversations.length !== 1 ? "s" : ""} in the trash. This cannot be undone.
+                This will permanently delete all {trashedConversations.length}{" "}
+                conversation{trashedConversations.length !== 1 ? "s" : ""} in
+                the trash. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -321,7 +343,9 @@ export function ChatSidebar({
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={emptyTrashMutation.isPending}
               >
-                {emptyTrashMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {emptyTrashMutation.isPending && (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                )}
                 Empty Trash
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -333,23 +357,28 @@ export function ChatSidebar({
 
   // ==================== NORMAL VIEW ====================
   return (
-    <div className="flex h-full flex-col border-r bg-background">
+    <div className="flex h-full min-h-0 flex-col bg-[var(--color-background-surface)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b p-3">
+      <div className="flex items-center justify-between border-b border-[var(--color-border)] p-3">
         {selectMode ? (
           <>
-            <span className="text-sm font-medium">{t("sidebar.selected", { count: selectedIds.size })}</span>
+            <span className="text-sm font-medium">
+              {t("sidebar.selected", { count: selectedIds.size })}
+            </span>
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  if (selectedIds.size === conversations.length) setSelectedIds(new Set());
-                  else setSelectedIds(new Set(conversations.map((c) => c.id)));
+                  if (selectedIds.size === conversations.length)
+                    setSelectedIds(new Set());
+                  else setSelectedIds(new Set(conversations.map(c => c.id)));
                 }}
                 className="text-xs h-8"
               >
-                {selectedIds.size === conversations.length ? t("sidebar.selectNone") : t("sidebar.selectAll")}
+                {selectedIds.size === conversations.length
+                  ? t("sidebar.selectNone")
+                  : t("sidebar.selectAll")}
               </Button>
               <Button
                 size="sm"
@@ -361,7 +390,12 @@ export function ChatSidebar({
                 <Trash2 className="h-3 w-3" />
                 Delete
               </Button>
-              <Button size="sm" variant="ghost" onClick={exitSelectMode} className="h-8 w-8 p-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={exitSelectMode}
+                className="h-8 w-8 p-0"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -383,11 +417,11 @@ export function ChatSidebar({
                   <span className="text-xs">{t("sidebar.select")}</span>
                 </Button>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              <div className="rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-muted)] p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--color-text-secondary)]">
                   {t("sidebar.startHere")}
                 </p>
-                <p className="mt-1 text-xs leading-5 text-slate-600">
+                <p className="mt-1 text-xs leading-5 text-[var(--color-text-secondary)]">
                   {t("sidebar.startHint")}
                 </p>
                 <div className="mt-3 grid gap-2">
@@ -421,20 +455,20 @@ export function ChatSidebar({
       </div>
 
       {/* Search */}
-      <div className="p-3">
+      <div className="border-b border-[var(--color-border)] p-3">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={t("sidebar.search")}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             className="pl-8"
           />
         </div>
       </div>
 
       {/* Conversation List */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -447,18 +481,20 @@ export function ChatSidebar({
           ) : (
             Object.entries(groupedConversations).map(([dateKey, convs]) => (
               <div key={dateKey} className="mb-4">
-                <div className="mb-2 px-2 text-xs font-medium text-muted-foreground">{dateKey}</div>
+                <div className="mb-2 px-2 text-xs font-medium text-muted-foreground">
+                  {dateKey}
+                </div>
                 <div className="space-y-1">
-                  {convs.map((conv) => (
+                  {convs.map(conv => (
                     <div
                       key={conv.id}
                       className={cn(
-                        "group flex items-center gap-2 rounded-lg px-3 py-2 transition-colors cursor-pointer",
+                        "group flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-element)] px-3 py-2 transition-colors",
                         selectMode && selectedIds.has(conv.id)
                           ? "bg-destructive/10"
                           : selectedConversationId === conv.id
-                            ? "bg-primary/10 text-primary"
-                            : "hover:bg-muted"
+                            ? "bg-[var(--color-accent-muted)] text-[var(--color-text-accent)]"
+                            : "hover:bg-[var(--color-overlay-hover)]"
                       )}
                       onClick={() => {
                         if (selectMode) toggleSelect(conv.id);
@@ -469,30 +505,32 @@ export function ChatSidebar({
                         <Checkbox
                           checked={selectedIds.has(conv.id)}
                           onCheckedChange={() => toggleSelect(conv.id)}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
                           className="shrink-0"
                         />
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          {conv.isPinned && <Pin className="h-3 w-3 text-muted-foreground shrink-0" />}
+                          {conv.isPinned && (
+                            <Pin className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
                           {editingId === conv.id ? (
                             <Input
                               value={editingTitle}
-                              onChange={(e) => setEditingTitle(e.target.value)}
-                              onKeyDown={(e) => {
+                              onChange={e => setEditingTitle(e.target.value)}
+                              onKeyDown={e => {
                                 if (e.key === "Enter") submitRename();
                                 if (e.key === "Escape") setEditingId(null);
                               }}
                               onBlur={submitRename}
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={e => e.stopPropagation()}
                               className="h-6 text-sm py-0 px-1"
                               autoFocus
                             />
                           ) : (
                             <span
                               className="truncate text-sm font-medium"
-                              onDoubleClick={(e) => {
+                              onDoubleClick={e => {
                                 if (selectMode) return;
                                 e.stopPropagation();
                                 startRename(conv.id, conv.title);
@@ -513,12 +551,16 @@ export function ChatSidebar({
                               />
                             </>
                           )}
-                          {conv.totalCreditsUsed && Number(conv.totalCreditsUsed) > 0 && (
-                            <>
-                              <span>·</span>
-                              <span>{Number(conv.totalCreditsUsed).toFixed(2)} credits</span>
-                            </>
-                          )}
+                          {conv.totalCreditsUsed &&
+                            Number(conv.totalCreditsUsed) > 0 && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  {Number(conv.totalCreditsUsed).toFixed(2)}{" "}
+                                  credits
+                                </span>
+                              </>
+                            )}
                         </div>
                       </div>
 
@@ -528,22 +570,28 @@ export function ChatSidebar({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
-                              onClick={(e) => e.stopPropagation()}
+                              className="h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                              onClick={e => e.stopPropagation()}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => startRename(conv.id, conv.title)}>
+                            <DropdownMenuItem
+                              onClick={() => startRename(conv.id, conv.title)}
+                            >
                               <Edit2 className="mr-2 h-4 w-4" />
                               Rename
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePin(conv.id, conv.isPinned)}>
+                            <DropdownMenuItem
+                              onClick={() => handlePin(conv.id, conv.isPinned)}
+                            >
                               <Pin className="mr-2 h-4 w-4" />
                               {conv.isPinned ? "Unpin" : "Pin"}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleArchive(conv.id)}>
+                            <DropdownMenuItem
+                              onClick={() => handleArchive(conv.id)}
+                            >
                               <Archive className="mr-2 h-4 w-4" />
                               Archive
                             </DropdownMenuItem>
@@ -567,10 +615,12 @@ export function ChatSidebar({
       </div>
 
       {/* Team Rooms Section */}
-      {onOpenTeamRoom && <TeamRoomsSidebarSection onOpenTeamRoom={onOpenTeamRoom} />}
+      {onOpenTeamRoom && (
+        <TeamRoomsSidebarSection onOpenTeamRoom={onOpenTeamRoom} />
+      )}
 
       {/* Footer */}
-      <div className="border-t p-2 space-y-1">
+      <div className="space-y-1 border-t border-[var(--color-border)] p-2">
         {!selectMode && emptyCount > 0 && (
           <Button
             variant="ghost"
@@ -601,7 +651,8 @@ export function ChatSidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Move to trash?</AlertDialogTitle>
             <AlertDialogDescription>
-              This conversation will be moved to trash. You can restore it within 30 days.
+              This conversation will be moved to trash. You can restore it
+              within 30 days.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -622,7 +673,8 @@ export function ChatSidebar({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete empty chats?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will move {emptyCount} conversation{emptyCount !== 1 ? "s" : ""} with 0 messages to trash.
+              This will move {emptyCount} conversation
+              {emptyCount !== 1 ? "s" : ""} with 0 messages to trash.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -632,7 +684,9 @@ export function ChatSidebar({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteEmptyMutation.isPending}
             >
-              {deleteEmptyMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {deleteEmptyMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
               Move to Trash
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -640,22 +694,33 @@ export function ChatSidebar({
       </AlertDialog>
 
       {/* Bulk Move to Trash Dialog */}
-      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+      <AlertDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move {selectedIds.size} chat{selectedIds.size !== 1 ? "s" : ""} to trash?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Move {selectedIds.size} chat{selectedIds.size !== 1 ? "s" : ""} to
+              trash?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Selected conversations will be moved to trash. You can restore them within 30 days.
+              Selected conversations will be moved to trash. You can restore
+              them within 30 days.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteMultipleMutation.mutate({ ids: Array.from(selectedIds) })}
+              onClick={() =>
+                deleteMultipleMutation.mutate({ ids: Array.from(selectedIds) })
+              }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteMultipleMutation.isPending}
             >
-              {deleteMultipleMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {deleteMultipleMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              )}
               Move to Trash
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -666,21 +731,32 @@ export function ChatSidebar({
 }
 
 /** Collapsible sidebar section showing recent team rooms */
-function TeamRoomsSidebarSection({ onOpenTeamRoom }: { onOpenTeamRoom: (roomId: string) => void }) {
+function TeamRoomsSidebarSection({
+  onOpenTeamRoom,
+}: {
+  onOpenTeamRoom: (roomId: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const { data: teamsData } = trpc.team.list.useQuery(undefined, { enabled: expanded });
+  const { data: teamsData } = trpc.team.list.useQuery(undefined, {
+    enabled: expanded,
+  });
 
   return (
-    <div className="border-t">
+    <div className="border-t border-[var(--color-border)]">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="flex min-h-11 w-full items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-[var(--color-overlay-hover)] hover:text-foreground"
       >
         <div className="flex items-center gap-2">
           <UsersRound className="h-4 w-4" />
           Team Rooms
         </div>
-        <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 transition-transform",
+            expanded && "rotate-180"
+          )}
+        />
       </button>
       {expanded && (
         <div className="px-2 pb-2">
@@ -694,7 +770,7 @@ function TeamRoomsSidebarSection({ onOpenTeamRoom }: { onOpenTeamRoom: (roomId: 
                 <button
                   key={team.id ?? team.teamId}
                   onClick={() => onOpenTeamRoom(team.id ?? team.teamId)}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent"
+                  className="flex min-h-10 w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent"
                 >
                   <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="truncate">{team.name}</span>
