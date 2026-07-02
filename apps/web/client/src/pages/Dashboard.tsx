@@ -926,6 +926,7 @@ export default function Dashboard() {
     skillMaintenanceActionableCount,
     skillMaintenanceSkillCount,
     reviewOverview,
+    t,
     user.credits,
   ]);
 
@@ -1073,6 +1074,7 @@ export default function Dashboard() {
     reviewOverview,
     adminSkillMaintenancePath,
     tenantFlags.desktopHostEnabled,
+    t,
     user.role,
     user.credits,
   ]);

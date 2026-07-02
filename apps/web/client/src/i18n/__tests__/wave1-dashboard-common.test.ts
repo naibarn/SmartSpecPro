@@ -17,6 +17,25 @@ function hasKey(obj: Record<string, string>, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
+function getMemoDependencyList(src: string, memoName: string): string {
+  const start = src.indexOf(`const ${memoName} = useMemo`);
+  expect(start, `Could not find memo "${memoName}"`).toBeGreaterThanOrEqual(0);
+
+  const returnIndex = src.indexOf("  }, [", start);
+  expect(
+    returnIndex,
+    `Could not find dependency list for memo "${memoName}"`
+  ).toBeGreaterThanOrEqual(0);
+
+  const end = src.indexOf("  ]);", returnIndex);
+  expect(
+    end,
+    `Could not find dependency list end for memo "${memoName}"`
+  ).toBeGreaterThanOrEqual(0);
+
+  return src.slice(returnIndex, end);
+}
+
 const REQUIRED_DASHBOARD_KEYS = [
   "welcome",
   "subtitle",
@@ -246,5 +265,15 @@ describe("Dashboard.tsx — uses scoped i18n", () => {
       "utf-8"
     );
     expect(src).toContain("dashboard:quickActions.mediaStudio");
+  });
+
+  it("Dashboard.tsx recomputes memoized translated dashboard copy when language changes", () => {
+    const src = readFileSync(
+      join(import.meta.dirname, "../../pages/Dashboard.tsx"),
+      "utf-8"
+    );
+
+    expect(getMemoDependencyList(src, "attentionNotices")).toContain("t,");
+    expect(getMemoDependencyList(src, "nextBestActions")).toContain("t,");
   });
 });

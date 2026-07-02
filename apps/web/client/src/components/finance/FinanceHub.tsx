@@ -860,6 +860,148 @@ export function FinanceHub({
   onMirrorFinanceActivity,
 }: FinanceHubProps) {
   const { t } = useScopedTranslation("dashboard");
+  const getLocalizedTransactionTypeLabel = (type: string): string => {
+    switch (type) {
+      case "income":
+        return t("finance.values.transactionType.income");
+      case "expense":
+        return t("finance.values.transactionType.expense");
+      case "transfer":
+        return t("finance.values.transactionType.transfer");
+      default:
+        return t("finance.values.transactionType.default");
+    }
+  };
+  const getLocalizedFinanceSourceLabel = (source: string): string => {
+    switch (source) {
+      case "ocr_document":
+        return t("finance.values.source.ocrDocument");
+      case "chat_text":
+        return t("finance.values.source.chatText");
+      case "recurring_rule":
+        return t("finance.values.source.recurringRule");
+      case "api":
+        return t("finance.values.source.api");
+      case "import":
+        return t("finance.values.source.import");
+      default:
+        return source;
+    }
+  };
+  const getLocalizedPaymentInstrumentLabel = (
+    kind: "bank_account" | "credit_card" | "cash" | "unknown",
+  ): string => {
+    switch (kind) {
+      case "bank_account":
+        return t("finance.values.paymentInstrument.bankAccount");
+      case "credit_card":
+        return t("finance.values.paymentInstrument.creditCard");
+      case "cash":
+        return t("finance.values.paymentInstrument.cash");
+      default:
+        return t("finance.values.paymentInstrument.unknown");
+    }
+  };
+  const getLocalizedPaymentDirectionLabel = (
+    direction: "outbound" | "inbound" | "both" | "unknown",
+  ): string => {
+    switch (direction) {
+      case "outbound":
+        return t("finance.values.paymentDirection.outbound");
+      case "inbound":
+        return t("finance.values.paymentDirection.inbound");
+      case "both":
+        return t("finance.values.paymentDirection.both");
+      default:
+        return t("finance.values.paymentDirection.unknown");
+    }
+  };
+  const getLocalizedFinanceCounterpartyLabel = (
+    type: "income" | "expense" | "transfer",
+    counterpartyName: string | null | undefined,
+    merchantName: string | null | undefined,
+  ): string => {
+    const name = (counterpartyName ?? merchantName ?? "").trim();
+    if (name) {
+      return name;
+    }
+
+    switch (type) {
+      case "income":
+        return t("finance.values.counterparty.unspecifiedPayer");
+      case "expense":
+        return t("finance.values.counterparty.unspecifiedPayee");
+      default:
+        return t("finance.values.counterparty.unspecifiedCounterparty");
+    }
+  };
+  const buildLocalizedReadableSlipSummary = (input: {
+    type: "income" | "expense" | "transfer";
+    amountLabel: string;
+    counterpartyName: string | null;
+    occurredAt: string | Date | null | undefined;
+    paymentSourceInstitutionName: string | null;
+    paymentDestinationInstitutionName: string | null;
+    paymentSourceLabel: string | null;
+    paymentDestinationLabel: string | null;
+    paymentSourceName: string | null;
+    paymentDestinationName: string | null;
+    paymentInstitutionName: string | null;
+    slipReference: string | null;
+    paymentFeeMinor: number | null;
+    currency: string;
+  }): string => {
+    const clean = (value: string | null | undefined) => (value ?? "").trim();
+    const feeLabel = input.paymentFeeMinor !== null
+      ? t("finance.confirmed.summary.fee", {
+          amount: formatMoneyMinor(input.paymentFeeMinor, input.currency),
+        })
+      : "";
+    const refLabel = clean(input.slipReference)
+      ? t("finance.confirmed.summary.reference", {
+          reference: clean(input.slipReference),
+        })
+      : "";
+    const occurredAt = formatDateTime(input.occurredAt);
+
+    if (input.type === "transfer") {
+      const source = clean(input.paymentSourceName)
+        || clean(input.paymentSourceLabel)
+        || clean(input.paymentSourceInstitutionName)
+        || t("finance.values.counterparty.unspecifiedPayer");
+      const destination = clean(input.paymentDestinationName)
+        || clean(input.paymentDestinationLabel)
+        || clean(input.paymentDestinationInstitutionName)
+        || t("finance.values.counterparty.unspecifiedPayee");
+      return t("finance.confirmed.summary.transfer", {
+        amount: input.amountLabel,
+        source,
+        destination,
+        fee: feeLabel,
+        reference: refLabel,
+        date: occurredAt,
+      });
+    }
+
+    const counterparty = clean(input.counterpartyName)
+      || clean(input.paymentInstitutionName)
+      || (input.type === "income"
+        ? t("finance.values.counterparty.unspecifiedPayer")
+        : t("finance.values.counterparty.unspecifiedPayee"));
+
+    return t(
+      input.type === "income"
+        ? "finance.confirmed.summary.income"
+        : "finance.confirmed.summary.expense",
+      {
+        amount: input.amountLabel,
+        counterparty,
+        fee: feeLabel,
+        reference: refLabel,
+        date: occurredAt,
+      },
+    );
+  };
   const utils = trpc.useUtils();
   const receiptInputRef = useRef<HTMLInputElement>(null);
   const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -2417,13 +2559,10 @@ export function FinanceHub({
     const destinationAccountLabel = transaction.paymentDestinationLabel ?? transaction.paymentDestinationName ?? transaction.paymentDestinationInstitutionName ?? "—";
 
     return {
-      summary: buildReadableSlipSummary({
-        humanReadableSummary: null,
+      summary: buildLocalizedReadableSlipSummary({
         type: transaction.type,
         amountLabel,
-        currency: transaction.currency,
         counterpartyName: transaction.counterpartyName ?? transaction.merchantName ?? null,
-        note: transaction.note ?? null,
         occurredAt: transaction.occurredAt,
         paymentSourceInstitutionName: transaction.paymentSourceInstitutionName ?? null,
         paymentDestinationInstitutionName: transaction.paymentDestinationInstitutionName ?? null,
@@ -2432,52 +2571,51 @@ export function FinanceHub({
         paymentSourceName: transaction.paymentSourceName ?? null,
         paymentDestinationName: transaction.paymentDestinationName ?? null,
         paymentInstitutionName: transaction.paymentInstitutionName ?? null,
-        paymentDirection: transaction.paymentDirection ?? null,
         slipReference: transaction.slipReference ?? null,
-        merchantId: transaction.merchantId ?? null,
         paymentFeeMinor: transaction.paymentFeeMinor ?? null,
+        currency: transaction.currency,
       }),
       overviewFields: [
-        { label: "ประเภท", value: getTransactionTypeLabel(transaction.type) },
-        { label: "จำนวนเงิน", value: amountLabel },
-        { label: "หมวดหมู่", value: transaction.categoryCode || "—" },
-        { label: "คู่ค้า/ผู้เกี่ยวข้อง", value: transaction.counterpartyName ?? transaction.merchantName ?? "—" },
-        { label: "สถานะ", value: transaction.status },
-        { label: "แหล่งที่มา", value: getFinanceSourceLabel(transaction.source) },
-        { label: "วันเวลา", value: formatDateTime(transaction.occurredAt) },
-        { label: "หมายเหตุ", value: transaction.note ?? "—" },
+        { label: t("finance.confirmed.fields.type"), value: getLocalizedTransactionTypeLabel(transaction.type) },
+        { label: t("finance.confirmed.fields.amount"), value: amountLabel },
+        { label: t("finance.confirmed.fields.category"), value: transaction.categoryCode || "—" },
+        { label: t("finance.confirmed.fields.counterparty"), value: transaction.counterpartyName ?? transaction.merchantName ?? "—" },
+        { label: t("finance.confirmed.fields.status"), value: transaction.status },
+        { label: t("finance.confirmed.fields.source"), value: getLocalizedFinanceSourceLabel(transaction.source) },
+        { label: t("finance.confirmed.fields.occurredAt"), value: formatDateTime(transaction.occurredAt) },
+        { label: t("finance.confirmed.fields.note"), value: transaction.note ?? "—" },
       ],
       routingFields: [
-        { label: "ทิศทางการจ่าย", value: getPaymentDirectionLabel(transaction.paymentDirection ?? "unknown") },
-        { label: "วิธีชำระเงิน", value: transaction.paymentMethodKind ? getPaymentInstrumentLabel(transaction.paymentMethodKind) : "—" },
-        { label: "ธนาคารผู้โอน", value: transaction.paymentSourceInstitutionName ?? "—" },
-        { label: "บัญชีผู้โอน", value: sourceAccountLabel },
-        { label: "ชื่อผู้โอน", value: transaction.paymentSourceName ?? "—" },
-        { label: "ธนาคารผู้รับเงิน", value: transaction.paymentDestinationInstitutionName ?? "—" },
-        { label: "บัญชีผู้รับเงิน", value: destinationAccountLabel },
-        { label: "ชื่อผู้รับเงิน", value: transaction.paymentDestinationName ?? "—" },
-        { label: "ธนาคาร/ผู้ออกหลัก", value: transaction.paymentInstitutionName ?? "—" },
-        { label: "ชื่อย่อบัญชี", value: transaction.paymentAccountNickname ?? "—" },
-        { label: "เลขท้าย 4 ตัว", value: transaction.paymentAccountLast4 ?? "—" },
-        { label: "เลขที่ถูกปิดบัง", value: transaction.paymentAccountMaskedIdentifier ?? "—" },
+        { label: t("finance.confirmed.fields.paymentDirection"), value: getLocalizedPaymentDirectionLabel(transaction.paymentDirection ?? "unknown") },
+        { label: t("finance.confirmed.fields.paymentMethod"), value: transaction.paymentMethodKind ? getLocalizedPaymentInstrumentLabel(transaction.paymentMethodKind) : "—" },
+        { label: t("finance.confirmed.fields.sourceBank"), value: transaction.paymentSourceInstitutionName ?? "—" },
+        { label: t("finance.confirmed.fields.sourceAccount"), value: sourceAccountLabel },
+        { label: t("finance.confirmed.fields.sourceName"), value: transaction.paymentSourceName ?? "—" },
+        { label: t("finance.confirmed.fields.destinationBank"), value: transaction.paymentDestinationInstitutionName ?? "—" },
+        { label: t("finance.confirmed.fields.destinationAccount"), value: destinationAccountLabel },
+        { label: t("finance.confirmed.fields.destinationName"), value: transaction.paymentDestinationName ?? "—" },
+        { label: t("finance.confirmed.fields.primaryInstitution"), value: transaction.paymentInstitutionName ?? "—" },
+        { label: t("finance.confirmed.fields.accountNickname"), value: transaction.paymentAccountNickname ?? "—" },
+        { label: t("finance.confirmed.fields.accountLast4"), value: transaction.paymentAccountLast4 ?? "—" },
+        { label: t("finance.confirmed.fields.maskedIdentifier"), value: transaction.paymentAccountMaskedIdentifier ?? "—" },
       ],
       metadataFields: [
-        { label: "เลขอ้างอิงสลิป", value: transaction.slipReference ?? "—" },
-        { label: "รหัสร้านค้า", value: transaction.merchantId ?? "—" },
+        { label: t("finance.confirmed.fields.slipReference"), value: transaction.slipReference ?? "—" },
+        { label: t("finance.confirmed.fields.merchantId"), value: transaction.merchantId ?? "—" },
         {
-          label: "ค่าธรรมเนียม",
+          label: t("finance.confirmed.fields.paymentFee"),
           value: transaction.paymentFeeMinor !== null ? formatMoneyMinor(transaction.paymentFeeMinor, transaction.currency) : "—",
         },
         {
-          label: "ความมั่นใจ",
+          label: t("finance.confirmed.fields.confidence"),
           value: transaction.paymentInstrumentConfidence != null
             ? `${Math.round(transaction.paymentInstrumentConfidence * 100)}%`
             : "—",
         },
-        { label: "ไฟล์ต้นฉบับ", value: transaction.sourceFileName ?? "—" },
+        { label: t("finance.confirmed.fields.sourceFile"), value: transaction.sourceFileName ?? "—" },
       ],
     };
-  }, [activeEvidenceTransaction]);
+  }, [activeEvidenceTransaction, t]);
   const summaryGridClass = surface === "page"
     ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
     : surface === "dashboard"
@@ -4921,7 +5059,7 @@ export function FinanceHub({
                 {recentTransactions.length > 0 ? (
                   <div className="space-y-3">
                     {recentTransactions.map((transaction) => {
-                      const transactionCounterparty = getFinanceCounterpartyLabel(
+                      const transactionCounterparty = getLocalizedFinanceCounterpartyLabel(
                         transaction.type,
                         transaction.counterpartyName ?? null,
                         transaction.merchantName ?? null,
@@ -4933,7 +5071,7 @@ export function FinanceHub({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-slate-900">
-                                {getTransactionTypeLabel(transaction.type)}
+                                {getLocalizedTransactionTypeLabel(transaction.type)}
                                 <span className="ml-2 text-xs text-slate-500">
                                   {formatMoneyMinor(transaction.amountMinor, transaction.currency)}
                                 </span>
@@ -4946,7 +5084,7 @@ export function FinanceHub({
                                 <span className="text-slate-300">|</span>
                                 <span>{transaction.status}</span>
                                 <span className="text-slate-300">|</span>
-                                <span>{getFinanceSourceLabel(transaction.source)}</span>
+                                <span>{getLocalizedFinanceSourceLabel(transaction.source)}</span>
                               </p>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
@@ -4992,26 +5130,28 @@ export function FinanceHub({
               </DashboardCard>
 
               <DashboardCard
-                eyebrow="รายการยืนยันแล้ว"
-                title="รายละเอียดรายการยืนยัน"
-                description="แสดงฟิลด์ย่อยจากสลิปที่แยกได้และบันทึกไว้กับรายการที่ยืนยันแล้ว"
+                eyebrow={t("finance.confirmed.eyebrow")}
+                title={t("finance.confirmed.title")}
+                description={t("finance.confirmed.description")}
               >
                 {activeEvidenceTransaction && activeEvidenceTransactionDetails ? (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="text-xs uppercase tracking-wide text-slate-500">สรุปอ่านง่าย</div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500">
+                        {t("finance.confirmed.readableSummary")}
+                      </div>
                       <p className="mt-2 text-sm font-medium leading-6 text-slate-900">
                         {activeEvidenceTransactionDetails.summary}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
-                          {getTransactionTypeLabel(activeEvidenceTransaction.type)}
+                          {getLocalizedTransactionTypeLabel(activeEvidenceTransaction.type)}
                         </Badge>
                         <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                           {formatMoneyMinor(activeEvidenceTransaction.amountMinor, activeEvidenceTransaction.currency)}
                         </Badge>
                         <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
-                          {getFinanceSourceLabel(activeEvidenceTransaction.source)}
+                          {getLocalizedFinanceSourceLabel(activeEvidenceTransaction.source)}
                         </Badge>
                       </div>
                     </div>
@@ -5019,15 +5159,15 @@ export function FinanceHub({
                     <div className="grid gap-4 xl:grid-cols-3">
                       {[
                         {
-                          title: "ภาพรวม",
+                          title: t("finance.confirmed.sections.overview"),
                           fields: activeEvidenceTransactionDetails.overviewFields,
                         },
                         {
-                          title: "เส้นทางการจ่าย",
+                          title: t("finance.confirmed.sections.routing"),
                           fields: activeEvidenceTransactionDetails.routingFields,
                         },
                         {
-                          title: "ข้อมูลสลิป",
+                          title: t("finance.confirmed.sections.metadata"),
                           fields: activeEvidenceTransactionDetails.metadataFields,
                         },
                       ].map((section) => (
@@ -5040,7 +5180,7 @@ export function FinanceHub({
                                   {field.label}
                                 </dt>
                                 <dd className="max-w-[65%] text-right text-sm text-slate-900">
-                                  {field.label === "ไฟล์ต้นฉบับ" && activeEvidenceTransaction.sourceUrl ? (
+                                  {field.label === t("finance.confirmed.fields.sourceFile") && activeEvidenceTransaction.sourceUrl ? (
                                     <a
                                       href={activeEvidenceTransaction.sourceUrl}
                                       target="_blank"
@@ -5062,7 +5202,9 @@ export function FinanceHub({
 
                     {activeEvidenceTransaction.sourceUrl ? (
                       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
-                        <span className="text-slate-500">ไฟล์ต้นฉบับ:</span>
+                        <span className="text-slate-500">
+                          {t("finance.confirmed.sourceFileLabel")}:
+                        </span>
                         <a
                           href={activeEvidenceTransaction.sourceUrl}
                           target="_blank"
@@ -5077,9 +5219,11 @@ export function FinanceHub({
                     <div className="rounded-2xl border border-red-200 bg-red-50/60 p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-red-800">ลบ / ทำให้รายการยืนยันเป็นโมฆะ</p>
+                          <p className="text-sm font-semibold text-red-800">
+                            {t("finance.confirmed.voidTitle")}
+                          </p>
                           <p className="mt-1 text-xs leading-5 text-red-700">
-                            ลบรายการนี้ออกจากยอดคงเหลือและรายงานสรุป แต่ยังเก็บประวัติการตรวจสอบไว้
+                            {t("finance.confirmed.voidDescription")}
                           </p>
                         </div>
                         <Button
@@ -5090,14 +5234,14 @@ export function FinanceHub({
                           disabled={!financeReady || voidTransactionMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
-                          ลบ / โมฆะ
+                          {t("finance.confirmed.voidAction")}
                         </Button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="py-4 text-sm text-slate-500">
-                    ยังไม่ได้เลือกรายการที่ยืนยันแล้ว
+                    {t("finance.confirmed.emptySelection")}
                   </div>
                 )}
               </DashboardCard>
@@ -5111,7 +5255,7 @@ export function FinanceHub({
                   <div className="space-y-3">
                       {recurringRules.map((rule) => {
                       const isActive = rule.status === "active";
-                      const ruleCounterparty = getFinanceCounterpartyLabel(
+                      const ruleCounterparty = getLocalizedFinanceCounterpartyLabel(
                         rule.type,
                         rule.counterpartyName ?? null,
                         rule.merchantName ?? null,
@@ -5132,7 +5276,11 @@ export function FinanceHub({
                               <p className={dashboardMetaLineClass}>
                                 <span>{getFinanceFlowLabel(rule.type, t)}: {ruleCounterparty}</span>
                                 <span className="text-slate-300">|</span>
-                                <span>{rule.autoConfirm ? "ยืนยันอัตโนมัติ" : "สร้างฉบับร่างก่อน"}</span>
+                                <span>
+                                  {rule.autoConfirm
+                                    ? t("finance.recurring.autoConfirm")
+                                    : t("finance.recurring.draftFirst")}
+                                </span>
                               </p>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
@@ -5207,9 +5355,17 @@ export function FinanceHub({
                                 {formatMoneyMinor(totalMinor)}
                               </p>
                               <p className="mt-1">
-                                {category.expenseMinor > 0 ? `รายจ่าย ${formatMoneyMinor(category.expenseMinor)}` : ""}
+                                {category.expenseMinor > 0
+                                  ? t("finance.report.categoryExpense", {
+                                      amount: formatMoneyMinor(category.expenseMinor),
+                                    })
+                                  : ""}
                                 {category.expenseMinor > 0 && category.incomeMinor > 0 ? " · " : ""}
-                                {category.incomeMinor > 0 ? `รายรับ ${formatMoneyMinor(category.incomeMinor)}` : ""}
+                                {category.incomeMinor > 0
+                                  ? t("finance.report.categoryIncome", {
+                                      amount: formatMoneyMinor(category.incomeMinor),
+                                    })
+                                  : ""}
                               </p>
                             </div>
                           </div>
@@ -5342,9 +5498,13 @@ export function FinanceHub({
                               {parseRecurringRuleSummary(rule.rrule, rule.nextRunAt, rule.timezone)}
                             </p>
                             <p className={dashboardMetaLineClass}>
-                              <span>{getFinanceSourceLabel("recurring_rule")}</span>
+                              <span>{getLocalizedFinanceSourceLabel("recurring_rule")}</span>
                               <span className="text-slate-300">|</span>
-                              <span>{rule.autoConfirm ? "ยืนยันอัตโนมัติ" : "สร้างฉบับร่างก่อน"}</span>
+                              <span>
+                                {rule.autoConfirm
+                                  ? t("finance.recurring.autoConfirm")
+                                  : t("finance.recurring.draftFirst")}
+                              </span>
                             </p>
                           </div>
                         </div>
