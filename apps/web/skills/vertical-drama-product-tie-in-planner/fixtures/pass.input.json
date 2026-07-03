@@ -1,0 +1,15 @@
+{
+  "episode_number": 1,
+  "episode_script": {
+    "episode_title": "คำพิพากษาเที่ยงคืน"
+  },
+  "products": [
+    {
+      "product_id": "prod_glowserum",
+      "name": "โกลว์เซรั่ม",
+      "category": "cosmetics",
+      "regulated": true
+    }
+  ],
+  "tie_in_fatigue_history": []
+}

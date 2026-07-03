@@ -1,0 +1,32 @@
+{
+  "contract_version": 1,
+  "video_plan_summary": {
+    "episode_title": "X",
+    "duration_seconds": 45,
+    "clip_count": 5,
+    "aspect_ratio": "16:9",
+    "strategy": "broken"
+  },
+  "provider_feasibility": {
+    "blocking_reasons": [],
+    "recommended_provider_path": "x",
+    "notes": "y",
+    "veo31_executable": true
+  },
+  "video_clip_requests": [],
+  "plain_text_video_plan": "broken",
+  "final_episode_assembly_manifest": {
+    "handoff_type": "wrong_manifest",
+    "target_duration_seconds": 30,
+    "clips": [],
+    "ffmpeg_concat_plan": {},
+    "subtitle_plan": {},
+    "audio_bgm_plan": {},
+    "export_settings": {}
+  },
+  "repair_loop": {
+    "clip_qc_checklist": [],
+    "common_video_repairs": [],
+    "regenerate_rules": []
+  }
+}

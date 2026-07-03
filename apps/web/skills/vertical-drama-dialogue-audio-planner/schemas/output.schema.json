@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-dialogue-audio-planner/output",
+  "title": "Vertical Drama Dialogue & Audio Planner Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "dialogue_lines",
+    "speaker_mapping",
+    "voice_continuity_map",
+    "missing_voice_warnings",
+    "subtitle_cues",
+    "audio_timing_estimate",
+    "native_audio_snippets",
+    "separate_tts_plan",
+    "warnings",
+    "repair_queue",
+    "contract_version"
+  ],
+  "properties": {
+    "dialogue_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "speaker_character_id",
+          "dialogue_line"
+        ],
+        "properties": {
+          "shot_number": {
+            "type": "integer"
+          },
+          "clip_number": {
+            "type": "integer"
+          },
+          "speaker_character_id": {
+            "type": "string"
+          },
+          "dialogue_line": {
+            "type": "string"
+          },
+          "estimated_seconds": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "speaker_mapping": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "voice_continuity_map": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "missing_voice_warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "subtitle_cues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "shot_number": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          },
+          "start_seconds": {
+            "type": "number"
+          },
+          "end_seconds": {
+            "type": "number"
+          },
+          "safe_area_hint": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "audio_timing_estimate": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "native_audio_snippets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "separate_tts_plan": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "repair_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "contract_version": {
+      "const": 1
+    }
+  }
+}

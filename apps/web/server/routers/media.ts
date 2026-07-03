@@ -94,6 +94,13 @@ import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderM
 import type { MediaTransport, MediaOriginSurface } from "../../shared/mcpConnectTypes";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { assertMediaProviderAssetsUsable } from "../services/mediaProviderAssetService";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { evaluateMediaPrompt, type MediaSafetyKind } from "../services/ageSafeMediaEnforcer";
+import { buildSafetyActorContext } from "../services/safetyActorContextService";
+import { getEffectiveSafetyProfileFromPrefs } from "../services/ageSafetyProfileService";
+import { getSecurityPinVersion } from "../services/securityPinService";
+import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
+import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
 
 const extraParamsSchema = z
   .record(z.any())
@@ -444,6 +451,67 @@ async function resolveLibraryTenantIdForMedia(
   ctx: { tenantId: unknown; user: { id: number; currentTenantId?: unknown } },
 ): Promise<string | null> {
   return resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+}
+
+async function enforceMediaAgeSafety(params: {
+  ctx: {
+    tenantId: unknown;
+    protectedSurfaceToken?: string | null;
+    user: { id: number; currentTenantId?: unknown };
+  };
+  kind: MediaSafetyKind;
+  prompt: string;
+}) {
+  const tenantId = resolveTenantIdVarchar(params.ctx.tenantId, params.ctx.user.currentTenantId);
+  if (!tenantId) return null;
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (!flags.ageSafetyPolicyEnabled || !flags.ageSafetyMediaEnforcement) return null;
+
+  const db = await getDb();
+  const [userRow] = db
+    ? await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, params.ctx.user.id)).limit(1)
+    : [];
+  const now = new Date();
+  const profile = getEffectiveSafetyProfileFromPrefs(userRow?.userPreferences, now);
+  const protectedSurfaceScopes = await getProtectedSurfaceScopes({
+    token: params.ctx.protectedSurfaceToken,
+    userId: params.ctx.user.id,
+    tenantId,
+    pinVersion: getSecurityPinVersion(userRow?.userPreferences),
+    profileVersion: profile.profileVersion,
+    policyVersion: DEFAULT_AGE_SAFETY_POLICY.policyVersion,
+    jurisdictionPresetId: profile.jurisdictionPresetId,
+    dayKey: getPolicyDayKey(now),
+  });
+  const actor = buildSafetyActorContext({
+    userId: params.ctx.user.id,
+    ownerUserId: params.ctx.user.id,
+    tenantId,
+    countryCode: profile.countryOfResidence,
+    audienceBand: profile.actualAgeBand,
+    userPreferences: userRow?.userPreferences,
+    protectedSurfaceScopes,
+  }, now);
+  const result = evaluateMediaPrompt({
+    actor,
+    kind: params.kind,
+    prompt: params.prompt,
+    now,
+    flags: {
+      ageSafetyPolicyEnabled: flags.ageSafetyPolicyEnabled,
+      ageSafetyObserveMode: flags.ageSafetyObserveMode,
+      ageSafetyEmergencyChildSafeMode: flags.ageSafetyEmergencyChildSafeMode,
+    },
+    audit: true,
+  });
+  if (!result.allowed) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: result.response?.message ?? "This media request is restricted by age-safety policy.",
+      cause: result.response,
+    });
+  }
+  return result.metadata;
 }
 
 function isLibraryUrlValidationError(error: unknown): boolean {
@@ -2124,6 +2192,8 @@ export const mediaRouter = router({
         });
       }
 
+      await enforceMediaAgeSafety({ ctx, kind: "image", prompt: input.prompt });
+
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
@@ -2304,6 +2374,8 @@ export const mediaRouter = router({
         });
       }
 
+      await enforceMediaAgeSafety({ ctx, kind: "video", prompt: input.prompt });
+
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
@@ -2463,6 +2535,8 @@ export const mediaRouter = router({
         });
       }
 
+      const ageSafetyMetadata = await enforceMediaAgeSafety({ ctx, kind: "audio", prompt: input.text });
+
       const model = input.model || await getDefaultModelId("audio", input.text);
       const modelMeta = await resolveModelMeta(model, "audio");
       const normalizedModelId = mapToApiModelId(model);
@@ -2558,7 +2632,10 @@ export const mediaRouter = router({
             voice: input.voice,
             speed: input.speed,
             apiConfig: apiConfigWithProvider,
-            extraParams: normalizedExtraParams,
+            extraParams: {
+              ...normalizedExtraParams,
+              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
@@ -2621,6 +2698,8 @@ export const mediaRouter = router({
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
       }
+
+      const ageSafetyMetadata = await enforceMediaAgeSafety({ ctx, kind: "audio", prompt: input.text });
 
       const model = input.model || await getDefaultModelId("audio", input.text);
       const modelMeta = await resolveModelMeta(model, "audio");
@@ -2729,7 +2808,10 @@ export const mediaRouter = router({
             voice: input.voice,
             speed: input.speed,
             apiConfig: apiConfigWithProvider,
-            extraParams: normalizedExtraParams,
+            extraParams: {
+              ...normalizedExtraParams,
+              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
@@ -2804,6 +2886,8 @@ export const mediaRouter = router({
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
       }
+
+      const ageSafetyMetadata = await enforceMediaAgeSafety({ ctx, kind: "image", prompt: input.prompt });
 
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
@@ -2913,6 +2997,7 @@ export const mediaRouter = router({
           parameters: {
             ...modelTransport.defaultParams,
             ...input.extraParams,
+            ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             aspectRatio: input.aspectRatio,
             resolution: input.resolution,
             outputFormat: input.outputFormat,
@@ -2978,6 +3063,7 @@ export const mediaRouter = router({
 	              ...input.extraParams,
 	              __reserved_credits: creditCost,
 	              __reserved_resolution: input.resolution,
+	              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
 	              ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
 	            },
 	            publicUrl: ctx.publicUrl ?? undefined,
@@ -3057,6 +3143,8 @@ export const mediaRouter = router({
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
       }
+
+      const ageSafetyMetadata = await enforceMediaAgeSafety({ ctx, kind: "video", prompt: input.prompt });
 
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
@@ -3188,6 +3276,7 @@ export const mediaRouter = router({
           parameters: {
             ...modelTransport.defaultParams,
             ...normalizedExtraParams,
+            ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             duration,
             aspectRatio: input.aspectRatio,
             resolution: input.resolution,
@@ -3252,6 +3341,7 @@ export const mediaRouter = router({
               __reserved_credits: creditCost,
               __reserved_resolution: input.resolution,
               __reserved_duration: duration,
+              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
               ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,

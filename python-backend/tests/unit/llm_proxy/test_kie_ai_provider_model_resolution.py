@@ -31,6 +31,17 @@ def test_resolve_api_model_maps_veo_internal_route_aliases_to_kie_models():
     assert stats["fallback_alias_map"] == 2
 
 
+def test_resolve_api_model_maps_nano_banana_2_lite_aliases_to_kie_model():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("google-banana-2-lite") == "nano-banana-2-lite"
+    assert resolve_api_model("google/nano-banana-2-lite") == "nano-banana-2-lite"
+    assert resolve_api_model("gemini-3.1-flash-lite-image") == "nano-banana-2-lite"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 3
+
+
 def test_resolve_api_model_maps_happyhorse_alias_to_kie_model():
     reset_model_resolution_stats()
 
@@ -109,6 +120,29 @@ async def test_generate_image_uses_reference_image_config_metadata_for_array_fie
     assert kwargs == {}
     assert args[0] == "nano-banana-2"
     assert args[1]["reference_image"] == ["https://cdn.example.com/ref.png"]
+
+
+@pytest.mark.asyncio
+async def test_generate_image_uses_nano_banana_2_lite_reference_images_without_api_config():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="google-banana-2-lite",
+        prompt="test prompt",
+        callback_url="",
+        reference_image_urls=["https://cdn.example.com/ref.png"],
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "nano-banana-2-lite"
+    assert args[1]["image_urls"] == ["https://cdn.example.com/ref.png"]
+    assert args[1]["aspect_ratio"] == "auto"
+    assert "resolution" not in args[1]
+    assert "output_format" not in args[1]
 
 
 @pytest.mark.asyncio

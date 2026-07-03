@@ -48,6 +48,23 @@ describe("useMenuItems", () => {
     expect(items.find((item) => item.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
   });
 
+  it("gates Vertical Drama Series on the verticalDramaSeriesDashboardMenu flag", () => {
+    // Flag OFF -> the Dashboard menu entry is hidden.
+    const hidden = getResolvedMenuItems("user", "main", undefined, {
+      verticalDramaSeriesDashboardMenu: false,
+    });
+    expect(hidden.find((item) => item.id === "vertical-drama-series")).toBeUndefined();
+
+    // Flag ON -> the entry renders with its route + Clapperboard (non-fallback) icon.
+    const shown = getResolvedMenuItems("user", "main", undefined, {
+      verticalDramaSeriesDashboardMenu: true,
+    });
+    const entry = shown.find((item) => item.id === "vertical-drama-series");
+    expect(entry).toBeDefined();
+    expect(entry?.path).toBe("/dashboard/vertical-drama");
+    expect(entry?.IconComponent).not.toBe(Sparkles);
+  });
+
   it("places Render Jobs directly after Media History in the main sidebar", () => {
     const items = getResolvedMenuItems("user", "main");
     const mediaHistoryIndex = items.findIndex((item) => item.id === "media-history");

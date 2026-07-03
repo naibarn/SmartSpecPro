@@ -99,7 +99,7 @@ FILES:
   - `large_evidence_policy`: summarize with file paths, trace IDs, commands, and short excerpts
   - `split_if_exceeded`: true when the agent should return `partial` instead of expanding scope
 - For packets that belong to a wave, include a `Dispatch metadata` block:
-  - `model_preference`: `gpt-5.3-codex-spark`, `inherited-default`, or `explicit:<model>`
+  - `model_preference`: `gpt-5.5`, `inherited-default`, or `explicit:<model>`
   - `model_reason`: `lightweight-default`, `explicit-user-request`, `high-complexity`,
     `high-risk`, `performance-critical`, `deep-route`, `retry-escalation`, or `unavailable`
   - `dispatch_mode`: `parallel_batch`, `parallel_with_worktree`, `single_agent`, or `sequential_exception`

@@ -1,0 +1,11 @@
+{
+  "render_target": "vertical_frame",
+  "quality_bar": "premium",
+  "reference_image_policy": "attach_character_refs",
+  "external_image_provider": "openai_image_api",
+  "workflow_level": "guided",
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1"
+  }
+}

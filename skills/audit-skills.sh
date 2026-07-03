@@ -96,9 +96,31 @@ for portable_script in [
     root / "portable_install.py",
     root / "install-portable-skills.sh",
     root / "generate-claude-agents.sh",
+    root / "install-claude-skills.sh",
 ]:
     if not portable_script.exists():
         errors.append(f"{portable_script}: missing portable install support")
+
+claude_skills_dir = Path(".claude") / "skills"
+manifest_skills = [
+    line.strip()
+    for line in (root / "mirrored-skills.txt").read_text(encoding="utf-8").splitlines()
+    if line.strip()
+]
+for manifest_skill in manifest_skills:
+    if manifest_skill in portable_install.CLAUDE_SKILL_EXCLUDE:
+        continue
+    link = claude_skills_dir / manifest_skill
+    source = root / manifest_skill
+    if not link.is_symlink():
+        errors.append(
+            f"{link}: missing .claude/skills symlink for {manifest_skill}; run skills/install-claude-skills.sh"
+        )
+        continue
+    if link.resolve() != source.resolve():
+        errors.append(
+            f"{link}: symlink target drift (resolves to {link.resolve()}); run skills/install-claude-skills.sh"
+        )
 
 if sub_agents_dir.exists() and sub_agents_readme.exists():
     readme_text = sub_agents_readme.read_text(encoding="utf-8")
@@ -295,14 +317,14 @@ orchestra_skill_path = root / "orchestra" / "SKILL.md"
 if orchestra_skill_path.exists():
     orchestra_skill_text = orchestra_skill_path.read_text(encoding="utf-8")
     for required_parallel_marker in [
-        "Sub-Agent-First Default",
-        "Parallel opportunity scan",
+        "Conductor-First Sub-Agent Gate",
+        "Scout and parallel opportunity scan",
         "parallel_default",
         "Agent-tool availability check",
         "dispatch them in one",
     ]:
         if required_parallel_marker not in orchestra_skill_text:
-            errors.append(f"{orchestra_skill_path}: missing sub-agent-first marker: {required_parallel_marker}")
+            errors.append(f"{orchestra_skill_path}: missing conductor-first sub-agent marker: {required_parallel_marker}")
     for required_policy_ref in [
         "references/agent-loop-policy.md",
         "references/data-first-debug.md",

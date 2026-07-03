@@ -1,0 +1,52 @@
+{
+  "skill": "vertical-drama-shot-start-frame-render",
+  "imported": true,
+  "upstream_manifest_name": "shot_start_frame_render_planner",
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "vertical_start_frames",
+    "shot_start_frame_references",
+    "shots_per_batch",
+    "repair_queue"
+  ],
+  "required_top_level_output_fields": [
+    "render_plan_summary",
+    "start_frame_requests",
+    "plain_text_render_plan",
+    "downstream_video_input_manifest",
+    "quality_control",
+    "contract_version"
+  ],
+  "pinned_literals": {
+    "render_plan_summary.shot_count": 9,
+    "render_plan_summary.target_aspect_ratio": "9:16",
+    "downstream_video_input_manifest.episode_duration_seconds": 60,
+    "start_frame_requests.0.render_parameters.provider_mode": "image_api"
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "pass_input_normalized": "fixtures/pass.input.normalized.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint",
+    "scripts/verify.sh runs without provider credentials",
+    "upstream input enum vocabulary round-trips into pass.input.normalized.json"
+  ]
+}

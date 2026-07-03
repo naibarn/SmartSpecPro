@@ -1,0 +1,53 @@
+{
+  "contract_version": 1,
+  "render_plan_summary": {
+    "episode_title": "X",
+    "shot_count": 6,
+    "target_aspect_ratio": "16:9",
+    "image_size": "1024x1024",
+    "reference_strategy": "none"
+  },
+  "start_frame_requests": [
+    {
+      "shot_number": 1,
+      "shot_title": "Shot 1",
+      "timecode": "00:00-00:06",
+      "prompt": "vertical 9:16 start frame for shot 1, Aria in boardroom",
+      "negative_prompt": "no identity drift, no extra fingers",
+      "reference_assets": [
+        {
+          "character_id": "char_aria",
+          "asset_id": "asset_aria_portrait",
+          "asset_type": "primary_portrait",
+          "file_id": "file_aria_001",
+          "image_url": "/uploads/vd/aria_primary_portrait.png",
+          "local_path": "uploads/vd/aria_primary_portrait.png"
+        }
+      ],
+      "render_parameters": {
+        "provider_mode": "image_api",
+        "model": "gpt-image-2",
+        "size": "1024x1536",
+        "quality": "high",
+        "n": 1
+      },
+      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "qc_checklist": [
+        "identity match",
+        "wardrobe continuity",
+        "9:16 framing"
+      ],
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "expected_output_asset_id": "start_frame_shot_1"
+    }
+  ],
+  "plain_text_render_plan": "broken",
+  "downstream_video_input_manifest": {
+    "episode_duration_seconds": 30,
+    "notes_for_video_skill": "x"
+  },
+  "quality_control": {
+    "must_check_before_video": [],
+    "common_failure_repairs": []
+  }
+}

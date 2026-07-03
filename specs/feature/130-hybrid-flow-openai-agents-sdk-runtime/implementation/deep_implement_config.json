@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro-feature130-impl",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/130-hybrid-flow-openai-agents-sdk-runtime/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro-feature130-impl",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-flags-routing-fixtures",
+    "section-02-durable-persistence-migration",
+    "section-03-neutral-router-runtime-coordinator",
+    "section-04-python-sdk-hybrid-stage-support",
+    "section-05-stage-runner-integration",
+    "section-06-chat-routing-and-card-ui",
+    "section-07-neutral-hybrid-workspace-ui",
+    "section-08-commit-approval-retry-cancel",
+    "section-09-replay-rollout-operator-gates"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-02T02:10:49.116761+00:00"
+}

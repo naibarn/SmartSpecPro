@@ -1400,54 +1400,21 @@ export async function startAutoStoryboardReviewForApi(input: {
     input.runtime ?? {}
   );
   const runRecord = (run ?? {}) as Record<string, unknown>;
-  const runId = String(runRecord.id ?? "");
-  const eligibility = isHyperframesRunEligibleForPreview(runRecord);
-  if (!eligibility.eligible) {
-    return {
-      contractVersion:
-        HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
-      launchMode: "auto_storyboard_review" as const,
-      plan,
-      run: runRecord,
-      render: null,
-      chargeSummary: {
-        chargeRequired: false,
-        creditEstimate: plan.creditEstimate ?? undefined,
-        quotaDecision: plan.quotaDecision,
-        noChargeReason: "not_applicable" as const,
-        idempotencyKey: plan.creditEstimate?.idempotencyKey,
-      },
-      polling: createDefaultHyperframesPollingGuidance("not_available"),
-      invalidates: INVALIDATES,
-    };
-  }
-  const composition = buildHyperframesCompositionInput({
-    tenantId: input.auth.tenantId ?? "default",
-    userId: input.auth.userId,
-    productId: input.productId,
-    runId,
-    productState: productBundle,
-    runState: runRecord,
-  });
-  const render = await queueHyperframesRenderJob({
-    auth: input.auth,
-    composition,
-  });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
     launchMode: "auto_storyboard_review" as const,
     plan,
     run: runRecord,
-    render,
+    render: null,
     chargeSummary: {
       chargeRequired: false,
       creditEstimate: plan.creditEstimate ?? undefined,
       quotaDecision: plan.quotaDecision,
-      noChargeReason: "preview_only" as const,
+      noChargeReason: "not_applicable" as const,
       idempotencyKey: plan.creditEstimate?.idempotencyKey,
     },
-    polling: render.polling,
+    polling: createDefaultHyperframesPollingGuidance("not_available"),
     invalidates: INVALIDATES,
   };
 }

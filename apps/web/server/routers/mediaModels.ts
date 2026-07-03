@@ -119,6 +119,8 @@ type AdminModelListCandidate = {
   modelType: "image" | "video" | "audio";
   provider: string;
   isEnabled: boolean;
+  aliases?: string[] | null;
+  configJson?: Record<string, unknown> | null;
 };
 
 const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
@@ -220,7 +222,20 @@ function matchesAdminModelFilters(
   if (search) {
     const name = model.name.toLowerCase();
     const modelId = model.modelId.toLowerCase();
-    if (!name.includes(search) && !modelId.includes(search)) {
+    const provider = model.provider.toLowerCase();
+    const aliases = Array.isArray(model.aliases)
+      ? model.aliases.join(" ").toLowerCase()
+      : "";
+    const configJson = model.configJson && typeof model.configJson === "object"
+      ? JSON.stringify(model.configJson).toLowerCase()
+      : "";
+    if (
+      !name.includes(search) &&
+      !modelId.includes(search) &&
+      !provider.includes(search) &&
+      !aliases.includes(search) &&
+      !configJson.includes(search)
+    ) {
       return false;
     }
   }
@@ -487,8 +502,9 @@ export const mediaModelsRouter = router({
         }
 
         if (input?.search) {
+          const searchLike = `%${input.search}%`;
           conditions.push(
-            sql`(${mediaModels.name} ILIKE ${`%${input.search}%`} OR ${mediaModels.modelId} ILIKE ${`%${input.search}%`})`
+            sql`(${mediaModels.name} ILIKE ${searchLike} OR ${mediaModels.modelId} ILIKE ${searchLike} OR ${mediaModels.provider} ILIKE ${searchLike} OR ${mediaModels.aliases}::text ILIKE ${searchLike} OR ${mediaModels.configJson}::text ILIKE ${searchLike})`
           );
         }
 

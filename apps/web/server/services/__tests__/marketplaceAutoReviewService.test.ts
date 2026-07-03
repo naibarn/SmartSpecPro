@@ -391,7 +391,7 @@ describe("Marketplace Auto Review HyperFrames preview queue", () => {
     }
   }
 
-  it("queues a HyperFrames preview and stores render metadata after Storyboard Review is ready", async () => {
+  it("does not auto-queue a HyperFrames preview after Storyboard Review is ready", async () => {
     await withPreviewAccess(async () => {
       const { db, updates } = createAutoPreviewUpdateDb();
       const metadata = { audioStrategy: "auto" };
@@ -413,21 +413,11 @@ describe("Marketplace Auto Review HyperFrames preview queue", () => {
           stopFrameUrls: [],
         });
 
-      expect(result.renderJobId).toMatch(/^hf_/);
-      expect(result.metadata.hyperframesAutoPreview).toMatchObject({
-        renderJobId: result.renderJobId,
-        status: "queued",
+      expect(result).toEqual({
+        renderJobId: null,
+        metadata,
       });
-      expect(updates).toHaveLength(1);
-      expect(updates[0]).toMatchObject({
-        renderJobId: result.renderJobId,
-      });
-      expect(
-        (updates[0]?.metadataJson as any)?.hyperframesAutoPreview
-      ).toMatchObject({
-        renderJobId: result.renderJobId,
-        status: "queued",
-      });
+      expect(updates).toEqual([]);
     });
   });
 

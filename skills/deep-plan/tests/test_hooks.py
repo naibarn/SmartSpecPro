@@ -39,16 +39,22 @@ class TestHooksJsonConfig:
 
         # Find all command values
         data = json.loads(content)
+        # Match any *_PLUGIN_ROOT variable, not just CLAUDE_PLUGIN_ROOT — the real
+        # hooks.json resolves via ${DEEP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-...}}.
+        # sh -c '...' commands expand env vars inside double quotes themselves, so
+        # they are safe; the quoting anti-pattern only bites direct-exec commands.
+        quoted_var = re.compile(r"""\\['"]\$\{[A-Z_]*PLUGIN_ROOT""")
         for hook_type, hook_list in data.get("hooks", {}).items():
             for hook_group in hook_list:
                 for hook in hook_group.get("hooks", []):
                     command = hook.get("command", "")
-                    # Check for quoted variable (escaped quote followed by ${)
-                    if r'\"${CLAUDE_PLUGIN_ROOT}' in command or r"\'${CLAUDE_PLUGIN_ROOT}" in command:
+                    if command.strip().startswith("sh -c"):
+                        continue
+                    if quoted_var.search(command):
                         pytest.fail(
-                            f"{hook_type} hook has quoted ${{CLAUDE_PLUGIN_ROOT}} which prevents expansion:\n"
+                            f"{hook_type} hook has a quoted ${{...PLUGIN_ROOT}} which prevents expansion:\n"
                             f"  {command}\n"
-                            f"Remove quotes around ${{CLAUDE_PLUGIN_ROOT}}"
+                            f"Remove quotes around the plugin-root variable"
                         )
 
     def test_all_hook_scripts_exist(self, hooks_json_path):
@@ -56,18 +62,22 @@ class TestHooksJsonConfig:
         plugin_root = hooks_json_path.parent.parent
         data = json.loads(hooks_json_path.read_text())
 
+        checked = 0
         for hook_type, hook_list in data.get("hooks", {}).items():
             for hook_group in hook_list:
                 for hook in hook_group.get("hooks", []):
                     command = hook.get("command", "")
-                    # Extract script path after ${CLAUDE_PLUGIN_ROOT}
-                    match = re.search(r'\$\{CLAUDE_PLUGIN_ROOT\}(/[^\s"\']+)', command)
-                    if match:
-                        relative_path = match.group(1)
-                        full_path = plugin_root / relative_path.lstrip("/")
+                    # Extract the actual script path(s) by their .py suffix,
+                    # independent of which ${...PLUGIN_ROOT} prefix wraps them.
+                    # The char class excludes braces so the ${VAR:-default}
+                    # fallback interiors are not mistaken for the script path.
+                    for rel in re.findall(r"""/[^\s"'{}]+\.py""", command):
+                        full_path = plugin_root / rel.lstrip("/")
                         assert full_path.exists(), (
-                            f"{hook_type} hook references non-existent script: {relative_path}"
+                            f"{hook_type} hook references non-existent script: {rel}"
                         )
+                        checked += 1
+        assert checked > 0, "no hook script paths were verified — regex matched nothing"
 
     def test_expected_hook_types_present(self, hooks_json_path):
         """Verify expected hook types are configured.

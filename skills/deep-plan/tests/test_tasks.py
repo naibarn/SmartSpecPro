@@ -20,8 +20,12 @@ class TestTaskIdMapping:
     """Tests for TASK_IDS and TASK_ID_TO_STEP mappings."""
 
     def test_task_ids_has_all_workflow_steps(self):
-        """Verify all workflow steps (6-22) have task IDs."""
-        expected_steps = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22}
+        """Verify all workflow steps have task IDs.
+
+        Step 14 is intentionally absent: it is reserved/skipped since Step 13
+        self-review replaced the old external-review + integrate-findings steps.
+        """
+        expected_steps = {6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22}
         actual_steps = set(TASK_IDS.keys())
         assert actual_steps == expected_steps
 

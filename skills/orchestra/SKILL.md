@@ -314,36 +314,38 @@ If both commands return empty output, skip this check silently and proceed.
 Read `references/meta-activation.md`.
 Read `references/task-analysis.md`.
 
-### Sub-Agent-First Default
+### Conductor-First Sub-Agent Gate
 
-For every non-trivial task, Orchestra must first look for useful sub-agent work before
-choosing direct conductor execution.
+Main Codex is the conductor and stays accountable for intent, scope, risk, proof,
+integration, and the final report. Sub-agents are bounded helpers; they do not own the
+critical path or replace conductor judgment.
 
 Default behavior:
-- Use direct conductor edits only for `trivial` scope or emergency integration fixes after
-  a failed agent wave.
-- Use at least one sub-agent for `small` implementation/review work when a Task/sub-agent
-  tool is available.
-- In Codex standard light mode, the previous sub-agent-first bullets become advisory:
-  direct conductor execution is preferred for `small` and implementation-ready `medium`
-  work unless the user explicitly authorized agent delegation.
-- Promote the task to `medium` when two or more independent workstreams can run safely in
-  parallel, even if the estimated file count is small.
-- Prefer parallel read-only analysis/review agents whenever their findings can be collected
-  before the next implementation step.
+- Use direct conductor edits for `trivial`, obvious `small`, and implementation-ready
+  `medium` work unless meaningful independent workstreams are proven.
+- Do not dispatch sub-agents for single-answer questions, one-file reads, one-command
+  checks, one proof surface, obvious single-file edits, or fast-lane fixes.
+- For broad or uncertain work, start with one read-only scout/explorer before adding
+  sidecar agents. Add sidecars only when the scout or preflight proves distinct ownership
+  paths and decisions that benefit from independent context.
+- Promote the task to `medium` only when two or more independent workstreams are real,
+  bounded, and safe to run without file ownership conflicts.
+- Prefer a single scout/reviewer over fanout when the conductor can reasonably keep the
+  overview and the next decision does not need multiple independent results.
 - If a Task/sub-agent tool is unavailable, preserve the same agent plan and execute inline
   only as a platform fallback; record the fallback in `orchestra/progress.md`.
 
 Apply classification in this order:
 
 1. **Bug sub-tree first** — if the task is a bug or error report, route through the bug sub-tree before applying the scope table. The bug sub-tree determines whether this needs security handling, error-detective investigation, Python-only debugging, or general debugging.
-2. **Parallel opportunity scan** — identify independent workstreams before scope is final:
+2. **Scout and parallel opportunity scan** — identify independent workstreams before scope is final:
    - domain slices: frontend, backend, Python, database, infra, docs, tests, UI review, security review
    - independent read-only questions that can be answered by explorer/reviewer agents
    - disjoint writer scopes that can safely run in the same wave
    - required gates/reviewers that can run in parallel after an implementation wave
-   If the scan finds 2+ safe independent workstreams, set `parallel_default = true` and
-   classify at least `medium`.
+   If the work is broad but boundaries are not yet proven, plan a single read-only scout
+   first. If the scan or scout finds 2+ safe independent workstreams, set
+   `parallel_default = true` and classify at least `medium`.
 3. **Scope classification** — apply the 5-level scope table (first match wins):
    - `trivial` — single file edit, no API changes, no new dependencies
    - `small` — 2–5 files, single domain, clear implementation, no safe parallel split
@@ -412,18 +414,18 @@ Read `references/routing-decision.md`.
 | Scope | Route | Next Action |
 |-------|-------|-------------|
 | `trivial` | Direct edit | Conductor edits file directly only when the parallel opportunity scan found no useful agent work. No sub-agents. Skip to Step 7. |
-| `small` | Direct edit, single-agent, or quick-plan-chain | In standard light mode, implement directly when obvious. Outside light mode, build one Task Packet and dispatch the best-matching sub-agent when tooling exists. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
-| `medium` | Direct/inline wave, multi-agent waves, or quick-plan-chain | In standard light mode, use direct/inline sequential execution unless the user authorized agents. Outside light mode, default to multi-agent waves when implementation-ready. Use `deep-plan-quick` only when a compact written plan is still needed before dispatch. |
+| `small` | Direct edit, scout, single-agent, or quick-plan-chain | Implement directly when obvious. Use one scout/sub-agent only when independent context is useful and dispatch is authorized. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
+| `medium` | Direct/inline wave, scout-first wave, multi-agent waves, or quick-plan-chain | Use direct/inline sequential execution unless the user authorized agents or preflight proves real independent workstreams. For broad uncertain work, run one scout before sidecars. Use `deep-plan-quick` only when a compact written plan is still needed before dispatch. |
 | `large` | deep-plan chain | Read `references/skill-pack-integration.md`. Create or refresh `spec.md`, auto-run `deep-plan`, verify artifacts, then continue directly into `deep-implement`. |
 | `project` | full-pipeline | Read `references/skill-pack-integration.md`. Create or refresh `requirements.md`, auto-run `deep-project`, then auto-run `deep-plan` and `deep-implement` per split. |
 
 **Sub-agent default enforcement:**
-- If `parallel_default = true`, the chosen route must be `multi-agent-waves`,
-  `visual-ui-flow`, `security-gate`, or a deep-* chain that later produces waves. Do not
-  collapse the work into direct conductor implementation.
-- If a non-trivial task routes to `single-agent`, still dispatch one sub-agent through the
-  active platform's agent tool when available. Inline execution is allowed only when the
-  platform truly lacks agent tooling.
+- If `parallel_default = true`, the chosen route must prove ownership boundaries before
+  dispatch. Use `multi-agent-waves`, `visual-ui-flow`, `security-gate`, or a deep-* chain
+  only when multiple results affect real decisions; otherwise keep the conductor path.
+- If a non-trivial task routes to `single-agent`, dispatch only when independent context is
+  useful and the active platform/user policy authorizes delegation. Inline/direct execution
+  is valid when it is the smaller safe path.
 - In Codex standard light mode, do not dispatch merely because the tool exists. If the
   active sub-agent tool requires explicit user authorization and the user has not granted
   it, record `dispatch_preference: direct-standard-light` and proceed directly/inline.
@@ -491,11 +493,11 @@ Check whether `orchestra/platform.md` exists. If missing:
 **Build Task Packets:** For each agent in the current wave, construct a Task Packet following `references/sub-agent-dispatch.md`. See `references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
 
 By default, lightweight sub-agent work that does not require deep reasoning or maximum
-capability MUST use `gpt-5.3-codex-spark`. Do not use Spark when the user or Task Packet
-explicitly names another model, the task is high-risk/high-complexity or
-performance-critical, a quality gate has failed repeatedly, or a previous Spark attempt
-could not complete the work; in those cases use the inherited current/default model unless
-a stronger explicit override is required.
+capability MUST use `gpt-5.5` when the sub-agent tool supports model overrides. Do not use
+GPT 5.5 when the user or Task Packet explicitly names another model, the task is
+high-risk/high-complexity or performance-critical, a quality gate has failed repeatedly, or
+a previous GPT 5.5 attempt could not complete the work; in those cases use the inherited
+current/default model unless a stronger explicit override is required.
 
 Before dispatching, read `../sub-agents/references/shared-operational-discipline.md` and include its rules in every Task Packet's CONTEXT/CONSTRAINTS. In Standard or Open-Code mode, also inject those rules with the agent identity.
 
@@ -530,10 +532,12 @@ call fails and the failure is recorded in `orchestra/progress.md`.
 - Maximum 2 agents editing files simultaneously (use `isolation: worktree` when enforcing this on Claude Code)
 - Only 1 DB agent at a time
 - Only 1 git agent at a time
-- Parallel dispatch requires a written contract — no contract = sequential execution
-- When a wave has 2+ independent agents and an agent tool exists, dispatch them in one
-  batch/message. Waiting for one independent agent before launching the next is a policy
-  violation.
+- Parallel dispatch requires a written contract and explicit ownership paths — no contract
+  or ownership map = sequential/direct execution
+- Avoid fanout for display. When a wave has 2+ truly independent agents and an authorized
+  agent tool exists, dispatch them in one batch/message. Waiting for one independent agent
+  before launching the next is a policy violation unless a sequential exception is
+  recorded.
 
 ---
 
@@ -624,7 +628,7 @@ Read `references/verification-before-completion.md` before reporting any wave or
    the full captured output when available. Do not paste full logs, stack traces, or test
    transcripts into the packet.
 3. Re-dispatch the same agent type. If the failed attempt used
-   `gpt-5.3-codex-spark`, escalate the retry packet to
+   `gpt-5.5`, escalate the retry packet to
    `model_preference: inherited-default` per `references/model-routing.md`
 4. After each fix, mark all gates covering changed files/contracts/runtime paths as stale
 5. Re-run stale gates and impact closure before continuing

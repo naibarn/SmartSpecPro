@@ -156,7 +156,7 @@ and open contract notes.
 
 ```
 Dispatch metadata:
-  model_preference: gpt-5.3-codex-spark | inherited-default | explicit:<model>
+  model_preference: gpt-5.5 | inherited-default | explicit:<model>
   model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
   dispatch_mode: parallel_batch | parallel_with_worktree | single_agent | sequential_exception
   same_wave_peers: [ssp-backend]
@@ -171,7 +171,7 @@ If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, write a c
 `sequential_reason`. Do not omit peers just to make a sequential plan look simpler.
 
 **Model routing requirement:** Read `model-routing.md` before dispatch. Use
-`gpt-5.3-codex-spark` for lightweight-default sub-agent tasks unless an explicit override,
+`gpt-5.5` for lightweight-default sub-agent tasks unless an explicit override,
 deep-* route, high complexity/risk, performance-critical analysis, retry escalation, or
 model-tool limitation requires `inherited-default` or `explicit:<model>`.
 

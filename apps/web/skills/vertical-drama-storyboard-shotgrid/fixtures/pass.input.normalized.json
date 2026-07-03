@@ -1,0 +1,16 @@
+{
+  "style_preset": "luxury_melodrama",
+  "view_type": "close_up",
+  "workflow_level": "guided",
+  "narrative_goal": "emotion_first",
+  "target_shot_mix": [
+    "wide",
+    "medium",
+    "close_up",
+    "over_the_shoulder"
+  ],
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1"
+  }
+}

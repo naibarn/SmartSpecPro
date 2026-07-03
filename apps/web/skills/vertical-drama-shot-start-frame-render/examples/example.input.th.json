@@ -1,0 +1,32 @@
+{
+  "source_json": {
+    "episode_title": "Midnight Verdict",
+    "shots": 9
+  },
+  "render_target": "vertical_frame",
+  "quality_bar": "premium",
+  "workflow_level": "guided",
+  "reference_image_policy": "attach_character_refs",
+  "external_image_provider": "openai_image_api",
+  "cinematic_controls": {
+    "require_emotional_readability": true,
+    "require_prop_continuity": true
+  },
+  "qa_controls": {
+    "enable_visual_qc_checklist": true,
+    "enable_repair_prompts": true,
+    "max_variants_per_shot": 1,
+    "single_image_per_shot": true,
+    "avoid_contact_sheet_generation": false
+  },
+  "output_options": {
+    "include_image_api_requests": true,
+    "include_plain_text_render_plan": true,
+    "include_downstream_video_input_manifest": true,
+    "attach_character_refs": true
+  },
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1"
+  }
+}

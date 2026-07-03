@@ -13,7 +13,7 @@ model preference only as audit metadata.
 For sub-agent work that is bounded, routine, or primarily mechanical, set:
 
 ```text
-model_preference: gpt-5.3-codex-spark
+model_preference: gpt-5.5
 model_reason: lightweight-default
 ```
 
@@ -21,12 +21,12 @@ In Codex, this metadata MUST be enforced by passing the actual sub-agent tool
 override:
 
 ```json
-{ "model": "gpt-5.3-codex-spark" }
+{ "model": "gpt-5.5" }
 ```
 
 Task Packet metadata alone is not sufficient. If the conductor calls a Codex
 `spawn_agent`/sub-agent tool for lightweight-default work and omits the `model`
-field, the sub-agent inherits the parent/default model and the Spark routing
+field, the sub-agent inherits the parent/default model and the GPT 5.5 routing
 policy has not been applied.
 
 This applies by default to:
@@ -37,7 +37,25 @@ This applies by default to:
 - independent reviewer/auditor agents that only need a bounded verdict
 - background or sidecar tasks that should optimize for speed and cost
 
-## Do Not Use Spark When
+## Host-Specific Lightweight Model
+
+`lightweight-default` is a role, not a fixed model string. Map it to the fast, low-cost
+model of the active host when that host's sub-agent tool supports a model override:
+
+| Host | `lightweight-default` maps to | Override field value |
+|------|-------------------------------|----------------------|
+| Codex / Standard | GPT 5.5 | `model: "gpt-5.5"` |
+| Claude Code | Haiku 4.5 | `model: "haiku"` (Task tool `model` field) |
+| Any host without a model-override field | inherited-default | (omit; keep metadata only) |
+
+On Claude Code the native Task tool accepts a `model` field (`haiku`, `sonnet`, `opus`,
+`fable`). For `lightweight-default` packets, pass `model: "haiku"` so bounded/mechanical
+sub-agent work runs on Haiku 4.5 rather than silently inheriting the conductor's heavier
+Opus/Sonnet model. Never pass `gpt-5.5` to a Claude Code agent — it is not a valid Claude
+model; use `haiku` there. The escalation rules below ("Do Not Use ... When") apply
+identically regardless of host — they escalate to `inherited-default`.
+
+## Do Not Use the Lightweight Model When
 
 Use the inherited current/default model instead, unless the user explicitly names a
 different model, when any of these apply:
@@ -49,18 +67,18 @@ different model, when any of these apply:
   migrations with data loss risk, production incident recovery, or public API breakage
 - the task is performance-critical: `CMD-9 Performance`, load/latency work, slow query,
   N+1, cache, benchmark, or explicit high-throughput/high-efficiency analysis
-- a prior Spark attempt returns `failed`, `blocked`, or cannot complete the assigned work
+- a prior GPT 5.5 attempt returns `failed`, `blocked`, or cannot complete the assigned work
 - a quality gate fails repeatedly and the fix requires broader reasoning than the original
   task
-- the sub-agent tool does not support model override or rejects `gpt-5.3-codex-spark`
+- the sub-agent tool does not support model override or rejects `gpt-5.5`
 
 ## Escalation and Fallback
 
-If Spark cannot finish the task:
+If GPT 5.5 cannot finish the task:
 
-1. Record the failed or incomplete Spark attempt in `orchestra/progress.md`.
+1. Record the failed or incomplete GPT 5.5 attempt in `orchestra/progress.md`.
 2. Re-dispatch the same role with `model_preference: inherited-default`.
-3. Include the Spark result and exact blocker/error in the next Task Packet CONTEXT.
+3. Include the GPT 5.5 result and exact blocker/error in the next Task Packet CONTEXT.
 4. If the second attempt still cannot complete and the blocker is product ambiguity,
    destructive risk, or critical security risk, follow the normal Orchestra STOP rules.
 
@@ -69,13 +87,13 @@ If Spark cannot finish the task:
 Every dispatched sub-agent packet must include:
 
 ```text
-model_preference: gpt-5.3-codex-spark | inherited-default | explicit:<model>
+model_preference: gpt-5.5 | inherited-default | explicit:<model>
 model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
 ```
 
 When the active sub-agent tool has a model override field, map
-`model_preference: gpt-5.3-codex-spark` to that override. In Codex this means the
-tool call must include `model: "gpt-5.3-codex-spark"` for lightweight-default
+`model_preference: gpt-5.5` to that override. In Codex this means the
+tool call must include `model: "gpt-5.5"` for lightweight-default
 dispatches. When the active tool does not support model overrides, keep the
 metadata in the Task Packet so the routing decision remains auditable and record
 the limitation in `orchestra/progress.md`.

@@ -7,6 +7,7 @@
  */
 
 import { getSmartSpecWebEndpoint, hasTauriRuntime } from "@/lib/webRuntime";
+import { clearProtectedSurfaceAccessToken } from "@/lib/protectedSurface";
 
 function hasTauri(): boolean {
   return hasTauriRuntime();
@@ -506,6 +507,7 @@ export async function logout(navigate?: (path: string) => void): Promise<void> {
   localStorage.removeItem("smartspec_web_refresh_token");
   localStorage.removeItem("smartspec_web_token_expiry");
   localStorage.removeItem("smartspec_web_user");
+  clearProtectedSurfaceAccessToken();
 
   clearDesktopAuthCache();
   refreshOperationActive = false;

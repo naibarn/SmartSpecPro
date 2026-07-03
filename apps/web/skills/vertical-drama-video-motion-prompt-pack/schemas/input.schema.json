@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-video-motion-prompt-pack/input",
+  "title": "Video Motion Prompt Pack Input (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "source_json": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "video_target": {
+      "type": "string",
+      "enum": [
+        "reference_to_video",
+        "first_last_frame_to_video"
+      ]
+    },
+    "clip_duration_strategy": {
+      "type": "string",
+      "enum": [
+        "veo31_first_last_bridge_60s",
+        "veo31_8_clips_trim_to_60"
+      ]
+    },
+    "motion_style": {
+      "type": "string",
+      "enum": [
+        "subtle",
+        "medium",
+        "dramatic"
+      ]
+    },
+    "camera_motion_intensity": {
+      "type": "string",
+      "enum": [
+        "subtle",
+        "medium",
+        "dramatic"
+      ]
+    },
+    "acting_style": {
+      "type": "string"
+    },
+    "workflow_level": {
+      "type": "string",
+      "enum": [
+        "guided",
+        "simple"
+      ]
+    },
+    "veo31_policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "veo_3_1": {
+          "type": "string",
+          "enum": [
+            "veo-3.1",
+            "veo-3.1-fast",
+            "veo-3.1-quality"
+          ]
+        },
+        "prefer_first_last_frame": {
+          "type": "boolean"
+        },
+        "use_first_last_frame_pairs": {
+          "type": "boolean"
+        },
+        "use_start_frame_only": {
+          "type": "boolean"
+        },
+        "use_start_frame_as_input_reference": {
+          "type": "boolean"
+        },
+        "reference_image_limit": {
+          "type": "integer"
+        },
+        "reference_to_video": {
+          "type": "boolean"
+        }
+      }
+    },
+    "continuity_priority": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "preserve_character_identity_over_motion": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dialogue_sync": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "lip_sync_required": {
+          "type": "boolean"
+        },
+        "subtitle_only": {
+          "type": "boolean"
+        },
+        "voiceover_later": {
+          "type": "boolean"
+        }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "allow_native_audio": {
+          "type": "boolean"
+        }
+      }
+    },
+    "fallback_policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "if_end_frame_missing": {
+          "type": "string",
+          "enum": [
+            "synthesize_end_frame_prompt",
+            "use_start_frame_only"
+          ]
+        },
+        "if_provider_rejects_reference": {
+          "type": "string",
+          "enum": [
+            "provider_auto",
+            "subtitle_only"
+          ]
+        }
+      }
+    },
+    "assembly_options": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "include_ffmpeg_concat_plan": {
+          "type": "boolean"
+        },
+        "include_subtitle_plan": {
+          "type": "boolean"
+        },
+        "include_audio_bgm_plan": {
+          "type": "boolean"
+        },
+        "include_final_episode_assembly_manifest": {
+          "type": "boolean"
+        },
+        "include_provider_request_json": {
+          "type": "boolean"
+        },
+        "include_plain_text_video_plan": {
+          "type": "boolean"
+        },
+        "include_repair_loop": {
+          "type": "boolean"
+        }
+      }
+    },
+    "reference_frame_size": {
+      "type": "string",
+      "enum": [
+        "1024x1792",
+        "1024x1536"
+      ]
+    },
+    "app_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

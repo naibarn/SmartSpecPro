@@ -102,6 +102,12 @@ function shouldBackfillBuiltInCategory(
   if (slug === "video-prompt-engineer") {
     return currentCategory === "video_generation" && nextCategory === "video_prompt_generation";
   }
+  if (slug === "image-creator") {
+    return currentCategory === "automation" && nextCategory === "image_generation";
+  }
+  if (slug === "video-creator") {
+    return currentCategory === "automation" && nextCategory === "video_generation";
+  }
   // Allow reviewer skills to migrate from article_generation to product_review
   if (nextCategory === "product_review" && currentCategory === "article_generation") {
     return true;

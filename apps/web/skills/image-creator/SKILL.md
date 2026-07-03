@@ -2,53 +2,35 @@
 name: Image Creator
 description: Create images from text descriptions — generates optimized prompt then calls image generation API
 version: 1.0.2
-category: automation
-execution_mode: sandbox-command
-target_platform: agents_python
-bundle_topology: single-agent
+category: image_generation
+execution_mode: media-generate
+icon: image
+isAutoTrigger: true
+enabledByDefault: true
+priority: 90
+defaultModel: gpt-image-2
 triggerPatterns:
-  - Image Creator
-  - Image Creator
+  - "(?:create|generate|make|draw|render)\\s+(?:an?\\s+)?(?:image|picture|photo|portrait|illustration|artwork)\\s*:?\\s*(.+)"
+  - "(?:สร้าง|เจน|วาด|ทำ|ออกแบบ)\\s*(?:รูปภาพ|รูป|ภาพ|ภาพถ่าย|พอร์ตเทรต|ภาพประกอบ)\\s*:?\\s*(.+)"
+  - "(?:image creator|image generation|text to image)\\s*:?\\s*(.+)"
+tags:
+  - image
+  - media
+  - text-to-image
 ---
 # Image Creator
-## When To Use
 
-Use this skill when the task should run through the native OpenAI Agents Python bundle contract.
-## OpenAI Agents SDK Compatibility
+Route this request to the configured image generation media path.
 
-- Mount this bundle into the Agents SDK `Skills` sandbox capability.
-- Keep `scripts/run.sh` and `scripts/verify.sh` deterministic and shell-safe.
-- Prefer structured outputs, explicit inputs, and resumable artifacts.
-## Inputs
+Return ONLY valid JSON.
 
-- None
-## Workflow
+```json
+{
+  "prompt": "Detailed text-to-image prompt",
+  "model": "gpt-image-2",
+  "numImages": 1,
+  "quality": "standard"
+}
+```
 
-- discover
-- inspect
-- plan
-- execute
-- verify
-- summarize
-- finalize
-## Exact Commands
-
-- `scripts/run.sh`
-- `scripts/verify.sh`
-## Guardrails
-
-- Use scripts/run.sh and scripts/verify.sh as the declared entrypoints.
-- Confine writes to declared output paths.
-- Do not finalize before verification passes.
-- Keep scripts deterministic, idempotent, and shell-safe.
-- Prefer structured outputs that validate against the bundle contract.
-- Keep logs trace-friendly with explicit task IDs and outcome messages.
-- Preserve compatibility with legacy skill metadata during migration.
-## Verification
-
-- Run `scripts/verify.sh` before finalizing any run.
-## Final Response Checklist
-
-- Verification command completed successfully.
-- Outputs are written to declared paths only.
-- No secrets were persisted.
+Do not answer with prompt advice when the user explicitly asks to create or generate an image.

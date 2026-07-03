@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-shot-start-frame-render/input",
+  "title": "Shot Start-Frame Render Input (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "source_json": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "render_target": {
+      "type": "string",
+      "enum": [
+        "vertical_frame",
+        "single_image_per_shot"
+      ]
+    },
+    "quality_bar": {
+      "type": "string",
+      "enum": [
+        "medium",
+        "premium",
+        "ultra_premium"
+      ]
+    },
+    "workflow_level": {
+      "type": "string",
+      "enum": [
+        "guided",
+        "simple"
+      ]
+    },
+    "reference_image_policy": {
+      "type": "string",
+      "enum": [
+        "attach_character_refs",
+        "prompt_describe_only"
+      ]
+    },
+    "external_image_provider": {
+      "type": "string",
+      "enum": [
+        "openai_image_api",
+        "responses_image_tool"
+      ]
+    },
+    "character_reference_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "cinematic_controls": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "require_emotional_readability": {
+          "type": "boolean"
+        },
+        "require_prop_continuity": {
+          "type": "boolean"
+        }
+      }
+    },
+    "qa_controls": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enable_visual_qc_checklist": {
+          "type": "boolean"
+        },
+        "enable_repair_prompts": {
+          "type": "boolean"
+        },
+        "max_variants_per_shot": {
+          "type": "integer"
+        },
+        "single_image_per_shot": {
+          "type": "boolean"
+        },
+        "avoid_contact_sheet_generation": {
+          "type": "boolean"
+        }
+      }
+    },
+    "output_options": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "include_image_api_requests": {
+          "type": "boolean"
+        },
+        "include_plain_text_render_plan": {
+          "type": "boolean"
+        },
+        "include_downstream_video_input_manifest": {
+          "type": "boolean"
+        },
+        "attach_character_refs": {
+          "type": "boolean"
+        }
+      }
+    },
+    "app_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

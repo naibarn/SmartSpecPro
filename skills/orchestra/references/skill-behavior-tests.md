@@ -27,16 +27,16 @@ Maintain scenario coverage for:
 - Result Report output contracts preserve all 6 required fields
 - Claude Code dispatch examples use generated `ssp-*` names
 - Standard/Open-Code fallback routes preserve the same contracts when sequential
-- sub-agent-first default outside Codex standard light mode: non-trivial tasks dispatch at
-  least one agent when tooling exists and dispatch is authorized
+- conductor-first default: non-trivial tasks dispatch agents only when independent context,
+  proof, or ownership boundaries make them useful and dispatch is authorized
 - Codex standard light mode: routine small/medium work uses direct/inline execution unless
   the user explicitly asked for sub-agents, delegation, or parallel agent work
 - parallel-default behavior: 2+ independent agents dispatch as one batch unless a
   `sequential_reason` is recorded
 - inline/direct execution is forbidden for non-trivial tasks only when an authorized
   Task/sub-agent tool is available and light mode does not apply
-- lightweight sub-agent work defaults to `gpt-5.3-codex-spark` when model overrides are
-  available, while explicit overrides, deep/high-risk/performance work, and failed Spark
+- lightweight sub-agent work defaults to `gpt-5.5` when model overrides are available,
+  while explicit overrides, deep/high-risk/performance work, and failed GPT 5.5
   attempts use inherited/default or requested models
 - overlapping writer scenarios split or use explicit worktree isolation
 - installed-skill routing covers launch, deploy, release, security, migration,
@@ -55,7 +55,7 @@ expected_gates: optional list
 expected_dispatch_mode: optional dispatch expectation (`parallel_batch`,
   `parallel_with_worktree`, `single_agent`, `mixed_parallel_waves`,
   `sequential_exception`)
-expected_model_preference: optional model expectation (`gpt-5.3-codex-spark`,
+expected_model_preference: optional model expectation (`gpt-5.5`,
   `inherited-default`, or `explicit:<model>`)
 expected_waves: optional array of agent-name arrays, where each inner array is one batch
 forbidden_execution: optional list such as `direct-edit` or `inline-with-agent-tool`

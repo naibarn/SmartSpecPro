@@ -1,0 +1,33 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/128-age-aware-safety-policy/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/128-age-aware-safety-policy/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-policy-foundation",
+    "section-02-data-profile-service",
+    "section-03-security-pin-tokens",
+    "section-04-admin-policy-audit-flags",
+    "section-05-profile-completion-ux",
+    "section-06-chat-enforcement",
+    "section-07-media-async-enforcement",
+    "section-08-generated-asset-viewer-policy",
+    "section-09-external-actors-adapters",
+    "section-10-settings-admin-i18n",
+    "section-11-observability-compliance",
+    "section-12-rollout-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-02T14:35:32.690720+00:00"
+}

@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-character-visual-bible/input",
+  "title": "Character Visual Bible Input (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "script_json": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "script_text": {
+      "type": "string"
+    },
+    "story_context": {
+      "type": "string"
+    },
+    "style_preset": {
+      "type": "string",
+      "enum": [
+        "cinematic_romance",
+        "luxury_melodrama",
+        "workplace_drama",
+        "clean_editorial",
+        "custom"
+      ]
+    },
+    "custom_style": {
+      "type": "string"
+    },
+    "workflow_level": {
+      "type": "string",
+      "enum": [
+        "guided",
+        "simple",
+        "custom"
+      ]
+    },
+    "rendering_profile": {
+      "type": "string",
+      "enum": [
+        "premium_live_action",
+        "stylized_realistic"
+      ]
+    },
+    "target_realism": {
+      "type": "string",
+      "enum": [
+        "ultra_realistic",
+        "stylized_realistic"
+      ]
+    },
+    "target_age_group": {
+      "type": "string",
+      "enum": [
+        "preschool",
+        "children",
+        "tweens",
+        "young_adults",
+        "adults",
+        "teens"
+      ]
+    },
+    "target_rating": {
+      "type": "string"
+    },
+    "age_control": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "age_range": {
+          "type": "string"
+        },
+        "family_all": {
+          "type": "boolean"
+        }
+      }
+    },
+    "continuity_controls": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "lock_face_identity": {
+          "type": "boolean"
+        },
+        "lock_hair_identity": {
+          "type": "boolean"
+        },
+        "lock_signature_wardrobe": {
+          "type": "boolean"
+        },
+        "maintain_same_ethnicity_cues": {
+          "type": "boolean"
+        },
+        "allow_secondary_outfits": {
+          "type": "boolean"
+        }
+      }
+    },
+    "output_options": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "include_image_generation_prompts": {
+          "type": "boolean"
+        },
+        "include_plain_text_summary": {
+          "type": "boolean"
+        },
+        "include_storyboard_attachment_manifest": {
+          "type": "boolean"
+        },
+        "generate_primary_portrait_prompt": {
+          "type": "boolean"
+        },
+        "generate_full_body_prompt": {
+          "type": "boolean"
+        },
+        "generate_expression_sheet_prompt": {
+          "type": "boolean"
+        },
+        "generate_outfit_sheet_prompt": {
+          "type": "boolean"
+        },
+        "generate_turnaround_prompt": {
+          "type": "boolean"
+        },
+        "expression_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "deliverables": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "do_not_make": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "must_feel_like": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visual_tone": {
+      "type": "string"
+    },
+    "gender_presentation": {
+      "type": "string"
+    },
+    "hair_notes": {
+      "type": "string"
+    },
+    "wardrobe_notes": {
+      "type": "string"
+    },
+    "background": {
+      "type": "string"
+    },
+    "primary_reference_aspect_ratio": {
+      "type": "string"
+    },
+    "sheet_aspect_ratio": {
+      "type": "string"
+    },
+    "app_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

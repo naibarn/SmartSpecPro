@@ -1,0 +1,46 @@
+{
+  "contract_version": 1,
+  "canonical_facts": [
+    {
+      "fact_id": "f1",
+      "statement": "Aria is CFO of Vantor Group"
+    }
+  ],
+  "prior_episode_summaries": [
+    {
+      "episode_number": 1,
+      "summary": "Aria signs the merger"
+    }
+  ],
+  "unresolved_hooks": [
+    {
+      "hook_id": "h_clinic",
+      "description": "sister's clinic funding"
+    }
+  ],
+  "resolved_hooks": [],
+  "relationship_state_changes": [
+    {
+      "pair": [
+        "char_aria",
+        "char_rival"
+      ],
+      "change": "trust -> rivalry"
+    }
+  ],
+  "character_emotional_state": [
+    {
+      "character_id": "char_aria",
+      "state": "suspicious"
+    }
+  ],
+  "product_tie_in_history": [],
+  "continuity_risks": [
+    {
+      "risk": "wardrobe drift",
+      "severity": "low"
+    }
+  ],
+  "episode_recap": "Episode 1: Aria signs the merger and uncovers a hidden clause.",
+  "memory_compaction_summary": "Series so far: corporate betrayal, clinic subplot open, Aria vs rival."
+}

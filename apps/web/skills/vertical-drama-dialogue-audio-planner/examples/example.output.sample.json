@@ -1,0 +1,50 @@
+{
+  "contract_version": 1,
+  "dialogue_lines": [
+    {
+      "shot_number": 1,
+      "clip_number": 1,
+      "speaker_character_id": "char_aria",
+      "dialogue_line": "We are not done here.",
+      "estimated_seconds": 2.4
+    }
+  ],
+  "speaker_mapping": [
+    {
+      "speaker": "Aria",
+      "character_id": "char_aria"
+    }
+  ],
+  "voice_continuity_map": {
+    "char_aria": {
+      "voice_id": "voice_aria_v1",
+      "locked": true
+    }
+  },
+  "missing_voice_warnings": [],
+  "subtitle_cues": [
+    {
+      "shot_number": 1,
+      "text": "We are not done here.",
+      "start_seconds": 0.0,
+      "end_seconds": 2.4,
+      "safe_area_hint": "keep within lower 9:16 safe band"
+    }
+  ],
+  "audio_timing_estimate": {
+    "total_seconds": 60,
+    "dialogue_seconds": 18
+  },
+  "native_audio_snippets": [],
+  "separate_tts_plan": {
+    "strategy": "separate_tts_voiceover",
+    "lines": [
+      {
+        "character_id": "char_aria",
+        "voice_id": "voice_aria_v1"
+      }
+    ]
+  },
+  "warnings": [],
+  "repair_queue": []
+}

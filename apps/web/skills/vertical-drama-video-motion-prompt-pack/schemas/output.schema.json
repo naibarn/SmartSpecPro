@@ -1,0 +1,463 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-video-motion-prompt-pack/output",
+  "title": "Video Motion Prompt Pack Output (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "video_plan_summary",
+    "provider_feasibility",
+    "video_clip_requests",
+    "plain_text_video_plan",
+    "final_episode_assembly_manifest",
+    "repair_loop",
+    "contract_version"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "video_plan_summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "episode_title": {
+          "type": "string"
+        },
+        "duration_seconds": {
+          "const": 60
+        },
+        "clip_count": {
+          "type": "integer"
+        },
+        "aspect_ratio": {
+          "const": "9:16"
+        },
+        "strategy": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "episode_title",
+        "duration_seconds",
+        "clip_count",
+        "aspect_ratio",
+        "strategy"
+      ]
+    },
+    "provider_feasibility": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "blocking_reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommended_provider_path": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "veo31_executable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "blocking_reasons",
+        "recommended_provider_path",
+        "notes",
+        "veo31_executable"
+      ]
+    },
+    "video_clip_requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "clip_number": {
+            "type": "integer"
+          },
+          "source_shot_numbers": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "start_frame_reference": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "asset_id": {
+                "type": "string"
+              },
+              "file_id": {
+                "type": "string"
+              },
+              "image_url": {
+                "type": "string"
+              },
+              "local_path": {
+                "type": "string"
+              },
+              "contains_human_face": {
+                "type": "boolean"
+              },
+              "openai_input_reference_allowed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "asset_id",
+              "file_id",
+              "image_url",
+              "local_path",
+              "contains_human_face",
+              "openai_input_reference_allowed"
+            ]
+          },
+          "end_frame_reference": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "asset_id": {
+                    "type": "string"
+                  },
+                  "file_id": {
+                    "type": "string"
+                  },
+                  "image_url": {
+                    "type": "string"
+                  },
+                  "local_path": {
+                    "type": "string"
+                  },
+                  "contains_human_face": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "asset_id",
+                  "file_id",
+                  "image_url",
+                  "local_path",
+                  "contains_human_face"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "negative_motion_prompt": {
+            "type": "string"
+          },
+          "subtitle_or_dialogue": {
+            "type": "string"
+          },
+          "camera_motion": {
+            "type": "string"
+          },
+          "continuity_notes": {
+            "type": "string"
+          },
+          "provider_request": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "external_image_to_video_request": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": true
+              },
+              "execution_status": {
+                "enum": [
+                  "ready",
+                  "blocked",
+                  "fallback_text_to_video",
+                  "manual_review_required",
+                  "external_provider_required"
+                ]
+              },
+              "execution_status_normalized": {
+                "enum": [
+                  "ready",
+                  "blocked",
+                  "fallback_prompt_only",
+                  "manual_review_required",
+                  "external_provider_required"
+                ]
+              },
+              "veo31_request": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "model": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "first_frame": {
+                    "type": [
+                      "string",
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "last_frame": {
+                    "type": [
+                      "string",
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "reference_images": {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "string",
+                        "object"
+                      ]
+                    }
+                  },
+                  "duration_seconds": {
+                    "type": "number"
+                  },
+                  "aspect_ratio": {
+                    "type": "string"
+                  },
+                  "resolution": {
+                    "type": "string"
+                  },
+                  "generate_audio": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "model",
+                  "mode",
+                  "prompt",
+                  "first_frame",
+                  "last_frame",
+                  "reference_images",
+                  "duration_seconds",
+                  "aspect_ratio",
+                  "resolution",
+                  "generate_audio"
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "external_image_to_video_request",
+              "execution_status",
+              "veo31_request"
+            ]
+          },
+          "parent_shot_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "sub_shot_number": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "clip_number",
+          "source_shot_numbers",
+          "duration_seconds",
+          "start_frame_reference",
+          "prompt",
+          "negative_motion_prompt",
+          "subtitle_or_dialogue",
+          "camera_motion",
+          "continuity_notes",
+          "provider_request"
+        ]
+      }
+    },
+    "sub_shot_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "parent_shot_number": {
+            "type": "integer"
+          },
+          "requested_sub_shot_count": {
+            "type": "integer"
+          },
+          "resolved_sub_shot_count": {
+            "type": "integer"
+          },
+          "decision": {
+            "enum": [
+              "honored",
+              "reduced",
+              "single_clip_fallback"
+            ]
+          },
+          "sub_shots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "sub_shot_number": {
+                  "type": "integer"
+                },
+                "duration_seconds": {
+                  "type": "number"
+                },
+                "camera_setup": {
+                  "type": "string"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "transition_in": {
+                  "enum": [
+                    "cut",
+                    "match_cut",
+                    "smash_cut",
+                    "continuous"
+                  ]
+                },
+                "negative_motion_prompt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sub_shot_number",
+                "duration_seconds",
+                "camera_setup",
+                "prompt",
+                "transition_in"
+              ]
+            }
+          }
+        },
+        "required": [
+          "parent_shot_number",
+          "requested_sub_shot_count",
+          "resolved_sub_shot_count",
+          "decision",
+          "sub_shots"
+        ]
+      }
+    },
+    "plain_text_video_plan": {
+      "type": "string"
+    },
+    "final_episode_assembly_manifest": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "handoff_type": {
+          "const": "video_assembly_manifest"
+        },
+        "target_duration_seconds": {
+          "const": 60
+        },
+        "clips": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "ffmpeg_concat_plan": {
+          "type": [
+            "object",
+            "array"
+          ],
+          "additionalProperties": true
+        },
+        "subtitle_plan": {
+          "type": [
+            "object",
+            "array"
+          ],
+          "additionalProperties": true
+        },
+        "audio_bgm_plan": {
+          "type": [
+            "object",
+            "array"
+          ],
+          "additionalProperties": true
+        },
+        "export_settings": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {}
+        }
+      },
+      "required": [
+        "handoff_type",
+        "target_duration_seconds",
+        "clips",
+        "ffmpeg_concat_plan",
+        "subtitle_plan",
+        "audio_bgm_plan",
+        "export_settings"
+      ]
+    },
+    "repair_loop": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "clip_qc_checklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "common_video_repairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "regenerate_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "clip_qc_checklist",
+        "common_video_repairs",
+        "regenerate_rules"
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "style_preset": "luxury_melodrama",
+  "workflow_level": "custom",
+  "rendering_profile": "premium_live_action",
+  "target_realism": "ultra_realistic",
+  "target_age_group": "young_adults",
+  "continuity_controls": {
+    "lock_face_identity": true,
+    "lock_hair_identity": true
+  },
+  "app_metadata": {
+    "series_id": "series_123",
+    "tenant_id": "tenant_abc"
+  }
+}

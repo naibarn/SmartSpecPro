@@ -1,0 +1,31 @@
+{
+  "script_text": "Episode 1 introduces Aria at a late-night boardroom.",
+  "story_context": "corporate romance melodrama",
+  "style_preset": "cinematic_romance",
+  "workflow_level": "guided",
+  "rendering_profile": "premium_live_action",
+  "target_realism": "ultra_realistic",
+  "target_age_group": "young_adults",
+  "continuity_controls": {
+    "lock_face_identity": true,
+    "lock_hair_identity": true,
+    "lock_signature_wardrobe": true,
+    "maintain_same_ethnicity_cues": true,
+    "allow_secondary_outfits": true
+  },
+  "output_options": {
+    "include_image_generation_prompts": true,
+    "include_plain_text_summary": true,
+    "include_storyboard_attachment_manifest": true,
+    "generate_primary_portrait_prompt": true,
+    "generate_full_body_prompt": true,
+    "generate_expression_sheet_prompt": true,
+    "generate_outfit_sheet_prompt": true,
+    "generate_turnaround_prompt": true
+  },
+  "app_metadata": {
+    "series_id": "series_123",
+    "tenant_id": "tenant_abc",
+    "app_run_id": "run_9"
+  }
+}

@@ -52,6 +52,32 @@ import {
   mergeLocalAiPreferences,
   sanitizeUserPreferencesWithLocalAi,
 } from "../services/localAiPreferences";
+import {
+  buildSafetyProfilePreferences,
+  getEffectiveSafetyProfileFromPrefs,
+  validateSafetyProfileInput,
+} from "../services/ageSafetyProfileService";
+import {
+  getSecurityPinVersion,
+  hashSecurityPin,
+  isSecurityPinEnabled,
+  isSecurityPinLocked,
+  normalizeSecurityPinPrefs,
+  recordSecurityPinFailure,
+  recordSecurityPinSuccess,
+  verifySecurityPin,
+} from "../services/securityPinService";
+import {
+  getPolicyDayKey,
+  issueProtectedSurfaceToken,
+  type ProtectedSurfaceScope,
+} from "../services/protectedSurfaceTokenService";
+import {
+  DEFAULT_AGE_SAFETY_POLICY,
+  getPolicySnapshotHash,
+  resolveJurisdictionPreset,
+} from "../../shared/ageSafetyPolicy";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 
 // Zod schemas
 const userFiltersSchema = z.object({
@@ -91,6 +117,29 @@ const unlockPrivateVaultSchema = z.object({
 });
 const disablePrivateVaultSchema = z.object({
   currentPin: privateVaultPinSchema,
+});
+const updateSafetyProfileSchema = z.object({
+  dateOfBirth: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+  countryOfResidence: z.string().trim().min(2).max(3),
+});
+const setSecurityPinSchema = z.object({
+  currentPin: privateVaultPinSchema.optional(),
+  newPin: privateVaultPinSchema,
+  confirmPin: privateVaultPinSchema,
+});
+const unlockProtectedSurfaceSchema = z.object({
+  pin: privateVaultPinSchema,
+  scopes: z
+    .array(z.enum([
+      "profile:birthdate:update",
+      "profile:country:update",
+      "private-chat:access",
+      "age-policy:temporary-adult",
+      "generated-asset:restricted-view",
+    ]))
+    .min(1)
+    .max(5)
+    .default(["age-policy:temporary-adult"]),
 });
 
 const updatePreferencesSchema = z.object({
@@ -982,6 +1031,144 @@ export const usersRouter = router({
         ...sanitizeUserPreferences(updated),
         workerAccessKeys: workerPrefs.workerAccessKeys,
       });
+    }),
+
+  getSafetyProfileCompletionStatus: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const [row] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    const profile = getEffectiveSafetyProfileFromPrefs(row?.userPreferences, new Date());
+    const tenantId = String(ctx.tenantId ?? ctx.user.currentTenantId ?? "").trim();
+    const flags = tenantId ? await getTenantFeatureFlags(tenantId) : null;
+    return {
+      gateRequired: Boolean(flags?.ageSafetyPolicyEnabled && flags?.ageSafetyProfileCompletionGate),
+      complete: profile.complete,
+      missingFields: profile.missingFields,
+      actualAgeBand: profile.actualAgeBand,
+      enforcementAgeBand: profile.enforcementAgeBand,
+      countryOfResidence: profile.countryOfResidence,
+      jurisdictionPresetId: profile.jurisdictionPresetId,
+      profileVersion: profile.profileVersion,
+      completedAt: profile.completedAt,
+    };
+  }),
+
+  updateSafetyProfile: protectedProcedure
+    .input(updateSafetyProfileSchema)
+    .output(userPreferencesOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const now = new Date();
+      const validation = validateSafetyProfileInput(input, now);
+      if (!validation.ok) {
+        throw new Error(validation.code);
+      }
+
+      const [row] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (row?.userPreferences as Record<string, unknown>) || {};
+      const updated = buildSafetyProfilePreferences(currentPrefs, validation.normalized, now);
+      await db.update(users).set({ userPreferences: updated as typeof users.$inferInsert["userPreferences"] }).where(eq(users.id, ctx.user.id));
+      const workerPrefs = normalizeWorkerAccessKeysPreferences(updated.workerAccessKeys);
+      return sanitizeUserPreferencesWithLocalAi({
+        ...sanitizeUserPreferences(updated),
+        workerAccessKeys: workerPrefs.workerAccessKeys,
+      });
+    }),
+
+  setSecurityPin: protectedProcedure
+    .input(setSecurityPinSchema)
+    .output(userPreferencesOutputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      if (input.newPin !== input.confirmPin) {
+        throw new Error("PIN codes do not match");
+      }
+
+      const [row] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (row?.userPreferences as Record<string, unknown>) || {};
+      const currentPin = normalizeSecurityPinPrefs(currentPrefs);
+      if (currentPin?.enabled && currentPin.pinHash) {
+        if (!input.currentPin) {
+          throw new Error("Current PIN is required");
+        }
+        const currentValid = await verifySecurityPin(input.currentPin, currentPin.pinHash);
+        if (!currentValid) {
+          throw new Error("Current PIN is incorrect");
+        }
+      }
+
+      const nextVersion = getSecurityPinVersion(currentPrefs) + 1;
+      const updated = {
+        ...currentPrefs,
+        securityPin: {
+          enabled: true,
+          pinHash: await hashSecurityPin(input.newPin),
+          pinVersion: nextVersion,
+          pinUpdatedAt: new Date().toISOString(),
+          failedAttempts: 0,
+          lockedUntil: undefined,
+        },
+      } as Record<string, unknown>;
+      await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
+      const workerPrefs = normalizeWorkerAccessKeysPreferences(updated.workerAccessKeys);
+      return sanitizeUserPreferencesWithLocalAi({
+        ...sanitizeUserPreferences(updated),
+        workerAccessKeys: workerPrefs.workerAccessKeys,
+      });
+    }),
+
+  unlockProtectedSurface: protectedProcedure
+    .input(unlockProtectedSurfaceSchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const now = new Date();
+      const tenantId = String(ctx.tenantId ?? ctx.user.currentTenantId ?? "").trim();
+      if (!tenantId) {
+        throw new Error("Tenant context is required");
+      }
+
+      const [row] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = (row?.userPreferences as Record<string, unknown>) || {};
+      const securityPin = normalizeSecurityPinPrefs(currentPrefs);
+      if (!isSecurityPinEnabled(currentPrefs) || !securityPin?.pinHash) {
+        throw new Error("Security PIN is not configured");
+      }
+      if (isSecurityPinLocked(currentPrefs, now)) {
+        throw new Error("Security PIN is temporarily locked");
+      }
+
+      const valid = await verifySecurityPin(input.pin, securityPin.pinHash);
+      if (!valid) {
+        const failedPrefs = recordSecurityPinFailure(currentPrefs, now);
+        await db.update(users).set({ userPreferences: failedPrefs as typeof users.$inferInsert["userPreferences"] }).where(eq(users.id, ctx.user.id));
+        throw new Error("Invalid PIN");
+      }
+
+      const updatedPrefs = recordSecurityPinSuccess(currentPrefs);
+      await db.update(users).set({ userPreferences: updatedPrefs as typeof users.$inferInsert["userPreferences"] }).where(eq(users.id, ctx.user.id));
+      const profile = getEffectiveSafetyProfileFromPrefs(updatedPrefs, now);
+      const preset = resolveJurisdictionPreset(profile.countryOfResidence, undefined, now);
+      const token = issueProtectedSurfaceToken({
+        userId: ctx.user.id,
+        tenantId,
+        pinVersion: getSecurityPinVersion(updatedPrefs),
+        profileVersion: profile.profileVersion,
+        policyVersion: DEFAULT_AGE_SAFETY_POLICY.policyVersion,
+        jurisdictionPresetId: profile.jurisdictionPresetId,
+        dayKey: getPolicyDayKey(now),
+        scopes: input.scopes as ProtectedSurfaceScope[],
+      });
+
+      return {
+        token,
+        expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+        policyVersion: DEFAULT_AGE_SAFETY_POLICY.policyVersion,
+        policySnapshotHash: getPolicySnapshotHash(DEFAULT_AGE_SAFETY_POLICY, preset),
+        scopes: input.scopes,
+      };
     }),
 
   listWorkerAccessKeys: protectedProcedure

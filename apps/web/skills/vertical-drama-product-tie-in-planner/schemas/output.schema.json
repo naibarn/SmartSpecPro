@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-product-tie-in-planner/output",
+  "title": "Vertical Drama Product Tie-In Planner Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "tie_ins",
+    "claims_warnings",
+    "fatigue_history",
+    "warnings",
+    "repair_queue",
+    "contract_version"
+  ],
+  "properties": {
+    "tie_ins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "product_id",
+          "story_function"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "story_function": {
+            "type": "string"
+          },
+          "product_reference_requirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "claims_guard": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "placement": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "claims_warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "fatigue_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "repair_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "contract_version": {
+      "const": 1
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "contract_version": 1,
+  "tie_ins": [
+    {
+      "product_id": "prod_glowserum",
+      "story_function": "signals Aria's late-night resilience as she works past midnight",
+      "product_reference_requirements": [
+        {
+          "asset_type": "product_shot",
+          "required": true
+        }
+      ],
+      "claims_guard": {
+        "regulated": true,
+        "allowed_claims": [
+          "hydrating"
+        ],
+        "blocked_claims": [
+          "cures acne"
+        ]
+      },
+      "placement": {
+        "shot_numbers": [
+          4
+        ],
+        "role": "background_prop"
+      }
+    }
+  ],
+  "claims_warnings": [
+    {
+      "product_id": "prod_glowserum",
+      "code": "regulated_claim_review",
+      "message": "cosmetic efficacy claims need compliance review"
+    }
+  ],
+  "fatigue_history": [
+    {
+      "product_id": "prod_glowserum",
+      "last_used_episode": 1,
+      "uses": 1
+    }
+  ],
+  "warnings": [],
+  "repair_queue": []
+}

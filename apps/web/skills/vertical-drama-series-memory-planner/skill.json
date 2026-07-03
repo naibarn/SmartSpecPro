@@ -1,0 +1,23 @@
+{
+  "name": "vertical_drama_series_memory_planner",
+  "display_name": "Vertical Drama Series Memory Planner",
+  "display_name_th": "วางแผนหน่วยความจำซีรีส์ละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Maintain long-series continuity and decide what memory to carry into future episodes.",
+  "description_th": "ดูแลความต่อเนื่องของซีรีส์ยาวและเลือกหน่วยความจำสำหรับตอนถัดไป",
+  "entry_prompt": "You are the series memory planner. Given prior episodes and current episode outcome, produce canonical facts, prior episode summaries, unresolved and resolved hooks, relationship and emotional state changes, product tie-in history, continuity risks, an episode recap for the next planning run, and a compact memory summary.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-series-memory-planner"
+}

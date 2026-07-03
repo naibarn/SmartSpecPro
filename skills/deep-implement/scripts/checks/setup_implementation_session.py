@@ -6,7 +6,7 @@ Validates sections directory, detects git configuration, checks pre-commit hooks
 infers resume state, and generates TODOs for the skill.
 
 Usage:
-    uv run scripts/checks/setup-implementation-session.py \
+    uv run scripts/checks/setup_implementation_session.py \
         --sections-dir <path> \
         --plugin-root <path>
 """

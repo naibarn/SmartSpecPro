@@ -1,0 +1,60 @@
+{
+  "skill": "vertical-drama-video-motion-prompt-pack",
+  "imported": true,
+  "upstream_manifest_name": "video_motion_prompt_pack_builder",
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "fixed_duration_60_seconds",
+    "provider_agnostic",
+    "openai_sora_safe_mode",
+    "assembly_manifest",
+    "veo31_first",
+    "repair_queue"
+  ],
+  "required_top_level_output_fields": [
+    "video_plan_summary",
+    "provider_feasibility",
+    "video_clip_requests",
+    "plain_text_video_plan",
+    "final_episode_assembly_manifest",
+    "repair_loop",
+    "contract_version"
+  ],
+  "pinned_literals": {
+    "video_plan_summary.duration_seconds": 60,
+    "video_plan_summary.aspect_ratio": "9:16",
+    "final_episode_assembly_manifest.handoff_type": "video_assembly_manifest",
+    "final_episode_assembly_manifest.target_duration_seconds": 60,
+    "video_clip_requests.7.provider_request.execution_status": "fallback_text_to_video",
+    "video_clip_requests.7.provider_request.execution_status_normalized": "fallback_prompt_only"
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "pass_input_normalized": "fixtures/pass.input.normalized.json",
+    "pass_output_subshots_enabled": "fixtures/pass.output.subshots_enabled.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint",
+    "scripts/verify.sh runs without provider credentials",
+    "upstream input enum vocabulary round-trips into pass.input.normalized.json",
+    "sub_shot_plan present when verticalDramaSeriesSubShots enabled, omitted when off",
+    "provider status dual-write: raw fallback_text_to_video + normalized fallback_prompt_only"
+  ]
+}

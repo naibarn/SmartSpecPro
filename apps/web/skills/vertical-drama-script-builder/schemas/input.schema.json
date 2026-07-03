@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-script-builder/input",
+  "title": "Vertical Drama Script Builder Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "story_title",
+    "story_brief"
+  ],
+  "properties": {
+    "locale": {
+      "type": "string",
+      "enum": [
+        "th",
+        "en"
+      ]
+    },
+    "story_title": {
+      "type": "string"
+    },
+    "story_brief": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "const": 60
+    },
+    "episode_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "episode_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "season_arc": {
+      "type": "string"
+    },
+    "prior_episode_recap": {
+      "type": "string"
+    },
+    "memory_state": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "character_id",
+          "name",
+          "role"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "character_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "relationship_state": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "product_tie_in_policy": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "age_control": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "target_age_group": {
+          "type": "string"
+        },
+        "target_rating": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

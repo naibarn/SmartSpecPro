@@ -1,0 +1,23 @@
+{
+  "name": "vertical_drama_dialogue_audio_planner",
+  "display_name": "Vertical Drama Dialogue & Audio Planner",
+  "display_name_th": "วางแผนบทพูดและเสียงละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Convert episode script beats into dialogue, speaker mapping, voice continuity, subtitle cues, native-audio and separate-TTS planning metadata. No paid audio is produced.",
+  "description_th": "แปลงบทตอนเป็นบทพูด การจับคู่เสียง คำบรรยาย และแผน TTS โดยไม่สร้างเสียงที่มีค่าใช้จ่าย",
+  "entry_prompt": "You are the dialogue and audio planner. Turn the episode script into cast-aware dialogue lines by shot/clip, speaker-to-character mapping, a stable voice continuity map, missing-voice warnings, subtitle cues with 9:16 safe-area hints, an audio timing estimate, native-audio prompt snippets only when allowed, and a separate-TTS render plan. Produce NO paid audio; output planning metadata only.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-dialogue-audio-planner"
+}

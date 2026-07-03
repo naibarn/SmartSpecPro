@@ -95,6 +95,40 @@ type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'prefer
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
+const SETTINGS_TABS: SettingsTab[] = ['profile', 'account', 'security', 'privateVault', 'preferences', 'marketplaceSharing', 'localAi', 'desktopHost', 'notifications', 'automation', 'workers', 'api', 'billing', 'integrations', 'personas'];
+const SAFETY_PROFILE_COUNTRIES = [
+  { code: 'TH', en: 'Thailand', th: 'ไทย' },
+  { code: 'US', en: 'United States', th: 'สหรัฐอเมริกา' },
+  { code: 'GB', en: 'United Kingdom', th: 'สหราชอาณาจักร' },
+  { code: 'AT', en: 'Austria', th: 'ออสเตรีย' },
+  { code: 'BE', en: 'Belgium', th: 'เบลเยียม' },
+  { code: 'BG', en: 'Bulgaria', th: 'บัลแกเรีย' },
+  { code: 'HR', en: 'Croatia', th: 'โครเอเชีย' },
+  { code: 'CY', en: 'Cyprus', th: 'ไซปรัส' },
+  { code: 'CZ', en: 'Czechia', th: 'เช็ก' },
+  { code: 'DK', en: 'Denmark', th: 'เดนมาร์ก' },
+  { code: 'EE', en: 'Estonia', th: 'เอสโตเนีย' },
+  { code: 'FI', en: 'Finland', th: 'ฟินแลนด์' },
+  { code: 'FR', en: 'France', th: 'ฝรั่งเศส' },
+  { code: 'DE', en: 'Germany', th: 'เยอรมนี' },
+  { code: 'GR', en: 'Greece', th: 'กรีซ' },
+  { code: 'HU', en: 'Hungary', th: 'ฮังการี' },
+  { code: 'IE', en: 'Ireland', th: 'ไอร์แลนด์' },
+  { code: 'IT', en: 'Italy', th: 'อิตาลี' },
+  { code: 'LV', en: 'Latvia', th: 'ลัตเวีย' },
+  { code: 'LT', en: 'Lithuania', th: 'ลิทัวเนีย' },
+  { code: 'LU', en: 'Luxembourg', th: 'ลักเซมเบิร์ก' },
+  { code: 'MT', en: 'Malta', th: 'มอลตา' },
+  { code: 'NL', en: 'Netherlands', th: 'เนเธอร์แลนด์' },
+  { code: 'PL', en: 'Poland', th: 'โปแลนด์' },
+  { code: 'PT', en: 'Portugal', th: 'โปรตุเกส' },
+  { code: 'RO', en: 'Romania', th: 'โรมาเนีย' },
+  { code: 'SK', en: 'Slovakia', th: 'สโลวาเกีย' },
+  { code: 'SI', en: 'Slovenia', th: 'สโลวีเนีย' },
+  { code: 'ES', en: 'Spain', th: 'สเปน' },
+  { code: 'SE', en: 'Sweden', th: 'สวีเดน' },
+];
+
 function MarketplaceSharingSettingsPanel() {
   const utils = trpc.useUtils();
   const language = typeof window !== 'undefined' ? window.localStorage.getItem(LOCALE_STORAGE_KEY) || navigator.language || 'en' : 'en';
@@ -561,9 +595,11 @@ export default function Settings() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { tenant } = useTenant();
   const { t, i18n } = useScopedTranslation(['settings', 'common']);
+  const isThaiUi = (i18n.resolvedLanguage || i18n.language || 'en').startsWith('th');
   const [, setLocation] = useLocation();
   const search = useSearch();
-  const initialTab = (new URLSearchParams(search).get('tab') as SettingsTab) || 'profile';
+  const searchParams = new URLSearchParams(search);
+  const initialTab = ((searchParams.get('tab') || searchParams.get('section')) as SettingsTab) || 'profile';
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -786,8 +822,13 @@ export default function Settings() {
   const [privateVaultUnlockPin, setPrivateVaultUnlockPin] = useState('');
   const [privateVaultDisablePin, setPrivateVaultDisablePin] = useState('');
   const [privateVaultToken, setPrivateVaultTokenState] = useState<string | null>(() => getPrivateVaultAccessToken());
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [countryOfResidence, setCountryOfResidence] = useState('');
 
   const prefsQuery = trpc.users.getPreferences.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const safetyProfileStatus = trpc.users.getSafetyProfileCompletionStatus.useQuery(undefined, {
     enabled: isAuthenticated,
   });
   const { data: prefsData, isLoading: prefsLoading, refetch: refetchPrefs } = prefsQuery;
@@ -800,6 +841,17 @@ export default function Settings() {
   );
   const updatePrefsMutation = trpc.users.updatePreferences.useMutation({
     onSuccess: () => toast.success(t('settings.translation.saved')),
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateSafetyProfileMutation = trpc.users.updateSafetyProfile.useMutation({
+    onSuccess: async () => {
+      toast.success(isThaiUi ? 'บันทึกข้อมูลความปลอดภัยแล้ว' : 'Safety profile saved');
+      await Promise.all([refetchPrefs(), safetyProfileStatus.refetch()]);
+      const returnTo = new URLSearchParams(search).get('returnTo');
+      if (returnTo) {
+        setLocation(returnTo);
+      }
+    },
     onError: (err: any) => toast.error(err.message),
   });
   const setPrivateVaultPinMutation = trpc.users.setPrivateVaultPin.useMutation({
@@ -903,6 +955,16 @@ export default function Settings() {
   }, [enabledTranslationModelIds, modelsData?.models, prefsData]);
 
   useEffect(() => {
+    const profile = (prefsData as any)?.safetyProfile;
+    if (profile?.dateOfBirth && !dateOfBirth) {
+      setDateOfBirth(String(profile.dateOfBirth));
+    }
+    if (profile?.countryOfResidence && !countryOfResidence) {
+      setCountryOfResidence(String(profile.countryOfResidence));
+    }
+  }, [countryOfResidence, dateOfBirth, prefsData]);
+
+  useEffect(() => {
     if (!modelsData?.models) {
       return;
     }
@@ -921,6 +983,14 @@ export default function Settings() {
       setLocation('/login');
     }
   }, [isLoading, isAuthenticated, setLocation]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const requestedTab = params.get('tab') || params.get('section');
+    if (requestedTab && SETTINGS_TABS.includes(requestedTab as SettingsTab)) {
+      setActiveTab(requestedTab as SettingsTab);
+    }
+  }, [search]);
 
   useEffect(() => {
     if (activeTab === "localAi" && !localClientLlmModeEnabled) {
@@ -1000,6 +1070,119 @@ export default function Settings() {
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
+
+  const handleSaveSafetyProfile = () => {
+    if (!dateOfBirth || !countryOfResidence) {
+      toast.error(isThaiUi ? 'กรุณาระบุวันเกิดและประเทศที่ใช้งานปัจจุบัน' : 'Enter your date of birth and country of residence');
+      return;
+    }
+    updateSafetyProfileMutation.mutate({
+      dateOfBirth,
+      countryOfResidence,
+    });
+  };
+
+  const safetyProfileComplete = safetyProfileStatus.data?.complete === true;
+  const safetyProfileRequiredBanner = !safetyProfileComplete ? (
+    <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 px-5 py-5 shadow-sm shadow-amber-200/60">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+            <AlertCircle className="h-7 w-7" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-amber-950 md:text-2xl">
+              {isThaiUi ? 'จำเป็นต้องกรอกวันเกิดและประเทศที่ใช้งาน' : 'Date of birth and country are required'}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-amber-800 md:text-base">
+              {isThaiUi
+                ? 'กรุณากรอกข้อมูลทั้ง 2 ช่องให้ครบก่อนใช้งานหน้าปกติ เช่น Chat, Media Studio และพื้นที่ที่มีการควบคุมตามอายุ ระบบจะใช้ข้อมูลนี้เพื่อคำนวณอายุจริง ณ วันที่ใช้งานและเลือกนโยบายความปลอดภัยที่เหมาะสม'
+                : 'Complete both fields before using normal product areas such as Chat, Media Studio, and age-gated surfaces. SmartSpecPro uses this to calculate your current age and apply the right safety policy.'}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          onClick={() => {
+            const target = document.getElementById('safety-profile-required-form');
+            target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+          className="bg-amber-600 text-white hover:bg-amber-700"
+        >
+          {isThaiUi ? 'ไปกรอกข้อมูล' : 'Complete now'}
+        </Button>
+      </div>
+    </div>
+  ) : null;
+  const safetyProfilePanel = (
+    <div id="safety-profile-required-form" className={`rounded-2xl border p-5 ${safetyProfileComplete ? 'border-green-200 bg-green-50/70' : 'border-amber-300 bg-amber-50/90 ring-1 ring-amber-200'}`}>
+      <div className="mb-4 flex items-start gap-3">
+        <ShieldCheck className={`mt-0.5 h-5 w-5 ${safetyProfileComplete ? 'text-green-600' : 'text-amber-600'}`} />
+        <div>
+          <h3 className={`font-semibold ${safetyProfileComplete ? 'text-gray-900' : 'text-amber-950'}`}>
+            {isThaiUi ? 'ข้อมูลอายุและประเทศที่ใช้งาน' : 'Age and country profile'}
+          </h3>
+          <p className="mt-1 text-sm text-gray-600">
+            {isThaiUi
+              ? 'ระบบใช้ข้อมูลนี้เพื่อคำนวณอายุจริง ณ วันที่ใช้งาน และเลือกนโยบายความปลอดภัยที่เหมาะสมกับประเทศของคุณ'
+              : 'SmartSpecPro uses this to calculate your current age and apply the right safety policy for your country.'}
+          </p>
+          {!safetyProfileComplete && safetyProfileStatus.data?.missingFields?.length ? (
+            <p className="mt-2 text-sm font-medium text-amber-700">
+              {isThaiUi ? 'ต้องกรอกข้อมูลนี้ก่อนใช้งานหน้าปกติ' : 'Required before normal product access is released.'}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            {isThaiUi ? 'วันเกิด' : 'Date of birth'}
+          </label>
+          <Input
+            type="date"
+            value={dateOfBirth}
+            onChange={(event) => setDateOfBirth(event.target.value)}
+            max={new Date().toISOString().slice(0, 10)}
+          />
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">
+            {isThaiUi ? 'ประเทศที่ใช้งานปัจจุบัน' : 'Current country of residence'}
+          </label>
+          <select
+            value={countryOfResidence}
+            onChange={(event) => setCountryOfResidence(event.target.value)}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">{isThaiUi ? 'เลือกประเทศ' : 'Select country'}</option>
+            {SAFETY_PROFILE_COUNTRIES.map((country) => (
+              <option key={country.code} value={country.code}>
+                {isThaiUi ? country.th : country.en}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-xs text-gray-500">
+          {safetyProfileComplete
+            ? (isThaiUi ? 'บันทึกข้อมูลแล้ว' : 'Profile completed')
+            : (isThaiUi ? 'หากยังไม่กรอก ระบบจะถือว่าใช้นโยบายเทียบเท่าเด็ก' : 'Until completed, protected actions use child-safe policy.')}
+        </div>
+        <Button
+          onClick={handleSaveSafetyProfile}
+          disabled={!dateOfBirth || !countryOfResidence || updateSafetyProfileMutation.isPending}
+          className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white"
+        >
+          {updateSafetyProfileMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {isThaiUi ? 'บันทึกข้อมูลอายุ' : 'Save safety profile'}
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
@@ -1117,6 +1300,8 @@ export default function Settings() {
                     description={t('settings.profile.description')}
                   />
 
+                  {safetyProfileRequiredBanner}
+
                   <div className="flex items-center gap-6 pb-6 border-b border-gray-200">
                     <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center text-white text-2xl font-bold">
                       {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
@@ -1166,6 +1351,8 @@ export default function Settings() {
                       />
                     </div>
                   </div>
+
+                  {safetyProfilePanel}
 
                   <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white">
                     <Save className="w-4 h-4 mr-2" />
@@ -1261,6 +1448,8 @@ export default function Settings() {
                     description={t('settings.security.description')}
                   />
 
+                  {safetyProfileRequiredBanner}
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1311,6 +1500,8 @@ export default function Settings() {
                     <Lock className="w-4 h-4 mr-2" />
                     {t('settings.security.updatePassword')}
                   </Button>
+
+                  {safetyProfilePanel}
 
                   {/* Recovery Email */}
                   <div className="pt-6 border-t border-gray-200">

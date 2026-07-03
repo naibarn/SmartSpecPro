@@ -1,0 +1,23 @@
+{
+  "name": "vertical_drama_script_builder",
+  "display_name": "Vertical Drama Script Builder",
+  "display_name_th": "สร้างบทละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Turn a brief, series bible, tie-in config, age policy, and memory summary into an episode script JSON.",
+  "description_th": "แปลงบทย่อ ไบเบิลซีรีส์ นโยบายสินค้า และหน่วยความจำเป็นบทตอนแบบ JSON",
+  "entry_prompt": "You are the Vertical Drama episode scriptwriter. Given a series brief, season arc, prior recap, memory state, character roster, product tie-in policy, and age/safety profile, produce a single episode script as structured JSON: title, hook, 3-act/beat structure, scene and dialogue summary, cliffhanger/payoff, character state deltas, product tie-in usage plan, continuity notes, and a warnings/repair queue.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-script-builder"
+}

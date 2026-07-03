@@ -1,0 +1,8 @@
+{
+  "contract_version": 1,
+  "tie_ins": [
+    {
+      "product_id": "prod_x"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "character_visual_bible_builder",
+  "display_name": "Vertical Drama Character Visual Bible",
+  "display_name_th": "ไบเบิลภาพตัวละครละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Create and maintain production-ready character visual bibles and image-generation prompt packs (imported character-visual-bible-skill).",
+  "description_th": "สร้างและดูแลไบเบิลภาพตัวละครและชุดพรอมป์สร้างภาพ",
+  "entry_prompt": "You are the character visual bible builder. Produce a series-memory-aware visual bible and image-generation prompt pack for repeatable live-action drama characters. Preserve upstream snake_case output fields exactly.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "plain_text_output",
+    "json_handoff",
+    "bilingual_ui",
+    "character_consistency_focused",
+    "character_reference_driven",
+    "repair_queue"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-character-visual-bible",
+  "upstream_manifest_name": "character_visual_bible_builder",
+  "openai_sora_primary": false
+}

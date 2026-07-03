@@ -1,0 +1,17 @@
+/**
+ * Vertical Drama Series — shared contracts barrel (spec feature 131, section 02).
+ *
+ * Pure TypeScript contracts + validators shared by client, server, and services.
+ * No server-only imports — safe to import from the browser bundle.
+ */
+
+export * from "./contracts";
+export * from "./memory";
+export * from "./subShots";
+export * from "./assets";
+export * from "./characterAssets";
+export * from "./contactSheets";
+export * from "./providerRouting";
+export * from "./assembly";
+export * from "./storyboardHandoff";
+export * from "./artifacts";

@@ -1,0 +1,18 @@
+{
+  "locale": "th",
+  "story_title": "คำพิพากษาเที่ยงคืน",
+  "duration_seconds": 60,
+  "story_brief": "ซีอีโอหญิงค้นพบเงื่อนไขลับในสัญญาควบรวม",
+  "episode_number": 1,
+  "episode_count": 10,
+  "characters": [
+    {
+      "character_id": "char_aria",
+      "name": "อาริยา",
+      "role": "นำหญิง"
+    }
+  ],
+  "age_control": {
+    "target_age_group": "young_adults"
+  }
+}

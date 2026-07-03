@@ -1,4 +1,6 @@
 export {
+  getDirectMediaGenerationRequestType,
+  looksLikeDirectImageGenerationRequest,
   looksLikeSkillRequest,
   shouldAttemptSkillRouting,
   shouldAutoRunDetectedSkill,

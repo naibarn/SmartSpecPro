@@ -44311,77 +44311,84 @@ export default function MediaStudio() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="w-20">
-                        <label className="text-xs text-muted-foreground mb-1 block">
-                          {t("mediaStudio.rows")}
-                        </label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          value={splitGridRows}
-                          onChange={e => {
-                            const rows = Math.min(
-                              10,
-                              Math.max(1, parseInt(e.target.value) || 1)
-                            );
-                            updateSplitPreview(rows, splitGridCols);
-                          }}
-                          className="h-9"
-                        />
+                    <div className="rounded-lg border bg-background p-3">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
+                        <div className="min-w-0">
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {t("mediaStudio.rows")}
+                          </label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={splitGridRows}
+                            onChange={e => {
+                              const rows = Math.min(
+                                10,
+                                Math.max(1, parseInt(e.target.value) || 1)
+                              );
+                              updateSplitPreview(rows, splitGridCols);
+                            }}
+                            className="h-9"
+                          />
+                        </div>
+                        <span className="pb-2 text-muted-foreground">x</span>
+                        <div className="min-w-0">
+                          <label className="text-xs text-muted-foreground mb-1 block">
+                            {t("mediaStudio.cols")}
+                          </label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={splitGridCols}
+                            onChange={e => {
+                              const cols = Math.min(
+                                10,
+                                Math.max(1, parseInt(e.target.value) || 1)
+                              );
+                              updateSplitPreview(splitGridRows, cols);
+                            }}
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <span className="text-muted-foreground pt-5">x</span>
-                      <div className="w-20">
-                        <label className="text-xs text-muted-foreground mb-1 block">
-                          {t("mediaStudio.cols")}
-                        </label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={10}
-                          value={splitGridCols}
-                          onChange={e => {
-                            const cols = Math.min(
-                              10,
-                              Math.max(1, parseInt(e.target.value) || 1)
-                            );
-                            updateSplitPreview(splitGridRows, cols);
-                          }}
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="flex-1 pt-5">
-                        <Button
-                          type="button"
-                          className="w-full"
-                          onClick={executeSplit}
-                          disabled={
-                            isSplitting ||
-                            isUploadingProductionShotSplitFrames ||
-                            !splitImageUrl
-                          }
-                        >
-                          {isSplitting ||
-                          isUploadingProductionShotSplitFrames ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              {isUploadingProductionShotSplitFrames
-                                ? isThaiLocale
-                                  ? "กำลังบันทึกเฟรม"
-                                  : "Saving frames"
-                                : t("mediaStudio.splitting")}
-                            </>
-                          ) : (
-                            <>
-                              <Scissors className="h-4 w-4 mr-2" />
-                              {t("mediaStudio.splitCount", {
-                                count: splitGridRows * splitGridCols,
-                              })}
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        className="mt-3 min-h-11 w-full gap-2 text-base font-semibold"
+                        onClick={executeSplit}
+                        disabled={
+                          isSplitting ||
+                          isUploadingProductionShotSplitFrames ||
+                          !splitImageUrl
+                        }
+                      >
+                        {isSplitting ||
+                        isUploadingProductionShotSplitFrames ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {isUploadingProductionShotSplitFrames
+                              ? isThaiLocale
+                                ? "กำลังบันทึกเฟรม"
+                                : "Saving frames"
+                              : t("mediaStudio.splitting")}
+                          </>
+                        ) : (
+                          <>
+                            <Scissors className="h-4 w-4" />
+                            {t("mediaStudio.splitCount", {
+                              count: splitGridRows * splitGridCols,
+                            })}
+                          </>
+                        )}
+                      </Button>
+                      {!splitImageUrl ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {isThaiLocale
+                            ? "เลือกหรือวางภาพก่อน แล้วปุ่มตัดภาพจะพร้อมใช้งาน"
+                            : "Select or drop an image first, then the cut button will be ready."}
+                        </p>
+                      ) : null}
                     </div>
 
                     {splitResults.length > 0 && (

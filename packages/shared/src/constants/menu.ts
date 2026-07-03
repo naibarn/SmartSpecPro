@@ -48,6 +48,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'media',         label: 'Media Studio',   labelTh: 'สตูดิโอ',       icon: 'Sparkles',        path: '/media-studio',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 2 },
   { id: 'content-composer', label: 'Content Composer', labelTh: 'เขียนคอนเทนต์', icon: 'FileText', path: '/content-composer', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.05 },
   { id: 'storyboard-review', label: 'Storyboard Review', labelTh: 'ตรวจสตอรี่บอร์ด', icon: 'Film', path: '/storyboard-review', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.1 },
+  { id: 'vertical-drama-series', label: 'Vertical Drama Series', labelTh: 'ซีรีย์แนวตั้ง', icon: 'Clapperboard', path: '/dashboard/vertical-drama', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.15, requiresFeature: 'verticalDramaSeriesDashboardMenu' },
   { id: 'skills',        label: 'Skills',         labelTh: 'ทักษะ',         icon: 'Sparkles',        path: '/settings/skills', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3 },
   { id: 'workflows',     label: 'Workflows',      labelTh: 'เวิร์กโฟลว์',    icon: 'GitBranch',       path: '/workflows',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.5 },
   { id: 'webhook-triggers', label: 'Webhook Triggers', labelTh: 'เว็บฮุก', icon: 'Webhook', path: '/webhook-triggers', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.6, requiresFeature: 'webhookTriggers' },

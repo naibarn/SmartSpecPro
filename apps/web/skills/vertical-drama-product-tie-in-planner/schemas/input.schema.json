@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-product-tie-in-planner/input",
+  "title": "Product Tie-In Planner Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "products"
+  ],
+  "properties": {
+    "episode_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "episode_script": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "product_id"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "regulated": {
+            "type": "boolean"
+          },
+          "reference_assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "tie_in_fatigue_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "age_control": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

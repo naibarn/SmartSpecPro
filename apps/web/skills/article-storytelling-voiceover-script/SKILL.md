@@ -1,7 +1,7 @@
 ---
 name: "Article Storytelling Voiceover Script"
 description: Convert article pages into structured single-narrator or two-speaker storytelling scripts mapped to Storyboard Review video shots.
-category: audio_generation
+category: audio_prompt_generation
 version: 1.0.0
 icon: mic
 tags:

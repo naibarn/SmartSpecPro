@@ -51,7 +51,9 @@ TASK_IDS: dict[int, str] = {
     11: "generate-plan",
     12: "context-check-pre-review",
     13: "self-review",
-    14: "integrate-review",
+    # Step 14 is reserved/skipped: the old "integrate external review findings"
+    # step was removed when Step 13 self-review replaced external review and
+    # writes its fixes directly into claude-plan.md (see SKILL.md Step 14).
     15: "plan-status-log",
     16: "apply-tdd",
     17: "context-check-pre-split",
@@ -80,7 +82,7 @@ STEP_NAMES: dict[int, str] = {
     11: "Generate implementation plan",
     12: "Context check (pre-review)",
     13: "Adversarial self-review",
-    14: "Integrate review findings",
+    14: "Reserved (skipped — replaced by Step 13 self-review)",
     15: "Plan status log (auto-continue)",
     16: "Apply TDD approach",
     17: "Context check (pre-split)",
@@ -109,8 +111,7 @@ TASK_DEPENDENCIES: dict[str, list[str]] = {
     "generate-plan": ["write-spec"],
     "context-check-pre-review": ["generate-plan"],
     "self-review": ["context-check-pre-review"],
-    "integrate-review": ["self-review"],
-    "plan-status-log": ["integrate-review"],
+    "plan-status-log": ["self-review"],
     "apply-tdd": ["plan-status-log"],
     "context-check-pre-split": ["apply-tdd"],
     "create-section-index": ["context-check-pre-split"],
@@ -163,11 +164,6 @@ TASK_DEFINITIONS: dict[str, TaskDefinition] = {
         subject="Adversarial Self-Review",
         description="Review claude-plan.md from adversarial perspective, find gaps and fix them",
         active_form="Running adversarial self-review",
-    ),
-    "integrate-review": TaskDefinition(
-        subject="Integrate Review Findings",
-        description="Apply review fixes to claude-plan.md, verify no regressions",
-        active_form="Integrating review findings",
     ),
     "plan-status-log": TaskDefinition(
         subject="Plan Status Log",

@@ -1,0 +1,7 @@
+{
+  "clip_duration_strategy": "make_it_120s",
+  "motion_style": "explosive",
+  "veo31_policy": {
+    "veo_3_1": "veo-9000"
+  }
+}

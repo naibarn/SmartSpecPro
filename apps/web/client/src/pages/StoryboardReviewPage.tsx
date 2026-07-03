@@ -144,6 +144,8 @@ import {
   getArticleStoryboardReviewMetadata,
   updateArticleStoryboardCurrentPromptMetadata,
 } from "@shared/articleStoryboardVideo";
+import { VerticalDramaStoryboardReviewPanel } from "../components/verticalDramaSeries/VerticalDramaStoryboardReviewPanel";
+import { normalizeVerticalDramaStoryboardReviewMetadata } from "@/lib/verticalDramaStoryboardReviewMetadata";
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
   "Reference image mode: use the attached image(s) only as material, identity, style, product, object, or scene references.",
@@ -4882,6 +4884,16 @@ export default function StoryboardReviewPage() {
   }, [canonicalReviewId, emitStoryboardReviewClientDebug, reviewRecord, reviewId]);
 
   const tasks = useMemo(() => storyboardDraftToReviewTasks(activeDraft), [activeDraft]);
+  // Vertical Drama Series handoff (spec §12): detect + normalize into panel-ready
+  // metadata. `null` for non-VD reviews, leaving the article-storyboard path intact.
+  const verticalDramaReviewMetadata = useMemo(
+    () =>
+      normalizeVerticalDramaStoryboardReviewMetadata({
+        reviewData: reviewDataRecord,
+        tasks,
+      }),
+    [reviewDataRecord, tasks],
+  );
   const storyboardReviewVideoOptions = useMemo(
     () => getStoryboardReviewVideoOptionValues(activeDraft, locale),
     [activeDraft, locale],
@@ -10037,6 +10049,16 @@ export default function StoryboardReviewPage() {
           </div>
         </div>
       </header>
+
+      {verticalDramaReviewMetadata ? (
+        <div className="border-b bg-white px-2 py-3 sm:px-4 xl:shrink-0">
+          <VerticalDramaStoryboardReviewPanel
+            metadata={verticalDramaReviewMetadata}
+            lang={locale === "th" ? "th" : "en"}
+            completed={activeDraft?.compoundStatus === "completed"}
+          />
+        </div>
+      ) : null}
 
       {hyperframesContextAvailable ? (
         <div className="border-b bg-sky-50 px-2 py-1.5 sm:px-3">

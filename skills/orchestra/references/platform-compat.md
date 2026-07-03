@@ -108,22 +108,24 @@ authorization, use **Standard Light Mode**:
 - implement directly/inline for `small` and implementation-ready `medium` work
 - replace reviewer-agent waves with targeted conductor review
 - run only the smallest relevant verification commands
+- for broad unclear work, use at most one read-only scout before adding any sidecars
 - record `agent-tool-requires-explicit-user-request` in
   `orchestra/dispatch-capability.md`
 
 When delegation is authorized, use the closest safe role and preserve specialization by
 injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the
-top of each Task Packet prompt. When 2+ independent agents are ready, dispatch them as one
-batch. If no agent tool is available, follow the open-code inline procedure while
-preserving the same Task Packet and Result Report contracts.
+top of each Task Packet prompt. Require explicit `ownership_paths` for workers. When 2+
+independent, decision-relevant agents are ready, dispatch them as one batch. If no agent
+tool is available, follow the open-code inline procedure while preserving the same Task
+Packet and Result Report contracts.
 
-For lightweight-default sub-agent work, pass `gpt-5.3-codex-spark` when the tool supports a
-model override. Use the inherited current/default model for explicit overrides,
-deep-* routes, high-complexity/high-risk work, performance-critical analysis, retry
-escalations, or unsupported override paths. See `model-routing.md`.
+For lightweight-default sub-agent work, pass `gpt-5.5` when the tool supports a model
+override. Use the inherited current/default model for explicit overrides, deep-* routes,
+high-complexity/high-risk work, performance-critical analysis, retry escalations, or
+unsupported override paths. See `model-routing.md`.
 
 In Codex Standard mode, this is an actual `spawn_agent` parameter:
-`model: "gpt-5.3-codex-spark"`. Do not rely only on prompt text or Task Packet
+`model: "gpt-5.5"`. Do not rely only on prompt text or Task Packet
 metadata for model routing.
 
 Inline execution in Standard mode is a last resort only when delegation is authorized. In

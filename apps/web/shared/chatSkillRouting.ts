@@ -4,6 +4,10 @@ const PROMPT_CONTEXT_RE =
   /(?:image\s+prompt|video\s+prompt|prompt\s+(?:ภาพ|รูป|วิดีโอ|วีดีโอ)|พรอมต์)/i;
 const QUESTION_SIGNAL_RE =
   /(\?|(?:^|[\s])(ไหม|มั้ย|หรือไม่|หรือเปล่า|ยังไง|อย่างไร|อะไร|ไหน|แนะนำ|เหมาะกับ|เหมาะสำหรับ|ควรใช้|ควรไหม|ได้ไหม|ได้มั้ย|ใช่ไหม|หรือไม่)\b)/i;
+const DIRECT_IMAGE_GENERATION_RE =
+  /^(?:\/image-creator\s+|(?:create|generate|make|draw|render)\s+(?:an?\s+)?(?:image|picture|photo|portrait|illustration|artwork)\s*:?|(?:สร้าง|เจน|วาด|ทำ|ออกแบบ)\s*(?:รูปภาพ|รูป|ภาพ|ภาพถ่าย|พอร์ตเทรต|ภาพประกอบ)\s*:?).+/i;
+const DIRECT_VIDEO_GENERATION_RE =
+  /^(?:\/video-creator\s+|(?:create|generate|make|render)\s+(?:a\s+)?(?:video|clip|movie|animation)\s*:?|(?:สร้าง|เจน|ทำ|ออกแบบ)\s*(?:วิดีโอ|วีดีโอ|คลิป|หนัง|แอนิเมชัน|อนิเมชัน)\s*:?).+/i;
 
 function hasExplicitTaskVerb(text: string): boolean {
   return EXPLICIT_TASK_PREFIX_RE.test(text) || PROMPT_CONTEXT_RE.test(text);
@@ -35,6 +39,33 @@ export function looksLikeSkillRequest(text: string): boolean {
 
 export function shouldAttemptSkillRouting(text: string): boolean {
   return looksLikeSkillRequest(text);
+}
+
+export function looksLikeDirectImageGenerationRequest(text: string): boolean {
+  return getDirectMediaGenerationRequestType(text) === "image";
+}
+
+export function getDirectMediaGenerationRequestType(
+  text: string,
+): "image" | "video" | null {
+  const normalized = text.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (QUESTION_SIGNAL_RE.test(normalized)) {
+    return null;
+  }
+
+  if (DIRECT_IMAGE_GENERATION_RE.test(normalized)) {
+    return "image";
+  }
+
+  if (DIRECT_VIDEO_GENERATION_RE.test(normalized)) {
+    return "video";
+  }
+
+  return null;
 }
 
 export function shouldAutoRunDetectedSkill(input: {

@@ -14,6 +14,8 @@ export type TrpcContext = {
   userToken: string | null;
   /** Temporary unlock token for private vault access */
   privateVaultToken: string | null;
+  /** Temporary unlock token for age-gated protected surfaces */
+  protectedSurfaceToken: string | null;
   /** The current tenant ID from the tenant middleware */
   tenantId: string | null;
   /** The public URL for the current tenant (e.g., https://smartaihub.app) for external services */
@@ -26,6 +28,7 @@ export async function createContext(
   let user: User | null = null;
   let userToken: string | null = null;
   let privateVaultToken: string | null = null;
+  let protectedSurfaceToken: string | null = null;
 
   // Extract bearer token from Authorization header OR session cookie
   const authHeader = opts.req.headers.authorization;
@@ -48,6 +51,11 @@ export async function createContext(
     privateVaultToken = vaultTokenHeader.trim();
   }
 
+  const protectedSurfaceTokenHeader = opts.req.headers["x-protected-surface-token"];
+  if (typeof protectedSurfaceTokenHeader === "string" && protectedSurfaceTokenHeader.trim()) {
+    protectedSurfaceToken = protectedSurfaceTokenHeader.trim();
+  }
+
   try {
     user = await sdk.authenticateRequest(opts.req);
     debugLog("Context", "User authenticated", { id: user?.id, email: user?.email });
@@ -57,6 +65,7 @@ export async function createContext(
     user = null;
     userToken = null; // Clear token if auth failed
     privateVaultToken = null;
+    protectedSurfaceToken = null;
   }
 
   // Extract tenantId from tenant middleware (TenantRequest)
@@ -89,6 +98,7 @@ export async function createContext(
     user,
     userToken,
     privateVaultToken,
+    protectedSurfaceToken,
     tenantId,
     publicUrl,
   };

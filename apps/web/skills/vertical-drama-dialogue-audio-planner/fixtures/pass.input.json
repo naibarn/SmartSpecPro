@@ -1,0 +1,15 @@
+{
+  "episode_script": {
+    "episode_title": "คำพิพากษาเที่ยงคืน",
+    "shots": 9
+  },
+  "target_language": "th",
+  "audio_strategy": "separate_tts_voiceover",
+  "characters": [
+    {
+      "character_id": "char_aria",
+      "name": "อาริยา"
+    }
+  ],
+  "target_duration_seconds": 60
+}

@@ -33,6 +33,14 @@ import { usersRouter } from "./routers/users";
 import { packagesRouter } from "./routers/packages";
 import { llmProvidersRouter } from "./routers/llmProviders";
 import { chatRouter } from "./routers/chat";
+import { verticalDramaSeriesRouter } from "./routers/verticalDramaSeries";
+import { verticalDramaEpisodesRouter } from "./routers/verticalDramaEpisodes";
+import { verticalDramaCharactersRouter } from "./routers/verticalDramaCharacters";
+import { verticalDramaStartFramesRouter } from "./routers/verticalDramaStartFrames";
+import { verticalDramaDialogueAudioRouter } from "./routers/verticalDramaDialogueAudio";
+import { verticalDramaProviderRouter } from "./routers/verticalDramaProvider";
+import { verticalDramaHandoffRouter } from "./routers/verticalDramaHandoff";
+import { verticalDramaAssemblyRouter } from "./routers/verticalDramaAssembly";
 import { financeRouter } from "./routers/finance";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
@@ -1906,6 +1914,14 @@ const authRouter = router({
 // Credit management
 
 type AppRouterShape = {
+  verticalDramaSeries: typeof verticalDramaSeriesRouter;
+  verticalDramaEpisodes: typeof verticalDramaEpisodesRouter;
+  verticalDramaCharacters: typeof verticalDramaCharactersRouter;
+  verticalDramaStartFrames: typeof verticalDramaStartFramesRouter;
+  verticalDramaDialogueAudio: typeof verticalDramaDialogueAudioRouter;
+  verticalDramaProvider: typeof verticalDramaProviderRouter;
+  verticalDramaHandoff: typeof verticalDramaHandoffRouter;
+  verticalDramaAssembly: typeof verticalDramaAssemblyRouter;
   system: typeof systemRouter;
   billing: typeof billingRouter;
   adminBilling: typeof adminBillingRouter;
@@ -2193,6 +2209,16 @@ const appRouterInternal = router<AppRouterShape>({
   mcpConnections: mcpConnectionsRouter,
   hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
+
+  // Feature 131 — Vertical Drama Series (flag-gated, default off)
+  verticalDramaSeries: verticalDramaSeriesRouter,
+  verticalDramaEpisodes: verticalDramaEpisodesRouter,
+  verticalDramaCharacters: verticalDramaCharactersRouter,
+  verticalDramaStartFrames: verticalDramaStartFramesRouter,
+  verticalDramaDialogueAudio: verticalDramaDialogueAudioRouter,
+  verticalDramaProvider: verticalDramaProviderRouter,
+  verticalDramaHandoff: verticalDramaHandoffRouter,
+  verticalDramaAssembly: verticalDramaAssemblyRouter,
 });
 
 export type AppRouter = typeof appRouterInternal;

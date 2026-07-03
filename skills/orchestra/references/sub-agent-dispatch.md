@@ -78,19 +78,28 @@ security-frontend
 
 ---
 
-## 2. Parallel Dispatch Rule
+## 2. Conductor-First Dispatch Rule
 
-> **Default:** If the active platform exposes a Task/sub-agent/spawn-agent tool, launch all
-> independent agents in the same wave in one dispatch batch. If it does not, preserve the
-> same wave plan and execute them sequentially inline as a platform fallback.
+> **Default:** Main Codex keeps the overview and dispatches only when a sub-agent has a
+> bounded job that improves the next decision or proof. Tool availability alone is not a
+> reason to spawn agents.
 
-This is an execution requirement, not an optimization, **when agent dispatch is authorized**.
-In Codex standard light mode, the active `spawn_agent` tool may require the user to
-explicitly ask for sub-agents, delegation, or parallel agent work. In that case,
-availability is not enough: do not spawn agents unless the user gave that authorization.
-Record the direct/inline light-mode decision in `orchestra/progress.md`.
+For broad, uncertain, or multi-area work, use one read-only scout/explorer first. Add
+sidecar agents only after the scout or conductor preflight proves distinct workstreams,
+clear ownership paths, and decision-relevant outputs. Avoid fanout of 3-6 agents just to
+show parallelism.
+
+When 2+ independent agents are genuinely ready and agent dispatch is authorized, launch
+them in the same wave in one dispatch batch. If the platform does not expose agent tools,
+preserve the same wave plan and execute sequentially inline as a platform fallback. In
+Codex standard light mode, the active `spawn_agent` tool may require the user to explicitly
+ask for sub-agents, delegation, or parallel agent work. In that case, availability is not
+enough: do not spawn agents unless the user gave that authorization. Record the
+direct/inline light-mode decision in `orchestra/progress.md`.
 
 Direct conductor work or inline role execution is allowed for non-trivial tasks when:
+- the work is short, obvious, fast-lane, or single-surface
+- no decision-relevant independent workstream has been proven
 - agent-tool capability detection fails
 - an attempted authorized dispatch fails and the fallback is recorded
 - Codex standard light mode applies and the user did not explicitly authorize delegation
@@ -109,8 +118,8 @@ authorized agents to start concurrently. On platforms without that tool, or in s
 light mode without delegation authorization, the conductor executes the same wave
 sequentially/directly and records each result before proceeding.
 
-Read-only reviewers and specialists that do not depend on each other's output must batch
-together by default. Examples:
+Read-only reviewers and specialists that do not depend on each other's output should batch
+together only when their verdicts are all needed for the next decision. Examples:
 - `visual-ux-reviewer` + `accessibility-reviewer` + `responsive-reviewer`
 - `security-trpc` + `security-fastapi` + `security-frontend`
 - independent `research` / `api-contract-reviewer` / `observability-audit-agent`
@@ -120,17 +129,17 @@ together by default. Examples:
 
 Before dispatching any sub-agent, read `model-routing.md` and choose a model preference.
 The default for bounded, routine, non-deep sub-agent work is
-`gpt-5.3-codex-spark`. Preserve explicit user or Task Packet model overrides. Escalate to
-the inherited current/default model for deep-* routes, high-complexity/high-risk work,
-performance-critical analysis, failed or blocked Spark attempts, and repeated gate fixes.
+`gpt-5.5`. Preserve explicit user or Task Packet model overrides. Escalate to the inherited
+current/default model for deep-* routes, high-complexity/high-risk work,
+performance-critical analysis, failed or blocked GPT 5.5 attempts, and repeated gate fixes.
 
 If the active Task/sub-agent tool exposes a model override field, pass
-`gpt-5.3-codex-spark` for lightweight-default packets. If the tool does not support model
+`gpt-5.5` for lightweight-default packets. If the tool does not support model
 overrides, keep the metadata in the Task Packet and proceed normally.
 
 Codex enforcement: when using `spawn_agent` for lightweight-default work, the tool
-call MUST include `model: "gpt-5.3-codex-spark"`. A Task Packet that only says
-`model_preference: gpt-5.3-codex-spark` is documentation, not an actual model
+call MUST include `model: "gpt-5.5"`. A Task Packet that only says
+`model_preference: gpt-5.5` is documentation, not an actual model
 override.
 
 ### Dispatch Metadata
@@ -140,7 +149,7 @@ Every wave plan must include dispatch metadata before launch:
 ```text
 agent: ssp-frontend
 portable_role: frontend
-model_preference: gpt-5.3-codex-spark | inherited-default | explicit:<model>
+model_preference: gpt-5.5 | inherited-default | explicit:<model>
 model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
 writes_files: true
 background: false
@@ -165,6 +174,8 @@ Guidance:
 - File-editing agents use `background: false` because later waves depend on their files.
 - If two file-editing agents run in the same wave, either use worktree isolation or prove
   their write sets are disjoint in `orchestra/contracts.md`.
+- Every file-editing worker must have explicit `ownership_paths`; do not let workers fight
+  over the same files.
 - If the platform cannot enforce isolation and two writers might touch the same file, split
   them into sequential sub-waves.
 - If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, `sequential_reason`
@@ -174,6 +185,10 @@ Guidance:
   wave, reduce fanout, or stop with the matching `loop_policy_*` stop reason.
 - Never launch replacement sub-agents for a missing/stuck result until the previous
   sub-agent is recorded as timed out or failed in `orchestra/progress.md`.
+- Track every dispatched agent by id/role/scope/proof/usefulness/close status. Close the
+  agent after its Result Capsule is integrated, or report why it could not be closed.
+- If the owner changes the task while agents are active, reconcile the new scope and stop
+  or rebrief any agent whose packet no longer matches the current command.
 
 ---
 

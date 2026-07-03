@@ -2,53 +2,33 @@
 name: Video Creator
 description: Create videos from text descriptions — generates optimized prompt then calls video generation API
 version: 1.0.2
-category: automation
-execution_mode: sandbox-command
-target_platform: agents_python
-bundle_topology: single-agent
+category: video_generation
+execution_mode: media-generate
+icon: video
+isAutoTrigger: true
+enabledByDefault: true
+priority: 89
 triggerPatterns:
-  - Video Creator
-  - Video Creator
+  - "(?:create|generate|make|render)\\s+(?:a\\s+)?(?:video|clip|movie|animation)\\s*:?\\s*(.+)"
+  - "(?:สร้าง|เจน|ทำ|ออกแบบ)\\s*(?:วิดีโอ|วีดีโอ|คลิป|หนัง|แอนิเมชัน|อนิเมชัน)\\s*:?\\s*(.+)"
+  - "(?:video creator|video generation|text to video)\\s*:?\\s*(.+)"
+tags:
+  - video
+  - media
+  - text-to-video
 ---
 # Video Creator
-## When To Use
 
-Use this skill when the task should run through the native OpenAI Agents Python bundle contract.
-## OpenAI Agents SDK Compatibility
+Route this request to the configured video generation media path.
 
-- Mount this bundle into the Agents SDK `Skills` sandbox capability.
-- Keep `scripts/run.sh` and `scripts/verify.sh` deterministic and shell-safe.
-- Prefer structured outputs, explicit inputs, and resumable artifacts.
-## Inputs
+Return ONLY valid JSON.
 
-- None
-## Workflow
+```json
+{
+  "prompt": "Detailed text-to-video prompt",
+  "duration": 5,
+  "quality": "standard"
+}
+```
 
-- discover
-- inspect
-- plan
-- execute
-- verify
-- summarize
-- finalize
-## Exact Commands
-
-- `scripts/run.sh`
-- `scripts/verify.sh`
-## Guardrails
-
-- Use scripts/run.sh and scripts/verify.sh as the declared entrypoints.
-- Confine writes to declared output paths.
-- Do not finalize before verification passes.
-- Keep scripts deterministic, idempotent, and shell-safe.
-- Prefer structured outputs that validate against the bundle contract.
-- Keep logs trace-friendly with explicit task IDs and outcome messages.
-- Preserve compatibility with legacy skill metadata during migration.
-## Verification
-
-- Run `scripts/verify.sh` before finalizing any run.
-## Final Response Checklist
-
-- Verification command completed successfully.
-- Outputs are written to declared paths only.
-- No secrets were persisted.
+Do not answer with prompt advice when the user explicitly asks to create or generate a video.

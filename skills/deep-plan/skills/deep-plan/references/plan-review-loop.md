@@ -1,6 +1,6 @@
 # Plan Review Loop Protocol
 
-This protocol defines iterative self-review for claude-plan.md (after Step 11) and post-integration review (after Step 14). It also covers section cross-consistency review (after Step 20).
+This protocol defines iterative self-review for claude-plan.md — Phase A checklist self-review (after Step 11) and Phase B adversarial self-review (Step 13, which replaces the retired external-review step). It also covers section cross-consistency review (after Step 20).
 
 ## Why This Exists
 
@@ -8,7 +8,7 @@ Plans written in a single pass have systematic blind spots:
 - Early sections make assumptions that later sections contradict
 - Integration points between components are underspecified
 - Edge cases mentioned in interview get lost during synthesis
-- External review feedback integration can break previously-correct sections
+- Phase A fixes can themselves introduce new inconsistencies in previously-correct sections
 
 ## Phase A: Plan Self-Review (After Step 11, Before Step 12)
 
@@ -94,31 +94,30 @@ Fixing 7 issues...
 
 ---
 
-## Phase B: Post-Integration Review (After Step 14, Before Step 15)
+## Phase B: Adversarial Self-Review (Step 13, replaces external review)
 
-After integrating external LLM feedback into claude-plan.md, run a targeted review to catch regressions.
+This is the current model attacking its OWN plan from an adversarial angle, directly editing claude-plan.md. It replaces the retired external-review + integrate-findings steps (there is no external LLM and no claude-integration-notes.md). Where Phase A scores a completeness checklist, Phase B tries to *break* the plan.
 
-### Regression Checklist
+### Adversarial Checklist
 
-- [ ] Integrated changes don't contradict earlier plan sections
-- [ ] If external review suggested architectural changes, ALL references to old architecture are updated
-- [ ] New components added by integration have proper data flow connections
-- [ ] Removed components don't leave dangling references
-- [ ] Integration notes (claude-integration-notes.md) accurately reflect what was actually changed
+- [ ] Assume a hostile reviewer: which requirement could this plan silently fail to meet?
+- [ ] Any Phase A fix that introduced a new contradiction with an earlier plan section
+- [ ] Architectural choices with an unaddressed failure mode (scaling, concurrency, partial failure)
+- [ ] Components referenced but never defined, or defined but never used (re-check after Phase A edits)
+- [ ] Removed/renamed components that leave dangling references elsewhere in the plan
 
 ### Procedure
 
 ```
-1. Read claude-integration-notes.md to get list of changes made
-2. For EACH change:
-   a. Find all sections of claude-plan.md that reference the changed component
-   b. Verify they are consistent with the new version
-   c. If inconsistency found → fix it
-3. Run Structural Integrity check (from Phase A) one more time
-4. If any fixes were made → re-run step 2 for the newly-changed sections
+1. Re-read claude-plan.md end-to-end as an adversary trying to find a fatal gap
+2. For EACH weakness found:
+   a. Find all sections of claude-plan.md that touch the weak area
+   b. Fix them directly in claude-plan.md
+3. Run the Structural Integrity check (from Phase A) once more
+4. If any fixes were made → re-check the newly-changed sections
 ```
 
-This is typically 1-2 rounds. If more than 3 rounds needed, the integration was too aggressive — consider reverting some changes.
+This is typically 1-2 rounds. If more than 3 rounds are needed, the plan has deeper design issues — surface them in the output summary rather than patching endlessly.
 
 ---
 
@@ -205,15 +204,15 @@ Fixing...
 deep-plan workflow:
   ...
   Step 11: Write claude-plan.md
-  ──► Phase A: Plan Self-Review (1-5 rounds) ◄── NEW
-  Step 12: Context Check
-  Step 13: External Review
-  Step 14: Integrate Feedback
-  ──► Phase B: Post-Integration Review (1-3 rounds) ◄── NEW
-  Step 15: User Review
+  ──► Phase A: Plan Self-Review (1-5 rounds)
+  Step 12: Context Check (pre-review)
+  Step 13: Adversarial Self-Review ──► Phase B (1-3 rounds); replaces external review
+  Step 14: Reserved (skipped)
+  Step 15: Plan Status Log (auto-continue)
+  Step 16: Apply TDD Approach
   ...
   Step 20: Write Section Files
-  ──► Phase C: Section Cross-Consistency Review (1-3 rounds) ◄── NEW
+  ──► Phase C: Section Cross-Consistency Review (1-3 rounds)
   Step 21: Final Status
   ...
 ```

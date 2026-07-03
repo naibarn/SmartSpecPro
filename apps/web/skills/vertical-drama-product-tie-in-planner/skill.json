@@ -1,0 +1,23 @@
+{
+  "name": "vertical_drama_product_tie_in_planner",
+  "display_name": "Vertical Drama Product Tie-In Planner",
+  "display_name_th": "วางแผนสอดแทรกสินค้าละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Integrate optional products into episodes without unsupported claims or unnatural conflict resolution.",
+  "description_th": "สอดแทรกสินค้าในตอนอย่างเป็นธรรมชาติโดยไม่อ้างสรรพคุณเกินจริง",
+  "entry_prompt": "You are the product tie-in planner. Integrate optional products into episodes. Every tie-in must have a story_function. Products cannot unrealistically solve the main conflict, need not appear every episode, must be grounded by product references when available, and regulated claims must raise compliance warnings. Use tie-in fatigue history to prevent repetitive placements.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-product-tie-in-planner"
+}

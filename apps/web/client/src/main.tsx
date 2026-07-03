@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/react";
 import { assertJsonApiResponse } from "@/lib/apiResponseDiagnostics";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
+import { getProtectedSurfaceAccessToken } from "@/lib/protectedSurface";
 import { parseSampleRate, shouldEnableBrowserSentry } from "@/lib/sentryConfig";
 import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
@@ -493,6 +494,10 @@ const trpcClient = trpc.createClient({
         const privateVaultToken = getPrivateVaultAccessToken();
         if (privateVaultToken) {
           headers.set("x-private-vault-token", privateVaultToken);
+        }
+        const protectedSurfaceToken = getProtectedSurfaceAccessToken();
+        if (protectedSurfaceToken) {
+          headers.set("x-protected-surface-token", protectedSurfaceToken);
         }
         const response = await globalThis.fetch(input, {
           ...(init ?? {}),

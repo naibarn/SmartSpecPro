@@ -1,0 +1,48 @@
+{
+  "skill": "vertical-drama-character-visual-bible",
+  "imported": true,
+  "upstream_manifest_name": "character_visual_bible_builder",
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "plain_text_output",
+    "json_handoff",
+    "bilingual_ui",
+    "character_consistency_focused",
+    "character_reference_driven",
+    "repair_queue"
+  ],
+  "required_top_level_output_fields": [
+    "visual_bible_summary",
+    "characters",
+    "plain_text_summary",
+    "storyboard_attachment_manifest",
+    "contract_version"
+  ],
+  "pinned_literals": {
+    "storyboard_attachment_manifest.handoff_type": "character_reference_package"
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "pass_input_normalized": "fixtures/pass.input.normalized.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint",
+    "scripts/verify.sh runs without provider credentials",
+    "upstream input enum vocabulary round-trips into pass.input.normalized.json"
+  ]
+}

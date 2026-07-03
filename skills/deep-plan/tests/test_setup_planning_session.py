@@ -109,7 +109,7 @@ class TestSetupPlanningSession:
         assert output["resume_from_step"] == 6
         # Check for tasks_written (fixture provides DEEP_SESSION_ID)
         assert "tasks_written" in output
-        assert output["tasks_written"] > 0  # Should write 21 workflow tasks
+        assert output["tasks_written"] > 0  # Should write 20 workflow tasks
 
     def test_fails_with_nonexistent_spec(self, run_script, tmp_path):
         """Should fail if spec file doesn't exist."""
@@ -311,8 +311,8 @@ END_MANIFEST -->
         assert result.returncode == 0
         output = json.loads(result.stdout)
 
-        # Should have written 21 workflow tasks
-        assert output["tasks_written"] == 21
+        # Should have written 20 workflow tasks
+        assert output["tasks_written"] == 20
         assert output["task_list_id"] == "test-session"
         assert "task_write_error" not in output
         assert "task_write_warning" not in output
@@ -659,8 +659,8 @@ END_MANIFEST -->
         assert result.returncode == 0
         output = json.loads(result.stdout)
 
-        # Should have only 21 workflow tasks (no sections)
-        assert output["tasks_written"] == 21
+        # Should have only 20 workflow tasks (no sections)
+        assert output["tasks_written"] == 20
 
         # No section task files
         tasks_dir = tmp_path / ".claude" / "tasks" / "test-session"
@@ -742,8 +742,8 @@ END_MANIFEST -->
         # Should still succeed overall
         assert output["success"] is True
 
-        # Should only have 21 workflow tasks (no section tasks due to invalid index)
-        assert output["tasks_written"] == 21
+        # Should only have 20 workflow tasks (no section tasks due to invalid index)
+        assert output["tasks_written"] == 20
 
     def test_section_tasks_with_multiple_batches(self, run_script, tmp_path):
         """Should write section tasks across multiple batches (>7 sections)."""
@@ -853,8 +853,8 @@ END_MANIFEST -->
         assert output["mode"] == "complete"
 
         # generate_section_tasks_to_write returns empty when complete
-        # So total is 21 workflow + 0 section = 21
-        assert output["tasks_written"] == 21
+        # So total is 20 workflow + 0 section = 20
+        assert output["tasks_written"] == 20
 
 
 class TestConflictDetection:
@@ -959,7 +959,7 @@ class TestConflictDetection:
         output = json.loads(result.stdout)
 
         assert output["success"] is True
-        assert output["tasks_written"] == 21  # Workflow tasks written
+        assert output["tasks_written"] == 20  # Workflow tasks written
 
     def test_no_conflict_with_session_id(self, run_script, tmp_path):
         """Should NOT conflict when using DEEP_SESSION_ID (resume scenario)."""

@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-shot-start-frame-render/output",
+  "title": "Shot Start-Frame Render Output (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "render_plan_summary",
+    "start_frame_requests",
+    "plain_text_render_plan",
+    "downstream_video_input_manifest",
+    "quality_control",
+    "contract_version"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "render_plan_summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "episode_title": {
+          "type": "string"
+        },
+        "shot_count": {
+          "const": 9
+        },
+        "target_aspect_ratio": {
+          "const": "9:16"
+        },
+        "image_size": {
+          "type": "string"
+        },
+        "reference_strategy": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "episode_title",
+        "shot_count",
+        "target_aspect_ratio",
+        "image_size",
+        "reference_strategy"
+      ]
+    },
+    "start_frame_requests": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "shot_number": {
+            "type": "integer"
+          },
+          "shot_title": {
+            "type": "string"
+          },
+          "timecode": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "negative_prompt": {
+            "type": "string"
+          },
+          "reference_assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "character_id": {
+                  "type": "string"
+                },
+                "asset_id": {
+                  "type": "string"
+                },
+                "asset_type": {
+                  "type": "string"
+                },
+                "file_id": {
+                  "type": "string"
+                },
+                "image_url": {
+                  "type": "string"
+                },
+                "local_path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "character_id",
+                "asset_id",
+                "asset_type",
+                "file_id",
+                "image_url",
+                "local_path"
+              ]
+            }
+          },
+          "render_parameters": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "provider_mode": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              },
+              "size": {
+                "type": "string"
+              },
+              "quality": {
+                "type": "string"
+              },
+              "n": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "provider_mode",
+              "model",
+              "size",
+              "quality",
+              "n"
+            ]
+          },
+          "continuity_notes": {
+            "type": "string"
+          },
+          "qc_checklist": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repair_prompt_template": {
+            "type": "string"
+          },
+          "expected_output_asset_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shot_number",
+          "shot_title",
+          "timecode",
+          "prompt",
+          "negative_prompt",
+          "reference_assets",
+          "render_parameters",
+          "continuity_notes",
+          "qc_checklist",
+          "repair_prompt_template",
+          "expected_output_asset_id"
+        ]
+      }
+    },
+    "plain_text_render_plan": {
+      "type": "string"
+    },
+    "downstream_video_input_manifest": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "episode_duration_seconds": {
+          "const": 60
+        },
+        "notes_for_video_skill": {
+          "type": "string"
+        },
+        "rendered_frame_slots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "episode_duration_seconds",
+        "notes_for_video_skill",
+        "rendered_frame_slots"
+      ]
+    },
+    "quality_control": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "must_check_before_video": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "common_failure_repairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "must_check_before_video",
+        "common_failure_repairs"
+      ]
+    }
+  }
+}

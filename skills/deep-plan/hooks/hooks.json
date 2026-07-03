@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'python3 \"${DEEP_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/skills/deep-plan}/scripts/hooks/capture-session-id.py\"'"
+            "command": "sh -c 'python3 \"${DEEP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/skills/deep-plan}}/scripts/hooks/capture-session-id.py\"'"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh -c 'python3 \"${DEEP_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/skills/deep-plan}/scripts/hooks/write-section-on-stop.py\"'"
+            "command": "sh -c 'python3 \"${DEEP_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_HOME:-$HOME/.codex}/skills/deep-plan}}/scripts/hooks/write-section-on-stop.py\"'"
           }
         ]
       }

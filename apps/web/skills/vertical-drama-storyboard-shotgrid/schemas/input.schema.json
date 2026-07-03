@@ -1,0 +1,225 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-storyboard-shotgrid/input",
+  "title": "Storyboard Shotgrid Input (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "story_source": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "source_json",
+            "source_text"
+          ]
+        },
+        "drama_skill_json": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "plain_text_script": {
+          "type": "string"
+        },
+        "episode_brief": {
+          "type": "string"
+        }
+      }
+    },
+    "style_preset": {
+      "type": "string",
+      "enum": [
+        "romantic_drama",
+        "family_melodrama",
+        "workplace_thriller",
+        "luxury_melodrama",
+        "custom"
+      ]
+    },
+    "custom_style": {
+      "type": "string"
+    },
+    "visual_style": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "camera_feel": {
+          "type": "string"
+        },
+        "color_mood": {
+          "type": "string"
+        },
+        "cinematic_quality_target": {
+          "type": "string",
+          "enum": [
+            "premium",
+            "premium_vertical_cinema",
+            "ultra_premium"
+          ]
+        }
+      }
+    },
+    "workflow_level": {
+      "type": "string",
+      "enum": [
+        "guided",
+        "simple",
+        "custom"
+      ]
+    },
+    "narrative_goal": {
+      "type": "string",
+      "enum": [
+        "plot_first",
+        "emotion_first",
+        "reveal_first",
+        "balanced"
+      ]
+    },
+    "shot_planning": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "shots_per_minute": {
+          "type": "number"
+        },
+        "minimum_visual_variety": {
+          "type": "boolean"
+        },
+        "target_shot_mix": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "establishing",
+              "wide",
+              "medium",
+              "half_body",
+              "close_up",
+              "extreme_close_up",
+              "over_the_shoulder",
+              "insert",
+              "reaction"
+            ]
+          }
+        }
+      }
+    },
+    "view_type": {
+      "type": "string",
+      "enum": [
+        "establishing",
+        "wide",
+        "medium",
+        "half_body",
+        "close_up",
+        "extreme_close_up",
+        "over_the_shoulder",
+        "insert",
+        "reaction"
+      ]
+    },
+    "continuity_controls": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "identity_lock": {
+          "type": "boolean"
+        },
+        "keep_face_consistent": {
+          "type": "boolean"
+        },
+        "keep_hair_consistent": {
+          "type": "boolean"
+        },
+        "keep_outfit_consistent": {
+          "type": "boolean"
+        },
+        "preserve_character_positions": {
+          "type": "boolean"
+        },
+        "preserve_emotional_progression": {
+          "type": "boolean"
+        },
+        "preserve_lighting_logic": {
+          "type": "boolean"
+        },
+        "preserve_props_continuity": {
+          "type": "boolean"
+        },
+        "must_preserve_story_beats": {
+          "type": "boolean"
+        },
+        "allow_episode_specific_outfit_change": {
+          "type": "boolean"
+        },
+        "carry_forward_from_previous_episode": {
+          "type": "boolean"
+        },
+        "previous_episode_visual_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "output_options": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "include_3x3_contact_sheet_instruction": {
+          "type": "boolean"
+        },
+        "include_image_generation_prompts": {
+          "type": "boolean"
+        },
+        "include_json_handoff": {
+          "type": "boolean"
+        },
+        "include_negative_prompts": {
+          "type": "boolean"
+        },
+        "include_plain_text_storyboard": {
+          "type": "boolean"
+        }
+      }
+    },
+    "character_reference_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "ref_label": {
+            "type": "string"
+          },
+          "ref_source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "target_age_group": {
+      "type": "string",
+      "enum": [
+        "preschool",
+        "tweens",
+        "young_adults",
+        "adults",
+        "family_all",
+        "teens"
+      ]
+    },
+    "target_rating": {
+      "type": "string"
+    },
+    "age_control": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "app_metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

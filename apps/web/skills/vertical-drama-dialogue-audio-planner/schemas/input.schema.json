@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-dialogue-audio-planner/input",
+  "title": "Dialogue & Audio Planner Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "episode_script",
+    "audio_strategy"
+  ],
+  "properties": {
+    "episode_script": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "target_language": {
+      "type": "string"
+    },
+    "audio_strategy": {
+      "type": "string",
+      "enum": [
+        "separate_tts_voiceover",
+        "native_video_audio",
+        "dialogue_tts",
+        "silent"
+      ]
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "voice_continuity_map": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "target_duration_seconds": {
+      "const": 60
+    },
+    "shot_clip_timing": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "age_control": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "product_tie_in_policy": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

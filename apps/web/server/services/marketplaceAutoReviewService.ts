@@ -93,9 +93,6 @@ import { buildCustomSkillUserPrompt } from "./skillExecutionPromptBuilder";
 import { executeWithFallback, getProviderForModel } from "./llmRouter";
 import { getSkillByIdAsync, syncSingleSkillIfChanged } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
-import { buildHyperframesCompositionInput } from "./hyperframesCompositionService";
-import { resolveHyperframesFeatureAccessForTenant } from "./hyperframesFeatureAccessService";
-import { queueHyperframesRenderJob } from "./hyperframesRenderService";
 import {
   autoReviewCreativePresetRequestedAudioStrategy,
   buildAutoReviewCreativePresetDirective,
@@ -15627,90 +15624,7 @@ async function maybeQueueHyperframesPreviewAfterStoryboardReady(params: {
   startFrameUrls: string[];
   stopFrameUrls: string[];
 }): Promise<{ renderJobId: string | null; metadata: RunMetadata }> {
-  const evidenceFrameUrls = [
-    ...params.frameUrls,
-    ...params.startFrameUrls,
-    ...params.stopFrameUrls,
-  ].filter(Boolean);
-  const access = await resolveHyperframesFeatureAccessForTenant({
-    auth: params.auth,
-    productId: params.run.productId,
-    runId: params.run.id,
-  });
-  if (!access.capabilities.canPreview || evidenceFrameUrls.length === 0) {
-    return { renderJobId: null, metadata: params.metadata };
-  }
-  try {
-    const runState = {
-      ...params.run,
-      storyboardReviewId: params.storyboardReviewId,
-      metadataJson: {
-        ...params.metadata,
-        storyboardFrameUrls: params.frameUrls,
-        startFrameUrls: params.startFrameUrls,
-        stopFrameUrls: params.stopFrameUrls,
-      },
-      resultJson: {
-        storyboardReviewId: params.storyboardReviewId,
-        frameUrls: params.frameUrls,
-        startFrameUrls: params.startFrameUrls,
-        stopFrameUrls: params.stopFrameUrls,
-      },
-      timeline: {
-        items: [{ stageKey: "storyboard_review", status: "completed" }],
-      },
-    };
-    const composition = buildHyperframesCompositionInput({
-      tenantId: params.tenantId,
-      userId: params.auth.userId,
-      productId: params.run.productId,
-      runId: params.run.id,
-      productState: { productTruth: params.plan.productTruth },
-      runState,
-    });
-    const render = await queueHyperframesRenderJob({
-      auth: params.auth,
-      composition,
-    });
-    const metadata = {
-      ...params.metadata,
-      hyperframesAutoPreview: {
-        renderJobId: render.renderJobId,
-        status: render.status,
-        queuedAt: nowIso(),
-        compositionInputHash:
-          render.compositionInputHash ??
-          composition.provenance.compositionInputHash,
-      },
-    } as RunMetadata;
-    await updateRun({
-      db: params.db,
-      runId: params.run.id,
-      renderJobId: render.renderJobId,
-      metadataJson: metadata,
-    });
-    return { renderJobId: render.renderJobId, metadata };
-  } catch (error) {
-    const metadata = {
-      ...params.metadata,
-      hyperframesAutoPreview: {
-        status: "queue_failed",
-        failedAt: nowIso(),
-        safeMessage:
-          "HyperFrames preview queue failed; Marketplace Auto Review will continue through the standard run progression.",
-        reason:
-          error instanceof Error
-            ? error.message.slice(0, 240)
-            : String(error).slice(0, 240),
-      },
-    } as RunMetadata;
-    await updateRun({
-      db: params.db,
-      runId: params.run.id,
-      metadataJson: metadata,
-    });
-    return { renderJobId: null, metadata };
-  }
+  return { renderJobId: null, metadata: params.metadata };
 }
 
 export async function maybeQueueHyperframesPreviewAfterStoryboardReadyForTest(
@@ -25610,21 +25524,6 @@ export async function advanceMarketplaceAutoReviewRun(
           ],
         },
       });
-      const hyperframesPreview =
-        await maybeQueueHyperframesPreviewAfterStoryboardReady({
-          db,
-          tenantId,
-          auth,
-          run,
-          plan,
-          metadata,
-          storyboardReviewId,
-          frameUrls: activeStoryboardFrameUrls ?? [],
-          startFrameUrls: activeStartFrameUrls ?? [],
-          stopFrameUrls: activeStopFrameUrls ?? [],
-        });
-      metadata = hyperframesPreview.metadata;
-
       if (run.outputMode === "storyboard_images") {
         await updateRun({
           db,
@@ -25633,13 +25532,11 @@ export async function advanceMarketplaceAutoReviewRun(
           currentStage: "storyboard_review",
           stageIndex: stageIndex("storyboard_review", stages),
           storyboardReviewId,
-          renderJobId: hyperframesPreview.renderJobId ?? undefined,
           resultJson: {
             storyboardReviewId,
             frameUrls: activeStoryboardFrameUrls,
             startFrameUrls: activeStartFrameUrls,
             stopFrameUrls: activeStopFrameUrls,
-            hyperframesRenderJobId: hyperframesPreview.renderJobId,
             mediaHistorySource: "provider_media_tasks",
             audioStrategy: metadata.audioStrategy ?? "auto",
             resolvedAudioStrategy: metadata.resolvedAudioStrategy,
@@ -25657,7 +25554,6 @@ export async function advanceMarketplaceAutoReviewRun(
         stageIndex: stageIndex("video_generation", stages),
         stageCount: stages.length,
         storyboardReviewId,
-        renderJobId: hyperframesPreview.renderJobId ?? undefined,
         metadataJson: metadata,
       });
       run = await reloadRun(db, runId, auth);

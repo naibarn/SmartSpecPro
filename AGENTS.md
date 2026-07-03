@@ -59,6 +59,31 @@ Use the inherited/default model instead when the user explicitly requests anothe
 model, the work is deep/high-risk/performance-critical, a GPT 5.5 attempt fails or
 blocks, or a gate retry needs broader reasoning.
 
+## Sub-Agent Opening Rules
+
+Main Codex is the conductor and remains accountable for intent, scope, risk,
+integration, proof, and the final report. Sub-agents are scoped helpers, not a
+way to hand off ownership of the critical path.
+
+Open sub-agents only for meaningful work that benefits from independent context
+or parallel review across real boundaries such as DB, API, auth, payments, UI,
+proof, customer flow, security, or browser verification. For broad or uncertain
+work, start with one read-only scout/explorer first, then add sidecar agents only
+when the scout result proves distinct workstreams.
+
+Do not open sub-agents for short one-shot work: single-answer questions, reading
+one file, running one command, checking one proof surface, obvious single-file
+edits, or fast-lane fixes.
+
+When sub-agents are used:
+- avoid fanout of 3-6 agents just to show parallelism
+- give each worker explicit `ownership_paths`; agents must not fight over files
+- keep critical-path decisions in main Codex
+- wait only for results that affect the next decision
+- track agent id, role, scope, proof, usefulness, and close status
+- close every agent or report why it could not be closed
+- reconcile or rebrief agents if the user changes the command and scope drifts
+
 ## Communication Style
 
 - Respond in Thai by default unless the user explicitly asks for another

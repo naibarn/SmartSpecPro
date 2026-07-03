@@ -416,6 +416,9 @@ END_MANIFEST -->
 
         (sections_dir / "index.md").write_text(sample_index_content)
 
+        # The autouse hermetic_home fixture (conftest.py) strips DEEP_SESSION_ID
+        # and CLAUDE_CODE_TASK_LIST_ID, so this genuinely runs with "no env vars"
+        # even inside a live Claude Code / deep-* plugin session.
         result = run_script(planning_dir)
 
         # Will fail due to no session ID, but should still have context fields

@@ -1,0 +1,54 @@
+{
+  "contract_version": 1,
+  "episode_title": "Midnight Verdict",
+  "hook": "A CFO discovers the merger she signed will bury her sister's clinic.",
+  "structure": {
+    "mode": "three_act",
+    "acts": [
+      {
+        "act": 1,
+        "summary": "setup: Aria signs the merger"
+      },
+      {
+        "act": 2,
+        "summary": "confrontation: the hidden clause surfaces"
+      },
+      {
+        "act": 3,
+        "summary": "resolution cliffhanger: Aria threatens to walk"
+      }
+    ],
+    "beats": []
+  },
+  "scene_dialogue_summary": [
+    {
+      "scene": 1,
+      "location": "boardroom",
+      "summary": "signing",
+      "key_line": "We are not done here."
+    }
+  ],
+  "cliffhanger": "Aria's rival slides a second contract across the table.",
+  "character_state_deltas": [
+    {
+      "character_id": "char_aria",
+      "before": "loyal",
+      "after": "suspicious"
+    }
+  ],
+  "product_tie_in_plan": {
+    "tie_ins": [],
+    "note": "no product this episode"
+  },
+  "continuity_notes": [
+    "Aria keeps charcoal blazer",
+    "sister clinic subplot open"
+  ],
+  "warnings": [
+    {
+      "code": "none",
+      "message": "no blocking issues"
+    }
+  ],
+  "repair_queue": []
+}

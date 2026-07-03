@@ -1,0 +1,42 @@
+{
+  "skill": "vertical-drama-script-builder",
+  "imported": false,
+  "upstream_manifest_name": null,
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [],
+  "required_top_level_output_fields": [
+    "episode_title",
+    "hook",
+    "structure",
+    "scene_dialogue_summary",
+    "cliffhanger",
+    "character_state_deltas",
+    "product_tie_in_plan",
+    "continuity_notes",
+    "warnings",
+    "repair_queue",
+    "contract_version"
+  ],
+  "pinned_literals": {},
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint",
+    "scripts/verify.sh runs without provider credentials"
+  ]
+}

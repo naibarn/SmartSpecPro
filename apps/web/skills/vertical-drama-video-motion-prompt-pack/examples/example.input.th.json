@@ -1,0 +1,52 @@
+{
+  "source_json": {
+    "episode_title": "Midnight Verdict",
+    "start_frames": 9
+  },
+  "video_target": "first_last_frame_to_video",
+  "clip_duration_strategy": "veo31_first_last_bridge_60s",
+  "motion_style": "dramatic",
+  "camera_motion_intensity": "medium",
+  "workflow_level": "guided",
+  "veo31_policy": {
+    "veo_3_1": "veo-3.1",
+    "prefer_first_last_frame": true,
+    "use_first_last_frame_pairs": true,
+    "use_start_frame_only": false,
+    "use_start_frame_as_input_reference": true,
+    "reference_image_limit": 3,
+    "reference_to_video": false
+  },
+  "continuity_priority": {
+    "preserve_character_identity_over_motion": true
+  },
+  "dialogue_sync": {
+    "lip_sync_required": false,
+    "subtitle_only": true,
+    "voiceover_later": true
+  },
+  "audio": {
+    "allow_native_audio": false
+  },
+  "fallback_policy": {
+    "if_end_frame_missing": "synthesize_end_frame_prompt",
+    "if_provider_rejects_reference": "provider_auto"
+  },
+  "assembly_options": {
+    "include_ffmpeg_concat_plan": true,
+    "include_subtitle_plan": true,
+    "include_audio_bgm_plan": true,
+    "include_final_episode_assembly_manifest": true,
+    "include_provider_request_json": true,
+    "include_plain_text_video_plan": true,
+    "include_repair_loop": true
+  },
+  "reference_frame_size": "1024x1792",
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1",
+    "feature_flags": {
+      "verticalDramaSeriesSubShots": false
+    }
+  }
+}

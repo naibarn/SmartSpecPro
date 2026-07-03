@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-script-builder/output",
+  "title": "Vertical Drama Script Builder Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "episode_title",
+    "hook",
+    "structure",
+    "scene_dialogue_summary",
+    "cliffhanger",
+    "character_state_deltas",
+    "product_tie_in_plan",
+    "continuity_notes",
+    "warnings",
+    "repair_queue",
+    "contract_version"
+  ],
+  "properties": {
+    "episode_title": {
+      "type": "string"
+    },
+    "hook": {
+      "type": "string"
+    },
+    "structure": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "three_act",
+            "beat"
+          ]
+        },
+        "acts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "beats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "scene_dialogue_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "cliffhanger": {
+      "type": "string"
+    },
+    "character_state_deltas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "product_tie_in_plan": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "continuity_notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "repair_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "contract_version": {
+      "const": 1
+    }
+  }
+}

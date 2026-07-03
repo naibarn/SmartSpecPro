@@ -59,7 +59,6 @@ def scan_planning_files(planning_dir: Path) -> dict:
         "interview": (planning_dir / "claude-interview.md").exists(),
         "spec": (planning_dir / "claude-spec.md").exists(),
         "plan": (planning_dir / "claude-plan.md").exists(),
-        "integration_notes": (planning_dir / "claude-integration-notes.md").exists(),
         "plan_tdd": (planning_dir / "claude-plan-tdd.md").exists(),
         "reviews": [],
         "sections": [],
@@ -92,8 +91,8 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
     - 9: Save interview -> claude-interview.md
     - 10: Write spec -> claude-spec.md
     - 11: Generate plan -> claude-plan.md
-    - 13: Self-review -> reviews/*.md
-    - 14: Integrate review findings -> claude-integration-notes.md
+    - 13: Self-review -> reviews/*.md (fixes applied directly to claude-plan.md)
+    - 15: Plan status log (auto-continue; Step 14 is reserved/skipped)
     - 16: TDD approach -> claude-plan-tdd.md
     - 18: Create section index -> sections/index.md
     - 19: Generate section tasks
@@ -136,19 +135,13 @@ def infer_resume_step(files: dict, section_progress: dict) -> tuple[int | None, 
         # TDD plan done - resume at 17 (context check before split)
         return 17, "TDD plan complete"
 
-    if files["integration_notes"]:
-        # PREREQUISITE CHECK: integration notes require plan
-        if not files["plan"]:
-            return 11, "MISSING PREREQUISITE: claude-plan.md - OVERWRITE claude-integration-notes.md after creating plan"
-        # Integration done - resume at 15 (plan status log, auto-continue)
-        return 15, "review findings integrated"
-
     if files["reviews"]:
         # PREREQUISITE CHECK: reviews require plan
         if not files["plan"]:
             return 11, "MISSING PREREQUISITE: claude-plan.md - OVERWRITE reviews/ after creating plan"
-        # Reviews done - resume at 14 (integrate review findings)
-        return 14, "self-review complete"
+        # Self-review done (Step 13 writes fixes directly into claude-plan.md;
+        # Step 14 is reserved/skipped) - resume at 15 (plan status log, auto-continue)
+        return 15, "self-review complete"
 
     if files["plan"]:
         # PREREQUISITE CHECK: plan requires spec
@@ -188,8 +181,6 @@ def build_files_summary(files: dict, section_progress: dict) -> list[str]:
         summary.append("claude-spec.md")
     if files["plan"]:
         summary.append("claude-plan.md")
-    if files["integration_notes"]:
-        summary.append("claude-integration-notes.md")
     if files["plan_tdd"]:
         summary.append("claude-plan-tdd.md")
     if files["reviews"]:

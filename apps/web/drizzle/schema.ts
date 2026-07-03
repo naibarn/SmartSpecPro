@@ -473,6 +473,25 @@ export const users = pgTable("users", {
       pinVersion?: number;
       pinUpdatedAt?: string;
     };
+    safetyProfile?: {
+      dateOfBirth?: string;
+      dateOfBirthUpdatedAt?: string;
+      dateOfBirthChangeCount?: number;
+      countryOfResidence?: string;
+      countryOfResidenceUpdatedAt?: string;
+      countryOfResidenceChangeCount?: number;
+      jurisdictionPresetId?: string;
+      profileVersion?: number;
+      completedAt?: string;
+    };
+    securityPin?: {
+      enabled?: boolean;
+      pinHash?: string;
+      pinVersion?: number;
+      pinUpdatedAt?: string;
+      failedAttempts?: number;
+      lockedUntil?: string;
+    };
     telegramNotifyLevel?: "all" | "high_critical" | "critical_only" | "off";
     telegramDeliveryFailing?: boolean;
     automationPolicy?: {
@@ -12802,3 +12821,283 @@ export type MarketplaceSearchReport = typeof marketplaceSearchReports.$inferSele
 export type InsertMarketplaceSearchReport = typeof marketplaceSearchReports.$inferInsert;
 export type MarketplaceIntelligenceWatchlistRecord = typeof marketplaceIntelligenceWatchlists.$inferSelect;
 export type InsertMarketplaceIntelligenceWatchlistRecord = typeof marketplaceIntelligenceWatchlists.$inferInsert;
+
+/* ==========================================================================
+ * Vertical Drama Series (Feature 131) — persistence tables.
+ *
+ * Durable first-class series/episode/run state (spec §7). JSONB is used for
+ * fast-evolving, guide-compatible stage payloads (snake_case-preserving).
+ * Media references are stored as media_assets IDs, never provider URLs.
+ * Every durable row carries tenantId + userId ownership; run-scoped rows carry
+ * seriesId/episodeId/runId. See apps/web/shared/verticalDramaSeries/* for the
+ * matching TypeScript contracts.
+ * ======================================================================== */
+
+/** Series project — canonical owner of bible, memory, characters, and policy (spec §7.2). */
+export const verticalDramaSeries = pgTable("vertical_drama_series", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  locale: varchar("locale", { length: 8 }).default("th").notNull(),
+  aspectRatio: varchar("aspectRatio", { length: 8 }).default("9:16").notNull(),
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  targetEpisodeCount: integer("targetEpisodeCount").default(10).notNull(),
+  defaultEpisodeDurationSeconds: integer("defaultEpisodeDurationSeconds").default(60).notNull(),
+  genre: varchar("genre", { length: 100 }),
+  tone: varchar("tone", { length: 100 }),
+  targetAudience: varchar("targetAudience", { length: 100 }),
+  agePolicyId: varchar("agePolicyId", { length: 64 }),
+  /** VerticalDramaSeriesBible */
+  bible: jsonb("bible"),
+  /** VerticalDramaSeriesMemory (compact projection persisted on the series row) */
+  memory: jsonb("memory"),
+  /** VerticalDramaProductTieInConfig */
+  productTieIn: jsonb("productTieIn"),
+  /** VerticalDramaSeriesPolicy */
+  policy: jsonb("policy"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_series_list_idx").on(t.tenantId, t.userId, t.updatedAt),
+  index("vds_series_status_idx").on(t.tenantId, t.status),
+]);
+
+export type VerticalDramaSeriesRow = typeof verticalDramaSeries.$inferSelect;
+export type InsertVerticalDramaSeriesRow = typeof verticalDramaSeries.$inferInsert;
+
+/** Series characters — character stock with identity lock and reference assets (spec §7.2/§7.3). */
+export const verticalDramaCharacters = pgTable("vertical_drama_characters", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  /** Stable app-level character key (VerticalDramaCharacter.characterId). */
+  characterKey: varchar("characterKey", { length: 64 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 100 }),
+  /** Full VerticalDramaCharacter payload (identityLock, wardrobeRules, currentState, ...). */
+  data: jsonb("data"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_character_lookup_idx").on(t.tenantId, t.seriesId, t.characterKey),
+  uniqueIndex("vds_character_key_unique").on(t.seriesId, t.characterKey),
+]);
+
+export type VerticalDramaCharacterRow = typeof verticalDramaCharacters.$inferSelect;
+export type InsertVerticalDramaCharacterRow = typeof verticalDramaCharacters.$inferInsert;
+
+/** Character/product asset links to canonical media_assets (spec §7.1). */
+export const verticalDramaCharacterAssets = pgTable("vertical_drama_character_assets", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  characterId: bigint("characterId", { mode: "number" })
+    .references(() => verticalDramaCharacters.id, { onDelete: "cascade" }),
+  /** Canonical asset registry reference — never a provider URL. */
+  mediaAssetId: bigint("mediaAssetId", { mode: "number" })
+    .references(() => mediaAssets.id, { onDelete: "set null" }),
+  assetType: varchar("assetType", { length: 40 }).notNull(),
+  role: varchar("role", { length: 40 }),
+  approved: boolean("approved").default(false).notNull(),
+  containsHumanFace: boolean("containsHumanFace"),
+  qcStatus: varchar("qcStatus", { length: 20 }).default("pending").notNull(),
+  checksumSha256: varchar("checksumSha256", { length: 64 }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_char_asset_series_idx").on(t.tenantId, t.seriesId),
+  index("vds_char_asset_character_idx").on(t.seriesId, t.characterId),
+  index("vds_char_asset_media_idx").on(t.mediaAssetId),
+]);
+
+export type VerticalDramaCharacterAssetRow = typeof verticalDramaCharacterAssets.$inferSelect;
+export type InsertVerticalDramaCharacterAssetRow = typeof verticalDramaCharacterAssets.$inferInsert;
+
+/** Episodes — per-episode plan, manifests, and status (spec §7.3). */
+export const verticalDramaEpisodes = pgTable("vertical_drama_episodes", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeNumber: integer("episodeNumber").notNull(),
+  title: varchar("title", { length: 255 }),
+  status: varchar("status", { length: 30 }).default("draft").notNull(),
+  targetDurationSeconds: integer("targetDurationSeconds").default(60).notNull(),
+  durationProfileId: varchar("durationProfileId", { length: 64 })
+    .default("vertical_drama_60s_9_frames_8_clips").notNull(),
+  /** Guide-compatible stage payloads (typed projections in shared contracts). */
+  script: jsonb("script"),
+  storyboard: jsonb("storyboard"),
+  startFramePlan: jsonb("startFramePlan"),
+  dialogueAudioPlan: jsonb("dialogueAudioPlan"),
+  motionPromptPack: jsonb("motionPromptPack"),
+  assemblyManifest: jsonb("assemblyManifest"),
+  /** Backlink to the Storyboard Review project (media_studio_storyboard_reviews). */
+  storyboardReviewId: varchar("storyboardReviewId", { length: 64 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("vds_episode_number_unique").on(t.tenantId, t.seriesId, t.episodeNumber),
+  index("vds_episode_status_idx").on(t.tenantId, t.seriesId, t.status),
+]);
+
+export type VerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferSelect;
+export type InsertVerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferInsert;
+
+/** Episode stage runs — resumable per-stage execution state (spec §11.4/§11.5). */
+export const verticalDramaEpisodeRuns = pgTable("vertical_drama_episode_runs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 48 }).notNull(),
+  runMode: varchar("runMode", { length: 20 }).default("dry_run").notNull(),
+  status: varchar("status", { length: 24 }).default("queued").notNull(),
+  nextAction: varchar("nextAction", { length: 32 }).default("none").notNull(),
+  /** string[] of run_artifact IDs emitted by this stage. */
+  artifactIds: jsonb("artifactIds"),
+  warnings: jsonb("warnings"),
+  errors: jsonb("errors"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_run_episode_idx").on(t.tenantId, t.seriesId, t.episodeId),
+  index("vds_run_stage_idx").on(t.tenantId, t.seriesId, t.episodeId, t.stage),
+]);
+
+export type VerticalDramaEpisodeRunRow = typeof verticalDramaEpisodeRuns.$inferSelect;
+export type InsertVerticalDramaEpisodeRunRow = typeof verticalDramaEpisodeRuns.$inferInsert;
+
+/** Durable run artifacts — the inspectable artifact ledger (spec §7.3). */
+export const verticalDramaRunArtifacts = pgTable("vertical_drama_run_artifacts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+  runId: bigint("runId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodeRuns.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 40 }).notNull(),
+  storageKey: text("storageKey"),
+  jsonPayload: jsonb("jsonPayload"),
+  /** number[] of media_assets IDs linked to this artifact. */
+  mediaAssetIds: jsonb("mediaAssetIds"),
+  checksumSha256: varchar("checksumSha256", { length: 64 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_artifact_lookup_idx").on(t.tenantId, t.seriesId, t.episodeId, t.runId, t.stage),
+]);
+
+export type VerticalDramaRunArtifactRow = typeof verticalDramaRunArtifacts.$inferSelect;
+export type InsertVerticalDramaRunArtifactRow = typeof verticalDramaRunArtifacts.$inferInsert;
+
+/** Approval checkpoints — durable per-stage approval artifacts (spec §11.2). */
+export const verticalDramaApprovalCheckpoints = pgTable("vertical_drama_approval_checkpoints", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+  runId: bigint("runId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodeRuns.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 48 }).notNull(),
+  state: varchar("state", { length: 20 }).default("pending").notNull(),
+  approvedByUserId: integer("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
+  rejectedByUserId: integer("rejectedByUserId").references(() => users.id, { onDelete: "set null" }),
+  /** string[] — source artifacts under review (never overwritten on repair). */
+  sourceArtifactIds: jsonb("sourceArtifactIds"),
+  repairRequestIds: jsonb("repairRequestIds"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_checkpoint_episode_idx").on(t.tenantId, t.seriesId, t.episodeId),
+  index("vds_checkpoint_lookup_idx").on(t.tenantId, t.seriesId, t.episodeId, t.runId, t.stage),
+]);
+
+export type VerticalDramaApprovalCheckpointRow = typeof verticalDramaApprovalCheckpoints.$inferSelect;
+export type InsertVerticalDramaApprovalCheckpointRow = typeof verticalDramaApprovalCheckpoints.$inferInsert;
+
+/** Append-only memory events — never mutated in place; retcons append (spec §7.6). */
+export const verticalDramaMemoryEvents = pgTable("vertical_drama_memory_events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" })
+    .references(() => verticalDramaEpisodes.id, { onDelete: "set null" }),
+  runId: bigint("runId", { mode: "number" })
+    .references(() => verticalDramaEpisodeRuns.id, { onDelete: "set null" }),
+  memoryKind: varchar("memoryKind", { length: 40 }).notNull(),
+  payload: jsonb("payload").notNull(),
+  summaryText: text("summaryText"),
+  /** string[] of memory event IDs this event supersedes (retcon proposals). */
+  supersedesEventIds: jsonb("supersedesEventIds"),
+  approved: boolean("approved"),
+  approvedByUserId: integer("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_memory_event_retrieval_idx").on(t.tenantId, t.seriesId, t.memoryKind, t.createdAt),
+]);
+
+export type VerticalDramaMemoryEventRow = typeof verticalDramaMemoryEvents.$inferSelect;
+export type InsertVerticalDramaMemoryEventRow = typeof verticalDramaMemoryEvents.$inferInsert;
+
+/** Compact memory snapshots — rolling summary distinct from append-only events (spec §7.6). */
+export const verticalDramaMemorySnapshots = pgTable("vertical_drama_memory_snapshots", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  compactedMemoryText: text("compactedMemoryText"),
+  /** Full VerticalDramaSeriesMemory projection at snapshot time. */
+  memory: jsonb("memory"),
+  checksumSha256: varchar("checksumSha256", { length: 64 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_memory_snapshot_idx").on(t.tenantId, t.seriesId, t.updatedAt),
+]);
+
+export type VerticalDramaMemorySnapshotRow = typeof verticalDramaMemorySnapshots.$inferSelect;
+export type InsertVerticalDramaMemorySnapshotRow = typeof verticalDramaMemorySnapshots.$inferInsert;
+
+/** QC reports — searchable by run/stage, not hidden inside opaque artifacts (spec §16). */
+export const verticalDramaQcReports = pgTable("vertical_drama_qc_reports", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+  runId: bigint("runId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodeRuns.id, { onDelete: "cascade" }),
+  stage: varchar("stage", { length: 40 }).notNull(),
+  passed: boolean("passed").default(false).notNull(),
+  score: real("score").default(0).notNull(),
+  issues: jsonb("issues"),
+  recommendedRepairs: jsonb("recommendedRepairs"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_qc_lookup_idx").on(t.tenantId, t.seriesId, t.episodeId, t.runId, t.stage),
+]);
+
+export type VerticalDramaQcReportRow = typeof verticalDramaQcReports.$inferSelect;
+export type InsertVerticalDramaQcReportRow = typeof verticalDramaQcReports.$inferInsert;

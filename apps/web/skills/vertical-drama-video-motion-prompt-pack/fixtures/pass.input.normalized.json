@@ -1,0 +1,13 @@
+{
+  "clip_duration_strategy": "veo31_first_last_bridge_60s",
+  "motion_style": "dramatic",
+  "veo31_policy": {
+    "veo_3_1": "veo-3.1"
+  },
+  "video_target": "first_last_frame_to_video",
+  "workflow_level": "guided",
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1"
+  }
+}

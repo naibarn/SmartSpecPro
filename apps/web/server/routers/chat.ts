@@ -1730,6 +1730,7 @@ export const chatRouter = router({
           input.message,
           input.conversationId,
           skillSettings as any,
+          ctx.user.id,
         );
       } catch (error) {
         debugError("Chat", "detectSkill failed; falling back to no-skill match", error);

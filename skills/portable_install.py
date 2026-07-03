@@ -65,7 +65,9 @@ def copy_path(src: Path, dest: Path) -> None:
 
 
 def clear_path(path: Path) -> None:
-    if path.is_dir():
+    if path.is_symlink():
+        path.unlink()
+    elif path.is_dir():
         shutil.rmtree(path)
     elif path.exists():
         path.unlink()
@@ -194,27 +196,79 @@ def default_claude_agents_dir() -> Path:
     return Path(os.environ.get("CLAUDE_AGENTS_DIR", REPO_ROOT / ".claude" / "agents")).expanduser()
 
 
+# These manifest entries are not installable as standalone Claude Code
+# project skills: the deep-* ones ship as full Claude Code plugins already
+# enabled via .claude/settings.json (piercelamb-plugins marketplace), and
+# sub-agents intentionally has no top-level SKILL.md (see skills/README.md).
+CLAUDE_SKILL_EXCLUDE = {"deep-implement", "deep-plan", "deep-project", "sub-agents"}
+
+
+def default_claude_skills_dir() -> Path:
+    return Path(os.environ.get("CLAUDE_SKILLS_DIR", REPO_ROOT / ".claude" / "skills")).expanduser()
+
+
+def install_claude_skills(target_dir: Path) -> None:
+    """Expose repo-backed skill packages as native Claude Code project skills.
+
+    Claude Code only auto-discovers Skills from `.claude/skills/<name>/SKILL.md`
+    (personal `~/.claude/skills` or project `.claude/skills`) -- a repo-root
+    `skills/` directory is never scanned. Symlinking keeps `skills/` as the
+    single source of truth with no copy step to keep in sync.
+    """
+    target_dir.mkdir(parents=True, exist_ok=True)
+    linked = 0
+    for skill in read_manifest():
+        if skill in CLAUDE_SKILL_EXCLUDE:
+            continue
+        source = SKILLS_ROOT / skill
+        if not (source / "SKILL.md").exists():
+            raise FileNotFoundError(f"missing SKILL.md for portable skill: {source}")
+
+        link = target_dir / skill
+        clear_path(link)
+        link.symlink_to(os.path.relpath(source, target_dir), target_is_directory=True)
+        linked += 1
+        print(f"linked {skill} -> {link}")
+
+    print(f"linked {linked} Claude Code project skills into {target_dir}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Install portable skills and generate Claude agents")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    install_parser = subparsers.add_parser("install", help="install skills to Codex runtime and optionally Claude agents")
+    install_parser = subparsers.add_parser(
+        "install", help="install skills to Codex runtime, .claude/skills, and .claude/agents"
+    )
     install_parser.add_argument("--codex-skills-root", type=Path, default=default_codex_skills_root())
     install_parser.add_argument("--claude-agents-dir", type=Path, default=default_claude_agents_dir())
+    install_parser.add_argument("--claude-skills-dir", type=Path, default=default_claude_skills_dir())
     install_parser.add_argument("--skip-claude-agents", action="store_true")
+    install_parser.add_argument("--skip-claude-skills", action="store_true")
 
     claude_parser = subparsers.add_parser("generate-claude-agents", help="generate .claude/agents definitions")
     claude_parser.add_argument("--claude-agents-dir", type=Path, default=default_claude_agents_dir())
+
+    claude_skills_parser = subparsers.add_parser(
+        "install-claude-skills", help="symlink portable skills into .claude/skills"
+    )
+    claude_skills_parser.add_argument("--claude-skills-dir", type=Path, default=default_claude_skills_dir())
 
     args = parser.parse_args()
     if args.command == "install":
         install_codex_skills(args.codex_skills_root.expanduser())
         if not args.skip_claude_agents:
             generate_claude_agents(args.claude_agents_dir.expanduser())
+        if not args.skip_claude_skills:
+            install_claude_skills(args.claude_skills_dir.expanduser())
         return 0
 
     if args.command == "generate-claude-agents":
         generate_claude_agents(args.claude_agents_dir.expanduser())
+        return 0
+
+    if args.command == "install-claude-skills":
+        install_claude_skills(args.claude_skills_dir.expanduser())
         return 0
 
     return 1

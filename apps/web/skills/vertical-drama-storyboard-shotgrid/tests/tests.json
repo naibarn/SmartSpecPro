@@ -1,0 +1,54 @@
+{
+  "skill": "vertical-drama-storyboard-shotgrid",
+  "imported": true,
+  "upstream_manifest_name": "storyboard_shotgrid_generator",
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "plain_text_output",
+    "json_handoff",
+    "bilingual_ui",
+    "fixed_grid_3x3",
+    "fixed_shot_count",
+    "repair_queue"
+  ],
+  "required_top_level_output_fields": [
+    "storyboard_summary",
+    "canonical_style_bible",
+    "shot_grid_plan",
+    "shots",
+    "plain_text_storyboard",
+    "storyboard_handoff_json",
+    "contract_version"
+  ],
+  "pinned_literals": {
+    "shot_grid_plan.layout": "3x3",
+    "shot_grid_plan.aspect_ratio": "9:16",
+    "storyboard_handoff_json.handoff_type": "storyboard_shot_prompts",
+    "storyboard_summary.duration_seconds": 60,
+    "shots.0.camera.shot_type": "wide"
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "pass_input_normalized": "fixtures/pass.input.normalized.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint",
+    "scripts/verify.sh runs without provider credentials",
+    "upstream input enum vocabulary round-trips into pass.input.normalized.json"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "series_id": "series_123",
+  "current_episode_number": 2,
+  "prior_memory": {
+    "canonical_facts": []
+  },
+  "current_episode_script": {
+    "episode_title": "ตอนที่ 2"
+  },
+  "characters": [
+    {
+      "character_id": "char_aria",
+      "name": "อาริยา"
+    }
+  ]
+}

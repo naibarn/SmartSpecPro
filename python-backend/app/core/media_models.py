@@ -6,13 +6,14 @@ This ensures consistency across Backend API, MCP Server, and Frontend.
 """
 
 from enum import Enum
-from typing import Dict, List, Any
+from typing import Any
 
 
 class ImageModel(str, Enum):
     """Supported image generation models"""
     NANO_BANANA_PRO = "google-nano-banana-pro"
     BANANA_2 = "google-banana-2"
+    BANANA_2_LITE = "google-banana-2-lite"
     FLUX_2_0 = "flux-2.0"
     Z_IMAGE = "z-image"
     GROK_IMAGINE = "grok-imagine"
@@ -43,7 +44,7 @@ DEFAULT_AUDIO_MODEL = AudioModel.ELEVENLABS_TTS
 
 
 # Model metadata for display and validation
-MODEL_METADATA: Dict[str, Dict[str, Any]] = {
+MODEL_METADATA: dict[str, dict[str, Any]] = {
     # Image models
     ImageModel.NANO_BANANA_PRO.value: {
         "type": "image",
@@ -59,6 +60,14 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "provider": "kie.ai",
         "description": "Gemini 3.1 Flash Image model with fast 4K generation",
         "supports_sizes": ["1K", "2K", "4K"],
+        "supports_aspect_ratios": ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    },
+    ImageModel.BANANA_2_LITE.value: {
+        "type": "image",
+        "name": "Nano Banana 2 Lite",
+        "provider": "kie.ai",
+        "description": "Nano Banana 2 Lite for fast, cost-effective image generation and editing",
+        "supports_sizes": ["1K"],
         "supports_aspect_ratios": ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
     },
     ImageModel.FLUX_2_0.value: {
@@ -85,7 +94,7 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "supports_sizes": ["1024x1024", "1024x1792", "1792x1024"],
         "supports_aspect_ratios": ["1:1", "16:9", "9:16"],
     },
-    
+
     # Video models
     VideoModel.VEO_3_1.value: {
         "type": "video",
@@ -175,7 +184,7 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_all_models() -> Dict[str, List[str]]:
+def get_all_models() -> dict[str, list[str]]:
     """Get all supported models grouped by type"""
     return {
         "image": [m.value for m in ImageModel],
@@ -184,7 +193,7 @@ def get_all_models() -> Dict[str, List[str]]:
     }
 
 
-def get_model_metadata(model_id: str) -> Dict[str, Any] | None:
+def get_model_metadata(model_id: str) -> dict[str, Any] | None:
     """Get metadata for a specific model"""
     return MODEL_METADATA.get(model_id)
 
@@ -199,7 +208,7 @@ def is_valid_model(model_id: str, model_type: str | None = None) -> bool:
     return True
 
 
-def get_models_for_type(model_type: str) -> List[Dict[str, Any]]:
+def get_models_for_type(model_type: str) -> list[dict[str, Any]]:
     """Get all models for a specific type with metadata"""
     return [
         {"id": model_id, **metadata}

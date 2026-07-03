@@ -507,6 +507,28 @@ function parseErrorResponse(errorText: string): string {
   }
 }
 
+function formatAgeSafetyChatError(payload: any): string {
+  const code = String(payload?.code ?? "");
+  const actualAgeBand = String(payload?.actualAgeBand ?? "");
+  const enforcementAgeBand = String(payload?.enforcementAgeBand ?? "");
+  if (code === "safety_profile_required" || code === "country_profile_invalid") {
+    return "กรุณากรอกวันเกิดและประเทศที่ใช้งานใน Settings > ความปลอดภัย ก่อนใช้งาน Chat";
+  }
+  if (code === "age_policy_chat_illegal_instruction") {
+    return "คำถามนี้ถูกบล็อกเพราะเข้าข่ายขอคำแนะนำที่ผิดกฎหมายหรือหลบเลี่ยงข้อกำหนดความปลอดภัย";
+  }
+  if (code === "age_policy_chat_self_harm_instruction") {
+    return "คำถามนี้ถูกบล็อกเพราะเข้าข่ายคำแนะนำที่อาจเป็นอันตรายต่อความปลอดภัยของตนเอง";
+  }
+  if (code.startsWith("age_policy_chat") || code === "minimum_service_age") {
+    const bandText = enforcementAgeBand && enforcementAgeBand !== "undefined"
+      ? ` ระบบประเมินสถานะอายุปัจจุบันเป็น ${enforcementAgeBand}${actualAgeBand ? ` (actual: ${actualAgeBand})` : ""}.`
+      : "";
+    return `Chat ถูกจำกัดด้วยนโยบายอายุและต้องใช้โปรไฟล์อายุผู้ใหญ่.${bandText} โปรดตรวจสอบวันเกิดและประเทศใน Settings > ความปลอดภัย`;
+  }
+  return payload?.message || payload?.error || "This chat request is restricted by age-safety policy.";
+}
+
 const skillIconMap: Record<string, React.ElementType> = {
   "image-generation": Wand2,
   "video-generation": Video,
@@ -3879,14 +3901,12 @@ export function ChatView({
                     setIsStreaming(false);
                     reader.releaseLock();
                     return ""; // Stop processing, user must decide
-                  } else if (eventName === "error") {
-                    streamErrorMessage =
-                      parsed?.error ||
-                      parsed?.message ||
-                      "Failed to resolve a valid model for this chat request";
+                  } else if (eventName === "error" || eventName === "safety_block") {
+                    streamErrorMessage = formatAgeSafetyChatError(parsed);
                     logTiming("stream_error_event", {
                       error: streamErrorMessage,
                       statusCode: parsed?.statusCode ?? null,
+                      code: parsed?.code ?? null,
                     });
                   }
                 } catch {
@@ -6779,11 +6799,8 @@ export function ChatView({
                                       const parsed = JSON.parse(
                                         dataLine.slice("data:".length).trim()
                                       );
-                                      if (eventName === "error") {
-                                        streamErrorMessage =
-                                          parsed?.error ||
-                                          parsed?.message ||
-                                          "Failed to resolve a valid model for this chat request";
+                                      if (eventName === "error" || eventName === "safety_block") {
+                                        streamErrorMessage = formatAgeSafetyChatError(parsed);
                                       } else if (
                                         eventName === "message_complete"
                                       ) {

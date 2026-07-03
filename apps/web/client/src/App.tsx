@@ -18,6 +18,8 @@ import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
 import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
+import { trpc } from "@/lib/trpc";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
 
@@ -148,6 +150,9 @@ const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
+const VerticalDramaSeriesPage = lazy(() => import("./pages/VerticalDramaSeriesPage"));
+const VerticalDramaSeriesDetailPage = lazy(() => import("./pages/VerticalDramaSeriesDetailPage"));
+const VerticalDramaEpisodePage = lazy(() => import("./pages/VerticalDramaEpisodePage"));
 const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
@@ -241,8 +246,58 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
  */
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+  const safetyProfileStatus = trpc.users.getSafetyProfileCompletionStatus.useQuery(undefined, {
+    enabled: Boolean(user),
+    staleTime: 60_000,
+    retry: false,
+  });
   if (isLoading) return null;
   if (!user) return <Redirect to="/login" />;
+  const path = location.split("?")[0];
+  const exemptFromSafetyProfileGate =
+    path === "/settings" ||
+    path === "/support" ||
+    path === "/privacy" ||
+    path === "/terms" ||
+    path === "/login" ||
+    path === "/forgot-password";
+  if (
+    safetyProfileStatus.data?.gateRequired &&
+    safetyProfileStatus.data.complete === false &&
+    !exemptFromSafetyProfileGate
+  ) {
+    return <Redirect to={`/settings?section=security&returnTo=${encodeURIComponent(location)}`} />;
+  }
+  return <>{children}</>;
+}
+
+/**
+ * Route-level guard for the feature-flagged Vertical Drama Series workspace.
+ * Requires the `verticalDramaSeries` tenant flag (fail-closed). When disabled it
+ * renders an announced (role="alert") text notice rather than silently 404-ing,
+ * satisfying the section-03 accessibility acceptance ("feature-denied states are
+ * announced with text"). Must be nested inside <RequireAuth>.
+ */
+function RequireVerticalDramaSeries({ children }: { children: React.ReactNode }) {
+  const enabled = useTenantFeatureFlag("verticalDramaSeries");
+  if (!enabled) {
+    return (
+      <main className="min-h-screen bg-background text-foreground">
+        <div
+          role="alert"
+          className="mx-auto flex max-w-lg flex-col items-center gap-3 px-6 py-24 text-center"
+        >
+          <h1 className="text-lg font-semibold">This feature is not available</h1>
+          <p className="text-sm text-muted-foreground">
+            Vertical Drama Series is not enabled for your account.
+            <br />
+            ซีรีย์แนวตั้งยังไม่เปิดใช้งานสำหรับบัญชีของคุณ
+          </p>
+        </div>
+      </main>
+    );
+  }
   return <>{children}</>;
 }
 
@@ -525,6 +580,10 @@ function Router() {
         <Route path="/workpacks/:workpackId/connectors"><RequireAuth><WorkpackConnectorStudio /></RequireAuth></Route>
         <Route path="/workpacks/:workpackId"><RequireAuth><WorkpackDetail /></RequireAuth></Route>
         <Route path="/webhook-triggers"><RequireAuth><WebhookTriggers /></RequireAuth></Route>
+        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/dashboard/vertical-drama/:seriesId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesDetailPage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/dashboard/vertical-drama"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesPage /></RequireVerticalDramaSeries></RequireAuth></Route>
         <Route path="/dashboard"><RequireAuth><Dashboard /></RequireAuth></Route>
         <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>
         <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>

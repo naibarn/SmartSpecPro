@@ -69,9 +69,12 @@ def main() -> int:
     session_id = payload.get("session_id")
     transcript_path = payload.get("transcript_path")
 
-    # Capture the active plugin root when hooks provide it
+    # Capture the active plugin root when hooks provide it.
+    # CLAUDE_PLUGIN_ROOT is set by Claude Code plugin installs; without it the
+    # hook would silently no-op on Claude hosts and never emit DEEP_PLUGIN_ROOT.
     plugin_root = (
         os.environ.get("DEEP_PLUGIN_ROOT")
+        or os.environ.get("CLAUDE_PLUGIN_ROOT")
         or os.environ.get("CODEX_PLUGIN_ROOT")
         or os.environ.get("DEEP_IMPLEMENT_ROOT", "")
     )

@@ -25,6 +25,11 @@ FALLBACK_MODEL_NAME_MAP = {
     "google/nano-banana-2": "nano-banana-2",
     "nano_banana_2": "nano-banana-2",
     "google_banana_2": "nano-banana-2",
+    "google-banana-2-lite": "nano-banana-2-lite",
+    "google/nano-banana-2-lite": "nano-banana-2-lite",
+    "nano_banana_2_lite": "nano-banana-2-lite",
+    "google_banana_2_lite": "nano-banana-2-lite",
+    "gemini-3.1-flash-lite-image": "nano-banana-2-lite",
     "flux-2.0": "flux-2.0",
     "flux-2-0": "flux-2.0",
     "flux-1-1-pro": "flux-1.1-pro",
@@ -83,6 +88,8 @@ FALLBACK_MODEL_NAME_MAP = {
     "stem-split": "stem-split",
     "music-cover": "music-cover",
 }
+
+NANO_BANANA_2_LITE_API_MODEL = "nano-banana-2-lite"
 
 _MODEL_RESOLUTION_STATS = {
     "explicit_api_model": 0,
@@ -231,6 +238,12 @@ def _resolve_reference_image_input_config(
         )
     ) or "array"
     return key, input_type
+
+
+def _default_reference_image_key_for_model(api_model: str | None) -> str:
+    if api_model == NANO_BANANA_2_LITE_API_MODEL:
+        return "image_urls"
+    return "image_input"
 
 
 def _resolve_reference_video_input_config(
@@ -1400,10 +1413,15 @@ class KieAIProvider:
         # Build input parameters for image generation
         input_params = {
             "prompt": prompt,
-            "aspect_ratio": kwargs.get("aspect_ratio", "1:1"),
+            "aspect_ratio": kwargs.get("aspect_ratio", "auto" if api_model == NANO_BANANA_2_LITE_API_MODEL else "1:1"),
             "resolution": kwargs.get("resolution", "1K"),
             "output_format": kwargs.get("output_format", "png")
         }
+        if api_model == NANO_BANANA_2_LITE_API_MODEL:
+            if "resolution" not in kwargs:
+                input_params.pop("resolution", None)
+            if "output_format" not in kwargs:
+                input_params.pop("output_format", None)
 
         # Add optional parameters if provided
         if kwargs.get("negative_prompt"):
@@ -1424,7 +1442,7 @@ class KieAIProvider:
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
                 reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
                     api_config,
-                    default_key="image_input",
+                    default_key=_default_reference_image_key_for_model(api_model),
                 )
                 if reference_image_input_type == "url":
                     input_params[reference_image_input_key] = ref_urls[0]

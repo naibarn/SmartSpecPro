@@ -10,8 +10,13 @@ Why this exists:
 - runtime hooks use `python3` directly and must not require per-skill `.venv`
 - external LLM API credentials are not required; review loops use the active
   host model through the skill instructions
-- the same source can install to Codex runtime skills and generate native
-  Claude Code sub-agent definitions
+- the same source can install to Codex runtime skills, generate native
+  Claude Code sub-agent definitions, and link native Claude Code project
+  skills
+- Claude Code only auto-discovers Skills from `.claude/skills/<name>/SKILL.md`
+  (personal `~/.claude/skills` or project `.claude/skills`); a repo-root
+  `skills/` directory is never scanned, so every portable skill package must
+  also be linked into `.claude/skills/` to actually be usable in Claude Code
 
 Mirrored installed skills:
 - see `mirrored-skills.txt`
@@ -29,6 +34,12 @@ Notes:
 - Native Claude Code agent files are generated from
   `skills/sub-agents/agents/*.md`; do not edit generated `.claude/agents/ssp-*`
   files as the source of truth.
+- `.claude/skills/<name>` entries are symlinks to `skills/<name>` (not
+  copies), so editing a skill under `skills/` takes effect immediately with
+  no separate sync step. `deep-implement`, `deep-plan`, and `deep-project`
+  are excluded — they already ship as full Claude Code plugins enabled via
+  `.claude/settings.json` (piercelamb-plugins marketplace) — as is
+  `sub-agents`, which has no top-level `SKILL.md`.
 - Do not distribute a raw copied working directory that includes `.venv`,
   `.pytest_cache`, or `__pycache__`; run the cleanup command first.
 - Image generation routes through `gpt-image-2` by default. In Codex, it should
@@ -43,20 +54,27 @@ Install on a new machine or project:
 bash skills/install-portable-skills.sh
 ```
 
-By default this installs Codex skills to `${CODEX_HOME:-~/.codex}/skills` and
-generates Claude Code native agents in `.claude/agents/`. Override paths when
-needed:
+By default this installs Codex skills to `${CODEX_HOME:-~/.codex}/skills`,
+generates Claude Code native agents in `.claude/agents/`, and links Claude
+Code project skills into `.claude/skills/`. Override paths when needed:
 
 ```bash
 bash skills/install-portable-skills.sh \
   --codex-skills-root /path/to/.codex/skills \
-  --claude-agents-dir /path/to/project/.claude/agents
+  --claude-agents-dir /path/to/project/.claude/agents \
+  --claude-skills-dir /path/to/project/.claude/skills
 ```
 
 Generate only Claude Code agents:
 
 ```bash
 bash skills/generate-claude-agents.sh
+```
+
+Link only Claude Code project skills:
+
+```bash
+bash skills/install-claude-skills.sh
 ```
 
 Sync command:

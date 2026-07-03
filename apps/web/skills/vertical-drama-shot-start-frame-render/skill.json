@@ -1,0 +1,32 @@
+{
+  "name": "shot_start_frame_render_planner",
+  "display_name": "Vertical Drama Shot Start-Frame Render Planner",
+  "display_name_th": "วางแผนเฟรมเริ่มต้นละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Convert the shotgrid into 9 start-frame render requests and QC checklists (imported shot-start-frame-render-skill).",
+  "description_th": "แปลงสตอรีบอร์ดเป็นคำขอเรนเดอร์เฟรมเริ่มต้น 9 รายการพร้อม QC",
+  "entry_prompt": "You are the shot start-frame render planner. Convert a 9-shot storyboard into exactly 9 vertical start-frame image render requests, reference attachments, QC checklists, repair templates, and a downstream video input manifest. Preserve upstream snake_case fields, render_parameters shape, and the shot_count=9 literal exactly. Never call paid providers; produce request plans only.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "vertical_start_frames",
+    "shot_start_frame_references",
+    "shots_per_batch",
+    "repair_queue"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-shot-start-frame-render",
+  "upstream_manifest_name": "shot_start_frame_render_planner",
+  "openai_sora_primary": false
+}

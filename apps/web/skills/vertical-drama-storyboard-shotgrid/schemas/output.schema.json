@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-storyboard-shotgrid/output",
+  "title": "Storyboard Shotgrid Output (upstream parity)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "storyboard_summary",
+    "canonical_style_bible",
+    "shot_grid_plan",
+    "shots",
+    "plain_text_storyboard",
+    "storyboard_handoff_json",
+    "contract_version"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "storyboard_summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "episode_title": {
+          "type": "string"
+        },
+        "episode_number": {
+          "type": "integer"
+        },
+        "duration_seconds": {
+          "const": 60
+        },
+        "core_emotion": {
+          "type": "string"
+        },
+        "visual_promise": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "episode_title",
+        "episode_number",
+        "duration_seconds",
+        "core_emotion",
+        "visual_promise"
+      ]
+    },
+    "canonical_style_bible": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "overall_style": {
+          "type": "string"
+        },
+        "lighting_language": {
+          "type": "string"
+        },
+        "camera_language": {
+          "type": "string"
+        },
+        "color_language": {
+          "type": "string"
+        },
+        "continuity_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "overall_style",
+        "lighting_language",
+        "camera_language",
+        "color_language",
+        "continuity_rules"
+      ]
+    },
+    "shot_grid_plan": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "layout": {
+          "const": "3x3"
+        },
+        "aspect_ratio": {
+          "const": "9:16"
+        },
+        "contact_sheet_instruction": {
+          "type": "string"
+        },
+        "grid_reading_order": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "layout",
+        "aspect_ratio",
+        "contact_sheet_instruction",
+        "grid_reading_order"
+      ]
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "shot_number": {
+            "type": "integer"
+          },
+          "timecode": {
+            "type": "string"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "narrative_purpose": {
+            "type": "string"
+          },
+          "emotion": {
+            "type": "string"
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_character_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "location": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "visual_description": {
+            "type": "string"
+          },
+          "camera": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "shot_type": {
+                "type": "string"
+              },
+              "angle": {
+                "type": "string"
+              },
+              "lens_feel": {
+                "type": "string"
+              },
+              "movement": {
+                "type": "string"
+              },
+              "composition": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "shot_type",
+              "angle",
+              "lens_feel",
+              "movement",
+              "composition"
+            ]
+          },
+          "lighting": {
+            "type": "string"
+          },
+          "dialogue_excerpt": {
+            "type": "string"
+          },
+          "subtitle_text": {
+            "type": "string"
+          },
+          "continuity_notes": {
+            "type": "string"
+          },
+          "image_prompt": {
+            "type": "string"
+          },
+          "negative_prompt": {
+            "type": "string"
+          },
+          "age_suitability": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "shot_number",
+          "timecode",
+          "duration_seconds",
+          "narrative_purpose",
+          "emotion",
+          "characters",
+          "required_character_refs",
+          "location",
+          "action",
+          "visual_description",
+          "camera",
+          "lighting",
+          "dialogue_excerpt",
+          "subtitle_text",
+          "continuity_notes",
+          "image_prompt",
+          "negative_prompt",
+          "age_suitability"
+        ]
+      }
+    },
+    "plain_text_storyboard": {
+      "type": "string"
+    },
+    "storyboard_handoff_json": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "schema_version": {
+          "type": "string"
+        },
+        "handoff_type": {
+          "const": "storyboard_shot_prompts"
+        },
+        "grid_layout": {
+          "const": "3x3"
+        },
+        "shots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "character_attachment_manifest": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "rendering_notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "handoff_type",
+        "grid_layout",
+        "shots",
+        "character_attachment_manifest",
+        "rendering_notes"
+      ]
+    }
+  }
+}

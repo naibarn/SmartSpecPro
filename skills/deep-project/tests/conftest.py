@@ -5,6 +5,25 @@ import pytest
 from pathlib import Path
 
 
+@pytest.fixture(autouse=True)
+def hermetic_home(tmp_path, monkeypatch):
+    """Redirect HOME to a per-test temp dir and strip ambient session vars.
+
+    task_storage writes to Path.home()/".claude"/"tasks"; without this, tests
+    (and every subprocess that inherits os.environ, e.g. run_setup_session)
+    would pollute the developer's real ~/.claude/tasks/. Stripping
+    DEEP_SESSION_ID and CLAUDE_CODE_TASK_LIST_ID also prevents ambient session
+    state — e.g. from a live Claude Code / deep-* plugin session — from leaking
+    into "no env" cases and making those assertions non-deterministic.
+    """
+    home = tmp_path / "hermetic_home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("DEEP_SESSION_ID", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_TASK_LIST_ID", raising=False)
+    yield
+
+
 @pytest.fixture
 def fixtures_dir():
     """Return path to test fixtures directory."""

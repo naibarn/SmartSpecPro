@@ -1,0 +1,66 @@
+{
+  "contract_version": 1,
+  "storyboard_summary": {
+    "episode_title": "X",
+    "episode_number": 1,
+    "duration_seconds": 30,
+    "core_emotion": "x",
+    "visual_promise": "y"
+  },
+  "canonical_style_bible": {
+    "overall_style": "a",
+    "lighting_language": "b",
+    "camera_language": "c",
+    "color_language": "d",
+    "continuity_rules": []
+  },
+  "shot_grid_plan": {
+    "layout": "2x2",
+    "aspect_ratio": "16:9",
+    "contact_sheet_instruction": "wrong",
+    "grid_reading_order": [
+      1
+    ]
+  },
+  "shots": [
+    {
+      "shot_number": 1,
+      "timecode": "00:00-00:06",
+      "duration_seconds": 6,
+      "narrative_purpose": "beat 1",
+      "emotion": "tension",
+      "characters": [
+        "char_aria"
+      ],
+      "required_character_refs": [
+        "aria_primary_portrait.png"
+      ],
+      "location": "boardroom",
+      "action": "Aria reacts to revelation 1",
+      "visual_description": "vertical cinematic frame, moody key light",
+      "camera": {
+        "shot_type": "wide",
+        "angle": "eye_level",
+        "lens_feel": "50mm",
+        "movement": "slow_push_in",
+        "composition": "rule_of_thirds"
+      },
+      "lighting": "low-key rim light",
+      "dialogue_excerpt": "We are not done here.",
+      "subtitle_text": "We are not done here.",
+      "continuity_notes": "keep blazer + gold hoops",
+      "image_prompt": "vertical 9:16 storyboard shot 1 of Aria in boardroom",
+      "negative_prompt": "no identity drift, no extra fingers",
+      "age_suitability": "young_adults"
+    }
+  ],
+  "plain_text_storyboard": "broken",
+  "storyboard_handoff_json": {
+    "schema_version": "1.0",
+    "handoff_type": "wrong_type",
+    "grid_layout": "2x2",
+    "shots": [],
+    "character_attachment_manifest": [],
+    "rendering_notes": "x"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "video_motion_prompt_pack_builder",
+  "display_name": "Vertical Drama Video Motion Prompt Pack",
+  "display_name_th": "ชุดพรอมป์การเคลื่อนไหววิดีโอละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Create per-clip motion prompts and provider request plans for a 60-second vertical episode (imported video-motion-prompt-pack-skill).",
+  "description_th": "สร้างพรอมป์การเคลื่อนไหวต่อคลิปและแผนคำขอผู้ให้บริการวิดีโอ 60 วินาที",
+  "entry_prompt": "You are the video motion prompt pack builder. Build per-clip motion prompts, provider feasibility decisions, provider request payloads (Veo 3.1 first/last-frame bridge first, prompt-only fallback), a 60-second assembly manifest, and a repair loop. Preserve upstream snake_case fields and provider execution statuses. When verticalDramaSeriesSubShots is enabled, add an optional sub_shot_plan; otherwise omit it. Never call paid providers.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "fixed_duration_60_seconds",
+    "provider_agnostic",
+    "openai_sora_safe_mode",
+    "assembly_manifest",
+    "veo31_first",
+    "repair_queue"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-video-motion-prompt-pack",
+  "upstream_manifest_name": "video_motion_prompt_pack_builder",
+  "openai_sora_primary": false
+}

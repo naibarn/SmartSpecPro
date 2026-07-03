@@ -1,0 +1,46 @@
+{
+  "story_source": {
+    "source_type": "source_json",
+    "drama_skill_json": {
+      "episode_title": "Midnight Verdict"
+    }
+  },
+  "style_preset": "luxury_melodrama",
+  "visual_style": {
+    "camera_feel": "slow deliberate",
+    "color_mood": "teal_amber",
+    "cinematic_quality_target": "premium_vertical_cinema"
+  },
+  "workflow_level": "guided",
+  "narrative_goal": "emotion_first",
+  "shot_planning": {
+    "shots_per_minute": 9,
+    "minimum_visual_variety": true,
+    "target_shot_mix": [
+      "wide",
+      "medium",
+      "close_up",
+      "over_the_shoulder"
+    ]
+  },
+  "view_type": "close_up",
+  "continuity_controls": {
+    "identity_lock": true,
+    "keep_face_consistent": true,
+    "keep_hair_consistent": true,
+    "keep_outfit_consistent": true,
+    "carry_forward_from_previous_episode": true
+  },
+  "output_options": {
+    "include_3x3_contact_sheet_instruction": true,
+    "include_image_generation_prompts": true,
+    "include_json_handoff": true,
+    "include_negative_prompts": true,
+    "include_plain_text_storyboard": true
+  },
+  "target_age_group": "young_adults",
+  "app_metadata": {
+    "series_id": "series_123",
+    "episode_id": "ep_1"
+  }
+}

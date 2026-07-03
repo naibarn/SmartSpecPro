@@ -97,11 +97,11 @@
       "expected_agents": [
         "reviewer"
       ],
-      "expected_model_preference": "gpt-5.3-codex-spark",
+      "expected_model_preference": "gpt-5.5",
       "expected_gates": [
         "Verification Before Completion"
       ],
-      "why": "Bounded read-only sub-agent review should prefer the Spark model for speed and cost unless overridden."
+      "why": "Bounded read-only sub-agent review should prefer the GPT 5.5 model override unless overridden."
     },
     {
       "id": "MODEL-002",
@@ -115,11 +115,11 @@
       "expected_gates": [
         "Verification Before Completion"
       ],
-      "why": "Explicit user model requests must take precedence over the Spark lightweight default."
+      "why": "Explicit user model requests must take precedence over the GPT 5.5 lightweight default."
     },
     {
       "id": "MODEL-003",
-      "user_message": "แก้ปัญหา auth/RBAC ที่ Spark agent แก้ไม่ผ่าน gate ซ้ำแล้ว",
+      "user_message": "แก้ปัญหา auth/RBAC ที่ GPT 5.5 agent แก้ไม่ผ่าน gate ซ้ำแล้ว",
       "expected_owner": "orchestra",
       "expected_route": "security-gate",
       "expected_agents": [
@@ -130,7 +130,7 @@
         "Pre-Merge Security Gate",
         "Verification Before Completion"
       ],
-      "why": "High-risk security work and retry escalation after a failed Spark attempt should use the inherited/default model."
+      "why": "High-risk security work and retry escalation after a failed GPT 5.5 attempt should use the inherited/default model."
     },
     {
       "id": "META-001",

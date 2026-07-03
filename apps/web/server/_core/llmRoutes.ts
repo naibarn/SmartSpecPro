@@ -52,6 +52,12 @@ import {
 import { getConversationById, updateConversation } from "../services/chatService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { estimateMessages } from "../utils/tokenEstimator";
+import { evaluateChatRequest } from "../services/ageSafeChatEnforcer";
+import { buildSafetyActorContext } from "../services/safetyActorContextService";
+import { getEffectiveSafetyProfileFromPrefs } from "../services/ageSafetyProfileService";
+import { getSecurityPinVersion } from "../services/securityPinService";
+import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
+import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -2303,7 +2309,73 @@ async function proxyChatWithCredits(
     : undefined;
   const storedSelectionState = readStoredChatModelSelectionState(conversationForSelection?.skillSettings);
   const tenantId = (req as any).tenantId ?? "default";
-  const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
+  const tenantFlags = await getTenantFeatureFlags(tenantId);
+  const autoSelectionEnabled = tenantFlags.chatAutoModelSelection;
+
+  if (tenantFlags.ageSafetyPolicyEnabled && tenantFlags.ageSafetyChatEnforcement) {
+    const now = new Date();
+    const userRecord = await getUserById(userId);
+    const profile = getEffectiveSafetyProfileFromPrefs(userRecord?.userPreferences, now);
+    const protectedSurfaceTokenHeader = req.headers["x-protected-surface-token"];
+    const protectedSurfaceToken = typeof protectedSurfaceTokenHeader === "string" ? protectedSurfaceTokenHeader : null;
+    const protectedSurfaceScopes = await getProtectedSurfaceScopes({
+      token: protectedSurfaceToken,
+      userId,
+      tenantId,
+      pinVersion: getSecurityPinVersion(userRecord?.userPreferences),
+      profileVersion: profile.profileVersion,
+      policyVersion: DEFAULT_AGE_SAFETY_POLICY.policyVersion,
+      jurisdictionPresetId: profile.jurisdictionPresetId,
+      dayKey: getPolicyDayKey(now),
+    });
+    const actor = buildSafetyActorContext({
+      userId,
+      ownerUserId: userId,
+      tenantId,
+      countryCode: profile.countryOfResidence,
+      audienceBand: profile.actualAgeBand,
+      userPreferences: userRecord?.userPreferences,
+      protectedSurfaceScopes,
+    }, now);
+    const chatSafety = evaluateChatRequest({
+      actor,
+      messages: req.body?.messages,
+      now,
+      flags: {
+        ageSafetyPolicyEnabled: tenantFlags.ageSafetyPolicyEnabled,
+        ageSafetyObserveMode: tenantFlags.ageSafetyObserveMode,
+        ageSafetyEmergencyChildSafeMode: tenantFlags.ageSafetyEmergencyChildSafeMode,
+      },
+      audit: true,
+    });
+    if (!chatSafety.allowed) {
+      if (mode === "json") {
+        res.status(403).json({ error: chatSafety.response });
+      } else {
+        res.status(200);
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.write(`event: error\ndata: ${JSON.stringify({
+          error: chatSafety.response?.message ?? "This chat request is restricted by age-safety policy.",
+          message: chatSafety.response?.message ?? "This chat request is restricted by age-safety policy.",
+          code: chatSafety.response?.code ?? chatSafety.decision.reasonCode,
+          missingFields: chatSafety.response?.missingFields,
+          nextAllowedRoute: chatSafety.response?.nextAllowedRoute,
+          actualAgeBand: chatSafety.response?.actualAgeBand ?? chatSafety.decision.actualAgeBand,
+          enforcementAgeBand: chatSafety.response?.enforcementAgeBand ?? chatSafety.decision.enforcementAgeBand,
+          jurisdictionPresetId: chatSafety.response?.jurisdictionPresetId ?? chatSafety.decision.jurisdictionPresetId,
+          statusCode: 403,
+        })}\n\n`);
+        res.write(`data: [DONE]\n\n`);
+        res.end();
+      }
+      return;
+    }
+    req.body = req.body && typeof req.body === "object" ? req.body : {};
+    req.body.messages = [
+      { role: "system", content: chatSafety.providerInstruction },
+      ...(Array.isArray(req.body?.messages) ? req.body.messages : []),
+    ];
+  }
 
   let resolvedChatSelection;
   try {

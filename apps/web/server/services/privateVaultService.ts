@@ -11,6 +11,7 @@ export type PrivateVaultPrefs = {
 
 export type UserPreferencesWithPrivateVault = Record<string, unknown> & {
   privateVault?: PrivateVaultPrefs;
+  securityPin?: PrivateVaultPrefs;
 };
 
 const PRIVATE_VAULT_TOKEN_TTL = "12h";
@@ -41,18 +42,27 @@ export function sanitizeUserPreferences<T extends UserPreferencesWithPrivateVaul
   prefs: T,
 ): T {
   const privateVault = normalizePrivateVaultPrefs(prefs);
-  if (!privateVault) {
-    return prefs;
-  }
 
   const sanitized: UserPreferencesWithPrivateVault = {
     ...prefs,
-    privateVault: {
+  };
+
+  if (privateVault) {
+    sanitized.privateVault = {
       enabled: privateVault.enabled ?? false,
       pinVersion: privateVault.pinVersion,
       pinUpdatedAt: privateVault.pinUpdatedAt,
-    },
-  };
+    };
+  }
+
+  if (sanitized.securityPin && typeof sanitized.securityPin === "object" && !Array.isArray(sanitized.securityPin)) {
+    const securityPin = sanitized.securityPin as PrivateVaultPrefs;
+    sanitized.securityPin = {
+      enabled: securityPin.enabled === true,
+      pinVersion: Number.isFinite(Number(securityPin.pinVersion)) ? Number(securityPin.pinVersion) : undefined,
+      pinUpdatedAt: typeof securityPin.pinUpdatedAt === "string" ? securityPin.pinUpdatedAt : undefined,
+    };
+  }
 
   return sanitized as T;
 }

@@ -151,6 +151,28 @@ export interface TenantFeatureFlags {
   presentationArticleStoryboardVideoElevenLabsDialogue: boolean; // F127H — ElevenLabs dialogue-capable voice route
   presentationArticleStoryboardVideoNativeAudio: boolean; // F127I — Native video speech/audio strategy
   presentationArticleStoryboardVideoNativeAudioPromptComposer: boolean; // F127J — Native-audio video prompt composer
+  ageSafetyPolicyEnabled: boolean; // F128 — Central age-aware safety policy master gate
+  ageSafetyObserveMode: boolean; // F128A — Audit would-block decisions without blocking
+  ageSafetyProfileCompletionGate: boolean; // F128B — Require DOB/country completion after login
+  ageSafetyChatEnforcement: boolean; // F128C — Enforce age policy on chat prompt/output paths
+  ageSafetyMediaEnforcement: boolean; // F128D — Enforce age policy on media prompt/job paths
+  ageSafetyProtectedSurfaceUnlock: boolean; // F128E — Security PIN protected-surface unlock
+  ageSafetyGeneratedAssetViewerPolicy: boolean; // F128F — Viewer-time generated asset policy
+  ageSafetyEmergencyChildSafeMode: boolean; // F128G — Force child-safe behavior across protected surfaces
+  verticalDramaSeries: boolean; // F131 — Vertical Drama Series master gate (Dashboard workspace)
+  verticalDramaSeriesDashboardMenu: boolean; // F131A — Gated Dashboard menu entry for Vertical Drama Series
+  verticalDramaSeriesSkillChain: boolean; // F131B — Vertical drama skill-chain execution
+  verticalDramaSeriesCharacterStock: boolean; // F131C — Series character stock + visual bible surfaces
+  verticalDramaSeriesMemory: boolean; // F131D — Series memory summary/seed surfaces
+  verticalDramaSeriesProductTieIn: boolean; // F131E — Product tie-in configuration surfaces
+  verticalDramaSeriesStartFrames: boolean; // F131F — Start-frame render/plan surfaces
+  verticalDramaSeriesFirstLastFrameBridge: boolean; // F131G — First/last frame bridge motion mode
+  verticalDramaSeriesStoryboardReviewHandoff: boolean; // F131H — Storyboard Review project handoff
+  verticalDramaSeriesProviderRouting: boolean; // F131I — Provider routing selection for series stages
+  verticalDramaSeriesQcRepair: boolean; // F131J — QC + repair loop surfaces
+  verticalDramaSeriesDialogueAudio: boolean; // F131K — Dialogue/audio planning surfaces
+  verticalDramaSeriesSubtitles: boolean; // F131L — Subtitle planning surfaces
+  verticalDramaSeriesSubShots: boolean; // F131M — Opt-in sub-shot decomposition editor (fail-closed)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -305,6 +327,28 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "presentationArticleStoryboardVideoElevenLabsDialogue",
   "presentationArticleStoryboardVideoNativeAudio",
   "presentationArticleStoryboardVideoNativeAudioPromptComposer",
+  "ageSafetyPolicyEnabled",
+  "ageSafetyObserveMode",
+  "ageSafetyProfileCompletionGate",
+  "ageSafetyChatEnforcement",
+  "ageSafetyMediaEnforcement",
+  "ageSafetyProtectedSurfaceUnlock",
+  "ageSafetyGeneratedAssetViewerPolicy",
+  "ageSafetyEmergencyChildSafeMode",
+  "verticalDramaSeries",
+  "verticalDramaSeriesDashboardMenu",
+  "verticalDramaSeriesSkillChain",
+  "verticalDramaSeriesCharacterStock",
+  "verticalDramaSeriesMemory",
+  "verticalDramaSeriesProductTieIn",
+  "verticalDramaSeriesStartFrames",
+  "verticalDramaSeriesFirstLastFrameBridge",
+  "verticalDramaSeriesStoryboardReviewHandoff",
+  "verticalDramaSeriesProviderRouting",
+  "verticalDramaSeriesQcRepair",
+  "verticalDramaSeriesDialogueAudio",
+  "verticalDramaSeriesSubtitles",
+  "verticalDramaSeriesSubShots",
 ]);
 
 /**
@@ -458,7 +502,118 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   presentationArticleStoryboardVideoElevenLabsDialogue: false,
   presentationArticleStoryboardVideoNativeAudio: false,
   presentationArticleStoryboardVideoNativeAudioPromptComposer: false,
+  ageSafetyPolicyEnabled: false,
+  ageSafetyObserveMode: false,
+  ageSafetyProfileCompletionGate: false,
+  ageSafetyChatEnforcement: false,
+  ageSafetyMediaEnforcement: false,
+  ageSafetyProtectedSurfaceUnlock: false,
+  ageSafetyGeneratedAssetViewerPolicy: false,
+  ageSafetyEmergencyChildSafeMode: false,
+  // Vertical Drama Series (F131) — all rollout-gated, fail-closed (default off).
+  verticalDramaSeries: false,
+  verticalDramaSeriesDashboardMenu: false,
+  verticalDramaSeriesSkillChain: false,
+  verticalDramaSeriesCharacterStock: false,
+  verticalDramaSeriesMemory: false,
+  verticalDramaSeriesProductTieIn: false,
+  verticalDramaSeriesStartFrames: false,
+  verticalDramaSeriesFirstLastFrameBridge: false,
+  verticalDramaSeriesStoryboardReviewHandoff: false,
+  verticalDramaSeriesProviderRouting: false,
+  verticalDramaSeriesQcRepair: false,
+  verticalDramaSeriesDialogueAudio: false,
+  verticalDramaSeriesSubtitles: false,
+  verticalDramaSeriesSubShots: false,
 };
+
+export const AGE_SAFETY_FEATURE_FLAG_KEYS = [
+  "ageSafetyPolicyEnabled",
+  "ageSafetyObserveMode",
+  "ageSafetyProfileCompletionGate",
+  "ageSafetyChatEnforcement",
+  "ageSafetyMediaEnforcement",
+  "ageSafetyProtectedSurfaceUnlock",
+  "ageSafetyGeneratedAssetViewerPolicy",
+  "ageSafetyEmergencyChildSafeMode",
+] as const satisfies readonly TenantFeatureFlagKey[];
+
+export type AgeSafetyFeatureFlagKey = (typeof AGE_SAFETY_FEATURE_FLAG_KEYS)[number];
+
+export function areAgeSafetyFeatureFlagsRegistered(): boolean {
+  return AGE_SAFETY_FEATURE_FLAG_KEYS.every(
+    (key) => ALLOWED_FEATURE_FLAGS.has(key) && FEATURE_FLAG_DEFAULTS[key] === false,
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Vertical Drama Series feature flags (F131, spec feature 131 §section-03)   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Canonical source-spec flag names for Vertical Drama Series. These are the
+ * authoritative names used by permissions, menu state, router guards, and
+ * rollout docs. All default OFF (fail-closed).
+ */
+export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
+  "verticalDramaSeries",
+  "verticalDramaSeriesDashboardMenu",
+  "verticalDramaSeriesSkillChain",
+  "verticalDramaSeriesCharacterStock",
+  "verticalDramaSeriesMemory",
+  "verticalDramaSeriesProductTieIn",
+  "verticalDramaSeriesStartFrames",
+  "verticalDramaSeriesFirstLastFrameBridge",
+  "verticalDramaSeriesStoryboardReviewHandoff",
+  "verticalDramaSeriesProviderRouting",
+  "verticalDramaSeriesQcRepair",
+  "verticalDramaSeriesDialogueAudio",
+  "verticalDramaSeriesSubtitles",
+  "verticalDramaSeriesSubShots",
+] as const satisfies readonly TenantFeatureFlagKey[];
+
+export type VerticalDramaSeriesFeatureFlagKey =
+  (typeof VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS)[number];
+
+/**
+ * One-way alias mapping: any legacy/local runtime alias -> its canonical
+ * source-spec flag key. This is the single place that reconciles alternative
+ * names (e.g. `verticalDramaSeriesEnabled`) so permissions, menu state, router
+ * guards, and rollout docs cannot drift from the canonical names. The mapping
+ * is one-way (alias -> canonical) only; canonical names never map to aliases.
+ */
+export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_ALIASES: Readonly<
+  Record<string, VerticalDramaSeriesFeatureFlagKey>
+> = {
+  // Common "*Enabled" suffix convention seen elsewhere in this file.
+  verticalDramaSeriesEnabled: "verticalDramaSeries",
+  verticalDramaSeriesMenu: "verticalDramaSeriesDashboardMenu",
+  verticalDramaSeriesDashboardMenuEnabled: "verticalDramaSeriesDashboardMenu",
+  verticalDramaSeriesSubShotsEnabled: "verticalDramaSeriesSubShots",
+};
+
+/**
+ * Resolves a canonical Vertical Drama Series flag key from any known alias.
+ * Canonical names pass through unchanged; unknown names return `null`.
+ */
+export function resolveVerticalDramaSeriesFeatureFlagKey(
+  name: string,
+): VerticalDramaSeriesFeatureFlagKey | null {
+  if ((VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS as readonly string[]).includes(name)) {
+    return name as VerticalDramaSeriesFeatureFlagKey;
+  }
+  return VERTICAL_DRAMA_SERIES_FEATURE_FLAG_ALIASES[name] ?? null;
+}
+
+/**
+ * True when every canonical Vertical Drama Series flag is registered in the
+ * allowlist and defaults OFF (fail-closed). Used by rollout-safety tests.
+ */
+export function areVerticalDramaSeriesFeatureFlagsRegistered(): boolean {
+  return VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS.every(
+    (key) => ALLOWED_FEATURE_FLAGS.has(key) && FEATURE_FLAG_DEFAULTS[key] === false,
+  );
+}
 
 export type HermesRolloutSurface =
   | "disabled"

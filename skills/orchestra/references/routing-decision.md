@@ -7,8 +7,8 @@ This reference defines when orchestra should stay in its normal wave model and w
 | Scope / Situation | Route | Behavior |
 |---|---|---|
 | `trivial` | `direct-edit` | Edit directly; no planning chain |
-| `small` and implementation-ready with no safe parallel split | `direct-edit` in standard light mode, otherwise `single-agent` | In Codex standard light mode, edit directly unless the user explicitly asked for delegation. Outside light mode, dispatch one sub-agent when tooling exists. |
-| `medium` or any task with 2+ safe independent workstreams | `direct-inline-waves` in standard light mode, otherwise `multi-agent-waves` | In Codex standard light mode, execute bounded sequential waves directly/inline unless the user authorized sub-agents. Outside light mode, use wave-based implementation with parallel batches by default. |
+| `small` and implementation-ready with no safe parallel split | `direct-edit`; optional `single-agent` only when useful and authorized | Edit directly unless independent context is useful and the user/tool policy authorizes delegation. |
+| `medium` or any task with 2+ safe independent workstreams | `direct-inline-waves`, `scout-first`, or `multi-agent-waves` | Execute bounded sequential waves directly/inline unless authorized delegation and real ownership boundaries justify agents. For broad unclear work, run one scout before sidecars. |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
 | idea/product direction unclear before planning | `brainstorming-prelude` | Use `brainstorming` to clarify intent/options, then route to quick plan, deep plan, or full pipeline |
 | explicit installed skill/slash tool or specialized scan/generator | `installed-skill-flow` | Read `installed-skill-routing.md`, run the smallest matching skill, and wrap with Orchestra state/gates when multi-step |
@@ -30,12 +30,12 @@ dispatch-wave, repair-round, cost-proxy, and stop-condition fields. If a selecte
 would exceed the active loop policy, split the work, reduce fanout, or stop with a
 `loop_policy_*` stop reason before dispatching.
 
-Do not collapse non-trivial work into conductor-only implementation when a sub-agent tool is
-available **and authorized by that tool's policy/user request**. In Codex standard light
-mode, sub-agent availability alone is not authorization. Before selecting `single-agent`,
-run the parallelization preflight from `wave-planning.md`; if it finds two or more safe
-workstreams, select `multi-agent-waves` outside light mode or `direct-inline-waves` in
-light mode.
+Do not open sub-agents just because a sub-agent tool is available. Main Codex must keep the
+overview and choose the smallest safe path. Before selecting `single-agent` or
+`multi-agent-waves`, run the parallelization preflight from `wave-planning.md`; if
+boundaries are unclear, use one read-only scout first. If preflight finds two or more safe,
+decision-relevant workstreams, select `multi-agent-waves` only when delegation is
+authorized; otherwise select `direct-inline-waves`.
 
 If orchestra determines that a deep-* skill is needed, it should:
 1. create the required input artifact(s)
@@ -57,17 +57,19 @@ sub-agent/spawn-agent tool says delegation requires an explicit user request.
 
 Behavior:
 1. Keep SocratiCode preflight, impact notes, and `orchestra/` progress artifacts.
-2. Prefer direct conductor implementation for `small` and implementation-ready `medium`
-   work.
+2. Prefer direct conductor implementation for `small`, fast-lane, and implementation-ready
+   `medium` work.
 3. Still apply `agent-loop-policy.md`; direct/inline execution must update the same
    iteration, repair-round, context, and stop-condition ledger.
 4. Do not create Task Packets or spawn agents unless the user explicitly asked for
-   sub-agents, delegation, parallel agents, reviewers, or agent waves.
-5. Replace reviewer-agent waves with targeted conductor review and the smallest relevant
+   sub-agents, delegation, parallel agents, reviewers, or agent waves, or a high/critical
+   risk gate cannot be reviewed safely inline.
+5. For broad/uncertain work, prefer one read-only scout before any sidecar fanout.
+6. Replace reviewer-agent waves with targeted conductor review and the smallest relevant
    repository commands.
-6. Record `dispatch_preference: direct-standard-light` or
+7. Record `dispatch_preference: direct-standard-light` or
    `dispatch_preference: inline-standard-light` in `orchestra/plan.md`.
-7. Escalate out of light mode only when the user authorizes agents, product ambiguity
+8. Escalate out of light mode only when the user authorizes agents, product ambiguity
    requires a specialist, or high/critical risk cannot be reviewed safely inline.
 
 ## Route: `installed-skill-flow`

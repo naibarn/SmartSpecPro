@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   resolveDetectedSkillForSend,
   resolveChatLocalRuntimeReadiness,
+  getDirectMediaGenerationRequestType,
   looksLikeSkillRequest,
+  looksLikeDirectImageGenerationRequest,
   shouldAutoRunDetectedSkill,
   shouldBlockPendingCloudKeepInChat,
 } from "./chatLocalRouting";
@@ -52,6 +54,38 @@ describe("chatLocalRouting", () => {
     expect(
       looksLikeSkillRequest("qwen 3.6 llm model เหมาะกับงานสร้างภาพกราฟิกหรือไม่"),
     ).toBe(false);
+  });
+
+  it("recognizes direct image generation commands without treating questions as commands", () => {
+    expect(
+      looksLikeDirectImageGenerationRequest(
+        "create image: ผู้หญิงสาวสวย อายุ 19 ปี เป็นคนไทย",
+      ),
+    ).toBe(true);
+    expect(
+      looksLikeDirectImageGenerationRequest("สร้างภาพ ผู้หญิงไทยในห้องนั่งเล่น"),
+    ).toBe(true);
+    expect(
+      looksLikeDirectImageGenerationRequest(
+        "qwen 3.6 เหมาะกับงานสร้างภาพกราฟิกหรือไม่",
+      ),
+    ).toBe(false);
+  });
+
+  it("recognizes direct video generation commands without treating questions as commands", () => {
+    expect(
+      getDirectMediaGenerationRequestType(
+        "create video: a cinematic river flowing at sunrise",
+      ),
+    ).toBe("video");
+    expect(
+      getDirectMediaGenerationRequestType("สร้างวิดีโอ แมววิ่งในสวน"),
+    ).toBe("video");
+    expect(
+      getDirectMediaGenerationRequestType(
+        "veo เหมาะกับงานสร้างวิดีโอแบบไหน",
+      ),
+    ).toBeNull();
   });
 
   it("blocks pending hybrid keep-in-chat actions in Local AI chats", () => {

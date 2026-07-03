@@ -9,6 +9,13 @@ describe("mapToApiModelId", () => {
   it("resolves underscore legacy aliases", () => {
     expect(mapToApiModelId("nano_banana_2")).toBe("google-banana-2");
     expect(mapToApiModelId("google_banana_2")).toBe("google-banana-2");
+    expect(mapToApiModelId("nano_banana_2_lite")).toBe("google-banana-2-lite");
+    expect(mapToApiModelId("google_banana_2_lite")).toBe("google-banana-2-lite");
+  });
+
+  it("resolves Nano Banana 2 Lite aliases", () => {
+    expect(mapToApiModelId("nano banana 2 lite")).toBe("google-banana-2-lite");
+    expect(mapToApiModelId("gemini-3.1-flash-lite-image")).toBe("google-banana-2-lite");
   });
 
   it("resolves Gemini TTS aliases", () => {
@@ -53,6 +60,24 @@ describe("mapToApiModelId", () => {
 
   it("returns exact model ID unchanged", () => {
     expect(mapToApiModelId("google-banana-2")).toBe("google-banana-2");
+  });
+
+  it("keeps Nano Banana 2 Lite static fallback metadata ready for Kie API", () => {
+    const lite = getStaticModelById("google-banana-2-lite");
+
+    expect(lite).toMatchObject({
+      id: "google-banana-2-lite",
+      provider: "kie.ai",
+      type: "image",
+      creditCost: 35,
+    });
+    expect(lite?.configJson).toMatchObject({
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-2-lite",
+      reference_image_input_key: "image_urls",
+      reference_image_input_type: "array",
+    });
   });
 
   it("keeps unknown model IDs unchanged", () => {

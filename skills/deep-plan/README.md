@@ -349,13 +349,10 @@ planning/
 ├── claude-research.md           # Web + codebase research findings
 ├── claude-interview.md          # Q&A transcript
 ├── claude-spec.md               # Synthesized specification
-├── claude-plan.md               # ★ Primary deliverable
-├── claude-integration-notes.md  # Feedback integration decisions
+├── claude-plan.md               # ★ Primary deliverable (self-review fixes applied here)
 ├── claude-plan-tdd.md           # Test stubs
 ├── reviews/
-│   ├── gemini-review.md         # Gemini feedback (if using Gemini)
-│   ├── openai-review.md         # OpenAI feedback (if using OpenAI)
-│   └── opus-review.md           # Opus subagent feedback (if no external LLMs)
+│   └── iteration-*.md           # Adversarial self-review notes per round
 └── sections/
     ├── index.md                 # Section manifest
     ├── section-01-*.md          # Implementation unit 1
@@ -372,21 +369,13 @@ Edit `config.json` at the plugin root:
   "context": {
     "check_enabled": true
   },
-  "vertex_ai": {
-    "project": null,
-    "location": null
-  },
   "external_review": {
-    "alert_if_missing": true,
-    "feedback_iterations": 1
+    "enabled": false
   },
-  "models": {
-    "gemini": "gemini-3-pro-preview",
-    "chatgpt": "gpt-5.2"
-  },
-  "llm_client": {
-    "timeout_seconds": 120,
-    "max_retries": 3
+  "runtime": {
+    "mode": "portable",
+    "requires_uv_at_runtime": false,
+    "external_llm": "disabled"
   }
 }
 ```
@@ -394,13 +383,12 @@ Edit `config.json` at the plugin root:
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `context.check_enabled` | `true` | Prompt before token-intensive operations |
-| `vertex_ai.project` | `null` | GCP project for Vertex AI (falls back to gcloud config) |
-| `vertex_ai.location` | `null` | GCP location for Vertex AI (falls back to `GOOGLE_CLOUD_LOCATION`) |
-| `external_review.alert_if_missing` | `true` | Warn if no LLM API keys configured |
-| `models.gemini` | `gemini-3-pro-preview` | Gemini model for external review |
-| `models.chatgpt` | `gpt-5.2` | OpenAI model for external review |
-| `llm_client.timeout_seconds` | `120` | API call timeout |
-| `llm_client.max_retries` | `3` | Retry attempts for transient errors |
+| `external_review.enabled` | `false` | External LLM review is disabled; the active host model (Codex/Claude) performs adversarial self-review instead — no external API keys required |
+| `runtime.mode` | `"portable"` | Runs from the repo mirror without a per-skill install |
+| `runtime.requires_uv_at_runtime` | `false` | Hooks call `python3` directly; no per-skill `.venv` is created at runtime |
+| `runtime.external_llm` | `"disabled"` | No Gemini/OpenAI/Vertex calls; review loops use the host model |
+
+> **Note:** Earlier versions supported external LLM review (Gemini/OpenAI/Vertex AI). That path is retired — Step 13 adversarial self-review by the active host model replaces it, so no `models`, `vertex_ai`, or `llm_client` config is needed.
 
 ## Environment Variables
 
