@@ -1,0 +1,26 @@
+{
+  "runtimeId": "hyperframes-windows-x64",
+  "version": "2026.06.24.2",
+  "hyperframesVersion": "official",
+  "browserVersion": "managed",
+  "ffmpegVersion": "managed",
+  "ffprobeVersion": "managed",
+  "thaiFontFamily": "Noto Sans Thai",
+  "sidecarPath": "hyperframes-render.exe",
+  "sidecarSha256": "4a73439229e3c18034ada679a32f005e7e126376631405062f05e88a5562920e",
+  "checksumFile": "SHA256SUMS",
+  "signatureFile": "SHA256SUMS.sig",
+  "licenseNotices": [
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "supportedContractVersions": [
+    "2026-06-22"
+  ],
+  "runtimeProfileHash": "8098985d86786a0e10b66c49f6597e7130d6724e684a4fd3a7ce816786251a22",
+  "allowed": true,
+  "denyReason": null,
+  "rollbackToVersion": null,
+  "archiveFileName": "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.2.zip",
+  "archiveSha256": "715adde5b563361afe4a06c18eca3c7c618c42994500410e1f9dc0bd965ef8e6",
+  "archiveSizeBytes": 279198741
+}

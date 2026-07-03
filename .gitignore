@@ -167,6 +167,9 @@ nginx/ssl/*.pfx
 *.dll
 *.exe
 !apps/web/client/public/releases/smart-ai-hub-worker-app-*-x64-setup.exe
+# One-off build that bloated past GitHub's 100MB file limit (186MB) — a
+# pre-receive hook rejected it; keep this one version-specific exclusion.
+apps/web/client/public/releases/smart-ai-hub-worker-app-0.1.38-x64-setup.exe
 *.out
 *.class
 
@@ -228,3 +231,38 @@ python-backend/coverage.xml
 apps/web/data/chat-memory-archives/
 data/
 coverage.xml
+
+# ============================================================================
+# Ad-hoc local debug/scratch scripts (one-off, not part of the app)
+# ============================================================================
+*.orig
+/composition.html
+/new_composition.html
+/job_input.json
+/new_job_input.json
+/test_hash*.js
+/update_main.patch
+apps/web/query_*.mjs
+apps/worker-app/list_resource_dir.js
+apps/worker-app/test_*.rs
+apps/worker-app/test_*.js
+apps/worker-app/test_path
+
+# ============================================================================
+# Local DB backups and dumps — never commit (CLAUDE.md Database Safety Protocol)
+# ============================================================================
+/backups/
+/tmp/backups/
+/tmp/db-backups/
+
+# ============================================================================
+# Worker-app runtime pack — only metadata/checksums are tracked, the actual
+# binary payload (browser, ffmpeg, node, fonts, hyperframes) is rebuilt from
+# source per apps/worker-app/runtime-pack/README.md
+# ============================================================================
+apps/worker-app/.runtime-release-staging/
+apps/worker-app/runtime-pack/*/
+
+# Worker runtime distribution archives (hundreds of MB–GB, exceed what
+# should be committed) — only the paired *.manifest.json is tracked.
+apps/web/client/public/releases/runtime/*.zip

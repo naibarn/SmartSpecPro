@@ -1,0 +1,30 @@
+{
+  "runtimeId": "hyperframes-windows-x64",
+  "version": "2026.06.24.6",
+  "hyperframesVersion": "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
+  "browserVersion": "Chrome for Testing 150.0.7871.24 win64",
+  "ffmpegVersion": "gyan.dev ffmpeg-release-essentials win64",
+  "ffprobeVersion": "gyan.dev ffmpeg-release-essentials win64",
+  "thaiFontFamily": "Noto Sans Thai",
+  "sidecarPath": "hyperframes-render.exe",
+  "sidecarSha256": "c09c2c536bc07400a185708741189309042b9be40a9b5f43f3b6d599344fe229",
+  "checksumFile": "SHA256SUMS",
+  "signatureFile": "SHA256SUMS.sig",
+  "licenseNotices": [
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "nodeVersion": "bundled-node-win-x64",
+  "rendererKind": "hyperframes_cli_official",
+  "sidecarLauncher": "smart-ai-hub-hyperframes-node-launcher",
+  "sidecarScriptPath": "hyperframes-sidecar/render.mjs",
+  "supportedContractVersions": [
+    "2026-06-22"
+  ],
+  "runtimeProfileHash": "187278dbaad7fa9d0ee2148219589774e282d273cfa19aae469dbd1d1c951512",
+  "allowed": true,
+  "denyReason": null,
+  "rollbackToVersion": null,
+  "archiveFileName": "smart-ai-hub-worker-runtime-hyperframes-windows-x64-2026.06.24.6.zip",
+  "archiveSha256": "9bfc972d034c9cf79f337513c5e1dacefb4f9c8170f4a1f33e2de3ed658d6956",
+  "archiveSizeBytes": 696107459
+}
