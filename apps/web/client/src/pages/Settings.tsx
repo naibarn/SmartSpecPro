@@ -21,6 +21,9 @@ import {
 } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useAstryxPalette } from '@/contexts/AstryxPaletteContext';
+import { getAstryxPaletteAccent } from '@/themes/catalog';
 import {
   desktopDeviceDisableResponseSchema,
   desktopRootActionResponseSchema,
@@ -809,7 +812,8 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light');
+  const { theme, toggleTheme } = useTheme();
+  const { palette, setPalette, themes: astryxPalettes } = useAstryxPalette();
 
   // Translation preferences (LLM translation target)
   const [translationLanguage, setTranslationLanguage] = useState('');
@@ -2039,11 +2043,13 @@ export default function Settings() {
 
                     <div>
                       <h3 className="font-semibold text-gray-900 mb-4">{t('settings.preferences.appearance')}</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {(['light', 'dark', 'system'] as const).map((themeOption) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {(['light', 'dark'] as const).map((themeOption) => (
                           <button
                             key={themeOption}
-                            onClick={() => setTheme(themeOption)}
+                            onClick={() => {
+                              if (theme !== themeOption) toggleTheme?.();
+                            }}
                             className={`p-4 border-2 rounded-xl text-center transition-all ${
                               theme === themeOption
                                 ? 'border-blue-500 bg-blue-50'
@@ -2053,6 +2059,48 @@ export default function Settings() {
                             <div className="font-medium text-gray-900 capitalize">{themeOption}</div>
                           </button>
                         ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">{t('settings.preferences.colorPalette')}</h3>
+                      <p className="text-sm text-gray-500 mb-4">{t('settings.preferences.colorPaletteDescription')}</p>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {astryxPalettes.map((paletteOption) => {
+                          const active = palette === paletteOption.slug;
+                          return (
+                            <button
+                              key={paletteOption.slug}
+                              type="button"
+                              onClick={() => setPalette(paletteOption.slug)}
+                              aria-pressed={active}
+                              className={`relative flex flex-col gap-2 rounded-xl border-2 p-4 text-left transition-all ${
+                                active
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <span
+                                className="h-6 w-6 rounded-full border border-black/10"
+                                style={{ backgroundColor: getAstryxPaletteAccent(paletteOption) }}
+                                aria-hidden="true"
+                              />
+                              <span className="font-medium text-gray-900">{paletteOption.name}</span>
+                              <span className="text-xs text-gray-500 leading-snug">
+                                {paletteOption.description}
+                              </span>
+                              {active && (
+                                <Badge
+                                  variant="secondary"
+                                  className="absolute right-2 top-2 gap-1 text-[10px]"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  {t('settings.preferences.colorPaletteActive')}
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

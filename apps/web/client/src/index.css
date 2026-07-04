@@ -5,6 +5,32 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Font-size scale override — READABILITY FIX.
+ * Astryx's default scale sets --font-size-base to 0.875rem (14px). Via
+ * @astryxdesign/core/tailwind-theme.css that cascades into every Tailwind
+ * text-* utility (--text-* → var(--font-size-*)), so the whole app (all
+ * shadcn/Tailwind text, default text-sm = 10-12px) rendered too small.
+ * index.css loads AFTER astryx.css (main.tsx), so this :root wins the cascade
+ * and re-calibrates the scale to a 16px base (Tailwind-standard). Both Tailwind
+ * utilities and Astryx components resolve var(--font-size-*) at runtime, so
+ * everything scales up together. Tune the app's text size HERE, not per-page.
+ */
+:root {
+  --font-size-4xs: 0.5rem;     /*  8px */
+  --font-size-3xs: 0.5625rem;  /*  9px */
+  --font-size-2xs: 0.625rem;   /* 10px */
+  --font-size-xs: 0.75rem;     /* 12px */
+  --font-size-sm: 0.875rem;    /* 14px */
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;    /* 18px */
+  --font-size-xl: 1.25rem;     /* 20px */
+  --font-size-2xl: 1.5rem;     /* 24px */
+  --font-size-3xl: 1.875rem;   /* 30px */
+  --font-size-4xl: 2.25rem;    /* 36px */
+  --font-size-5xl: 3rem;       /* 48px */
+}
+
 .ssp-switch {
   background: hsl(220 13% 91%);
 }

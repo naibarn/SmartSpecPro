@@ -6,10 +6,24 @@ import { HelmetProvider } from "react-helmet-async";
 import { lazy, Suspense, useEffect, useRef, type AnchorHTMLAttributes, type MouseEvent } from "react";
 import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
 import { LinkProvider } from "@astryxdesign/core/Link";
-import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import {
+  AstryxPaletteProvider,
+  useAstryxPalette,
+} from "./contexts/AstryxPaletteContext";
+// All non-neutral Astryx palette CSS is imported once, at root, so runtime
+// palette switching only needs to swap the `theme` prop passed to
+// <AstryxTheme> — every palette's @scope'd CSS is already on the page and
+// keyed off the theme's `data-astryx-theme` attribute. `neutral`'s CSS is
+// imported in main.tsx alongside the core Astryx stylesheet.
+import "@/themes/butter/butter.css";
+import "@/themes/chocolate/chocolate.css";
+import "@/themes/gothic/gothic.css";
+import "@/themes/matcha/matcha.css";
+import "@/themes/stone/stone.css";
+import "@/themes/y2k/y2k.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { I18nextProvider } from "react-i18next";
@@ -329,6 +343,17 @@ function LanguageSyncBridge() {
   return null;
 }
 
+/**
+ * Reads the user's selected Astryx palette from AstryxPaletteContext and
+ * applies it as the active <AstryxTheme>. Must render inside
+ * <AstryxPaletteProvider> and wrap everything that should reflect the
+ * chosen palette.
+ */
+function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
+  const { activePalette } = useAstryxPalette();
+  return <AstryxTheme theme={activePalette.theme}>{children}</AstryxTheme>;
+}
+
 function Router() {
   useNamespacePreloader();
   // make sure to consider if you need authentication for certain routes
@@ -580,10 +605,23 @@ function Router() {
         <Route path="/workpacks/:workpackId/connectors"><RequireAuth><WorkpackConnectorStudio /></RequireAuth></Route>
         <Route path="/workpacks/:workpackId"><RequireAuth><WorkpackDetail /></RequireAuth></Route>
         <Route path="/webhook-triggers"><RequireAuth><WebhookTriggers /></RequireAuth></Route>
-        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
-        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
-        <Route path="/dashboard/vertical-drama/:seriesId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesDetailPage /></RequireVerticalDramaSeries></RequireAuth></Route>
-        <Route path="/dashboard/vertical-drama"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesPage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/drama-series/:seriesId/episodes/:episodeId/runs/:runId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/drama-series/:seriesId/episodes/:episodeId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/drama-series/:seriesId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesDetailPage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        <Route path="/drama-series"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesPage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        {/* Legacy path redirects — the /dashboard prefix was dropped after initial launch. */}
+        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId">
+          {(params) => <Redirect to={`/drama-series/${params.seriesId}/episodes/${params.episodeId}/runs/${params.runId}`} />}
+        </Route>
+        <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId">
+          {(params) => <Redirect to={`/drama-series/${params.seriesId}/episodes/${params.episodeId}`} />}
+        </Route>
+        <Route path="/dashboard/vertical-drama/:seriesId">
+          {(params) => <Redirect to={`/drama-series/${params.seriesId}`} />}
+        </Route>
+        <Route path="/dashboard/vertical-drama">
+          <Redirect to="/drama-series" />
+        </Route>
         <Route path="/dashboard"><RequireAuth><Dashboard /></RequireAuth></Route>
         <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>
         <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>
@@ -642,26 +680,28 @@ function App() {
     <ErrorBoundary>
       <HelmetProvider>
         <I18nextProvider i18n={i18n}>
-          <AstryxTheme theme={neutralTheme}>
-            <LinkProvider component={AstryxWouterLink}>
-              <ThemeProvider defaultTheme="light">
-                <AuthProvider>
-                  <TenantProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <GlobalAlerts />
-                      <SystemHealthBanner />
-                      <LanguageSyncBridge />
-                      <WelcomeLanguagePicker />
-                      <Router />
-                      <FeedbackButton />
-                      <RuntimePerformanceOverlay />
-                    </TooltipProvider>
-                  </TenantProvider>
-                </AuthProvider>
-              </ThemeProvider>
-            </LinkProvider>
-          </AstryxTheme>
+          <AstryxPaletteProvider>
+            <AstryxPaletteApplier>
+              <LinkProvider component={AstryxWouterLink}>
+                <ThemeProvider defaultTheme="light" switchable>
+                  <AuthProvider>
+                    <TenantProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <GlobalAlerts />
+                        <SystemHealthBanner />
+                        <LanguageSyncBridge />
+                        <WelcomeLanguagePicker />
+                        <Router />
+                        <FeedbackButton />
+                        <RuntimePerformanceOverlay />
+                      </TooltipProvider>
+                    </TenantProvider>
+                  </AuthProvider>
+                </ThemeProvider>
+              </LinkProvider>
+            </AstryxPaletteApplier>
+          </AstryxPaletteProvider>
         </I18nextProvider>
       </HelmetProvider>
     </ErrorBoundary>
