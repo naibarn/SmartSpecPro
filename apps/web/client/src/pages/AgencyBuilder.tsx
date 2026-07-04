@@ -1591,7 +1591,7 @@ function AgencyCanvas() {
   }
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <AgencyToolbar
         agencyName={agencyName}
         agencyStatus={agencyStatus}

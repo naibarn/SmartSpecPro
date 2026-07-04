@@ -127,7 +127,7 @@ export function HelpButton({
 
       {/* Panel */}
       <div
-        className="fixed right-0 top-0 z-50 flex h-screen flex-col border-l bg-background shadow-2xl"
+        className="fixed right-0 top-0 z-50 flex h-dvh flex-col border-l bg-background shadow-2xl"
         style={{ width }}
       >
         {/* Resize handle — wide enough to grab */}

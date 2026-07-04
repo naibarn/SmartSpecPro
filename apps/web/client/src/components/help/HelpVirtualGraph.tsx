@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import KnowledgeGraphView from "@/components/library/KnowledgeGraphView";
-import { useIsMobile } from "@/hooks/useMobile";
+import { useViewportTier } from "@/hooks/useViewportTier";
 
 type HelpGraphNodeKind = "active" | "outgoing" | "backlink" | "shared_tag";
 
@@ -43,8 +43,8 @@ export function HelpVirtualGraph({
   compact = false,
 }: HelpVirtualGraphProps) {
   const [, navigate] = useLocation();
-  const isMobile = useIsMobile();
-  const effectiveCompact = compact || isMobile;
+  const tier = useViewportTier();
+  const effectiveCompact = compact || tier !== "desktop";
   const { idToSlug, activeNote, outgoing, backlinks, sharedTags } = useMemo(() => {
     const slugById = new Map<number, string>();
     const register = (nodeSlug: string) => {

@@ -89,7 +89,7 @@ export function MobileBottomSheet({
                 }}
                 type="button"
                 role="tab"
-                className={`min-h-10 min-w-[4.5rem] flex-none whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors ${
+                className={`min-h-11 min-w-[4.5rem] flex-none whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors ${
                   activeTab === tab
                     ? "bg-sky-500/10 text-sky-700"
                     : "text-slate-500 hover:text-slate-700"

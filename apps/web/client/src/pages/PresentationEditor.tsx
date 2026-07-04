@@ -10470,7 +10470,7 @@ export default function PresentationEditor() {
   );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950">
+    <div className="flex h-dvh flex-col overflow-hidden bg-slate-950">
       <input
         ref={imageUploadInputRef}
         type="file"
@@ -10629,7 +10629,7 @@ export default function PresentationEditor() {
             disabled={!deck || !selectedSlide || saveState === "pending"}
           >
             <Save className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("header.save")}</span>
+            <span className="hidden lg:inline">{t("header.save")}</span>
           </Button>
           <Button
             onClick={handlePlaySlideshow}
@@ -10639,7 +10639,7 @@ export default function PresentationEditor() {
             className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
           >
             <Play className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t("header.play")}</span>
+            <span className="hidden lg:inline">{t("header.play")}</span>
           </Button>
           {isMobileViewport ? (
             <div className="relative" ref={mobileHeaderMenuRef}>
