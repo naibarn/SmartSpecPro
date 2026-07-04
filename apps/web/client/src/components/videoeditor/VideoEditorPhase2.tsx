@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
 import PreviewPlayer from './PreviewPlayer';
@@ -29,6 +31,8 @@ import {
 } from '../../types/videoEditor';
 
 export const VideoEditorPhase2: React.FC = () => {
+  const { confirm } = useConfirm();
+
   // Project state
   const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -85,17 +89,19 @@ export const VideoEditorPhase2: React.FC = () => {
     try {
       await projectManager.saveProject(project);
       setIsDirty(false);
-      alert('Project saved successfully!');
+      toast.success('Project saved successfully!');
     } catch (error) {
-      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleLoad = async () => {
     try {
       if (isDirty) {
-        const confirm = window.confirm('You have unsaved changes. Load anyway?');
-        if (!confirm) return;
+        const loadAnyway = await confirm({
+          title: 'You have unsaved changes. Load anyway?',
+        });
+        if (!loadAnyway) return;
       }
 
       const { project: loadedProject } = await projectManager.loadProject();
@@ -114,7 +120,7 @@ export const VideoEditorPhase2: React.FC = () => {
     // Validate project first
     const validation = validateProject(project);
     if (!validation.valid) {
-      alert(`Cannot export:\n${validation.errors.join('\n')}`);
+      toast.error(`Cannot export:\n${validation.errors.join('\n')}`);
       return;
     }
 
@@ -137,14 +143,14 @@ export const VideoEditorPhase2: React.FC = () => {
       setCurrentRenderJob(jobId);
       setShowRenderProgress(true);
     } catch (error) {
-      alert(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleRenderComplete = (outputPath: string) => {
     setShowRenderProgress(false);
     setCurrentRenderJob(null);
-    alert(`✅ Export complete!\n\nSaved to: ${outputPath}`);
+    toast.success(`Export complete! Saved to: ${outputPath}`);
   };
 
   const handleRenderCancel = () => {
@@ -164,7 +170,7 @@ export const VideoEditorPhase2: React.FC = () => {
       const track = findTrackByType(newProject.timeline, asset.type);
 
       if (!track) {
-        alert(`No available ${asset.type} track found`);
+        toast.error(`No available ${asset.type} track found`);
         return prevProject;
       }
 

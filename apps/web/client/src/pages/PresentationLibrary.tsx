@@ -13,6 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 type LibraryPresentationItem = {
   id: number;
@@ -386,6 +387,7 @@ function PresentationGroup({
 }
 
 export default function PresentationLibrary() {
+  const { confirm } = useConfirm();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const { t } = useScopedTranslation("presentation");
   const trpcUtils = trpc.useUtils();
@@ -582,11 +584,12 @@ export default function PresentationLibrary() {
   }
 
   async function handleDeleteItem(item: LibraryPresentationItem) {
-    const confirmed = window.confirm(
-      item.isTemplate
+    const confirmed = await confirm({
+      title: item.isTemplate
         ? t("library.deleteTemplate", { title: item.title })
         : t("library.deletePresentation", { title: item.title }),
-    );
+      tone: "danger",
+    });
     if (!confirmed) {
       return;
     }

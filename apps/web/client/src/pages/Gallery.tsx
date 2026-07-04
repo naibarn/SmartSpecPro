@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/dialog";
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 
 // Types
 type ContentType = 'all' | 'image' | 'video' | 'website';
@@ -148,6 +149,7 @@ function VideoThumbnailCard({ src, className }: { src: string; className: string
 }
 
 export default function Gallery() {
+  const { confirm } = useConfirm();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -245,9 +247,13 @@ export default function Gallery() {
   };
 
   // Handle delete (admin only)
-  const handleDelete = (item: GalleryItem, e: React.MouseEvent) => {
+  const handleDelete = async (item: GalleryItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
+    const confirmed = await confirm({
+      title: `Are you sure you want to delete "${item.title}"?`,
+      tone: 'danger',
+    });
+    if (confirmed) {
       deleteMutation.mutate({ id: item.id });
     }
   };

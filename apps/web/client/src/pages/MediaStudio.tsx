@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { trpc } from "@/lib/trpc";
 import { WebAssetResolver } from "@/services/webAssetResolver";
 import { HelpButton } from "@/components/help";
@@ -10874,6 +10875,7 @@ function getQueueProgress(status: QueueGenerationTask["status"]): number {
 }
 
 export default function MediaStudio() {
+  const { confirm } = useConfirm();
   const { user, isLoading, isAuthenticated } = useAuth();
   const { t: tNs, locale } = useScopedTranslation([
     "media",
@@ -26959,11 +26961,11 @@ export default function MediaStudio() {
         productionWorkspaceSpace.shots.length > 0 ||
         productionWorkspaceSpace.flowEdges.length > 0
       ) {
-        const confirmed = window.confirm(
-          isThaiLocale
+        const confirmed = await confirm({
+          title: isThaiLocale
             ? "ระบบจะเคลียร์ workflow/canvas เดิมก่อนสร้าง workflow ใหม่จากแนวคิดที่เลือก ต้องการดำเนินการต่อหรือไม่?"
-            : "This will clear the existing workflow/canvas before generating a new workflow from the selected concept. Continue?"
-        );
+            : "This will clear the existing workflow/canvas before generating a new workflow from the selected concept. Continue?",
+        });
         if (!confirmed) return;
       }
       const supportedMarketplaceClaimCount =
@@ -27786,6 +27788,7 @@ export default function MediaStudio() {
     [
       activeProductionConceptDetails,
       buildCurrentProductionGoal,
+      confirm,
       executeCustomSkillMutation,
       geminiOmni.deliveryMode,
       geminiOmniAudioAssets,
@@ -29404,7 +29407,7 @@ export default function MediaStudio() {
   );
 
   const runSelectedProductionNode = useCallback(
-    (nodeId: string) => {
+    async (nodeId: string) => {
       if (runProductionSkillNodeLocally(nodeId)) return;
       if (
         !productionWorkspaceSpace.productionRunId ||
@@ -29417,11 +29420,11 @@ export default function MediaStudio() {
         );
         return;
       }
-      const confirmed = window.confirm(
-        isThaiLocale
+      const confirmed = await confirm({
+        title: isThaiLocale
           ? "ยืนยัน Generate node นี้? ขั้นตอนนี้อาจ reserve เครดิต generation"
-          : "Generate this node now? This may reserve generation credits."
-      );
+          : "Generate this node now? This may reserve generation credits.",
+      });
       if (!confirmed) return;
       runProductionExecutionMutation.mutate(
         {
@@ -29446,6 +29449,7 @@ export default function MediaStudio() {
       );
     },
     [
+      confirm,
       isThaiLocale,
       productionWorkspaceSpace.productionRunId,
       productionWorkspaceSpace.version,
@@ -29454,7 +29458,7 @@ export default function MediaStudio() {
     ]
   );
 
-  const runProductionBatchExecution = useCallback(() => {
+  const runProductionBatchExecution = useCallback(async () => {
     if (
       !productionWorkspaceSpace.productionRunId ||
       productionWorkspaceSpace.productionRunId === "draft"
@@ -29466,11 +29470,11 @@ export default function MediaStudio() {
       );
       return;
     }
-    const confirmed = window.confirm(
-      isThaiLocale
+    const confirmed = await confirm({
+      title: isThaiLocale
         ? "ยืนยัน Generate เฉพาะ node ที่พร้อมและมี config แล้ว? ขั้นตอนนี้อาจ reserve เครดิต generation"
-        : "Generate ready configured nodes now? This may reserve generation credits."
-    );
+        : "Generate ready configured nodes now? This may reserve generation credits.",
+    });
     if (!confirmed) return;
     runProductionExecutionMutation.mutate(
       {
@@ -29493,6 +29497,7 @@ export default function MediaStudio() {
       }
     );
   }, [
+    confirm,
     isThaiLocale,
     productionWorkspaceSpace.productionRunId,
     productionWorkspaceSpace.version,
@@ -34377,7 +34382,7 @@ export default function MediaStudio() {
   );
 
   const retryProductionNodeExecution = useCallback(
-    (nodeId: string) => {
+    async (nodeId: string) => {
       const failedAttempt = [...(productionWorkspaceSpace.actionAttempts ?? [])]
         .reverse()
         .find(
@@ -34396,11 +34401,11 @@ export default function MediaStudio() {
         );
         return;
       }
-      const confirmed = window.confirm(
-        isThaiLocale
+      const confirmed = await confirm({
+        title: isThaiLocale
           ? "ลอง Generate node นี้อีกครั้ง? ระบบจะไม่ rerun node ที่เสร็จแล้ว"
-          : "Retry generating this node? Completed unchanged nodes will not be rerun."
-      );
+          : "Retry generating this node? Completed unchanged nodes will not be rerun.",
+      });
       if (!confirmed) return;
       runProductionExecutionMutation.mutate(
         {
@@ -34424,6 +34429,7 @@ export default function MediaStudio() {
       );
     },
     [
+      confirm,
       isThaiLocale,
       productionWorkspaceSpace.actionAttempts,
       productionWorkspaceSpace.productionRunId,
@@ -34724,18 +34730,19 @@ export default function MediaStudio() {
   );
 
   const runProductionLifecycleAction = useCallback(
-    (action: "archive" | "restore" | "delete") => {
+    async (action: "archive" | "restore" | "delete") => {
       if (
         !productionWorkspaceSpace.productionRunId ||
         productionWorkspaceSpace.productionRunId === "draft"
       )
         return;
       if (action === "delete") {
-        const confirmed = window.confirm(
-          isThaiLocale
+        const confirmed = await confirm({
+          title: isThaiLocale
             ? "ยืนยันลบ draft นี้แบบ soft delete? คุณยังสามารถ restore ได้จาก lifecycle action"
-            : "Soft-delete this draft? You can restore it with the lifecycle action."
-        );
+            : "Soft-delete this draft? You can restore it with the lifecycle action.",
+          tone: "danger",
+        });
         if (!confirmed) return;
       }
       const mutation =
@@ -34773,6 +34780,7 @@ export default function MediaStudio() {
     },
     [
       archiveProductionSpaceMutation,
+      confirm,
       deleteProductionSpaceMutation,
       isThaiLocale,
       productionWorkspaceSpace.productionRunId,
@@ -35343,11 +35351,12 @@ export default function MediaStudio() {
   const deleteProductionRunFromPicker = async (run: any) => {
     const productionRunId = String(run?.productionRunId ?? "").trim();
     if (!productionRunId) return;
-    const confirmed = window.confirm(
-      isThaiLocale
+    const confirmed = await confirm({
+      title: isThaiLocale
         ? `ยืนยันลบโปรเจกต์ "${String(run?.title ?? productionRunId)}" แบบ soft delete?`
-        : `Soft-delete "${String(run?.title ?? productionRunId)}"?`
-    );
+        : `Soft-delete "${String(run?.title ?? productionRunId)}"?`,
+      tone: "danger",
+    });
     if (!confirmed) return;
     setLocallyDeletedProductionRunIds(current => {
       const next = new Set(current);

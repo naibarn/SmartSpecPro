@@ -60,6 +60,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 // ── Types & Constants ──
 
@@ -141,6 +142,7 @@ const DEFAULT_FORM: ServerFormData = {
 
 export default function McpServerManager() {
   // ALL hooks must be called unconditionally (React rules of hooks)
+  const { confirm } = useConfirm();
   const mcpEnabled = useTenantFeatureFlag("mcpServerRegistry");
 
   const [showModal, setShowModal] = useState(false);
@@ -254,7 +256,11 @@ export default function McpServerManager() {
 
   const handleDelete = useCallback(
     async (id: number) => {
-      if (!confirm("Delete this MCP server? All assignments will be removed.")) return;
+      const confirmed = await confirm({
+        title: "Delete this MCP server? All assignments will be removed.",
+        tone: "danger",
+      });
+      if (!confirmed) return;
       try {
         await deleteMutation.mutateAsync({ id });
         toast.success("MCP server deleted");
@@ -263,7 +269,7 @@ export default function McpServerManager() {
         toast.error(err.message || "Failed to delete");
       }
     },
-    [deleteMutation, utils],
+    [confirm, deleteMutation, utils],
   );
 
   const handleTest = useCallback(

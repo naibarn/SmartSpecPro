@@ -4,6 +4,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { toast } from 'sonner';
 import { projectManager } from '../../services/projectManager';
 
 interface ErrorBoundaryProps {
@@ -90,11 +91,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         console.log('✅ Auto-saved project recovered');
         this.handleReset();
       } else {
-        alert('No auto-saved project found');
+        toast('No auto-saved project found');
       }
     } catch (err) {
       console.error('Failed to load auto-save:', err);
-      alert('Failed to load auto-saved project');
+      toast.error('Failed to load auto-saved project');
     }
   };
 

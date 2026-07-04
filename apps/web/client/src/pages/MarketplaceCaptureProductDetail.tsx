@@ -44,6 +44,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
@@ -2323,6 +2324,7 @@ function AutoReviewRefChip({
 }
 
 export default function MarketplaceCaptureProductDetail() {
+  const { confirm } = useConfirm();
   const { t } = useScopedTranslation(["common"]);
   const hyperframesCopy = getMarketplaceHyperframesUiCopy();
   const [location] = useLocation();
@@ -3641,9 +3643,10 @@ export default function MarketplaceCaptureProductDetail() {
         );
         return;
       }
-      const confirmed = window.confirm(
-        `ลบ "${asset.title}" ออกจาก Media Library?`
-      );
+      const confirmed = await confirm({
+        title: `ลบ "${asset.title}" ออกจาก Media Library?`,
+        tone: "danger",
+      });
       if (!confirmed) return;
 
       setDeletingLibraryItemId(libraryItemId);
@@ -3673,7 +3676,7 @@ export default function MarketplaceCaptureProductDetail() {
         setDeletingLibraryItemId(null);
       }
     },
-    [deleteLibraryItemMutation, utils.library.listDocuments]
+    [confirm, deleteLibraryItemMutation, utils.library.listDocuments]
   );
 
   const handleMediaPanelScroll = useCallback(
@@ -3706,14 +3709,15 @@ export default function MarketplaceCaptureProductDetail() {
   );
 
   const removeProductImage = useCallback(
-    (imageId: string) => {
-      const ok = window.confirm(
-        "Remove this image from the product? The original media file will stay in History/Library."
-      );
+    async (imageId: string) => {
+      const ok = await confirm({
+        title: "Remove this image from the product?",
+        description: "The original media file will stay in History/Library.",
+      });
       if (!ok) return;
       removeProductImageMutation.mutate({ productId, imageId });
     },
-    [productId, removeProductImageMutation]
+    [confirm, productId, removeProductImageMutation]
   );
 
   const setProductImageAsHero = useCallback(
@@ -4454,7 +4458,7 @@ export default function MarketplaceCaptureProductDetail() {
     ]
   );
 
-  function startAutoStoryboardReview() {
+  async function startAutoStoryboardReview() {
     if (!productId || !autoStoryboardPlan) return;
     if (autoStoryboardPlanRefreshingForOverrides) {
       toast.info(hyperframesCopy.autoPlanUpdating);
@@ -4503,9 +4507,10 @@ export default function MarketplaceCaptureProductDetail() {
         "resume_auto_storyboard_review" &&
       autoStoryboardPlan.activeRunId
     ) {
-      const confirmed = window.confirm(
-        "พบ Auto Storyboard Review run เดิมที่ยังต่อได้\n\nยืนยันว่าต้องการดำเนินต่อจาก run เดิมนี้?"
-      );
+      const confirmed = await confirm({
+        title: "พบ Auto Storyboard Review run เดิมที่ยังต่อได้",
+        description: "ยืนยันว่าต้องการดำเนินต่อจาก run เดิมนี้?",
+      });
       if (!confirmed) return;
       setAutoReviewLaunchMode("auto_storyboard_review");
       setOptimisticAutoStoryboardStart(true);
@@ -4532,9 +4537,11 @@ export default function MarketplaceCaptureProductDetail() {
       });
       return;
     }
-    const confirmed = window.confirm(
-      "ยืนยันเริ่ม Auto Storyboard Review ใหม่?\n\nระบบจะสร้าง run ใหม่จาก Hero/Product image ปัจจุบัน และซ่อน error จาก run เก่าไว้ระหว่างรอสถานะล่าสุด"
-    );
+    const confirmed = await confirm({
+      title: "ยืนยันเริ่ม Auto Storyboard Review ใหม่?",
+      description:
+        "ระบบจะสร้าง run ใหม่จาก Hero/Product image ปัจจุบัน และซ่อน error จาก run เก่าไว้ระหว่างรอสถานะล่าสุด",
+    });
     if (!confirmed) return;
     const startAttemptKey = Date.now().toString(36);
     setAutoReviewLaunchMode("auto_storyboard_review");

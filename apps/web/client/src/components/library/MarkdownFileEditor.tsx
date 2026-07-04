@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { trpc } from "@/lib/trpc";
 import CodeMirrorEditor, { useLineNumbersToggle, type CodeMirrorEditorMethods } from "./CodeMirrorEditor";
 import { DocumentVersionHistory } from "./DocumentVersionHistory";
@@ -67,6 +68,7 @@ export default function MarkdownFileEditor({
   editorOnly,
   documentId,
 }: MarkdownFileEditorProps) {
+  const { confirm, prompt } = useConfirm();
   const editorRef = useRef<CodeMirrorEditorMethods | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
@@ -245,9 +247,9 @@ export default function MarkdownFileEditor({
     editorRef.current.replaceSelection(cleared);
   }
 
-  function insertLink() {
+  async function insertLink() {
     if (!editorRef.current) return;
-    const url = window.prompt("Enter URL", "https://");
+    const url = await prompt({ title: "Enter URL", defaultValue: "https://" });
     if (!url) return;
 
     const linkText = editorRef.current.getSelection() || "link text";
@@ -301,7 +303,9 @@ export default function MarkdownFileEditor({
     }
 
     if (value.trim().length > 0) {
-      const shouldReplace = window.confirm("Replace current markdown content with imported file?");
+      const shouldReplace = await confirm({
+        title: "Replace current markdown content with imported file?",
+      });
       if (!shouldReplace) return;
     }
 

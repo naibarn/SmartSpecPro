@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
@@ -650,6 +651,7 @@ export function DesktopReleasePanel(props: {
 }) {
   const { variant, enabled = true, canTriggerBuild = false } = props;
   const { t } = useScopedTranslation(["dashboard", "common"]);
+  const { confirm } = useConfirm();
   const {
     catalog,
     isLoading,
@@ -1261,7 +1263,11 @@ export function DesktopReleasePanel(props: {
   };
 
   const handleDelete = async (release: DesktopReleaseAsset) => {
-    if (!window.confirm(t("dashboard:desktopReleases.admin.deleteConfirm", { version: release.version }))) {
+    const confirmed = await confirm({
+      title: t("dashboard:desktopReleases.admin.deleteConfirm", { version: release.version }),
+      tone: "danger",
+    });
+    if (!confirmed) {
       return;
     }
 

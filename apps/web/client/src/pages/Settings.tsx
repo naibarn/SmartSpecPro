@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAstryxPalette } from '@/contexts/AstryxPaletteContext';
 import { getAstryxPaletteAccent } from '@/themes/catalog';
@@ -595,6 +596,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
 }
 
 export default function Settings() {
+  const { confirm } = useConfirm();
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { tenant } = useTenant();
   const { t, i18n } = useScopedTranslation(['settings', 'common']);
@@ -2023,8 +2025,12 @@ export default function Settings() {
 
                           <Button
                             variant="outline"
-                            onClick={() => {
-                                if (confirm(t('settings.preferences.unlinkConfirm'))) {
+                            onClick={async () => {
+                                const confirmed = await confirm({
+                                  title: t('settings.preferences.unlinkConfirm'),
+                                  tone: 'danger',
+                                });
+                                if (confirmed) {
                                 unlinkMutation.mutate();
                               }
                             }}

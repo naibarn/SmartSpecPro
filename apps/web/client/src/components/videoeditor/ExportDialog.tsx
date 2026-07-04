@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { videoEditorMediaLibrary } from '../../services/videoEditorService';
 import type { VideoEditorProject, ExportSettings } from '../../types/videoEditor';
@@ -150,7 +151,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
   const handleExport = () => {
     if (!outputPath.trim()) {
-      alert('Please enter output filename');
+      toast.error('Please enter output filename');
       return;
     }
 

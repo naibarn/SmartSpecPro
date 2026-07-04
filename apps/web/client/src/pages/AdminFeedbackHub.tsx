@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { trpc } from "@/lib/trpc";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
@@ -35,6 +36,7 @@ import {
 } from "lucide-react";
 
 export default function AdminFeedbackHub() {
+  const { confirm } = useConfirm();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const [statusFilter, setStatusFilter] = useState<string | undefined>(
@@ -492,8 +494,12 @@ export default function AdminFeedbackHub() {
                                 <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
                               </a>
                               <button
-                                onClick={() => {
-                                  if (confirm("Delete this attachment?")) {
+                                onClick={async () => {
+                                  const confirmed = await confirm({
+                                    title: "Delete this attachment?",
+                                    tone: "danger",
+                                  });
+                                  if (confirmed) {
                                     deleteAttachmentMutation.mutate({
                                       attachmentId: att.id,
                                     });

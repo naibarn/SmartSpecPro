@@ -3,6 +3,7 @@ import { LayoutTemplate, Pin, Search, Sparkles, Star, Trash2, UserRound } from "
 import DOMPurify from "dompurify";
 
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { DEFAULT_PRESENTATION_CANVAS_SIZE } from "@/presentation-canvas/constants";
 import { Input } from "@/components/ui/input";
 import { SlideElementPreview } from "@/presentation-canvas/components/SlideElementPreview";
@@ -105,6 +106,7 @@ export function BlocksPanel({
   onTransferCustomBlockOwner,
   onLibraryStateChange,
 }: BlocksPanelProps) {
+  const { prompt } = useConfirm();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [canvasIntentFilter, setCanvasIntentFilter] = useState<"All" | "Portrait Document" | "Landscape 16:9" | "Adaptive">("All");
@@ -794,8 +796,8 @@ export function BlocksPanel({
                             className="grid h-6 w-6 place-items-center rounded border border-slate-700 bg-slate-950 text-slate-300 hover:border-cyan-500 hover:text-cyan-300"
                             aria-label={`Transfer Owner ${getInsertAriaLabel(preset.label)}`}
                             data-testid={`transfer-custom-block-${preset.id}`}
-                            onClick={() => {
-                              const raw = window.prompt("Transfer block to user ID");
+                            onClick={async () => {
+                              const raw = await prompt({ title: "Transfer block to user ID" });
                               const nextOwnerUserId = Number(raw);
                               if (!Number.isInteger(nextOwnerUserId) || nextOwnerUserId <= 0) {
                                 return;

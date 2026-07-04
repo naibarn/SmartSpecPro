@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 interface TeamRoomActor {
   id: string;
@@ -1614,6 +1615,7 @@ export function TeamRoomView({
   runControlsBusy = false,
   onSendMessage,
 }: TeamRoomViewProps) {
+  const { prompt } = useConfirm();
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { t } = useScopedTranslation("agency");
@@ -1912,10 +1914,10 @@ export function TeamRoomView({
       return;
     }
     const suggestedTitle = truncateInline(content, 72);
-    const title = window.prompt(
-      t("orchestrator.room.prompt.createWorkItem"),
-      t("orchestrator.room.prompt.followUpTitle", { title: suggestedTitle })
-    );
+    const title = await prompt({
+      title: t("orchestrator.room.prompt.createWorkItem"),
+      defaultValue: t("orchestrator.room.prompt.followUpTitle", { title: suggestedTitle }),
+    });
     if (title === null) return;
 
     const trimmedTitle = title.trim();
@@ -2005,10 +2007,10 @@ export function TeamRoomView({
   ): Promise<boolean> => {
     const reason =
       presetReason ??
-      window.prompt(
-        t("orchestrator.room.prompt.improveBeforeApproval"),
-        t("orchestrator.room.prompt.reviseDraftDefault")
-      );
+      (await prompt({
+        title: t("orchestrator.room.prompt.improveBeforeApproval"),
+        defaultValue: t("orchestrator.room.prompt.reviseDraftDefault"),
+      }));
     if (reason === null) return false;
 
     try {

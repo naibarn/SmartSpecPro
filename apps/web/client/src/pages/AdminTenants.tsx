@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { TenantFeatureFlagsPanel } from '@/components/admin/TenantFeatureFlagsPanel';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 
 interface Tenant {
   id: string;
@@ -71,6 +72,7 @@ interface ThemePreset {
 }
 
 export default function AdminTenants() {
+  const { confirm } = useConfirm();
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -345,7 +347,11 @@ export default function AdminTenants() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this tenant?')) return;
+    const confirmed = await confirm({
+      title: 'Are you sure you want to delete this tenant?',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/admin/tenants/${id}`, {

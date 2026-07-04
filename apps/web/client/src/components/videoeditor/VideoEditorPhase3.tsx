@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
 import PreviewPlayer, { type ActiveClipInfo, type ActiveTextClipInfo } from './PreviewPlayer';
@@ -313,6 +314,7 @@ function isImportedDraftAssetModel(model: unknown): boolean {
 }
 
 export const VideoEditorPhase3: React.FC = () => {
+  const { confirm } = useConfirm();
   const [location, setLocation] = useLocation();
 
   // Project state
@@ -560,7 +562,7 @@ export const VideoEditorPhase3: React.FC = () => {
       setIsDirty(false);
       setLastAutoSaveAt(new Date());
     } catch (error) {
-      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -585,7 +587,7 @@ export const VideoEditorPhase3: React.FC = () => {
     try {
       const loaded = await trpcUtils.videoEditorProjects.get.fetch({ id: projectId });
       if (!loaded) {
-        alert('Project not found');
+        showToast('Project not found', 'error');
         return;
       }
       setProject(loaded.projectData as VideoEditorProject);
@@ -597,7 +599,7 @@ export const VideoEditorPhase3: React.FC = () => {
       setSelectedClipId(null);
       setShowProjectList(false);
     } catch (error) {
-      alert(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -642,7 +644,7 @@ export const VideoEditorPhase3: React.FC = () => {
         setEditingProjectName(true);
       } catch (error) {
         if (!cancelled) {
-          alert(`Failed to open project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          showToast(`Failed to open project: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         }
       }
     };
@@ -674,7 +676,12 @@ export const VideoEditorPhase3: React.FC = () => {
   };
 
   const handleDeleteProject = async (projectId: number) => {
-    if (!confirm('Delete this project permanently?')) return;
+    const confirmed = await confirm({
+      title: 'Delete this project permanently?',
+      tone: 'danger',
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync({ id: projectId });
       projectListQuery.refetch();
@@ -682,7 +689,7 @@ export const VideoEditorPhase3: React.FC = () => {
         setCurrentProjectId(null);
       }
     } catch (error) {
-      alert(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -725,7 +732,7 @@ export const VideoEditorPhase3: React.FC = () => {
     } catch (error) {
       if (error instanceof Error && error.message === 'Load cancelled') return;
       console.error('Load failed:', error);
-      alert(`Failed to load project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to load project: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -753,7 +760,7 @@ export const VideoEditorPhase3: React.FC = () => {
     // Validate project first
     const validation = validateProject(project);
     if (!validation.valid) {
-      alert(`Cannot export:\n${validation.errors.join('\n')}`);
+      showToast(`Cannot export: ${validation.errors.join('; ')}`, 'error');
       return;
     }
 
@@ -785,7 +792,7 @@ export const VideoEditorPhase3: React.FC = () => {
       setShowRenderProgress(true);
       showToast('Render job submitted. Track progress here or in Task Queue.', 'info', 4000);
     } catch (error) {
-      alert(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -818,7 +825,7 @@ export const VideoEditorPhase3: React.FC = () => {
       const track = findTrackByType(newProject.timeline, asset.type);
 
       if (!track) {
-        alert(`No available ${asset.type} track found`);
+        showToast(`No available ${asset.type} track found`, 'error');
         return prevProject;
       }
 
@@ -2484,7 +2491,7 @@ export const VideoEditorPhase3: React.FC = () => {
       return newProject;
     });
 
-    alert('Dead air removed and video combined successfully!');
+    showToast('Dead air removed and video combined successfully!', 'success');
   }, [addToHistory]);
 
   // Export to Timeline Handler (Section 08)
@@ -2694,7 +2701,7 @@ export const VideoEditorPhase3: React.FC = () => {
             // Check if playhead is within the clip
             const clipEndTime = originalClip.startTime + originalClip.duration;
             if (splitTime <= originalClip.startTime || splitTime >= clipEndTime) {
-              alert('Click inside the clip (or move playhead inside it) to split');
+              showToast('Click inside the clip (or move playhead inside it) to split', 'error');
               return prevProject;
             }
 
@@ -3182,7 +3189,7 @@ export const VideoEditorPhase3: React.FC = () => {
           // Check if playhead is within the clip
           const clipEndTime = originalClip.startTime + originalClip.duration;
           if (currentTime <= originalClip.startTime || currentTime >= clipEndTime) {
-            alert('Playhead must be within the selected clip to split');
+            showToast('Playhead must be within the selected clip to split', 'error');
             return prevProject;
           }
 
@@ -3292,7 +3299,7 @@ export const VideoEditorPhase3: React.FC = () => {
       });
 
       if (pastedClipIds.length === 0) {
-        alert('Cannot paste: target track not found');
+        showToast('Cannot paste: target track not found', 'error');
         return prevProject;
       }
 

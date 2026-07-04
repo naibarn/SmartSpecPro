@@ -13,6 +13,7 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import {
   Users,
   Search,
@@ -44,6 +45,7 @@ interface DomainUser {
 }
 
 export default function DomainUsers() {
+  const { confirm } = useConfirm();
   const { user, isLoading: authLoading, refreshUser } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -134,8 +136,11 @@ export default function DomainUsers() {
   const total = usersData?.total || 0;
   const totalPages = Math.ceil(total / limit);
 
-  const handleToggleStatus = (userId: number) => {
-    if (confirm("Are you sure you want to toggle this user's status?")) {
+  const handleToggleStatus = async (userId: number) => {
+    const confirmed = await confirm({
+      title: "Are you sure you want to toggle this user's status?",
+    });
+    if (confirmed) {
       toggleStatusMutation.mutate({ userId });
     }
   };

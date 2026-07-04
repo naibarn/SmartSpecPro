@@ -84,6 +84,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import ExpiredMediaPlaceholder from "@/components/media/ExpiredMediaPlaceholder";
 import { ShareDialog } from "@/components/library/ShareDialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
@@ -1208,6 +1209,7 @@ function VideoThumbnailCard({
 }
 
 export default function MediaHistory() {
+  const { confirm } = useConfirm();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { t, locale } = useScopedTranslation(["media", "common"]);
   const isAdmin = user?.role === "admin";
@@ -1538,7 +1540,11 @@ export default function MediaHistory() {
   );
 
   const handleDeleteTask = async (taskId: string) => {
-    if (confirm(t("historyPage.confirm.deleteTask"))) {
+    const confirmed = await confirm({
+      title: t("historyPage.confirm.deleteTask"),
+      tone: "danger",
+    });
+    if (confirmed) {
       await deleteTaskMutation.mutateAsync({ taskId });
     }
   };
@@ -1574,7 +1580,7 @@ export default function MediaHistory() {
       count === 1
         ? t("historyPage.confirm.deleteSelected.one", { count })
         : t("historyPage.confirm.deleteSelected.other", { count });
-    if (confirm(confirmMessage)) {
+    if (await confirm({ title: confirmMessage, tone: "danger" })) {
       toast.promise(
         Promise.all(
           Array.from(selectedTaskIds).map(taskId =>

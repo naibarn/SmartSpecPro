@@ -11,6 +11,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -644,6 +645,7 @@ function ApprovalDialog({
 }
 
 export default function SocialAutomation() {
+  const { confirm } = useConfirm();
   const { t } = useScopedTranslation("social");
   const utils = trpc.useUtils();
   const [selectedPageId, setSelectedPageId] = useState<
@@ -964,11 +966,11 @@ export default function SocialAutomation() {
   };
 
   const confirmDeleteRule = async (ruleId: number) => {
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(t("automation.rules.confirmDelete"))
-    )
-      return;
+    const confirmed = await confirm({
+      title: t("automation.rules.confirmDelete"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
     await deleteRuleMutation.mutateAsync({ ruleId });
   };
 

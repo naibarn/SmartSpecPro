@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConfirmProvider } from "@/components/ui/confirm/ConfirmProvider";
 import { GlobalAlerts } from "@/components/GlobalAlerts";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { HelmetProvider } from "react-helmet-async";
@@ -687,14 +688,16 @@ function App() {
                   <AuthProvider>
                     <TenantProvider>
                       <TooltipProvider>
-                        <Toaster />
-                        <GlobalAlerts />
-                        <SystemHealthBanner />
-                        <LanguageSyncBridge />
-                        <WelcomeLanguagePicker />
-                        <Router />
-                        <FeedbackButton />
-                        <RuntimePerformanceOverlay />
+                        <ConfirmProvider>
+                          <Toaster />
+                          <GlobalAlerts />
+                          <SystemHealthBanner />
+                          <LanguageSyncBridge />
+                          <WelcomeLanguagePicker />
+                          <Router />
+                          <FeedbackButton />
+                          <RuntimePerformanceOverlay />
+                        </ConfirmProvider>
                       </TooltipProvider>
                     </TenantProvider>
                   </AuthProvider>

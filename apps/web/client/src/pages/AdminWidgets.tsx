@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -395,6 +396,7 @@ function WidgetFormDialog({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminWidgets() {
+  const { confirm } = useConfirm();
   const { toast } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [editWidgetId, setEditWidgetId] = useState<string | null>(null);
@@ -485,8 +487,11 @@ export default function AdminWidgets() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        if (confirm("Deactivate this widget?")) {
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: "Deactivate this widget?",
+                        });
+                        if (confirmed) {
                           deleteMutation.mutate({ widgetId: widget.id });
                         }
                       }}

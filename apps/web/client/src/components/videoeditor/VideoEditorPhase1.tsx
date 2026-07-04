@@ -4,6 +4,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 import MediaLibraryPanel from './MediaLibraryPanel';
 import Timeline from './Timeline';
 import PreviewPlayer from './PreviewPlayer';
@@ -23,6 +25,8 @@ import {
 } from '../../types/videoEditor';
 
 export const VideoEditorPhase1: React.FC = () => {
+  const { confirm } = useConfirm();
+
   // Project state
   const [project, setProject] = useState<VideoEditorProject>(() => createEmptyProject());
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -74,17 +78,19 @@ export const VideoEditorPhase1: React.FC = () => {
     try {
       await projectManager.saveProject(project);
       setIsDirty(false);
-      alert('Project saved successfully!');
+      toast.success('Project saved successfully!');
     } catch (error) {
-      alert(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleLoad = async () => {
     try {
       if (isDirty) {
-        const confirm = window.confirm('You have unsaved changes. Load anyway?');
-        if (!confirm) return;
+        const loadAnyway = await confirm({
+          title: 'You have unsaved changes. Load anyway?',
+        });
+        if (!loadAnyway) return;
       }
 
       const { project: loadedProject } = await projectManager.loadProject();
@@ -101,7 +107,7 @@ export const VideoEditorPhase1: React.FC = () => {
   };
 
   const handleExport = async () => {
-    alert('Export functionality will be implemented in Phase 2!');
+    toast('Export functionality will be implemented in Phase 2!');
   };
 
   // ========================================
@@ -119,7 +125,7 @@ export const VideoEditorPhase1: React.FC = () => {
       const track = findTrackByType(newProject.timeline, asset.type);
 
       if (!track) {
-        alert(`No available ${asset.type} track found`);
+        toast.error(`No available ${asset.type} track found`);
         return prevProject;
       }
 

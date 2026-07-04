@@ -122,6 +122,7 @@ import {
   rebuildBuiltInPresentationComponentInstance,
 } from "@/lib/presentationComponentCatalog";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import {
   addComponent,
   addElement as insertElement,
@@ -2831,6 +2832,7 @@ async function probeMediaDurationSeconds(
 }
 
 export default function PresentationEditor() {
+  const { confirm } = useConfirm();
   const { t, locale } = useScopedTranslation("presentation");
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const trpcUtils = trpc.useUtils();
@@ -8242,14 +8244,14 @@ export default function PresentationEditor() {
     setExportMessage(`Playing slideshow preview with ${slideCount} slides.`);
   }
 
-  function handleOpenPlayMode() {
+  async function handleOpenPlayMode() {
     if (!deck) {
       return;
     }
     if (hasUnsavedSlideChanges && typeof window !== "undefined") {
-      const confirmed = window.confirm(
-        t("confirm.playModeUnsaved"),
-      );
+      const confirmed = await confirm({
+        title: t("confirm.playModeUnsaved"),
+      });
       if (!confirmed) {
         return;
       }
@@ -8773,9 +8775,9 @@ export default function PresentationEditor() {
     };
   }, [playbackState, isPlaybackFullscreen]);
 
-  function handleBackToPresentationLibrary() {
+  async function handleBackToPresentationLibrary() {
     if (hasUnsavedSlideChanges && typeof window !== "undefined") {
-      const confirmed = window.confirm(unsavedPresentationWarning);
+      const confirmed = await confirm({ title: unsavedPresentationWarning });
       if (!confirmed) {
         return;
       }

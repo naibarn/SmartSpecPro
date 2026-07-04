@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import "./editor.css";
 
 const KNOWLEDGE_LINK_PICKER_MIN_WIDTH = 420;
@@ -163,6 +164,7 @@ export default function TiptapEditor({
 }: TiptapEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const trpcUtils = trpc.useUtils();
+  const { prompt } = useConfirm();
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
   const [insertMenuType, setInsertMenuType] = useState<"image" | "video" | "audio" | "file">("image");
   const [knowledgeLinkPickerOpen, setKnowledgeLinkPickerOpen] = useState(false);
@@ -435,18 +437,18 @@ export default function TiptapEditor({
     setInsertMenuOpen(false);
   }, [onUpdate]);
 
-  const insertLink = useCallback(() => {
+  const insertLink = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) return;
 
-    const url = window.prompt("Enter URL", "https://");
+    const url = await prompt({ title: "Enter URL", defaultValue: "https://" });
     if (!url) return;
 
     const href = url.trim();
     if (!href) return;
 
     editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
-  }, []);
+  }, [prompt]);
 
   const openKnowledgeLinkPicker = useCallback(() => {
     setKnowledgeLinkSearch("");

@@ -13,6 +13,7 @@ import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { ToolConfigPanel } from "./ToolConfigPanel";
 import { CustomToolCreator } from "./CustomToolCreator";
 import { OpenAPIImportModal } from "./OpenAPIImportModal";
@@ -67,6 +68,7 @@ export function ToolPicker({
   onManageMcpServers,
   excludeToolIds,
 }: ToolPickerProps) {
+  const { confirm } = useConfirm();
   const [search, setSearch] = useState("");
   const [selectedTool, setSelectedTool] = useState<{
     id: string;
@@ -322,9 +324,14 @@ export function ToolPicker({
                                 <button
                                   type="button"
                                   className="rounded p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.stopPropagation();
-                                    if (confirm(`Delete tool "${tool.name}"? This cannot be undone.`)) {
+                                    const confirmed = await confirm({
+                                      title: `Delete tool "${tool.name}"? This cannot be undone.`,
+                                      tone: "danger",
+                                      confirmText: "Delete",
+                                    });
+                                    if (confirmed) {
                                       deleteMutation.mutate({ toolId: tool.id });
                                     }
                                   }}

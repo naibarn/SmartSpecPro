@@ -3416,7 +3416,7 @@ export function ChatView({
     if (file.size > maxSize) {
       const sizeMB = (maxSize / (1024 * 1024)).toFixed(0);
       const typeLabel = isImage ? "images" : isVideo ? "videos" : "files";
-      alert(`File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`);
+      toast.error(`File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`);
       return;
     }
 
@@ -3425,7 +3425,7 @@ export function ChatView({
       !ALLOWED_FILE_TYPES.includes(file.type) &&
       !file.type.startsWith("image/")
     ) {
-      alert(
+      toast.error(
         "File type not allowed. Supported types: images, PDF, text, JSON, Word documents."
       );
       return;
@@ -3450,7 +3450,7 @@ export function ChatView({
 
     const expectedExts = mimeToExt[file.type];
     if (expectedExts && ext && !expectedExts.includes(ext)) {
-      alert(
+      toast.error(
         "File extension does not match file type. This may be a security issue."
       );
       return;

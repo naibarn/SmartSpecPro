@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { PermissionBadge } from "./PermissionBadge";
 import type { PermissionLevel } from "./PermissionBadge";
@@ -41,6 +42,7 @@ export function ShareDialog({
   isOpen,
   onClose,
 }: ShareDialogProps) {
+  const { confirm } = useConfirm();
   const trpcUtils = trpc.useUtils();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,12 +192,16 @@ export function ShareDialog({
     }
   }
 
-  function handleRemoveShare(
+  async function handleRemoveShare(
     subjectType: "user" | "tenant_role" | "group",
     subjectId: string,
     displayName: string,
   ) {
-    const confirmed = window.confirm(`Remove access for ${displayName}?`);
+    const confirmed = await confirm({
+      title: `Remove access for ${displayName}?`,
+      tone: "danger",
+      confirmText: "Remove",
+    });
     if (!confirmed) return;
     removeShareMutation.mutate({ itemId, subjectType, subjectId });
   }

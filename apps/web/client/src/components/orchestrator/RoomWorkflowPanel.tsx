@@ -27,6 +27,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { getExecutionRouteBadge } from "./executionRouteBadge";
 import { AutoTeamLedgerPanel } from "./AutoTeamLedgerPanel";
 
@@ -878,6 +879,7 @@ export function RoomWorkflowPanel({
   runControlsBusy = false,
   className,
 }: RoomWorkflowPanelProps) {
+  const { prompt } = useConfirm();
   const [activeFilter, setActiveFilter] = useState<WorkflowBoardFilter>("all");
   const [clockTick, setClockTick] = useState<number>(Date.now());
   const utils = trpc.useUtils();
@@ -1195,10 +1197,10 @@ export function RoomWorkflowPanel({
       return;
     }
 
-    const reason = window.prompt(
-      t("orchestrator.workflow.prompt.improveBeforeRevision"),
-      t("orchestrator.workflow.prompt.reviseLatestDraft")
-    );
+    const reason = await prompt({
+      title: t("orchestrator.workflow.prompt.improveBeforeRevision"),
+      defaultValue: t("orchestrator.workflow.prompt.reviseLatestDraft"),
+    });
     if (reason === null) return;
 
     await rejectMutation.mutateAsync({

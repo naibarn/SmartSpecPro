@@ -18,6 +18,7 @@ import "@xyflow/react/dist/style.css";
 import { AlertCircle, ArrowRight, ChevronDown, Eye, FileText, Focus, GripVertical, Image, Link2, ListTree, Maximize2, Mic, MoreHorizontal, MousePointer2, Music, Paperclip, Play, Plus, RotateCcw, Settings2, Trash2, Video, X, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { PRODUCTION_NODE_CATALOG, getProductionNodeCatalogEntry, type ProductionFlowEdge, type ProductionFlowEdgeKind, type ProductionFlowNode, type ProductionNodeKind, type ProductionNodeToolBinding, type ProductionReferenceInput } from "@shared/mediaProduction";
 import { edgeKindLabel, nodeKindLabel } from "./displayLabels";
 import type { ProductionCanvasCallbacks, ProductionInvalidEdgeWarning, ProductionLocale } from "./types";
@@ -635,6 +636,7 @@ function ProductionFlowCanvasInner({
   onOpenNodeOutput,
 }: ProductionFlowCanvasProps) {
   const isThai = locale === "th";
+  const { confirm } = useConfirm();
   const reactFlow = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const [warning, setWarning] = useState<ProductionInvalidEdgeWarning | null>(null);
@@ -782,20 +784,22 @@ function ProductionFlowCanvasInner({
     floatingDetailDragRef.current = null;
   }, []);
 
-  const resetCanvasNodes = useCallback(() => {
+  const resetCanvasNodes = useCallback(async () => {
     if (!flowNodes.length || (!onResetCanvas && !onDeleteNode)) return;
-    const confirmed = window.confirm(
-      isThai
-        ? `ต้องการลบ node ทั้งหมด ${flowNodes.length} รายการออกจาก canvas ใช่ไหม? การกระทำนี้ย้อนกลับไม่ได้`
-        : `Remove all ${flowNodes.length} nodes from the canvas? This cannot be undone.`,
-    );
+    const confirmed = await confirm({
+      title: isThai
+        ? `ต้องการลบ node ทั้งหมด ${flowNodes.length} รายการออกจาก canvas ใช่ไหม?`
+        : `Remove all ${flowNodes.length} nodes from the canvas?`,
+      description: isThai ? "การกระทำนี้ย้อนกลับไม่ได้" : "This cannot be undone.",
+      tone: "danger",
+    });
     if (!confirmed) return;
     if (onResetCanvas) onResetCanvas();
     else for (const node of flowNodes) onDeleteNode?.(node.id);
     setListConnectSourceId(null);
     setFloatingDetailOpen(false);
     onSelectNode?.(null);
-  }, [flowNodes, isThai, onDeleteNode, onResetCanvas, onSelectNode]);
+  }, [confirm, flowNodes, isThai, onDeleteNode, onResetCanvas, onSelectNode]);
 
   const deleteNodesById = useCallback((nodeIds: string[]) => {
     if (!onDeleteNode) return;

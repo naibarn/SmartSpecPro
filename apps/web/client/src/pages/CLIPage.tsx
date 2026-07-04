@@ -3,6 +3,7 @@ import { detectPlatform } from '@smartspec/shared';
 import DesktopOnlyMessage from '@/components/DesktopOnlyMessage';
 import { tauriInvoke } from '@/hooks/useTauriInvoke';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm/ConfirmProvider';
 import { Badge } from '@/components/ui/badge';
 import {
   File, Folder, FolderOpen, ChevronRight, ChevronDown,
@@ -29,6 +30,7 @@ export default function CLIPage() {
 }
 
 function CLIDashboard() {
+  const { prompt } = useConfirm();
   const [rootPath, setRootPath] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('cli-root-path') || '/home';
@@ -100,8 +102,8 @@ function CLIDashboard() {
     } catch { /* ignore */ }
   };
 
-  const changeRoot = () => {
-    const newPath = prompt('Enter absolute path:', rootPath);
+  const changeRoot = async () => {
+    const newPath = await prompt({ title: 'Enter absolute path:', defaultValue: rootPath });
     if (newPath) {
       setRootPath(newPath);
       localStorage.setItem('cli-root-path', newPath);

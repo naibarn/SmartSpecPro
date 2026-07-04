@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +46,7 @@ function CommentStatusBadge({
 }
 
 export default function SocialModeration() {
+  const { confirm } = useConfirm();
   const { t } = useScopedTranslation("social");
   const utils = trpc.useUtils();
   const [selectedPageId, setSelectedPageId] = useState<number | undefined>(
@@ -274,20 +276,17 @@ export default function SocialModeration() {
   };
 
   const handleHide = async (commentId: number) => {
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(t("moderation.confirm.hide"))
-    )
-      return;
+    const confirmed = await confirm({ title: t("moderation.confirm.hide") });
+    if (!confirmed) return;
     await hideMutation.mutateAsync({ commentId });
   };
 
   const handleDelete = async (commentId: number) => {
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(t("moderation.confirm.delete"))
-    )
-      return;
+    const confirmed = await confirm({
+      title: t("moderation.confirm.delete"),
+      tone: "danger",
+    });
+    if (!confirmed) return;
     await deleteMutation.mutateAsync({ commentId });
   };
 

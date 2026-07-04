@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -359,6 +360,7 @@ function getInitialKnowledgeMiniPanelState(): KnowledgeMiniPanelState {
 }
 
 export default function DocumentManagement() {
+  const { confirm } = useConfirm();
   const { t } = useScopedTranslation("common");
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -2421,9 +2423,12 @@ export default function DocumentManagement() {
           { folderId: item.id }
         );
         if (result.count > 0) {
-          const confirmed = window.confirm(
-            `The folder "${item.title}" contains ${result.count} item(s). Deleting this folder will also move all its contents to trash. Continue?`
-          );
+          const confirmed = await confirm({
+            title: `The folder "${item.title}" contains ${result.count} item(s).`,
+            description: "Deleting this folder will also move all its contents to trash. Continue?",
+            tone: "danger",
+            confirmText: "Delete",
+          });
           if (!confirmed) return;
         }
       } catch {
@@ -2435,9 +2440,11 @@ export default function DocumentManagement() {
 
   async function handleBatchDelete() {
     if (selectedItemIds.size === 0) return;
-    const confirmed = window.confirm(
-      `Move ${selectedItemIds.size} item(s) to trash?`
-    );
+    const confirmed = await confirm({
+      title: `Move ${selectedItemIds.size} item(s) to trash?`,
+      tone: "danger",
+      confirmText: "Move to Trash",
+    });
     if (!confirmed) return;
 
     try {

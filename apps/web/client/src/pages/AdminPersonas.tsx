@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { DashboardCard } from "@/components/dashboard";
 
 const TONE_OPTIONS = ["formal", "casual", "friendly", "technical", "creative"] as const;
@@ -67,6 +68,7 @@ function estimateTokens(text: string): number {
 }
 
 export default function AdminPersonas() {
+  const { confirm } = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PersonaFormData>(emptyForm);
@@ -384,8 +386,12 @@ export default function AdminPersonas() {
                             variant="ghost"
                             size="sm"
                             className="text-destructive"
-                            onClick={() => {
-                              if (confirm("Delete this persona?")) {
+                            onClick={async () => {
+                              const confirmed = await confirm({
+                                title: "Delete this persona?",
+                                tone: "danger",
+                              });
+                              if (confirmed) {
                                 deleteMutation.mutate({ id: p.id });
                               }
                             }}

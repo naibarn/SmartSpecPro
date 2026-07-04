@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,6 +251,7 @@ function OverviewPanel({
 // ── Files Panel ──────────────────────────────────────────
 
 function FilesPanel() {
+  const { confirm } = useConfirm();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -382,8 +384,12 @@ function FilesPanel() {
                       variant="ghost"
                       size="sm"
                       className="text-red-500 hover:text-red-700"
-                      onClick={() => {
-                        if (confirm("Remove this file from the index? The file remains in your Google Drive.")) {
+                      onClick={async () => {
+                        const confirmed = await confirm({
+                          title: "Remove this file from the index?",
+                          description: "The file remains in your Google Drive.",
+                        });
+                        if (confirmed) {
                           removeMutation.mutate({ libraryItemId: f.id });
                         }
                       }}
