@@ -150,4 +150,67 @@ describe("AppPage", () => {
       screen.queryByRole("button", { name: "Retry" }),
     ).not.toBeInTheDocument();
   });
+
+  describe("toolbar", () => {
+    it("does not render a toolbar region when omitted", () => {
+      render(<AppPage title="My Page" />);
+      expect(screen.queryByTestId("app-page-toolbar")).not.toBeInTheDocument();
+    });
+
+    it("renders the toolbar in the ready state, alongside children", () => {
+      render(
+        <AppPage title="My Page" toolbar={<input aria-label="Search" />}>
+          <div>Body content</div>
+        </AppPage>,
+      );
+      expect(screen.getByTestId("app-page-toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("Search")).toBeInTheDocument();
+      expect(screen.getByText("Body content")).toBeInTheDocument();
+    });
+
+    it("renders the toolbar in the loading state", () => {
+      render(
+        <AppPage title="My Page" state="loading" toolbar={<input aria-label="Search" />}>
+          <div>Body content</div>
+        </AppPage>,
+      );
+      expect(screen.getByTestId("app-page-toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("Search")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("app-page-default-skeleton"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders the toolbar in the error state", () => {
+      render(
+        <AppPage
+          title="My Page"
+          state="error"
+          toolbar={<input aria-label="Search" />}
+          error={{ title: "Failed to load" }}
+        >
+          <div>Body content</div>
+        </AppPage>,
+      );
+      expect(screen.getByTestId("app-page-toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("Search")).toBeInTheDocument();
+      expect(screen.getByText("Failed to load")).toBeInTheDocument();
+    });
+
+    it("renders the toolbar in the empty state", () => {
+      render(
+        <AppPage
+          title="My Page"
+          state="empty"
+          toolbar={<input aria-label="Search" />}
+          empty={{ title: "No items found" }}
+        >
+          <div>Body content</div>
+        </AppPage>,
+      );
+      expect(screen.getByTestId("app-page-toolbar")).toBeInTheDocument();
+      expect(screen.getByLabelText("Search")).toBeInTheDocument();
+      expect(screen.getByText("No items found")).toBeInTheDocument();
+    });
+  });
 });

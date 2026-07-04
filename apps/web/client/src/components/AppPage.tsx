@@ -54,6 +54,15 @@ export type AppPageProps = {
   breadcrumbs?: AppPageBreadcrumb[];
   /** Optional action controls (buttons, menus) rendered at the end of the header row. */
   actions?: React.ReactNode;
+  /**
+   * Optional toolbar content (search boxes, filter chips, view toggles, etc.)
+   * rendered below the header, above the body-state region (loading / error /
+   * empty / ready). Unlike `children`, the toolbar renders in EVERY state —
+   * use it for controls that should stay visible and usable even while the
+   * underlying data is loading, erroring, or empty (e.g. a search input that
+   * lets the user change the query that produced an empty/error result).
+   */
+  toolbar?: React.ReactNode;
   /** Internal padding of the body content area. @default 4 */
   contentPadding?: 0 | 4;
   /** Which body state to render. @default "ready" */
@@ -169,6 +178,7 @@ export function AppPage({
   description,
   breadcrumbs,
   actions,
+  toolbar,
   contentPadding = 4,
   state = "ready",
   loadingSkeleton,
@@ -228,14 +238,19 @@ export function AppPage({
           isScrollable={false}
           data-testid="app-page-content"
         >
-          <AppPageBody
-            state={state}
-            loadingSkeleton={loadingSkeleton}
-            error={error}
-            empty={empty}
-          >
-            {children}
-          </AppPageBody>
+          <VStack gap={4}>
+            {toolbar ? (
+              <div data-testid="app-page-toolbar">{toolbar}</div>
+            ) : null}
+            <AppPageBody
+              state={state}
+              loadingSkeleton={loadingSkeleton}
+              error={error}
+              empty={empty}
+            >
+              {children}
+            </AppPageBody>
+          </VStack>
         </LayoutContent>
       }
     />

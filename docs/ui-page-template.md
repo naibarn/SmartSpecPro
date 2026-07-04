@@ -43,6 +43,7 @@ export type AppPageProps = {
   description?: string;
   breadcrumbs?: AppPageBreadcrumb[];
   actions?: React.ReactNode;
+  toolbar?: React.ReactNode;                       // renders in EVERY state, below the header
   contentPadding?: 0 | 4;                          // default 4
   state?: AppPageState;                            // default "ready"
   loadingSkeleton?: React.ReactNode;                // overrides the default loading skeleton
@@ -70,6 +71,13 @@ export function AppPage(props: AppPageProps): React.JSX.Element;
 - **Ready** (default): `children` are rendered directly inside the page
   body, with `contentPadding` (0 or 4) controlling the body's internal
   spacing.
+- **Toolbar**: `toolbar` renders below the header and above the
+  loading/error/empty/ready body region, in **every** state — unlike
+  `children` (ready-only). Use it for controls the user should keep being
+  able to operate even while the list is loading, errored, or empty, most
+  commonly a search box and/or filter chips that produced that state (so
+  the user can change the query without the controls disappearing out from
+  under them).
 
 ## Copy-paste example
 
