@@ -1,7 +1,7 @@
 ---
 name: ssp-product-ux
 description: "Product UX Agent (CMD-0) — Product discovery, UX flow, and acceptance criteria specialist for the active codebase"
-model: sonnet
+model: opus
 tools: Read, Grep, Glob, Bash
 ---
 

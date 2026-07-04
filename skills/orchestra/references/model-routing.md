@@ -3,6 +3,45 @@
 Use this reference whenever Orchestra dispatches a sub-agent, builds a Task Packet, or
 decides whether an inline role should keep the conductor's current/default model.
 
+## Planning vs Coding Split — Opus Plans, Sonnet Codes (Claude Code)
+
+On Claude Code the tier policy is: **planning/architecture runs on Opus; implementation
+runs on Sonnet.** This keeps deep reasoning where it matters while making routine coding
+cheap and fast.
+
+How it is wired (portable across repos via `skills/portable_install.py`):
+
+- `skills/portable_install.py` sets each generated `.claude/agents/ssp-*.md` model via
+  `OPUS_AGENTS = {"architect", "product-ux"}` + `model_for(name)`. Planning/design agents
+  get `model: opus`; every other implementation/reviewer agent gets `model: sonnet`.
+- To add another Opus planning agent in any repo: add its source slug to `OPUS_AGENTS` and
+  re-run `python3 skills/portable_install.py generate-claude-agents`. Do NOT hand-edit the
+  generated `.claude/agents/*.md` — they regenerate from `skills/sub-agents/agents/*.md`.
+- The session/conductor default should be Sonnet (repo `.claude/settings*.json` `"model":
+  "sonnet"`) so inline conductor coding is also Sonnet. This is a per-repo settings choice,
+  not a skill artifact.
+
+### Delegate Coding for Context Isolation (token saving)
+
+Prefer delegating substantive coding to a Sonnet `ssp-*` implementation agent rather than
+editing inline. A sub-agent runs in a **fresh, isolated context** — it does NOT inherit the
+conductor's accumulated history. Its noisy work (multi-file reads, long tool output, big
+diffs, trial-and-error) stays in the sub-agent's throwaway context; only a compact result
+returns. This keeps the conductor lean, delays compaction, and lowers token cost per turn.
+It also guarantees coding runs on Sonnet even when the conductor is still on Opus.
+
+| Coding task | Action |
+|---|---|
+| Touches 2+ files, or needs multi-file reads to make the change | MUST delegate to a Sonnet `ssp-*` implementer |
+| Requires iteration/search/exploration before editing | MUST delegate (offload the noise) |
+| Non-trivial single-file change (new function, refactor, logic) | SHOULD delegate |
+| Trivial edit (typo, one-line config, rename, comment, 1–3 line fix) | May edit inline — a sub-agent round-trip costs more than it saves |
+
+This split is orthogonal to `lightweight-default` below: `lightweight-default` (Haiku/GPT 5.5)
+is for bounded mechanical sub-work; the Opus/Sonnet split is the primary planning-vs-coding
+tiering. When both apply, the escalation rules under "Do Not Use the Lightweight Model When"
+still govern.
+
 ## Default Model Rule
 
 First confirm that sub-agent dispatch is authorized for the current platform and user

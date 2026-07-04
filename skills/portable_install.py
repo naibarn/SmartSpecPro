@@ -147,6 +147,15 @@ def agent_is_read_only(body: str) -> bool:
     )
 
 
+# Planning / design agents run on Opus; all other sub-agents default to Sonnet.
+# Keep this in sync with the "Opus plans, Sonnet codes" model-routing policy.
+OPUS_AGENTS = {"architect", "product-ux"}
+
+
+def model_for(name: str) -> str:
+    return "opus" if name in OPUS_AGENTS else "sonnet"
+
+
 def claude_agent_text(source: Path) -> str:
     meta, body = parse_frontmatter(source)
     name = slugify(meta.get("name", source.stem))
@@ -159,7 +168,7 @@ def claude_agent_text(source: Path) -> str:
             "---",
             f"name: {native_name}",
             f'description: "{description}"',
-            "model: sonnet",
+            f"model: {model_for(name)}",
             f"tools: {tools}",
             "---",
             "",

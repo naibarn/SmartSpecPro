@@ -169,6 +169,8 @@ orchestration.
 
 The 35 agents in this registry can each have a generated native definition in `.claude/agents/` that enables Claude Code's agent mechanism. These files use YAML frontmatter to configure model and tool access. The source of truth remains `skills/sub-agents/agents/*.md`; regenerate native files after editing the portable source.
 
+**Model tiering (Opus plans, Sonnet codes):** the generator assigns `model:` per agent via `OPUS_AGENTS` in `skills/portable_install.py`. Planning/design agents (`architect`, `product-ux`) get `model: opus`; all other implementation and reviewer agents get `model: sonnet`. To promote another agent to Opus, add its slug to `OPUS_AGENTS` and regenerate — do not hand-edit the generated files. See `skills/orchestra/references/model-routing.md` ("Planning vs Coding Split") for the full policy and the context-isolation delegation rule.
+
 Generate them with:
 
 ```bash

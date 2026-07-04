@@ -624,6 +624,31 @@ You MUST spawn specialized agents for these task types. Do NOT handle them direc
 | Single-file fix (clear root cause) | Optional | Handle directly, spawn if complex | Simple fixes don't need agents |
 | Documentation-only changes | Never | Handle directly | No agent needed |
 
+### Rule 1b: MANDATORY Coding Delegation for Context Isolation
+
+**Model routing:** Sonnet is the default coder; Opus is reserved for planning/architecture.
+Planning agents (`ssp-architect`, `ssp-product-ux`) run Opus; all other `ssp-*` implementation
+agents run Sonnet. See `memory/project_model_routing.md`.
+
+**Why delegate coding instead of editing inline:** A sub-agent runs in a **fresh, isolated
+context** — it does NOT receive the conductor's accumulated conversation history. All of its
+noisy work (multi-file reads, long command output, big diffs, trial-and-error) stays in the
+sub-agent's throwaway context and never bloats the conductor. Only a compact result returns.
+This keeps the conductor lean, delays compaction, and cuts token cost per turn.
+
+**The rule — for any coding task with real substance, the conductor MUST delegate to a
+Sonnet `ssp-*` implementation agent rather than editing inline:**
+
+| Coding task | Action |
+|---|---|
+| Touches 2+ files, or requires reading several files to make the change | **MUST delegate** to `ssp-frontend` / `ssp-backend` / `ssp-python` / `ssp-database` |
+| Requires iteration, search, or exploration before editing | **MUST delegate** (offload the noise) |
+| Non-trivial single-file change (new function, refactor, logic change) | **SHOULD delegate** |
+| Trivial edit (typo, one-line config, rename, comment, obvious 1-3 line fix) | May edit inline — a sub-agent round-trip would cost more than it saves |
+
+When delegating, follow Rule 2 (complete brief) and Rule 5 (correct agent type). The conductor
+stays the planner/integrator; implementation agents do the file work in isolation.
+
 ### Rule 2: MANDATORY Prompt Structure — Every Agent Gets a Complete Brief
 
 **NEVER send a vague prompt.** Every agent Task prompt MUST include ALL of these sections:

@@ -1,7 +1,7 @@
 ---
 name: ssp-architect
 description: "Architecture Agent (CMD design support) — Read-only system design specialist"
-model: sonnet
+model: opus
 tools: Read, Grep, Glob, Bash
 ---
 
