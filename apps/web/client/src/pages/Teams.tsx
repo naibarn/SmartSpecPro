@@ -4113,7 +4113,7 @@ export default function Teams() {
         open={!!createRoomDialog}
         onOpenChange={open => !open && setCreateRoomDialog(null)}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("teams.rooms.createDialogTitle")}</DialogTitle>
           </DialogHeader>
@@ -4319,7 +4319,7 @@ export default function Teams() {
 
       {/* Start Run Dialog */}
       <Dialog open={startRunDialog} onOpenChange={setStartRunDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("teams.run.startTitle")}</DialogTitle>
           </DialogHeader>

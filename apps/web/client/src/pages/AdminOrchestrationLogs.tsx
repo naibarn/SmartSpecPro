@@ -389,7 +389,7 @@ export default function AdminOrchestrationLogs() {
         open={!!selectedTrace}
         onOpenChange={(open) => !open && setSelectedTrace(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-sm font-mono">
               Trace: {selectedTrace}

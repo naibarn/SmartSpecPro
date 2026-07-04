@@ -987,7 +987,7 @@ export default function Credits() {
       </main>
 
       <Dialog open={!!pendingCheckoutPackage} onOpenChange={(open) => !open && !topupMutation.isPending && setPendingCheckoutPackage(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>เลือกวิธีชำระเงิน</DialogTitle>
             <DialogDescription>

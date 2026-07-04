@@ -10261,7 +10261,7 @@ export function PresentationArticleGeneratorDialog({
       </Dialog>
 
       <Dialog open={Boolean(previewImageAsset)} onOpenChange={(nextOpen) => !nextOpen && setPreviewImageAsset(null)}>
-        <DialogContent className="max-h-[92vh] w-[92vw] max-w-5xl overflow-hidden p-0">
+        <DialogContent className="max-h-[92vh] w-[92vw] sm:max-w-5xl overflow-hidden p-0">
           {previewImageAsset ? (
             <div className="flex max-h-[92vh] flex-col">
               <DialogHeader className="shrink-0 border-b px-5 py-4">
@@ -10302,7 +10302,7 @@ export function PresentationArticleGeneratorDialog({
       </Dialog>
 
       <Dialog open={Boolean(previewPrompt)} onOpenChange={(nextOpen) => !nextOpen && setPreviewPrompt(null)}>
-        <DialogContent className="max-h-[92vh] w-[92vw] max-w-3xl overflow-hidden p-0">
+        <DialogContent className="max-h-[92vh] w-[92vw] sm:max-w-3xl overflow-hidden p-0">
           {previewPrompt ? (
             <div className="flex max-h-[92vh] flex-col">
               <DialogHeader className="shrink-0 border-b px-5 py-4">

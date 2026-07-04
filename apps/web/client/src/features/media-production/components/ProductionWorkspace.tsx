@@ -1122,7 +1122,7 @@ function ProductionConceptBoard(props: {
       </div>
 
       <Dialog open={Boolean(previewOption)} onOpenChange={(open) => !open && setPreviewOption(null)}>
-        <DialogContent className="max-h-[94vh] w-[96vw] max-w-7xl overflow-y-auto">
+        <DialogContent className="max-h-[94vh] w-[96vw] sm:max-w-7xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewOption?.title ?? (isThai ? "ดูแนวคิด" : "Concept preview")}</DialogTitle>
             <DialogDescription>

@@ -1833,7 +1833,7 @@ export function SlideAudioPanel({
         target={pickerTarget}
       />
       <Dialog open={audioGenerationDialogOpen} onOpenChange={setAudioGenerationDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{slideAudioTrack ? "Regenerate Slide Audio" : "Generate Slide Audio"}</DialogTitle>
             <DialogDescription>

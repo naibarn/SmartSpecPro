@@ -623,7 +623,7 @@ export default function Gallery() {
 
         {/* Lightbox */}
         <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
-          <DialogContent className="max-w-6xl w-[95vw] h-[92vh] p-0 overflow-hidden flex flex-col">
+          <DialogContent className="sm:max-w-6xl w-[95vw] h-[92vh] p-0 overflow-hidden flex flex-col">
             {selectedItem && (
               <>
                 {/* Media area — fills all available vertical space */}

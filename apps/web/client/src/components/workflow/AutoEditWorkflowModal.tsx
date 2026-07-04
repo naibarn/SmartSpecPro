@@ -419,7 +419,7 @@ export function AutoEditWorkflowModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[90vw] max-w-3xl min-w-[320px] min-h-[400px] max-h-[90vh] overflow-auto resize" style={{ resize: 'both' }}>
+      <DialogContent className="w-[90vw] sm:max-w-3xl min-w-[320px] min-h-[400px] max-h-[90vh] overflow-auto resize" style={{ resize: 'both' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-5 w-5 text-blue-500" />

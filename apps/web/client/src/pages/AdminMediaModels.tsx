@@ -2883,7 +2883,7 @@ export default function AdminMediaModels() {
 
       {/* Create Model Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add AI Model</DialogTitle>
             <DialogDescription>
@@ -2928,7 +2928,7 @@ export default function AdminMediaModels() {
         open={!!editingModel}
         onOpenChange={open => !open && setEditingModel(null)}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex flex-wrap items-center gap-2">
               <span>Edit Model - {editingModel?.name}</span>

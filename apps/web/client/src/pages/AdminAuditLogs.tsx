@@ -975,7 +975,7 @@ export default function AdminAuditLogs() {
       </DashboardCard>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-5xl max-h-[88vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl lg:max-w-5xl max-h-[88vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               Trace Detail

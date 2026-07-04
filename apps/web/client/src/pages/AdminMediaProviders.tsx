@@ -668,7 +668,7 @@ export default function AdminMediaProviders() {
 
       {/* Create Provider Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
+        <DialogContent className="flex max-h-[90vh] sm:max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Add Media Provider</DialogTitle>
             <DialogDescription>
@@ -772,7 +772,7 @@ export default function AdminMediaProviders() {
         open={!!editingProvider}
         onOpenChange={open => !open && setEditingProvider(null)}
       >
-        <DialogContent className="flex max-h-[90vh] max-w-2xl flex-col overflow-hidden">
+        <DialogContent className="flex max-h-[90vh] sm:max-w-2xl flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               Edit Provider - {editingProvider?.displayName}

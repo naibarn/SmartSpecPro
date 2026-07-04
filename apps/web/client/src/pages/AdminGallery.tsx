@@ -1194,7 +1194,7 @@ export default function AdminGallery() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isEditDialogOpen ? "Edit Gallery Item" : "Add Gallery Item"}

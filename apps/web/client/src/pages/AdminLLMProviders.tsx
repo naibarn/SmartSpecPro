@@ -1131,7 +1131,7 @@ export default function AdminLLMProviders() {
 
       {/* Browse OpenRouter Models Dialog */}
       <Dialog open={isBrowseDialogOpen} onOpenChange={setIsBrowseDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="sm:max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
@@ -1343,7 +1343,7 @@ export default function AdminLLMProviders() {
 
       {/* Cleanup Old Models Dialog */}
       <Dialog open={isCleanupDialogOpen} onOpenChange={setIsCleanupDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-orange-600">
               <Trash2 className="h-5 w-5" />

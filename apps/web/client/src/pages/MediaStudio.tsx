@@ -39701,7 +39701,7 @@ export default function MediaStudio() {
                               {selectedStyle || t("mediaStudio.selectStyle")}
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>
                                 {t("mediaStudio.chooseStyle")}
@@ -40349,7 +40349,7 @@ export default function MediaStudio() {
                               {selectedVfxEffect || t("mediaStudio.selectVfx")}
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>
                                 {t("mediaStudio.chooseVfx")}
@@ -40607,7 +40607,7 @@ export default function MediaStudio() {
                       open={showSkillDialog}
                       onOpenChange={setShowSkillDialog}
                     >
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <Sparkles className="h-5 w-5 text-blue-500" />
@@ -45033,7 +45033,7 @@ export default function MediaStudio() {
         open={storyboardReviewProjectsOpen}
         onOpenChange={setStoryboardReviewProjectsOpen}
       >
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Layers className="h-5 w-5" />

@@ -10963,7 +10963,7 @@ export default function PresentationEditor() {
       ) : null}
       <Dialog open={isAILayoutPreviewDialogOpen} onOpenChange={setIsAILayoutPreviewDialogOpen}>
         <DialogContent
-          className="flex max-h-[94vh] w-[min(96vw,1600px)] max-w-[min(96vw,1600px)] flex-col overflow-hidden"
+          className="flex max-h-[94vh] w-[min(96vw,1600px)] flex-col overflow-hidden sm:max-w-[min(96vw,1600px)]"
           style={aiLayoutPreviewDialogDrag.dialogStyle}
         >
           <DialogHeader
@@ -11164,7 +11164,7 @@ export default function PresentationEditor() {
           }
         }}
       >
-        <DialogContent className="max-w-6xl">
+        <DialogContent className="sm:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
           <DialogHeader>
             <DialogTitle>{t("dialog.reorder.title")}</DialogTitle>
             <DialogDescription>{t("dialog.reorder.description")}</DialogDescription>
@@ -11691,7 +11691,7 @@ export default function PresentationEditor() {
       )}
       <Dialog open={isDeckNoteDialogOpen} onOpenChange={setIsDeckNoteDialogOpen}>
         <DialogContent
-          className="max-w-2xl"
+          className="sm:max-w-2xl"
           style={deckNoteDialogDrag.dialogStyle}
         >
           <DialogHeader
@@ -11861,7 +11861,7 @@ export default function PresentationEditor() {
       </Dialog>
       <Dialog open={isSlideNoteDialogOpen} onOpenChange={setIsSlideNoteDialogOpen}>
         <DialogContent
-          className="max-w-2xl"
+          className="sm:max-w-2xl"
           style={slideNoteDialogDrag.dialogStyle}
         >
           <DialogHeader

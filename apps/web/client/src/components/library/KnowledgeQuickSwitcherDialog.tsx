@@ -363,7 +363,7 @@ export function KnowledgeQuickSwitcherDialog(
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent className="w-[min(96vw,72rem)] max-w-5xl max-h-[90vh] overflow-hidden border-slate-200 p-0">
+      <DialogContent className="w-[min(96vw,72rem)] sm:max-w-5xl max-h-[90vh] overflow-hidden border-slate-200 p-0">
         <DialogHeader className="border-b border-slate-200 px-6 py-5">
           <DialogTitle className="flex items-center gap-2 text-lg text-slate-900">
             <Sparkles className="h-5 w-5 text-sky-600" />
