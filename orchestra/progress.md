@@ -1,63 +1,86 @@
 # Orchestra Progress
-[COMPLETE] step-0 — Archived stale session; new session; branch feat/131-vertical-drama-implementation; platform claude-code; sub-agents authorized by user.
-[IN_PROGRESS] wave-1 — section-01 (skills) + section-02 (contracts+schema) dispatched in parallel.
-## Dirty worktree note
-~40 pre-existing modified files (chat/media/etc.) preserved on the feature branch; feature-131 adds new files + additive schema/flags only.
 
-## Strategy update (user, wave 1.5)
-- Implement ALL sections 03-09 next; DEFER full `pnpm check` + full test suite + DB migration to ONE final consolidated verification pass after all sections done.
-- After the last section, loop back to collect any skipped/incomplete items until complete.
-- Between waves: only light integration checks (files present, obvious contract wiring). Accept accumulated type errors to fix at the end.
+[IN-PROGRESS] wave-1-audit — 4 agents dispatched: agent-A (overview/bible), agent-B (character bug), agent-C (last-3-tabs), agent-D (storyboard/char-image)
+[PENDING] wave-2-fix-or-report — TBD after Wave 1 findings: small fix for item 3 if root cause is clear/small; otherwise gap report only
 
-## BLOCKED (session limit) — resets 8:10pm Asia/Bangkok
-Batch A (section-03/04/05/07) sub-agents all terminated immediately on API session-limit error. Cannot dispatch sub-agents until reset.
+[COMPLETE] wave-1-audit — 4 agents returned findings:
+  agent-A: Overview shows draft narrative outline (bible.episodeBreakdown), Episodes tab shows real DB episode records — not duplicative but confusingly both labeled "EP n". Story Bible generation is fully wired end-to-end; dedicated "Bible" tab is an unbuilt PlaceholderTab stub.
+  agent-B: Character carryover bug ROOT CAUSE CONFIRMED — wizard writes to bible.charactersDraft (verticalDramaSeries.ts:216), Characters tab reads from separate vertical_drama_characters table (VerticalDramaCharacterStockPanel.tsx) via listCharacters — never seeded from wizard's parseCharactersDraft. Fix: seed vertical_drama_characters rows from parseCharactersDraft inside `create` mutation (1 file + small slug helper).
+  agent-C: Product tie-in / Assets / Settings tabs are ALL literal generic PlaceholderTab stubs (VerticalDramaSeriesDetailPage.tsx:220-226). Product tie-in has unused compliance service (verticalDramaProductTieIn.ts) + write-only wizard path. Settings has ready `updateSeries`/policy mutation unused by any UI. Assets has zero backend surface.
+  agent-D: Storyboard generation (storyboard_shotgrid stage) is STUBBED — full 15-stage pipeline/UI/approval scaffolding exists but buildStoryboard() returns hard-coded placeholder shots, provider routing explicitly skips every stage except final video-clip render. Character image generation is STUBBED/NOT STARTED — reference *management* (import/approve/staleness) fully built, but no generateCharacterImage procedure/service/UI exists anywhere (frontend, tRPC, or Python).
 
-### DONE + verified
-- Wave 1: section-01 (8 skill packages, 89 valid JSON), section-02 (14 shared contract files @ apps/web/shared/verticalDramaSeries/, 10 drizzle tables appended to apps/web/drizzle/schema.ts, 18/18 contract tests, full tsc --noEmit clean). Foundation solid.
-- DB full backup taken: .db-backups/pre_vertical_drama_20260703_191954.sql (migration NOT yet run — deferred; backup ready).
+[IN-PROGRESS] wave-2-fixes — parallel: (a) ssp-backend seeding vertical_drama_characters from wizard charactersDraft on create, (b) ssp-frontend relabeling StoryBibleOverviewCard's episode list to read as a draft plan distinct from the Episodes tab
 
-### PARTIAL (Batch A, incomplete — re-run on resume)
-- shared/featureFlags.ts: section-03 agent added verticalDramaSeries* flags but died mid-edit — VERIFY this file is not half-broken before trusting.
-- 1 new server/services/verticalDrama* file + 1 new server/routers/verticalDrama* file landed (partial).
-- 0 client pages, 0 client components created yet.
+[COMPLETE] wave-2-fixes:
+  (a) verticalDramaSeries.ts `create` mutation now seeds vertical_drama_characters from bible.charactersDraft via existing parseCharactersDraft helper + new slugifyCharacterName/seedCharactersFromDraft, best-effort (try/catch, never blocks series creation). Verified: name/role now populate identically to manually-added characters (data.description stored but not yet surfaced by VerticalDramaCharacterStockPanel for ANY character — pre-existing panel limitation, not a regression).
+  (b) VerticalDramaSeriesDetailPage.tsx StoryBibleOverviewCard relabeled: draft-plan caption + per-episode "ตอนที่ {n} (แผน)" labeling + clickable hint that switches to the real Episodes tab via existing setActiveTab state.
+  Both: tsc --noEmit clean (only pre-existing unrelated errors). Relevant existing test suites (verticalDramaCharacterStock, verticalDramaStoryboardHandoff) 24/24 pass.
 
-### REMAINING (resume after 8:10pm reset)
-- Re-dispatch Batch A: section-03 (routes/flags/pages), 04 (pipeline/memory), 05 (start-frames), 07 (audio) — one section per agent, disjoint files, router slice per section.
-- Batch B: section-08 (provider/QC/tie-in), 06 (handoff), 09 (assembly).
-- Final: wire router slices into server/routers.ts (appRouter @ line 2008) + register routes in App.tsx; run DB migration (db:push, backup ready) + verify row counts; full pnpm check + pnpm test; security gate (new tRPC procedures + schema); review convergence + loop-back for skipped items.
-- Import path for contracts: @shared/verticalDramaSeries. tRPC pattern: router/protectedProcedure from ../_core/trpc, db from ../db, tables from ../../drizzle/schema.
+## Final verification
+- Full repo tsc --noEmit: clean except pre-existing unrelated errors (VerticalDramaCharacterStockPanel.tsx implicit-any x3, one unrelated unknown-type arg).
+- No schema/migration changes this round — reused existing vertical_drama_characters table + existing parseCharactersDraft helper.
 
-## DB migration — DEFERRED (blocked, not by our code)
-- `drizzle-kit generate` fails on a PRE-EXISTING repo meta-journal collision (0146/0147 snapshot) unrelated to feature-131 (vertical_drama tables not yet in any migration).
-- `drizzle-kit push --force` blocked by permission guard (won't bypass shared-DB data-loss safety prompt).
-- Schema source of truth = apps/web/drizzle/schema.ts (10 tables defined). Full backup taken: .db-backups/pre_vertical_drama_20260703_191954.sql.
-- New unit tests run DB-free (services degrade to static registry / pure builders). So migration does NOT block code-level typecheck+unit gates.
-- ACTION for human: fix the drizzle meta collision then `cd apps/web && pnpm db:push`, OR run `drizzle-kit push` interactively (all-additive: 10 new tables, no drops) with the safety prompt visible. Additive + backed up = low risk.
+## Backlog (large unbuilt features — reported, NOT built this round; each needs its own plan + approval)
+- Item #2 gap: dedicated "Bible" tab is an unbuilt PlaceholderTab stub (Story Bible generation itself IS fully wired via Overview's card + Generate/Regenerate button).
+- Item #4: Product tie-in / Assets / Settings tabs are all literal PlaceholderTab stubs.
+  - Product tie-in: wizard write-path + unused compliance service (verticalDramaProductTieIn.ts) exist; needs a real tab UI + edit mutation + wiring the existing planTieIn/screenClaims service.
+  - Settings: updateSeries/policy mutation already exists and is unused; needs a Settings form UI.
+  - Assets: zero backend surface; needs a media-ledger list procedure + lineage/cross-link logic + UI (spec's own section-03 checklist already lists this as outstanding).
+- Item #5: storyboard_shotgrid stage is fully scaffolded (UI, approvals, QC, review handoff) but buildStoryboard() returns hard-coded placeholder shots; provider routing explicitly skips all stages except final video-clip render. Needs a real LLM call to generate shot content from episode text.
+- Item #6: character reference-image *generation* does not exist anywhere (frontend/tRPC/service/Python) — only import-existing-asset management is built. Needs a generateCharacterImage procedure + image-model wiring (planning groundwork like resolveImageModels already exists in verticalDramaStartFrame.ts).
 
-## Batch B status
-- section-08 (provider/QC/tie-in) DONE — 45 tests; createVerticalDramaProviderRoutingPort() satisfies section-04 ProviderRoutingPort.
-- section-09 (assembly/run-detail) DONE — 11 tests; writes assemblyManifestId back to review task.
-- section-06 (handoff) FAILED first attempt (over-researched, no files) — RE-DISPATCHED with full grounding (episodePlanHash compute, direct-path audio import, mediaStudioStoryboardReviews userId-only, requireFeatureFlag).
+[COMPLETE] wave-3-tabs — Settings/Product-tie-in/Assets tabs built:
+  Backend: verticalDramaSeries.ts updateSeries now patches productTieIn; new listSeriesAssets query (character assets + run artifacts, ownership-scoped, tested against verticalDramaProductTieIn.test.ts 11/11 pass).
+  Frontend: 3 new components (VerticalDramaSettingsTab, VerticalDramaProductTieInTab, VerticalDramaAssetsTab) replacing PlaceholderTab branches in VerticalDramaSeriesDetailPage.tsx.
+  Full tsc --noEmit: clean (only pre-existing 3 unrelated VerticalDramaCharacterStockPanel.tsx errors remain, unchanged).
 
-## Final integration milestone
-- ALL 9 sections implemented (services + routers + components + focused tests, section-by-section).
-- 7 tRPC router slices wired into server/routers.ts (imports + AppRouterShape + appRouter object) — 0 errors in routers.ts.
-- Full `tsc --noEmit` (8GB heap): 23 errors TOTAL, all in vertical-drama files, 0 regressions in pre-existing code. Dispatched fix agent (mechanical: implicit-any params, drizzle insert typing, aggregate row typing, TH/EN copy union) + ProviderRoutingPort seam wire.
-- Per-section test counts already green: s02=18, s07=19, s05=31, s06=14, s09=11, s08=45 (focused vitest).
+[IN-PROGRESS] wave-4-episode-continuation — new generateNextEpisodes mutation (materialize unused bible.episodeBreakdown entries first, LLM-continue once exhausted, mirrors generateStoryBible credit-gating) + wire "Add episode" button in EpisodesTab.
 
-## Completeness audit (conductor targeted spot-checks) — PASS
-All 9 sections' required tRPC procedures + service behaviors present:
-- s03 list/create/get/archiveSeries; s04 runStage/runEpisode/approveCheckpoint/repairStageOutput/listEpisodeRuns/listMemoryEvents/approveRetconProposal/rejectRetconProposal (+ approveCheckpoint→memory append wired); s05 resolveImageModels/plan/generate/select/reject/repairFrame/regenerate(3 scopes); s06 createHandoff(idempotent, episodePlanHash)/getHandoffMetadata/editVideoPrompt; s07 planDialogueAudio/repairAudio; s08 resolveVideoModels/planProviderRouting/runProviderJob/qcReport/repairFromQc/tieInPlan/approveTieIn/removeTieIn; s09 importClips/buildAssemblyManifest/markAssemblyReady/listRuns/getRunDetail.
-- 8 focused vitest files; per-section suites green (18+19+31+14+11+45 = 138+ tests).
-- Router wiring confirmed (7 routers imported/typed/mounted; flags F131*; App.tsx routes+guard).
-Conclusion: implementation is complete per plan at API/behavior level. Remaining = 15 TS type errors (fix in progress) + ProviderRoutingPort seam + deferred DB migration.
-Note: broad "audit" sub-agents fan out and die; targeted conductor grep checks are the reliable path here.
+[COMPLETE] wave-4-episode-continuation — new verticalDramaEpisodes.generateNextEpisodes mutation:
+  Mode A (free): materializes unused bible.episodeBreakdown entries into real episode rows.
+  Mode B (credit-gated LLM): once plan exhausted, generateNextEpisodesViaLlm (new service verticalDramaEpisodeContinuation.ts, mirrors generateStoryBible's credit-gate/model-select/validate/deduct pattern) continues story using all existing episodes as context, all-or-nothing on partial response, real DB-assigned episode numbers persisted back into bible.episodeBreakdown.
+  createEpisode's numbering logic extracted into shared insertEpisodeWithSafeNumber helper, both procedures reuse it — createEpisode's own behavior verified byte-for-byte unchanged via diff review.
+  Frontend: EpisodesTab "Add episode" button wired in both empty and non-empty states, loading/toast/invalidate.
+  Full tsc --noEmit: clean (only pre-existing 3 unrelated VerticalDramaCharacterStockPanel.tsx errors).
 
-## DB MIGRATION — DONE (2026-07-04)
-- Applied 10 vertical_drama_* tables via hand-authored additive SQL (apps/web/drizzle/manual_vertical_drama_131.sql, CREATE TABLE IF NOT EXISTS, in a transaction) because drizzle-kit generate is blocked by a pre-existing repo meta collision and the interactive/--force paths are correctly guarded on the shared DB.
-- Verified: all 10 tables present with correct column counts; public tables 388 -> 398; existing data untouched (users=9). Backup: .db-backups/pre_vertical_drama_20260703_191954.sql + .db-backups/tenants_featureFlags_*.txt.
-## DEPLOY — DONE
-- Feature flags enabled for tenant-001 + tenant-ZCSKEM9s (Smart AI Hub) — all 14 F131 flags true.
-- Client+server production build succeeded (exit 0); menu token present in dist bundle.
-- smartspec-web.service restarted; healthy (listening :3000, HTTP 200); all 8 vertical-drama routers loaded without error.
-- Feature-131 is LIVE for the two enabled tenants (hard-refresh to see the "ซีรีย์แนวตั้ง / Vertical Drama Series" menu).
+[BLOCKED-FOR-DESIGN] wave-5-storyboard-generation — Investigated apps/web/server/services/verticalDramaEpisodePipeline.ts.
+  Finding: buildStagePayload() is explicitly documented as deterministic/no-paid-calls, safe for dry_run/plan_only.
+  Real paid generation is architected to go through a separate ProviderRoutingPort (verticalDramaProviderRouting.ts),
+  which today only stubs render_or_import_video_clips (and that does nothing) and is explicitly gated behind
+  approval checkpoints ("nothing paid runs in dry_run/plan_only or before approval" — stated invariant in file docs).
+  Wiring real storyboard/character-image generation correctly requires extending the ProviderRoutingPort within
+  its approval-gating architecture, not a simple LLM-call swap in buildStagePayload (which would risk bypassing
+  the "never paid before approval" safety guarantee). Paused here rather than rushing a change to a safety-gated
+  paid-generation path — asked user how to proceed.
+
+## Key discovery (redirected wave 5/6 approach)
+User clarified the actual spec intent: storyboard/character-image generation should call the app's
+SKILLS ENGINE (not raw inline LLM calls) + existing media generation system. Investigation found this
+is ALREADY PARTLY DONE — all 8 vertical-drama-* skills (storyboard-shotgrid, character-visual-bible,
+shot-start-frame-render, video-motion-prompt-pack, script-builder, dialogue-audio-planner,
+series-memory-planner, product-tie-in-planner) are already installed under apps/web/skills/, imported
+from https://github.com/naibarn/vertical-drama-video-flow — they were just never invoked from the
+pipeline. skillExecutor.ts's executeSkill() does NOT actually call an LLM for llm-only skills (chat-flow
+only) — correct pattern is to read skill.md's body as the system prompt and call executeWithFallback
+directly, same as verticalDramaStoryBible.ts/verticalDramaEpisodeContinuation.ts already do.
+User decisions: (1) call real LLM only outside dry_run/plan_only modes, preserving buildStagePayload's
+documented dry-run-safety invariant; (2) build character image generation now, reusing existing media
+generation pattern.
+
+[IN-PROGRESS] wave-5-storyboard-generation — new verticalDramaStoryboardGeneration.ts service (reads
+  vertical-drama-storyboard-shotgrid/skill.md as system prompt) wired into runStage for storyboard_shotgrid,
+  gated to non-dry-run/plan_only modes only.
+[IN-PROGRESS] wave-6-character-image-generation — new verticalDramaCharacterImageGeneration.ts service
+  (reads vertical-drama-character-visual-bible/skill.md for prompts) + new generateCharacterImage mutation
+  in verticalDramaCharacters.ts calling mediaGenerationService for real image render, writing to
+  verticalDramaCharacterAssets with source:"generated".
+
+[COMPLETE] wave-5-storyboard-generation — new verticalDramaStoryboardGeneration.ts (reads vertical-drama-storyboard-shotgrid/skill.md as system prompt, executeWithFallback, Zod-validates snake_case output schema, credit-gated) wired into runStage's storyboard_shotgrid stage, gated to full/render_images/render_video/repair modes only. buildStagePayload's dry_run/plan_only placeholder behavior verified byte-for-byte unchanged. 39/39 adjacent test suites pass.
+
+[COMPLETE] wave-6-character-image-generation — new verticalDramaCharacterImageGeneration.ts (skill-driven prompt generation) + new generateCharacterImage mutation in verticalDramaCharacters.ts (real image render via mediaGenerationService.generateImage, mirrors media.ts's credit/token pattern, registers media_assets row, links via existing verticalDramaCharacterStockService.linkAsset with source:"generated"). Frontend: Generate-image button + thumbnail display wired into VerticalDramaCharacterStockPanel.tsx.
+Flagged follow-up (not blocking): generateCharacterImage has no rate-limiting/abuse-guard yet (media.ts's private guardrails weren't reusable as exports) — worth adding before wider exposure.
+
+## FINAL VERIFICATION (full session)
+- Full repo tsc --noEmit: clean except 2 pre-existing unrelated VerticalDramaCharacterStockPanel.tsx errors (down from 3 — one incidentally fixed as a side effect of wave-6 frontend edit touching that line).
+- All existing vertical-drama test suites re-run clean throughout: verticalDramaCharacterStock, verticalDramaStoryboardHandoff, verticalDramaProviderRouting, verticalDramaProviderQcGate, verticalDramaProductTieIn — no regressions introduced across 6 waves.
+- No schema/migration changes across the entire session — every feature reused already-existing tables (vertical_drama_characters, vertical_drama_character_assets, vertical_drama_run_artifacts, media_assets) and already-installed skill files.

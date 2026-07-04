@@ -9,8 +9,9 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Search, Sparkles } from "lucide-react";
+import { ImageIcon, Loader2, Search, Sparkles, X } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,8 @@ interface WizardState {
   visualBible: string;
   productTieInEnabled: boolean;
   productName: string;
+  productId?: string;
+  productImageUrl?: string;
   forbiddenClaims: string;
 }
 
@@ -84,16 +87,29 @@ export function CreateSeriesWizard({
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<WizardState>(INITIAL_WIZARD);
   const [presetSearch, setPresetSearch] = useState("");
+  const [presetCategory, setPresetCategory] = useState<string>("all");
+  const [productSearch, setProductSearch] = useState("");
 
   const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({ locale: lang });
   const presets = presetsQuery.data?.presets ?? [];
+  const presetCategories = useMemo(
+    () => Array.from(new Set(presets.map((p) => p.category))),
+    [presets],
+  );
   const filteredPresets = useMemo(() => {
     const q = presetSearch.trim().toLowerCase();
-    if (!q) return presets;
-    return presets.filter(
-      (p) => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
-    );
-  }, [presets, presetSearch]);
+    return presets.filter((p) => {
+      const matchesQuery = !q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+      const matchesCategory = presetCategory === "all" || p.category === presetCategory;
+      return matchesQuery && matchesCategory;
+    });
+  }, [presets, presetSearch, presetCategory]);
+
+  const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
+    { query: productSearch || undefined, limit: 20 },
+    { enabled: form.productTieInEnabled },
+  );
+  const products = productsQuery.data ?? [];
 
   const generateStoryMutation = trpc.verticalDramaSeries.generateStoryBible.useMutation({
     onSuccess: (data: { creditsUsed: number }) => {
@@ -121,13 +137,12 @@ export function CreateSeriesWizard({
       const seriesId = data.series.id;
       setForm(INITIAL_WIZARD);
       setStepIndex(0);
+      onCreated(seriesId);
       // Best-effort: immediately expand the wizard's bible into a full story.
       // A failure here is non-fatal — the series shell still exists and the
-      // user can retry "Generate story" from the series detail page.
-      generateStoryMutation.mutate(
-        { seriesId },
-        { onSettled: () => onCreated(seriesId) },
-      );
+      // user can retry "Generate story" from the series detail page. This
+      // runs in the background after the dialog has already closed.
+      generateStoryMutation.mutate({ seriesId });
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || (lang === "th" ? "สร้างไม่สำเร็จ" : "Create failed"));
@@ -205,6 +220,8 @@ export function CreateSeriesWizard({
         ? {
             enabled: true,
             productName: form.productName || undefined,
+            productId: form.productId || undefined,
+            productSource: form.productId ? "marketplace" : "manual",
             forbiddenClaims: form.forbiddenClaims
               ? form.forbiddenClaims.split(",").map((s) => s.trim()).filter(Boolean)
               : [],
@@ -265,11 +282,18 @@ export function CreateSeriesWizard({
             lang={lang}
             form={form}
             set={set}
-            presets={filteredPresets}
+            presets={filteredPresets as GenrePreset[]}
             presetsLoading={presetsQuery.isLoading}
             presetSearch={presetSearch}
             onPresetSearchChange={setPresetSearch}
+            presetCategory={presetCategory}
+            onPresetCategoryChange={setPresetCategory}
+            presetCategories={presetCategories}
             onApplyPreset={applyPreset}
+            products={products as MarketplaceProductOption[]}
+            productsLoading={productsQuery.isLoading}
+            productSearch={productSearch}
+            onProductSearchChange={setProductSearch}
           />
         </div>
 
@@ -343,6 +367,16 @@ interface GenrePreset {
   cliffhangerStyle: string;
   characters: GenrePresetCharacter[];
   visualBible: string;
+  scope: "global" | "private";
+}
+
+interface MarketplaceProductOption {
+  id: string;
+  productName: string;
+  imageUrl?: string | null;
+  platform?: string | null;
+  priceCurrent?: string | number | null;
+  currency?: string | null;
 }
 
 function WizardStep({
@@ -354,7 +388,14 @@ function WizardStep({
   presetsLoading,
   presetSearch,
   onPresetSearchChange,
+  presetCategory,
+  onPresetCategoryChange,
+  presetCategories,
   onApplyPreset,
+  products,
+  productsLoading,
+  productSearch,
+  onProductSearchChange,
 }: {
   stepIndex: number;
   lang: "th" | "en";
@@ -364,7 +405,14 @@ function WizardStep({
   presetsLoading: boolean;
   presetSearch: string;
   onPresetSearchChange: (value: string) => void;
+  presetCategory: string;
+  onPresetCategoryChange: (value: string) => void;
+  presetCategories: string[];
   onApplyPreset: (preset: GenrePreset) => void;
+  products: MarketplaceProductOption[];
+  productsLoading: boolean;
+  productSearch: string;
+  onProductSearchChange: (value: string) => void;
 }) {
   const th = lang === "th";
   switch (stepIndex) {
@@ -388,6 +436,19 @@ function WizardStep({
                 className="pl-9"
               />
             </div>
+            <Select value={presetCategory} onValueChange={onPresetCategoryChange}>
+              <SelectTrigger className="mb-2 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{th ? "ทุกหมวดหมู่" : "All categories"}</SelectItem>
+                {presetCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {presetsLoading ? (
               <p className="text-xs text-muted-foreground">{th ? "กำลังโหลด…" : "Loading…"}</p>
             ) : presets.length === 0 ? (
@@ -406,7 +467,17 @@ function WizardStep({
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     )}
                   >
-                    <p className="font-medium">{preset.title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium">{preset.title}</p>
+                      {preset.scope === "private" && (
+                        <Badge
+                          variant="secondary"
+                          className="px-1.5 py-0 text-[10px] leading-4"
+                        >
+                          {th ? "ของฉัน" : "Mine"}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
                   </button>
                 ))}
@@ -503,7 +574,100 @@ function WizardStep({
           </label>
           {form.productTieInEnabled && (
             <>
-              <Field label={th ? "ชื่อสินค้า" : "Product name"}>
+              {form.productId ? (
+                <div className="flex items-center gap-3 rounded-md border bg-background p-2.5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                    {form.productImageUrl ? (
+                      <img
+                        src={form.productImageUrl}
+                        alt={form.productName || "Product"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{form.productName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {th ? "สินค้าจากคลังสินค้า" : "Linked from saved products"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      set("productId", undefined);
+                      set("productImageUrl", undefined);
+                    }}
+                    aria-label={th ? "ยกเลิกการเลือกสินค้า" : "Clear selected product"}
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="relative mb-2">
+                    <Search
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <Input
+                      value={productSearch}
+                      onChange={(e) => onProductSearchChange(e.target.value)}
+                      placeholder={th ? "ค้นหาสินค้าที่บันทึกไว้..." : "Search saved products..."}
+                      className="pl-9"
+                    />
+                  </div>
+                  {productsLoading ? (
+                    <p className="text-xs text-muted-foreground">{th ? "กำลังโหลด…" : "Loading…"}</p>
+                  ) : products.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {th ? "ไม่พบสินค้าที่บันทึกไว้" : "No saved products found"}
+                    </p>
+                  ) : (
+                    <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                      {products.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            set("productId", product.id);
+                            set("productName", product.productName);
+                            set("productImageUrl", product.imageUrl ?? undefined);
+                          }}
+                          className={cn(
+                            "flex items-center gap-2 rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          )}
+                        >
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.productName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{product.productName}</p>
+                            <p className="mt-0.5 truncate text-muted-foreground">
+                              {[product.priceCurrent, product.currency].filter(Boolean).join(" ") || "-"}
+                              {product.platform ? ` · ${product.platform}` : ""}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <Field label={th ? "หรือกรอกชื่อสินค้าเอง" : "Or enter a product name manually"}>
                 <Input value={form.productName} onChange={(e) => set("productName", e.target.value)} />
               </Field>
               <Field label={th ? "ข้อความต้องห้าม (คั่นด้วยจุลภาค)" : "Forbidden claims (comma-separated)"}>
@@ -532,16 +696,23 @@ function WizardStep({
             value={form.targetEpisodeCount || "-"}
           />
           <ReviewRow label={th ? "ภาษา" : "Language"} value={form.locale} />
-          <ReviewRow
-            label={th ? "สินค้าผูกเรื่อง" : "Product tie-in"}
-            value={
-              form.productTieInEnabled
+          <div className="flex items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
+            <span className="text-muted-foreground">{th ? "สินค้าผูกเรื่อง" : "Product tie-in"}</span>
+            <span className="flex items-center gap-2 font-medium">
+              {form.productTieInEnabled && form.productImageUrl && (
+                <img
+                  src={form.productImageUrl}
+                  alt={form.productName || "Product"}
+                  className="h-6 w-6 shrink-0 rounded object-cover"
+                />
+              )}
+              {form.productTieInEnabled
                 ? form.productName || (th ? "เปิดใช้งาน" : "Enabled")
                 : th
                   ? "ไม่มี"
-                  : "None"
-            }
-          />
+                  : "None"}
+            </span>
+          </div>
         </div>
       );
   }

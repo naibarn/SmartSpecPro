@@ -17,7 +17,7 @@ import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./credi
 
 const LAST_RESORT_MODEL = "gpt-4o-mini";
 
-async function resolveStoryBibleModel(): Promise<string> {
+export async function resolveStoryBibleModel(): Promise<string> {
   try {
     const rows = await loadEnabledLlmModelRows();
     if (rows.length === 0) return LAST_RESORT_MODEL;
@@ -28,7 +28,7 @@ async function resolveStoryBibleModel(): Promise<string> {
   }
 }
 
-const episodeBreakdownItemSchema = z.object({
+export const episodeBreakdownItemSchema = z.object({
   episodeNumber: z.number().int().positive(),
   workingTitle: z.string().min(1),
   logline: z.string().min(1),
@@ -62,7 +62,7 @@ export class InsufficientCreditsError extends Error {
   }
 }
 
-function extractJson(text: string): unknown {
+export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1] : text;
   const start = candidate.indexOf("{");

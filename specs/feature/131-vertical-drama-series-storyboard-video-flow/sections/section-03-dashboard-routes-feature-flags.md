@@ -48,12 +48,17 @@ If existing app naming conventions require aliases such as `verticalDramaSeriesE
 
 ## Routes
 
-Add routes:
+**Updated 2026-07-04:** the `/dashboard` prefix was dropped after initial launch.
 
-- `/dashboard/vertical-drama`
-- `/dashboard/vertical-drama/:seriesId`
-- `/dashboard/vertical-drama/:seriesId/episodes/:episodeId`
-- `/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId` (read-only run detail)
+Routes:
+
+- `/drama-series`
+- `/drama-series/:seriesId`
+- `/drama-series/:seriesId/episodes/:episodeId`
+- `/drama-series/:seriesId/episodes/:episodeId/runs/:runId` (read-only run detail)
+
+Legacy paths (`/dashboard/vertical-drama` and its sub-paths) still resolve via a client-side
+`Redirect` to the new paths so old bookmarks/links keep working.
 
 All routes require auth and feature access. The nested `runs/:runId` route is read-only and additionally requires ownership of the parent series/episode; it exposes a specific past run's artifact ledger as a directly linkable deep link (never hidden or orphaned).
 
@@ -106,27 +111,35 @@ The Dashboard menu opens to a production workspace that exposes these fields/con
 
 #### Create Series Wizard Steps (spec §8.2)
 
-Wizard steps in order, each rendering loading (skeleton while prefill/validation resolves), empty (first-entry defaults with guidance), and error (retryable inline validation/save failure with reason code) states:
+**Updated 2026-07-04:** steps are now a freely-navigable tab bar (every step
+always clickable) instead of a linear `Next`/`Back` flow, and step 1 gained a
+genre preset picker. Steps, each rendering loading (skeleton while
+prefill/validation resolves), empty (first-entry defaults with guidance), and
+error (retryable inline validation/save failure with reason code) states:
 
 | # | Step | Purpose |
 |---|---|---|
-| 1 | Basic setup | capture title, genre, logline, target episode count, language, target duration |
+| 1 | Basic setup | capture title, genre, logline, target episode count, language, target duration; also renders the **genre preset picker** (search + card grid over `verticalDramaSeries.listGenrePresets`) — selecting a preset prefills genre/logline/main plot/season arc/tone/cliffhanger style/characters/visual bible (title stays user-entered) |
 | 2 | Story setup | capture main plot, season arc, tone, cliffhanger style |
 | 3 | Characters | add/import characters, roles, relationships, initial state |
 | 4 | Visual bible | generate or upload character references |
 | 5 | Product tie-in (optional) | select product, references, placement policy, forbidden claims |
 | 6 | Review | confirm memory seed, skill chain, provider mode, credit estimate before create |
 
-Beyond loading/empty/error, each step also has a validation-gated navigation state and the final step has a create lifecycle state:
+Step state (all steps are always clickable; there is no "next-disabled" gating on navigation
+anymore):
 
 | Step state | Expected UI |
 |---|---|
-| next-disabled | `Next` is disabled until that step's required fields pass validation; disabled reason is announced/labeled, not silent |
-| next-enabled | `Next` becomes enabled once the step validates, advancing to the next step |
-| create-in-progress | on Review confirm, the `Create` action shows an in-progress/pending state and is guarded against double-submit |
-| create-success | on success, a confirmation state routes to the new series shell (dry-run, no paid generation) |
+| complete | tab shows a green completion dot once that step's required content is present |
+| needs-attention | tab shows an amber dot while that step's required content is still empty |
+| create-blocked | the Review step's `Create` action is disabled only when title or episode count is invalid (labeled reason shown), independent of which tab is active |
+| create-in-progress | on Review confirm, `Create` shows an in-progress/pending state (creating series → generating story) and is guarded against double-submit |
+| create-success | on success, a confirmation state routes to the new series (dry-run create + best-effort `generateStoryBible`, §8.2.1) |
 
-The wizard runs in dry-run mode: reaching Review and confirming creates a series shell only and must not trigger paid generation.
+The wizard's `create` mutation itself still runs in dry-run mode (series shell only, no paid
+generation). `generateStoryBible`, chained automatically after a successful create, is the one
+genuinely paid action in this flow — see §8.2.1 and section-10.
 
 #### Series Workspace Tabs (spec §8.3)
 
@@ -143,15 +156,19 @@ The Series detail page is a tabbed workspace exposing all of these tabs:
 | Assets | generated/imported media ledger only (not the character roster) |
 | Settings | series-level configuration |
 
-**Progressive disclosure (simplicity):** the eight tabs are not all surfaced at once for a fresh/empty series. Default visible tabs are the essentials — `Overview` and `Episodes`. The remaining tabs are grouped and revealed progressively:
+**Always visible, not progressively disclosed (updated 2026-07-04):** all eight tabs render at
+once for every series, fresh or populated — the earlier "more"-affordance tab-hiding was
+replaced with an attention-indicator pattern per direct user feedback that hiding tabs made it
+harder to audit what a series already has:
 
-| Group | Tabs | Reveal condition |
+| Group | Tabs | Visibility |
 |---|---|---|
-| Essentials | Overview, Episodes | always visible |
-| Story | Bible, Characters, Memory | shown once populated, or via a "more" affordance |
-| Advanced | Product Tie-in, Assets, Settings | shown once populated, or via a "more" affordance |
+| Essentials | Overview, Episodes | always visible, no indicator |
+| Story | Bible, Characters, Memory | always visible; shows an amber dot while the group has no content yet (bible/memory/episodes all empty), green once any exists |
+| Advanced | Product Tie-in, Assets, Settings | always visible; shows an amber dot until `productTieIn.enabled` is set, green once it is |
 
-A fresh series therefore shows only Overview + Episodes; the Story and Advanced groups appear automatically once their underlying content exists, and remain reachable at any time through an explicit "more" affordance so nothing is permanently hidden.
+Every tab is reachable in one click at all times; the dot is purely informational (never gates
+navigation).
 
 **Assets tab = media ledger with lineage:** the Assets tab is the generated/imported media ledger only and does not duplicate the character roster (Characters owns the roster). Each asset row exposes its supersede/repair lineage (source → superseded → current) so users can browse an asset's history and see which version is current. Characters and Assets cross-link (a character reference links to its underlying asset row, and an asset row links back to any character it belongs to) rather than duplicating each other.
 
@@ -172,16 +189,22 @@ When `verticalDramaSeriesSubShots` is on, the episode workspace's video-motion s
 
 ### Component Map
 
+**Updated 2026-07-04** — added `VerticalDramaShell`, `CreateSeriesWizard`, `VerticalDramaRunDetailView`,
+`VerticalDramaDialogueAudioPanel` (wired in); see section-10 for the full addendum record.
+
 | Component | File | Owns | Consumes |
 |---|---|---|---|
-| `VerticalDramaSeriesPage` | page | list and create wizard shell | series router |
-| `VerticalDramaSeriesDetailPage` | page | tabs, series state, memory summary | series data |
-| `VerticalDramaEpisodePage` | page | episode stage workspace | episode run state |
-| `VerticalDramaStageCard` | component | stage display and CTA | stage result |
+| `VerticalDramaShell` | component | shared full-page chrome (gradient header, persistent collapsible left project sidebar + search, wizard mount point) for all three routes | `verticalDramaSeries.list` |
+| `VerticalDramaSeriesPage` | page | series list content, mounted inside `VerticalDramaShell` | series router |
+| `CreateSeriesWizard` | component | 6-tab create wizard incl. genre preset picker, extracted so any page can trigger it via the shell | `verticalDramaSeries.create`, `.generateStoryBible`, `.listGenrePresets` |
+| `VerticalDramaSeriesDetailPage` | page | always-visible tabs, series state, memory summary, `StoryBibleOverviewCard` | series data |
+| `VerticalDramaEpisodePage` | page | episode stage workspace, mounted inside `VerticalDramaShell` | episode run state |
+| `VerticalDramaEpisodeWorkspace` | component | phase-grouped stage-card grid (every card clickable) + focused-stage detail panel + primary CTA | stage result, `assembly.listRuns`/`getRunDetail`, episode `dialogueAudioPlan` |
+| `VerticalDramaRunDetailView` | component | generic read-only per-run artifact ledger, used as the focused-stage detail default | `assembly.listRuns`/`getRunDetail` |
+| `VerticalDramaDialogueAudioPanel` | component | dedicated focused-stage detail for `dialogue_audio_plan` | episode `dialogueAudioPlan`, `runStage` |
 | `VerticalDramaApprovalBar` | component | approval gate actions | approval checkpoint |
 | `VerticalDramaBreadcrumb` | component | reversible Series › Episode › Storyboard Review trail (`nav` landmark) | current route/series/episode/run context |
-| `VerticalDramaRunDetail` | component | read-only past-run artifact ledger | run detail data |
-| `VerticalDramaSubShotEditor` | component | flag-gated sub-shot editor: target count (auto 2-3, raise to 4-5), per-sub-shot camera setup / motion prompt / duration / transition, cut-sequence preview; renders only when `verticalDramaSeriesSubShots` is on (progressive disclosure) | sub-shot plan for the episode's main shots |
+| `VerticalDramaSubShotEditor` | component | flag-gated sub-shot editor: target count (auto 2-3, raise to 4-5), per-sub-shot camera setup / motion prompt / duration / transition, cut-sequence preview; renders only when `verticalDramaSeriesSubShots` is on. UI complete but **not yet wired** into the stage-card click flow — no backing query/mutation shaped for its per-sub-shot edit contract yet (backlog, section-10) | sub-shot plan for the episode's main shots |
 
 ### State Matrix
 
@@ -256,18 +279,23 @@ Capture list, detail, and episode workspace at mobile, tablet, desktop. Include 
 6. Add stage cards and approval bar placeholders wired to mock/router data.
 7. Add responsive and accessibility-friendly states.
 8. Add `VerticalDramaBreadcrumb` (`nav` landmark) across all three routes for reversible deep-linking.
-9. Add progressive-disclosure grouping (Essentials / Story / Advanced) with a "more" affordance to the workspace tabs.
-10. Add per-step `Next` validation gating and Review `Create` in-progress/success states to the wizard.
+9. ~~Add progressive-disclosure grouping (Essentials / Story / Advanced) with a "more" affordance to the workspace tabs.~~ **Superseded 2026-07-04**: all tabs are always visible with an attention-indicator dot instead (see updated Series Workspace Tabs section above and section-10).
+10. Add per-step `Next` validation gating and Review `Create` in-progress/success states to the wizard. **Updated 2026-07-04**: steps are freely-navigable tabs with completion dots instead of `Next`-gating; `Create` gating unchanged (title + episode count).
 11. Wire Assets tab to the media ledger with per-row supersede/repair lineage and Characters↔Assets cross-links.
 12. Add the read-only `runs/:runId` route/page (`VerticalDramaRunDetail`) with auth + feature + ownership guards, plus read-only archived/completed history surfaces.
+13. **(2026-07-04)** Move routes off the `/dashboard` prefix to `/drama-series`, with client-side redirects from the legacy paths.
+14. **(2026-07-04)** Add `VerticalDramaShell` (persistent collapsible left project sidebar + search) as the shared chrome for all three routes; see section-10.
+15. **(2026-07-04)** Add the genre preset picker to wizard step 1 and the `generateStoryBible` paid action; see section-10.
+16. **(2026-07-04)** Redesign the episode workspace as an always-clickable stage-card grid with a focused-stage detail panel; see section-10.
 
 ## Acceptance
 
-- User can create a series shell in dry-run mode from Dashboard.
-- No paid generation is triggered from the initial UI.
+- User can create a series shell in dry-run mode from `/drama-series`.
+- No paid generation is triggered by `create`/`updateSeries` or by opening the initial UI.
+  `generateStoryBible` (§8.2.1) is the sole exception and is clearly labeled/confirmed as paid.
 - Existing media/dashboard flows are unchanged when flags are off.
 - Archived series and completed episodes expose their history surfaces (Episodes, Memory, Assets, Runs) as read-only and fully reachable — never hidden or orphaned.
-- A specific past run is directly linkable at `/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId` (read-only, auth + feature + ownership enforced).
+- A specific past run is directly linkable at `/drama-series/:seriesId/episodes/:episodeId/runs/:runId` (read-only, auth + feature + ownership enforced); the legacy `/dashboard/vertical-drama/...` path still resolves via redirect.
 
 ## Verification
 

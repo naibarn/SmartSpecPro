@@ -1,0 +1,3 @@
+[2026-07-04T06:10:00Z] DECISION: Use model_preference=inherited-default (not lightweight-default/haiku) for all 4 Wave 1 audit agents.
+  Context: Each agent must synthesize a code-vs-spec gap judgment (not just fact retrieval) and one (agent-A) must produce a merge-vs-separate product recommendation. Findings feed directly into a user-facing audit report, so precision matters more than cost here. Prior Explore-agent dispatches earlier in this session (no model override) produced high-precision, well-cited reports on comparable vertical-drama-series code; keeping the same default preserves that quality bar.
+  Alternatives considered: haiku (lightweight-default) — rejected, risk of shallower synthesis on a nuanced audit.

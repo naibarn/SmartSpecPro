@@ -13,6 +13,8 @@ section-06-storyboard-review-handoff
 section-07-audio-dialogue-subtitles
 section-08-provider-qc-product-tie-in
 section-09-assembly-export-artifacts
+section-10-ui-redesign-genre-presets-story-generation
+section-11-user-and-admin-preset-ownership
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -30,6 +32,8 @@ END_MANIFEST -->
 | section-07-audio-dialogue-subtitles | 01, 02, 04 | 06, 08, 09 | Yes after 04 |
 | section-08-provider-qc-product-tie-in | 01, 02, 04, 05, 07 | 06, 09 | No |
 | section-09-assembly-export-artifacts | 02, 04, 06, 07, 08 | - | No |
+| section-10-ui-redesign-genre-presets-story-generation | 02, 03, 04, 09 | 11 | No |
+| section-11-user-and-admin-preset-ownership | 10 | - | No |
 
 ## Execution Order
 
@@ -40,6 +44,8 @@ END_MANIFEST -->
 5. section-08-provider-qc-product-tie-in runs after start frames and audio policy are available.
 6. section-06-storyboard-review-handoff runs after frame, audio, provider, and tie-in metadata contracts are stable.
 7. section-09-assembly-export-artifacts finishes the artifact ledger, final assembly, export, and memory checkpoint path.
+8. section-10-ui-redesign-genre-presets-story-generation retrofits the shipped UI (route, tabs, genre presets, real story generation, stage-card grid) after direct user feedback — implementation record, already shipped 2026-07-04.
+9. section-11-user-and-admin-preset-ownership adds user-private vs. admin-published preset ownership on top of section-10's genre preset table, reusing the existing series-editing UI (no new screen).
 
 ## Section Summaries
 
@@ -78,6 +84,14 @@ Resolve image/video models from the registry, enforce provider capability gates,
 ### section-09-assembly-export-artifacts
 
 Persist complete run artifacts, import generated clips, create final assembly/export metadata, and checkpoint memory updates after QC/export.
+
+### section-10-ui-redesign-genre-presets-story-generation
+
+Implementation record: route moved off `/dashboard`, persistent left project sidebar shell, always-navigable wizard/workspace tabs, genre preset library (36 seeded), real credit-consuming `generateStoryBible` action, episode workspace redesigned as an always-clickable stage-card grid.
+
+### section-11-user-and-admin-preset-ownership
+
+Add `scope`/ownership to genre presets so users can save their own in-progress series as a private preset (reusable only by them) and admins can publish presets globally (reusable by everyone) — via a "Save as preset" action on the existing series-editing UI, not a new preset-management screen.
 
 ## Global Verification
 

@@ -11,7 +11,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
@@ -43,6 +43,13 @@ import {
   verticalDramaSeriesMemoryService,
   memoryRowToEvent,
 } from "../services/verticalDramaSeriesMemory";
+import {
+  generateNextEpisodesViaLlm,
+  InsufficientCreditsError as EpisodeContinuationInsufficientCreditsError,
+  VdSchemaValidationError as EpisodeContinuationSchemaValidationError,
+  type ExistingEpisodeContext,
+  type EpisodeBreakdownItem,
+} from "../services/verticalDramaEpisodeContinuation";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                         */
@@ -120,6 +127,63 @@ async function loadOwnedEpisode(owner: EpisodeRunOwner) {
     .limit(1);
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
   return row;
+}
+
+/**
+ * Insert one new episode row, safely assigning the next episode number.
+ * Extracted from `createEpisode` (spec Tests) so every episode-creating
+ * procedure — the plain shell `createEpisode` AND the plan-materializing /
+ * LLM-continuation `generateNextEpisodes` — shares the exact same
+ * race-safe max+1-with-retry-on-unique-violation numbering behavior. The
+ * unique index on (tenant, series, episodeNumber) prevents concurrent
+ * duplicates; on a collision (someone else raced us for the same number) the
+ * max+1 assignment is simply retried up to 5 times.
+ */
+async function insertEpisodeWithSafeNumber(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  input: {
+    title?: string | null;
+    script?: unknown;
+    status?: string;
+    targetDurationSeconds?: number;
+  },
+) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [agg] = await db
+      .select({
+        maxEpisodeNumber: sql<number>`COALESCE(MAX(${verticalDramaEpisodes.episodeNumber}), 0)`,
+      })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.seriesId, seriesId),
+        ),
+      );
+    const nextNumber = Number(agg?.maxEpisodeNumber ?? 0) + 1;
+    try {
+      const [row] = await db
+        .insert(verticalDramaEpisodes)
+        .values({
+          tenantId,
+          userId,
+          seriesId,
+          episodeNumber: nextNumber,
+          title: input.title ?? null,
+          status: input.status ?? "draft",
+          targetDurationSeconds: input.targetDurationSeconds ?? 60,
+          script: input.script ?? null,
+        })
+        .returning();
+      return row;
+    } catch (err) {
+      // Unique-violation on the episode number → someone raced us; retry.
+      if (attempt === 4) throw err;
+    }
+  }
+  throw new TRPCError({ code: "CONFLICT", message: "Could not assign episode number" });
 }
 
 /** Resolve the effective sub-shot policy for a tenant (flag-gated, fail-closed). */
@@ -206,42 +270,235 @@ export const verticalDramaEpisodesRouter = router({
         ? { _idempotencyReceipt: input.idempotencyKey }
         : null;
 
-      // Retry the safe max+1 assignment against the unique index on collision so
-      // concurrent creators never duplicate the same episode number (spec Tests).
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const [agg] = await db
-          .select({
-            maxEpisodeNumber: sql<number>`COALESCE(MAX(${verticalDramaEpisodes.episodeNumber}), 0)`,
-          })
-          .from(verticalDramaEpisodes)
-          .where(
-            and(
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.seriesId, seriesId),
-            ),
-          );
-        const nextNumber = Number(agg?.maxEpisodeNumber ?? 0) + 1;
+      // Safe max+1 assignment with retry-on-unique-violation so concurrent
+      // creators never duplicate the same episode number (spec Tests) —
+      // shared with `generateNextEpisodes` via `insertEpisodeWithSafeNumber`.
+      const row = await insertEpisodeWithSafeNumber(tenantId, userId, seriesId, {
+        title: input.title ?? null,
+        script: scriptReceipt,
+        targetDurationSeconds: input.targetDurationSeconds,
+      });
+      return { episode: { ...row, id: String(row.id) } };
+    }),
+
+  /**
+   * Generate `count` MORE episodes that genuinely continue the same
+   * storyline — repeatable indefinitely. Two modes, chosen automatically
+   * (never by the caller):
+   *
+   *  - Mode A "materialize from plan" (free, no LLM call): takes unused
+   *    `bible.episodeBreakdown` entries already written by the series'
+   *    "Generate story" step (`generateStoryBible`) and inserts them as real
+   *    episode rows.
+   *  - Mode B "LLM continuation" (credit-gated): once there are no unused
+   *    breakdown entries left, calls an LLM with every existing episode so
+   *    far for continuity, appends the new entries to the series'
+   *    `bible.episodeBreakdown` (never overwriting other bible keys), and
+   *    inserts them as real episode rows too.
+   *
+   * Both modes insert via `insertEpisodeWithSafeNumber` — the exact same
+   * race-safe numbering `createEpisode` uses — so calling this back-to-back
+   * indefinitely never produces a duplicate/racy episode number.
+   */
+  generateNextEpisodes: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        count: z.number().int().min(1).max(5).default(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await assertSeriesOwned(tenantId, userId, seriesId);
+
+      const [seriesRow] = await db
+        .select()
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (!seriesRow) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+
+      const bible = (seriesRow.bible as Record<string, unknown> | null) ?? {};
+      const episodeBreakdown: EpisodeBreakdownItem[] = Array.isArray(bible.episodeBreakdown)
+        ? (bible.episodeBreakdown as EpisodeBreakdownItem[])
+        : [];
+
+      const existingRows: Array<{
+        episodeNumber: number;
+        title: string | null;
+        script: unknown;
+      }> = await db
+        .select({
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          title: verticalDramaEpisodes.title,
+          script: verticalDramaEpisodes.script,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+          ),
+        )
+        .orderBy(asc(verticalDramaEpisodes.episodeNumber));
+
+      let maxEpisodeNumber = existingRows.reduce(
+        (max: number, r) => Math.max(max, r.episodeNumber),
+        0,
+      );
+
+      // Continuity context so far, oldest first: prefer the row's own
+      // materialized draft summary, falling back to a matching plan entry.
+      const existingEpisodes: ExistingEpisodeContext[] = existingRows.map((r) => {
+        const draftSummary = (r.script as Record<string, unknown> | null)?._draftSummary as
+          | { logline?: string; keyBeats?: string[] }
+          | undefined;
+        const planned = episodeBreakdown.find((b) => b.episodeNumber === r.episodeNumber);
+        return {
+          episodeNumber: r.episodeNumber,
+          title: r.title,
+          logline: draftSummary?.logline ?? planned?.logline,
+          keyBeats: draftSummary?.keyBeats ?? planned?.keyBeats,
+        };
+      });
+
+      const insertedEpisodes: Array<{
+        id: string;
+        episodeNumber: number;
+        title: string | null;
+        status: string;
+      }> = [];
+      let remaining = input.count;
+      let creditsUsed = 0;
+      let usedModeA = false;
+      let usedModeB = false;
+
+      // Mode A — materialize unused planned breakdown entries (free, no LLM call).
+      const unusedPlanned = episodeBreakdown
+        .filter((b) => b.episodeNumber > maxEpisodeNumber)
+        .sort((a, b) => a.episodeNumber - b.episodeNumber);
+
+      for (const planned of unusedPlanned) {
+        if (remaining <= 0) break;
+        const row = await insertEpisodeWithSafeNumber(tenantId, userId, seriesId, {
+          title: planned.workingTitle,
+          script: { _draftSummary: { logline: planned.logline, keyBeats: planned.keyBeats } },
+          status: "draft",
+        });
+        const episodeNumber = Number(row.episodeNumber);
+        const title = row.title as string | null;
+        insertedEpisodes.push({
+          id: String(row.id),
+          episodeNumber,
+          title,
+          status: String(row.status),
+        });
+        existingEpisodes.push({
+          episodeNumber,
+          title,
+          logline: planned.logline,
+          keyBeats: planned.keyBeats,
+        });
+        maxEpisodeNumber = Math.max(maxEpisodeNumber, episodeNumber);
+        remaining -= 1;
+        usedModeA = true;
+      }
+
+      // Mode B — LLM continuation for whatever `count` Mode A couldn't cover.
+      // All-or-nothing: `generateNextEpisodesViaLlm` throws rather than
+      // returning a short batch, so we never insert a partial Mode-B batch.
+      const appendedBreakdown: EpisodeBreakdownItem[] = [];
+      if (remaining > 0) {
+        let llmResult;
         try {
-          const [row] = await db
-            .insert(verticalDramaEpisodes)
-            .values({
-              tenantId,
-              userId,
-              seriesId,
-              episodeNumber: nextNumber,
-              title: input.title ?? null,
-              status: "draft",
-              targetDurationSeconds: input.targetDurationSeconds ?? 60,
-              script: scriptReceipt,
-            })
-            .returning();
-          return { episode: { ...row, id: String(row.id) } };
-        } catch (err) {
-          // Unique-violation on the episode number → someone raced us; retry.
-          if (attempt === 4) throw err;
+          llmResult = await generateNextEpisodesViaLlm({
+            userId,
+            tenantId,
+            seriesId,
+            title: seriesRow.title,
+            locale: (seriesRow.locale as "th" | "en") ?? "th",
+            genre: seriesRow.genre,
+            tone: seriesRow.tone,
+            bible,
+            existingEpisodes,
+            nextEpisodeNumber: maxEpisodeNumber + 1,
+            count: remaining,
+          });
+        } catch (error) {
+          if (error instanceof EpisodeContinuationInsufficientCreditsError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+          }
+          if (error instanceof EpisodeContinuationSchemaValidationError) {
+            throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: error instanceof Error ? error.message : "Episode continuation failed",
+          });
+        }
+
+        creditsUsed = llmResult.creditsUsed;
+        usedModeB = true;
+
+        // Insert the whole Mode-B batch (the service already guaranteed a
+        // full-count response). The episode number actually persisted comes
+        // from the same safe max+1 helper, not the model's claimed number, so
+        // the bible's `episodeBreakdown` is updated with the REAL numbers to
+        // stay consistent with what a future call's Mode A will see.
+        for (const planned of llmResult.generated) {
+          const row = await insertEpisodeWithSafeNumber(tenantId, userId, seriesId, {
+            title: planned.workingTitle,
+            script: { _draftSummary: { logline: planned.logline, keyBeats: planned.keyBeats } },
+            status: "draft",
+          });
+          const episodeNumber = Number(row.episodeNumber);
+          insertedEpisodes.push({
+            id: String(row.id),
+            episodeNumber,
+            title: row.title as string | null,
+            status: String(row.status),
+          });
+          appendedBreakdown.push({
+            episodeNumber,
+            workingTitle: planned.workingTitle,
+            logline: planned.logline,
+            keyBeats: planned.keyBeats,
+          });
         }
       }
-      throw new TRPCError({ code: "CONFLICT", message: "Could not assign episode number" });
+
+      // Append (never overwrite) the newly-generated entries into the
+      // series' bible.episodeBreakdown so future calls see them as
+      // "existing episodes" too.
+      if (appendedBreakdown.length > 0) {
+        const updatedBible = {
+          ...bible,
+          episodeBreakdown: [...episodeBreakdown, ...appendedBreakdown],
+        };
+        await db
+          .update(verticalDramaSeries)
+          .set({ bible: updatedBible, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId),
+            ),
+          );
+      }
+
+      const source: "breakdown" | "generated" | "mixed" =
+        usedModeA && usedModeB ? "mixed" : usedModeB ? "generated" : "breakdown";
+
+      return { episodes: insertedEpisodes, creditsUsed, source };
     }),
 
   /**

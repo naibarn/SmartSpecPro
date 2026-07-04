@@ -20,6 +20,7 @@
  * file here.
  */
 
+import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
@@ -29,6 +30,8 @@ import { db } from "../db";
 import {
   verticalDramaSeries,
   verticalDramaCharacters,
+  mediaAssets,
+  mediaModels,
   type VerticalDramaCharacterRow,
 } from "../../drizzle/schema";
 import {
@@ -36,6 +39,15 @@ import {
   VerticalDramaCharacterStockError,
 } from "../services/verticalDramaCharacterStock";
 import { VERTICAL_DRAMA_CHARACTER_ASSET_STATES } from "@shared/verticalDramaSeries/characterAssets";
+import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
+import { calculateCreditCost } from "../services/pricingCalculator";
+import { hasEnoughCredits, deductCredits } from "../services/creditService";
+import { signBearerToken } from "../_core/tokens";
+import {
+  generateCharacterVisualPrompts,
+  InsufficientCreditsError,
+  VdSchemaValidationError,
+} from "../services/verticalDramaCharacterImageGeneration";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -131,6 +143,55 @@ function mapStockError(err: unknown): never {
     }
   }
   throw err;
+}
+
+/**
+ * Short-lived server-to-server bearer token for the Python media-generation
+ * backend, mirroring `server/routers/media.ts`'s `createMediaToken`/
+ * `getUserToken` convention exactly: prefer the caller's own session token
+ * (so usage attributes correctly), fall back to minting a scoped token.
+ */
+function createCharacterPortraitMediaToken(userId: number): string {
+  return signBearerToken(
+    {
+      sub: String(userId),
+      type: "access",
+      scopes: ["media:generate"],
+      jti: `vd_char_portrait_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    },
+    "15m",
+  );
+}
+
+function getCharacterPortraitUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
+  return ctx.userToken || createCharacterPortraitMediaToken(ctx.user.id);
+}
+
+/**
+ * Best-effort character description drawn from `verticalDramaCharacters.data`
+ * (the free-form `VerticalDramaCharacter` payload — personality/backstory/
+ * identityLock/wardrobeRules; there is no single `description` field).
+ * Returns `undefined` when nothing usable is present.
+ */
+function extractCharacterDescription(data: Record<string, unknown> | null): string | undefined {
+  if (!data) return undefined;
+  const parts: string[] = [];
+  if (typeof data.personality === "string" && data.personality.trim()) {
+    parts.push(`Personality: ${data.personality.trim()}`);
+  }
+  if (typeof data.backstory === "string" && data.backstory.trim()) {
+    parts.push(`Backstory: ${data.backstory.trim()}`);
+  }
+  if (typeof data.identityLock === "string" && data.identityLock.trim()) {
+    parts.push(`Identity lock: ${data.identityLock.trim()}`);
+  }
+  if (Array.isArray(data.wardrobeRules)) {
+    const rules = data.wardrobeRules.filter(
+      (rule): rule is string => typeof rule === "string" && rule.trim().length > 0,
+    );
+    if (rules.length > 0) parts.push(`Wardrobe rules: ${rules.join("; ")}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : undefined;
 }
 
 /** Browser-safe projection of a character roster row (never leaks internal ids as numbers). */
@@ -418,6 +479,207 @@ export const verticalDramaCharactersRouter = router({
         ids,
       );
       return { staleCount };
+    }),
+
+  /**
+   * Generate a real character reference portrait: (1) run the installed
+   * `vertical-drama-character-visual-bible` skill as a direct, credit-gated
+   * LLM call to produce a portrait prompt + negative prompt (see
+   * `verticalDramaCharacterImageGeneration.ts`), then (2) render that prompt
+   * into an actual image via `mediaGenerationService.generateImage` (the
+   * SYNCHRONOUS single-prompt-in/single-image-out method — the same one
+   * `media.ts`'s `generateImage` mutation calls; chosen over
+   * `generateImageAsync` because this is a plain text-prompt portrait with
+   * no user-uploaded reference image and no need for job polling). The
+   * rendered image is registered as a canonical `media_assets` row (never a
+   * bare provider URL, matching this table's own doc comment) and linked
+   * into the durable character-asset stock via the existing
+   * `verticalDramaCharacterStockService.linkAsset` path — `approved: false`
+   * / `qcStatus: "pending"` — so it enters the SAME human-approval queue as
+   * imported assets; nothing here bypasses review.
+   *
+   * Two SEPARATE credit charges occur (never double-counted for the same
+   * spend): the prompt-generation LLM call is credited inside
+   * `generateCharacterVisualPrompts` itself; the image render is credited
+   * here, mirroring `media.ts`'s own check-credits -> call -> deduct-credits
+   * convention (`mediaGenerationService.generateImage` does not deduct
+   * credits itself — the caller always does, using the backend-reported
+   * `creditsUsed` when available).
+   */
+  generateCharacterImage: verticalDramaProcedure
+    .input(seriesScope.extend({ characterId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+
+      const [seriesRow] = await db
+        .select({
+          title: verticalDramaSeries.title,
+          genre: verticalDramaSeries.genre,
+          tone: verticalDramaSeries.tone,
+        })
+        .from(verticalDramaSeries)
+        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .limit(1);
+
+      const description = extractCharacterDescription(
+        (character.data as Record<string, unknown> | null) ?? null,
+      );
+
+      // 1. Prompt generation — credit-gated + deducted internally.
+      let promptResult;
+      try {
+        promptResult = await generateCharacterVisualPrompts({
+          userId,
+          tenantId,
+          seriesId,
+          characterId,
+          characterKey: character.characterKey,
+          name: character.name,
+          role: character.role,
+          description,
+          storyContext: seriesRow
+            ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
+            : undefined,
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character visual prompt generation failed",
+        });
+      }
+
+      // 2. Pre-flight credit check for the image render — a SEPARATE charge
+      //    from the prompt-generation LLM call above.
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
+
+      const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
+      if (!hasImageCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Insufficient credits for portrait image render. Required: ${imageCreditCost}`,
+        });
+      }
+
+      // 3. Render — synchronous, matches media.ts's generateImage caller.
+      const userToken = getCharacterPortraitUserToken(ctx);
+      let renderResult;
+      try {
+        renderResult = await mediaGenerationService.generateImage(
+          {
+            prompt: promptResult.portraitPrompt,
+            negativePrompt: promptResult.negativePrompt,
+            numImages: 1,
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaCharacters.generateCharacterImage",
+              stage: "submission",
+            },
+          },
+          userToken,
+        );
+      } catch (err) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character portrait image generation failed",
+        });
+      }
+
+      await deductCredits({
+        userId,
+        tenantId,
+        amount: renderResult.creditsUsed || imageCreditCost,
+        description: `Vertical Drama — generate character portrait (character #${characterId})`,
+        sourceType: "media_image",
+        metadata: {
+          model: renderResult.model,
+          feature: "vertical_drama_character_portrait",
+          seriesId,
+          characterId,
+          endpoint: "generateImage",
+          creditCost: imageCreditCost,
+        },
+      });
+
+      const imageResult = renderResult.data[0];
+      if (!imageResult?.url) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Image generation succeeded but returned no result URL",
+        });
+      }
+
+      // 4. Register the rendered image as a canonical media_assets row —
+      //    `verticalDramaCharacterAssets.mediaAssetId` must point at the
+      //    asset registry, "never a provider URL" (see schema.ts doc comment).
+      const [mediaAssetRow] = await db
+        .insert(mediaAssets)
+        .values({
+          tenantId,
+          userId,
+          sourceType: "vertical_drama_character_portrait",
+          status: "ready",
+          storageKey: imageResult.url,
+          originalUrl: imageResult.url,
+          mimeType: "image/png",
+        })
+        .returning({ id: mediaAssets.id });
+
+      // 5. Link into the durable character-asset stock — starts in the
+      //    "generated" state (approved: false, qcStatus: "pending"), the
+      //    SAME approval queue `approveAsset`/`transitionAsset` already serve.
+      let asset;
+      try {
+        asset = await verticalDramaCharacterStockService.linkAsset({
+          tenantId,
+          userId,
+          seriesId,
+          characterId,
+          mediaAssetId: mediaAssetRow.id,
+          assetType: "character_reference",
+          role: "primary_portrait",
+          source: "generated",
+          metadata: {
+            portraitPrompt: promptResult.portraitPrompt,
+            negativePrompt: promptResult.negativePrompt ?? null,
+            promptModel: promptResult.model,
+            imageModel: renderResult.model,
+            visualBibleSummary: promptResult.raw.visual_bible_summary,
+          },
+        });
+      } catch (err) {
+        mapStockError(err);
+      }
+
+      return {
+        asset,
+        imageUrl: imageResult.url,
+        mediaAssetId: String(mediaAssetRow.id),
+        portraitPrompt: promptResult.portraitPrompt,
+        negativePrompt: promptResult.negativePrompt,
+        creditsUsed: {
+          promptGeneration: promptResult.creditsUsed,
+          imageRender: renderResult.creditsUsed || imageCreditCost,
+        },
+      };
     }),
 });
 

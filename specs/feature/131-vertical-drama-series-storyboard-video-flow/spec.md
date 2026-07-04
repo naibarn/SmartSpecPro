@@ -1,8 +1,8 @@
 # Feature 131: Vertical Drama Series Storyboard Video Flow
 
-Version: 0.2
-Date: 2026-07-03
-Status: Proposed
+Version: 0.3
+Date: 2026-07-04
+Status: Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md)
 Owner: Dashboard / Storyboard Review / Media Studio / Skill Runtime / Video Generation / Audio / Data
 Depends-on: 112-storyboard-studio-skill-based-prompt-generation-qa-loop, 117-production-director-agents-sdk-auto-storyboard-video, 122-video-segment-planner-multi-shot-storyboard-review, 127-article-to-storyboard-video-project, 130-hybrid-flow-openai-agents-sdk-runtime
 External guide: https://github.com/naibarn/vertical-drama-video-flow at commit `e2dbef07d07447489d041112d862d994adeac5d4`
@@ -1511,34 +1511,81 @@ Retcons are explicit proposals requiring user approval. Approved retcons create 
 
 ## 8. User Experience
 
+> **2026-07-04 addendum:** §8.1-§8.4 and §8.7 below reflect the shipped
+> "Presentation-Builder-style" redesign (route moved off `/dashboard`, a
+> persistent left project sidebar, genre presets, always-navigable tabs, and a
+> real LLM-backed "Generate story" action). See
+> `section-10-ui-redesign-genre-presets-story-generation.md` for the full
+> implementation record; `section-03` has been updated to match.
+
 ### 8.1 Series List
 
-The Dashboard menu opens to a production workspace:
+The entry point is `/drama-series` (moved off the `/dashboard` prefix; the
+legacy `/dashboard/vertical-drama*` paths redirect client-side so old links
+keep working). A shared `VerticalDramaShell` wraps all three routes
+(series list, series detail, episode workspace) with:
 
-- project search/filter
-- status chips
-- next episode number
-- last edited time
-- missing approval badges
-- product tie-in enabled marker
-- button: `สร้างซีรีย์แนวตั้ง`
+- a persistent, collapsible left sidebar listing every series ("project") the
+  user owns, with a search box, a "New" trigger, and the current series
+  highlighted — desktop/tablet-landscape show it as a real 18rem/20rem column
+  (collapsible to a 3.25rem icon rail); below that breakpoint it reflows to a
+  slim top strip the user can expand
+- the series list page itself keeps its own richer view inside that shell:
+  project search/filter, status chips, next episode number, last edited time,
+  missing approval badges, product tie-in enabled marker, button:
+  `สร้างซีรีย์แนวตั้ง`
 
 ### 8.2 Create Series Wizard
 
-Steps:
+The wizard's 6 steps are rendered as a **tab bar where every step is always
+clickable** (not gated behind a linear `Next`/`Back` flow) — each tab shows a
+small completion dot (green = required content present, amber = still needs
+attention) so the user can jump around and see at a glance what's filled in:
 
-1. Basic setup: title, genre, logline, target episode count, language, target duration.
+1. Basic setup: title, genre, logline, target episode count, language, target
+   duration. This step also surfaces a **genre preset picker** (search + card
+   grid) — selecting a preset prefills genre/logline/main plot/season
+   arc/tone/cliffhanger style/characters/visual bible from a curated library
+   (title stays user-entered); the user can still edit every field afterward.
 2. Story setup: main plot, season arc, tone, cliffhanger style.
 3. Characters: add/import characters, roles, relationships, initial state.
 4. Visual bible: generate or upload character references.
-5. Product tie-in: optional product, references, placement policy, forbidden claims.
-6. Review: memory seed, skill chain, provider mode, credit estimate.
+5. Product tie-in: optional product, references, placement policy, forbidden
+   claims.
+6. Review: confirm memory seed, skill chain, provider mode, credit estimate;
+   the `Create` action is only gated on title + a valid episode count (not on
+   which tab is active).
+
+On `Create`, the wizard creates the series shell (dry-run, as before) and then
+**automatically calls the new `generateStoryBible` action** (see §8.2.1) to
+expand the gathered bible into a full episode-by-episode story before routing
+to the new series. A failure here is non-fatal — the series shell still
+exists and "Generate story" is retryable from the Series Workspace Overview
+tab (§8.3).
+
+#### 8.2.1 Generate Story (real LLM call — the one paid exception in this flow)
+
+Every other action in this feature (series create, series update, episode
+stage runs in `dry_run`/`plan_only` mode) is metadata-only or provider-mocked.
+`generateStoryBible` is the first genuinely paid, credit-consuming LLM call in
+the vertical-drama surface: given the series' bible fields, it produces an
+expanded season arc, refined character profiles, and a per-episode breakdown
+(`episodeNumber`, `workingTitle`, `logline`, `keyBeats[]`), written back into
+the series' existing `bible` jsonb column (no schema change). It follows the
+same credit-check → call → deduct convention as `skills.ts`'s `enhancePrompt`,
+and is conceptually the series-level counterpart to the `plan_only` run mode
+already described in §11.4 (real LLM planning allowed, no image/video/TTS
+calls) — it does not violate Non-Goal §3.4, which is scoped to image/video/TTS
+providers.
 
 ### 8.3 Series Workspace
 
-Tabs:
+Tabs (all eight are **always visible and clickable** — see §8.7 for why
+progressive disclosure was dropped):
 
-- Overview
+- Overview — also renders the generated season arc + episode breakdown once
+  `generateStoryBible` has run, with a "Generate story" / "Regenerate" action
+  when it hasn't (or the wizard-time attempt failed)
 - Bible
 - Characters
 - Episodes
@@ -1563,6 +1610,23 @@ For each episode (stage order is canonical per §11.1):
 10. Create Storyboard Review project.
 11. Open Storyboard Review.
 12. After completion, write episode summary back into series memory.
+
+**Episode workspace surface (2026-07-04 redesign):** the 15 canonical stages
+above render as a phase-grouped grid of cards (grouped under the same ~4
+phases as §8.7) — **every card is independently clickable regardless of its
+status**, not only the current one. Clicking a card focuses it and renders its
+full detail below the grid: a generic read-only run-ledger view
+(`VerticalDramaRunDetailView`, backed by `assembly.listRuns`/`getRunDetail`)
+for stages without a bespoke view, and the dedicated
+`VerticalDramaDialogueAudioPanel` for the `dialogue_audio_plan` stage. The
+existing start-frame contact-sheet picker (`VerticalDramaContactSheetPicker`)
+is now reachable from its stage cards at any time, not only while it is the
+current stage. The single primary CTA (§8.7) is unchanged and still drives the
+actual "run this stage" action; the stage-card grid adds a parallel,
+always-available *viewing* surface on top of it. The `VerticalDramaSubShotEditor`
+(step 9's sub-shot editor) is not yet wired into this click-to-view flow — no
+query/mutation exists yet shaped for its per-sub-shot edit contract; it remains
+backlog (see section-10).
 
 ### 8.5 Storyboard Review Episode Panel
 
@@ -1613,18 +1677,27 @@ stored. The UI must provide:
 - **Always available** — all history/review/repair surfaces stay reachable read-only for
   completed episodes and archived series (archive is soft; nothing is hidden or orphaned).
 
-### 8.7 Simplicity And Progressive Disclosure
+### 8.7 Simplicity And Progressive Disclosure (updated 2026-07-04)
 
-The workspace must stay easy to understand despite its depth:
+The workspace must stay easy to understand despite its depth. The original
+design used tab-hiding progressive disclosure; that was replaced with an
+**always-visible-plus-attention-indicator** pattern so users can freely check
+what's filled in vs. missing on any tab/stage, per direct user feedback that
+hiding tabs made it harder to audit a series before generating:
 
 - The 15 canonical `VerticalDramaPipelineStage` stages are grouped into ~4 labeled phases
   (Plan → Frames → Prompt & Handoff → Generate & Assemble) with a phase progress indicator;
-  exactly ONE primary CTA is driven by `RunResult.next_action`.
-- Workspace tabs use progressive disclosure: a fresh series surfaces only the essential tabs
-  (Overview, Episodes); advanced tabs (Memory, Product Tie-in, Assets, Settings) appear once
-  relevant/populated.
+  exactly ONE primary CTA is still driven by `RunResult.next_action` for the *current*
+  actionable stage, but every stage card in the grid is independently clickable to view its
+  own detail regardless of status (§8.4).
+- Workspace tabs (§8.3) and wizard steps (§8.2) are **always visible/clickable** — no tab or
+  step is hidden behind a "more" affordance. Instead, tabs/steps whose underlying content is
+  still empty show a small amber completion dot (green once populated) so the user can see at
+  a glance what still needs attention without losing the ability to jump there directly.
 - Planning, prompt generation, and PAID generation are always visually and textually distinct
-  so paid actions are never triggered by accident.
+  so paid actions are never triggered by accident — this now also covers the new "Generate
+  story" action (§8.2.1), which is the one action in this feature that is genuinely paid and is
+  labeled/confirmed accordingly (credits-used toast, distinct button copy).
 - A breadcrumb (Series › Episode › Storyboard Review) makes deep navigation reversible.
 
 ---

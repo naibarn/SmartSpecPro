@@ -22,6 +22,8 @@ import {
   verticalDramaEpisodeRuns,
   verticalDramaRunArtifacts,
   verticalDramaApprovalCheckpoints,
+  verticalDramaSeries,
+  verticalDramaCharacters,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
@@ -42,6 +44,12 @@ import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
 } from "./verticalDramaSeriesMemory";
+import {
+  generateStoryboardShotgrid,
+  InsufficientCreditsError as StoryboardInsufficientCreditsError,
+  VdSchemaValidationError as StoryboardVdSchemaValidationError,
+  type StoryboardShotgridOutput,
+} from "./verticalDramaStoryboardGeneration";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -177,6 +185,26 @@ export const VERTICAL_DRAMA_PAID_STAGES: ReadonlySet<VerticalDramaPipelineStage>
 
 /** Stable machine-readable error code for a schema-validation failure (spec §11.5). */
 export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
+
+/**
+ * Map a `generateStoryboardShotgrid` failure to a `RunResult` error, reusing
+ * the existing `VD_SCHEMA_VALIDATION_FAILED` convention for malformed LLM
+ * output. Never throws — real-generation failures must produce a normal
+ * `failed`/`repair` `RunResult`, not an unhandled rejection out of `runStage`.
+ */
+function mapStoryboardGenerationError(error: unknown): RunResult["errors"][number] {
+  if (error instanceof StoryboardInsufficientCreditsError) {
+    return { code: "VD_INSUFFICIENT_CREDITS", message: error.message, repairable: false };
+  }
+  if (error instanceof StoryboardVdSchemaValidationError) {
+    return { code: VD_SCHEMA_VALIDATION_FAILED, message: error.message, repairable: true };
+  }
+  return {
+    code: "VD_STORYBOARD_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /* Provider routing port (thin typed seam to section 08 — stub impl here)      */
@@ -623,6 +651,81 @@ export class VerticalDramaEpisodePipeline {
     return row.id;
   }
 
+  /**
+   * Build the `generateStoryboardShotgrid` params from real DB context
+   * (series bible/locale/tone + the character roster) and invoke it. Only
+   * called from `runStage` for `storyboard_shotgrid` when the mode is not
+   * dry_run/plan_only.
+   */
+  private async generateRealStoryboard(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow,
+  ): Promise<{ storyboard: StoryboardShotgridOutput; creditsUsed: number; model: string }> {
+    const [seriesRow] = await db
+      .select()
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId),
+        ),
+      )
+      .limit(1);
+
+    const characterRows = await db
+      .select({
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+        role: verticalDramaCharacters.role,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId),
+        ),
+      );
+
+    const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
+    const episodeBreakdown = Array.isArray(bible?.episodeBreakdown)
+      ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
+      : [];
+    const matchingBreakdown = episodeBreakdown.find(
+      (item) => Number(item.episodeNumber) === episode.episodeNumber,
+    );
+
+    return generateStoryboardShotgrid({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      episodeNumber: episode.episodeNumber,
+      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      durationSeconds: episode.targetDurationSeconds ?? 60,
+      storySource: {
+        logline: typeof matchingBreakdown?.logline === "string" ? (matchingBreakdown.logline as string) : undefined,
+        keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
+          ? (matchingBreakdown.keyBeats as string[])
+          : undefined,
+        mainPlot: typeof bible?.mainPlot === "string" ? (bible.mainPlot as string) : undefined,
+        seasonArc:
+          typeof bible?.expandedSeasonArc === "string"
+            ? (bible.expandedSeasonArc as string)
+            : typeof bible?.seasonArc === "string"
+              ? (bible.seasonArc as string)
+              : undefined,
+        tone: seriesRow?.tone ?? undefined,
+      },
+      characters: characterRows.map((c: { characterKey: string; name: string; role: string | null }) => ({
+        characterId: c.characterKey,
+        name: c.name,
+        role: c.role,
+      })),
+    });
+  }
+
   private async ensurePendingCheckpoint(
     owner: EpisodeRunOwner,
     runId: number,
@@ -655,6 +758,15 @@ export class VerticalDramaEpisodePipeline {
     const mode = opts.mode;
     const subShotPolicy = opts.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
     const subShotFlagOn = opts.subShotFlagOn ?? false;
+    // Hoisted so both the storyboard-generation override below and the paid
+    // gate further down share the exact same condition (mode-only, no async
+    // dependency) — this is the one and only "never paid before a real mode"
+    // gate in this file.
+    const paidModeAllowed =
+      mode === "full" ||
+      mode === "render_images" ||
+      mode === "render_video" ||
+      mode === "repair";
 
     let memoryBundle: unknown;
     if (stage === "normalize_series_input") {
@@ -664,13 +776,70 @@ export class VerticalDramaEpisodePipeline {
       );
     }
 
-    const payload = buildStagePayload(stage, {
+    let payload = buildStagePayload(stage, {
       episode,
       mode,
       subShotFlagOn,
       subShotPolicy,
       memoryBundle,
     });
+
+    // `buildStagePayload` above is ALWAYS the deterministic, no-provider-call
+    // placeholder — that call is unconditional and unchanged for every mode,
+    // including dry_run/plan_only. Only for `storyboard_shotgrid`, and only
+    // when the mode is not dry_run/plan_only, do we override that placeholder
+    // with a real LLM-generated storyboard before the validation/approval
+    // gates below run (so those gates see the same real content an operator
+    // would approve). A generation failure (insufficient credits, malformed
+    // LLM output, provider error) never throws out of `runStage` — it is
+    // recorded as a normal `failed`/`repair` `RunResult`, same as the
+    // existing schema-validation-gate failure path just below.
+    if (stage === "storyboard_shotgrid" && paidModeAllowed) {
+      try {
+        const generated = await this.generateRealStoryboard(owner, episode);
+        payload = { stage, ...generated.storyboard };
+        // Persist to the episode's own `storyboard` jsonb column (not
+        // `script`), same tenant/user/series-scoped update pattern used by
+        // the router's `updateEpisodeDraft` procedure.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ storyboard: generated.storyboard, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+            ),
+          );
+      } catch (error) {
+        const genError = mapStoryboardGenerationError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(owner, runId, stage, payload, []);
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
 
     // 1) Schema-validation gate — a failed validation never advances (spec §11.5).
     const validation = validateStagePayload(stage, payload);
@@ -715,11 +884,8 @@ export class VerticalDramaEpisodePipeline {
 
     // 3) Paid gate — paid stages never run in dry-run/plan-only or before approval.
     const isPaid = VERTICAL_DRAMA_PAID_STAGES.has(stage);
-    const paidModeAllowed =
-      mode === "full" ||
-      mode === "render_images" ||
-      mode === "render_video" ||
-      mode === "repair";
+    // `paidModeAllowed` is computed once, above, before the storyboard-
+    // generation override — reused here unchanged.
 
     if (requiresApproval && !approved) {
       status = "approval_required";

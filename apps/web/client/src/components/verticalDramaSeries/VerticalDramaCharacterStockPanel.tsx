@@ -23,6 +23,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Sparkles,
   User,
   XCircle,
 } from "lucide-react";
@@ -101,6 +102,13 @@ export function VerticalDramaCharacterStockPanel({
   const [newKey, setNewKey] = useState("");
   const [newRole, setNewRole] = useState("");
   const [importMediaAssetId, setImportMediaAssetId] = useState("");
+  /** Newly-generated portrait URLs keyed by characterId — only populated for
+   *  this session's freshly-generated images (see `generateImageMutation`).
+   *  Pre-existing assets without a resolvable URL keep their plain-text
+   *  `Media #{id}` rendering; this is a pragmatic, session-local cache. */
+  const [generatedImageUrls, setGeneratedImageUrls] = useState<
+    Record<string, { imageUrl: string; mediaAssetId: string }>
+  >({});
 
   const listQuery = trpc.verticalDramaCharacters.listCharacters.useQuery(
     { seriesId },
@@ -160,6 +168,25 @@ export function VerticalDramaCharacterStockPanel({
     onError,
   });
 
+  const generateImageMutation = trpc.verticalDramaCharacters.generateCharacterImage.useMutation({
+    onSuccess: (res, variables) => {
+      setGeneratedImageUrls((prev) => ({
+        ...prev,
+        [variables.characterId]: { imageUrl: res.imageUrl, mediaAssetId: res.mediaAssetId },
+      }));
+      invalidate();
+      const totalCredits = res.creditsUsed.promptGeneration + res.creditsUsed.imageRender;
+      toast.success(
+        t(
+          lang,
+          `สร้างภาพตัวละครแล้ว (ใช้ ${totalCredits} เครดิต)`,
+          `Character image generated (${totalCredits} credits used)`,
+        ),
+      );
+    },
+    onError,
+  });
+
   const characters = listQuery.data?.characters ?? [];
   const manifest = listQuery.data?.manifest;
   const assets = (manifest?.assets ?? []) as VerticalDramaCharacterAsset[];
@@ -181,7 +208,8 @@ export function VerticalDramaCharacterStockPanel({
     linkMutation.isPending ||
     approveMutation.isPending ||
     transitionMutation.isPending ||
-    markStaleMutation.isPending;
+    markStaleMutation.isPending ||
+    generateImageMutation.isPending;
 
   /* ---- Loading ---- */
   if (listQuery.isLoading) {
@@ -250,17 +278,20 @@ export function VerticalDramaCharacterStockPanel({
                 </p>
               ) : (
                 <ul className="flex flex-col gap-1" role="listbox" aria-label={t(lang, "รายชื่อตัวละคร", "Character list")}>
-                  {characters.map((c) => {
+                  {characters.map((c: (typeof characters)[number]) => {
                     const active = c.characterId === effectiveSelectedId;
+                    const generatingThis =
+                      generateImageMutation.isPending &&
+                      generateImageMutation.variables?.characterId === c.characterId;
                     return (
-                      <li key={c.characterId}>
+                      <li key={c.characterId} className="flex items-center gap-1">
                         <button
                           type="button"
                           role="option"
                           aria-selected={active}
                           onClick={() => setSelectedCharacterId(c.characterId)}
                           className={cn(
-                            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
+                            "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
                             active ? "bg-muted font-medium" : "hover:bg-muted/60",
                           )}
                         >
@@ -272,6 +303,26 @@ export function VerticalDramaCharacterStockPanel({
                             </Badge>
                           )}
                         </button>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            disabled={mutating}
+                            aria-label={t(lang, "สร้างภาพตัวละคร", "Generate character image")}
+                            title={t(lang, "สร้างภาพตัวละคร", "Generate character image")}
+                            onClick={() =>
+                              generateImageMutation.mutate({ seriesId, characterId: c.characterId })
+                            }
+                          >
+                            {generatingThis ? (
+                              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                       </li>
                     );
                   })}
@@ -458,21 +509,44 @@ export function VerticalDramaCharacterStockPanel({
                           (transitionMutation.isPending && transitionMutation.variables?.assetLinkId === asset.assetLinkId) ||
                           (markStaleMutation.isPending &&
                             markStaleMutation.variables?.assetLinkIds?.includes(asset.assetLinkId));
+                        // Only the freshly-generated asset from this session has a
+                        // resolvable URL — matched by characterId + mediaAssetId.
+                        // Older/imported assets fall back to the plain-text label.
+                        const generatedForCharacter = generatedImageUrls[asset.characterId];
+                        const thumbnailUrl =
+                          generatedForCharacter &&
+                          String(asset.mediaAssetId) === generatedForCharacter.mediaAssetId
+                            ? generatedForCharacter.imageUrl
+                            : null;
                         return (
                           <li
                             key={asset.assetLinkId}
                             className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border p-2"
                           >
+                            {thumbnailUrl && (
+                              <img
+                                src={thumbnailUrl}
+                                alt={t(lang, "ภาพตัวละครที่สร้างขึ้น", "Generated character portrait")}
+                                className="h-12 w-12 shrink-0 rounded-md border border-border object-cover"
+                              />
+                            )}
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium">
                                 {asset.assetType}
                                 {asset.role ? ` · ${asset.role}` : ""}
                               </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {t(lang, "มีเดีย", "Media")} #{asset.mediaAssetId ?? "—"} ·{" "}
-                                {t(lang, "ที่มา", "Source")}: {asset.source}
-                                {asset.containsHumanFace ? ` · ${t(lang, "มีใบหน้า", "Has face")}` : ""}
-                              </p>
+                              {thumbnailUrl ? (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {t(lang, "ที่มา", "Source")}: {asset.source}
+                                  {asset.containsHumanFace ? ` · ${t(lang, "มีใบหน้า", "Has face")}` : ""}
+                                </p>
+                              ) : (
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {t(lang, "มีเดีย", "Media")} #{asset.mediaAssetId ?? "—"} ·{" "}
+                                  {t(lang, "ที่มา", "Source")}: {asset.source}
+                                  {asset.containsHumanFace ? ` · ${t(lang, "มีใบหน้า", "Has face")}` : ""}
+                                </p>
+                              )}
                               {asset.rejectionReason && (
                                 <p className="mt-0.5 text-xs text-destructive">
                                   {t(lang, "เหตุผล", "Reason")}: {asset.rejectionReason}

@@ -21,6 +21,9 @@ import {
   verticalDramaEpisodes,
   verticalDramaApprovalCheckpoints,
   verticalDramaGenrePresets,
+  verticalDramaCharacters,
+  verticalDramaCharacterAssets,
+  verticalDramaRunArtifacts,
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
 } from "../../drizzle/schema";
@@ -29,6 +32,7 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../services/verticalDramaStoryBible";
+import { debugError } from "../_core/logger";
 
 /** Per-series episode aggregate row shape (typed projection; `db.select` erases to `any`). */
 type EpisodeAggRow = { seriesId: number; maxEpisodeNumber: number; episodeCount: number };
@@ -42,6 +46,27 @@ type EpisodeListProjection = {
   status: string;
   targetDurationSeconds: number;
   updatedAt: Date;
+};
+/** Character asset projection (joined to character name) for the Assets tab. */
+type CharacterAssetProjection = {
+  id: number;
+  characterId: number | null;
+  characterName: string | null;
+  mediaAssetId: number | null;
+  assetType: string;
+  role: string | null;
+  approved: boolean;
+  qcStatus: string;
+  createdAt: Date;
+};
+/** Run artifact projection for the Assets tab. */
+type RunArtifactProjection = {
+  id: number;
+  episodeId: number;
+  stage: string;
+  storageKey: string | null;
+  mediaAssetIds: unknown;
+  createdAt: Date;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -115,6 +140,67 @@ function parseCharactersDraft(draft: string): Array<{ name: string; role: string
     });
 }
 
+/**
+ * Slugify a character name into a `characterKey` candidate (lowercase,
+ * non-alphanumeric collapsed to `-`, trimmed). Falls back to `"character"`
+ * for names that are entirely non-alphanumeric (e.g. emoji-only input) so we
+ * never produce an empty `characterKey`.
+ */
+function slugifyCharacterName(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "character";
+}
+
+/**
+ * Seed the durable `vertical_drama_characters` roster from the wizard's
+ * freeform `bible.charactersDraft` text (already parsed by
+ * `parseCharactersDraft`). Best-effort only: the series shell must never fail
+ * to be created because of a character-seeding problem, so callers must wrap
+ * this in a try/catch (see `create` below) — this function itself does not
+ * swallow errors so callers can log them.
+ *
+ * `characterKey` is derived from the character name and de-duplicated within
+ * this batch (`-2`, `-3`, ...) to satisfy the `(seriesId, characterKey)`
+ * unique constraint; blank/whitespace-only names are skipped.
+ */
+async function seedCharactersFromDraft(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  charactersDraft: string,
+): Promise<void> {
+  const parsed = parseCharactersDraft(charactersDraft).filter((c) => c.name.trim().length > 0);
+  if (parsed.length === 0) return;
+
+  const usedKeys = new Set<string>();
+  const rows = parsed.map((character) => {
+    const base = slugifyCharacterName(character.name);
+    let key = base;
+    let suffix = 2;
+    while (usedKeys.has(key)) {
+      key = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(key);
+
+    return {
+      tenantId,
+      userId,
+      seriesId,
+      characterKey: key,
+      name: character.name,
+      role: character.role || null,
+      data: character.description ? { description: character.description } : null,
+    } as typeof verticalDramaCharacters.$inferInsert;
+  });
+
+  await db.insert(verticalDramaCharacters).values(rows);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Input schemas                                                              */
 /* -------------------------------------------------------------------------- */
@@ -168,6 +254,7 @@ const updateSeriesInput = z.object({
   // Wizard shell payloads — stored losslessly, validated by their own contracts.
   bible: z.record(z.string(), z.unknown()).optional(),
   policy: z.record(z.string(), z.unknown()).optional(),
+  productTieIn: z.record(z.string(), z.unknown()).optional(),
 });
 
 /* -------------------------------------------------------------------------- */
@@ -305,6 +392,22 @@ export const verticalDramaSeriesRouter = router({
       })
       .returning();
 
+    // Best-effort: seed the durable character roster (`vertical_drama_characters`,
+    // read by the Series Detail Characters tab) from the wizard's freeform
+    // `bible.charactersDraft` text. Never allowed to fail series creation.
+    const charactersDraft = input.bible?.charactersDraft;
+    if (typeof charactersDraft === "string" && charactersDraft.trim().length > 0) {
+      try {
+        await seedCharactersFromDraft(tenantId, userId, Number(row.id), charactersDraft);
+      } catch (error) {
+        debugError(
+          "verticalDramaSeries.create",
+          `Failed to seed characters for series ${row.id} from charactersDraft`,
+          error,
+        );
+      }
+    }
+
     return { series: { ...row, id: String(row.id) } };
   }),
 
@@ -346,6 +449,94 @@ export const verticalDramaSeriesRouter = router({
       return {
         series: { ...row, id: String(row.id) },
         episodes: episodes.map((e) => ({ ...e, id: String(e.id) })),
+      };
+    }),
+
+  /**
+   * List the Assets tab's two backing collections for an owned series:
+   * character/product reference assets (`vertical_drama_character_assets`,
+   * joined to the character name) and durable run artifacts
+   * (`vertical_drama_run_artifacts`). Read-only; ownership enforced via
+   * `loadOwnedSeries` plus tenant+user+seriesId scoping on both queries.
+   */
+  listSeriesAssets: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      // Ensure the caller owns it (throws NOT_FOUND otherwise).
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const characterAssetRows: CharacterAssetProjection[] = await db
+        .select({
+          id: verticalDramaCharacterAssets.id,
+          characterId: verticalDramaCharacterAssets.characterId,
+          characterName: verticalDramaCharacters.name,
+          mediaAssetId: verticalDramaCharacterAssets.mediaAssetId,
+          assetType: verticalDramaCharacterAssets.assetType,
+          role: verticalDramaCharacterAssets.role,
+          approved: verticalDramaCharacterAssets.approved,
+          qcStatus: verticalDramaCharacterAssets.qcStatus,
+          createdAt: verticalDramaCharacterAssets.createdAt,
+        })
+        .from(verticalDramaCharacterAssets)
+        .leftJoin(
+          verticalDramaCharacters,
+          eq(verticalDramaCharacterAssets.characterId, verticalDramaCharacters.id),
+        )
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.tenantId, tenantId),
+            eq(verticalDramaCharacterAssets.userId, userId),
+            eq(verticalDramaCharacterAssets.seriesId, seriesId),
+          ),
+        )
+        .orderBy(desc(verticalDramaCharacterAssets.createdAt));
+
+      const runArtifactRows: RunArtifactProjection[] = await db
+        .select({
+          id: verticalDramaRunArtifacts.id,
+          episodeId: verticalDramaRunArtifacts.episodeId,
+          stage: verticalDramaRunArtifacts.stage,
+          storageKey: verticalDramaRunArtifacts.storageKey,
+          mediaAssetIds: verticalDramaRunArtifacts.mediaAssetIds,
+          createdAt: verticalDramaRunArtifacts.createdAt,
+        })
+        .from(verticalDramaRunArtifacts)
+        .where(
+          and(
+            eq(verticalDramaRunArtifacts.tenantId, tenantId),
+            eq(verticalDramaRunArtifacts.userId, userId),
+            eq(verticalDramaRunArtifacts.seriesId, seriesId),
+          ),
+        )
+        .orderBy(desc(verticalDramaRunArtifacts.createdAt));
+
+      return {
+        characterAssets: characterAssetRows.map((row) => ({
+          id: String(row.id),
+          characterId: row.characterId !== null ? String(row.characterId) : null,
+          characterName: row.characterName ?? null,
+          mediaAssetId: row.mediaAssetId !== null ? String(row.mediaAssetId) : null,
+          assetType: row.assetType,
+          role: row.role ?? null,
+          approved: row.approved,
+          qcStatus: row.qcStatus,
+          createdAt: row.createdAt.toISOString(),
+        })),
+        runArtifacts: runArtifactRows.map((row) => ({
+          id: String(row.id),
+          episodeId: String(row.episodeId),
+          stage: row.stage,
+          storageKey: row.storageKey ?? null,
+          mediaAssetIds: (row.mediaAssetIds as number[] | null) ?? [],
+          createdAt: row.createdAt.toISOString(),
+        })),
       };
     }),
 
@@ -400,6 +591,7 @@ export const verticalDramaSeriesRouter = router({
       if (input.status !== undefined) updates.status = input.status;
       if (input.bible !== undefined) updates.bible = input.bible;
       if (input.policy !== undefined) updates.policy = input.policy;
+      if (input.productTieIn !== undefined) updates.productTieIn = input.productTieIn;
 
       const [row] = await db
         .update(verticalDramaSeries)
@@ -449,6 +641,7 @@ export const verticalDramaSeriesRouter = router({
           id: String(row.id),
           title: row.title,
           category: row.category,
+          scope: row.scope,
           logline: row.logline,
           mainPlot: row.mainPlot,
           seasonArc: row.seasonArc,

@@ -13101,3 +13101,40 @@ export const verticalDramaQcReports = pgTable("vertical_drama_qc_reports", {
 
 export type VerticalDramaQcReportRow = typeof verticalDramaQcReports.$inferSelect;
 export type InsertVerticalDramaQcReportRow = typeof verticalDramaQcReports.$inferInsert;
+
+/**
+ * Genre presets for the Create-Series Wizard (spec feature 131 UI addendum,
+ * ownership added in section-11-user-and-admin-preset-ownership).
+ * Pre-filled genre, plot, logline, characters, and visual bible so a series
+ * can start from a rich template instead of a blank form. `charactersJson` is
+ * an array of `{ name, role, description }`.
+ *
+ * Ownership: `scope: "global"` presets (`tenantId`/`userId` NULL) are visible
+ * to every user — this is the seeded catalog plus anything an admin chose to
+ * publish. `scope: "private"` presets are visible only to the owning
+ * `tenantId`+`userId` — a user's own "Save as preset" on their series.
+ */
+export const verticalDramaGenrePresets = pgTable("vertical_drama_genre_presets", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  title: varchar("title", { length: 150 }).notNull(),
+  category: varchar("category", { length: 60 }).notNull(),
+  locale: varchar("locale", { length: 8 }).default("th").notNull(),
+  logline: text("logline").notNull(),
+  mainPlot: text("mainPlot").notNull(),
+  seasonArc: text("seasonArc").notNull(),
+  tone: varchar("tone", { length: 100 }).notNull(),
+  cliffhangerStyle: varchar("cliffhangerStyle", { length: 150 }).notNull(),
+  charactersJson: jsonb("charactersJson").notNull(),
+  visualBible: text("visualBible").notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
+  scope: varchar("scope", { length: 20 }).default("global").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_genre_presets_locale_idx").on(t.locale, t.sortOrder),
+  index("vds_genre_presets_owner_idx").on(t.tenantId, t.userId, t.scope),
+]);
+
+export type VerticalDramaGenrePresetRow = typeof verticalDramaGenrePresets.$inferSelect;
+export type InsertVerticalDramaGenrePresetRow = typeof verticalDramaGenrePresets.$inferInsert;

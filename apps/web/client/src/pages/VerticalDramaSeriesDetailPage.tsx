@@ -37,6 +37,9 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
+import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
+import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
+import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
 import {
   pickCopy,
   seriesStatusCopy,
@@ -98,7 +101,14 @@ export default function VerticalDramaSeriesDetailPage() {
         status: string;
         bible?: unknown;
         memory?: unknown;
-        productTieIn?: { enabled?: boolean } | null;
+        productTieIn?: {
+          enabled?: boolean;
+          productName?: string;
+          productId?: string;
+          productImageUrl?: string;
+          forbiddenClaims?: string[];
+          [key: string]: unknown;
+        } | null;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
@@ -205,7 +215,13 @@ export default function VerticalDramaSeriesDetailPage() {
                   </CardContent>
                 </Card>
 
-                <StoryBibleOverviewCard lang={lang} seriesId={seriesId} bible={series.bible} readOnly={isArchived} />
+                <StoryBibleOverviewCard
+                  lang={lang}
+                  seriesId={seriesId}
+                  bible={series.bible}
+                  readOnly={isArchived}
+                  onViewEpisodes={() => setActiveTab("episodes")}
+                />
 
                 {!isArchived && (
                   <SaveAsPresetCard lang={lang} seriesId={seriesId} seriesTitle={series.title} />
@@ -220,6 +236,25 @@ export default function VerticalDramaSeriesDetailPage() {
                 <TabsContent key={tab} value={tab} className="pt-4">
                   {tab === "characters" ? (
                     <VerticalDramaCharacterStockPanel seriesId={seriesId} readOnly={isArchived} />
+                  ) : tab === "settings" ? (
+                    <VerticalDramaSettingsTab
+                      lang={lang}
+                      seriesId={seriesId}
+                      title={series.title}
+                      status={series.status}
+                      readOnly={isArchived}
+                      onSaved={() => detailQuery.refetch()}
+                    />
+                  ) : tab === "product" ? (
+                    <VerticalDramaProductTieInTab
+                      lang={lang}
+                      seriesId={seriesId}
+                      productTieIn={series.productTieIn}
+                      readOnly={isArchived}
+                      onSaved={() => detailQuery.refetch()}
+                    />
+                  ) : tab === "assets" ? (
+                    <VerticalDramaAssetsTab lang={lang} seriesId={seriesId} />
                   ) : (
                     <PlaceholderTab lang={lang} label={pickCopy(lang, tabLabels[tab])} readOnly={isArchived} />
                   )}
@@ -250,6 +285,34 @@ function EpisodesTab({
   }>;
   readOnly: boolean;
 }) {
+  const utils = trpc.useUtils();
+
+  const generateNextEpisodesMutation = trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
+    onSuccess: (data: {
+      episodes: Array<{ id: string; episodeNumber: number; title: string | null; status: string }>;
+      creditsUsed: number;
+      source: "breakdown" | "generated" | "mixed";
+    }) => {
+      const credited = data.creditsUsed > 0;
+      toast.success(
+        lang === "th"
+          ? `เพิ่ม ${data.episodes.length} ตอนแล้ว${credited ? ` (ใช้ ${data.creditsUsed} เครดิต)` : ""}`
+          : `Added ${data.episodes.length} episode(s)${credited ? ` (${data.creditsUsed} credits used)` : ""}`,
+      );
+      void utils.verticalDramaSeries.get.invalidate();
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message || (lang === "th" ? "เพิ่มตอนไม่สำเร็จ" : "Failed to add episode"),
+      );
+    },
+  });
+
+  const isAdding = generateNextEpisodesMutation.isPending;
+  const handleAddEpisode = () => {
+    generateNextEpisodesMutation.mutate({ seriesId, count: 1 });
+  };
+
   if (episodes.length === 0) {
     return (
       <Card className="border-dashed">
@@ -258,9 +321,18 @@ function EpisodesTab({
             {lang === "th" ? "ยังไม่มีตอนในซีรีย์นี้" : "This series has no episodes yet."}
           </p>
           {!readOnly && (
-            <Button variant="outline" className="gap-2" disabled>
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {lang === "th" ? "เพิ่มตอน (เร็วๆ นี้)" : "Add episode (coming soon)"}
+            <Button
+              variant="outline"
+              className="gap-2"
+              disabled={isAdding}
+              onClick={handleAddEpisode}
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              )}
+              {lang === "th" ? "เพิ่มตอนแรก" : "Add first episode"}
             </Button>
           )}
         </CardContent>
@@ -269,26 +341,44 @@ function EpisodesTab({
   }
 
   return (
-    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      {episodes.map((ep) => (
-        <li key={ep.id}>
-          <Link href={verticalDramaRoutes.episode(seriesId, ep.id)}>
-            <Card className="cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="font-medium">
-                    EP {ep.episodeNumber}
-                    {ep.title ? ` · ${ep.title}` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{ep.status}</p>
-                </div>
-                <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
-              </CardContent>
-            </Card>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {episodes.map((ep) => (
+          <li key={ep.id}>
+            <Link href={verticalDramaRoutes.episode(seriesId, ep.id)}>
+              <Card className="cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+                <CardContent className="flex items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      EP {ep.episodeNumber}
+                      {ep.title ? ` · ${ep.title}` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{ep.status}</p>
+                  </div>
+                  <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
+                </CardContent>
+              </Card>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {!readOnly && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          disabled={isAdding}
+          onClick={handleAddEpisode}
+        >
+          {isAdding ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          )}
+          {lang === "th" ? "เพิ่มตอน" : "Add episode"}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -344,11 +434,13 @@ function StoryBibleOverviewCard({
   seriesId,
   bible,
   readOnly,
+  onViewEpisodes,
 }: {
   lang: "th" | "en";
   seriesId: string;
   bible: unknown;
   readOnly: boolean;
+  onViewEpisodes?: () => void;
 }) {
   const utils = trpc.useUtils();
   const expanded = (bible ?? {}) as ExpandedStoryBible;
@@ -406,11 +498,17 @@ function StoryBibleOverviewCard({
             {expanded.expandedSeasonArc && (
               <p className="text-muted-foreground">{expanded.expandedSeasonArc}</p>
             )}
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {lang === "th" ? "แผนเนื้อเรื่องรายตอน (ร่าง)" : "Episode-by-episode story plan (draft)"}
+            </p>
             <ol className="space-y-2">
               {expanded.episodeBreakdown!.map((ep) => (
                 <li key={ep.episodeNumber} className="rounded-md border p-2.5">
                   <p className="font-medium">
-                    EP {ep.episodeNumber} · {ep.workingTitle}
+                    {lang === "th"
+                      ? `ตอนที่ ${ep.episodeNumber} (แผน)`
+                      : `Episode ${ep.episodeNumber} (draft plan)`}
+                    {` · ${ep.workingTitle}`}
                   </p>
                   <p className="text-xs text-muted-foreground">{ep.logline}</p>
                   <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
@@ -421,6 +519,23 @@ function StoryBibleOverviewCard({
                 </li>
               ))}
             </ol>
+            {onViewEpisodes ? (
+              <button
+                type="button"
+                onClick={onViewEpisodes}
+                className="text-xs text-primary underline-offset-2 hover:underline"
+              >
+                {lang === "th"
+                  ? 'ดูตอนจริงที่สร้างแล้วได้ที่แท็บ "ตอน"'
+                  : 'See the actual created episodes in the "Episodes" tab'}
+              </button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? 'ดูตอนจริงที่สร้างแล้วได้ที่แท็บ "ตอน"'
+                  : 'See the actual created episodes in the "Episodes" tab'}
+              </p>
+            )}
             {!readOnly && (
               <Button
                 variant="outline"
