@@ -1,11 +1,14 @@
 /**
- * VerticalDramaEpisodeWorkspace — the episode workspace (spec §04 UI/UX Contract).
+ * VerticalDramaEpisodeWorkspace — the episode workspace (spec §04 UI/UX Contract,
+ * extended per the Presentation-Builder-style redesign).
  *
  * Groups the 15 canonical `VerticalDramaPipelineStage` stages into ~4 labeled
- * phases with a phase-progress indicator, and surfaces exactly ONE primary
- * call-to-action derived from the current stage's `next_action`. Secondary
- * per-stage detail (and repair) is available on drill-down but never competes
- * with the single primary CTA.
+ * phases and renders them as a grid of stage cards — every stage is always
+ * clickable (not just the "current" one) so the user can inspect any finished,
+ * failed, or pending stage's full detail at any time. The single primary
+ * call-to-action for the current stage's `next_action` stays exactly as
+ * before; the stage grid adds a separate, always-available "view detail"
+ * surface underneath it, keyed by `focusedStage`.
  *
  * Handles the loading / empty (no episode → create CTA) / error / success and
  * completed (read-only historical) states. Running/timeline animation is
@@ -16,7 +19,7 @@
  * `verticalDramaEpisodes` tRPC router at the call site.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +41,32 @@ import {
   VerticalDramaMemoryTimeline,
   type VerticalDramaMemoryTimelineProps,
 } from "./VerticalDramaMemoryTimeline";
+import {
+  VerticalDramaRunDetailView,
+  type VdRunDetail,
+  type VdRunSummary,
+} from "./VerticalDramaRunDetailView";
+import { VerticalDramaDialogueAudioPanel } from "./VerticalDramaDialogueAudioPanel";
+import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type { RunResult, VerticalDramaPipelineStage } from "@shared/verticalDramaSeries";
+
+/** Data needed to render the generic "view this stage's runs" fallback panel. */
+export interface VerticalDramaStageRunDetailData {
+  runs: VdRunSummary[];
+  detail: VdRunDetail | null;
+  selectedRunId?: string;
+  onSelectRun?: (runId: string) => void;
+  loading?: boolean;
+  error?: string | null;
+}
+
+/** Data needed to render the dialogue/audio stage's dedicated review panel. */
+export interface VerticalDramaDialogueAudioPanelData {
+  plan?: VerticalDramaDialogueAudioPlan | null;
+  loading?: boolean;
+  error?: string | null;
+  onGenerate?: () => void;
+}
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
 export interface VerticalDramaStageState {
@@ -81,6 +109,15 @@ export interface VerticalDramaEpisodeWorkspaceProps {
   onRepair?: (stage: VerticalDramaPipelineStage) => void;
   onOpenRun?: (run: VerticalDramaRunRow) => void;
   onOpenStageDetail?: (stage: VerticalDramaPipelineStage) => void;
+  /** Which stage's full detail is shown in the stage-grid detail panel below. */
+  focusedStage?: VerticalDramaPipelineStage | null;
+  /** Fired whenever the user clicks a stage card (any stage, any status). */
+  onFocusStage?: (stage: VerticalDramaPipelineStage) => void;
+  /** Generic "view this stage's runs/artifacts" data — used for every stage
+   * except the ones with a dedicated panel below. */
+  stageRunDetail?: VerticalDramaStageRunDetailData;
+  /** Dedicated review panel data for the `dialogue_audio_plan` stage. */
+  dialogueAudioPanel?: VerticalDramaDialogueAudioPanelData;
   className?: string;
 }
 
@@ -158,10 +195,35 @@ export function VerticalDramaEpisodeWorkspace({
   onRepair,
   onOpenRun,
   onOpenStageDetail,
+  focusedStage: focusedStageProp,
+  onFocusStage,
+  stageRunDetail,
+  dialogueAudioPanel,
   className,
 }: VerticalDramaEpisodeWorkspaceProps) {
   const t = useMemo(() => vdCopy(locale), [locale]);
   const current = useMemo(() => findCurrentStage(stageStates), [stageStates]);
+
+  // Which stage's detail is shown in the grid's detail panel. Defaults to the
+  // current actionable stage, but any card can move focus at any time.
+  const [internalFocusedStage, setInternalFocusedStage] = useState<VerticalDramaPipelineStage | null>(
+    current?.stage ?? null,
+  );
+  const focusedStage = focusedStageProp ?? internalFocusedStage;
+
+  useEffect(() => {
+    if (focusedStageProp === undefined && internalFocusedStage === null && current) {
+      setInternalFocusedStage(current.stage);
+    }
+    // Only auto-focus once on first successful load; the user drives it after that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
+
+  function handleFocusStage(stage: VerticalDramaPipelineStage) {
+    setInternalFocusedStage(stage);
+    onFocusStage?.(stage);
+    onOpenStageDetail?.(stage);
+  }
 
   // Loading state.
   if (loading) {
@@ -292,56 +354,102 @@ export function VerticalDramaEpisodeWorkspace({
           </section>
         ) : null}
 
-        {/* Per-stage drill-down (secondary; historical view when completed). */}
-        <section className="rounded-lg border" aria-label="stages">
+        {/* Stage-card grid — every stage is always clickable, grouped by phase. */}
+        <section className="space-y-3" aria-label="stages">
           {completed ? (
-            <header className="border-b px-3 py-2 text-sm font-medium">
+            <div className="rounded-lg border px-3 py-2 text-sm font-medium">
               {t.readOnlyCompleted}
-            </header>
+            </div>
           ) : null}
-          <ol className="divide-y">
-            {VD_PHASES.flatMap((phase) => phase.stages).map((stage) => {
-              const s = stageStatusFor(stageStates, stage);
-              return (
-                <li key={stage} className="flex items-center justify-between gap-2 px-3 py-2">
-                  <button
-                    type="button"
-                    className="text-left text-sm hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => onOpenStageDetail?.(stage)}
-                    data-testid={`vd-stage-${stage}`}
-                  >
-                    {vdStageLabel(stage, locale)}
-                  </button>
-                  <span className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        s.status === "failed"
-                          ? "destructive"
-                          : s.status === "succeeded"
-                            ? "secondary"
-                            : s.status === "approval_required"
-                              ? "outline"
-                              : "default"
-                      }
+          {VD_PHASES.map((phase) => (
+            <div key={phase.id} className="rounded-lg border p-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                {vdPhaseLabel(phase, locale)}
+              </h3>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {phase.stages.map((stage) => {
+                  const s = stageStatusFor(stageStates, stage);
+                  const isFocused = stage === focusedStage;
+                  return (
+                    <button
+                      key={stage}
+                      type="button"
+                      onClick={() => handleFocusStage(stage)}
+                      aria-current={isFocused ? "true" : undefined}
+                      className={cn(
+                        "flex flex-col gap-1.5 rounded-md border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isFocused ? "border-primary bg-primary/5" : "bg-card hover:bg-accent/50",
+                      )}
+                      data-testid={`vd-stage-${stage}`}
                     >
-                      {s.status}
-                    </Badge>
-                    {!completed && s.status === "failed" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onRepair?.(stage)}
-                      >
-                        {t.repair}
-                      </Button>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
+                      <span className="font-medium">{vdStageLabel(stage, locale)}</span>
+                      <span className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            s.status === "failed"
+                              ? "destructive"
+                              : s.status === "succeeded"
+                                ? "secondary"
+                                : s.status === "approval_required"
+                                  ? "outline"
+                                  : "default"
+                          }
+                          className="text-[10px]"
+                        >
+                          {s.status}
+                        </Badge>
+                        {!completed && s.status === "failed" ? (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="text-xs text-muted-foreground underline hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRepair?.(stage);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.stopPropagation();
+                                onRepair?.(stage);
+                              }
+                            }}
+                          >
+                            {t.repair}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </section>
+
+        {/* Focused-stage detail — always available, independent of the primary CTA above. */}
+        {focusedStage ? (
+          <section className="rounded-lg border p-3" aria-label={vdStageLabel(focusedStage, locale)}>
+            <h3 className="mb-2 text-sm font-medium">{vdStageLabel(focusedStage, locale)}</h3>
+            {focusedStage === "dialogue_audio_plan" ? (
+              <VerticalDramaDialogueAudioPanel
+                plan={dialogueAudioPanel?.plan}
+                loading={dialogueAudioPanel?.loading}
+                error={dialogueAudioPanel?.error}
+                onGenerate={dialogueAudioPanel?.onGenerate}
+              />
+            ) : (
+              <VerticalDramaRunDetailView
+                locale={locale}
+                runs={stageRunDetail?.runs ?? []}
+                detail={stageRunDetail?.detail ?? null}
+                selectedRunId={stageRunDetail?.selectedRunId}
+                onSelectRun={stageRunDetail?.onSelectRun}
+                loading={stageRunDetail?.loading}
+                error={stageRunDetail?.error}
+              />
+            )}
+          </section>
+        ) : null}
       </div>
 
       {/* Side panel: runs sub-list + memory timeline (each scrolls internally). */}

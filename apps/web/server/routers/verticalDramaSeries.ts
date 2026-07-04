@@ -12,7 +12,7 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
@@ -20,8 +20,15 @@ import {
   verticalDramaSeries,
   verticalDramaEpisodes,
   verticalDramaApprovalCheckpoints,
+  verticalDramaGenrePresets,
   type VerticalDramaSeriesRow,
+  type VerticalDramaGenrePresetRow,
 } from "../../drizzle/schema";
+import {
+  generateStoryBible,
+  InsufficientCreditsError,
+  VdSchemaValidationError,
+} from "../services/verticalDramaStoryBible";
 
 /** Per-series episode aggregate row shape (typed projection; `db.select` erases to `any`). */
 type EpisodeAggRow = { seriesId: number; maxEpisodeNumber: number; episodeCount: number };
@@ -84,6 +91,28 @@ async function loadOwnedSeries(tenantId: string, userId: number, seriesId: numbe
     throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
   }
   return row;
+}
+
+/**
+ * Best-effort parse of the wizard's freeform "characters" textarea (one line
+ * per character) back into `{ name, role, description }[]` for "Save as
+ * preset". `CreateSeriesWizard.tsx`'s `applyPreset` writes this exact
+ * `name — role: description` shape when a preset is applied, so
+ * preset -> series -> re-saved-as-preset round-trips losslessly; any line
+ * that doesn't match becomes `{ name: line, role: "", description: "" }`.
+ */
+function parseCharactersDraft(draft: string): Array<{ name: string; role: string; description: string }> {
+  return draft
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(.+?)\s+—\s+(.+?):\s*(.*)$/);
+      if (match) {
+        return { name: match[1].trim(), role: match[2].trim(), description: match[3].trim() };
+      }
+      return { name: line, role: "", description: "" };
+    });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -379,6 +408,179 @@ export const verticalDramaSeriesRouter = router({
         .returning();
 
       return { series: { ...row, id: String(row.id) } };
+    }),
+
+  /**
+   * Genre preset catalog for the Create-Series Wizard's "start from a preset"
+   * picker. Returns `scope: "global"` presets (visible to everyone — the
+   * seeded catalog plus anything an admin published) plus the caller's own
+   * `scope: "private"` presets (their own "Save as preset" saves, invisible
+   * to other users). Still gated behind the feature flag like every other
+   * procedure on this router.
+   */
+  listGenrePresets: verticalDramaProcedure
+    .input(z.object({ locale: z.enum(["th", "en"]).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const locale = input?.locale ?? "th";
+      const tenantId = ctx.tenantId;
+      const userId = ctx.user.id;
+      const rows: VerticalDramaGenrePresetRow[] = await db
+        .select()
+        .from(verticalDramaGenrePresets)
+        .where(
+          and(
+            eq(verticalDramaGenrePresets.locale, locale),
+            tenantId
+              ? or(
+                  eq(verticalDramaGenrePresets.scope, "global"),
+                  and(
+                    eq(verticalDramaGenrePresets.scope, "private"),
+                    eq(verticalDramaGenrePresets.tenantId, tenantId),
+                    eq(verticalDramaGenrePresets.userId, userId),
+                  ),
+                )
+              : eq(verticalDramaGenrePresets.scope, "global"),
+          ),
+        )
+        .orderBy(asc(verticalDramaGenrePresets.sortOrder));
+
+      return {
+        presets: rows.map((row) => ({
+          id: String(row.id),
+          title: row.title,
+          category: row.category,
+          logline: row.logline,
+          mainPlot: row.mainPlot,
+          seasonArc: row.seasonArc,
+          tone: row.tone,
+          cliffhangerStyle: row.cliffhangerStyle,
+          characters: row.charactersJson as Array<{ name: string; role: string; description: string }>,
+          visualBible: row.visualBible,
+        })),
+      };
+    }),
+
+  /**
+   * Expand an owned series' wizard-gathered bible into a full season/episode
+   * story bible via a real LLM call. Unlike `create`/`updateSeries`, this is
+   * a genuinely paid action (credit-gated) — the first real generation step
+   * in this feature area. Ownership enforced; writes the result back into
+   * the existing `bible` jsonb column (no schema change needed).
+   */
+  generateStoryBible: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+
+      let result;
+      try {
+        result = await generateStoryBible({
+          userId,
+          tenantId,
+          seriesId,
+          title: row.title,
+          locale: (row.locale as "th" | "en") ?? "th",
+          genre: row.genre,
+          tone: row.tone,
+          targetEpisodeCount: row.targetEpisodeCount,
+          bible,
+        });
+      } catch (error) {
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+        if (error instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Story bible generation failed",
+        });
+      }
+
+      const updatedBible = {
+        ...bible,
+        expandedSeasonArc: result.expanded.expandedSeasonArc,
+        refinedCharacters: result.expanded.refinedCharacters,
+        episodeBreakdown: result.expanded.episodeBreakdown,
+        expandedAt: new Date().toISOString(),
+      };
+
+      const [updatedRow] = await db
+        .update(verticalDramaSeries)
+        .set({ bible: updatedBible, updatedAt: new Date() })
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning();
+
+      return {
+        series: { ...updatedRow, id: String(updatedRow.id) },
+        creditsUsed: result.creditsUsed,
+        model: result.model,
+      };
+    }),
+
+  /**
+   * Save an owned series (the project the user is already editing) as a
+   * reusable genre preset — no separate preset-management screen. Defaults to
+   * `scope: "private"` (visible only to the saving user); `publishGlobally`
+   * is only honored for callers with the `admin` role, in which case the
+   * preset becomes `scope: "global"` (visible to every user, indistinguishable
+   * from the seeded catalog).
+   */
+  saveSeriesAsPreset: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        title: z.string().trim().min(1).max(150),
+        publishGlobally: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const charactersDraft = typeof bible.charactersDraft === "string" ? bible.charactersDraft : "";
+
+      const isAdmin = ctx.user.role === "admin";
+      const publishGlobally = Boolean(input.publishGlobally) && isAdmin;
+
+      const [created] = await db
+        .insert(verticalDramaGenrePresets)
+        .values({
+          title: input.title,
+          category: row.genre?.trim() || input.title.toLowerCase().replace(/\s+/g, "-").slice(0, 60),
+          locale: (row.locale as "th" | "en") ?? "th",
+          logline: (bible.logline as string) ?? "",
+          mainPlot: (bible.mainPlot as string) ?? "",
+          seasonArc: (bible.seasonArc as string) ?? "",
+          tone: row.tone ?? "",
+          cliffhangerStyle: (bible.cliffhangerStyle as string) ?? "",
+          charactersJson: parseCharactersDraft(charactersDraft),
+          visualBible: (bible.visualStyle as string) ?? "",
+          sortOrder: 0,
+          scope: publishGlobally ? "global" : "private",
+          tenantId: publishGlobally ? null : tenantId,
+          userId: publishGlobally ? null : userId,
+        })
+        .returning();
+
+      return {
+        preset: { id: String(created.id), title: created.title, scope: created.scope },
+      };
     }),
 });
 

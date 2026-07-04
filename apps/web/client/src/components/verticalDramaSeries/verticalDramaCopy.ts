@@ -26,7 +26,9 @@ export function pickCopy<T>(lang: VerticalDramaLang, value: { th: T; en: T }): T
 /* Route builders                                                             */
 /* -------------------------------------------------------------------------- */
 
-export const VERTICAL_DRAMA_BASE_PATH = "/dashboard/vertical-drama";
+export const VERTICAL_DRAMA_BASE_PATH = "/drama-series";
+/** Retired path, kept only so old bookmarks/links can be redirected. */
+export const VERTICAL_DRAMA_LEGACY_BASE_PATH = "/dashboard/vertical-drama";
 
 export const verticalDramaRoutes = {
   seriesList: () => VERTICAL_DRAMA_BASE_PATH,
@@ -79,6 +81,28 @@ export const verticalDramaCopy = {
   runDetailTitle: { th: "รายละเอียดรอบการทำงาน (อ่านอย่างเดียว)", en: "Run detail (read-only)" },
   archived: { th: "เก็บถาวร", en: "Archived" },
   readOnly: { th: "อ่านอย่างเดียว", en: "Read-only" },
+  backToDashboard: { th: "กลับแดชบอร์ด", en: "Dashboard" },
+  sidebarTitle: { th: "โปรเจกต์ทั้งหมด", en: "All projects" },
+  sidebarSearchPlaceholder: { th: "ค้นหาโปรเจกต์…", en: "Search projects…" },
+  sidebarNewSeries: { th: "สร้างใหม่", en: "New" },
+  sidebarCollapse: { th: "ย่อแถบด้านข้าง", en: "Collapse sidebar" },
+  sidebarExpand: { th: "ขยายแถบด้านข้าง", en: "Expand sidebar" },
+  sidebarEmpty: { th: "ไม่พบโปรเจกต์ที่ตรงกัน", en: "No matching projects" },
+  sidebarError: { th: "โหลดรายการไม่สำเร็จ", en: "Failed to load projects" },
+  saveAsPreset: { th: "บันทึกเป็น Preset", en: "Save as preset" },
+  saveAsPresetDialogTitle: { th: "บันทึกซีรีย์นี้เป็น Preset", en: "Save this series as a preset" },
+  saveAsPresetDialogBody: {
+    th: "แนวเรื่อง เรื่องย่อ โครงเรื่อง และตัวละครของซีรีย์นี้จะถูกบันทึกเป็น preset ให้เลือกใช้ตอนสร้างซีรีย์ใหม่",
+    en: "This series' genre, logline, plot, and characters will be saved as a preset you can pick when creating a new series.",
+  },
+  presetTitleLabel: { th: "ชื่อ Preset", en: "Preset title" },
+  publishGlobally: { th: "เผยแพร่ให้ผู้ใช้ทุกคน", en: "Publish for all users" },
+  publishGloballyHint: {
+    th: "เฉพาะแอดมิน — หากไม่เลือก preset นี้จะใช้ได้เฉพาะบัญชีของคุณเท่านั้น",
+    en: "Admin only — leave unchecked and this preset stays private to your account only.",
+  },
+  saveAsPresetSuccess: { th: "บันทึก Preset แล้ว", en: "Preset saved" },
+  saveAsPresetError: { th: "บันทึก Preset ไม่สำเร็จ", en: "Failed to save preset" },
 } as const;
 
 /* -------------------------------------------------------------------------- */

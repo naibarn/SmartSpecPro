@@ -61,7 +61,7 @@ describe("useMenuItems", () => {
     });
     const entry = shown.find((item) => item.id === "vertical-drama-series");
     expect(entry).toBeDefined();
-    expect(entry?.path).toBe("/dashboard/vertical-drama");
+    expect(entry?.path).toBe("/drama-series");
     expect(entry?.IconComponent).not.toBe(Sparkles);
   });
 

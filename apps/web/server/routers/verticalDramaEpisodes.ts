@@ -616,7 +616,7 @@ export const verticalDramaEpisodesRouter = router({
           updatedAt: r.updatedAt,
           completedAt: r.status === "succeeded" || r.status === "failed" ? r.updatedAt : null,
           // Link target to the read-only artifact-ledger detail (section 09).
-          artifactLedgerHref: `/dashboard/vertical-drama/${owner.seriesId}/episodes/${owner.episodeId}/runs/${r.id}`,
+          artifactLedgerHref: `/drama-series/${owner.seriesId}/episodes/${owner.episodeId}/runs/${r.id}`,
         })),
       };
     }),
@@ -723,6 +723,24 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
       return { event };
+    }),
+
+  /**
+   * Read-only per-episode detail projection for stage-detail views that need
+   * a persisted jsonb field directly (e.g. the dialogue/audio plan review
+   * panel) rather than only the mutation response that produced it.
+   */
+  getEpisodeDetail: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1), episodeId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      return {
+        dialogueAudioPlan: row.dialogueAudioPlan as Record<string, unknown> | null,
+      };
     }),
 });
 

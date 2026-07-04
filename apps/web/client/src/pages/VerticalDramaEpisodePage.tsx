@@ -2,11 +2,11 @@
  * VerticalDramaEpisodePage (spec feature 131, section 03 · §8.1, §8.4).
  *
  * Episode workspace shell. Serves two routes:
- *   - /dashboard/vertical-drama/:seriesId/episodes/:episodeId         (workspace)
- *   - /dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId
+ *   - /drama-series/:seriesId/episodes/:episodeId         (workspace)
+ *   - /drama-series/:seriesId/episodes/:episodeId/runs/:runId
  *       (read-only past-run artifact ledger — a directly linkable deep link)
  *
- * Both render a reversible `VerticalDramaBreadcrumb` (Series › Episode, plus
+ * Both render a reversible `AppPage` breadcrumb trail (Series › Episode, plus
  * › Storyboard Review at run depth). The workspace route mounts the real
  * `VerticalDramaEpisodeWorkspace`, wired to the `verticalDramaEpisodes` tRPC
  * router (runs, memory, approval checkpoints, stage runs, repair). The repair
@@ -15,17 +15,16 @@
  * from this shell.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { FileClock } from "lucide-react";
 
+import { AppPage } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import {
-  VerticalDramaBreadcrumb,
-  type VerticalDramaCrumb,
-} from "@/components/verticalDramaSeries/VerticalDramaBreadcrumb";
+import type { VerticalDramaCrumb } from "@/components/verticalDramaSeries/VerticalDramaBreadcrumb";
+import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
 import {
   pickCopy,
   useVerticalDramaLang,
@@ -52,15 +51,16 @@ import type {
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
 } from "@shared/verticalDramaSeries";
+import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 
 export default function VerticalDramaEpisodePage() {
   const lang = useVerticalDramaLang();
 
   const [isRunRoute, runParams] = useRoute(
-    "/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId",
+    "/drama-series/:seriesId/episodes/:episodeId/runs/:runId",
   );
   const [, episodeParams] = useRoute(
-    "/dashboard/vertical-drama/:seriesId/episodes/:episodeId",
+    "/drama-series/:seriesId/episodes/:episodeId",
   );
 
   const seriesId = runParams?.seriesId ?? episodeParams?.seriesId ?? "";
@@ -87,29 +87,30 @@ export default function VerticalDramaEpisodePage() {
     crumbs.push({ label: pickCopy(lang, verticalDramaCopy.storyboardReviewCrumb) });
   }
 
+  const pageTitle = isRunRoute
+    ? pickCopy(lang, verticalDramaCopy.runDetailTitle)
+    : `${pickCopy(lang, verticalDramaCopy.episodeCrumb)} ${episodeId}`;
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 p-4 sm:p-6">
-        <VerticalDramaBreadcrumb crumbs={crumbs} />
-
-        <header className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold">
-            {isRunRoute
-              ? pickCopy(lang, verticalDramaCopy.runDetailTitle)
-              : `${pickCopy(lang, verticalDramaCopy.episodeCrumb)} ${episodeId}`}
-          </h1>
-          {isRunRoute && (
+    <VerticalDramaShell currentSeriesId={seriesId}>
+      <AppPage
+        title={pageTitle}
+        breadcrumbs={crumbs}
+        actions={
+          isRunRoute ? (
             <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.readOnly)}</Badge>
+          ) : undefined
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {isRunRoute ? (
+            <RunDetailLedger lang={lang} runId={runId} />
+          ) : (
+            <EpisodeWorkspaceShell lang={lang} seriesId={seriesId} episodeId={episodeId} />
           )}
-        </header>
-
-        {isRunRoute ? (
-          <RunDetailLedger lang={lang} runId={runId} />
-        ) : (
-          <EpisodeWorkspaceShell lang={lang} seriesId={seriesId} episodeId={episodeId} />
-        )}
-      </div>
-    </main>
+        </div>
+      </AppPage>
+    </VerticalDramaShell>
   );
 }
 
@@ -291,6 +292,34 @@ function EpisodeWorkspaceShell({
   const showPicker =
     stageDetailStage != null && START_FRAME_STAGES.includes(stageDetailStage);
 
+  // Generic "view this stage's runs/artifacts" detail — every stage except
+  // dialogue_audio_plan falls back to this (spec §09 run ledger).
+  const assemblyRunsQuery = trpc.verticalDramaAssembly.listRuns.useQuery(
+    { seriesId, episodeId },
+    { enabled },
+  );
+  const assemblyRuns = assemblyRunsQuery.data?.runs ?? [];
+  const [selectedRunId, setSelectedRunId] = useState<string | undefined>(undefined);
+
+  // Default the selected run to the focused stage's latest run whenever focus changes.
+  useEffect(() => {
+    if (!stageDetailStage) return;
+    const latest = assemblyRuns.find((r) => r.stage === stageDetailStage);
+    setSelectedRunId(latest?.runId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageDetailStage, assemblyRunsQuery.dataUpdatedAt]);
+
+  const runDetailQuery = trpc.verticalDramaAssembly.getRunDetail.useQuery(
+    { seriesId, episodeId, runId: selectedRunId ?? "" },
+    { enabled: enabled && Boolean(selectedRunId) },
+  );
+
+  // Dialogue/audio plan for the dedicated review panel.
+  const episodeDetailQuery = trpc.verticalDramaEpisodes.getEpisodeDetail.useQuery(
+    { seriesId, episodeId },
+    { enabled },
+  );
+
   // Start-frame batch surface state derived from the render stage's latest run.
   const startFrameState = stageStates["render_or_import_start_frames"];
   const pickerStatus: "loading" | "empty" | "error" | "success" =
@@ -362,9 +391,22 @@ function EpisodeWorkspaceShell({
         }}
         onRepair={(stage) => openRepair(stage)}
         onOpenRun={(run) => setLocation(run.artifactLedgerHref)}
-        onOpenStageDetail={(stage) =>
-          setStageDetailStage((prev) => (prev === stage ? null : stage))
-        }
+        onOpenStageDetail={(stage) => setStageDetailStage(stage)}
+        stageRunDetail={{
+          runs: assemblyRuns,
+          detail: runDetailQuery.data ?? null,
+          selectedRunId,
+          onSelectRun: setSelectedRunId,
+          loading: assemblyRunsQuery.isLoading || (Boolean(selectedRunId) && runDetailQuery.isLoading),
+          error: assemblyRunsQuery.error?.message ?? runDetailQuery.error?.message ?? null,
+        }}
+        dialogueAudioPanel={{
+          plan: episodeDetailQuery.data?.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null | undefined,
+          loading: episodeDetailQuery.isLoading || runStageMutation.isPending,
+          error: episodeDetailQuery.error?.message ?? null,
+          onGenerate: () =>
+            runStageMutation.mutate({ seriesId, episodeId, stage: "dialogue_audio_plan", mode: "dry_run" }),
+        }}
       />
 
       {/* Start-frame candidate review & selection (start-frame stage drill-down). */}
