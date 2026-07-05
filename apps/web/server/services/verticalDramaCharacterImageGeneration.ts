@@ -114,6 +114,101 @@ export type CharacterVisualBibleOutput = z.infer<typeof characterVisualBibleOutp
 export type CharacterVisualBibleCharacter = z.infer<typeof characterVisualBibleCharacterSchema>;
 
 /* -------------------------------------------------------------------------- */
+/* Role-tier mapping — leads get star-quality directives, villains get        */
+/* attractive-but-sharp directives, everyone else stays natural.              */
+/* -------------------------------------------------------------------------- */
+
+export type CharacterRoleTier = "lead" | "villain" | "support" | "other";
+
+/** Keyword lists, lower-cased, Thai + English. Order matters: lead/villain are
+ *  checked before support so e.g. "female lead / antagonist" combos resolve
+ *  to the more specific tier first. */
+const LEAD_KEYWORDS = [
+  "พระเอก",
+  "นางเอก",
+  "คู่หลัก",
+  "ตัวหลัก",
+  "male lead",
+  "female lead",
+  "leading man",
+  "leading lady",
+  "protagonist",
+  "lead role",
+];
+const VILLAIN_KEYWORDS = [
+  "ตัวร้าย",
+  "วายร้าย",
+  "ผู้ร้าย",
+  "villain",
+  "antagonist",
+];
+const SUPPORT_KEYWORDS = [
+  "ตัวประกอบ",
+  "สมทบ",
+  "supporting",
+  "support",
+  "extra",
+  "background",
+];
+
+/**
+ * Map a free-text role string (Thai or English, whatever ops/writers typed
+ * into `verticalDramaCharacters.role`) to a coarse tier that drives how much
+ * "star quality" the portrait-prompt directive demands. Keyword-based,
+ * case-insensitive, whitespace-tolerant — matches on substrings so
+ * "พระเอกวัยรุ่น" or "Male Lead (age 20s)" both resolve correctly.
+ *
+ * Exported + unit-tested directly (see
+ * `__tests__/verticalDramaCharacterImageGeneration.test.ts`).
+ */
+export function resolveCharacterRoleTier(role: string | null | undefined): CharacterRoleTier {
+  if (!role) return "other";
+  const normalized = role.trim().toLowerCase();
+  if (!normalized) return "other";
+
+  if (LEAD_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead";
+  if (VILLAIN_KEYWORDS.some((kw) => normalized.includes(kw))) return "villain";
+  if (SUPPORT_KEYWORDS.some((kw) => normalized.includes(kw))) return "support";
+  return "other";
+}
+
+/**
+ * Concise (prompt-budget-friendly — see the 3500-char image-prompt cap)
+ * appearance directive per role tier. Injected into the visual-bible LLM
+ * user-prompt payload as `appearance_directive` so the skill's system prompt
+ * (which already builds `primary_portrait_prompt` etc.) carries it straight
+ * through into every generated prompt (portrait, turnaround, full-body,
+ * expression sheet, outfit sheet — they all derive from the same LLM call).
+ *
+ * IMPORTANT: this directive must never override the character's stored
+ * `description` (age, e.g. a child character) — it only shapes attractiveness
+ * within whatever age/identity the description already establishes. The
+ * wording below says so explicitly so the LLM does not "age up" a minor.
+ */
+const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
+  lead: (
+    "Star-quality lead: exceptionally attractive, idol/leading-actor-grade features, " +
+    "photogenic symmetrical face, flawless camera-ready skin with realistic texture, " +
+    "expressive charismatic eyes, well-styled hair, premium wardrobe and grooming. " +
+    "Apply this attractiveness WITHIN the age and identity already given in the " +
+    "character's description — never change or imply an older/younger age than described."
+  ),
+  villain: (
+    "Striking antagonist: strikingly attractive but with a sharp, cold, dangerous aura " +
+    "(elegant menace, not cartoonish evil) — magnetic and photogenic, not merely attractive-neutral."
+  ),
+  support: undefined,
+  other: undefined,
+};
+
+/** Returns the directive string for a role, or `undefined` when the tier has
+ *  no special directive (support/other) — callers should omit the field. */
+export function getRoleTierAppearanceDirective(role: string | null | undefined): string | undefined {
+  const tier = resolveCharacterRoleTier(role);
+  return ROLE_TIER_DIRECTIVES[tier];
+}
+
+/* -------------------------------------------------------------------------- */
 /* User-prompt construction — matches schemas/input.schema.json's shape       */
 /* (`story_context` is a STRING per that schema, not an object).              */
 /* -------------------------------------------------------------------------- */
@@ -150,6 +245,7 @@ export interface GenerateCharacterVisualPromptsParams {
 }
 
 function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
+  const appearanceDirective = getRoleTierAppearanceDirective(params.role);
   const inputPayload = {
     characters: [
       {
@@ -157,6 +253,7 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
         name: params.name,
         role: params.role ?? "supporting",
         ...(params.description ? { description: params.description } : {}),
+        ...(appearanceDirective ? { appearance_directive: appearanceDirective } : {}),
       },
     ],
     story_context: buildStoryContextString(params.storyContext),
@@ -172,6 +269,14 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
     "Generate the character visual bible for exactly ONE character using the following input",
     "(matches this skill's schemas/input.schema.json shape):",
     JSON.stringify(inputPayload, null, 2),
+    ...(appearanceDirective
+      ? [
+          `MANDATORY appearance directive for this character's role: ${appearanceDirective} ` +
+            "Weave this into primary_portrait_prompt, turnaround_prompt, full_body_prompt, " +
+            "expression_sheet_prompt, and outfit_sheet_prompt — every generated prompt for this " +
+            "character must reflect it.",
+        ]
+      : []),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");

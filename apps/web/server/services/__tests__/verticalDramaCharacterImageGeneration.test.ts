@@ -36,7 +36,11 @@ vi.mock("../verticalDramaStoryBible", async () => {
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
-import { generateCharacterVisualPrompts } from "../verticalDramaCharacterImageGeneration";
+import {
+  generateCharacterVisualPrompts,
+  resolveCharacterRoleTier,
+  getRoleTierAppearanceDirective,
+} from "../verticalDramaCharacterImageGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import {
@@ -102,6 +106,77 @@ function successResponse(payload: unknown) {
     providerId: 1,
   } as any;
 }
+
+describe("resolveCharacterRoleTier", () => {
+  it.each([
+    ["พระเอก", "lead"],
+    ["นางเอก", "lead"],
+    ["คู่หลัก", "lead"],
+    ["Male Lead", "lead"],
+    ["female lead", "lead"],
+    ["Protagonist", "lead"],
+    ["  พระเอกวัยรุ่น  ", "lead"],
+  ])("maps %s to lead", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it.each([
+    ["ตัวร้าย", "villain"],
+    ["วายร้าย", "villain"],
+    ["ผู้ร้าย", "villain"],
+    ["Antagonist", "villain"],
+    ["villain", "villain"],
+  ])("maps %s to villain", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it.each([
+    ["ตัวประกอบ", "support"],
+    ["สมทบ", "support"],
+    ["Supporting", "support"],
+    ["extra", "support"],
+    ["background", "support"],
+  ])("maps %s to support", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it("falls back to 'other' for unrecognized roles", () => {
+    expect(resolveCharacterRoleTier("narrator")).toBe("other");
+    expect(resolveCharacterRoleTier("")).toBe("other");
+    expect(resolveCharacterRoleTier(null)).toBe("other");
+    expect(resolveCharacterRoleTier(undefined)).toBe("other");
+  });
+
+  it("is case-insensitive and whitespace-tolerant", () => {
+    expect(resolveCharacterRoleTier("  MALE LEAD  ")).toBe("lead");
+    expect(resolveCharacterRoleTier("VILLAIN")).toBe("villain");
+  });
+});
+
+describe("getRoleTierAppearanceDirective", () => {
+  it("returns a star-quality directive for lead roles", () => {
+    const directive = getRoleTierAppearanceDirective("นางเอก");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/exceptionally attractive/i);
+    expect(directive).toMatch(/never change or imply/i);
+  });
+
+  it("returns an attractive-but-sharp directive for villain roles", () => {
+    const directive = getRoleTierAppearanceDirective("ตัวร้าย");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/strikingly attractive/i);
+    expect(directive).toMatch(/sharp|cold|dangerous/i);
+  });
+
+  it("returns undefined (no forced glamour) for support roles", () => {
+    expect(getRoleTierAppearanceDirective("ตัวประกอบ")).toBeUndefined();
+  });
+
+  it("returns undefined for 'other'/unrecognized roles", () => {
+    expect(getRoleTierAppearanceDirective("narrator")).toBeUndefined();
+    expect(getRoleTierAppearanceDirective(null)).toBeUndefined();
+  });
+});
 
 describe("generateCharacterVisualPrompts", () => {
   beforeEach(() => {
@@ -176,6 +251,76 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user");
     expect(userMessage!.content).not.toContain('"description"');
+  });
+
+  it("injects the star-quality lead directive into the LLM user prompt for นางเอก", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "นางเอก" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain('"appearance_directive"');
+    expect(userMessage).toMatch(/exceptionally attractive/i);
+    expect(userMessage).toMatch(/MANDATORY appearance directive/);
+  });
+
+  it("injects the star-quality lead directive into the LLM user prompt for พระเอก", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "พระเอก" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/exceptionally attractive/i);
+  });
+
+  it("injects the attractive-but-sharp villain directive into the LLM user prompt for ตัวร้าย", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "ตัวร้าย" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/strikingly attractive/i);
+    expect(userMessage).not.toMatch(/exceptionally attractive/i);
+  });
+
+  it("does NOT inject any glamour directive for ตัวประกอบ (support)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "ตัวประกอบ" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain('"appearance_directive"');
+    expect(userMessage).not.toMatch(/exceptionally attractive/i);
+    expect(userMessage).not.toMatch(/strikingly attractive/i);
+  });
+
+  it("preserves an explicit child age in description alongside the lead appearance directive", async () => {
+    // A lead character described as a child must keep that age constraint —
+    // the directive text explicitly forbids overriding age, and the
+    // description text (which carries the age) must still reach the prompt.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(
+      baseParams({
+        role: "นางเอก",
+        description: "Description: เด็กหญิงวัยสิบขวบที่เป็นตัวเอกของเรื่อง",
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain("เด็กหญิงวัยสิบขวบ");
+    expect(userMessage).toMatch(/exceptionally attractive/i);
+    expect(userMessage).toMatch(/never change or imply/i);
   });
 
   it("falls back to the first character when character_id does not match characterKey", async () => {
