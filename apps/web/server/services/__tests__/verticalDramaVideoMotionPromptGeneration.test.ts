@@ -49,7 +49,9 @@ import { parseSkillFile } from "@smartspec/skills";
 import {
   generateVideoMotionPromptPack,
   projectMotionPromptPack,
+  syncDialogueOntoMotionPromptClips,
   RateLimitExceededError,
+  type VideoMotionPromptPackProjection,
 } from "../verticalDramaVideoMotionPromptGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -121,6 +123,23 @@ function successResponse(payload: unknown) {
     response: {
       choices: [{ message: { content: JSON.stringify(payload) }, index: 0, finish_reason: "stop" }],
       usage: { prompt_tokens: 220, completion_tokens: 110 },
+    },
+    providerName: "openai",
+    providerId: 1,
+  } as any;
+}
+
+/** Simulates a real truncated-mid-array LLM response (same failure class as the start-frame planner). */
+function truncatedResponse() {
+  const full = JSON.stringify(validOutput());
+  const cutIndex = full.indexOf('"video_clip_requests"') + 60;
+  return {
+    type: "success" as const,
+    response: {
+      choices: [
+        { message: { content: full.slice(0, cutIndex) }, index: 0, finish_reason: "length" },
+      ],
+      usage: { prompt_tokens: 220, completion_tokens: 4000 },
     },
     providerName: "openai",
     providerId: 1,
@@ -215,6 +234,35 @@ describe("generateVideoMotionPromptPack", () => {
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
+
+  it("retries once with a higher token ceiling when the first response is truncated JSON, and succeeds on the retry", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(successResponse(validOutput(5)));
+
+    const result = await generateVideoMotionPromptPack(baseParams());
+
+    expect(result.pack.clips).toHaveLength(5);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockExecute.mock.calls[0][0].model).toBe(mockExecute.mock.calls[1][0].model);
+    expect(mockExecute.mock.calls[1][0].maxTokens).toBeGreaterThanOrEqual(
+      mockExecute.mock.calls[0][0].maxTokens,
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws VdSchemaValidationError (does not silently persist an empty pack) when BOTH the first attempt and the retry are truncated", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValueOnce(truncatedResponse()).mockResolvedValueOnce(truncatedResponse());
+
+    await expect(generateVideoMotionPromptPack(baseParams())).rejects.toThrow(
+      VdSchemaValidationError,
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
 });
 
 describe("projectMotionPromptPack", () => {
@@ -228,5 +276,108 @@ describe("projectMotionPromptPack", () => {
     expect(pack.selectedVideoModelId).toBe("fallback-video-model");
     expect(pack.durationProfileId).toBe("fallback-profile");
     expect(pack.clips.map((c) => c.clipNumber)).toEqual([1, 2]);
+  });
+
+  it("honors a pre-existing caller-supplied model id even when the LLM summary claims a different one (Phase 1.2 fix)", () => {
+    const raw = {
+      video_plan_summary: { video_model: "some-other-model-the-llm-mentioned" },
+      video_clip_requests: [validClipRequest(1)],
+      plain_text_video_plan: "text",
+    };
+    const pack = projectMotionPromptPack(raw as any, "user-selected-video-model", "profile-x");
+    expect(pack.selectedVideoModelId).toBe("user-selected-video-model");
+  });
+
+  it("falls back to the LLM's own claimed model only when no caller model id is supplied", () => {
+    const raw = {
+      video_plan_summary: { video_model: "llm-claimed-video-model" },
+      video_clip_requests: [validClipRequest(1)],
+      plain_text_video_plan: "text",
+    };
+    const pack = projectMotionPromptPack(raw as any, "", "profile-x");
+    expect(pack.selectedVideoModelId).toBe("llm-claimed-video-model");
+  });
+});
+
+describe("syncDialogueOntoMotionPromptClips", () => {
+  function basePack(clips: VideoMotionPromptPackProjection["clips"]): VideoMotionPromptPackProjection {
+    return {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips,
+    };
+  }
+
+  it("returns the pack unchanged when dialogueAudioPlan is null", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8 }]);
+    const result = syncDialogueOntoMotionPromptClips(pack, null);
+    expect(result).toBe(pack);
+  });
+
+  it("returns the pack unchanged for today's camelCase dry-run placeholder shape (shotLines: [])", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8 }]);
+    const result = syncDialogueOntoMotionPromptClips(pack, {
+      audioStrategy: "separate_tts_voiceover",
+      shotLines: [],
+    });
+    expect(result).toBe(pack);
+  });
+
+  it("maps a raw dialogue_lines[] entry onto the matching clip by clip_number", () => {
+    const pack = basePack([
+      { clipNumber: 1, sourceShotNumbers: [1], prompt: "clip 1 prompt", durationSeconds: 8 },
+      { clipNumber: 2, sourceShotNumbers: [2], prompt: "clip 2 prompt", durationSeconds: 8 },
+    ]);
+    const result = syncDialogueOntoMotionPromptClips(pack, {
+      dialogue_lines: [
+        {
+          shot_number: 1,
+          clip_number: 1,
+          speaker_character_id: "char_aria",
+          dialogue_line: "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
+          delivery: { tone: "cold", pace: "slow", pauses: "beat", texture: "steady" },
+          subtext: "sounds calm but has decided to retaliate",
+        },
+      ],
+    });
+    expect(result.clips[0].dialogue).toEqual([
+      {
+        characterKey: "char_aria",
+        lineTh: "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
+        emotion: undefined,
+        delivery: { tone: "cold", pace: "slow", pauses: "beat", texture: "steady" },
+        subtext: "sounds calm but has decided to retaliate",
+      },
+    ]);
+    expect(result.clips[1].dialogue).toBeUndefined();
+  });
+
+  it("falls back to matching by shot_number against sourceShotNumbers when clip_number is absent", () => {
+    const pack = basePack([{ clipNumber: 5, sourceShotNumbers: [7, 8], prompt: "p", durationSeconds: 8 }]);
+    const result = syncDialogueOntoMotionPromptClips(pack, {
+      dialogue_lines: [{ shot_number: 8, speaker_character_id: "char_kai", dialogue_line: "ไปกันเถอะ" }],
+    });
+    expect(result.clips[0].dialogue).toHaveLength(1);
+    expect(result.clips[0].dialogue?.[0].lineTh).toBe("ไปกันเถอะ");
+  });
+
+  it("never overwrites a clip's existing non-empty dialogue array (upstream passthrough already carried it)", () => {
+    const existing = [{ characterKey: "char_existing", lineTh: "existing line" }];
+    const pack = basePack([
+      { clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8, dialogue: existing },
+    ]);
+    const result = syncDialogueOntoMotionPromptClips(pack, {
+      dialogue_lines: [{ clip_number: 1, speaker_character_id: "char_other", dialogue_line: "different line" }],
+    });
+    expect(result.clips[0].dialogue).toBe(existing);
+  });
+
+  it("ignores dialogue_lines entries with an empty dialogue_line", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8 }]);
+    const result = syncDialogueOntoMotionPromptClips(pack, {
+      dialogue_lines: [{ clip_number: 1, speaker_character_id: "char_aria", dialogue_line: "   " }],
+    });
+    expect(result.clips[0].dialogue).toBeUndefined();
   });
 });

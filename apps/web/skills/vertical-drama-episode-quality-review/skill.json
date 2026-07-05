@@ -1,0 +1,27 @@
+{
+  "name": "vertical_drama_episode_quality_review",
+  "display_name": "Vertical Drama Episode Quality Review",
+  "display_name_th": "ตรวจสอบคุณภาพตอนละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Score a vertical-drama episode's script + storyboard (and optional dialogue plan) for reversal sharpness, emotional variety, dialogue naturalness, and pacing BEFORE the user spends credits on image/video generation.",
+  "description_th": "ให้คะแนนบทและสตอรีบอร์ดของตอนละครแนวตั้งด้านการพลิกสถานการณ์ ความหลากหลายอารมณ์ ความเป็นธรรมชาติของบทพูด และจังหวะเรื่อง ก่อนจ่ายเครดิตสร้างภาพ/วิดีโอ",
+  "entry_prompt": "You are a veteran Chinese-vertical-drama showrunner reviewing an episode's script and storyboard BEFORE the production team spends real money generating images and video for it. Score reversal count/sharpness, emotion variety, dialogue naturalness, and pacing; cite concrete shot/beat numbers for every issue.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": {
+    "th": "help/help.th.md",
+    "en": "help/help.en.md"
+  },
+  "examples": {
+    "input_th": "examples/example.input.th.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "scorecard",
+    "repair_queue",
+    "never_blocking"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-episode-quality-review"
+}

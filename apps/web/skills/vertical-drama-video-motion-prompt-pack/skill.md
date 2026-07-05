@@ -28,6 +28,37 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Weave delivery + acting direction into every clip prompt — MANDATORY
+
+The incoming shots/dialogue carry per-line `delivery` (tone, pace, pauses, texture)
+and `subtext` from `vertical-drama-dialogue-audio-planner`, plus `emotion`,
+`facial_expression`, `body_language`, and `gaze_direction` from the storyboard.
+Every `video_clip_requests[].prompt` MUST fold these into the motion description —
+a prompt that only describes camera movement with no acting/performance direction
+is a FAILED clip. Concretely:
+
+1. If the clip has dialogue, describe HOW the character delivers it (matching
+   `delivery.tone`/`pace`/`texture`) in addition to what the camera does — e.g.
+   "Aria delivers the line cold and unhurried, voice flat and controlled, holding
+   a deliberate pause before the last word, while the camera pushes in fast."
+2. Carry the shot's `facial_expression`/`body_language`/`gaze_direction` into the
+   motion prompt as continuous performance, not a static pose — describe how the
+   expression shifts or holds across the clip's duration.
+3. For clips bridging a reversal beat (`is_reversal: true` upstream), match the
+   storyboard's sharper camera language (fast push-in / whip cut rhythm) and make
+   the acting direction show the power shift landing — e.g. one character's
+   composure visibly cracking as the other's steadies.
+
+## Provider request variants
+
+`provider_request` MAY include additional named variant keys alongside
+`veo31_request` for other model families the episode's selected video model may
+route through: `grok_request`, `seedance_request`, `generic_request`. Each variant
+is an object shaped for that provider's own parameter names (model id, prompt,
+duration, aspect ratio, and — when the provider supports it — first/last frame or
+reference image fields); omit any variant whose provider is not applicable to this
+clip. `veo31_request` remains the primary/required shape for upstream parity.
+
 Output skeleton:
 
 ```json
@@ -71,8 +102,8 @@ Output skeleton:
         "local_path": "uploads/vd/end_frame_1.png",
         "contains_human_face": true
       },
-      "prompt": "clip 1: slow push-in on Aria as tension rises",
-      "negative_motion_prompt": "no warping, no identity drift, no camera whip",
+      "prompt": "Aria delivers 'We are not done here' cold and unhurried, voice flat and controlled, a deliberate pause before the last word; eyes narrowed, jaw tight, composed posture holding through the line. Camera pushes in slowly as tension rises.",
+      "negative_motion_prompt": "no warping, no identity drift, no camera whip, no flat/neutral delivery",
       "subtitle_or_dialogue": "We are not done here.",
       "camera_motion": "slow_push_in",
       "continuity_notes": "maintain blazer + gold hoops across the bridge",
@@ -84,7 +115,7 @@ Output skeleton:
         "veo31_request": {
           "model": "veo-3.1",
           "mode": "first_last_frame",
-          "prompt": "clip 1 motion prompt",
+          "prompt": "clip 1 motion prompt with delivery direction",
           "first_frame": "start_frame_shot_1",
           "last_frame": "start_frame_shot_3",
           "reference_images": [
@@ -94,6 +125,26 @@ Output skeleton:
           "aspect_ratio": "9:16",
           "resolution": "1080x1920",
           "generate_audio": false
+        },
+        "grok_request": {
+          "model": "grok-imagine-1.5",
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
+        },
+        "seedance_request": {
+          "model": "seedance-1-pro",
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
+        },
+        "generic_request": {
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
         }
       },
       "parent_shot_number": null,

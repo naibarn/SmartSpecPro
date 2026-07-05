@@ -30,8 +30,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Crop,
-  Download,
   Grid2X2,
   History as HistoryIcon,
   ImagePlus,
@@ -43,53 +41,23 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { getDraggedImageUrl } from "@/components/media/ImageSourcePicker";
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
+import type { SplitResult } from "@/lib/imageGridSplitter";
 import {
-  COMMON_GRIDS,
-  DEFAULT_SPLIT_GRID,
-  createSplitPreview,
-  detectGridFromDimensions,
-  downloadAllSplitImages,
-  splitImage,
-  type DetectedGrid,
-  type GridDimension,
-  type SplitResult,
-} from "@/lib/imageGridSplitter";
+  ShotGridCutter,
+  setUnifiedDragPayload,
+} from "@/components/verticalDramaSeries/ShotGridCutter";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
-
-/** Maps a detected `{rows, cols}` onto the matching `COMMON_GRIDS` preset (for
- *  a consistent label), falling back to a synthesized label for odd shapes. */
-function toGridDimension(rows: number, cols: number): GridDimension {
-  return (
-    COMMON_GRIDS.find(g => g.rows === rows && g.cols === cols) ?? {
-      rows,
-      cols,
-      label: `${rows}x${cols}`,
-    }
-  );
-}
-
-/** Sets the codebase-standard drag payload (matches `LibrarySearchPanel.tsx`'s
- *  `handleItemDragStart`) so this tile is interchangeable with every other
- *  drag source/drop target in the feature. */
-function setUnifiedDragPayload(event: React.DragEvent, url: string): void {
-  event.dataTransfer.setData("text/uri-list", url);
-  event.dataTransfer.setData("text/plain", url);
-  event.dataTransfer.setData("application/x-smartspec-media-type", "image");
-  event.dataTransfer.effectAllowed = "copy";
-}
 
 /**
  * Reads a dropped image URL using the codebase-standard drag contract (see
@@ -264,110 +232,44 @@ export function VerticalDramaCharacterReferencePanel({
   const historyTasks = historyQuery.data?.tasks ?? [];
 
   /* ---- 3x3 / grid cutter sub-panel ----
-   * Rekeyed from a single array to a `Record<sourceUrl, SplitResult[]>` so
-   * grid-cutting a second candidate image doesn't wipe out the first
-   * candidate's already-visible split tiles — every cut stays visible until
-   * the user explicitly uses or dismisses it. */
-  const [cutterResultsByUrl, setCutterResultsByUrl] = useState<
-    Record<string, SplitResult[]>
-  >({});
+   * Delegates all upload/grid-size/preview/detected-grid/split logic to the
+   * shared `ShotGridCutter` component (extracted, Phase 2.3) — this panel
+   * only tracks which source URL to cut (so the Library/History "grid cut"
+   * buttons below can prime it) and whether a cut is currently in flight
+   * (for disabling other controls while resolving/linking). Single-select
+   * only here (`allowMultiSelect={false}`) — this panel's own semantics are
+   * unchanged: click a tile to link it immediately as this character's
+   * reference (never a multi-select batch, unlike the storyboard shot
+   * card's multi-angle picker). */
+  const [gridCutSourceUrl, setGridCutSourceUrl] = useState<string | null>(
+    null
+  );
+  const [gridCutNonce, setGridCutNonce] = useState(0);
+  /** Tracks a cut currently in flight (which source URL is being primed) so
+   *  the History tab's per-item grid-cut button can show its own spinner —
+   *  same visual affordance the original inline tab had, now derived from
+   *  whether that URL is the one about to be handed to `ShotGridCutter`. */
   const [cuttingUrl, setCuttingUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ---- Grid-size choice, asked before every cut (mirrors Media Studio /
-   * Storyboard Review's own split tool exactly: COMMON_GRIDS preset buttons +
-   * rows/cols inputs + a live numbered-overlay preview via
-   * `createSplitPreview`, not a silent auto-guess and not a plain thumbnail).
-   * `pendingCutSource` gates rendering the picker; `pendingCutGrid` is
-   * prefilled from `detectGridFromDimensions` (falling back to 3x3) but the
-   * user can override it — every change regenerates `splitPreviewUrl`. */
-  const [pendingCutSource, setPendingCutSource] = useState<string | null>(null);
-  const [pendingCutGrid, setPendingCutGrid] =
-    useState<GridDimension>(DEFAULT_SPLIT_GRID);
-  const [detectedGrid, setDetectedGrid] = useState<DetectedGrid | null>(null);
-  const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
-  const [isDetectingGrid, setIsDetectingGrid] = useState(false);
-
-  const updatePendingCutGrid = async (
-    rows: number,
-    cols: number,
-    sourceUrl = pendingCutSource
-  ) => {
-    if (!sourceUrl) return;
-    setPendingCutGrid(toGridDimension(rows, cols));
-    try {
-      setSplitPreviewUrl(await createSplitPreview(sourceUrl, rows, cols));
-    } catch {
-      setSplitPreviewUrl(null);
-    }
-  };
-
-  const startGridCut = async (imageUrl: string) => {
-    if (!imageUrl) return;
-    setPendingCutSource(imageUrl);
-    setPendingCutGrid(DEFAULT_SPLIT_GRID);
-    setDetectedGrid(null);
-    setSplitPreviewUrl(null);
-    setActiveTab("cutter");
-    setIsDetectingGrid(true);
-    try {
-      const img = new Image();
-      const dims = await new Promise<{ width: number; height: number }>(
-        (resolve, reject) => {
-          img.onload = () =>
-            resolve({ width: img.naturalWidth, height: img.naturalHeight });
-          img.onerror = () => reject(new Error("load-failed"));
-          img.src = imageUrl;
-        }
-      ).catch(() => null);
-      const detected = dims
-        ? detectGridFromDimensions(dims.width, dims.height)
-        : null;
-      setDetectedGrid(detected);
-      const rows = detected?.rows ?? DEFAULT_SPLIT_GRID.rows;
-      const cols = detected?.cols ?? DEFAULT_SPLIT_GRID.cols;
-      await updatePendingCutGrid(rows, cols, imageUrl);
-    } finally {
-      setIsDetectingGrid(false);
-    }
-  };
-
-  const runSplit = async (imageUrl: string, rows: number, cols: number) => {
+  const startGridCut = (imageUrl: string) => {
     if (!imageUrl) return;
     setCuttingUrl(imageUrl);
-    try {
-      const results = await splitImage(imageUrl, rows, cols);
-      setCutterResultsByUrl(prev => ({ ...prev, [imageUrl]: results }));
-      setPendingCutSource(null);
-      setSplitPreviewUrl(null);
-      toast.success(
-        t(
-          lang,
-          `ตัดภาพเป็น ${results.length} ช่องแล้ว`,
-          `Cut into ${results.length} tiles`
-        )
-      );
-    } catch (err) {
-      toast.error(
-        t(
-          lang,
-          "ตัดภาพไม่สำเร็จ — ตรวจสอบ URL ของภาพ",
-          "Failed to cut image — check the image URL"
-        )
-      );
-    } finally {
-      setCuttingUrl(null);
-    }
+    setGridCutSourceUrl(imageUrl);
+    setGridCutNonce(n => n + 1);
+    setActiveTab("cutter");
+    // The cutter primes itself synchronously (grid detection runs inside
+    // `ShotGridCutter`); clear the transient spinner on the next tick so the
+    // History thumbnail's icon reverts once the cutter tab is showing.
+    setTimeout(() => setCuttingUrl(null), 0);
   };
 
-  const handleFileSelected = (file: File | undefined) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result ?? "");
-      void startGridCut(dataUrl);
-    };
-    reader.readAsDataURL(file);
+  const handleTilesSelected = (tiles: SplitResult[]) => {
+    const tile = tiles[0];
+    if (!tile) return;
+    void resolveAndLinkFromDataUrl(
+      tile.dataUrl,
+      `character-reference-tile-${tile.index + 1}.jpg`
+    );
   };
 
   /* ---- Drop zone (accepts drags from Library items, History tiles, cutter tiles) ---- */
@@ -635,265 +537,13 @@ export function VerticalDramaCharacterReferencePanel({
           </TabsContent>
 
           <TabsContent value="cutter" className="mt-2">
-            <div className="space-y-3 rounded-lg border bg-white/70 p-2.5 backdrop-blur">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Crop aria-hidden="true" className="h-3.5 w-3.5" />
-                  {t(
-                    lang,
-                    "หรืออัปโหลดภาพเพื่อตัดกริด",
-                    "Or upload an image to cut"
-                  )}
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => handleFileSelected(e.target.files?.[0])}
-                />
-              </div>
-
-              {/* Grid-size choice — asked every time before cutting, mirroring
-                  Storyboard Review's own split tool exactly: a live numbered-
-                  overlay preview (`createSplitPreview`) redrawn on every
-                  preset/rows/cols change, a "detected grid" chip, and
-                  explicit preset + custom rows/cols controls — instead of a
-                  small static thumbnail and a silent auto-guess. */}
-              {pendingCutSource && (
-                <div className="space-y-3 rounded-lg border border-purple-200 bg-purple-50/60 p-2.5">
-                  <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                    {isDetectingGrid ? (
-                      <Loader2 className="h-6 w-6 animate-spin text-sky-500" />
-                    ) : splitPreviewUrl ? (
-                      <img
-                        src={splitPreviewUrl}
-                        alt=""
-                        className="max-h-72 max-w-full object-contain"
-                      />
-                    ) : (
-                      <img
-                        src={pendingCutSource}
-                        alt=""
-                        className="max-h-72 max-w-full object-contain"
-                      />
-                    )}
-                  </div>
-                  {detectedGrid ? (
-                    <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs text-emerald-800">
-                      {t(
-                        lang,
-                        `ตรวจพบ grid ${detectedGrid.rows}x${detectedGrid.cols}`,
-                        `Detected ${detectedGrid.rows}x${detectedGrid.cols} grid`
-                      )}
-                    </div>
-                  ) : null}
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {COMMON_GRIDS.map(grid => (
-                      <Button
-                        key={`${grid.rows}x${grid.cols}`}
-                        type="button"
-                        size="sm"
-                        variant={
-                          pendingCutGrid.rows === grid.rows &&
-                          pendingCutGrid.cols === grid.cols
-                            ? "default"
-                            : "outline"
-                        }
-                        className="h-8 px-1 text-[10px]"
-                        onClick={() =>
-                          void updatePendingCutGrid(grid.rows, grid.cols)
-                        }
-                      >
-                        {grid.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                    <label className="grid gap-1 text-xs">
-                      <span className="text-muted-foreground">
-                        {t(lang, "แถว", "Rows")}
-                      </span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={pendingCutGrid.rows}
-                        onChange={event =>
-                          void updatePendingCutGrid(
-                            Math.min(
-                              10,
-                              Math.max(1, Number(event.target.value) || 1)
-                            ),
-                            pendingCutGrid.cols
-                          )
-                        }
-                        className="h-8"
-                      />
-                    </label>
-                    <span className="pb-2 text-xs text-muted-foreground">
-                      x
-                    </span>
-                    <label className="grid gap-1 text-xs">
-                      <span className="text-muted-foreground">
-                        {t(lang, "คอลัมน์", "Cols")}
-                      </span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={pendingCutGrid.cols}
-                        onChange={event =>
-                          void updatePendingCutGrid(
-                            pendingCutGrid.rows,
-                            Math.min(
-                              10,
-                              Math.max(1, Number(event.target.value) || 1)
-                            )
-                          )
-                        }
-                        className="h-8"
-                      />
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setPendingCutSource(null);
-                        setSplitPreviewUrl(null);
-                      }}
-                    >
-                      {t(lang, "ยกเลิก", "Cancel")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="gap-2"
-                      disabled={cuttingUrl === pendingCutSource}
-                      onClick={() =>
-                        void runSplit(
-                          pendingCutSource,
-                          pendingCutGrid.rows,
-                          pendingCutGrid.cols
-                        )
-                      }
-                    >
-                      {cuttingUrl === pendingCutSource ? (
-                        <Loader2
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5 animate-spin"
-                        />
-                      ) : (
-                        <Scissors aria-hidden="true" className="h-3.5 w-3.5" />
-                      )}
-                      {t(
-                        lang,
-                        `ตัด ${pendingCutGrid.rows * pendingCutGrid.cols} รูป`,
-                        `Cut ${pendingCutGrid.rows * pendingCutGrid.cols} images`
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {!pendingCutSource &&
-              Object.keys(cutterResultsByUrl).length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    lang,
-                    "กดปุ่มตัดกริดบนภาพใน Library หรือประวัติ หรืออัปโหลดภาพกริด เพื่อเลือกขนาดและแยกเป็นภาพย่อยแต่ละช่อง",
-                    "Click the grid-cut button on a Library or History image, or upload a grid image, to choose a size and split it into individual tiles"
-                  )}
-                </p>
-              ) : (
-                Object.entries(cutterResultsByUrl).map(([sourceUrl, tiles]) => (
-                  <div
-                    key={sourceUrl}
-                    className="space-y-1.5 border-t pt-2 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={sourceUrl}
-                        alt=""
-                        className="h-8 w-8 shrink-0 rounded border border-border object-cover"
-                      />
-                      <p className="min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
-                        {t(
-                          lang,
-                          `ผลลัพธ์ ${tiles.length} รูป`,
-                          `${tiles.length} results`
-                        )}
-                      </p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 shrink-0 gap-1 px-2 text-xs"
-                        onClick={() =>
-                          void downloadAllSplitImages(
-                            tiles,
-                            "character-reference"
-                          )
-                        }
-                      >
-                        <Download aria-hidden="true" className="h-3.5 w-3.5" />
-                        {t(lang, "ทั้งหมด", "All")}
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {tiles.map(tile => (
-                        <div
-                          key={tile.index}
-                          draggable
-                          onDragStart={event =>
-                            setUnifiedDragPayload(event, tile.dataUrl)
-                          }
-                          className="relative cursor-grab overflow-hidden rounded-md border border-border active:cursor-grabbing"
-                        >
-                          <button
-                            type="button"
-                            className="block aspect-square w-full"
-                            disabled={busy}
-                            onClick={() =>
-                              void resolveAndLinkFromDataUrl(
-                                tile.dataUrl,
-                                `character-reference-tile-${tile.index + 1}.jpg`
-                              )
-                            }
-                          >
-                            <img
-                              src={tile.dataUrl}
-                              alt={`${t(lang, "ช่อง", "Tile")} ${tile.index + 1}`}
-                              className="aspect-square w-full object-cover"
-                              draggable={false}
-                            />
-                          </button>
-                          <Badge className="absolute left-1 top-1 px-1 py-0 text-[9px]">
-                            {tile.index + 1}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
-              <p className="text-xs text-muted-foreground">
-                {t(
-                  lang,
-                  "ลากช่องที่ตัดแล้วไปยังกล่องรับวางด้านบน (หรือการ์ดตัวละครโดยตรง) หรือคลิกที่ช่องเพื่อใช้เป็นอ้างอิงทันที",
-                  "Drag a cut tile to the drop zone above (or directly onto a character card), or click a tile to use it as a reference immediately."
-                )}
-              </p>
-            </div>
+            <ShotGridCutter
+              key={gridCutNonce}
+              sourceUrl={gridCutSourceUrl ?? undefined}
+              onTilesSelected={handleTilesSelected}
+              allowMultiSelect={false}
+              busy={busy}
+            />
           </TabsContent>
         </Tabs>
 

@@ -57,6 +57,28 @@ export interface ModelDefinition {
 
   /** Provider-specific config (e.g., kieModelId, apiEndpoint) */
   configJson?: Record<string, any>;
+
+  /**
+   * Video-only capability metadata (Vertical Drama Storyboard plan, Phase 0).
+   * These are explicit, first-class flags — previously some of this had to be
+   * inferred ad-hoc from `configJson` (e.g. `configJson.apiPayloadFormat ===
+   * "veo"` or scanning `inputFields` for `FIRST_AND_LAST_FRAMES_2_VIDEO`).
+   * Optional so every existing model definition (and every DB row that
+   * predates this field) keeps working unchanged; `dbModelToDefinition`
+   * back-fills these from `configJson` for DB-backed rows (see below) so admin
+   * imports/edits do not need a schema migration to carry this metadata.
+   */
+  /** Model accepts a start-frame / first-frame (image-to-video or first+last-frame bridge) input. */
+  supportsStartFrame?: boolean;
+
+  /** Max number of reference images the model accepts in one generation call (0 = none). */
+  maxReferenceImages?: number;
+
+  /** Model can embed spoken dialogue directly in the video (native audio + lip sync), vs requiring separate TTS. */
+  nativeAudioDialogue?: boolean;
+
+  /** Model has 9:16 + video quality sufficient for Vertical Drama Series episode rendering. */
+  verticalDramaReady?: boolean;
 }
 
 /**
@@ -249,6 +271,54 @@ function buildVeo31Config(kieModelId: "veo3" | "veo3_fast" | "veo3_lite", pricin
   };
 }
 
+/**
+ * Derive the 4 Vertical Drama capability flags (`supportsStartFrame`,
+ * `maxReferenceImages`, `nativeAudioDialogue`, `verticalDramaReady`) from a
+ * model's already-known type/aspectRatios/configJson, ONLY for entries that
+ * don't set them explicitly below. Centralizing this keeps every video model
+ * — including future ones — consistent, and lets `dbModelToDefinition` reuse
+ * the exact same derivation for DB-backed rows (so admin-imported/edited
+ * models get sensible capability badges without needing a manual DB edit).
+ */
+export function deriveVerticalDramaCapabilities(model: {
+  type: MediaType;
+  aspectRatios?: string[];
+  configJson?: Record<string, any>;
+}): Pick<ModelDefinition, "supportsStartFrame" | "maxReferenceImages" | "nativeAudioDialogue" | "verticalDramaReady"> {
+  if (model.type === "image") {
+    // An image model qualifies for the vertical-drama start-frame picker as
+    // long as it can render 9:16 — the other three fields only apply to video.
+    return {
+      verticalDramaReady: (model.aspectRatios ?? []).includes("9:16"),
+    };
+  }
+  if (model.type !== "video") {
+    return {};
+  }
+  const cfg = model.configJson ?? {};
+  const inputFields = Array.isArray(cfg.inputFields) ? cfg.inputFields : [];
+  const hasFirstLastFrameOption = inputFields.some(
+    (f: any) =>
+      Array.isArray(f?.options) &&
+      f.options.some((o: any) => o?.value === "FIRST_AND_LAST_FRAMES_2_VIDEO"),
+  );
+  const maxReferenceImages = Number(cfg.maxReferenceImages ?? 0) || 0;
+  const generateType = String(cfg.generateType ?? "").toLowerCase();
+  const supportsStartFrame =
+    cfg.apiPayloadFormat === "veo" ||
+    hasFirstLastFrameOption ||
+    maxReferenceImages > 0 ||
+    generateType.includes("image-to-video");
+  const nativeAudioDialogue = cfg.hasAudio === true || cfg.nativeAudio === true;
+  const supports9x16 = (model.aspectRatios ?? []).includes("9:16");
+  return {
+    supportsStartFrame,
+    maxReferenceImages,
+    nativeAudioDialogue,
+    verticalDramaReady: supports9x16 && supportsStartFrame,
+  };
+}
+
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
   {
@@ -431,6 +501,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 1,
+    supportsStartFrame: true,
+    maxReferenceImages: 3,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
   },
   {
     id: "veo-3-1",
@@ -459,6 +533,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 2,
+    supportsStartFrame: true,
+    maxReferenceImages: 3,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
   },
   {
     id: "veo3/generate-veo-3-video-fast",
@@ -477,6 +555,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 3,
+    supportsStartFrame: true,
+    maxReferenceImages: 3,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
   },
   {
     id: "veo3/extend-video",
@@ -509,6 +591,13 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     },
     isEnabled: true,
     priority: 4,
+    // Extends an EXISTING Veo task (requires a source taskId) — not a
+    // start-frame-capable primary render model, so it's excluded from the
+    // Vertical Drama episode model picker despite being a Veo-family model.
+    supportsStartFrame: false,
+    maxReferenceImages: 0,
+    nativeAudioDialogue: true,
+    verticalDramaReady: false,
   },
   {
     id: "happyhorse/text-to-video",
@@ -528,6 +617,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     ]),
     isEnabled: true,
     priority: 5,
+    supportsStartFrame: false,
+    maxReferenceImages: 0,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
   },
   {
     id: "happyhorse/image-to-video",
@@ -553,6 +646,15 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 6,
+    // Single source image = the start frame — no 9:16 aspect ratio listed
+    // above (image-to-video omits explicit aspect ratio, inherited from the
+    // source image instead), so it doesn't qualify as verticalDramaReady
+    // under the strict 9:16-catalog-entry check even though it works in
+    // practice; flagged here rather than silently marked ready.
+    supportsStartFrame: true,
+    maxReferenceImages: 1,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
   },
   {
     id: "happyhorse/reference-to-video",
@@ -579,6 +681,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 7,
+    supportsStartFrame: true,
+    maxReferenceImages: 9,
+    nativeAudioDialogue: false,
+    verticalDramaReady: true,
   },
   {
     id: "happyhorse/video-edit",
@@ -607,6 +713,94 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     }),
     isEnabled: true,
     priority: 8,
+    // Edits an EXISTING source video — not a start-frame render model.
+    supportsStartFrame: false,
+    maxReferenceImages: 5,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
+  },
+  {
+    // Verified callable on kie.ai: `grok-imagine-video-1-5-preview` is a real,
+    // already-mapped model id in the Python provider's
+    // `FALLBACK_MODEL_NAME_MAP` (`kie_ai_provider.py`) AND in
+    // `MODEL_METADATA` (`core/media_models.py`) — it requires exactly one
+    // reference image (`requires_reference_image: True, max_reference_images:
+    // 1`, i.e. image-to-video only, no text-to-video mode), which the generic
+    // "market" `/api/v1/jobs/createTask` dispatch (same code path as
+    // `gemini-omni-video`/HappyHorse below) already supports via
+    // `image_urls`. No dedicated first/last-frame bridge mode is documented
+    // for this model (single start-frame reference only) and it has no
+    // native in-video dialogue/audio channel — TTS-only for Vertical Drama.
+    id: "grok-imagine-video-1-5-preview",
+    type: "video",
+    name: "Grok Imagine Video 1.5",
+    provider: "kie.ai",
+    description: "xAI Grok Imagine Video 1.5 — image-to-video generation from a single reference frame",
+    aliases: [
+      "grok imagine 1.5",
+      "grok imagine video 1.5",
+      "grok-imagine-video-1.5",
+      "grok-imagine-video-1-5-preview",
+      "grok imagine video",
+      "grok video 1.5",
+    ],
+    creditCost: 90,
+    durations: [6, 10, 15],
+    aspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+    isEnabled: true,
+    priority: 19,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-video-1-5-preview",
+      generateType: "image-to-video",
+      hasAudio: false,
+      maxDuration: 15,
+      maxPromptLength: 5000,
+      maxReferenceImages: 1,
+      supportedDurations: [6, 10, 15],
+      supportedAspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+      supportedResolutions: ["480p", "720p"],
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+      },
+      inputFields: [
+        { key: "image_urls", label: "Start Frame (required)", type: "image_urls", required: true, syncWith: "reference_images" },
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: [
+            { value: "auto", label: "Auto" },
+            { value: "1:1", label: "1:1" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+            { value: "4:3", label: "4:3" },
+            { value: "3:4", label: "3:4" },
+          ],
+          default: "auto",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "duration",
+          label: "Duration",
+          type: "select",
+          options: [6, 10, 15].map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+          default: "6",
+          affectsPricing: true,
+        },
+        { key: "resolution", label: "Resolution", type: "select", options: [{ value: "480p", label: "480p" }, { value: "720p", label: "720p" }], default: "720p" },
+        { key: "seed", label: "Seed", type: "number", required: false },
+      ],
+      pricingTiers: { default: 90 },
+      pricingFormula: "flat",
+    },
+    supportsStartFrame: true,
+    maxReferenceImages: 1,
+    nativeAudioDialogue: false,
+    verticalDramaReady: true,
   },
   {
     id: "sora-2",
@@ -620,6 +814,13 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["16:9", "9:16", "1:1"],
     isEnabled: true,
     priority: 5,
+    // No image/reference input in this catalog entry (text-to-video only) and
+    // OpenAI's human-face bridge stays policy-gated off by default (see
+    // `verticalDramaProviderRouting.ts` `openAiHumanFaceBridgeEnabled`).
+    supportsStartFrame: false,
+    maxReferenceImages: 0,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
   },
   {
     id: "kling-2.6",
@@ -633,6 +834,11 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["16:9", "9:16"],
     isEnabled: true,
     priority: 6,
+    // No image/start-frame input wired in this catalog entry (text-to-video only).
+    supportsStartFrame: false,
+    maxReferenceImages: 0,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
   },
   {
     id: "veo_3_1-fast",
@@ -653,6 +859,15 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     configJson: { maxPromptLength: 5000, storyboardClipDurationSeconds: 8 },
     isEnabled: true,
     priority: 7,
+    // KNPLabs "form" video models (`create_video_veo`) are text-to-video
+    // only — the multipart/form-data submission has no image field, unlike
+    // the JSON models (see `grok-video-3` below). Verified against
+    // `python-backend/app/llm_proxy/providers/knplabai_provider.py`
+    // `create_video_veo()`.
+    supportsStartFrame: false,
+    maxReferenceImages: 0,
+    nativeAudioDialogue: false,
+    verticalDramaReady: false,
   },
   {
     id: "grok-video-3",
@@ -667,6 +882,15 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     configJson: { storyboardClipDurationSeconds: 10 },
     isEnabled: true,
     priority: 5,
+    // KNPLabs "JSON" video models accept an `images` array in the request
+    // body (`create_video_json()` in `knplabai_provider.py`) — usable as a
+    // start-frame reference, though the provider does not document a
+    // dedicated first/last-frame bridge mode (single reference only) and has
+    // no native audio/dialogue channel.
+    supportsStartFrame: true,
+    maxReferenceImages: 1,
+    nativeAudioDialogue: false,
+    verticalDramaReady: true,
   },
   ...wavespeedModelSeeds.map((seed) => ({
     id: seed.modelId,
@@ -681,6 +905,11 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     configJson: seed.configJson,
     isEnabled: seed.isEnabled,
     priority: seed.priority,
+    ...deriveVerticalDramaCapabilities({
+      type: seed.modelType,
+      aspectRatios: seed.aspectRatios,
+      configJson: seed.configJson,
+    }),
   })),
   ...elevenLabsModelSeeds.map((seed) => ({
     id: seed.modelId,
@@ -710,6 +939,11 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     configJson: seed.configJson,
     isEnabled: seed.isEnabled,
     priority: seed.priority,
+    ...deriveVerticalDramaCapabilities({
+      type: seed.modelType,
+      aspectRatios: seed.aspectRatios,
+      configJson: seed.configJson,
+    }),
   })),
 
   // ==================== Audio Models ====================
@@ -854,6 +1088,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
       pricingFormula: "matrix",
     },
+    supportsStartFrame: true,
+    maxReferenceImages: 7,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
   },
 ];
 
@@ -906,6 +1144,43 @@ function matchesStaticModelLookupKey(model: ModelDefinition, lookupKey: string):
 }
 
 /**
+ * Resolve the 4 Vertical Drama capability flags for ANY model id (static
+ * catalog OR DB-only), preferring the hand-tuned static catalog entry's
+ * capability flags when this id corresponds to a known static model (covers
+ * nuances the generic `deriveVerticalDramaCapabilities` heuristic can't
+ * capture — e.g. `veo3/extend-video` being Veo-family but NOT
+ * start-frame-capable, or `happyhorse/image-to-video` supporting a start
+ * frame despite not declaring an explicit 9:16 aspect ratio list). Falls back
+ * to deriving from the given type/aspectRatios/configJson for models the
+ * static catalog doesn't know about (admin-created models, future imports)
+ * so they still get sensible capability metadata without a manual DB edit.
+ * Exported for `mediaModels.ts`'s public `list` procedure, which reads model
+ * rows straight from the DB and needs the exact same resolution the internal
+ * `dbModelToDefinition` below uses.
+ */
+export function resolveVerticalDramaCapabilities(
+  modelId: string,
+  model: { type: MediaType; aspectRatios?: string[]; configJson?: Record<string, any> },
+): Pick<ModelDefinition, "supportsStartFrame" | "maxReferenceImages" | "nativeAudioDialogue" | "verticalDramaReady"> {
+  const staticMatch = getStaticModelById(modelId);
+  if (
+    staticMatch &&
+    (staticMatch.supportsStartFrame !== undefined ||
+      staticMatch.maxReferenceImages !== undefined ||
+      staticMatch.nativeAudioDialogue !== undefined ||
+      staticMatch.verticalDramaReady !== undefined)
+  ) {
+    return {
+      supportsStartFrame: staticMatch.supportsStartFrame,
+      maxReferenceImages: staticMatch.maxReferenceImages,
+      nativeAudioDialogue: staticMatch.nativeAudioDialogue,
+      verticalDramaReady: staticMatch.verticalDramaReady,
+    };
+  }
+  return deriveVerticalDramaCapabilities(model);
+}
+
+/**
  * Convert database model to ModelDefinition
  */
 function dbModelToDefinition(dbModel: any): ModelDefinition {
@@ -925,23 +1200,41 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
           })()
         : [];
 
+  const modelType = dbModel.modelType as MediaType;
+  const aspectRatios = dbModel.aspectRatios || undefined;
+  const configJson =
+    typeof dbModel.configJson === "string"
+      ? (() => {
+          try {
+            return JSON.parse(dbModel.configJson);
+          } catch {
+            return undefined;
+          }
+        })()
+      : dbModel.configJson || undefined;
+
+  const capabilities = resolveVerticalDramaCapabilities(dbModel.modelId, {
+    type: modelType,
+    aspectRatios,
+    configJson,
+  });
+
   return {
     id: dbModel.modelId,
-    type: dbModel.modelType as MediaType,
+    type: modelType,
     name: dbModel.name,
     provider: dbModel.provider,
     description: dbModel.description || "",
     aliases,
     creditCost: dbModel.creditCost,
-    aspectRatios: dbModel.aspectRatios || undefined,
+    aspectRatios,
     sizes: dbModel.sizes || undefined,
     durations: dbModel.durations || undefined,
     voices: dbModel.voices || undefined,
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,
-    configJson: typeof dbModel.configJson === "string"
-      ? (() => { try { return JSON.parse(dbModel.configJson); } catch { return undefined; } })()
-      : dbModel.configJson || undefined,
+    configJson,
+    ...capabilities,
   };
 }
 

@@ -103,6 +103,22 @@ export const verticalDramaCopy = {
   },
   saveAsPresetSuccess: { th: "บันทึก Preset แล้ว", en: "Preset saved" },
   saveAsPresetError: { th: "บันทึก Preset ไม่สำเร็จ", en: "Failed to save preset" },
+  dangerZoneTitle: { th: "โซนอันตราย", en: "Danger zone" },
+  deleteSeries: { th: "ลบโปรเจกต์ซีรีย์", en: "Delete series project" },
+  deleteSeriesBody: {
+    th: "ลบถาวร: ตอนทั้งหมด สตอรีบอร์ด ตัวละคร ความจำซีรีย์ และการตั้งค่า — ไฟล์ภาพ/วิดีโอในคลังสื่อจะไม่ถูกลบ",
+    en: "Permanently deletes all episodes, storyboards, characters, series memory, and settings — image/video files in your media library are not deleted.",
+  },
+  deleteSeriesDialogTitle: { th: "ยืนยันการลบซีรีย์นี้", en: "Confirm deleting this series" },
+  deleteSeriesDialogBody: {
+    th: "การลบนี้ย้อนกลับไม่ได้ พิมพ์ชื่อซีรีย์ด้านล่างให้ตรงกันทุกตัวอักษรเพื่อยืนยัน",
+    en: "This cannot be undone. Type the series name below exactly to confirm.",
+  },
+  deleteSeriesConfirmLabel: { th: "พิมพ์ชื่อซีรีย์เพื่อยืนยัน", en: "Type the series name to confirm" },
+  deleteSeriesConfirmButton: { th: "ลบซีรีย์ถาวร", en: "Permanently delete series" },
+  deleteSeriesCancel: { th: "ยกเลิก", en: "Cancel" },
+  deleteSeriesSuccess: { th: "ลบซีรีย์แล้ว", en: "Series deleted" },
+  deleteSeriesError: { th: "ลบซีรีย์ไม่สำเร็จ", en: "Failed to delete series" },
 } as const;
 
 /* -------------------------------------------------------------------------- */

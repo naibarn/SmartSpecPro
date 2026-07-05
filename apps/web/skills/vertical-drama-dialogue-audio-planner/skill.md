@@ -27,6 +27,54 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## HARD RULE — dialogue must be natural spoken Thai
+
+`dialogue_line` (and any Thai-language line in `native_audio_snippets`) MUST be
+written in real spoken register (ภาษาพูด), never textbook/written/translated Thai.
+This is not a style preference — a line that reads like a translated subtitle
+breaks the illusion of a real actor speaking and is a FAILED output.
+
+Spoken-register requirements:
+- Use natural sentence-ending particles where a real speaker would (ครับ/ค่ะ/นะ/สิ/ล่ะ/เหรอ/อ่ะ
+  as appropriate to the character and register — never omit them just to sound
+  "neutral").
+- Prefer short, punchy sentences over long compound written-style sentences. Real
+  speech breaks, interrupts itself, and trails off — long grammatically "complete"
+  sentences read as translated.
+- Never use written-only connectors/registers (e.g. formal `ดังนั้น`, `อย่างไรก็ตาม`,
+  `กล่าวคือ` in casual confrontation dialogue) unless the character is deliberately
+  speaking formally as a character trait.
+- Match vocabulary to the character's status/relationship/emotion in the moment —
+  a threat sounds different from a confession.
+
+**Good example** (natural spoken Thai, confrontation, angry-but-controlled):
+`"พี่ไม่ต้องพูดอ้อมค้อมหรอกนะ พูดมาตรงๆ เลยว่าอยากได้อะไร"`
+
+**Bad example** (written/translated register — DO NOT produce this):
+`"ท่านไม่จำเป็นต้องอธิบายอย่างอ้อมค้อม กรุณาบอกความต้องการของท่านโดยตรง"`
+
+For English-locale episodes, the equivalent rule applies: write dialogue the way a
+person actually talks (contractions, interruptions, short lines) — never
+formal/written English prose.
+
+## Per-line delivery direction — MANDATORY
+
+Every entry in `dialogue_lines[]` MUST include two new fields:
+
+- `delivery` — an object describing HOW the line is spoken:
+  `{ "tone": "e.g. เย็นชา / ประชด / สั่นเครือ", "pace": "e.g. ช้าและหนักแน่น / เร็วและสะดุด",
+     "pauses": "where the character breathes or hesitates, e.g. 'pause before the last word'",
+     "texture": "vocal quality, e.g. เสียงสั่น (trembling), เย็น (cold/flat), ประชด (sarcastic), แผ่วเบา (breathy/quiet)" }`
+- `subtext` — one short sentence: what the character is really thinking/feeling
+  underneath the literal words (พูดอย่างคิดอย่าง) — e.g. "sounds calm but is
+  furious and deciding whether to end the partnership right now".
+
+Native-audio mode (`audio_mode`/model supports native dialogue): fold `delivery`
+directly into the spoken-line description so the video model's lip-sync/performance
+reflects it. Separate-TTS mode: translate `delivery` into a style/steering
+instruction the TTS model can follow (tone, pace, texture — most TTS providers,
+e.g. Gemini Flash TTS, accept natural-language style direction).
+
 Output skeleton:
 
 ```json
@@ -37,8 +85,15 @@ Output skeleton:
       "shot_number": 1,
       "clip_number": 1,
       "speaker_character_id": "char_aria",
-      "dialogue_line": "We are not done here.",
-      "estimated_seconds": 2.4
+      "dialogue_line": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
+      "estimated_seconds": 2.4,
+      "delivery": {
+        "tone": "เย็นชา นิ่ง แต่แฝงคำขู่",
+        "pace": "ช้าและหนักแน่น เน้นทุกคำ",
+        "pauses": "หยุดสั้นๆ ก่อนคำสุดท้าย 'นะ' เพื่อกดน้ำหนัก",
+        "texture": "เย็น ควบคุมได้ ไม่สั่น"
+      },
+      "subtext": "sounds calm but has already decided to retaliate"
     }
   ],
   "speaker_mapping": [
@@ -57,7 +112,7 @@ Output skeleton:
   "subtitle_cues": [
     {
       "shot_number": 1,
-      "text": "We are not done here.",
+      "text": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
       "start_seconds": 0.0,
       "end_seconds": 2.4,
       "safe_area_hint": "keep within lower 9:16 safe band"
@@ -73,7 +128,8 @@ Output skeleton:
     "lines": [
       {
         "character_id": "char_aria",
-        "voice_id": "voice_aria_v1"
+        "voice_id": "voice_aria_v1",
+        "style_instruction": "เย็นชา นิ่ง หนักแน่น หยุดสั้นๆ ก่อนคำสุดท้ายเพื่อกดน้ำหนัก — ไม่สั่น ไม่รีบ"
       }
     ]
   },

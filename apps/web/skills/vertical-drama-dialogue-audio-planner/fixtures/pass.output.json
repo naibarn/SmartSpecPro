@@ -5,8 +5,29 @@
       "shot_number": 1,
       "clip_number": 1,
       "speaker_character_id": "char_aria",
-      "dialogue_line": "We are not done here.",
-      "estimated_seconds": 2.4
+      "dialogue_line": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
+      "estimated_seconds": 2.4,
+      "delivery": {
+        "tone": "เย็นชา นิ่ง แต่แฝงคำขู่",
+        "pace": "ช้าและหนักแน่น เน้นทุกคำ",
+        "pauses": "หยุดสั้นๆ ก่อนคำสุดท้าย 'นะ' เพื่อกดน้ำหนัก",
+        "texture": "เย็น ควบคุมได้ ไม่สั่น"
+      },
+      "subtext": "sounds calm but has already decided to retaliate"
+    },
+    {
+      "shot_number": 5,
+      "clip_number": 3,
+      "speaker_character_id": "char_aria",
+      "dialogue_line": "พี่น่าจะเช็กบัญชีโอนก่อนจะยิ้มออกมาแบบนั้นนะ",
+      "estimated_seconds": 2.8,
+      "delivery": {
+        "tone": "ประชดเบาๆ ปนสะใจ",
+        "pace": "ช้าลงตอนท้ายประโยค",
+        "pauses": "หยุดสั้นก่อนคำว่า 'ยิ้ม'",
+        "texture": "เย็น มั่นใจ ไม่รีบร้อน"
+      },
+      "subtext": "delivering the reversal calmly to make the rival's shock land harder"
     }
   ],
   "speaker_mapping": [
@@ -25,9 +46,16 @@
   "subtitle_cues": [
     {
       "shot_number": 1,
-      "text": "We are not done here.",
+      "text": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
       "start_seconds": 0.0,
       "end_seconds": 2.4,
+      "safe_area_hint": "keep within lower 9:16 safe band"
+    },
+    {
+      "shot_number": 5,
+      "text": "พี่น่าจะเช็กบัญชีโอนก่อนจะยิ้มออกมาแบบนั้นนะ",
+      "start_seconds": 24.0,
+      "end_seconds": 26.8,
       "safe_area_hint": "keep within lower 9:16 safe band"
     }
   ],
@@ -41,7 +69,8 @@
     "lines": [
       {
         "character_id": "char_aria",
-        "voice_id": "voice_aria_v1"
+        "voice_id": "voice_aria_v1",
+        "style_instruction": "เย็นชา นิ่ง หนักแน่น หยุดสั้นๆ ก่อนคำสุดท้ายเพื่อกดน้ำหนัก — ไม่สั่น ไม่รีบ"
       }
     ]
   },

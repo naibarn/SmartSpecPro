@@ -9,8 +9,9 @@
  */
 
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,8 +30,10 @@ import {
   pickCopy,
   seriesStatusCopy,
   verticalDramaCopy,
+  verticalDramaRoutes,
   type VerticalDramaSeriesStatus,
 } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import { VerticalDramaDeleteSeriesDialog } from "@/components/verticalDramaSeries/VerticalDramaDeleteSeriesDialog";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
@@ -85,10 +88,12 @@ export function VerticalDramaSettingsTab({
   locale,
   bible,
 }: VerticalDramaSettingsTabProps) {
+  const [, setLocation] = useLocation();
   const [titleInput, setTitleInput] = useState(title);
   const [statusInput, setStatusInput] = useState<VerticalDramaSeriesStatus>(
     (status as VerticalDramaSeriesStatus) ?? "draft",
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Keep local form state in sync when the parent series data changes
   // (e.g. after a refetch triggered elsewhere).
@@ -230,6 +235,37 @@ export function VerticalDramaSettingsTab({
           )}
         </CardContent>
       </Card>
+
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-base text-destructive">
+            {pickCopy(lang, verticalDramaCopy.dangerZoneTitle)}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid max-w-2xl gap-3">
+          <p className="text-sm text-muted-foreground">
+            {pickCopy(lang, verticalDramaCopy.deleteSeriesBody)}
+          </p>
+          <Button
+            type="button"
+            variant="destructive"
+            className="w-fit gap-2"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            {pickCopy(lang, verticalDramaCopy.deleteSeries)}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <VerticalDramaDeleteSeriesDialog
+        lang={lang}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        seriesId={seriesId}
+        seriesTitle={title}
+        onDeleted={() => setLocation(verticalDramaRoutes.seriesList())}
+      />
     </div>
   );
 }

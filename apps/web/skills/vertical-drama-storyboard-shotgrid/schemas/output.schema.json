@@ -178,6 +178,30 @@
           "lighting": {
             "type": "string"
           },
+          "facial_expression": {
+            "description": "Per-character micro-expression detail (eyes/brows/mouth). Object keyed by character_id when multiple characters are in the shot, or a plain string for a single focal character.",
+            "type": [
+              "object",
+              "string"
+            ],
+            "additionalProperties": true
+          },
+          "body_language": {
+            "description": "Per-character posture/gesture detail. Object keyed by character_id, or a plain string for a single focal character.",
+            "type": [
+              "object",
+              "string"
+            ],
+            "additionalProperties": true
+          },
+          "gaze_direction": {
+            "description": "Per-character gaze target and intent. Object keyed by character_id, or a plain string for a single focal character.",
+            "type": [
+              "object",
+              "string"
+            ],
+            "additionalProperties": true
+          },
           "dialogue_excerpt": {
             "type": "string"
           },

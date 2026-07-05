@@ -115,6 +115,17 @@ const storyboardCameraSchema = z
   })
   .passthrough();
 
+/**
+ * Per-character acting direction (Phase 3B narrative-quality superset) — the
+ * skill may emit either an object keyed by `character_id` (multi-character
+ * shots) or a plain string (single focal character). Optional so shots
+ * generated before this rule existed still validate unchanged.
+ */
+const storyboardActingDirectionSchema = z.union([
+  z.string(),
+  z.record(z.string(), z.string()),
+]);
+
 const storyboardShotSchema = z
   .object({
     shot_number: z.number().int(),
@@ -126,6 +137,10 @@ const storyboardShotSchema = z
     camera: storyboardCameraSchema,
     visual_description: z.string().min(1),
     image_prompt: z.string().min(1),
+    /** Optional narrative-quality superset — see skill.md "Emotional & acting direction". */
+    facial_expression: storyboardActingDirectionSchema.optional(),
+    body_language: storyboardActingDirectionSchema.optional(),
+    gaze_direction: storyboardActingDirectionSchema.optional(),
   })
   .passthrough();
 

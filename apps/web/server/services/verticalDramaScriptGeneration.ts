@@ -21,7 +21,6 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -34,9 +33,10 @@ import {
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -70,12 +70,55 @@ function loadSkillSystemPrompt(): string {
 /* Output schema — mirrors schemas/output.schema.json's REQUIRED fields        */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Optional narrative-quality superset (Phase 3B) — a beat MAY carry a
+ * `power_shift` (who has the advantage before/after, and how it changed),
+ * an `is_reversal` marker, and an `intensity` 1-10 rating for the escalation
+ * curve. All optional so scripts generated before this rule existed (and any
+ * fixture/test payload that omits them) still validate unchanged.
+ */
+const scriptBeatPowerShiftSchema = z
+  .object({
+    holder_before: z.string().optional(),
+    holder_after: z.string().optional(),
+    how: z.string().optional(),
+  })
+  .passthrough();
+
+const scriptBeatSchema = z
+  .object({
+    beat: z.number().optional(),
+    summary: z.string().optional(),
+    power_shift: scriptBeatPowerShiftSchema.optional(),
+    is_reversal: z.boolean().optional(),
+    intensity: z.number().int().min(1).max(10).optional(),
+  })
+  .passthrough();
+
+const scriptStructureSchema = z
+  .object({
+    mode: z.string().optional(),
+    acts: z.array(z.object({}).passthrough()).optional(),
+    beats: z.array(scriptBeatSchema).optional(),
+  })
+  .passthrough();
+
+/** Optional per-character emotional arc (Phase 3B narrative-quality superset). */
+const characterEmotionalArcSchema = z
+  .object({
+    character_id: z.string().optional(),
+    start_emotion: z.string().optional(),
+    turning_beat: z.number().optional(),
+    end_emotion: z.string().optional(),
+  })
+  .passthrough();
+
 export const scriptBuilderOutputSchema = z
   .object({
     contract_version: z.literal(1),
     episode_title: z.string().min(1),
     hook: z.string().min(1),
-    structure: z.object({}).passthrough(),
+    structure: scriptStructureSchema,
     scene_dialogue_summary: z.array(z.object({}).passthrough()),
     cliffhanger: z.string(),
     character_state_deltas: z.array(z.object({}).passthrough()),
@@ -83,6 +126,8 @@ export const scriptBuilderOutputSchema = z
     continuity_notes: z.array(z.string()),
     warnings: z.array(z.object({}).passthrough()),
     repair_queue: z.array(z.object({}).passthrough()),
+    /** Optional narrative-quality superset — see skill.md §Narrative grammar. */
+    character_emotional_arcs: z.array(characterEmotionalArcSchema).optional(),
   })
   .passthrough();
 
@@ -113,6 +158,16 @@ export interface GenerateEpisodeScriptParams {
     name: string;
     role: string | null;
   }>;
+  /**
+   * Series long-memory retrieval bundle (spec §7.6), built by
+   * `VerticalDramaSeriesMemoryService.buildEpisodeMemoryBundle`. Optional so
+   * callers/tests that predate this field (or a series with no memory yet)
+   * still work unchanged — when present, it is rendered into the LLM user
+   * payload under the `memory_state` key, matching the key name the
+   * `vertical-drama-script-builder` skill's brief ("... prior recap, memory
+   * state, character roster ...") expects.
+   */
+  memoryBundle?: unknown;
 }
 
 function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
@@ -140,6 +195,15 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     .filter(Boolean)
     .join("\n");
 
+  // memory_state (spec §7.6 retrieval bundle) — matches the
+  // `vertical-drama-script-builder` skill's `schemas/input.schema.json`
+  // `memory_state` key exactly. Omitted entirely when no bundle is available
+  // (episode 1 of a brand-new series, or a caller/test that predates this
+  // field) so the prompt shape is unchanged for those cases.
+  const memorySection = params.memoryBundle
+    ? `memory_state (series long-memory retrieval bundle — canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue; respect it for continuity and do not repeat resolved hooks or fatigued tie-ins):\n${JSON.stringify(params.memoryBundle)}`
+    : null;
+
   return [
     `story_title: ${params.episodeTitle}`,
     `story_brief:\n${storyBrief || "(no series bible detail available yet — invent a reasonable brief consistent with the episode title)"}`,
@@ -147,6 +211,8 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     `duration_seconds: ${params.durationSeconds}`,
     langInstruction,
     `characters:\n${characterLines}`,
+    memorySection,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -185,37 +251,23 @@ export async function generateEpisodeScript(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Same shared retry wrapper as the start-frame/motion-prompt generators —
+  // this stage produces a single script structure (lower truncation risk
+  // than a fixed 9-shot array), so the token ceiling is left unchanged, but
+  // it shares the same fragile executeWithFallback+extractJson pattern, so
+  // it gets the same one-retry-on-malformed-JSON safety net.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.8,
     userId: params.userId,
     maxTokens: 4000,
-    temperature: 0.8,
+    schema: scriptBuilderOutputSchema,
+    label: "Episode script",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response"
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = scriptBuilderOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Episode script response failed schema validation",
-      validation.error.issues
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -239,5 +291,5 @@ export async function generateEpisodeScript(
     },
   });
 
-  return { script: validation.data, creditsUsed, model };
+  return { script: validatedData, creditsUsed, model };
 }

@@ -139,6 +139,45 @@ describe("generateCharacterVisualPrompts", () => {
     );
   });
 
+  it("includes the character's description (age/gender/core traits) in the LLM user prompt", async () => {
+    // Regression test for the "portrait ignores description" bug — a 12-year-old
+    // character (description sourced from `data.description` via the router's
+    // `extractCharacterDescription`) must have that text land in the prompt sent
+    // to the LLM, not just name+role, otherwise the model invents an unconstrained
+    // (e.g. adult) identity.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(
+      baseParams({
+        name: "ปัณณ์",
+        description:
+          "Description: เด็กชายวัยสิบสองปีที่ฉลาดเกินวัยและปกป้องแม่เสมอไม่ว่าจะเกิดอะไรขึ้น",
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user");
+    expect(userMessage).toBeDefined();
+    expect(userMessage!.content).toContain("เด็กชายวัยสิบสองปี");
+    expect(userMessage!.content).toContain('"description"');
+  });
+
+  it("omits the description key entirely from the LLM user prompt when none is provided", async () => {
+    // Guards the other branch of `buildUserPrompt`'s `...(params.description ? {...} : {})`
+    // spread — confirms the bug's exact symptom (name+role only) reproduces
+    // when description is absent, so a future regression is caught either way.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ description: undefined }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user");
+    expect(userMessage!.content).not.toContain('"description"');
+  });
+
   it("falls back to the first character when character_id does not match characterKey", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput([validCharacter("some-other-id")])));

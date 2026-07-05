@@ -22,15 +22,15 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 
 // Re-exported so callers only need to import from this one module.
@@ -148,7 +148,23 @@ export interface StartFrameRenderPlanProjection {
 /** Project the raw skill output onto the pipeline's typed stage-payload shape. */
 export function projectStartFramePlan(
   raw: StartFrameRenderPlanOutput,
-  fallbackImageModelId: string,
+  /**
+   * The model id to persist as `selectedImageModelId` when the caller
+   * already knows which model should be used — this is either (a) the
+   * episode's own pre-existing `startFramePlan.selectedImageModelId` set by
+   * the user via `setEpisodeModelSelection` (Vertical Drama Storyboard
+   * Completion Plan, Phase 1.2 — "honor pre-existing user selection"), or
+   * (b) a caller-supplied fallback/default when there is no prior
+   * selection. Takes priority over the LLM's own `render_plan_summary
+   * .image_model` string in both cases: a user's (or the app's) explicit
+   * model choice must never be silently clobbered by whatever model name
+   * the LLM happens to mention in its summary — that field is free-text and
+   * was never meant to be authoritative for which model actually renders.
+   * Only when this argument is falsy AND the LLM provided its own
+   * `image_model` string do we fall back to the LLM's claim (keeps the
+   * dry-run/tests-without-a-caller-supplied-model path unchanged).
+   */
+  callerImageModelId: string,
   /**
    * Ground-truth character list per shot, from the (already-generated)
    * storyboard — keyed by shot number. When present, this is trusted over
@@ -165,9 +181,8 @@ export function projectStartFramePlan(
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
-    typeof summary?.image_model === "string"
-      ? (summary.image_model as string)
-      : fallbackImageModelId;
+    callerImageModelId ||
+    (typeof summary?.image_model === "string" ? (summary.image_model as string) : callerImageModelId);
 
   return {
     mode: "single_frame_per_shot",
@@ -232,6 +247,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n");
@@ -275,37 +291,24 @@ export async function generateStartFrameRenderPlan(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // 9 enriched per-shot requests (Phase 3B skill upgrades — micro-expressions,
+  // mood lighting, power-dynamic composition — made each shot's prompt much
+  // longer) previously truncated the old 4000-token ceiling mid-array. Raised
+  // to comfortably fit 9 enriched shots, with one automatic same-model retry
+  // (stricter instruction + higher ceiling) on truncated/invalid JSON — see
+  // `executeJsonPlanningCallWithRetry`'s doc comment.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 4000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.7,
+    userId: params.userId,
+    maxTokens: 16000,
+    schema: startFrameRenderPlanOutputSchema,
+    label: "Start-frame render plan",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = startFrameRenderPlanOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Start-frame render plan response failed schema validation",
-      validation.error.issues,
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -333,10 +336,10 @@ export async function generateStartFrameRenderPlan(
     params.storyboardShots.map((s) => [s.shotNumber, s.characterIds]),
   );
   const plan = projectStartFramePlan(
-    validation.data,
+    validatedData,
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
   );
 
-  return { plan, raw: validation.data, creditsUsed, model };
+  return { plan, raw: validatedData, creditsUsed, model };
 }

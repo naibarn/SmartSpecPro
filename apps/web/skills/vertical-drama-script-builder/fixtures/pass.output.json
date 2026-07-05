@@ -1,39 +1,109 @@
 {
   "contract_version": 1,
   "episode_title": "Midnight Verdict",
-  "hook": "A CFO discovers the merger she signed will bury her sister's clinic.",
+  "hook": "Aria's phone lights up mid-signature: her sister's clinic is named as collateral in the merger she is about to sign.",
   "structure": {
-    "mode": "three_act",
+    "mode": "beat",
     "acts": [
       {
         "act": 1,
-        "summary": "setup: Aria signs the merger"
+        "summary": "setup: Aria is about to sign, sees the collateral clause"
       },
       {
         "act": 2,
-        "summary": "confrontation: the hidden clause surfaces"
+        "summary": "confrontation: Aria confronts the rival who buried the clause"
       },
       {
         "act": 3,
-        "summary": "resolution cliffhanger: Aria threatens to walk"
+        "summary": "reversal: Aria turns the rival's own leverage against him, cliffhanger follows"
       }
     ],
-    "beats": []
+    "beats": [
+      {
+        "beat": 1,
+        "summary": "Aria discovers the clinic-collateral clause mid-signing",
+        "intensity": 4,
+        "power_shift": {
+          "holder_before": "char_rival",
+          "holder_after": "char_rival",
+          "how": "none — rival still controls the information"
+        },
+        "is_reversal": false
+      },
+      {
+        "beat": 2,
+        "summary": "Aria confronts the rival; he mocks her, certain she has no move",
+        "intensity": 6,
+        "power_shift": {
+          "holder_before": "char_rival",
+          "holder_after": "char_rival",
+          "how": "rival openly confirms he planned this, believing Aria is cornered"
+        },
+        "is_reversal": false
+      },
+      {
+        "beat": 3,
+        "summary": "Aria reveals she already transferred the clinic out of the collateral pool an hour earlier",
+        "intensity": 8,
+        "power_shift": {
+          "holder_before": "char_rival",
+          "holder_after": "char_aria",
+          "how": "the clause the rival weaponized is now void; Aria's calm reveal flips who is exposed"
+        },
+        "is_reversal": true
+      },
+      {
+        "beat": 4,
+        "summary": "the rival scrambles to call his backers, but Aria's assistant confirms the board already knows he overreached",
+        "intensity": 9,
+        "power_shift": {
+          "holder_before": "char_aria",
+          "holder_after": "char_aria",
+          "how": "Aria's earlier move keeps compounding against the rival"
+        },
+        "is_reversal": false
+      }
+    ]
   },
+  "character_emotional_arcs": [
+    {
+      "character_id": "char_aria",
+      "start_emotion": "guarded confidence",
+      "turning_beat": 3,
+      "end_emotion": "cold, controlled triumph"
+    },
+    {
+      "character_id": "char_rival",
+      "start_emotion": "smug certainty",
+      "turning_beat": 3,
+      "end_emotion": "exposed panic"
+    }
+  ],
   "scene_dialogue_summary": [
     {
       "scene": 1,
       "location": "boardroom",
-      "summary": "signing",
+      "summary": "signing interrupted by the collateral reveal",
       "key_line": "We are not done here."
+    },
+    {
+      "scene": 2,
+      "location": "boardroom",
+      "summary": "Aria reveals the clinic is already out of reach",
+      "key_line": "You should have checked the transfer log before you smiled."
     }
   ],
-  "cliffhanger": "Aria's rival slides a second contract across the table.",
+  "cliffhanger": "As Aria walks out, her assistant whispers that the rival's own backers just called an emergency vote — the reversal she pulled off has put his own board on his neck next.",
   "character_state_deltas": [
     {
       "character_id": "char_aria",
       "before": "loyal",
       "after": "suspicious"
+    },
+    {
+      "character_id": "char_rival",
+      "before": "confident",
+      "after": "exposed"
     }
   ],
   "product_tie_in_plan": {

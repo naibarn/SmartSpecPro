@@ -1,0 +1,79 @@
+{
+  "locale": "th",
+  "episode_title": "Midnight Verdict",
+  "script": {
+    "structure": {
+      "beats": [
+        {
+          "beat": 1,
+          "summary": "Aria discovers the clinic-collateral clause mid-signing",
+          "intensity": 4,
+          "power_shift": {
+            "holder_before": "char_rival",
+            "holder_after": "char_rival",
+            "how": "none — rival still controls the information"
+          },
+          "is_reversal": false
+        },
+        {
+          "beat": 2,
+          "summary": "Aria confronts the rival; he mocks her, certain she has no move",
+          "intensity": 6,
+          "power_shift": {
+            "holder_before": "char_rival",
+            "holder_after": "char_rival",
+            "how": "rival openly confirms he planned this"
+          },
+          "is_reversal": false
+        },
+        {
+          "beat": 3,
+          "summary": "Aria reveals she already transferred the clinic out of the collateral pool",
+          "intensity": 8,
+          "power_shift": {
+            "holder_before": "char_rival",
+            "holder_after": "char_aria",
+            "how": "the clause the rival weaponized is now void"
+          },
+          "is_reversal": true
+        }
+      ]
+    },
+    "character_emotional_arcs": [
+      {
+        "character_id": "char_aria",
+        "start_emotion": "guarded confidence",
+        "turning_beat": 3,
+        "end_emotion": "cold, controlled triumph"
+      }
+    ],
+    "cliffhanger": "As Aria walks out, her assistant whispers that the rival's own backers just called an emergency vote."
+  },
+  "storyboard": {
+    "shots": [
+      { "shot_number": 1, "emotion": "guarded suspicion" },
+      { "shot_number": 2, "emotion": "guarded suspicion" },
+      { "shot_number": 3, "emotion": "cold, simmering anger" },
+      { "shot_number": 4, "emotion": "smug certainty" },
+      { "shot_number": 5, "emotion": "cold, controlled triumph" },
+      { "shot_number": 6, "emotion": "exposed panic" },
+      { "shot_number": 7, "emotion": "brittle calm" },
+      { "shot_number": 8, "emotion": "quiet vindication" },
+      { "shot_number": 9, "emotion": "dawning dread" }
+    ]
+  },
+  "dialogue_plan": {
+    "dialogue_lines": [
+      {
+        "shot_number": 1,
+        "speaker_character_id": "char_aria",
+        "dialogue_line": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ"
+      },
+      {
+        "shot_number": 5,
+        "speaker_character_id": "char_aria",
+        "dialogue_line": "พี่น่าจะเช็กบัญชีโอนก่อนจะยิ้มออกมาแบบนั้นนะ"
+      }
+    ]
+  }
+}

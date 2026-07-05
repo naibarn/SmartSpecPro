@@ -46,7 +46,53 @@
           "type": "array",
           "items": {
             "type": "object",
-            "additionalProperties": true
+            "additionalProperties": true,
+            "properties": {
+              "power_shift": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "holder_before": {
+                    "type": "string"
+                  },
+                  "holder_after": {
+                    "type": "string"
+                  },
+                  "how": {
+                    "type": "string"
+                  }
+                }
+              },
+              "is_reversal": {
+                "type": "boolean"
+              },
+              "intensity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "character_emotional_arcs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "character_id": {
+            "type": "string"
+          },
+          "start_emotion": {
+            "type": "string"
+          },
+          "turning_beat": {
+            "type": "integer"
+          },
+          "end_emotion": {
+            "type": "string"
           }
         }
       }

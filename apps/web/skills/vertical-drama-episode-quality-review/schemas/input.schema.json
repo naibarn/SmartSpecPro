@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-episode-quality-review/input",
+  "title": "Vertical Drama Episode Quality Review Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "episode_title",
+    "script",
+    "storyboard"
+  ],
+  "properties": {
+    "locale": {
+      "type": "string",
+      "enum": [
+        "th",
+        "en"
+      ]
+    },
+    "episode_title": {
+      "type": "string"
+    },
+    "script": {
+      "description": "The vertical-drama-script-builder skill's output (or the relevant subset: structure.beats, character_emotional_arcs, cliffhanger).",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "storyboard": {
+      "description": "The vertical-drama-storyboard-shotgrid skill's output (or the relevant subset: shots[]).",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dialogue_plan": {
+      "description": "Optional vertical-drama-dialogue-audio-planner output (or the relevant subset: dialogue_lines[]). When omitted, dialogue_naturalness is scored as null.",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

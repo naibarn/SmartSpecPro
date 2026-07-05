@@ -38,8 +38,8 @@
         "local_path": "uploads/vd/end_frame_1.png",
         "contains_human_face": true
       },
-      "prompt": "clip 1: slow push-in on Aria as tension rises",
-      "negative_motion_prompt": "no warping, no identity drift, no camera whip",
+      "prompt": "Aria delivers 'We are not done here' cold and unhurried, voice flat and controlled, a deliberate pause before the last word; eyes narrowed, jaw tight, composed posture holding through the line. Camera pushes in slowly as tension rises.",
+      "negative_motion_prompt": "no warping, no identity drift, no camera whip, no flat/neutral delivery",
       "subtitle_or_dialogue": "We are not done here.",
       "camera_motion": "slow_push_in",
       "continuity_notes": "maintain blazer + gold hoops across the bridge",
@@ -51,7 +51,7 @@
         "veo31_request": {
           "model": "veo-3.1",
           "mode": "first_last_frame",
-          "prompt": "clip 1 motion prompt",
+          "prompt": "clip 1 motion prompt with delivery direction",
           "first_frame": "start_frame_shot_1",
           "last_frame": "start_frame_shot_3",
           "reference_images": [
@@ -61,6 +61,26 @@
           "aspect_ratio": "9:16",
           "resolution": "1080x1920",
           "generate_audio": false
+        },
+        "grok_request": {
+          "model": "grok-imagine-1.5",
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
+        },
+        "seedance_request": {
+          "model": "seedance-1-pro",
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
+        },
+        "generic_request": {
+          "prompt": "clip 1 motion prompt with delivery direction",
+          "first_frame": "start_frame_shot_1",
+          "duration_seconds": 8,
+          "aspect_ratio": "9:16"
         }
       },
       "parent_shot_number": null,

@@ -56,7 +56,13 @@ describe("alias resolution", () => {
   });
   it("defines Seedance + Grok Imagine 1.5 alias groups", () => {
     expect(VERTICAL_DRAMA_VIDEO_MODEL_ALIASES["seedance"]).toContain("seedance");
-    expect(VERTICAL_DRAMA_VIDEO_MODEL_ALIASES["grok imagine"]).toContain("grok imagine 1.5");
+    expect(VERTICAL_DRAMA_VIDEO_MODEL_ALIASES["grok video 3"]).toBeDefined();
+    // "grok imagine 1.5" now resolves via `grok-imagine-video-1-5-preview`'s
+    // OWN aliases (added to the catalog, Phase 0) rather than needing the
+    // bare "grok imagine" canonical key, which used to collide with the
+    // unrelated `grok-imagine` IMAGE model and could never actually resolve.
+    expect(resolveVideoModelId("grok imagine 1.5")).toBe("grok-imagine-video-1-5-preview");
+    expect(resolveVideoModelId("seedance")).toBeDefined();
   });
 });
 

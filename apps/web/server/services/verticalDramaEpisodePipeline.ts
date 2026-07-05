@@ -27,6 +27,7 @@ import {
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
+  type VerticalDramaApprovalCheckpointRow,
 } from "../../drizzle/schema";
 import {
   artifactChecksumSha256,
@@ -64,6 +65,7 @@ import {
 } from "./verticalDramaStartFrameGeneration";
 import {
   generateVideoMotionPromptPack,
+  syncDialogueOntoMotionPromptClips,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
@@ -73,6 +75,12 @@ import {
   createVerticalDramaStoryboardHandoff,
   type HandoffResult as VerticalDramaHandoffResult,
 } from "./verticalDramaStoryboardHandoff";
+import {
+  runVerticalDramaSeriesMemoryPlanning,
+  InsufficientCreditsError as MemoryPlanningInsufficientCreditsError,
+  VdSchemaValidationError as MemoryPlanningVdSchemaValidationError,
+  type SeriesMemoryPlannerOutput,
+} from "./verticalDramaSeriesMemoryPlanning";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -341,6 +349,34 @@ function mapStoryboardReviewHandoffError(
 ): RunResult["errors"][number] {
   return {
     code: "VD_STORYBOARD_REVIEW_HANDOFF_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
+
+/**
+ * Map a `runVerticalDramaSeriesMemoryPlanning` failure to a `RunResult`
+ * error — mirrors `mapScriptGenerationError` exactly. Never throws.
+ */
+function mapMemoryPlanningError(
+  error: unknown
+): RunResult["errors"][number] {
+  if (error instanceof MemoryPlanningInsufficientCreditsError) {
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
+  }
+  if (error instanceof MemoryPlanningVdSchemaValidationError) {
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
+  }
+  return {
+    code: "VD_SERIES_MEMORY_PLANNING_FAILED",
     message: error instanceof Error ? error.message : String(error),
     repairable: true,
   };
@@ -759,6 +795,8 @@ export interface RunStageOutcome {
   result: RunResult;
   /** Downstream stages that became stale (empty unless this was a repair). */
   staleStages: VerticalDramaPipelineStage[];
+  /** The pending checkpoint just created, when `result.next_action === "approve"`. */
+  checkpointId?: number;
 }
 
 export class VerticalDramaEpisodePipeline {
@@ -863,6 +901,21 @@ export class VerticalDramaEpisodePipeline {
     creditsUsed: number;
     model: string;
   }> {
+    // `plan_episode_script` runs in its own `runStage` call, separate from
+    // `normalize_series_input` (where `memoryBundle` is built above) — so it
+    // is rebuilt here. This is a cheap, pure DB read (append-only event list
+    // -> deterministic bundle), never an LLM call, so re-deriving it per
+    // stage costs nothing and keeps each stage's `runStage` invocation
+    // self-contained (no cross-stage state threading required).
+    const memoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
+      {
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      },
+      episode.episodeNumber
+    );
+
     const [seriesRow] = await db
       .select()
       .from(verticalDramaSeries)
@@ -933,6 +986,68 @@ export class VerticalDramaEpisodePipeline {
           role: c.role,
         })
       ),
+      memoryBundle,
+    });
+  }
+
+  /**
+   * Build the `runVerticalDramaSeriesMemoryPlanning` params from real DB
+   * context (the episode's own `script`/`storyboard`/`dialogueAudioPlan`
+   * jsonb columns plus the prior series memory bundle for continuity
+   * grounding) and invoke it. Only called from `runStage` for
+   * `summarize_episode_to_series_memory` when the mode is not
+   * dry_run/plan_only. This is the fix for the previously-orphaned
+   * `vertical-drama-series-memory-planner` skill — before this method
+   * existed, the stage's only output was a deterministic placeholder
+   * string and only ONE memory event kind (`episode_summary`) was ever
+   * written on approval.
+   */
+  private async generateRealSeriesMemoryPlan(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow
+  ): Promise<{
+    planned: SeriesMemoryPlannerOutput;
+    creditsUsed: number;
+    model: string;
+  }> {
+    const [seriesRow] = await db
+      .select({ locale: verticalDramaSeries.locale })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
+
+    // Prior memory (built BEFORE this episode's own summary is appended —
+    // the append only happens later, on explicit checkpoint approval) so the
+    // planner sees continuity context but never double-counts this episode.
+    const priorMemoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
+      {
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      },
+      episode.episodeNumber
+    );
+
+    return runVerticalDramaSeriesMemoryPlanning({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeNumber: episode.episodeNumber,
+      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      script: (episode.script as Record<string, unknown> | null) ?? {},
+      storyboard: episode.storyboard as Record<string, unknown> | null,
+      dialoguePlan: episode.dialogueAudioPlan as Record<
+        string,
+        unknown
+      > | null,
+      priorMemoryBundle,
     });
   }
 
@@ -1155,6 +1270,17 @@ export class VerticalDramaEpisodePipeline {
       : (buildStoryboard(episode.targetDurationSeconds ?? 60)
           .shots as unknown as Array<Record<string, unknown>>);
 
+    // Episode-level model selection (Vertical Drama Storyboard Completion
+    // Plan, Phase 1.2): a user-chosen `selectedImageModelId` set via
+    // `setEpisodeModelSelection` BEFORE this stage runs must be preserved,
+    // not silently overwritten by whatever the LLM's own
+    // `render_plan_summary.image_model` happens to say. Threaded through as
+    // `selectedImageModelId` — `projectStartFramePlan` prefers this over the
+    // LLM's claimed model (see that function's doc comment).
+    const existingSelectedImageModelId = (
+      episode.startFramePlan as { selectedImageModelId?: string } | null
+    )?.selectedImageModelId;
+
     return generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1162,6 +1288,7 @@ export class VerticalDramaEpisodePipeline {
       episodeId: owner.episodeId,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      selectedImageModelId: existingSelectedImageModelId,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
         // (`shot_number`, `visual_description`, `camera` object, `characters`
@@ -1221,6 +1348,17 @@ export class VerticalDramaEpisodePipeline {
       : (buildStoryboard(episode.targetDurationSeconds ?? 60)
           .shots as unknown as Array<Record<string, unknown>>);
 
+    // Episode-level model selection (Vertical Drama Storyboard Completion
+    // Plan, Phase 1.2): a user-chosen `selectedVideoModelId` set via
+    // `setEpisodeModelSelection` BEFORE this stage runs must be preserved,
+    // not silently overwritten by whatever the LLM's own
+    // `video_plan_summary.video_model` happens to say. Threaded through as
+    // `selectedVideoModelId` — `projectMotionPromptPack` prefers this over
+    // the LLM's claimed model (see that function's doc comment).
+    const existingSelectedVideoModelId = (
+      episode.motionPromptPack as { selectedVideoModelId?: string } | null
+    )?.selectedVideoModelId;
+
     return generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1230,6 +1368,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       durationProfileId:
         episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+      selectedVideoModelId: existingSelectedVideoModelId,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),
@@ -1275,18 +1414,91 @@ export class VerticalDramaEpisodePipeline {
     runId: number,
     stage: VerticalDramaPipelineStage,
     sourceArtifactIds: string[]
-  ): Promise<void> {
-    await db.insert(verticalDramaApprovalCheckpoints).values({
-      tenantId: owner.tenantId,
-      userId: owner.userId,
-      seriesId: owner.seriesId,
-      episodeId: owner.episodeId,
-      runId,
-      stage,
-      state: "pending",
-      sourceArtifactIds,
-      repairRequestIds: [],
-    });
+  ): Promise<number> {
+    const [row] = await db
+      .insert(verticalDramaApprovalCheckpoints)
+      .values({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        runId,
+        stage,
+        state: "pending",
+        sourceArtifactIds,
+        repairRequestIds: [],
+      })
+      .returning({ id: verticalDramaApprovalCheckpoints.id });
+    return row.id;
+  }
+
+  /**
+   * Approve or reject a pending checkpoint AND patch the run row that
+   * produced it (bug fix, 2026-07-05: the run row used to freeze at
+   * `status: "approval_required"` forever once written — nothing updated it
+   * after approval, so the client kept showing the approval bar with a now-
+   * undefined checkpoint id, an infinite no-op loop). Extracted here (was
+   * inline in the `approveCheckpoint` router procedure) so the one-click
+   * episode-generate orchestration can reuse the exact same fix instead of
+   * duplicating it.
+   */
+  async approveRunCheckpoint(
+    owner: EpisodeRunOwner,
+    checkpointId: number,
+    decision: "approve" | "reject",
+    notes?: string
+  ): Promise<{ checkpoint: VerticalDramaApprovalCheckpointRow; alreadyTerminal: boolean } | null> {
+    const [checkpoint] = await db
+      .select()
+      .from(verticalDramaApprovalCheckpoints)
+      .where(
+        and(
+          eq(verticalDramaApprovalCheckpoints.id, checkpointId),
+          eq(verticalDramaApprovalCheckpoints.tenantId, owner.tenantId),
+          eq(verticalDramaApprovalCheckpoints.userId, owner.userId),
+          eq(verticalDramaApprovalCheckpoints.seriesId, owner.seriesId),
+          eq(verticalDramaApprovalCheckpoints.episodeId, owner.episodeId)
+        )
+      )
+      .limit(1);
+    if (!checkpoint) return null;
+
+    if (checkpoint.state === "approved" || checkpoint.state === "rejected") {
+      return { checkpoint, alreadyTerminal: true };
+    }
+
+    const approving = decision === "approve";
+    const [row] = await db
+      .update(verticalDramaApprovalCheckpoints)
+      .set({
+        state: approving ? "approved" : "rejected",
+        approvedByUserId: approving ? owner.userId : null,
+        rejectedByUserId: approving ? null : owner.userId,
+        notes: notes ?? checkpoint.notes,
+        updatedAt: new Date(),
+      })
+      .where(eq(verticalDramaApprovalCheckpoints.id, checkpoint.id))
+      .returning();
+
+    if (approving) {
+      const nextAction: RunResult["next_action"] =
+        checkpoint.stage === "create_storyboard_review_project"
+          ? "open_storyboard_review"
+          : checkpoint.stage === "summarize_episode_to_series_memory"
+            ? "none"
+            : "resume_next_stage";
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "succeeded", nextAction, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
+    } else {
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "failed", nextAction: "repair", updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
+    }
+
+    return { checkpoint: row as VerticalDramaApprovalCheckpointRow, alreadyTerminal: false };
   }
 
   /**
@@ -1399,6 +1611,33 @@ export class VerticalDramaEpisodePipeline {
     if (stage === "update_character_visual_bible" && paidModeAllowed) {
       const synced = await this.syncCharacterVisualBible(owner);
       payload = { stage, ...synced };
+    }
+
+    // `generate_or_import_character_refs` override — same free-DB-sync
+    // pattern as `update_character_visual_bible` immediately above (no
+    // credits, no LLM/provider call: real character reference generation
+    // now happens entirely via the character tab's own dedicated UI —
+    // `verticalDramaCharacters.generateCharacterImage`/`linkAsset`/etc —
+    // this stage is just the pipeline's checkpoint that those references
+    // actually exist). The dry-run placeholder (`{ mediaAssetIds: [],
+    // approved: false }`) was always empty and never reflected reality,
+    // which is exactly what prompted the "what's this test button even for"
+    // complaint — there was nothing to distinguish a real run from a fake
+    // one for this stage. Reuses `syncCharacterVisualBible`'s per-character
+    // `has_approved_portrait` computation (same underlying data both stages
+    // care about).
+    if (stage === "generate_or_import_character_refs" && paidModeAllowed) {
+      const synced = await this.syncCharacterVisualBible(owner);
+      const mediaAssetIds = synced.characters
+        .filter((c) => c.has_approved_portrait)
+        .map((c) => c.character_id);
+      payload = {
+        stage,
+        mediaAssetIds,
+        approved: synced.characters.length > 0 && mediaAssetIds.length === synced.characters.length,
+        characterCount: synced.characters.length,
+        referencedCount: mediaAssetIds.length,
+      };
     }
 
     // `buildStagePayload` above is ALWAYS the deterministic, no-provider-call
@@ -1543,6 +1782,14 @@ export class VerticalDramaEpisodePipeline {
           owner,
           episode
         );
+        // Phase 3.1: sync `dialogueAudioPlan` lines onto `clips[j].dialogue`
+        // when the skill's own `.passthrough()` output didn't already carry
+        // them — never overwrites a non-empty existing array. No-op (returns
+        // the pack unchanged) when the episode has no dialogue plan yet.
+        generated.pack = syncDialogueOntoMotionPromptClips(
+          generated.pack,
+          episode.dialogueAudioPlan
+        );
         payload = { stage, ...generated.pack, warnings: [] };
         if (subShotFlagOn && subShotPolicy.enabled) {
           const storyboard = buildStoryboard(
@@ -1642,6 +1889,72 @@ export class VerticalDramaEpisodePipeline {
         // create and reopen paths) — no additional persistence needed here.
       } catch (error) {
         const genError = mapStoryboardReviewHandoffError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // Same override convention as the stages above, for
+    // `summarize_episode_to_series_memory`: only when the mode is not
+    // dry_run/plan_only do we replace the deterministic pending-summary
+    // placeholder with the real `vertical-drama-series-memory-planner`
+    // skill output (episode recap, canonical facts, hooks
+    // opened/resolved, character/relationship deltas, continuity risks,
+    // product tie-in history). This IS a paid LLM call (credit-gated
+    // inside `generateRealSeriesMemoryPlan`), but — like every other real-
+    // generation override in this file — it is gated by `paidModeAllowed`
+    // (never `VERTICAL_DRAMA_PAID_STAGES`, which is reserved for stages
+    // that call an external media provider) so it never runs in
+    // dry_run/plan_only. The planner output is written into THIS stage's
+    // artifact only; it is never auto-applied to durable series memory
+    // here — the approval gate below (and `verticalDramaEpisodes.ts`'s
+    // `approveCheckpoint`) still owns the actual append-only memory writes,
+    // preserving the "memory events are appended only on explicit approval"
+    // design. A generation failure never throws out of `runStage` — it is
+    // recorded as a normal `failed`/`repair` `RunResult`, same as every
+    // other real-generation override above.
+    if (stage === "summarize_episode_to_series_memory" && paidModeAllowed) {
+      try {
+        const generated = await this.generateRealSeriesMemoryPlan(
+          owner,
+          episode
+        );
+        payload = {
+          stage,
+          episodeNumber: episode.episodeNumber,
+          pending: true,
+          ...generated.planned,
+        };
+      } catch (error) {
+        const genError = mapMemoryPlanningError(error);
         const runId = await this.writeRun(owner, stage, mode, {
           status: "failed",
           next_action: "repair",
@@ -1808,8 +2121,9 @@ export class VerticalDramaEpisodePipeline {
       .set({ artifactIds })
       .where(eq(verticalDramaEpisodeRuns.id, runId));
 
+    let checkpointId: number | undefined;
     if (requiresApproval && !approved) {
-      await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
+      checkpointId = await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
     }
 
     const result: RunResult = {
@@ -1824,7 +2138,7 @@ export class VerticalDramaEpisodePipeline {
       warnings,
       qc,
     };
-    return { runId, result, staleStages: [] };
+    return { runId, result, staleStages: [], checkpointId };
   }
 
   /**

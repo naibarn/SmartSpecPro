@@ -28,11 +28,29 @@ import {
 } from "../../drizzle/schema";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
+import { getModelsByTypeAsync, resolveVerticalDramaCapabilities } from "../services/modelRegistry";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import {
+  verticalDramaShotReferencesService,
+  VerticalDramaShotReferenceError,
+  type VerticalDramaShotReferenceRole,
+  type VerticalDramaShotReferenceSource,
+} from "../services/verticalDramaShotReferences";
+import {
+  runVerticalDramaEpisodeQualityReview,
+  InsufficientCreditsError as QualityReviewInsufficientCreditsError,
+  VdSchemaValidationError as QualityReviewVdSchemaValidationError,
+  RateLimitExceededError as QualityReviewRateLimitExceededError,
+  type EpisodeQualityReviewOutput,
+} from "../services/verticalDramaEpisodeQualityReview";
+import {
+  formatVideoClipRequest,
+  type VerticalDramaClipDialogueLine,
+} from "../services/verticalDramaVideoPromptFormatter";
 import { VERTICAL_DRAMA_MEMORY_KINDS } from "@shared/verticalDramaSeries";
 import type {
   VerticalDramaMemoryKind,
@@ -82,7 +100,7 @@ function requireTenantId(tenantId: string | null): string {
 
 function parseId(raw: string, label: string): number {
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) {
+  if (!Number.isInteger(n) || n <= 0) {
     throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid ${label}` });
   }
   return n;
@@ -172,6 +190,77 @@ async function loadOwnedEpisode(owner: EpisodeRunOwner) {
 }
 
 /**
+ * Non-pipeline "stage" tag used ONLY to persist the episode quality-review
+ * scorecard through the EXISTING `verticalDramaEpisodeRuns`/
+ * `verticalDramaRunArtifacts` ledger tables (storyboard-complete plan, Phase
+ * 3B.5 — "persist using the existing run/artifact mechanism ... so it
+ * survives reload"). This is deliberately NOT added to the strict, closed
+ * `VerticalDramaPipelineStage` union (`@shared/verticalDramaSeries`
+ * `contracts.ts`) — the quality-review skill is an LLM-only advisory gate,
+ * not one of the 15 canonical pipeline stages, and widening that union would
+ * ripple through every stage-keyed switch/map in
+ * `verticalDramaEpisodePipeline.ts`. Both ledger tables' `stage` DB column is
+ * a plain `varchar` with no CHECK constraint (verified against the migration
+ * SQL), so writing this tag directly via `db.insert(...)` here — bypassing
+ * the pipeline class's stage-typed `writeRun`/`writeArtifact` methods
+ * entirely — is safe and does not touch pipeline stage-sequencing logic.
+ */
+const VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG = "episode_quality_review" as const;
+
+/**
+ * Load the most recently written episode-quality-review artifact's JSON
+ * payload (see `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG`), or `null` if the
+ * review has never been run for this episode. Tenant + user + series +
+ * episode scoped.
+ */
+async function loadLatestQualityReview(
+  owner: EpisodeRunOwner,
+): Promise<EpisodeQualityReviewOutput | null> {
+  const [row] = await db
+    .select({ jsonPayload: verticalDramaRunArtifacts.jsonPayload })
+    .from(verticalDramaRunArtifacts)
+    .where(
+      and(
+        eq(verticalDramaRunArtifacts.tenantId, owner.tenantId),
+        eq(verticalDramaRunArtifacts.userId, owner.userId),
+        eq(verticalDramaRunArtifacts.seriesId, owner.seriesId),
+        eq(verticalDramaRunArtifacts.episodeId, owner.episodeId),
+        eq(verticalDramaRunArtifacts.stage, VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG),
+      ),
+    )
+    .orderBy(desc(verticalDramaRunArtifacts.id))
+    .limit(1);
+  if (!row?.jsonPayload) return null;
+  return row.jsonPayload as EpisodeQualityReviewOutput;
+}
+
+/**
+ * Translate a `VerticalDramaShotReferenceError` into the correct tRPC error
+ * code — mirrors `verticalDramaCharacters.ts`'s `mapStockError`: cross-tenant/
+ * cross-user/missing rows become NOT_FOUND so we never disclose another
+ * owner's data; a deleted/unattachable media asset is a BAD_REQUEST (the
+ * caller can fix the request, unlike a missing/foreign row).
+ */
+function mapShotReferenceError(err: unknown): never {
+  if (err instanceof VerticalDramaShotReferenceError) {
+    switch (err.reason) {
+      case "episode_not_found":
+      case "reference_not_found":
+        throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+      case "media_asset_not_found":
+      case "media_asset_cross_tenant":
+      case "media_asset_cross_user":
+        throw new TRPCError({ code: "NOT_FOUND", message: "Referenced media asset not found" });
+      case "media_asset_deleted":
+        throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+      default:
+        throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+    }
+  }
+  throw err;
+}
+
+/**
  * Batch-resolve `media_assets` ids referenced from `startFramePlan`/
  * `motionPromptPack` JSONB (start/end frame asset ids) into display URLs,
  * scoped to the caller's tenant+user so one series never leaks another
@@ -224,6 +313,43 @@ async function resolveEpisodePlanAssetUrls(
     };
   }
   return result;
+}
+
+/**
+ * Batch-resolve arbitrary `media_assets` numeric ids to their display URL,
+ * tenant + user scoped (never discloses another owner's asset URL). Used by
+ * `generateVideoClip` to resolve the approved start-frame asset + a shot's
+ * linked reference images into the URLs `mediaGenerationService.
+ * generateVideoAsync`'s `referenceImageUrls` needs — the shot-references
+ * service already returns joined thumbnail URLs for its OWN rows, but the
+ * start-frame asset id (from `startFramePlan.frames[i].
+ * approvedMediaAssetId`) is not itself a shot-reference row, so it needs
+ * this separate general-purpose lookup.
+ */
+async function resolveMediaAssetUrlsByIds(
+  tenantId: string,
+  userId: number,
+  assetIds: number[],
+): Promise<Map<number, string>> {
+  const uniqueIds = Array.from(new Set(assetIds)).filter(
+    (id) => Number.isInteger(id) && id > 0,
+  );
+  if (uniqueIds.length === 0) return new Map();
+  const rows = await db
+    .select({ id: mediaAssets.id, originalUrl: mediaAssets.originalUrl })
+    .from(mediaAssets)
+    .where(
+      and(
+        inArray(mediaAssets.id, uniqueIds),
+        eq(mediaAssets.tenantId, tenantId),
+        eq(mediaAssets.userId, userId),
+      ),
+    );
+  const map = new Map<number, string>();
+  for (const row of rows) {
+    if (row.originalUrl) map.set(row.id, row.originalUrl);
+  }
+  return map;
 }
 
 /**
@@ -312,6 +438,65 @@ async function resolveShotCharacterReferenceUrls(
 }
 
 /**
+ * Resolve the effective image model for a start-frame generation call:
+ * episode-level `startFramePlan.selectedImageModelId` (Phase 1.2 resolution
+ * order: episode selection → `DEFAULT_MODELS`), falling back to
+ * `DEFAULT_MODELS.image` when the plan has no selection yet OR the selected
+ * model is no longer enabled (fails closed to a known-good default rather
+ * than submitting a generation call with a dead model id). Shared by
+ * `generateStartFrameImage` and `generateStartFrameAngleVariations` so both
+ * call sites — and their credit pricing — stay in sync with the same
+ * resolution.
+ */
+export async function resolveEpisodeImageModelId(
+  plan: VerticalDramaStartFramePlan | null,
+): Promise<string> {
+  const requested = plan?.selectedImageModelId?.trim();
+  if (!requested) return DEFAULT_MODELS.image;
+  const models = await getModelsByTypeAsync("image");
+  const model = models.find(m => m.id === requested);
+  if (!model || model.isEnabled === false) return DEFAULT_MODELS.image;
+  return model.id;
+}
+
+/**
+ * Resolve the effective video model DEFINITION (not just the id) for a video
+ * clip generation call: episode-level `motionPromptPack.selectedVideoModelId`
+ * (Phase 1.2 resolution order: episode selection → `DEFAULT_MODELS`), falling
+ * back to `DEFAULT_MODELS.video` when the pack has no selection yet OR the
+ * selected model is no longer enabled — same fail-closed convention as
+ * `resolveEpisodeImageModelId`. Returns the full `ModelDefinition` (not just
+ * the id) because `formatVideoClipRequest` needs the capability metadata
+ * (`configJson`/`aspectRatios`/`provider`/`aliases`) to resolve
+ * `nativeAudioDialogue`/`maxReferenceImages` for the requested model — a
+ * second lookup by id would risk resolving a DIFFERENT model if the catalog
+ * changed between the two calls.
+ */
+export async function resolveEpisodeVideoModel(
+  pack: VerticalDramaMotionPromptPack | null,
+): Promise<import("../services/modelRegistry").ModelDefinition> {
+  const models = await getModelsByTypeAsync("video");
+  const requested = pack?.selectedVideoModelId?.trim();
+  if (requested) {
+    const model = models.find(m => m.id === requested);
+    if (model && model.isEnabled !== false) return model;
+  }
+  const fallback = models.find(m => m.id === DEFAULT_MODELS.video);
+  if (fallback) return fallback;
+  // Extremely defensive last resort — the catalog should always contain
+  // `DEFAULT_MODELS.video`, but never throw out of a resolution helper.
+  return {
+    id: DEFAULT_MODELS.video,
+    type: "video",
+    name: DEFAULT_MODELS.video,
+    provider: "unknown",
+    description: "",
+    aliases: [],
+    creditCost: 10,
+  };
+}
+
+/**
  * Insert one new episode row, safely assigning the next episode number.
  * Extracted from `createEpisode` (spec Tests) so every episode-creating
  * procedure — the plain shell `createEpisode` AND the plan-materializing /
@@ -369,6 +554,36 @@ async function insertEpisodeWithSafeNumber(
     code: "CONFLICT",
     message: "Could not assign episode number",
   });
+}
+
+/**
+ * Validate a user-requested episode-level model selection against the media
+ * model catalog: must exist, must be the requested media type, and must be
+ * enabled (spec Phase 1.1 — "ต้อง generate ได้จริง"). Reused by
+ * `setEpisodeModelSelection` for both `selectedImageModelId` and
+ * `selectedVideoModelId`. Uses the async/DB-fresh registry lookup (same
+ * convention as `verticalDramaProviderRouting.ts`'s `resolveVideoModels`)
+ * rather than the sync cache-or-static accessor, since this is a
+ * user-triggered validation path, not a hot generation call site.
+ */
+export async function assertModelSelectable(
+  modelId: string,
+  mediaType: "image" | "video",
+): Promise<void> {
+  const models = await getModelsByTypeAsync(mediaType);
+  const model = models.find(m => m.id === modelId);
+  if (!model) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unknown ${mediaType} model "${modelId}"`,
+    });
+  }
+  if (model.isEnabled === false) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Model "${modelId}" is currently disabled and cannot be selected`,
+    });
+  }
 }
 
 /** Resolve the effective sub-shot policy for a tenant (flag-gated, fail-closed). */
@@ -1071,91 +1286,49 @@ export const verticalDramaEpisodesRouter = router({
       const episodeId = parseId(input.episodeId, "episode id");
       const checkpointId = parseId(input.checkpointId, "checkpoint id");
 
-      const [checkpoint] = await db
-        .select()
-        .from(verticalDramaApprovalCheckpoints)
-        .where(
-          and(
-            eq(verticalDramaApprovalCheckpoints.id, checkpointId),
-            eq(verticalDramaApprovalCheckpoints.tenantId, tenantId),
-            eq(verticalDramaApprovalCheckpoints.userId, userId),
-            eq(verticalDramaApprovalCheckpoints.seriesId, seriesId),
-            eq(verticalDramaApprovalCheckpoints.episodeId, episodeId)
-          )
-        )
-        .limit(1);
-      if (!checkpoint)
+      // Approves/rejects the checkpoint AND patches the run row that
+      // produced it (bug fix, 2026-07-05: the run row used to freeze at
+      // "approval_required" forever — nothing updated it after approval,
+      // so the client kept showing the approval bar with a now-undefined
+      // checkpoint id, an infinite no-op loop). Extracted onto the pipeline
+      // service so the one-click episode-generate orchestration can reuse
+      // the exact same fix instead of duplicating it.
+      const outcome = await verticalDramaEpisodePipeline.approveRunCheckpoint(
+        { tenantId, userId, seriesId, episodeId },
+        checkpointId,
+        input.decision,
+        input.notes
+      );
+      if (!outcome)
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Checkpoint not found",
         });
+      const { checkpoint: row, alreadyTerminal } = outcome;
 
-      // Idempotent: a terminal checkpoint returns as-is.
-      if (checkpoint.state === "approved" || checkpoint.state === "rejected") {
-        return { checkpoint: { ...checkpoint, id: String(checkpoint.id) } };
+      // Idempotent: a terminal checkpoint returns as-is, no side effects re-run.
+      if (alreadyTerminal) {
+        return { checkpoint: { ...row, id: String(row.id) } };
       }
-
       const approving = input.decision === "approve";
-      const [row] = await db
-        .update(verticalDramaApprovalCheckpoints)
-        .set({
-          state: approving ? "approved" : "rejected",
-          approvedByUserId: approving ? userId : null,
-          rejectedByUserId: approving ? null : userId,
-          notes: input.notes ?? checkpoint.notes,
-          updatedAt: new Date(),
-        })
-        .where(eq(verticalDramaApprovalCheckpoints.id, checkpoint.id))
-        .returning();
-
-      // Bug fix (2026-07-05): the run row that produced this checkpoint was
-      // written BEFORE approval, with `status: "approval_required"` /
-      // `nextAction: "approve"` frozen in at that time — nothing ever
-      // updated it afterward. The client derives "what stage needs
-      // attention" from the latest run row per stage
-      // (`VerticalDramaEpisodePage.tsx`'s `stageStates`), so that stale row
-      // kept showing the approval bar forever, with `checkpointId` now
-      // `undefined` (the checkpoint is no longer `pending`) — every
-      // subsequent Approve/Reject click silently no-op'd. Patch the run row
-      // directly here (NOT by re-invoking `runStage`, which would re-run
-      // paid/credit-charging generation for stages like `plan_episode_script`
-      // that call their real LLM generation unconditionally before the
-      // approval gate — re-invoking would double-charge and overwrite the
-      // just-approved output).
-      if (approving) {
-        const nextAction =
-          checkpoint.stage === "create_storyboard_review_project"
-            ? "open_storyboard_review"
-            : checkpoint.stage === "summarize_episode_to_series_memory"
-              ? "none"
-              : "resume_next_stage";
-        await db
-          .update(verticalDramaEpisodeRuns)
-          .set({ status: "succeeded", nextAction, updatedAt: new Date() })
-          .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
-      } else {
-        // Rejecting has the identical stale-run-row problem — surface it as
-        // the same "failed" / "repair" state every other rejected/invalid
-        // stage output uses, instead of leaving the same broken approval bar
-        // showing with a now-undefined checkpoint id.
-        await db
-          .update(verticalDramaEpisodeRuns)
-          .set({ status: "failed", nextAction: "repair", updatedAt: new Date() })
-          .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
-      }
+      const checkpoint = row;
 
       // Memory-update checkpoint (stage `summarize_episode_to_series_memory`,
-      // the 12th/last approval checkpoint): the episode summary is held PENDING
-      // and never auto-applied by the pipeline. It is written into durable series
-      // memory only on THIS explicit approval — append a `episode_summary` memory
-      // event via the append-only memory service. This runs only on the first
-      // approval transition (a terminal checkpoint short-circuits above).
+      // the 12th/last approval checkpoint): the episode summary (and, when a
+      // real `vertical-drama-series-memory-planner` artifact was produced by
+      // the pipeline, ALL seven other memory event kinds too) is held PENDING
+      // and never auto-applied by the pipeline. It is written into durable
+      // series memory only on THIS explicit approval — appended via the
+      // append-only memory service. This runs only on the first approval
+      // transition (a terminal checkpoint short-circuits above), and every
+      // `appendEvent` call below carries a checkpoint-scoped idempotency key
+      // so a replayed approval never double-writes any event kind.
       if (
         approving &&
         checkpoint.stage === "summarize_episode_to_series_memory"
       ) {
-        // Resolve the episode number + the pending summary from the source
-        // artifact under review so the memory event carries the real summary.
+        // Resolve the episode number + the pending artifact under review so
+        // the memory events carry the real planner output (when present).
         const [episode] = await db
           .select({ episodeNumber: verticalDramaEpisodes.episodeNumber })
           .from(verticalDramaEpisodes)
@@ -1172,6 +1345,7 @@ export const verticalDramaEpisodesRouter = router({
 
         const sourceArtifactIds =
           (checkpoint.sourceArtifactIds as string[] | null) ?? [];
+        let plannerPayload: Record<string, unknown> | undefined;
         let summaryText =
           episodeNumber != null
             ? `Episode ${episodeNumber} summarized to series memory`
@@ -1195,8 +1369,18 @@ export const verticalDramaEpisodesRouter = router({
               | Record<string, unknown>
               | undefined;
             if (payload?.summary) summaryText = String(payload.summary);
+            // Only the real planner artifact carries `episode_recap` (the
+            // old pending-only placeholder from `buildStagePayload` never
+            // does) — use its presence to distinguish "real planner ran"
+            // from "old run / dry_run / plan_only, no planner artifact".
+            if (typeof payload?.episode_recap === "string") {
+              plannerPayload = payload;
+              summaryText = payload.episode_recap as string;
+            }
           }
         }
+
+        const baseIdempotencyKey = `vd-episode-summary-checkpoint-${checkpoint.id}`;
 
         await verticalDramaSeriesMemoryService.appendEvent({
           tenantId,
@@ -1209,13 +1393,128 @@ export const verticalDramaEpisodesRouter = router({
             episodeNumber,
             summary: summaryText,
             approvedFromCheckpointId: String(checkpoint.id),
+            ...(plannerPayload
+              ? { memoryCompactionSummary: plannerPayload.memory_compaction_summary }
+              : {}),
           },
           summaryText,
           approved: true,
           approvedByUserId: userId,
           // Idempotent: a replayed approval never double-writes the summary.
-          idempotencyKey: `vd-episode-summary-checkpoint-${checkpoint.id}`,
+          idempotencyKey: baseIdempotencyKey,
         });
+
+        // Fallback preserved for old runs with no planner artifact (dry_run/
+        // plan_only-only history, or runs that predate this wiring): only the
+        // `episode_summary` event above is written, exactly as before.
+        if (plannerPayload) {
+          const asArray = (value: unknown): Array<Record<string, unknown>> =>
+            Array.isArray(value)
+              ? (value as Array<Record<string, unknown>>)
+              : [];
+
+          const appendKind = async (
+            memoryKind: VerticalDramaMemoryKind,
+            items: Array<Record<string, unknown>>,
+            summaryOf: (item: Record<string, unknown>) => string,
+            keySuffix: string
+          ) => {
+            for (const [index, item] of items.entries()) {
+              const text = summaryOf(item);
+              await verticalDramaSeriesMemoryService.appendEvent({
+                tenantId,
+                userId,
+                seriesId,
+                episodeId,
+                runId: checkpoint.runId,
+                memoryKind,
+                payload: {
+                  episodeNumber,
+                  approvedFromCheckpointId: String(checkpoint.id),
+                  ...item,
+                },
+                summaryText: text,
+                approved: true,
+                approvedByUserId: userId,
+                // Idempotent per item — a replayed approval never
+                // double-appends any single hook/delta/warning/tie-in.
+                idempotencyKey: `${baseIdempotencyKey}-${keySuffix}-${index}`,
+              });
+            }
+          };
+
+          await appendKind(
+            "hook_opened",
+            asArray(plannerPayload.unresolved_hooks),
+            (item) =>
+              String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
+            "hook-opened"
+          );
+          await appendKind(
+            "hook_resolved",
+            asArray(plannerPayload.resolved_hooks),
+            (item) =>
+              String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
+            "hook-resolved"
+          );
+          await appendKind(
+            "character_delta",
+            asArray(plannerPayload.character_emotional_state),
+            (item) =>
+              String(
+                item.state ?? item.change ?? `${item.character_id ?? "character"} state change`
+              ),
+            "character-delta"
+          );
+          await appendKind(
+            "relationship_delta",
+            asArray(plannerPayload.relationship_state_changes),
+            (item) =>
+              String(
+                item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`
+              ),
+            "relationship-delta"
+          );
+          await appendKind(
+            "continuity_warning",
+            asArray(plannerPayload.continuity_risks),
+            (item) => String(item.risk ?? item.warning ?? "continuity risk"),
+            "continuity-warning"
+          );
+          await appendKind(
+            "product_tie_in_usage",
+            asArray(plannerPayload.product_tie_in_history),
+            (item) =>
+              String(item.productName ?? item.product_name ?? "product tie-in usage"),
+            "product-tie-in"
+          );
+
+          // `canonical_fact` events are appended too (kept out of the shared
+          // `appendKind` helper because their summary source field differs).
+          for (const [index, fact] of asArray(
+            plannerPayload.canonical_facts
+          ).entries()) {
+            const text = String(fact.statement ?? fact.fact ?? "canonical fact");
+            await verticalDramaSeriesMemoryService.appendEvent({
+              tenantId,
+              userId,
+              seriesId,
+              episodeId,
+              runId: checkpoint.runId,
+              memoryKind: "canonical_fact",
+              payload: {
+                episodeNumber,
+                approvedFromCheckpointId: String(checkpoint.id),
+                fact: text,
+                ...fact,
+              },
+              summaryText: text,
+              approved: true,
+              approvedByUserId: userId,
+              idempotencyKey: `${baseIdempotencyKey}-canonical-fact-${index}`,
+            });
+          }
+        }
       }
 
       return { checkpoint: { ...row, id: String(row.id) } };
@@ -1369,6 +1668,63 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Propose a retcon: appends an append-only `retcon_proposal` memory event
+   * carrying the new canonical fact and (optionally) which prior canonical-
+   * fact events it would supersede once approved. Wraps
+   * `verticalDramaSeriesMemory.ts`'s `proposeRetcon()` — the proposal is
+   * inert until a later `approveRetconProposal`/`rejectRetconProposal` call
+   * resolves it (never mutates or deletes anything by itself).
+   */
+  proposeRetcon: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        factSummary: z.string().trim().min(1).max(2000),
+        supersedesEventIds: z.array(z.string().min(1)).optional(),
+        reason: z.string().trim().max(2000).optional(),
+        idempotencyKey,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await assertSeriesOwned(tenantId, userId, seriesId);
+
+      // Best-effort lookup of the contradicted fact's text, purely to give
+      // the proposal a human-readable `contradictedFact` — not a
+      // correctness requirement (supersession is driven by event ids, not
+      // this text).
+      let contradictedFact = "";
+      if (input.supersedesEventIds?.length) {
+        const supersededEvents = await verticalDramaSeriesMemoryService.listEvents(
+          {
+            tenantId,
+            userId,
+            seriesId,
+            kind: "canonical_fact",
+            limit: 1000,
+          }
+        );
+        contradictedFact = supersededEvents
+          .filter((ev) => input.supersedesEventIds!.includes(ev.memoryEventId))
+          .map((ev) => ev.summaryText || String(ev.payload?.fact ?? ""))
+          .filter(Boolean)
+          .join("; ");
+      }
+
+      const event = await verticalDramaSeriesMemoryService.proposeRetcon({
+        owner: { tenantId, userId, seriesId },
+        contradictedFact,
+        proposedFact: input.factSummary,
+        rationale: input.reason ?? "",
+        supersedesEventIds: input.supersedesEventIds ?? [],
+        idempotencyKey: input.idempotencyKey,
+      });
+      return { event };
+    }),
+
+  /**
    * Approve a `retcon_proposal`: appends a NEW superseding memory event, never
    * mutating prior events (append-only chain preserved).
    */
@@ -1447,7 +1803,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
-      const [assetUrls, characterPortraits] = await Promise.all([
+      const [assetUrls, characterPortraits, qualityReview] = await Promise.all([
         resolveEpisodePlanAssetUrls(
           tenantId,
           userId,
@@ -1455,6 +1811,7 @@ export const verticalDramaEpisodesRouter = router({
           row.motionPromptPack,
         ),
         resolveSeriesCharacterPortraits(tenantId, userId, seriesId),
+        loadLatestQualityReview({ tenantId, userId, seriesId, episodeId }),
       ]);
       return {
         script: row.script as Record<string, unknown> | null,
@@ -1466,6 +1823,7 @@ export const verticalDramaEpisodesRouter = router({
         storyboardReviewId: row.storyboardReviewId as string | null,
         startFramePlan: row.startFramePlan as VerticalDramaStartFramePlan | null,
         motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+        qualityReview,
         assetUrls,
         characterPortraits,
       };
@@ -1553,6 +1911,138 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Set the episode-level image/video model selection (Vertical Drama
+   * Storyboard Completion Plan, Phase 1.1). Deliberately EPISODE-level only —
+   * no per-shot/per-clip override (2026-07-05 product decision, see
+   * `planning/vertical-drama-storyboard-complete/plan.md` §4/§Phase 1) — to
+   * keep the model-selection UI to a single control per episode.
+   *
+   * Free (no credits, no generation triggered) — same convention as
+   * `updateEpisodeDraft`, which this reuses the JSONB-patch shape of:
+   * `selectedImageModelId` is written into `startFramePlan.selectedImageModelId`
+   * and `selectedVideoModelId` into `motionPromptPack.selectedVideoModelId`,
+   * creating a minimal plan object for whichever of the two hasn't been
+   * generated yet (so choosing a model before the LLM planning stages have
+   * run still persists the user's choice — `generateRealStartFramePlan` /
+   * `generateRealMotionPromptPack` in `verticalDramaEpisodePipeline.ts` now
+   * read this pre-existing value and preserve it instead of overwriting it,
+   * see `projectStartFramePlan`/`projectMotionPromptPack`).
+   *
+   * Returns the resolved credit cost for a single generation at the newly
+   * selected model (image: per-image; video: per-clip) so the client can
+   * show it in a confirm dialog before the next paid generation call.
+   */
+  setEpisodeModelSelection: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        selectedVideoModelId: z.string().trim().min(1).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!input.selectedImageModelId && !input.selectedVideoModelId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Provide at least one of selectedImageModelId or selectedVideoModelId",
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      if (input.selectedImageModelId) {
+        await assertModelSelectable(input.selectedImageModelId, "image");
+      }
+      if (input.selectedVideoModelId) {
+        await assertModelSelectable(input.selectedVideoModelId, "video");
+      }
+
+      const updates: Partial<typeof verticalDramaEpisodes.$inferInsert> = {
+        updatedAt: new Date(),
+      };
+
+      let updatedStartFramePlan: VerticalDramaStartFramePlan | null =
+        row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (input.selectedImageModelId) {
+        updatedStartFramePlan = updatedStartFramePlan
+          ? { ...updatedStartFramePlan, selectedImageModelId: input.selectedImageModelId }
+          : {
+              mode: "single_frame_per_shot",
+              selectedImageModelId: input.selectedImageModelId,
+              frames: [],
+            };
+        updates.startFramePlan = updatedStartFramePlan;
+      }
+
+      let updatedMotionPromptPack: VerticalDramaMotionPromptPack | null =
+        row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      if (input.selectedVideoModelId) {
+        updatedMotionPromptPack = updatedMotionPromptPack
+          ? { ...updatedMotionPromptPack, selectedVideoModelId: input.selectedVideoModelId }
+          : {
+              selectedVideoModelId: input.selectedVideoModelId,
+              durationProfileId:
+                row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+              motionMode: "first_frame_to_video",
+              clips: [],
+              warnings: [],
+            };
+        updates.motionPromptPack = updatedMotionPromptPack;
+      }
+
+      const [updatedRow] = await db
+        .update(verticalDramaEpisodes)
+        .set(updates)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .returning();
+
+      // Surface the resolved per-unit credit cost for the newly selected
+      // model(s) so the client can show it in a confirm dialog before the
+      // next paid generation call — computed from the ACTUALLY-resolved
+      // model, not a hardcoded default (spec Phase 1.2).
+      let imageCreditCost: number | undefined;
+      if (input.selectedImageModelId) {
+        const [pricingRow] = await db
+          .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+          .from(mediaModels)
+          .where(eq(mediaModels.modelId, input.selectedImageModelId))
+          .limit(1);
+        const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+        imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
+      }
+
+      let videoCreditCost: number | undefined;
+      if (input.selectedVideoModelId) {
+        const [pricingRow] = await db
+          .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+          .from(mediaModels)
+          .where(eq(mediaModels.modelId, input.selectedVideoModelId))
+          .limit(1);
+        videoCreditCost = pricingRow?.creditCost;
+      }
+
+      return {
+        episode: { ...updatedRow, id: String(updatedRow.id) },
+        startFramePlan: updatedStartFramePlan,
+        motionPromptPack: updatedMotionPromptPack,
+        imageCreditCost,
+        videoCreditCost,
+      };
+    }),
+
+  /**
    * Submit a real start-frame image generation for one shot via the model's
    * already approved prompt (`startFramePlan.frames[shotNumber].imagePrompt`,
    * from the `start_frame_render_plan` stage) — returns a task id to poll,
@@ -1578,6 +2068,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        idempotencyKey,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1620,10 +2111,17 @@ export const verticalDramaEpisodesRouter = router({
         frame.requiredCharacterRefs,
       );
 
+      // Resolution order (spec Phase 1.2): episode-level selection →
+      // `DEFAULT_MODELS`. Pricing AND the actual generation call below both
+      // use this same resolved model id — previously this always priced +
+      // generated with `DEFAULT_MODELS.image`, silently ignoring the
+      // episode's `selectedImageModelId` entirely.
+      const resolvedImageModelId = await resolveEpisodeImageModelId(plan);
+
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
-        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
@@ -1644,6 +2142,7 @@ export const verticalDramaEpisodesRouter = router({
         amount: imageCreditCost,
         description: `Vertical Drama — start frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
         sourceType: "media_image",
+        idempotencyKey: input.idempotencyKey,
         metadata: {
           feature: "vertical_drama_series",
           seriesId,
@@ -1651,6 +2150,7 @@ export const verticalDramaEpisodesRouter = router({
           shotNumber: input.shotNumber,
           type: "reservation",
           creditCost: imageCreditCost,
+          modelId: resolvedImageModelId,
         },
       });
 
@@ -1660,6 +2160,7 @@ export const verticalDramaEpisodesRouter = router({
           {
             prompt: frame.imagePrompt,
             negativePrompt: frame.negativePrompt,
+            model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
@@ -1673,7 +2174,7 @@ export const verticalDramaEpisodesRouter = router({
           },
           userToken
         );
-        return { taskId: task.id };
+        return { taskId: task.id, modelId: resolvedImageModelId, creditCost: imageCreditCost };
       } catch (err) {
         await refundCredits({
           userId,
@@ -1714,6 +2215,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        idempotencyKey,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1754,12 +2256,18 @@ export const verticalDramaEpisodesRouter = router({
         frame.requiredCharacterRefs,
       );
 
+      // Resolution order (spec Phase 1.2): episode-level selection →
+      // `DEFAULT_MODELS` — same resolver `generateStartFrameImage` uses, so
+      // both call sites for this shot always price + generate with the same
+      // model.
+      const resolvedImageModelId = await resolveEpisodeImageModelId(plan);
+
       // 9 cells at ~2x the per-shot credit cost (one grid render, not nine) —
       // matches how the pre-existing contact-sheet planner prices a sheet.
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
-        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const gridCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
@@ -1777,6 +2285,7 @@ export const verticalDramaEpisodesRouter = router({
         amount: gridCreditCost,
         description: `Vertical Drama — multi-angle grid render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
         sourceType: "media_image",
+        idempotencyKey: input.idempotencyKey,
         metadata: {
           feature: "vertical_drama_series",
           seriesId,
@@ -1784,6 +2293,7 @@ export const verticalDramaEpisodesRouter = router({
           shotNumber: input.shotNumber,
           type: "reservation",
           creditCost: gridCreditCost,
+          modelId: resolvedImageModelId,
         },
       });
 
@@ -1801,6 +2311,7 @@ export const verticalDramaEpisodesRouter = router({
           {
             prompt: gridPrompt,
             negativePrompt: frame.negativePrompt,
+            model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
@@ -1814,7 +2325,7 @@ export const verticalDramaEpisodesRouter = router({
           },
           userToken
         );
-        return { taskId: task.id };
+        return { taskId: task.id, modelId: resolvedImageModelId, creditCost: gridCreditCost };
       } catch (err) {
         await refundCredits({
           userId,
@@ -1834,6 +2345,518 @@ export const verticalDramaEpisodesRouter = router({
           message: err instanceof Error ? err.message : "Multi-angle grid generation failed to submit",
         });
       }
+    }),
+
+  /**
+   * Submit a single video clip's render via the episode-selected video model
+   * — the paid render for ONE `motionPromptPack.clips[]` entry. Async submit
+   * only (Section 4B hard constraint): returns a `taskId` immediately; the
+   * caller polls `media.getTask` exactly like every other real image/video
+   * generation in the app, then finalizes via the existing
+   * `resolveMediaAssetForImport` + a future "set approved clip asset"
+   * mutation, mirroring `generateStartFrameImage`'s finalize convention.
+   * Generating multiple clips is the caller's responsibility — submit one
+   * `generateVideoClip` call per clip and poll each task independently
+   * (never sequential/blocking waits here, per Section 4B).
+   *
+   * Wires together this wave's three new pieces:
+   *  - the episode's selected video model (`resolveEpisodeVideoModel`)
+   *  - the shot's linked reference images
+   *    (`verticalDramaShotReferencesService`, trimmed to the model's
+   *    `maxReferenceImages` by `sortOrder` — lowest sortOrder kept first;
+   *    the trimmed count is returned so the client can surface a warning)
+   *  - the model-aware prompt formatter (`formatVideoClipRequest`) for
+   *    dialogue embedding / TTS-fallback signaling
+   *
+   * Never a new generation path: submission goes through the SAME
+   * `mediaGenerationService.generateVideoAsync` + credit reserve/reconcile
+   * mechanism `generateStartFrameImage` already uses for images.
+   */
+  generateVideoClip: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        clipNumber: z.number().int().positive(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for video generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const clip = pack?.clips?.find((c) => c.clipNumber === input.clipNumber);
+      if (!pack || !clip) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No motion prompt for clip ${input.clipNumber} yet — generate the video motion prompt pack first`,
+        });
+      }
+      if (!clip.prompt?.trim()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Clip ${input.clipNumber} has no motion prompt yet`,
+        });
+      }
+
+      // Resolution order (Phase 1.2): episode-level selection -> DEFAULT_MODELS.
+      const model = await resolveEpisodeVideoModel(pack);
+
+      // Shot references (Phase 2.6): gather the clip's shot(s) linked
+      // reference images, trimmed to this model's `maxReferenceImages` by
+      // `sortOrder` (lowest kept first) — never silently drop without
+      // reporting: `trimmedReferenceCount` is always returned.
+      const primaryShotNumber = clip.parentShotNumber ?? clip.sourceShotNumbers[0];
+      const shotReferences = primaryShotNumber
+        ? await verticalDramaShotReferencesService.listForShot(
+            { tenantId, userId, seriesId },
+            episodeId,
+            primaryShotNumber,
+          )
+        : [];
+
+      const capabilities = resolveVerticalDramaCapabilities(model.id, {
+        type: model.type,
+        aspectRatios: model.aspectRatios,
+        configJson: model.configJson,
+      });
+      const maxReferenceImages = capabilities.maxReferenceImages ?? 0;
+      const orderedReferenceAssetIds = shotReferences
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((r) => Number(r.mediaAssetId));
+      const trimmedReferenceCount = Math.max(
+        0,
+        orderedReferenceAssetIds.length - maxReferenceImages,
+      );
+      const keptReferenceAssetIds =
+        maxReferenceImages > 0
+          ? orderedReferenceAssetIds.slice(0, maxReferenceImages)
+          : [];
+
+      // Resolve the approved start frame + kept reference assets to URLs in
+      // one batch. The approved start frame goes first in the array so a
+      // model that only reads `referenceImageUrls[0]` as its start/first
+      // frame (the generic "market" dispatch convention — see
+      // `modelRegistry.ts`'s `grok-imagine-video-1-5-preview`/HappyHorse
+      // entries) still gets the right image first.
+      const startFrameAssetId = clip.startFrameAssetId
+        ? Number(clip.startFrameAssetId)
+        : undefined;
+      const idsToResolve = [
+        ...(startFrameAssetId ? [startFrameAssetId] : []),
+        ...keptReferenceAssetIds,
+      ];
+      const urlsByAssetId = await resolveMediaAssetUrlsByIds(tenantId, userId, idsToResolve);
+      const referenceImageUrls = idsToResolve
+        .map((id) => urlsByAssetId.get(id))
+        .filter((u): u is string => Boolean(u));
+
+      // Dialogue (Phase 3.1/3.3): resolve this clip's dialogue lines (synced
+      // onto `clip.dialogue` by `syncDialogueOntoMotionPromptClips` when the
+      // motion pack was generated) and format the final model-aware prompt.
+      const dialogueLines: VerticalDramaClipDialogueLine[] = (clip.dialogue ?? []).map((d) => ({
+        characterKey: d.characterKey,
+        lineTh: d.lineTh,
+        emotion: d.emotion,
+        delivery: d.delivery,
+        subtext: d.subtext,
+      }));
+      const formatted = formatVideoClipRequest({
+        clip: {
+          clipNumber: clip.clipNumber,
+          prompt: clip.prompt,
+          negativeMotionPrompt: clip.negativeMotionPrompt,
+          durationSeconds: clip.durationSeconds,
+          startFrameAssetId: clip.startFrameAssetId,
+          endFrameAssetId: clip.endFrameAssetId,
+        },
+        dialogueLines,
+        modelId: model.id,
+        model,
+        aspectRatio: "9:16",
+      });
+
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, model.id))
+        .limit(1);
+      const videoCreditCost = pricingRow?.creditCost ?? model.creditCost ?? 10;
+      const hasCredits = await hasEnoughCredits(userId, videoCreditCost);
+      if (!hasCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Insufficient credits for video clip render. Required: ${videoCreditCost}`,
+        });
+      }
+
+      // Reserve credits BEFORE starting the task — same convention as
+      // `generateStartFrameImage` (`media.getTask` reconciles the
+      // reservation against actual usage once the task completes/fails).
+      await deductCredits({
+        userId,
+        tenantId,
+        amount: videoCreditCost,
+        description: `Vertical Drama — video clip render (episode #${episodeId}, clip ${input.clipNumber}, reserved)`,
+        sourceType: "media_video",
+        idempotencyKey: input.idempotencyKey,
+        metadata: {
+          feature: "vertical_drama_series",
+          seriesId,
+          episodeId,
+          clipNumber: input.clipNumber,
+          type: "reservation",
+          creditCost: videoCreditCost,
+          modelId: model.id,
+        },
+      });
+
+      const userToken = getStartFrameMediaUserToken(ctx);
+      try {
+        const task = await mediaGenerationService.generateVideoAsync(
+          {
+            prompt: formatted.prompt,
+            model: model.id,
+            duration: clip.durationSeconds,
+            aspectRatio: "9:16",
+            ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
+            extraParams: {
+              generate_audio: formatted.generateAudio,
+              ...(formatted.negativePrompt ? { negative_prompt: formatted.negativePrompt } : {}),
+            },
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaEpisodes.generateVideoClip",
+              stage: "submission",
+            },
+          },
+          userToken,
+        );
+        return {
+          taskId: task.id,
+          modelId: model.id,
+          creditCost: videoCreditCost,
+          providerFamily: formatted.providerFamily,
+          ttsFallback: formatted.ttsFallback,
+          ttsLines: formatted.ttsLines,
+          trimmedReferenceCount,
+        };
+      } catch (err) {
+        await refundCredits({
+          userId,
+          amount: videoCreditCost,
+          description: `Refund: video clip render failed to submit (episode #${episodeId}, clip ${input.clipNumber})`,
+          sourceType: "media_video",
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            clipNumber: input.clipNumber,
+            error: err instanceof Error ? err.message : "Unknown error",
+          },
+        });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Video clip generation failed to submit",
+        });
+      }
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* Shot references (storyboard-complete plan, Phase 2.2)                    */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * List every reference image linked to any shot in this episode, grouped by
+   * shot number (with a joined thumbnail URL) — thin wrapper over
+   * `verticalDramaShotReferencesService.listForEpisode`. Read-only.
+   */
+  listShotReferences: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1), episodeId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      try {
+        const references = await verticalDramaShotReferencesService.listForEpisode(
+          { tenantId, userId, seriesId },
+          episodeId,
+        );
+        return { references };
+      } catch (err) {
+        mapShotReferenceError(err);
+      }
+    }),
+
+  /**
+   * Link an existing canonical `media_assets` row as an additional reference
+   * image for one shot (from a 3x3 grid cut, generation history, the media
+   * library, or direct upload). Idempotent on `(episodeId, shotNumber,
+   * mediaAssetId)` — a retried call returns the existing row unchanged rather
+   * than duplicating it. No credits — this only links an already-generated
+   * asset, it never renders anything new.
+   */
+  linkShotReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        mediaAssetId: z.string().min(1),
+        role: z.enum(["start_frame", "reference"]).optional(),
+        source: z.enum(["generated", "grid_cut", "history", "library", "upload"]),
+        sortOrder: z.number().int().min(0).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const mediaAssetId = parseId(input.mediaAssetId, "media asset id");
+      try {
+        const reference = await verticalDramaShotReferencesService.linkReference({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          mediaAssetId,
+          role: input.role as VerticalDramaShotReferenceRole | undefined,
+          source: input.source as VerticalDramaShotReferenceSource,
+          sortOrder: input.sortOrder,
+        });
+        return { reference };
+      } catch (err) {
+        mapShotReferenceError(err);
+      }
+    }),
+
+  /**
+   * Permanently remove a reference image from a shot's reference set. Only
+   * unlinks the `verticalDramaShotReferences` row — the underlying media
+   * asset is left intact in Media History/Library (same convention as
+   * `verticalDramaCharacters.ts`'s `deleteAsset`).
+   */
+  deleteShotReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        referenceId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      // `episodeId` is accepted for symmetry with the sibling shot-reference
+      // procedures (and so the client can pass its already-known scope
+      // without a special case) but the service itself scopes
+      // `deleteReference` by tenant+user+series only — `parseId` still
+      // validates the shape so a malformed id fails fast with BAD_REQUEST.
+      parseId(input.episodeId, "episode id");
+      const referenceId = parseId(input.referenceId, "reference id");
+      try {
+        await verticalDramaShotReferencesService.deleteReference(
+          { tenantId, userId, seriesId },
+          referenceId,
+        );
+        return { deleted: true };
+      } catch (err) {
+        mapShotReferenceError(err);
+      }
+    }),
+
+  /**
+   * Re-order the reference strip for one shot. `orderedReferenceIds` must be
+   * the complete ordered list of reference ids for that shot — array index
+   * becomes the persisted `sortOrder`. Ids not owned by the caller/shot are
+   * silently skipped by the service (never throws for a stale client list).
+   */
+  reorderShotReferences: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        orderedReferenceIds: z.array(z.string().min(1)).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const orderedReferenceIds = input.orderedReferenceIds.map((id) =>
+        parseId(id, "reference id"),
+      );
+      try {
+        const references = await verticalDramaShotReferencesService.reorder({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          orderedReferenceIds,
+        });
+        return { references };
+      } catch (err) {
+        mapShotReferenceError(err);
+      }
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* Episode quality review (storyboard-complete plan, Phase 3B.5)            */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * Run the `vertical-drama-episode-quality-review` skill against the
+   * episode's current script + storyboard + (optional) dialogue plan, and
+   * persist the resulting scorecard so it survives reload — via the
+   * EXISTING run/artifact ledger tables
+   * (`verticalDramaEpisodeRuns`/`verticalDramaRunArtifacts`), tagged with
+   * `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG` rather than a real pipeline
+   * stage (see that constant's doc comment for why). Meant to run BEFORE the
+   * user spends credits on image/video generation — cheap, LLM-only,
+   * advisory (never blocks; the caller decides what to do with the
+   * scorecard). Credits are handled entirely inside
+   * `runVerticalDramaEpisodeQualityReview` (check → call → deduct).
+   */
+  runEpisodeQualityReview: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const script = row.script as Record<string, unknown> | null;
+      const storyboard = row.storyboard as Record<string, unknown> | null;
+      if (!script || !storyboard) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Episode needs a generated script and storyboard before it can be quality-reviewed",
+        });
+      }
+      const dialoguePlan = row.dialogueAudioPlan as Record<string, unknown> | null;
+
+      // Guard against pathologically large payloads before spending an LLM
+      // call on them — a malformed/looping script or storyboard could
+      // otherwise blow past the model's context window and burn credits on
+      // a call that was always going to fail.
+      const serializedSize =
+        JSON.stringify(script).length +
+        JSON.stringify(storyboard).length +
+        (dialoguePlan ? JSON.stringify(dialoguePlan).length : 0);
+      if (serializedSize > 400_000) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Episode script/storyboard/dialogue plan is too large to quality-review",
+        });
+      }
+
+      let outcome: {
+        review: EpisodeQualityReviewOutput;
+        creditsUsed: number;
+        model: string;
+      };
+      try {
+        outcome = await runVerticalDramaEpisodeQualityReview({
+          userId,
+          tenantId,
+          seriesId,
+          episodeId,
+          episodeTitle: row.title ?? `Episode ${row.episodeNumber}`,
+          locale: "th",
+          script,
+          storyboard,
+          dialoguePlan,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (err instanceof QualityReviewInsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof QualityReviewVdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        if (err instanceof QualityReviewRateLimitExceededError) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Episode quality review failed",
+        });
+      }
+
+      // Persist via the existing run/artifact ledger tables (see
+      // `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG`'s doc comment) so the
+      // scorecard survives reload — `getEpisodeDetail` reads it back via
+      // `loadLatestQualityReview`. Writes directly with `db.insert(...)`
+      // rather than the pipeline class's stage-typed `writeRun`/
+      // `writeArtifact` methods, since this is not one of the 15 canonical
+      // pipeline stages.
+      const [runRow] = await db
+        .insert(verticalDramaEpisodeRuns)
+        .values({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
+          runMode: "full",
+          status: "succeeded",
+          nextAction: "none",
+          artifactIds: [],
+          warnings: [],
+          errors: [],
+        })
+        .returning({ id: verticalDramaEpisodeRuns.id });
+
+      const [artifactRow] = await db
+        .insert(verticalDramaRunArtifacts)
+        .values({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          runId: runRow.id,
+          stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
+          jsonPayload: outcome.review as unknown as Record<string, unknown>,
+          mediaAssetIds: null,
+        })
+        .returning({ id: verticalDramaRunArtifacts.id });
+
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ artifactIds: [String(artifactRow.id)] })
+        .where(eq(verticalDramaEpisodeRuns.id, runRow.id));
+
+      return { review: outcome.review, creditsUsed: outcome.creditsUsed };
     }),
 });
 

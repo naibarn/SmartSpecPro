@@ -14,6 +14,7 @@ import { executeWithFallback } from "./llmRouter";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
+import { debugLog, debugError } from "../_core/logger";
 
 const LAST_RESORT_MODEL = "gpt-4o-mini";
 
@@ -75,6 +76,141 @@ export function extractJson(text: string): unknown {
       `LLM response was not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
       { rawResponse: text },
     );
+  }
+}
+
+/**
+ * Appended to the user message on the single automatic retry below — asks
+ * the model to keep its answer complete and compact so a longer, enriched
+ * multi-shot payload (Phase 3B per-shot prompt upgrades: micro-expressions,
+ * mood lighting, power-dynamic composition, etc.) is less likely to be cut
+ * off by the output-token ceiling. Compact (no pretty-printing) JSON is
+ * meaningfully shorter than indented JSON for the same content, which is why
+ * this is appended to every planning call's user prompt up front, not only
+ * on retry — see each generation module's `buildUserPrompt`.
+ */
+export const VD_COMPACT_JSON_INSTRUCTION =
+  "Return ONLY a single JSON object. Do not pretty-print or indent — emit compact JSON (no unnecessary whitespace/newlines) to keep the response as short as possible.";
+
+const VD_RETRY_STRICT_INSTRUCTION =
+  "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed.";
+
+/**
+ * Shared one-retry wrapper for the `executeWithFallback` -> `extractJson` ->
+ * zod-`safeParse` pattern used by every vertical-drama LLM *planning* call
+ * (`generateStoryBible`, `generateEpisodeScript`, `generateStoryboardShotgrid`,
+ * `generateStartFrameRenderPlan`, `generateVideoMotionPromptPack`).
+ *
+ * On the first attempt's JSON-parse/schema-validation failure, retries
+ * EXACTLY ONCE against the SAME model (never switches models — vertical
+ * drama and the wider app never auto-switch a model chosen for a call) with
+ * (a) the same system+user prompt plus one appended strict-JSON instruction
+ * message, and (b) a higher `maxTokens` ceiling (`retryMaxTokens`, defaults
+ * to `Math.max(params.maxTokens * 2, 16000)` when omitted) so a
+ * previously-truncated multi-shot payload has more room to complete. Logs
+ * both the failure that triggered the retry and the retry's own outcome via
+ * the shared file/console `debugLog`/`debugError` logger (never logs prompt
+ * or response bodies — only lengths/codes/messages, per the secret/PII
+ * logging rules).
+ *
+ * Returns the successfully-parsed+validated data. Throws the retry's own
+ * error (or the original error, if the retry attempt itself never reached a
+ * successful provider response) when both attempts fail — callers keep their
+ * existing catch/failed-run handling unchanged.
+ */
+export async function executeJsonPlanningCallWithRetry<T>(params: {
+  model: string;
+  systemPrompt: string;
+  userPrompt: string;
+  temperature: number;
+  userId: number;
+  maxTokens: number;
+  retryMaxTokens?: number;
+  /** zod schema (or any object exposing `safeParse`) validating the parsed JSON. */
+  schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
+  /** Human-readable label used only in log lines, e.g. "start-frame render plan". */
+  label: string;
+}): Promise<{
+  data: T;
+  response: Awaited<ReturnType<typeof executeWithFallback>> extends infer R
+    ? R extends { type: "success"; response: infer Resp }
+      ? Resp
+      : never
+    : never;
+  retried: boolean;
+}> {
+  const attempt = async (userPrompt: string, maxTokens: number) => {
+    const result = await executeWithFallback({
+      model: params.model,
+      messages: [
+        { role: "system", content: params.systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      stream: false,
+      userId: params.userId,
+      maxTokens,
+      temperature: params.temperature,
+    });
+
+    if (result.type !== "success") {
+      throw new Error(
+        result.type === "error"
+          ? `LLM request failed: ${result.error}`
+          : "LLM request did not reach a successful provider response",
+      );
+    }
+
+    const content = result.response.choices?.[0]?.message?.content ?? "";
+    const parsed = extractJson(content);
+    const validation = params.schema.safeParse(parsed);
+    if (!validation.success) {
+      throw new VdSchemaValidationError(
+        `${params.label} response failed schema validation`,
+        validation.error,
+      );
+    }
+    return { data: validation.data as T, response: result.response };
+  };
+
+  try {
+    const first = await attempt(params.userPrompt, params.maxTokens);
+    return { ...first, retried: false } as never;
+  } catch (firstError) {
+    if (!(firstError instanceof VdSchemaValidationError)) {
+      // Provider/network/rate-limit errors are not retried here — only
+      // malformed-JSON/schema failures, which is the class of failure a
+      // stricter-instruction + bigger-ceiling retry can actually fix.
+      throw firstError;
+    }
+
+    debugError(
+      "vd_planning_retry",
+      `${params.label}: first attempt failed schema validation for model ${params.model}, retrying once with stricter instruction + higher token ceiling`,
+      { message: firstError.message },
+    );
+
+    const retryMaxTokens = params.retryMaxTokens ?? Math.max(params.maxTokens * 2, 16000);
+    const retryUserPrompt = `${params.userPrompt}\n\n${VD_RETRY_STRICT_INSTRUCTION}`;
+
+    try {
+      const second = await attempt(retryUserPrompt, retryMaxTokens);
+      debugLog(
+        "vd_planning_retry",
+        `${params.label}: retry succeeded for model ${params.model}`,
+        { retryMaxTokens },
+      );
+      return { ...second, retried: true } as never;
+    } catch (secondError) {
+      debugError(
+        "vd_planning_retry",
+        `${params.label}: retry ALSO failed for model ${params.model} — failing the stage`,
+        {
+          message:
+            secondError instanceof Error ? secondError.message : String(secondError),
+        },
+      );
+      throw secondError;
+    }
   }
 }
 

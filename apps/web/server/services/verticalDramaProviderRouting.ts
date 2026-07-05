@@ -263,8 +263,19 @@ export const VERTICAL_DRAMA_VIDEO_MODEL_ALIASES: Record<string, string[]> = {
   "veo 3.1 quality": ["veo 3.1", "veo3", "veo-3.1"],
   "veo 3.1 fast": ["veo3-fast", "veo3_fast", "veo-fast"],
   "gemini omni": ["gemini omni video", "gemini-omni", "gemini omni flash"],
-  "grok imagine": ["grok imagine 1.5", "grok-imagine", "grok video 3"],
-  seedance: ["seedance", "bytedance seedance"],
+  // "grok imagine" alone (with no version) is intentionally NOT included as a
+  // canonical/alias here — the bare term also matches the unrelated `grok-imagine`
+  // IMAGE model (see `modelRegistry.ts`), and `findModelByAlias(canonical,
+  // "video")` below is type-scoped so it would simply resolve to nothing.
+  // `grok-imagine-video-1-5-preview` (added Phase 0, kie.ai — verified
+  // callable) is the real "Grok Imagine 1.5" video model.
+  "grok imagine video 1.5": ["grok imagine 1.5", "grok-imagine-video-1.5", "grok video 1.5", "grok imagine video"],
+  "grok video 3": ["grok-video-3"],
+  // Seedance 2.0 (ByteDance, via WaveSpeed — verified callable, see
+  // `mediaProviderUtils.ts` `WAVESPEED_MODEL_DEFINITIONS`). Canonical points at
+  // the image-to-video variant since Vertical Drama always renders from an
+  // approved start-frame image.
+  seedance: ["seedance", "bytedance seedance", "seedance 2.0", "seedance 2.0 image to video"],
 };
 
 export interface VerticalDramaResolvedVideoModel {

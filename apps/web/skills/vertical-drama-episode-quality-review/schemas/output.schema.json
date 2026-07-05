@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-episode-quality-review/output",
+  "title": "Vertical Drama Episode Quality Review Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "episode_title",
+    "scorecard",
+    "summary",
+    "issues",
+    "warnings",
+    "repair_queue",
+    "contract_version"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "episode_title": {
+      "type": "string"
+    },
+    "scorecard": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "reversal_count",
+        "reversal_sharpness",
+        "emotion_variety",
+        "dialogue_naturalness",
+        "pacing",
+        "overall"
+      ],
+      "properties": {
+        "reversal_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reversal_sharpness": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "emotion_variety": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "dialogue_naturalness": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "pacing": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "overall": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "summary": {
+      "type": "string"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "location",
+          "problem",
+          "suggested_fix"
+        ],
+        "properties": {
+          "location": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string"
+          },
+          "suggested_fix": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "repair_queue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+}

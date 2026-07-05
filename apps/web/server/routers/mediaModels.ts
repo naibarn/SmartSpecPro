@@ -11,6 +11,7 @@ import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
 import { getStaticFallbackModels, getStaticModelById } from "../services/modelRegistry";
+import { resolveVerticalDramaCapabilities } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
 import { decrypt } from "../services/crypto";
 import {
@@ -1084,11 +1085,20 @@ export const mediaModelsRouter = router({
   /**
    * List enabled models (for clients)
    * Returns { models: [...], providers: [...] } for UI consumption
+   *
+   * `verticalDramaReady: true` filters to video models with 9:16 +
+   * start-frame capability sufficient for Vertical Drama Series episode
+   * rendering (Vertical Drama Storyboard Completion Plan, Phase 0.4). Every
+   * returned model also carries `supportsStartFrame` / `maxReferenceImages`
+   * / `nativeAudioDialogue` / `verticalDramaReady` capability badges
+   * regardless of the filter, so callers that don't pass the filter (e.g.
+   * the generic Media Studio model picker) still get the metadata.
    */
   list: protectedProcedure
     .input(z.object({
       type: mediaModelTypeSchema.optional(),
       search: z.string().optional(),
+      verticalDramaReady: z.boolean().optional(),
     }).optional())
     .query(async ({ input }) => {
       try {
@@ -1124,14 +1134,37 @@ export const mediaModelsRouter = router({
           .where(and(...conditions))
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
 
-        // Get unique providers for grouping
-        const providers = [...new Set(models.map((m: (typeof models)[number]) => m.provider))];
+        const modelsWithCapabilities = models.map((model: (typeof models)[number]) => {
+          const mergedConfigJson = mergeStaticModelConfigJson(
+            model.modelId,
+            model.configJson as Record<string, unknown> | null | undefined,
+          );
+          const capabilities = resolveVerticalDramaCapabilities(model.modelId, {
+            type: model.modelType,
+            aspectRatios: model.aspectRatios ?? undefined,
+            configJson: mergedConfigJson ?? undefined,
+          });
+          return {
+            ...model,
+            configJson: mergedConfigJson,
+            ...capabilities,
+          };
+        });
+
+        const filteredModels = input?.verticalDramaReady
+          ? modelsWithCapabilities.filter(
+              (model: (typeof modelsWithCapabilities)[number]) => model.verticalDramaReady === true,
+            )
+          : modelsWithCapabilities;
+
+        // Get unique providers for grouping (post-filter, so the provider
+        // list reflects only what's actually shown).
+        const providers = [
+          ...new Set(filteredModels.map((m: (typeof filteredModels)[number]) => m.provider)),
+        ];
 
         return {
-          models: models.map((model: (typeof models)[number]) => ({
-            ...model,
-            configJson: mergeStaticModelConfigJson(model.modelId, model.configJson as Record<string, unknown> | null | undefined),
-          })),
+          models: filteredModels,
           providers,
         };
       } catch (error: any) {

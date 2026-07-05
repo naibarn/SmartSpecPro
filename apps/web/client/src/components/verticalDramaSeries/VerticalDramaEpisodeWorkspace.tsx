@@ -59,8 +59,12 @@ import { VerticalDramaDialogueAudioPanel } from "./VerticalDramaDialogueAudioPan
 import {
   VerticalDramaStoryboardPanel,
   type VerticalDramaAssetUrlMap,
+  type VerticalDramaCapableModel,
   type VerticalDramaCharacterPortraitMap,
+  type VerticalDramaClipDialogueLineView,
   type VerticalDramaMotionPromptPackView,
+  type VerticalDramaQualityReviewView,
+  type VerticalDramaShotReferenceView,
   type VerticalDramaStartFramePlanView,
   type VerticalDramaStoryboardView,
 } from "./VerticalDramaStoryboardPanel";
@@ -108,9 +112,19 @@ export interface VerticalDramaStoryboardPanelData {
   generatingStartFramePlan?: boolean;
   /** Opens the repair dialog for `start_frame_render_plan`, prefilled with the current image prompt. */
   onEditStartFramePrompt?: (shotNumber: number, currentPrompt: string) => void;
+  /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
+   *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real. */
+  onGenerateVideoPromptPack?: () => void;
+  generatingVideoPromptPack?: boolean;
   /** Renders a real AI image for this shot from its approved prompt. */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
-  generatingStartFrameImageForShot?: number | null;
+  /** Every shot number currently submitted/polling — a Set (not a single
+   *  number) since "generate all shot images" submits every shot at once;
+   *  each shot's own spinner is independent of the others. */
+  generatingStartFrameImageForShot?: ReadonlySet<number>;
+  /** Fires `onGenerateStartFrameImage` for every shot missing an approved
+   *  image, concurrently (redesign, 2026-07-05) — not one-at-a-time. */
+  onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
   characterPortraits?: VerticalDramaCharacterPortraitMap;
   onChangeCharacterReference?: (characterId: string) => void;
   onDropCharacterReference?: (characterId: string, url: string) => void;
@@ -120,6 +134,52 @@ export interface VerticalDramaStoryboardPanelData {
   angleVariationGridUrlByShot?: Record<number, string>;
   onPickAngleVariationCandidate?: (shotNumber: number, candidateDataUrl: string) => void;
   onDismissAngleVariations?: (shotNumber: number) => void;
+
+  /* ---- Phase 1.3 — episode-level model selection ---- */
+  imageModels?: VerticalDramaCapableModel[];
+  videoModels?: VerticalDramaCapableModel[];
+  selectedImageModelId?: string;
+  selectedVideoModelId?: string;
+  onSelectImageModel?: (modelId: string) => void;
+  onSelectVideoModel?: (modelId: string) => void;
+  modelsLoading?: boolean;
+
+  /* ---- Phase 2.5 — per-shot reference strip ---- */
+  shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
+  onAddShotReference?: (
+    shotNumber: number,
+    payload: { url: string; source: VerticalDramaShotReferenceView["source"] }
+  ) => void;
+  onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
+  addingShotReferenceForShot?: ReadonlySet<number>;
+
+  /* ---- Phase 3.4 — dialogue box ---- */
+  onSaveClipDialogue?: (
+    clipNumber: number,
+    dialogue: VerticalDramaClipDialogueLineView[]
+  ) => void;
+  savingDialogueForClip?: number | null;
+
+  /* ---- Video clip generation (`generateVideoClip`) ---- */
+  onGenerateVideoClip?: (clipNumber: number) => void;
+  generatingVideoClipForClip?: ReadonlySet<number>;
+  ttsFallbackByClip?: Record<number, boolean>;
+  trimmedReferenceCountByClip?: Record<number, number>;
+
+  /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
+  onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
+  onSaveVideoPrompt?: (shotNumber: number, prompt: string) => void;
+  onGeneratePromptAndImage?: (
+    shotNumber: number,
+    mode: "single" | "angles"
+  ) => void;
+  generatingPromptAndImageForShot?: ReadonlySet<number>;
+
+  /* ---- Phase 3B.5 — quality review card ---- */
+  qualityReview?: VerticalDramaQualityReviewView | null;
+  onRunQualityReview?: () => void;
+  runningQualityReview?: boolean;
+  onCopySuggestedFix?: (suggestedFix: string) => void;
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
@@ -176,6 +236,18 @@ export interface VerticalDramaEpisodeWorkspaceProps {
    *  real-content run and a fresh pending checkpoint. */
   onGenerateRealScript?: () => void;
   generatingRealScript?: boolean;
+  /** One-click redesign (2026-07-05): chains normalize → script → character
+   *  sync → character-ref check → storyboard, auto-approving each mechanical
+   *  checkpoint, so the episode's primary entry point is a single button
+   *  instead of clicking through 5 individual stage+approve steps. Replaces
+   *  the compact "next action" box + advanced pipeline grid as the default
+   *  view whenever no storyboard shots exist yet. */
+  onGenerateEpisodeStoryboard?: () => void;
+  /** Non-null while the one-click chain is running; drives live per-stage
+   *  progress text ("กำลังสร้างบท…"). */
+  generatingEpisodeStage?: VerticalDramaPipelineStage | null;
+  /** Set when the chain stopped early due to a failed stage. */
+  generateEpisodeFailure?: { stage: VerticalDramaPipelineStage; message: string } | null;
   /** Deletes this stage's prior run(s) (cascades checkpoints + artifacts)
    *  and immediately regenerates in "full" mode — distinct from `onRepair`,
    *  which never deletes. Shown in the focused-stage detail panel below,
@@ -249,6 +321,22 @@ function phaseStatus(
   return "pending";
 }
 
+/**
+ * Stages covered by the one-click "generate episode" orchestration
+ * (`handleGenerateEpisodeStoryboard` in `VerticalDramaEpisodePage.tsx`) —
+ * while the episode is at any of these stages and has no storyboard shots
+ * yet, show the single entry card instead of the per-stage compact box.
+ * Stages after `storyboard_shotgrid` keep the existing stage-by-stage flow
+ * (agreed scope boundary — not touched in this redesign pass).
+ */
+const SETUP_STAGES = new Set<VerticalDramaPipelineStage>([
+  "normalize_series_input",
+  "plan_episode_script",
+  "update_character_visual_bible",
+  "generate_or_import_character_refs",
+  "storyboard_shotgrid",
+]);
+
 /** Map a stage's next_action to the single primary CTA label. */
 function ctaLabel(
   t: ReturnType<typeof vdCopy>,
@@ -288,6 +376,9 @@ export function VerticalDramaEpisodeWorkspace({
   onRepair,
   onGenerateRealScript,
   generatingRealScript = false,
+  onGenerateEpisodeStoryboard,
+  generatingEpisodeStage = null,
+  generateEpisodeFailure = null,
   onRegenerateStage,
   regeneratingStage = null,
   onOpenRun,
@@ -310,9 +401,53 @@ export function VerticalDramaEpisodeWorkspace({
   const [internalFocusedStage, setInternalFocusedStage] =
     useState<VerticalDramaPipelineStage | null>(current?.stage ?? null);
   const focusedStage = focusedStageProp ?? internalFocusedStage;
-  const [confirmingRealScript, setConfirmingRealScript] = useState(false);
+  /**
+   * `plan_episode_script` had a dedicated confirm-gated "generate real X"
+   * button in the compact "ขั้นตอนถัดไป" box, but `storyboard_shotgrid` and
+   * `start_frame_render_plan` did not — their ONLY real-generation entry
+   * point was buried in the "ขั้นสูง" advanced section's focused-stage
+   * detail panel, or (for storyboard) only appeared once shots already
+   * existed. Until then, the compact box's primary CTA for these stages
+   * only ever ran the free dry-run placeholder, so a brand-new episode's
+   * storyboard could never actually be generated for real from the natural
+   * top-level flow — exactly the "created a new storyboard, no shots showed
+   * up" bug report. Generalizes the same dedicated-button treatment to all
+   * three stages, reusing the handlers already threaded down via
+   * `storyboardPanel`/`onGenerateRealScript`.
+   */
+  const [confirmingRealGenerationStage, setConfirmingRealGenerationStage] =
+    useState<VerticalDramaPipelineStage | null>(null);
+  const realGenerationByStage: Partial<
+    Record<
+      VerticalDramaPipelineStage,
+      { onGenerate: () => void; generating: boolean; testId: string }
+    >
+  > = {
+    plan_episode_script: onGenerateRealScript
+      ? {
+          onGenerate: onGenerateRealScript,
+          generating: generatingRealScript,
+          testId: "script",
+        }
+      : undefined,
+    storyboard_shotgrid: storyboardPanel?.onGenerateReal
+      ? {
+          onGenerate: storyboardPanel.onGenerateReal,
+          generating: Boolean(storyboardPanel.generating),
+          testId: "storyboard",
+        }
+      : undefined,
+    start_frame_render_plan: storyboardPanel?.onGenerateStartFramePlan
+      ? {
+          onGenerate: storyboardPanel.onGenerateStartFramePlan,
+          generating: Boolean(storyboardPanel.generatingStartFramePlan),
+          testId: "start-frame-plan",
+        }
+      : undefined,
+  };
   const [confirmingRegenerateStage, setConfirmingRegenerateStage] =
     useState<VerticalDramaPipelineStage | null>(null);
+  const [confirmingGenerateEpisode, setConfirmingGenerateEpisode] = useState(false);
 
   useEffect(() => {
     if (
@@ -430,8 +565,11 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateStartFramePlan={storyboardPanel?.onGenerateStartFramePlan}
           generatingStartFramePlan={storyboardPanel?.generatingStartFramePlan}
           onEditStartFramePrompt={storyboardPanel?.onEditStartFramePrompt}
+          onGenerateVideoPromptPack={storyboardPanel?.onGenerateVideoPromptPack}
+          generatingVideoPromptPack={storyboardPanel?.generatingVideoPromptPack}
           onGenerateStartFrameImage={storyboardPanel?.onGenerateStartFrameImage}
           generatingStartFrameImageForShot={storyboardPanel?.generatingStartFrameImageForShot}
+          onGenerateAllStartFrameImages={storyboardPanel?.onGenerateAllStartFrameImages}
           characterPortraits={storyboardPanel?.characterPortraits}
           onChangeCharacterReference={storyboardPanel?.onChangeCharacterReference}
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
@@ -441,7 +579,87 @@ export function VerticalDramaEpisodeWorkspace({
           angleVariationGridUrlByShot={storyboardPanel?.angleVariationGridUrlByShot}
           onPickAngleVariationCandidate={storyboardPanel?.onPickAngleVariationCandidate}
           onDismissAngleVariations={storyboardPanel?.onDismissAngleVariations}
+          imageModels={storyboardPanel?.imageModels}
+          videoModels={storyboardPanel?.videoModels}
+          selectedImageModelId={storyboardPanel?.selectedImageModelId}
+          selectedVideoModelId={storyboardPanel?.selectedVideoModelId}
+          onSelectImageModel={storyboardPanel?.onSelectImageModel}
+          onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
+          modelsLoading={storyboardPanel?.modelsLoading}
+          shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
+          onAddShotReference={storyboardPanel?.onAddShotReference}
+          onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
+          addingShotReferenceForShot={storyboardPanel?.addingShotReferenceForShot}
+          onSaveClipDialogue={storyboardPanel?.onSaveClipDialogue}
+          savingDialogueForClip={storyboardPanel?.savingDialogueForClip}
+          onGenerateVideoClip={storyboardPanel?.onGenerateVideoClip}
+          generatingVideoClipForClip={storyboardPanel?.generatingVideoClipForClip}
+          ttsFallbackByClip={storyboardPanel?.ttsFallbackByClip}
+          trimmedReferenceCountByClip={storyboardPanel?.trimmedReferenceCountByClip}
+          onSaveStartFramePrompt={storyboardPanel?.onSaveStartFramePrompt}
+          onSaveVideoPrompt={storyboardPanel?.onSaveVideoPrompt}
+          onGeneratePromptAndImage={storyboardPanel?.onGeneratePromptAndImage}
+          generatingPromptAndImageForShot={storyboardPanel?.generatingPromptAndImageForShot}
+          qualityReview={storyboardPanel?.qualityReview}
+          onRunQualityReview={storyboardPanel?.onRunQualityReview}
+          runningQualityReview={storyboardPanel?.runningQualityReview}
+          onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
         />
+      ) : !completed && current && SETUP_STAGES.has(current.stage) ? (
+        <section className="rounded-lg border bg-card p-4" aria-label={t.generateEpisode}>
+          {episode?.title ? (
+            <h2 className="mb-1 text-sm font-medium">{episode.title}</h2>
+          ) : null}
+          <p className="mb-3 text-sm text-muted-foreground">{t.generateEpisodeExplain}</p>
+          {generateEpisodeFailure ? (
+            <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <p className="font-medium text-destructive">
+                {t.generateEpisodeFailedAt} {vdStageLabel(generateEpisodeFailure.stage, locale)}
+              </p>
+              <p className="text-muted-foreground">{generateEpisodeFailure.message}</p>
+            </div>
+          ) : null}
+          {generatingEpisodeStage ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              {t.generateEpisodeProgress} {vdStageLabel(generatingEpisodeStage, locale)}…
+            </div>
+          ) : confirmingGenerateEpisode ? (
+            <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+              <p className="font-medium">{t.generateRealScriptConfirmWarning}</p>
+              <p className="text-muted-foreground">{t.generateEpisodeConfirmNote}</p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmingGenerateEpisode(false)}
+                >
+                  {t.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmingGenerateEpisode(false);
+                    onGenerateEpisodeStoryboard?.();
+                  }}
+                  data-testid="vd-confirm-generate-episode"
+                >
+                  {t.generateEpisodeConfirmButton}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => setConfirmingGenerateEpisode(true)}
+              data-testid="vd-generate-episode"
+            >
+              {generateEpisodeFailure ? t.generateEpisodeRetry : t.generateEpisode}
+            </Button>
+          )}
+        </section>
       ) : !completed && current ? (
         <section className="rounded-lg border bg-card p-3" aria-label={t.nextAction}>
           <div className="mb-2 flex items-center gap-2">
@@ -452,50 +670,59 @@ export function VerticalDramaEpisodeWorkspace({
             ) : null}
           </div>
 
-          {current.stage === "plan_episode_script" && onGenerateRealScript ? (
-            <div className="mb-3">
-              {confirmingRealScript ? (
-                <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
-                  <p className="font-medium">{t.generateRealScriptConfirmWarning}</p>
-                  <p className="text-muted-foreground">{t.generateRealScriptConfirmNote}</p>
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setConfirmingRealScript(false)}
-                      disabled={generatingRealScript}
-                    >
-                      {t.cancel}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => {
-                        setConfirmingRealScript(false);
-                        onGenerateRealScript();
-                      }}
-                      disabled={generatingRealScript}
-                      data-testid="vd-confirm-generate-real-script"
-                    >
-                      {generatingRealScript ? t.generatingRealScript : t.generateRealScript}
-                    </Button>
+          {(() => {
+            const action = realGenerationByStage[current.stage];
+            if (!action) return null;
+            const stageLabel = vdStageLabel(current.stage, locale);
+            const generateLabel =
+              locale === "th"
+                ? `สร้าง${stageLabel}จริง (มีค่าใช้จ่าย)`
+                : `Generate real ${stageLabel} (paid)`;
+            return (
+              <div className="mb-3">
+                {confirmingRealGenerationStage === current.stage ? (
+                  <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+                    <p className="font-medium">{t.generateRealScriptConfirmWarning}</p>
+                    <p className="text-muted-foreground">{t.generateRealScriptConfirmNote}</p>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setConfirmingRealGenerationStage(null)}
+                        disabled={action.generating}
+                      >
+                        {t.cancel}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => {
+                          setConfirmingRealGenerationStage(null);
+                          action.onGenerate();
+                        }}
+                        disabled={action.generating}
+                        data-testid={`vd-confirm-generate-real-${action.testId}`}
+                      >
+                        {action.generating ? t.generatingRealScript : generateLabel}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setConfirmingRealScript(true)}
-                  disabled={generatingRealScript}
-                  data-testid="vd-generate-real-script"
-                >
-                  {generatingRealScript ? t.generatingRealScript : t.generateRealScript}
-                </Button>
-              )}
-            </div>
-          ) : null}
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setConfirmingRealGenerationStage(current.stage)}
+                    disabled={action.generating}
+                    data-testid={`vd-generate-real-${action.testId}`}
+                  >
+                    {action.generating ? t.generatingRealScript : generateLabel}
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
 
           {current.nextAction === "approve" ? (
             <VerticalDramaApprovalBar
@@ -506,8 +733,8 @@ export function VerticalDramaEpisodeWorkspace({
               onReject={() => onReject?.(current.checkpointId)}
               onRepair={() => onRepair?.(current.stage)}
             />
-          ) : current.stage === "plan_episode_script" && onGenerateRealScript ? (
-            // This stage already has its own dedicated "generate real script"
+          ) : realGenerationByStage[current.stage] ? (
+            // This stage already has its own dedicated "generate real X"
             // action rendered above — showing the generic "รันแบบทดสอบ" (test
             // run) button here too was confusing (two buttons, only one of
             // which actually does anything useful), and is exactly what
@@ -535,7 +762,8 @@ export function VerticalDramaEpisodeWorkspace({
                 }
                 data-testid="vd-primary-cta"
               >
-                {current.stage === "update_character_visual_bible"
+                {current.stage === "update_character_visual_bible" ||
+                current.stage === "generate_or_import_character_refs"
                   ? t.syncCharacterData
                   : ctaLabel(t, current.nextAction)}
               </Button>
@@ -551,9 +779,11 @@ export function VerticalDramaEpisodeWorkspace({
               ) : null}
               {/* "Free, no paid generation" is only true of the actual
                   dry-run placeholder path — `update_character_visual_bible`
-                  now always runs its real (free) sync, so the dry-run note
-                  would be misleading there (see decisions.md). */}
-              {current.stage !== "update_character_visual_bible" ? (
+                  and `generate_or_import_character_refs` both always run a
+                  real (free) sync now, so the dry-run note would be
+                  misleading there (see decisions.md). */}
+              {current.stage !== "update_character_visual_bible" &&
+              current.stage !== "generate_or_import_character_refs" ? (
                 <span className="text-xs text-muted-foreground">{t.dryRunNote}</span>
               ) : null}
             </div>
@@ -795,6 +1025,17 @@ export function VerticalDramaEpisodeWorkspace({
                       onGenerateReal={storyboardPanel?.onGenerateReal}
                       onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
                       onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
+                      imageModels={storyboardPanel?.imageModels}
+                      videoModels={storyboardPanel?.videoModels}
+                      selectedImageModelId={storyboardPanel?.selectedImageModelId}
+                      selectedVideoModelId={storyboardPanel?.selectedVideoModelId}
+                      onSelectImageModel={storyboardPanel?.onSelectImageModel}
+                      onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
+                      modelsLoading={storyboardPanel?.modelsLoading}
+                      qualityReview={storyboardPanel?.qualityReview}
+                      onRunQualityReview={storyboardPanel?.onRunQualityReview}
+                      runningQualityReview={storyboardPanel?.runningQualityReview}
+                      onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
                     />
                   ) : (
                     <VerticalDramaRunDetailView

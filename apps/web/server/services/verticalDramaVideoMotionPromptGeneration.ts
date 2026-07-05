@@ -29,15 +29,15 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 
 // Re-exported so callers only need to import from this one module.
@@ -144,6 +144,21 @@ export type VideoMotionPromptPackOutput = z.infer<typeof videoMotionPromptPackOu
  * `verticalDramaEpisodes.motionPromptPack` and used as the stage payload's
  * `clips` source before any sub-shot expansion.
  */
+/**
+ * One clip's dialogue line (storyboard-complete plan, Phase 3.1). Synced onto
+ * `clips[j].dialogue` from `episode.dialogueAudioPlan` (raw
+ * `vertical-drama-dialogue-audio-planner` skill output — `dialogue_lines[]`)
+ * by `syncDialogueOntoMotionPromptClips` below whenever the motion-pack skill
+ * output didn't already carry it via `.passthrough()`.
+ */
+export interface VerticalDramaMotionPromptClipDialogueLine {
+  characterKey?: string;
+  lineTh: string;
+  emotion?: string;
+  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  subtext?: string;
+}
+
 export interface VideoMotionPromptPackProjection {
   selectedVideoModelId: string;
   durationProfileId: string;
@@ -162,13 +177,27 @@ export interface VideoMotionPromptPackProjection {
     startFrameAssetId?: string;
     endFrameAssetId?: string;
     durationSeconds: number;
+    /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
+    dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
   }>;
 }
 
 /** Project the raw skill output onto the pipeline's typed stage-payload shape. */
 export function projectMotionPromptPack(
   raw: VideoMotionPromptPackOutput,
-  fallbackVideoModelId: string,
+  /**
+   * The model id to persist as `selectedVideoModelId` when the caller
+   * already knows which model should be used — this is either (a) the
+   * episode's own pre-existing `motionPromptPack.selectedVideoModelId` set
+   * by the user via `setEpisodeModelSelection` (Vertical Drama Storyboard
+   * Completion Plan, Phase 1.2 — "honor pre-existing user selection"), or
+   * (b) a caller-supplied fallback/default when there is no prior
+   * selection. Takes priority over the LLM's own `video_plan_summary
+   * .video_model` string in both cases — see `projectStartFramePlan`'s
+   * matching doc comment for the identical rationale (free-text LLM claims
+   * must never silently override an explicit model choice).
+   */
+  callerVideoModelId: string,
   fallbackDurationProfileId: string,
   /**
    * Ground-truth dialogue per shot number. Appended deterministically to
@@ -181,7 +210,8 @@ export function projectMotionPromptPack(
 ): VideoMotionPromptPackProjection {
   const summary = raw.video_plan_summary as Record<string, unknown>;
   const selectedVideoModelId =
-    typeof summary?.video_model === "string" ? (summary.video_model as string) : fallbackVideoModelId;
+    callerVideoModelId ||
+    (typeof summary?.video_model === "string" ? (summary.video_model as string) : callerVideoModelId);
 
   const hasBridgedClip = raw.video_clip_requests.some(
     (c) => c.start_frame_reference?.asset_id && c.end_frame_reference?.asset_id,
@@ -211,6 +241,105 @@ export function projectMotionPromptPack(
           durationSeconds: c.duration_seconds,
         };
       }),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dialogue sync (storyboard-complete plan, Phase 3.1)                        */
+/* -------------------------------------------------------------------------- */
+
+/** Loosely-typed shape of one `dialogueAudioPlan.dialogue_lines[]` entry (raw skill output — snake_case, `.passthrough()`). */
+interface RawDialoguePlanLine {
+  shot_number?: number;
+  clip_number?: number;
+  speaker_character_id?: string;
+  dialogue_line?: string;
+  emotion?: string;
+  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  subtext?: string;
+}
+
+/** Best-effort extraction of `dialogue_lines[]` from whatever shape `episode.dialogueAudioPlan` currently holds. */
+function extractRawDialogueLines(dialogueAudioPlan: unknown): RawDialoguePlanLine[] {
+  if (!dialogueAudioPlan || typeof dialogueAudioPlan !== "object") return [];
+  const plan = dialogueAudioPlan as Record<string, unknown>;
+  // Real skill output (snake_case) — the primary/expected shape once the
+  // `dialogue_audio_plan` stage has a real generation path.
+  if (Array.isArray(plan.dialogue_lines)) {
+    return plan.dialogue_lines as RawDialoguePlanLine[];
+  }
+  // Today's dry-run placeholder (camelCase `shotLines`, see
+  // `verticalDramaEpisodePipeline.ts`'s `buildStagePayload`) — has no
+  // delivery/subtext/dialogue text yet, so nothing usable to sync; returning
+  // [] here is correct (silence, not a crash).
+  return [];
+}
+
+function rawLineToClipDialogueLine(
+  line: RawDialoguePlanLine,
+): VerticalDramaMotionPromptClipDialogueLine | null {
+  if (!line.dialogue_line || !line.dialogue_line.trim()) return null;
+  return {
+    characterKey: line.speaker_character_id,
+    lineTh: line.dialogue_line,
+    emotion: line.emotion,
+    delivery: line.delivery,
+    subtext: line.subtext,
+  };
+}
+
+/**
+ * Map `dialogueAudioPlan` lines onto `pack.clips[j].dialogue` (Phase 3.1) —
+ * ONLY for clips that don't already carry a `dialogue` array (the
+ * `.passthrough()` skill schema may already include it if the LLM emitted
+ * `provider_request`/dialogue fields directly; this never overwrites an
+ * existing non-empty array). Matches primarily by `clip_number` (present on
+ * the raw dialogue-planner output), falling back to matching by shot number
+ * against the clip's `sourceShotNumbers` when a line has no `clip_number`.
+ * Pure — no I/O — so it is unit-testable and safe to call unconditionally
+ * whenever a motion-pack is (re)generated.
+ */
+export function syncDialogueOntoMotionPromptClips(
+  pack: VideoMotionPromptPackProjection,
+  dialogueAudioPlan: unknown,
+): VideoMotionPromptPackProjection {
+  const rawLines = extractRawDialogueLines(dialogueAudioPlan);
+  if (rawLines.length === 0) return pack;
+
+  const linesByClipNumber = new Map<number, VerticalDramaMotionPromptClipDialogueLine[]>();
+  const linesByShotNumber = new Map<number, VerticalDramaMotionPromptClipDialogueLine[]>();
+  for (const raw of rawLines) {
+    const mapped = rawLineToClipDialogueLine(raw);
+    if (!mapped) continue;
+    if (typeof raw.clip_number === "number") {
+      const bucket = linesByClipNumber.get(raw.clip_number) ?? [];
+      bucket.push(mapped);
+      linesByClipNumber.set(raw.clip_number, bucket);
+    } else if (typeof raw.shot_number === "number") {
+      const bucket = linesByShotNumber.get(raw.shot_number) ?? [];
+      bucket.push(mapped);
+      linesByShotNumber.set(raw.shot_number, bucket);
+    }
+  }
+
+  if (linesByClipNumber.size === 0 && linesByShotNumber.size === 0) return pack;
+
+  return {
+    ...pack,
+    clips: pack.clips.map((clip) => {
+      // Passthrough may already carry dialogue (upstream LLM emitted it
+      // directly) — never overwrite a non-empty existing array.
+      if (clip.dialogue && clip.dialogue.length > 0) return clip;
+
+      const byClip = linesByClipNumber.get(clip.clipNumber);
+      if (byClip && byClip.length > 0) return { ...clip, dialogue: byClip };
+
+      const byShot = clip.sourceShotNumbers
+        .flatMap((shotNumber) => linesByShotNumber.get(shotNumber) ?? []);
+      if (byShot.length > 0) return { ...clip, dialogue: byShot };
+
+      return clip;
+    }),
   };
 }
 
@@ -258,6 +387,7 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     params.selectedVideoModelId ? `Preferred video model: ${params.selectedVideoModelId}` : null,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n");
@@ -301,37 +431,23 @@ export async function generateVideoMotionPromptPack(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Same truncation flaw and fix as `generateStartFrameRenderPlan` — 9
+  // enriched per-shot clips (Phase 3B skill upgrades) previously truncated
+  // the old 4000-token ceiling mid-array. Raised, plus one automatic
+  // same-model retry on truncated/invalid JSON — see
+  // `executeJsonPlanningCallWithRetry`'s doc comment.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 4000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.7,
+    userId: params.userId,
+    maxTokens: 16000,
+    schema: videoMotionPromptPackOutputSchema,
+    label: "Video motion prompt pack",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = videoMotionPromptPackOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Video motion prompt pack response failed schema validation",
-      validation.error.issues,
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -361,11 +477,11 @@ export async function generateVideoMotionPromptPack(
       .map((s) => [s.shotNumber, s.dialogueExcerpt as string]),
   );
   const pack = projectMotionPromptPack(
-    validation.data,
+    validatedData,
     params.selectedVideoModelId ?? "dry-run-video-model",
     params.durationProfileId,
     shotDialogueByShotNumber,
   );
 
-  return { pack, raw: validation.data, creditsUsed, model };
+  return { pack, raw: validatedData, creditsUsed, model };
 }

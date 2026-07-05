@@ -381,6 +381,23 @@ export type VerticalDramaStartFramePlan = {
   }>;
 };
 
+/**
+ * One clip's dialogue line (storyboard-complete plan, Phase 3.1) — synced
+ * from `dialogueAudioPlan` onto `clips[j].dialogue` when the motion-pack
+ * skill output didn't already carry it. See
+ * `server/services/verticalDramaVideoMotionPromptGeneration.ts`'s
+ * `syncDialogueOntoMotionPromptClips` for the sync logic and
+ * `server/services/verticalDramaVideoPromptFormatter.ts` for how this is
+ * folded into the final model-aware video-clip prompt.
+ */
+export type VerticalDramaMotionPromptClipDialogueLine = {
+  characterKey?: string;
+  lineTh: string;
+  emotion?: string;
+  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  subtext?: string;
+};
+
 /** Typed projection of the `video_motion_prompt_pack` output (spec §6.5, §6.9). */
 export type VerticalDramaMotionPromptPack = {
   selectedVideoModelId: string;
@@ -402,6 +419,8 @@ export type VerticalDramaMotionPromptPack = {
     durationSeconds: number;
     parentShotNumber?: number;
     subShotNumber?: number;
+    /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
+    dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
   }>;
   warnings: VerticalDramaWarning[];
 };

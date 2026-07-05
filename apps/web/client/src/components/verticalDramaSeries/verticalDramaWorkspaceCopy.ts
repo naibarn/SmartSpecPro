@@ -156,6 +156,13 @@ export const VD_COPY = {
     regenerateConfirm: "Deletes the current output and creates new — cannot be undone.",
     regenerateConfirmButton: "Delete & regenerate",
     regenerating: "Regenerating…",
+    generateEpisode: "Generate this episode (paid)",
+    generateEpisodeExplain: "One click generates the script, syncs character data, checks references, and builds the 9-shot storyboard.",
+    generateEpisodeConfirmNote: "This runs the full setup in one go — script + storyboard generation, real AI, spends credits.",
+    generateEpisodeConfirmButton: "Generate",
+    generateEpisodeProgress: "Working on:",
+    generateEpisodeFailedAt: "Stopped at:",
+    generateEpisodeRetry: "Retry",
     syncCharacterData: "Sync character data",
     approve: "Approve",
     reject: "Reject",
@@ -201,6 +208,80 @@ export const VD_COPY = {
     filterEpisode: "Episode #",
     all: "All",
     advancedPipelineDetail: "Advanced — view all pipeline stages & run history",
+
+    /* ---- Model selection (storyboard header, Phase 1.3) ---- */
+    imageModel: "Image model",
+    videoModel: "Video model",
+    chooseModel: "Choose model",
+    capabilityStartFrame: "Start frame",
+    capabilityNativeAudio: "Native audio",
+    capabilityMaxRefs: "Max refs {n}",
+    capabilityCreditCost: "{n} credits",
+    modelChangeNote: "Changing the model only affects future generations — images/clips already made are untouched.",
+    modelSelectionSaved: "Model selection saved.",
+
+    /* ---- Shot reference strip (Phase 2.5) ---- */
+    references: "References",
+    addReference: "Add reference",
+    removeReference: "Remove reference",
+    removeReferenceConfirm: "Remove this reference image from the shot? This does not delete it from your library.",
+    referenceLimitWarning: "This model supports up to {n} reference images.",
+    noReferencesYet: "No reference images yet — drag one here, or add from the grid cutter/history/library.",
+    dropReferenceHint: "Drop an image here to add it as a reference",
+    useAsStartFrame: "Use as start frame",
+    addAsReferences: "Add as references ({n})",
+
+    /* ---- Dialogue box (Phase 3.4) ---- */
+    dialogueLines: "Dialogue",
+    noDialogueLines: "No dialogue lines for this clip.",
+    dialogueSpeaksNatively: "Spoken in video",
+    dialogueSeparateTts: "Separate TTS audio",
+    saveDialogue: "Save",
+    editDialogue: "Edit",
+    emotionLabel: "Emotion",
+    deliveryLabel: "Delivery",
+
+    /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
+    generatePromptAndImage: "Generate prompt + image",
+    generatingPromptAndImage: "Working…",
+    reviewGeneratedPrompt: "Review the generated prompt before spending credits",
+    savePromptFree: "Save (free)",
+    aiAdjustPaid: "AI adjust (paid)",
+    promptSaved: "Prompt saved.",
+
+    /* ---- One-click generate mode choice + auto-prompt (2026-07-05 fix) ---- */
+    chooseGenerateMode: "Choose how to generate",
+    generateModeSingle: "Single image",
+    generateModeAngles: "9 camera angles (3x3)",
+    generateModeSingleHint: "One image for this shot.",
+    generateModeAnglesHint: "One 3x3 grid image, then pick the best angle.",
+    autoPreparingPrompt: "Preparing the image prompt automatically…",
+    autoPromptFailed: "Failed to prepare the image prompt.",
+    retry: "Retry",
+    reviewAutoPrompt: "Review the auto-generated prompt (edit if needed), then generate the image.",
+    generateWithThisPrompt: "Generate image",
+
+    /* ---- Video prompt pack generation (2026-07-05 fix) ---- */
+    generateVideoPromptPack: "Generate video prompts (paid)",
+    generatingVideoPromptPack: "Generating…",
+    generateVideoPromptPackConfirmNote: "This generates dialogue/audio timing and video motion prompts for every clip — real AI, spends credits.",
+    generateVideoPromptPackNeedsStoryboard: "Storyboard is required first.",
+
+    /* ---- Quality review card (Phase 3B.5) ---- */
+    qualityReview: "Quality review (AI)",
+    runQualityReview: "Check episode quality (AI)",
+    runningQualityReview: "Reviewing…",
+    qualityReviewCostNote: "Cheap, LLM-only check — run this before spending credits on images/video.",
+    qualityOverall: "Overall",
+    qualityReversalCount: "Reversals",
+    qualityReversalSharpness: "Reversal sharpness",
+    qualityEmotionVariety: "Emotion variety",
+    qualityDialogueNaturalness: "Dialogue naturalness",
+    qualityPacing: "Pacing",
+    qualityIssues: "Issues found",
+    qualityNoIssues: "No issues flagged.",
+    copySuggestedFix: "Copy suggestion",
+    copiedSuggestedFix: "Copied — paste it into Repair.",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -215,6 +296,13 @@ export const VD_COPY = {
     regenerateConfirm: "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
     regenerateConfirmButton: "ลบและสร้างใหม่",
     regenerating: "กำลังสร้างใหม่…",
+    generateEpisode: "สร้างตอนนี้ (มีค่าใช้จ่าย)",
+    generateEpisodeExplain: "กดครั้งเดียว ระบบจะสร้างบท ซิงก์ข้อมูลตัวละคร ตรวจภาพอ้างอิง และสร้างสตอรีบอร์ด 9 ช็อตให้ครบ",
+    generateEpisodeConfirmNote: "จะรันขั้นตอนทั้งหมดในครั้งเดียว — สร้างบท + สตอรีบอร์ด ใช้ AI จริง มีค่าใช้จ่าย",
+    generateEpisodeConfirmButton: "สร้างเลย",
+    generateEpisodeProgress: "กำลังทำ:",
+    generateEpisodeFailedAt: "หยุดที่ขั้นตอน:",
+    generateEpisodeRetry: "ลองใหม่",
     syncCharacterData: "ซิงก์ข้อมูลตัวละคร",
     approve: "อนุมัติ",
     reject: "ปฏิเสธ",
@@ -260,6 +348,80 @@ export const VD_COPY = {
     filterEpisode: "ตอนที่",
     all: "ทั้งหมด",
     advancedPipelineDetail: "ขั้นสูง — ดูทุกขั้นตอนของ pipeline และประวัติการรัน",
+
+    /* ---- Model selection (storyboard header, Phase 1.3) ---- */
+    imageModel: "โมเดลภาพ",
+    videoModel: "โมเดลวิดีโอ",
+    chooseModel: "เลือกโมเดล",
+    capabilityStartFrame: "เฟรมเริ่มต้น",
+    capabilityNativeAudio: "เสียงพูดในตัว",
+    capabilityMaxRefs: "อ้างอิงสูงสุด {n} ภาพ",
+    capabilityCreditCost: "{n} เครดิต",
+    modelChangeNote: "การเปลี่ยนโมเดลมีผลเฉพาะการสร้างครั้งถัดไป — ภาพ/คลิปที่ทำไปแล้วไม่ถูกแตะ",
+    modelSelectionSaved: "บันทึกการเลือกโมเดลแล้ว",
+
+    /* ---- Shot reference strip (Phase 2.5) ---- */
+    references: "ภาพอ้างอิง",
+    addReference: "เพิ่มภาพอ้างอิง",
+    removeReference: "ลบภาพอ้างอิง",
+    removeReferenceConfirm: "ลบภาพอ้างอิงนี้ออกจากช็อตนี้หรือไม่? การลบนี้ไม่ได้ลบภาพออกจากคลังของคุณ",
+    referenceLimitWarning: "โมเดลนี้ใช้ภาพอ้างอิงได้สูงสุด {n} ภาพ",
+    noReferencesYet: "ยังไม่มีภาพอ้างอิง — ลากภาพมาวางที่นี่ หรือเพิ่มจากช่องตัดภาพ/ประวัติ/คลัง",
+    dropReferenceHint: "ลากภาพมาวางที่นี่เพื่อเพิ่มเป็นภาพอ้างอิง",
+    useAsStartFrame: "ใช้เป็นภาพเริ่มต้น",
+    addAsReferences: "เพิ่มเป็นภาพอ้างอิง ({n})",
+
+    /* ---- Dialogue box (Phase 3.4) ---- */
+    dialogueLines: "บทพูด",
+    noDialogueLines: "คลิปนี้ยังไม่มีบทพูด",
+    dialogueSpeaksNatively: "พูดในวิดีโอ",
+    dialogueSeparateTts: "เสียงแยก TTS",
+    saveDialogue: "บันทึก",
+    editDialogue: "แก้ไข",
+    emotionLabel: "อารมณ์",
+    deliveryLabel: "น้ำเสียง/การแสดง",
+
+    /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
+    generatePromptAndImage: "สร้าง prompt + ภาพ",
+    generatingPromptAndImage: "กำลังทำงาน…",
+    reviewGeneratedPrompt: "ตรวจสอบ prompt ที่สร้างก่อนใช้เครดิต",
+    savePromptFree: "บันทึก (ฟรี)",
+    aiAdjustPaid: "ให้ AI ปรับ (มีค่าใช้จ่าย)",
+    promptSaved: "บันทึก prompt แล้ว",
+
+    /* ---- One-click generate mode choice + auto-prompt (2026-07-05 fix) ---- */
+    chooseGenerateMode: "เลือกวิธีสร้างภาพ",
+    generateModeSingle: "ภาพเดียว",
+    generateModeAngles: "9 เฟรมหลายมุมกล้อง (3x3)",
+    generateModeSingleHint: "สร้างภาพเดียวสำหรับช็อตนี้",
+    generateModeAnglesHint: "สร้างภาพตาราง 3x3 หนึ่งภาพ แล้วเลือกมุมที่ดีที่สุด",
+    autoPreparingPrompt: "กำลังเตรียมพรอมต์ภาพให้อัตโนมัติ…",
+    autoPromptFailed: "เตรียมพรอมต์ภาพไม่สำเร็จ",
+    retry: "ลองใหม่",
+    reviewAutoPrompt: "ตรวจสอบพรอมต์ที่ระบบสร้างให้ (แก้ไขได้ถ้าต้องการ) แล้วจึงสร้างภาพ",
+    generateWithThisPrompt: "สร้างภาพ",
+
+    /* ---- Video prompt pack generation (2026-07-05 fix) ---- */
+    generateVideoPromptPack: "สร้าง prompt วิดีโอ (มีค่าใช้จ่าย)",
+    generatingVideoPromptPack: "กำลังสร้าง…",
+    generateVideoPromptPackConfirmNote: "จะสร้างจังหวะบทพูด/เสียง และพรอมต์การเคลื่อนไหวของทุกคลิป — ใช้ AI จริง มีค่าใช้จ่าย",
+    generateVideoPromptPackNeedsStoryboard: "ต้องมีสตอรีบอร์ดก่อน",
+
+    /* ---- Quality review card (Phase 3B.5) ---- */
+    qualityReview: "ตรวจคุณภาพเรื่อง (AI)",
+    runQualityReview: "ตรวจคุณภาพเรื่อง (AI)",
+    runningQualityReview: "กำลังตรวจสอบ…",
+    qualityReviewCostNote: "ตรวจสอบด้วย AI ราคาถูก — ควรทำก่อนใช้เครดิตสร้างภาพ/วิดีโอ",
+    qualityOverall: "คะแนนรวม",
+    qualityReversalCount: "จำนวนจุดพลิก",
+    qualityReversalSharpness: "ความคมของจุดพลิก",
+    qualityEmotionVariety: "ความหลากหลายของอารมณ์",
+    qualityDialogueNaturalness: "ความเป็นธรรมชาติของบทพูด",
+    qualityPacing: "จังหวะเรื่อง",
+    qualityIssues: "จุดที่ควรแก้",
+    qualityNoIssues: "ไม่พบจุดที่ต้องแก้",
+    copySuggestedFix: "คัดลอกคำแนะนำ",
+    copiedSuggestedFix: "คัดลอกแล้ว — นำไปวางในหน้าซ่อม",
   },
 } as const;
 
@@ -267,4 +429,14 @@ export type VdCopy = Record<keyof (typeof VD_COPY)["en"], string>;
 
 export function vdCopy(locale: VdLocale): VdCopy {
   return VD_COPY[locale] as VdCopy;
+}
+
+/**
+ * Substitutes a single `{n}` placeholder in a copy string (used by the
+ * capability-badge / reference-limit / credit-cost strings above, which all
+ * carry a single numeric value). Falls back to the raw template if no
+ * placeholder is present.
+ */
+export function vdCopyWithCount(template: string, n: number | string): string {
+  return template.replace("{n}", String(n));
 }

@@ -265,6 +265,21 @@
                   "resolution",
                   "generate_audio"
                 ]
+              },
+              "grok_request": {
+                "description": "Optional provider-request variant for a Grok Imagine video family model. See skill.md 'Provider request variants'.",
+                "type": "object",
+                "additionalProperties": true
+              },
+              "seedance_request": {
+                "description": "Optional provider-request variant for a ByteDance Seedance video family model. See skill.md 'Provider request variants'.",
+                "type": "object",
+                "additionalProperties": true
+              },
+              "generic_request": {
+                "description": "Optional provider-agnostic fallback request shape. See skill.md 'Provider request variants'.",
+                "type": "object",
+                "additionalProperties": true
               }
             },
             "required": [

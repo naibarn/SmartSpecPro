@@ -172,13 +172,23 @@ function getCharacterPortraitUserToken(ctx: { userToken: string | null; user: { 
 
 /**
  * Best-effort character description drawn from `verticalDramaCharacters.data`
- * (the free-form `VerticalDramaCharacter` payload — personality/backstory/
- * identityLock/wardrobeRules; there is no single `description` field).
+ * (the free-form `VerticalDramaCharacter` payload — description/personality/
+ * backstory/identityLock/wardrobeRules). `data.description` is the
+ * authoritative source for core physical/demographic traits (age, gender,
+ * defining features — e.g. "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัย...") that MUST
+ * reach the visual-bible/portrait prompt builder; it is deliberately placed
+ * FIRST in the aggregated string so it leads (not trails) personality/
+ * backstory prose, since a downstream LLM call can otherwise under-weight or
+ * ignore later-listed traits and invent an unconstrained identity (e.g.
+ * rendering an adult when the character is a 12-year-old boy).
  * Returns `undefined` when nothing usable is present.
  */
-function extractCharacterDescription(data: Record<string, unknown> | null): string | undefined {
+export function extractCharacterDescription(data: Record<string, unknown> | null): string | undefined {
   if (!data) return undefined;
   const parts: string[] = [];
+  if (typeof data.description === "string" && data.description.trim()) {
+    parts.push(`Description: ${data.description.trim()}`);
+  }
   if (typeof data.personality === "string" && data.personality.trim()) {
     parts.push(`Personality: ${data.personality.trim()}`);
   }

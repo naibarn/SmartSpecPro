@@ -1,0 +1,27 @@
+{
+  "contract_version": 1,
+  "episode_title": "Midnight Verdict",
+  "scorecard": {
+    "reversal_count": 1,
+    "reversal_sharpness": 4,
+    "emotion_variety": 5,
+    "dialogue_naturalness": 4,
+    "pacing": 4,
+    "overall": 4
+  },
+  "summary": "One clear, legible reversal at beat 3 (Aria's collateral transfer flips the power balance). Emotion variety across the 9 shots is strong with no repeats. Dialogue reads as natural spoken Thai. Pacing escalates cleanly from beat 1 through the cliffhanger, though a second mid-episode reversal would sharpen the middle stretch.",
+  "issues": [
+    {
+      "location": "beat 2",
+      "problem": "only one reversal (beat 3) is present in this draft; the target for the format is 2-3 per episode, so the middle of the episode (beats 1-2) is a single unbroken power state before the flip.",
+      "suggested_fix": "add a small false-victory or setback beat between beat 1 and beat 3 — e.g. the rival appears to close off Aria's only option — so the eventual reversal at beat 3 lands even harder."
+    },
+    {
+      "location": "shot 9",
+      "problem": "'dawning dread' as the final emotion undercuts Aria's own triumph established in shots 5-8 — it reads as belonging to the rival, but the shot's focal character is not specified here.",
+      "suggested_fix": "confirm shot 9's focal character explicitly; if it is the rival, keep 'dawning dread', but if it is Aria, replace with an emotion consistent with her end_emotion ('cold, controlled triumph')."
+    }
+  ],
+  "warnings": [],
+  "repair_queue": []
+}

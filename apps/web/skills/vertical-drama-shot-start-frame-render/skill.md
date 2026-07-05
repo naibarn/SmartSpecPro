@@ -27,6 +27,30 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Encode emotion into every image prompt — MANDATORY
+
+The incoming storyboard shot carries `emotion`, `facial_expression`, `body_language`,
+`gaze_direction`, and (for reversal beats) sharper `camera` values. Every
+`start_frame_requests[].prompt` MUST translate these into a concrete, renderable
+image description — a flat "person standing in a room" prompt is a FAILED render
+plan. Specifically, each `prompt` must include:
+
+1. **Detailed facial micro-expression** — eyes (narrowed / wide / glassy), brows
+   (drawn / raised / relaxed), mouth (tight line / ghost of a smile / trembling) —
+   lifted directly from the shot's `facial_expression` field, written as vivid
+   visual language a diffusion image model can render (not abstract labels).
+2. **Mood lighting + color** derived from the shot's `emotion` and the storyboard's
+   `canonical_style_bible` — e.g. a cold-triumph beat leans harder rim-lit
+   contrast and cooler color; a panic beat may use a harsher, less flattering key
+   light. Do not default every shot to the same generic "moody key light".
+3. **Composition that expresses the beat's power dynamic** — who is framed higher
+   or lower in the frame, camera height relative to each character, and the
+   physical distance between characters (closer for intimacy/threat, more
+   negative space for isolation/exposure). For a shot whose beat is a reversal,
+   composition should visually favor the character who just gained power (e.g.
+   camera looks slightly up at them, or the other character is pushed to the
+   frame edge / smaller in a wider shot).
+
 Output skeleton:
 
 ```json
@@ -44,8 +68,8 @@ Output skeleton:
       "shot_number": 1,
       "shot_title": "Shot 1",
       "timecode": "00:00-00:06",
-      "prompt": "vertical 9:16 start frame for shot 1, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 1, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -63,21 +87,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_1"
     },
     {
       "shot_number": 2,
       "shot_title": "Shot 2",
       "timecode": "00:06-00:12",
-      "prompt": "vertical 9:16 start frame for shot 2, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 2, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -95,21 +120,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_2"
     },
     {
       "shot_number": 3,
       "shot_title": "Shot 3",
       "timecode": "00:12-00:18",
-      "prompt": "vertical 9:16 start frame for shot 3, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 3, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: cold, simmering anger. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -127,21 +153,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_3"
     },
     {
       "shot_number": 4,
       "shot_title": "Shot 4",
       "timecode": "00:18-00:24",
-      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: smug certainty. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -159,21 +186,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_4"
     },
     {
       "shot_number": 5,
       "shot_title": "Shot 5",
       "timecode": "00:24-00:30",
-      "prompt": "vertical 9:16 start frame for shot 5, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 5, Aria in boardroom. Expression: aria: eyes narrowed, jaw tight, the ghost of a smile. Emotion: cold, controlled triumph. Lighting/color: harder rim-lit contrast, cooler color grade to sharpen the emotional turn. Composition: camera looks slightly up at Aria, the rival pushed toward the frame edge and smaller in the composition — visually ceding power.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -191,21 +219,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops; hard cut rhythm on the reversal",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_5"
     },
     {
       "shot_number": 6,
       "shot_title": "Shot 6",
       "timecode": "00:30-00:36",
-      "prompt": "vertical 9:16 start frame for shot 6, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 6, Aria in boardroom. Expression: aria: eyes narrowed, jaw tight, the ghost of a smile; rival: brows drawn, mouth tightening, composure slipping. Emotion: exposed panic. Lighting/color: harder rim-lit contrast, cooler color grade to sharpen the emotional turn. Composition: camera looks slightly up at Aria, the rival pushed toward the frame edge and smaller in the composition — visually ceding power.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -223,21 +252,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops; hard cut rhythm on the reversal",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_6"
     },
     {
       "shot_number": 7,
       "shot_title": "Shot 7",
       "timecode": "00:36-00:42",
-      "prompt": "vertical 9:16 start frame for shot 7, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 7, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: brittle calm. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -255,21 +285,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_7"
     },
     {
       "shot_number": 8,
       "shot_title": "Shot 8",
       "timecode": "00:42-00:48",
-      "prompt": "vertical 9:16 start frame for shot 8, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 8, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: quiet vindication. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -287,21 +318,22 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_8"
     },
     {
       "shot_number": 9,
       "shot_title": "Shot 9",
       "timecode": "00:48-00:54",
-      "prompt": "vertical 9:16 start frame for shot 9, Aria in boardroom",
-      "negative_prompt": "no identity drift, no extra fingers",
+      "prompt": "vertical 9:16 start frame for shot 9, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: dawning dread. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -319,17 +351,18 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep charcoal blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
-        "9:16 framing"
+        "9:16 framing",
+        "expression matches shot emotion (not flat/neutral)"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_9"
     }
   ],
-  "plain_text_render_plan": "Render 9 vertical start frames, one per shot, with Aria reference attached.",
+  "plain_text_render_plan": "Render 9 vertical start frames, one per shot, each encoding the shot's specific emotion, facial micro-expression, and power-dynamic composition; Aria (and rival on shared shots) reference attached.",
   "downstream_video_input_manifest": {
     "episode_duration_seconds": 60,
     "notes_for_video_skill": "Use these approved start frames as first frames for the Veo bridge.",
@@ -385,12 +418,17 @@ Output skeleton:
     "must_check_before_video": [
       "all 9 frames approved",
       "identity locked",
-      "no unsafe content"
+      "no unsafe content",
+      "expression/emotion matches the storyboard beat (not flat)"
     ],
     "common_failure_repairs": [
       {
         "issue": "identity_drift",
         "fix": "reattach primary portrait ref"
+      },
+      {
+        "issue": "flat_expression",
+        "fix": "re-emphasize facial_expression detail from the storyboard shot in the prompt"
       }
     ]
   }

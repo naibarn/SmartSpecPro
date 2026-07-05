@@ -12964,6 +12964,42 @@ export const verticalDramaEpisodes = pgTable("vertical_drama_episodes", {
 export type VerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferSelect;
 export type InsertVerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferInsert;
 
+/**
+ * Per-shot reference image set (storyboard-complete plan, Phase 2). Each of
+ * the 9 storyboard shots has exactly one primary start frame today
+ * (`episodes.startFramePlan.frames[i].approvedMediaAssetId`) — this table
+ * stores ADDITIONAL reference images for that shot (from 3x3 grid cuts,
+ * generation history, the media library, or direct upload) that are sent as
+ * `reference_images` to video generation alongside the approved start frame.
+ * `role` distinguishes an explicit start-frame duplicate link (rare — mirrors
+ * the primary frame into this table for a uniform reference list) from the
+ * common `reference` case. Always references a canonical `media_assets` row,
+ * never a provider URL.
+ */
+export const verticalDramaShotReferences = pgTable("vertical_drama_shot_references", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seriesId: bigint("seriesId", { mode: "number" }).notNull()
+    .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+  episodeId: bigint("episodeId", { mode: "number" }).notNull()
+    .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+  shotNumber: integer("shotNumber").notNull(),
+  /** Canonical asset registry reference — never a provider URL. Always required (a reference row without an asset is meaningless). */
+  mediaAssetId: bigint("mediaAssetId", { mode: "number" }).notNull()
+    .references(() => mediaAssets.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 20 }).default("reference").notNull(),
+  source: varchar("source", { length: 20 }).notNull(),
+  sortOrder: integer("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("vds_shot_ref_lookup_idx").on(t.tenantId, t.seriesId, t.episodeId, t.shotNumber),
+  uniqueIndex("vds_shot_ref_unique").on(t.episodeId, t.shotNumber, t.mediaAssetId),
+]);
+
+export type VerticalDramaShotReferenceRow = typeof verticalDramaShotReferences.$inferSelect;
+export type InsertVerticalDramaShotReferenceRow = typeof verticalDramaShotReferences.$inferInsert;
+
 /** Episode stage runs — resumable per-stage execution state (spec §11.4/§11.5). */
 export const verticalDramaEpisodeRuns = pgTable("vertical_drama_episode_runs", {
   id: bigserial("id", { mode: "number" }).primaryKey(),

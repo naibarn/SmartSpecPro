@@ -24,6 +24,11 @@ import {
   verticalDramaCharacters,
   verticalDramaCharacterAssets,
   verticalDramaRunArtifacts,
+  verticalDramaShotReferences,
+  verticalDramaEpisodeRuns,
+  verticalDramaMemoryEvents,
+  verticalDramaMemorySnapshots,
+  verticalDramaQcReports,
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
 } from "../../drizzle/schema";
@@ -774,6 +779,146 @@ export const verticalDramaSeriesRouter = router({
       return {
         preset: { id: String(created.id), title: created.title, scope: created.scope },
       };
+    }),
+
+  /**
+   * PERMANENTLY delete an owned series and every child row (episodes,
+   * storyboard/shot references, character stock + reference links, episode
+   * runs/artifacts/checkpoints, memory events/snapshots, QC reports).
+   *
+   * All ten child tables that reference `vertical_drama_series.id` are
+   * declared with `onDelete: "cascade"` in `drizzle/schema.ts`, so deleting
+   * the parent row inside a transaction is sufficient for the database to
+   * remove every dependent row atomically — there is nothing to manually
+   * cascade. This mutation still runs inside `db.transaction` so the
+   * pre-delete COUNT aggregates (used for the confirmation toast) and the
+   * delete itself observe a single consistent snapshot.
+   *
+   * `media_assets` rows are NEVER deleted — only the link rows in
+   * `vertical_drama_character_assets` / `vertical_drama_shot_references`
+   * that reference them are removed by the cascade; the underlying media
+   * library assets remain untouched and reusable by other series/features.
+   *
+   * Defense-in-depth: in addition to the standard ownership guard, the
+   * caller must pass `confirmName` matching the series title exactly
+   * (case-sensitive, no trimming) or the mutation is rejected before any
+   * row is touched. This mirrors the client's "type the series name to
+   * confirm" dialog so a scripted/replayed request can't skip that guard.
+   */
+  deleteSeries: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        confirmName: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      // Ensure the caller owns it (throws NOT_FOUND otherwise — never
+      // discloses existence of another tenant's/user's series).
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+
+      if (input.confirmName !== row.title) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Series name confirmation does not match — deletion aborted",
+        });
+      }
+
+      const counts = await db.transaction(async (tx) => {
+        const [
+          [episodesAgg],
+          [charactersAgg],
+          [characterAssetsAgg],
+          [shotReferencesAgg],
+          [episodeRunsAgg],
+          [runArtifactsAgg],
+          [approvalCheckpointsAgg],
+          [memoryEventsAgg],
+          [memorySnapshotsAgg],
+          [qcReportsAgg],
+        ] = await Promise.all([
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaEpisodes)
+            .where(and(eq(verticalDramaEpisodes.tenantId, tenantId), eq(verticalDramaEpisodes.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaCharacters)
+            .where(and(eq(verticalDramaCharacters.tenantId, tenantId), eq(verticalDramaCharacters.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaCharacterAssets)
+            .where(and(eq(verticalDramaCharacterAssets.tenantId, tenantId), eq(verticalDramaCharacterAssets.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaShotReferences)
+            .where(and(eq(verticalDramaShotReferences.tenantId, tenantId), eq(verticalDramaShotReferences.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaEpisodeRuns)
+            .where(and(eq(verticalDramaEpisodeRuns.tenantId, tenantId), eq(verticalDramaEpisodeRuns.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaRunArtifacts)
+            .where(and(eq(verticalDramaRunArtifacts.tenantId, tenantId), eq(verticalDramaRunArtifacts.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaApprovalCheckpoints)
+            .where(and(eq(verticalDramaApprovalCheckpoints.tenantId, tenantId), eq(verticalDramaApprovalCheckpoints.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaMemoryEvents)
+            .where(and(eq(verticalDramaMemoryEvents.tenantId, tenantId), eq(verticalDramaMemoryEvents.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaMemorySnapshots)
+            .where(and(eq(verticalDramaMemorySnapshots.tenantId, tenantId), eq(verticalDramaMemorySnapshots.seriesId, seriesId))),
+          tx
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(verticalDramaQcReports)
+            .where(and(eq(verticalDramaQcReports.tenantId, tenantId), eq(verticalDramaQcReports.seriesId, seriesId))),
+        ]);
+
+        const episodesDeleted = Number(episodesAgg?.count ?? 0);
+        const charactersDeleted = Number(charactersAgg?.count ?? 0);
+        const characterAssetsDeleted = Number(characterAssetsAgg?.count ?? 0);
+        const shotReferencesDeleted = Number(shotReferencesAgg?.count ?? 0);
+        const episodeRunsDeleted = Number(episodeRunsAgg?.count ?? 0);
+        const runArtifactsDeleted = Number(runArtifactsAgg?.count ?? 0);
+        const approvalCheckpointsDeleted = Number(approvalCheckpointsAgg?.count ?? 0);
+        const memoryEventsDeleted = Number(memoryEventsAgg?.count ?? 0);
+        const memorySnapshotsDeleted = Number(memorySnapshotsAgg?.count ?? 0);
+        const qcReportsDeleted = Number(qcReportsAgg?.count ?? 0);
+
+        // Deleting the parent row cascades to every child table above at
+        // the database level (all declared `onDelete: "cascade"` on
+        // `seriesId`) — `media_assets` rows themselves are never touched.
+        await tx
+          .delete(verticalDramaSeries)
+          .where(seriesOwnershipWhere(tenantId, userId, seriesId));
+
+        return {
+          episodesDeleted,
+          charactersDeleted,
+          characterAssetsDeleted,
+          shotReferencesDeleted,
+          episodeRunsDeleted,
+          runArtifactsDeleted,
+          approvalCheckpointsDeleted,
+          memoryEventsDeleted,
+          memorySnapshotsDeleted,
+          qcReportsDeleted,
+        };
+      });
+
+      return { deleted: true, seriesId: input.seriesId, ...counts };
     }),
 });
 

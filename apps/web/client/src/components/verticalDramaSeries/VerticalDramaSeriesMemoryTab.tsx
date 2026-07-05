@@ -9,6 +9,7 @@
  * not yet been resolved by a later event in the append-only chain.
  */
 
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
   CheckCircle2,
   Loader2,
   Package,
+  PenLine,
   ScrollText,
   Unlink,
   XCircle,
@@ -24,7 +26,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import type { VerticalDramaMemoryKind } from "@shared/verticalDramaSeries";
 
@@ -61,6 +80,30 @@ export function VerticalDramaSeriesMemoryTab({
   );
 
   const invalidate = () => void utils.verticalDramaEpisodes.listMemoryEvents.invalidate({ seriesId });
+
+  const [proposeOpen, setProposeOpen] = useState(false);
+  const [factSummary, setFactSummary] = useState("");
+  const [reason, setReason] = useState("");
+  const [supersedesEventId, setSupersedesEventId] = useState<string>("none");
+
+  const proposeMutation = trpc.verticalDramaEpisodes.proposeRetcon.useMutation({
+    onSuccess: () => {
+      toast.success(
+        lang === "th" ? "ส่งข้อเสนอแก้ไขย้อนหลังแล้ว" : "Retcon proposal submitted",
+      );
+      setProposeOpen(false);
+      setFactSummary("");
+      setReason("");
+      setSupersedesEventId("none");
+      invalidate();
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message ||
+          (lang === "th" ? "ส่งข้อเสนอไม่สำเร็จ" : "Failed to submit retcon proposal"),
+      );
+    },
+  });
 
   const approveMutation = trpc.verticalDramaEpisodes.approveRetconProposal.useMutation({
     onSuccess: () => {
@@ -131,6 +174,14 @@ export function VerticalDramaSeriesMemoryTab({
   const continuityWarnings = byKind("continuity_warning");
   const productTieInUsage = byKind("product_tie_in_usage");
 
+  // One shared explanatory line — WHEN memory data appears — appended after
+  // each section's short empty label, so a series with no episodes approved
+  // yet doesn't read as broken.
+  const whenItAppearsHint =
+    lang === "th"
+      ? "จะบันทึกอัตโนมัติเมื่อทำ pipeline ครบและอนุมัติขั้นสรุปความจำ (ขั้นสุดท้าย) ของแต่ละตอน"
+      : "Recorded automatically once you complete the pipeline and approve the final \"summarize to series memory\" checkpoint for an episode.";
+
   return (
     <div className="grid gap-4">
       {readOnly && (
@@ -142,7 +193,11 @@ export function VerticalDramaSeriesMemoryTab({
       <MemorySection
         icon={BookOpen}
         title={lang === "th" ? "ข้อเท็จจริงหลัก" : "Canonical facts"}
-        emptyLabel={lang === "th" ? "ยังไม่มีข้อเท็จจริงหลัก" : "No canonical facts yet."}
+        emptyLabel={
+          (lang === "th" ? "ยังไม่มีข้อเท็จจริงหลัก" : "No canonical facts yet.") +
+          " " +
+          whenItAppearsHint
+        }
         events={canonicalFacts}
         lang={lang}
       />
@@ -150,7 +205,11 @@ export function VerticalDramaSeriesMemoryTab({
       <MemorySection
         icon={ScrollText}
         title={lang === "th" ? "สรุปแต่ละตอน" : "Episode summaries"}
-        emptyLabel={lang === "th" ? "ยังไม่มีสรุปตอน" : "No episode summaries yet."}
+        emptyLabel={
+          (lang === "th" ? "ยังไม่มีสรุปตอน" : "No episode summaries yet.") +
+          " " +
+          whenItAppearsHint
+        }
         events={episodeSummaries}
         lang={lang}
       />
@@ -158,7 +217,11 @@ export function VerticalDramaSeriesMemoryTab({
       <MemorySection
         icon={Unlink}
         title={lang === "th" ? "ปมค้างที่เปิดไว้" : "Hooks opened"}
-        emptyLabel={lang === "th" ? "ยังไม่มีปมค้างที่เปิดไว้" : "No hooks opened yet."}
+        emptyLabel={
+          (lang === "th" ? "ยังไม่มีปมค้างที่เปิดไว้" : "No hooks opened yet.") +
+          " " +
+          whenItAppearsHint
+        }
         events={hooksOpened}
         lang={lang}
       />
@@ -166,7 +229,11 @@ export function VerticalDramaSeriesMemoryTab({
       <MemorySection
         icon={CheckCircle2}
         title={lang === "th" ? "ปมค้างที่คลี่คลายแล้ว" : "Hooks resolved"}
-        emptyLabel={lang === "th" ? "ยังไม่มีปมค้างที่คลี่คลาย" : "No hooks resolved yet."}
+        emptyLabel={
+          (lang === "th" ? "ยังไม่มีปมค้างที่คลี่คลาย" : "No hooks resolved yet.") +
+          " " +
+          whenItAppearsHint
+        }
         events={hooksResolved}
         lang={lang}
       />
@@ -174,7 +241,11 @@ export function VerticalDramaSeriesMemoryTab({
       <MemorySection
         icon={AlertTriangle}
         title={lang === "th" ? "คำเตือนความต่อเนื่อง" : "Continuity warnings"}
-        emptyLabel={lang === "th" ? "ยังไม่มีคำเตือนความต่อเนื่อง" : "No continuity warnings yet."}
+        emptyLabel={
+          (lang === "th" ? "ยังไม่มีคำเตือนความต่อเนื่อง" : "No continuity warnings yet.") +
+          " " +
+          whenItAppearsHint
+        }
         events={continuityWarnings}
         lang={lang}
       />
@@ -183,23 +254,40 @@ export function VerticalDramaSeriesMemoryTab({
         icon={Package}
         title={lang === "th" ? "การใช้สินค้าผูกเรื่อง" : "Product tie-in usage"}
         emptyLabel={
-          lang === "th" ? "ยังไม่มีการใช้สินค้าผูกเรื่อง" : "No product tie-in usage yet."
+          (lang === "th"
+            ? "ยังไม่มีการใช้สินค้าผูกเรื่อง"
+            : "No product tie-in usage yet.") +
+          " " +
+          whenItAppearsHint
         }
         events={productTieInUsage}
         lang={lang}
       />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <AlertTriangle className="h-4 w-4" aria-hidden="true" />
             {lang === "th" ? "ข้อเสนอแก้ไขย้อนหลัง (Retcon)" : "Retcon proposals"}
           </CardTitle>
+          {!readOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setProposeOpen(true)}
+            >
+              <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
+              {lang === "th" ? "เสนอแก้ไขย้อนหลัง" : "Propose retcon"}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {byKind("retcon_proposal").length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {lang === "th" ? "ยังไม่มีข้อเสนอแก้ไขย้อนหลัง" : "No retcon proposals yet."}
+              {lang === "th"
+                ? "ยังไม่มีข้อเสนอแก้ไขย้อนหลัง กดปุ่ม \"เสนอแก้ไขย้อนหลัง\" ด้านบนเพื่อเสนอแก้ไขข้อเท็จจริงในความจำ"
+                : 'No retcon proposals yet. Use the "Propose retcon" button above to suggest a change to an existing memory fact.'}
             </p>
           ) : (
             <ul className="grid grid-cols-1 gap-2.5">
@@ -311,6 +399,120 @@ export function VerticalDramaSeriesMemoryTab({
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={proposeOpen} onOpenChange={setProposeOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {lang === "th" ? "เสนอแก้ไขย้อนหลัง (Retcon)" : "Propose a retcon"}
+            </DialogTitle>
+            <DialogDescription>
+              {lang === "th"
+                ? "ข้อเสนอนี้จะไม่มีผลทันที ต้องได้รับการอนุมัติก่อนจึงจะบันทึกเป็นความจำใหม่"
+                : "This proposal has no effect until approved — approval appends a new memory event without altering any prior one."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="vd-retcon-fact">
+                {lang === "th" ? "ข้อเท็จจริงที่เสนอใหม่" : "Proposed fact"}
+              </Label>
+              <Textarea
+                id="vd-retcon-fact"
+                value={factSummary}
+                maxLength={2000}
+                rows={4}
+                placeholder={
+                  lang === "th"
+                    ? "เช่น อาเรียไม่ใช่ CFO ของ Vantor Group อีกต่อไป..."
+                    : "e.g. Aria is no longer CFO of Vantor Group..."
+                }
+                onChange={(event) => setFactSummary(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {factSummary.length}/2000
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="vd-retcon-supersedes">
+                {lang === "th"
+                  ? "ข้อเท็จจริงเดิมที่จะถูกแทนที่ (ถ้ามี)"
+                  : "Existing fact this supersedes (optional)"}
+              </Label>
+              <Select value={supersedesEventId} onValueChange={setSupersedesEventId}>
+                <SelectTrigger id="vd-retcon-supersedes">
+                  <SelectValue
+                    placeholder={
+                      lang === "th" ? "ไม่แทนที่ข้อเท็จจริงใด" : "Don't supersede any fact"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {lang === "th" ? "ไม่แทนที่ข้อเท็จจริงใด" : "Don't supersede any fact"}
+                  </SelectItem>
+                  {canonicalFacts.map((ev) => (
+                    <SelectItem key={ev.memoryEventId} value={ev.memoryEventId}>
+                      {(ev.summaryText || String(ev.payload?.fact ?? "")).slice(0, 80) ||
+                        ev.memoryEventId}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="vd-retcon-reason">
+                {lang === "th" ? "เหตุผล (ไม่บังคับ)" : "Reason (optional)"}
+              </Label>
+              <Textarea
+                id="vd-retcon-reason"
+                value={reason}
+                maxLength={2000}
+                rows={3}
+                placeholder={
+                  lang === "th"
+                    ? "อธิบายว่าทำไมข้อเท็จจริงเดิมจึงต้องเปลี่ยน..."
+                    : "Explain why the prior fact needs to change..."
+                }
+                onChange={(event) => setReason(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setProposeOpen(false)}
+              disabled={proposeMutation.isPending}
+            >
+              {lang === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button
+              disabled={!factSummary.trim() || proposeMutation.isPending}
+              onClick={() =>
+                proposeMutation.mutate({
+                  seriesId,
+                  factSummary: factSummary.trim(),
+                  supersedesEventIds:
+                    supersedesEventId !== "none" ? [supersedesEventId] : undefined,
+                  reason: reason.trim() || undefined,
+                })
+              }
+            >
+              {proposeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : lang === "th" ? (
+                "ส่งข้อเสนอ"
+              ) : (
+                "Submit proposal"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

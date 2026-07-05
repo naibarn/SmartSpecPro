@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "skillId": "vertical-drama-episode-quality-review",
+  "contract_version": 1,
+  "title": "Vertical Drama Episode Quality Review",
+  "titleTh": "ตรวจสอบคุณภาพตอนละครแนวตั้ง",
+  "description": "Score a vertical-drama episode's script + storyboard (and optional dialogue plan) for reversal sharpness, emotional variety, dialogue naturalness, and pacing BEFORE spending credits on image/video generation.",
+  "descriptionTh": "ให้คะแนนบทและสตอรีบอร์ดของตอนละครแนวตั้ง (และแผนบทพูดถ้ามี) ด้านความคมของการพลิกสถานการณ์ ความหลากหลายของอารมณ์ ความเป็นธรรมชาติของบทพูด และจังหวะเรื่อง ก่อนจ่ายเครดิตสร้างภาพ/วิดีโอ",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "clipboard-check",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the episode pipeline (script + storyboard, optional dialogue plan)",
+          "placeholderTh": "ระบบไปป์ไลน์ตอนเป็นผู้ส่งให้ (บท + สตอรีบอร์ด และแผนบทพูดถ้ามี)",
+          "helpText": "This skill is invoked by the Vertical Drama episode pipeline or a manual quality-check action, not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยไปป์ไลน์ตอนละครแนวตั้ง หรือปุ่มตรวจสอบคุณภาพ ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

@@ -177,14 +177,24 @@ export function VerticalDramaCharacterStockPanel({
    *  own name is never translated). Defaults to English per the confirmed
    *  product decision; toggleable per-generation. */
   const [sheetLanguage, setSheetLanguage] = useState<"en" | "th">("en");
-  /** Tracks which character+role is between "task submitted" and "task
-   *  completed" — `generateImageMutation.isPending`/`generateTurnaroundMutation.isPending`
+  /** Tracks which character+role pairs are between "task submitted" and
+   *  "task completed" — `generateImageMutation.isPending`/`generateTurnaroundMutation.isPending`
    *  only cover the (fast) submit call itself; the actual generation happens
-   *  async and is tracked here for the duration of the poll. */
-  const [pollingCharacter, setPollingCharacter] = useState<{
-    characterId: string;
-    role: "primary_portrait" | "character_sheet_turnaround" | "character_sheet_full";
-  } | null>(null);
+   *  async and is tracked here for the duration of the poll. A Set (not a
+   *  single value) — bug fix, 2026-07-05: this used to be a single
+   *  `{characterId, role} | null`, so generating one character's image
+   *  clobbered the "busy" state for every other character, and (combined
+   *  with several buttons disabling on the global `mutating` flag below)
+   *  made it impossible to start a second character's generation until the
+   *  first one's poll finished. Keyed by `${characterId}::${role}` so the
+   *  same character can even have two different roles generating at once. */
+  const [pollingCharacters, setPollingCharacters] = useState<Set<string>>(
+    new Set()
+  );
+  const pollingCharacterKey = (
+    characterId: string,
+    role: "primary_portrait" | "character_sheet_turnaround" | "character_sheet_full"
+  ) => `${characterId}::${role}`;
 
   /** Persistent right-side sidebar column (Library / History / Grid cutter
    *  reference picker) — mirrors Media Studio's own collapsible right panel
@@ -288,7 +298,8 @@ export function VerticalDramaCharacterStockPanel({
     role: "primary_portrait" | "character_sheet_turnaround" | "character_sheet_full",
     promptCreditsUsed: number
   ) {
-    setPollingCharacter({ characterId, role });
+    const key = pollingCharacterKey(characterId, role);
+    setPollingCharacters(prev => new Set(prev).add(key));
     try {
       for (let attempt = 0; attempt < 120; attempt++) {
         const task = await utils.media.getTask.fetch({ taskId });
@@ -351,7 +362,11 @@ export function VerticalDramaCharacterStockPanel({
         t(lang, "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Generation is taking too long — check back later.")
       );
     } finally {
-      setPollingCharacter(null);
+      setPollingCharacters(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -534,21 +549,22 @@ export function VerticalDramaCharacterStockPanel({
     isPreviewLoadingFor(characterId, "image") ||
     (generateImageMutation.isPending &&
       generateImageMutation.variables?.characterId === characterId) ||
-    (pollingCharacter?.characterId === characterId &&
-      pollingCharacter.role === "primary_portrait");
+    pollingCharacters.has(pollingCharacterKey(characterId, "primary_portrait"));
 
   const isTurnaroundGeneratingFor = (characterId: string) =>
     isPreviewLoadingFor(characterId, "turnaround") ||
     (generateTurnaroundMutation.isPending &&
       generateTurnaroundMutation.variables?.characterId === characterId) ||
-    (pollingCharacter?.characterId === characterId &&
-      pollingCharacter.role === "character_sheet_turnaround");
+    pollingCharacters.has(
+      pollingCharacterKey(characterId, "character_sheet_turnaround")
+    );
 
   const isSheetGeneratingFor = (characterId: string) =>
     (generateSheetMutation.isPending &&
       generateSheetMutation.variables?.characterId === characterId) ||
-    (pollingCharacter?.characterId === characterId &&
-      pollingCharacter.role === "character_sheet_full");
+    pollingCharacters.has(
+      pollingCharacterKey(characterId, "character_sheet_full")
+    );
 
   /**
    * Per-card drop-to-assign (roster card grid, spec fix-round-3 Section A):
@@ -656,10 +672,13 @@ export function VerticalDramaCharacterStockPanel({
   };
 
   // Auto-select the first character once data loads.
+  type VdCharacterListItem = (typeof characters)[number];
   const effectiveSelectedId = useMemo(() => {
     if (
       selectedCharacterId &&
-      characters.some(c => c.characterId === selectedCharacterId)
+      characters.some(
+        (c: VdCharacterListItem) => c.characterId === selectedCharacterId
+      )
     ) {
       return selectedCharacterId;
     }
@@ -667,7 +686,9 @@ export function VerticalDramaCharacterStockPanel({
   }, [selectedCharacterId, characters]);
 
   const selectedCharacter =
-    characters.find(c => c.characterId === effectiveSelectedId) ?? null;
+    characters.find(
+      (c: VdCharacterListItem) => c.characterId === effectiveSelectedId
+    ) ?? null;
   /** Show the persistent right-side reference-panel column only when there's
    *  a character to attach references to and mutations are allowed — matches
    *  the condition that previously gated mounting `VerticalDramaCharacterReferencePanel`
@@ -676,15 +697,16 @@ export function VerticalDramaCharacterStockPanel({
   const selectedAssets = assets.filter(
     a => effectiveSelectedId != null && a.characterId === effectiveSelectedId
   );
+  // Deliberately does NOT include the per-character generate/poll flags
+  // (`generateImageMutation.isPending` etc., `pollingCharacters`) — those
+  // gate only THAT character's own generate buttons (via
+  // `isImageGeneratingFor`/`isTurnaroundGeneratingFor`/`isSheetGeneratingFor`
+  // below), so generating one character's image never blocks starting
+  // another character's generation concurrently.
   const mutating =
     createMutation.isPending ||
     linkMutation.isPending ||
-    deleteAssetMutation.isPending ||
-    generateImageMutation.isPending ||
-    generateTurnaroundMutation.isPending ||
-    generateSheetMutation.isPending ||
-    previewCharacterPromptMutation.isPending ||
-    pollingCharacter !== null;
+    deleteAssetMutation.isPending;
 
   const requireModelSelected = (): boolean => {
     if (selectedImageModelId) return true;
@@ -930,7 +952,7 @@ export function VerticalDramaCharacterStockPanel({
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 shrink-0"
-                                disabled={mutating}
+                                disabled={mutating || generatingThis}
                                 aria-label={t(
                                   lang,
                                   "สร้างภาพตัวละคร",
@@ -965,7 +987,7 @@ export function VerticalDramaCharacterStockPanel({
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 shrink-0"
-                                disabled={mutating}
+                                disabled={mutating || generatingTurnaroundThis}
                                 aria-label={t(
                                   lang,
                                   "สร้างชีทตัวละคร",
@@ -1182,7 +1204,10 @@ export function VerticalDramaCharacterStockPanel({
                           type="button"
                           size="sm"
                           className="gap-2"
-                          disabled={mutating}
+                          disabled={
+                            mutating ||
+                            isImageGeneratingFor(selectedCharacter.characterId)
+                          }
                           onClick={() =>
                             startCharacterPromptPreview(
                               selectedCharacter.characterId,
@@ -1214,7 +1239,10 @@ export function VerticalDramaCharacterStockPanel({
                           size="sm"
                           variant="secondary"
                           className="gap-2"
-                          disabled={mutating}
+                          disabled={
+                            mutating ||
+                            isTurnaroundGeneratingFor(selectedCharacter.characterId)
+                          }
                           onClick={() =>
                             startCharacterPromptPreview(
                               selectedCharacter.characterId,
@@ -1246,7 +1274,10 @@ export function VerticalDramaCharacterStockPanel({
                           size="sm"
                           variant="secondary"
                           className="gap-2"
-                          disabled={mutating}
+                          disabled={
+                            mutating ||
+                            isSheetGeneratingFor(selectedCharacter.characterId)
+                          }
                           onClick={() =>
                             generateSheetMutation.mutate({
                               seriesId,
