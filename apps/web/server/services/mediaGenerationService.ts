@@ -1262,6 +1262,12 @@ const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   "__vd_series_id",
   "__vd_episode_id",
   "__vd_character_id",
+  // Vertical Drama shot-image provenance tags (2026-07-06, orphaned-task
+  // recovery groundwork) — additive bookkeeping only, not provider-facing.
+  // Not yet consumed by any recovery/filter feature; a future feature can
+  // read these back to reconcile tasks the client never observed complete.
+  "__vd_shot_number",
+  "__vd_purpose",
 ]);
 
 function stripClientOnlyExtraParams(extraParams: Record<string, any>): Record<string, any> {
@@ -1272,7 +1278,11 @@ function stripClientOnlyExtraParams(extraParams: Record<string, any>): Record<st
   return sanitized;
 }
 
-function stripProviderInternalExtraParams(extraParams: Record<string, any>): Record<string, any> {
+// Exported for unit testing only (2026-07-06) — pure function, no side
+// effects; verifies the Vertical Drama shot-tagging keys (`__vd_shot_number`,
+// `__vd_purpose`) survive this filter alongside the pre-existing
+// `__vd_series_id`/`__vd_episode_id` tags.
+export function stripProviderInternalExtraParams(extraParams: Record<string, any>): Record<string, any> {
   const sanitized: Record<string, any> = {};
   for (const [key, value] of Object.entries(extraParams)) {
     if ((key.startsWith("__") && !PERSISTED_INTERNAL_EXTRA_PARAM_KEYS.has(key)) || PROVIDER_INTERNAL_EXTRA_PARAM_KEYS.has(key)) {

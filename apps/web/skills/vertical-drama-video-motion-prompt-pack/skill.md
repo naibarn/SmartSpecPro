@@ -28,6 +28,26 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Language — MANDATORY
+
+The caller tells you two independent language settings for this episode:
+
+1. **PROMPT LANGUAGE** — the language every `video_clip_requests[].prompt`
+   and `negative_motion_prompt` must be WRITTEN IN (the motion/acting/camera
+   direction prose). Defaults to English when the caller does not specify
+   one. Write EVERY word of these fields in this language, regardless of what
+   language the dialogue is in.
+2. **SPEECH LANGUAGE** — the language the character(s) SPEAK in the video.
+   Defaults to Thai when the caller does not specify one. Supported values:
+   Thai, English, Chinese, Japanese, Korean, Spanish, Portuguese, Indonesian,
+   Vietnamese, Hindi, and Arabic. Any literal quoted dialogue embedded in a
+   clip's prompt (native-audio provider variants) or returned as a dialogue
+   line must be natural, native-register speech in this language
+   (adapted/translated naturally — never word-for-word — if the incoming
+   shot/dialogue context is in a different language; never leave a spoken
+   line in the wrong language). This generalizes the "natural spoken Thai"
+   dialogue-quality bar to whichever speech language the caller selects.
+
 ## Weave delivery + acting direction into every clip prompt — MANDATORY
 
 The incoming shots/dialogue carry per-line `delivery` (tone, pace, pauses, texture)

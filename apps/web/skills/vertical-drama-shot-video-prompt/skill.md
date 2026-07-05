@@ -51,6 +51,30 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
 
 `dialogue` MUST be an empty array `[]` when the shot has no spoken line.
 
+## Language — MANDATORY
+
+The caller tells you two independent language settings for this shot:
+
+1. **PROMPT LANGUAGE** — the language `prompt` and `negative_motion_prompt`
+   themselves must be WRITTEN IN (the motion/acting/camera direction prose).
+   Defaults to English when the caller does not specify one. Write EVERY word
+   of `prompt`/`negative_motion_prompt` in this language, regardless of what
+   language the dialogue is in.
+2. **SPEECH LANGUAGE** — the language the character(s) SPEAK in the video.
+   Defaults to Thai when the caller does not specify one. Supported values:
+   Thai, English, Chinese, Japanese, Korean, Spanish, Portuguese, Indonesian,
+   Vietnamese, Hindi, and Arabic. Every `dialogue[]` entry's `lineTh` field
+   must contain the spoken line VERBATIM in this language, as natural,
+   native-register speech (translate/adapt naturally — never word-for-word —
+   if the source line you were given is in a different language; never leave
+   a line in the wrong language). This generalizes the "natural spoken Thai"
+   rule to whatever speech language the caller selects — the same
+   naturalness/register bar applies regardless of which language it is. When
+   dialogue is embedded verbatim inside `prompt` for a native-audio model
+   (see rule 4 below), the quoted line itself stays in the speech language
+   even though the surrounding acting direction is written in the prompt
+   language.
+
 ## Hard rules — MANDATORY
 
 1. **Never describe character appearance.** The attached image (or its
@@ -71,14 +95,15 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
    clips.
 4. **Dialogue handling depends on whether the caller tells you the selected
    video model has native lip-synced audio:**
-   - If native audio is supported: embed the Thai dialogue line(s) VERBATIM in
-     `prompt`, with matching mouth/lip movement and delivery direction
-     (tone/pace/pauses/texture from the shot context), and also return the
-     line(s) in `dialogue`.
+   - If native audio is supported: embed the dialogue line(s) VERBATIM (in the
+     SPEECH LANGUAGE) in `prompt`, with matching mouth/lip movement and
+     delivery direction (tone/pace/pauses/texture from the shot context), and
+     also return the line(s) in `dialogue`.
    - If native audio is NOT supported: describe mouth movement + acting
-     direction ONLY in `prompt` (no literal transcript embedded in the prompt
-     text), and still return the resolved line(s) in `dialogue` so the caller
-     can route them to a separate text-to-speech step.
+     direction ONLY in `prompt` (in the PROMPT LANGUAGE, no literal transcript
+     embedded in the prompt text), and still return the resolved line(s) (in
+     the SPEECH LANGUAGE) in `dialogue` so the caller can route them to a
+     separate text-to-speech step.
 5. **Camera continuation:** the clip's camera motion must read as a
    continuation of the start frame's framing (do not invent a completely
    different shot type/angle than what the start frame implies) unless the

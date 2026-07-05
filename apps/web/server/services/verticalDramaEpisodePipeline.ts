@@ -40,6 +40,8 @@ import {
   type VerticalDramaQcResult,
   type VerticalDramaSubShot,
   type VerticalDramaSubShotPolicy,
+  type VerticalDramaPromptLanguage,
+  type VerticalDramaDialogueLanguage,
 } from "@shared/verticalDramaSeries";
 import {
   verticalDramaSeriesMemoryService,
@@ -1359,6 +1361,16 @@ export class VerticalDramaEpisodePipeline {
       episode.motionPromptPack as { selectedVideoModelId?: string } | null
     )?.selectedVideoModelId;
 
+    // Episode-level video-prompt language plan (episode-level language
+    // options wave): a user-chosen `promptLanguage`/`dialogueLanguage` set
+    // via `setEpisodeVideoPromptLanguage` BEFORE this stage runs must be
+    // preserved across a real (re)generation — same "honor pre-existing
+    // selection" rationale as `existingSelectedVideoModelId` above.
+    const existingLanguagePlan = episode.motionPromptPack as {
+      promptLanguage?: VerticalDramaPromptLanguage;
+      dialogueLanguage?: VerticalDramaDialogueLanguage;
+    } | null;
+
     return generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1369,6 +1381,8 @@ export class VerticalDramaEpisodePipeline {
       durationProfileId:
         episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
       selectedVideoModelId: existingSelectedVideoModelId,
+      promptLanguage: existingLanguagePlan?.promptLanguage,
+      dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),

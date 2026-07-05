@@ -182,6 +182,56 @@ describe("generateVideoMotionPromptPack", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("defaults to English prompt language + Thai speech language when the caller supplies neither (episode-level language plan)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+    const result = await generateVideoMotionPromptPack(baseParams());
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content).toContain(
+      "write every \"video_clip_requests[].prompt\"",
+    );
+    expect(userMessage.content).toContain("entirely in English");
+    expect(userMessage.content).toContain("speak in Thai in this video");
+    expect(result.pack.promptLanguage).toBeUndefined();
+    expect(result.pack.dialogueLanguage).toBeUndefined();
+  });
+
+  it("threads a caller-supplied promptLanguage/dialogueLanguage into the LLM user prompt and echoes them onto the projected pack", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+    const result = await generateVideoMotionPromptPack(
+      baseParams({ promptLanguage: "ja", dialogueLanguage: "en" }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content).toContain("entirely in Japanese");
+    expect(userMessage.content).toContain("speak in English in this video");
+    expect(result.pack.promptLanguage).toBe("ja");
+    expect(result.pack.dialogueLanguage).toBe("en");
+  });
+
+  it("supports the wider dialogueLanguage set (e.g. Hindi) beyond just th/en", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+    const result = await generateVideoMotionPromptPack(
+      baseParams({ dialogueLanguage: "hi" }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content).toContain("speak in Hindi in this video");
+    expect(result.pack.dialogueLanguage).toBe("hi");
+  });
+
   it("selects first_last_frame_bridge motion mode when a clip has both start and end frame references", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput(3, true)));
@@ -365,6 +415,24 @@ describe("projectMotionPromptPack", () => {
     };
     const pack = projectMotionPromptPack(raw as any, "", "profile-x");
     expect(pack.selectedVideoModelId).toBe("llm-claimed-video-model");
+  });
+
+  it("echoes the caller-supplied languagePlan onto the projection, and omits both fields when absent", () => {
+    const raw = {
+      video_plan_summary: {},
+      video_clip_requests: [validClipRequest(1)],
+      plain_text_video_plan: "text",
+    };
+    const withLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x", undefined, {
+      promptLanguage: "zh",
+      dialogueLanguage: "en",
+    });
+    expect(withLanguage.promptLanguage).toBe("zh");
+    expect(withLanguage.dialogueLanguage).toBe("en");
+
+    const withoutLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x");
+    expect(withoutLanguage.promptLanguage).toBeUndefined();
+    expect(withoutLanguage.dialogueLanguage).toBeUndefined();
   });
 });
 

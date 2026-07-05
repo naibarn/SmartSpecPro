@@ -91,6 +91,32 @@ function readStoredEpisodePanelCollapsed(): boolean {
   return window.localStorage.getItem(EPISODE_RIGHT_PANEL_COLLAPSED_KEY) === "true";
 }
 
+/**
+ * Pure decision logic for the "resume on load" orphaned-angle-grid-task fix
+ * (2026-07-06) — exported/unit-testable separately from the effect that
+ * calls it. Given one `startFramePlan` frame's `angleGrid` (and the set of
+ * shot numbers already resumed/in-flight this session), decides whether
+ * `pollAngleVariationsTask` should be (re)started for this shot.
+ *
+ * A frame should resume when it has a `pendingTaskId` left over from a
+ * submit that was never observed to complete (page reload/navigation/crash
+ * before the live poll saw `status === "completed"`), it has no `imageUrl`
+ * yet (not already resolved), and this session hasn't already resumed or
+ * isn't currently polling it.
+ */
+export function shouldResumeAngleGridPoll(
+  angleGrid: { pendingTaskId?: string; imageUrl?: string } | undefined,
+  shotNumber: number,
+  alreadyResumedShots: ReadonlySet<number>,
+  currentlyPollingShots: ReadonlySet<number>
+): boolean {
+  if (!angleGrid?.pendingTaskId) return false;
+  if (angleGrid.imageUrl) return false;
+  if (alreadyResumedShots.has(shotNumber)) return false;
+  if (currentlyPollingShots.has(shotNumber)) return false;
+  return true;
+}
+
 /** Per-series last-picked image/video model (Phase 1.3) — used only as the
  *  DEFAULT for a new episode's model selection; an episode with its own
  *  `startFramePlan.selectedImageModelId` / `motionPromptPack.selectedVideoModelId`
@@ -651,7 +677,50 @@ function EpisodeWorkspaceShell({
     useState<Record<number, string>>({});
   const angleVariationUploadMutation = trpc.ai.upload.useMutation();
 
-  async function pollAngleVariationsTask(taskId: string, shotNumber: number) {
+  /** Shot numbers with an angle-variations task currently being polled (live
+   *  submit OR resumed-on-load) — guards against double-polling the same
+   *  shot from both paths (2026-07-06 orphaned-task fix), same ref-guard
+   *  convention as `splitInFlightShotsRef` in the storyboard panel. */
+  const angleVariationsPollInFlightRef = useRef<Set<number>>(new Set());
+
+  /** Shared completion handler for BOTH the live submit-then-poll path and
+   *  the resume-on-load path (2026-07-06 fix) — both must converge on the
+   *  identical persisted `angleGrid` shape ({ imageUrl, mediaTaskId,
+   *  dismissedIndexes }, `pendingTaskId` dropped) so the storyboard panel's
+   *  split/picker effects can't tell which path produced it. */
+  function resolveCompletedAngleVariationsTask(
+    shotNumber: number,
+    resultUrl: string,
+    taskId: string,
+    dismissedIndexes: number[]
+  ) {
+    setAngleVariationGridUrlByShot(prev => ({ ...prev, [shotNumber]: resultUrl }));
+    persistedAngleGridUrlByShotRef.current[shotNumber] = resultUrl;
+    persistAngleGrid(shotNumber, {
+      imageUrl: resultUrl,
+      mediaTaskId: taskId,
+      dismissedIndexes,
+    });
+  }
+
+  /**
+   * Polls `media.getTask` for an angle-variations grid task to completion.
+   * Used both right after submit (live path) and on resume-on-load for a
+   * `pendingTaskId` left behind by an interrupted prior session (2026-07-06
+   * fix — grids that completed server-side while the page was reloaded/
+   * closed used to be orphaned forever, since the ONLY thing tracking the
+   * in-flight task was this function's in-memory state).
+   *
+   * `dismissedIndexes` lets the resume path preserve any dismissals already
+   * recorded (not applicable for a live submit, where it's always []).
+   */
+  async function pollAngleVariationsTask(
+    taskId: string,
+    shotNumber: number,
+    dismissedIndexes: number[] = []
+  ) {
+    if (angleVariationsPollInFlightRef.current.has(shotNumber)) return;
+    angleVariationsPollInFlightRef.current.add(shotNumber);
     setPollingAngleVariationsShot(shotNumber);
     try {
       for (let attempt = 0; attempt < 120; attempt++) {
@@ -663,9 +732,10 @@ function EpisodeWorkspaceShell({
             toast.error(
               lang === "th" ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์" : "Generation completed but no result URL."
             );
+            persistAngleGrid(shotNumber, null);
             return;
           }
-          setAngleVariationGridUrlByShot(prev => ({ ...prev, [shotNumber]: resultUrl }));
+          resolveCompletedAngleVariationsTask(shotNumber, resultUrl, taskId, dismissedIndexes);
           return;
         }
         if (status === "failed") {
@@ -675,6 +745,9 @@ function EpisodeWorkspaceShell({
               ? `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
               : `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
           );
+          // Clear the orphan-recovery marker so a failed task isn't retried
+          // as "still pending" forever (2026-07-06 fix).
+          persistAngleGrid(shotNumber, null);
           return;
         }
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -683,13 +756,19 @@ function EpisodeWorkspaceShell({
         lang === "th" ? "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง" : "Generation is taking too long — check back later."
       );
     } finally {
-      setPollingAngleVariationsShot(null);
+      angleVariationsPollInFlightRef.current.delete(shotNumber);
+      setPollingAngleVariationsShot(current => (current === shotNumber ? null : current));
     }
   }
 
   const generateAngleVariationsMutation =
     trpc.verticalDramaEpisodes.generateStartFrameAngleVariations.useMutation({
       onSuccess: (data, variables) => {
+        // Persist the pending task marker BEFORE polling starts (2026-07-06
+        // fix) — if the page reloads/navigates away before this poll
+        // observes completion, the resume-on-load effect below can pick the
+        // task back up instead of the grid being silently lost forever.
+        persistAngleGrid(variables.shotNumber, { pendingTaskId: data.taskId, dismissedIndexes: [] });
         void pollAngleVariationsTask(data.taskId, variables.shotNumber);
       },
       onError: err => toast.error(err.message),
@@ -947,6 +1026,44 @@ function EpisodeWorkspaceShell({
     });
   };
 
+  /* ---- Video-prompt language options (episode-level language plan) ----
+   *  `promptLanguage` (the language the video-clip PROMPT TEXT is written
+   *  in — default "en") and `dialogueLanguage` (the language the characters
+   *  SPEAK in the video — default "th"), persisted via
+   *  `setEpisodeVideoPromptLanguage` (free — same JSONB-patch convention as
+   *  `setEpisodeModelSelection`). Read straight off the episode's own
+   *  `motionPromptPack`, falling back to the defaults when absent. */
+  const selectedPromptLanguage =
+    episodeDetailQuery.data?.motionPromptPack?.promptLanguage ?? "en";
+  const selectedDialogueLanguage =
+    episodeDetailQuery.data?.motionPromptPack?.dialogueLanguage ?? "th";
+
+  const setEpisodeVideoPromptLanguageMutation =
+    trpc.verticalDramaEpisodes.setEpisodeVideoPromptLanguage.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th" ? "บันทึกการตั้งค่าภาษาแล้ว" : "Language settings saved."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  const handleSelectPromptLanguage = (language: string) => {
+    setEpisodeVideoPromptLanguageMutation.mutate({
+      seriesId,
+      episodeId,
+      promptLanguage: language as "en" | "th" | "zh" | "ja" | "ko",
+    });
+  };
+  const handleSelectDialogueLanguage = (language: string) => {
+    setEpisodeVideoPromptLanguageMutation.mutate({
+      seriesId,
+      episodeId,
+      dialogueLanguage: language as "th" | "en",
+    });
+  };
+
   /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ----
    *  Persisted per series+model (not per-episode/server-side) — purely a
    *  client-side generation-time input, same convention as the MCP
@@ -1175,7 +1292,10 @@ function EpisodeWorkspaceShell({
    *  remaining 7). ---- */
   function persistAngleGrid(
     shotNumber: number,
-    angleGrid: { imageUrl: string; mediaTaskId?: string; dismissedIndexes: number[] } | null
+    angleGrid:
+      | { pendingTaskId: string; dismissedIndexes: number[] }
+      | { imageUrl: string; mediaTaskId?: string; dismissedIndexes: number[] }
+      | null
   ) {
     const plan = episodeDetailQuery.data?.startFramePlan;
     if (!plan) return;
@@ -1200,6 +1320,56 @@ function EpisodeWorkspaceShell({
       startFramePlan: { ...plan, frames: updatedFrames },
     });
   }
+
+  /** Shot numbers whose `pendingTaskId` this session has already picked up
+   *  for resume-polling — prevents re-triggering `pollAngleVariationsTask`
+   *  on every `getEpisodeDetail` refetch while a resumed poll is already
+   *  running (`angleVariationsPollInFlightRef` alone isn't enough since it's
+   *  cleared once the poll finishes, and by design we don't want to retry a
+   *  shot whose resume attempt already ran to a terminal state this
+   *  session). */
+  const resumedAngleGridShotsRef = useRef<Set<number>>(new Set());
+
+  /** RESUME ON LOAD (2026-07-06 fix — bug: "3x3 grid completes server-side
+   *  but the 9-frame picker never appears"). Root cause: the ONLY thing
+   *  tracking an in-flight angle-variations task used to be
+   *  `pollAngleVariationsTask`'s in-memory state in this component — if the
+   *  page reloaded/navigated away (or any transient interruption) before
+   *  that poll observed `status === "completed"`, the grid was never
+   *  persisted and was orphaned forever (confirmed via DB: episode id=6 had
+   *  9 `startFramePlan` frames, none with an `angleGrid` key, despite a
+   *  completed grid task in media history).
+   *
+   *  Fix: `generateAngleVariationsMutation`'s `onSuccess` now persists
+   *  `angleGrid.pendingTaskId` immediately at submit time (before polling
+   *  even starts). This effect runs on every `getEpisodeDetail` load/refetch
+   *  and resumes polling any frame that has a `pendingTaskId` but no
+   *  `imageUrl` yet — same completion handler
+   *  (`resolveCompletedAngleVariationsTask`) as the live path, so both
+   *  converge on the identical persisted shape. */
+  useEffect(() => {
+    const frames = episodeDetailQuery.data?.startFramePlan?.frames ?? [];
+    for (const frame of frames) {
+      const angleGrid = frame.angleGrid as
+        | { pendingTaskId?: string; imageUrl?: string; dismissedIndexes?: number[] }
+        | undefined;
+      const shotNumber = frame.shotNumber;
+      if (
+        !shouldResumeAngleGridPoll(
+          angleGrid,
+          shotNumber,
+          resumedAngleGridShotsRef.current,
+          angleVariationsPollInFlightRef.current
+        )
+      ) {
+        continue;
+      }
+      const pendingTaskId = angleGrid!.pendingTaskId!;
+      resumedAngleGridShotsRef.current.add(shotNumber);
+      void pollAngleVariationsTask(pendingTaskId, shotNumber, angleGrid?.dismissedIndexes ?? []);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episodeDetailQuery.data?.startFramePlan?.frames]);
 
   /** Tracks which shots' currently-showing grid URL has already been
    *  persisted, so the effect below only ever fires the free save mutation
@@ -2167,6 +2337,10 @@ function EpisodeWorkspaceShell({
           selectedVideoResolution,
           onSelectImageResolution: handleSelectImageResolution,
           onSelectVideoResolution: handleSelectVideoResolution,
+          selectedPromptLanguage,
+          selectedDialogueLanguage,
+          onSelectPromptLanguage: handleSelectPromptLanguage,
+          onSelectDialogueLanguage: handleSelectDialogueLanguage,
           shotReferencesByShot,
           onAddShotReference: handleAddShotReference,
           onRemoveShotReference: handleRemoveShotReference,

@@ -49,6 +49,10 @@ import ModelSelectorDialog, {
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import {
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
+} from "@shared/verticalDramaSeries";
 import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspaceCopy";
 
 type Lang = "th" | "en";
@@ -152,7 +156,13 @@ export interface VerticalDramaStoryboardView {
  *  existing free `updateEpisodeDraft` JSONB-patch flow — no new server
  *  procedure needed (that field is an open `z.record` passthrough). */
 export interface VerticalDramaAngleGridView {
-  imageUrl: string;
+  /** Present only while the grid render is still in-flight (2026-07-06
+   *  orphaned-task fix) — persisted at submit time so a reload/navigation
+   *  before the client poll observes completion can resume tracking this
+   *  task instead of losing it forever. `imageUrl` is absent until the
+   *  resumed (or live) poll observes completion. */
+  pendingTaskId?: string;
+  imageUrl?: string;
   mediaTaskId?: string;
   /** Original 0..8 tile indexes (row-major, matching `splitImage`'s output
    *  order) the user has deleted from the picker — excluded on every
@@ -193,6 +203,10 @@ export interface VerticalDramaMotionPromptClipView {
 
 export interface VerticalDramaMotionPromptPackView {
   selectedVideoModelId?: string;
+  /** The language the video-clip prompt TEXT is written in (episode-level language plan) — defaults to "en" when absent. */
+  promptLanguage?: string;
+  /** The language the character(s) SPEAK in the video (episode-level language plan) — defaults to "th" when absent. */
+  dialogueLanguage?: string;
   motionMode?: string;
   clips?: VerticalDramaMotionPromptClipView[];
 }
@@ -302,6 +316,18 @@ interface VerticalDramaStoryboardPanelProps {
   selectedVideoResolution?: string;
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
+
+  /* ---- Video-prompt language options (episode-level language plan) ----
+   *  Two independent selects next to the video model selector:
+   *  `promptLanguage` (the language the video-clip PROMPT TEXT itself is
+   *  written in — default "en") and `dialogueLanguage` (the language the
+   *  characters SPEAK in the video — default "th"). Persisted via
+   *  `setEpisodeVideoPromptLanguage`; only affects FUTURE prompt generations
+   *  (same note pattern as `modelChangeNote`). */
+  selectedPromptLanguage?: string;
+  selectedDialogueLanguage?: string;
+  onSelectPromptLanguage?: (language: string) => void;
+  onSelectDialogueLanguage?: (language: string) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
@@ -450,6 +476,10 @@ export function VerticalDramaStoryboardPanel({
   selectedVideoResolution = "",
   onSelectImageResolution,
   onSelectVideoResolution,
+  selectedPromptLanguage = "",
+  selectedDialogueLanguage = "",
+  onSelectPromptLanguage,
+  onSelectDialogueLanguage,
   shotReferencesByShot = {},
   onAddShotReference,
   onRemoveShotReference,
@@ -903,6 +933,39 @@ export function VerticalDramaStoryboardPanel({
                 onChange={onSelectVideoResolution}
                 creditSuffix={t2.capabilityCreditCost}
                 testId="vd-storyboard-select-video-resolution"
+              />
+            ) : null}
+
+            {/* Video-prompt language options (episode-level language plan) —
+                two independent selects: the language the PROMPT TEXT is
+                written in, and the language the characters SPEAK. Shown
+                whenever the caller wires the callbacks (mirrors every other
+                selector in this header). */}
+            {onSelectPromptLanguage ? (
+              <LanguageSelect
+                label={t2.promptLanguageLabel}
+                value={selectedPromptLanguage || "en"}
+                onChange={onSelectPromptLanguage}
+                options={[
+                  { value: "en", label: t2.promptLanguageEn },
+                  { value: "th", label: t2.promptLanguageTh },
+                  { value: "zh", label: t2.promptLanguageZh },
+                  { value: "ja", label: t2.promptLanguageJa },
+                  { value: "ko", label: t2.promptLanguageKo },
+                ]}
+                testId="vd-storyboard-select-prompt-language"
+              />
+            ) : null}
+            {onSelectDialogueLanguage ? (
+              <LanguageSelect
+                label={t2.dialogueLanguageLabel}
+                value={selectedDialogueLanguage || "th"}
+                onChange={onSelectDialogueLanguage}
+                options={VERTICAL_DRAMA_DIALOGUE_LANGUAGES.map(code => ({
+                  value: code,
+                  label: VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code],
+                }))}
+                testId="vd-storyboard-select-dialogue-language"
               />
             ) : null}
           </div>
@@ -2266,6 +2329,39 @@ function ResolutionSelect({
           <option key={opt.value} value={opt.value}>
             {opt.label}
             {opt.creditCost != null ? ` — ${vdCopyWithCount(creditSuffix, opt.creditCost)}` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/** Compact language selector (video-prompt language options) — same visual pattern as `ResolutionSelect`, minus the credit suffix (language choice never changes cost). */
+function LanguageSelect({
+  label,
+  value,
+  onChange,
+  options,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  testId: string;
+}) {
+  return (
+    <label className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left">
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      <select
+        className="bg-transparent text-xs font-medium outline-none"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        data-testid={testId}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
           </option>
         ))}
       </select>

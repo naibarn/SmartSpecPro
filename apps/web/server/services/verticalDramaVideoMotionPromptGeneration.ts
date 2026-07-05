@@ -45,6 +45,14 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import type {
+  VerticalDramaPromptLanguage,
+  VerticalDramaDialogueLanguage,
+} from "@shared/verticalDramaSeries";
+import {
+  VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
+} from "@shared/verticalDramaSeries";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -203,6 +211,10 @@ export interface VerticalDramaMotionPromptClipDialogueLine {
 export interface VideoMotionPromptPackProjection {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** The language the video-clip prompt TEXT is written in — echoed straight through from the caller-supplied language plan (see `projectMotionPromptPack`'s `languagePlan` param). Absent when the caller supplied none (defaults are applied downstream, never baked in here). */
+  promptLanguage?: VerticalDramaPromptLanguage;
+  /** The language the character(s) SPEAK in the video — echoed straight through from the caller-supplied language plan. */
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
   motionMode:
     | "first_last_frame_bridge"
     | "first_frame_to_video"
@@ -248,6 +260,18 @@ export function projectMotionPromptPack(
    * LLM chose to mention it.
    */
   shotDialogueByShotNumber?: Map<number, string>,
+  /**
+   * Episode-level language plan to echo straight through onto the projected
+   * pack (episode-level language options wave) — this function never invents
+   * or defaults these; the caller (`generateVideoMotionPromptPack` /
+   * `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`) reads
+   * the episode's pre-existing `motionPromptPack.promptLanguage`/
+   * `dialogueLanguage` (set via `setEpisodeVideoPromptLanguage`) and passes it
+   * here so a real regeneration never silently drops the user's language
+   * choice — same "honor pre-existing selection" rationale as
+   * `callerVideoModelId` above.
+   */
+  languagePlan?: { promptLanguage?: VideoMotionPromptPackProjection["promptLanguage"]; dialogueLanguage?: VideoMotionPromptPackProjection["dialogueLanguage"] },
 ): VideoMotionPromptPackProjection {
   const summary = raw.video_plan_summary as Record<string, unknown>;
   const selectedVideoModelId =
@@ -261,6 +285,8 @@ export function projectMotionPromptPack(
   return {
     selectedVideoModelId,
     durationProfileId: fallbackDurationProfileId,
+    ...(languagePlan?.promptLanguage ? { promptLanguage: languagePlan.promptLanguage } : {}),
+    ...(languagePlan?.dialogueLanguage ? { dialogueLanguage: languagePlan.dialogueLanguage } : {}),
     motionMode: hasBridgedClip ? "first_last_frame_bridge" : "first_frame_to_video",
     clips: raw.video_clip_requests
       .slice()
@@ -411,9 +437,25 @@ export interface GenerateVideoMotionPromptPackParams {
      */
     dialogueExcerpt?: string;
   }>;
+  /**
+   * The language the video-clip PROMPT TEXT ITSELF must be written in
+   * (episode-level language plan) — defaults to `"en"` when absent. See
+   * `VerticalDramaPromptLanguage` in `@shared/verticalDramaSeries`.
+   */
+  promptLanguage?: VerticalDramaPromptLanguage;
+  /**
+   * The language the character(s) SPEAK in the video (episode-level language
+   * plan) — defaults to `"th"` when absent. See
+   * `VerticalDramaDialogueLanguage` in `@shared/verticalDramaSeries`.
+   */
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
 }
 
 function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
+  const promptLanguage = params.promptLanguage ?? "en";
+  const dialogueLanguage = params.dialogueLanguage ?? "th";
+  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
+  const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const shotLines = params.storyboardShots
     .map((s) => {
       const dialogue = s.dialogueExcerpt ? ` | dialogue: "${s.dialogueExcerpt}"` : "";
@@ -428,6 +470,8 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     params.selectedVideoModelId ? `Preferred video model: ${params.selectedVideoModelId}` : null,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
+    `PROMPT LANGUAGE (MANDATORY): write every "video_clip_requests[].prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — all motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
+    `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video — any literal quoted dialogue embedded in a clip's prompt (native-audio models) or returned as a dialogue line must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line above is shown in a different language.`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -522,6 +566,7 @@ export async function generateVideoMotionPromptPack(
     params.selectedVideoModelId ?? "dry-run-video-model",
     params.durationProfileId,
     shotDialogueByShotNumber,
+    { promptLanguage: params.promptLanguage, dialogueLanguage: params.dialogueLanguage },
   );
 
   return { pack, raw: validatedData, creditsUsed, model };
@@ -670,6 +715,21 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
     id?: string;
   };
   locale: "th" | "en";
+  /**
+   * The language the video-clip PROMPT TEXT ITSELF must be written in
+   * (episode-level language plan) — defaults to `"en"` when the caller has
+   * no explicit `motionPromptPack.promptLanguage` set. Distinct from
+   * `dialogueLanguage`: this only governs the acting/motion-direction prose,
+   * never the literal spoken line.
+   */
+  promptLanguage?: VerticalDramaPromptLanguage;
+  /**
+   * The language the character(s) SPEAK in the video (episode-level language
+   * plan) — defaults to `"th"` when absent. Governs the literal dialogue
+   * transcript embedded verbatim for native-audio models (and the
+   * `lineTh`/`dialogue[]` lines returned for the separate-TTS path).
+   */
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
   idempotencyKey?: string;
 }
 
@@ -694,6 +754,10 @@ function buildShotVideoPromptUserPrompt(
   nativeAudioDialogue: boolean,
 ): string {
   const { shotContext } = params;
+  const promptLanguage = params.promptLanguage ?? "en";
+  const dialogueLanguage = params.dialogueLanguage ?? "th";
+  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
+  const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const dialogueLines = shotContext.dialogueLines ?? [];
   const dialogueBlock = dialogueLines.length
     ? dialogueLines
@@ -718,10 +782,12 @@ function buildShotVideoPromptUserPrompt(
     params.imagePrompt
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
-    `Dialogue for this shot:\n${dialogueBlock}`,
+    `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
+    `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_motion_prompt" fields entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
+    `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. When dialogue is present, the "dialogue[].lineTh" field must contain the line verbatim in ${dialogueLanguageName} (translate/adapt naturally into ${dialogueLanguageName} if the source line above is in a different language — never leave it in the wrong language).`,
     nativeAudioDialogue
-      ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the Thai line(s) VERBATIM in the prompt with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
-      : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (no literal transcript in the prompt), and return the resolved lines in the "dialogue" array so the caller can route them to text-to-speech.`,
+      ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the ${dialogueLanguageName} line(s) VERBATIM in the prompt (written in ${promptLanguageName} elsewhere, but the quoted spoken line itself stays in ${dialogueLanguageName}) with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
+      : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (in ${promptLanguageName}, no literal transcript in the prompt), and return the resolved ${dialogueLanguageName} lines in the "dialogue" array so the caller can route them to text-to-speech.`,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]

@@ -36,6 +36,8 @@
 import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import type { ModelDefinition } from "./modelRegistry";
 import { resolveVerticalDramaCapabilities } from "./modelRegistry";
+import type { VerticalDramaDialogueLanguage } from "@shared/verticalDramaSeries";
+import { VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES } from "@shared/verticalDramaSeries";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -77,6 +79,16 @@ export interface FormatVideoClipRequestParams {
   clip: VerticalDramaFormatterClip;
   /** Dialogue line(s) spoken during this clip, already resolved by clip number (empty/undefined = silent clip). */
   dialogueLines?: VerticalDramaClipDialogueLine[];
+  /**
+   * The language the character(s) SPEAK in the video (episode-level language
+   * plan) — defaults to `"th"` when absent, preserving this formatter's
+   * pre-existing Thai-only behavior for episodes with no explicit
+   * selection. When dialogue is present, the final provider prompt states
+   * the speech language explicitly (e.g. "spoken in Thai"/"spoken in
+   * English") in ADDITION to embedding/describing the line, so the provider
+   * never has to infer the spoken language from the transcript alone.
+   */
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
   /**
    * The resolved video model. Accepts either a full `ModelDefinition` (from
    * `getModelsByTypeAsync`) or the minimal shape `resolveVerticalDramaCapabilities`
@@ -146,14 +158,19 @@ function actingDirectionSentence(line: VerticalDramaClipDialogueLine): string {
 
 /**
  * Native-audio mode (Veo 3.1): embed the line VERBATIM so the provider can
- * lip-sync it, followed by the delivery/acting direction.
+ * lip-sync it, followed by the delivery/acting direction. States the spoken
+ * language explicitly (e.g. "in natural spoken Thai"/"in natural spoken
+ * English") so the provider never has to infer it from the transcript alone.
  */
-function buildNativeDialogueClause(lines: VerticalDramaClipDialogueLine[]): string {
+function buildNativeDialogueClause(
+  lines: VerticalDramaClipDialogueLine[],
+  dialogueLanguageName: string,
+): string {
   return lines
     .map((line) => {
       const speaker = line.characterKey ? `${line.characterKey} says` : "Character says";
       const direction = actingDirectionSentence(line);
-      return `${speaker}, in natural spoken Thai, exactly: "${line.lineTh}". ${direction}`;
+      return `${speaker}, in natural spoken ${dialogueLanguageName}, exactly: "${line.lineTh}". ${direction}`;
     })
     .join(" ");
 }
@@ -162,13 +179,18 @@ function buildNativeDialogueClause(lines: VerticalDramaClipDialogueLine[]): stri
  * Non-native mode (Grok / Seedance / generic): mouth-movement + acting
  * direction ONLY — never the literal transcript (these models have no
  * lip-sync/transcript channel; the actual audio comes from the separate TTS
- * path using the same line text).
+ * path using the same line text). States the spoken language explicitly
+ * (e.g. "spoken in Thai"/"spoken in English") so mouth-shape/lip-movement
+ * description matches the actual language even without a literal transcript.
  */
-function buildMouthMovementOnlyClause(lines: VerticalDramaClipDialogueLine[]): string {
+function buildMouthMovementOnlyClause(
+  lines: VerticalDramaClipDialogueLine[],
+  dialogueLanguageName: string,
+): string {
   return lines
     .map((line) => {
       const direction = actingDirectionSentence(line);
-      return `Character's mouth moves naturally as if speaking a short line of Thai dialogue matching the described emotion/delivery; ${direction}`;
+      return `Character's mouth moves naturally as if speaking a short line of dialogue spoken in ${dialogueLanguageName}, matching the described emotion/delivery; ${direction}`;
     })
     .join(" ");
 }
@@ -247,6 +269,8 @@ export function formatVideoClipRequest(
   });
   const nativeAudioDialogue = capabilities.nativeAudioDialogue === true;
   const providerFamily = resolveProviderFamily(modelId, model);
+  const dialogueLanguage = params.dialogueLanguage ?? "th";
+  const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
 
   let finalPrompt = clip.prompt;
   let generateAudio = false;
@@ -254,12 +278,12 @@ export function formatVideoClipRequest(
 
   if (dialogueLines.length > 0) {
     if (nativeAudioDialogue) {
-      const clause = buildNativeDialogueClause(dialogueLines);
+      const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
       finalPrompt = `${finalPrompt} ${clause}`.trim();
       generateAudio = true;
       ttsFallback = false;
     } else {
-      const clause = buildMouthMovementOnlyClause(dialogueLines);
+      const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
       finalPrompt = `${finalPrompt} ${clause}`.trim();
       generateAudio = false;
       ttsFallback = true;

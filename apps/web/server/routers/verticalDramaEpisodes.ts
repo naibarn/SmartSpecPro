@@ -61,7 +61,11 @@ import {
   type VerticalDramaClipDialogueLine,
 } from "../services/verticalDramaVideoPromptFormatter";
 import { generateVerticalDramaShotVideoPrompt } from "../services/verticalDramaVideoMotionPromptGeneration";
-import { VERTICAL_DRAMA_MEMORY_KINDS } from "@shared/verticalDramaSeries";
+import {
+  VERTICAL_DRAMA_MEMORY_KINDS,
+  VERTICAL_DRAMA_PROMPT_LANGUAGES,
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
+} from "@shared/verticalDramaSeries";
 import type {
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
@@ -2170,6 +2174,84 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Set the episode-level video-prompt LANGUAGE plan (episode-level language
+   * options wave): `promptLanguage` — the language the video-clip PROMPT
+   * TEXT ITSELF is written in (default `"en"`, video models follow English
+   * best) — and `dialogueLanguage` — the language the characters SPEAK in
+   * the video (default `"th"`, the series' own locale). Both are additive,
+   * optional fields on `motionPromptPack` (see
+   * `VerticalDramaPromptLanguage`/`VerticalDramaDialogueLanguage` in
+   * `@shared/verticalDramaSeries`).
+   *
+   * Free (no credits, no generation triggered) — mirrors
+   * `setEpisodeModelSelection`'s JSONB-patch shape exactly: writes onto
+   * `motionPromptPack`, creating a minimal pack when none exists yet (so the
+   * user's language choice persists even before `video_motion_prompt_pack`
+   * has ever run) — the pipeline's `generateRealMotionPromptPack` /
+   * `generateVerticalDramaShotVideoPrompt` call sites read this pre-existing
+   * value the same way they already read `selectedVideoModelId`.
+   */
+  setEpisodeVideoPromptLanguage: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        promptLanguage: z.enum(VERTICAL_DRAMA_PROMPT_LANGUAGES).optional(),
+        dialogueLanguage: z.enum(VERTICAL_DRAMA_DIALOGUE_LANGUAGES).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!input.promptLanguage && !input.dialogueLanguage) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Provide at least one of promptLanguage or dialogueLanguage",
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const updatedPack: VerticalDramaMotionPromptPack = existingPack
+        ? {
+            ...existingPack,
+            ...(input.promptLanguage ? { promptLanguage: input.promptLanguage } : {}),
+            ...(input.dialogueLanguage ? { dialogueLanguage: input.dialogueLanguage } : {}),
+          }
+        : {
+            selectedVideoModelId: DEFAULT_MODELS.video,
+            durationProfileId:
+              row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+            motionMode: "first_frame_to_video",
+            clips: [],
+            warnings: [],
+            ...(input.promptLanguage ? { promptLanguage: input.promptLanguage } : {}),
+            ...(input.dialogueLanguage ? { dialogueLanguage: input.dialogueLanguage } : {}),
+          };
+
+      const [updatedRow] = await db
+        .update(verticalDramaEpisodes)
+        .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .returning();
+
+      return {
+        episode: { ...updatedRow, id: String(updatedRow.id) },
+        motionPromptPack: updatedPack,
+      };
+    }),
+
+  /**
    * Submit a real start-frame image generation for one shot via the model's
    * already approved prompt (`startFramePlan.frames[shotNumber].imagePrompt`,
    * from the `start_frame_render_plan` stage) — returns a task id to poll,
@@ -2336,7 +2418,12 @@ export const verticalDramaEpisodesRouter = router({
             // persisted verbatim into the media task's `parameters.extra_params`
             // (see PERSISTED_INTERNAL_EXTRA_PARAM_KEYS); read back by
             // `media.listTasks`'s optional `seriesId` filter.
-            extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_episode_id: String(episodeId),
+              __vd_shot_number: String(input.shotNumber),
+              __vd_purpose: "start_frame",
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
@@ -2537,7 +2624,12 @@ export const verticalDramaEpisodesRouter = router({
             ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             // Series provenance tag — see generateStartFrameImage's comment.
-            extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_episode_id: String(episodeId),
+              __vd_shot_number: String(input.shotNumber),
+              __vd_purpose: "angle_grid",
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
@@ -2755,7 +2847,12 @@ export const verticalDramaEpisodesRouter = router({
             referenceImageUrls: [currentUrl],
             ...(input.resolution ? { resolution: input.resolution } : {}),
             // Series provenance tag — see generateStartFrameImage's comment.
-            extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_episode_id: String(episodeId),
+              __vd_shot_number: String(input.shotNumber),
+              __vd_purpose: "repair",
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
@@ -2935,6 +3032,7 @@ export const verticalDramaEpisodesRouter = router({
           endFrameAssetId: clip.endFrameAssetId,
         },
         dialogueLines,
+        dialogueLanguage: pack.dialogueLanguage,
         modelId: model.id,
         model,
         aspectRatio: "9:16",
@@ -3174,6 +3272,8 @@ export const verticalDramaEpisodesRouter = router({
         selectedVideoModelId: selectedVideoModel.id,
         selectedVideoModel,
         locale: "th",
+        promptLanguage: pack?.promptLanguage,
+        dialogueLanguage: pack?.dialogueLanguage,
         idempotencyKey: input.idempotencyKey,
       });
 

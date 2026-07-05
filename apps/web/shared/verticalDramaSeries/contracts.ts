@@ -386,7 +386,20 @@ export type VerticalDramaStartFramePlan = {
      *  `updateEpisodeDraft` JSONB-patch flow (this whole column is an open
      *  passthrough on that endpoint) — no schema/migration involved. */
     angleGrid?: {
-      imageUrl: string;
+      /** Present only while the grid render is in-flight (2026-07-06 fix)
+       *  — persisted at SUBMIT time (before any poll observes completion),
+       *  so a page reload/navigation before the client-side poll finishes
+       *  can resume tracking this task instead of orphaning it forever (the
+       *  only prior source of truth was in-memory poll state in
+       *  `VerticalDramaEpisodePage.tsx`). Cleared (along with setting
+       *  `imageUrl`) once the resumed poll (or the live poll) observes
+       *  completion; cleared entirely (whole `angleGrid` dropped) if the
+       *  task is observed to have failed.
+       *  `imageUrl` and `pendingTaskId` are mutually exclusive in practice:
+       *  a frame has one or the other, never both. */
+      pendingTaskId?: string;
+      /** Absent while `pendingTaskId` is still set (grid not yet complete). */
+      imageUrl?: string;
       mediaTaskId?: string;
       dismissedIndexes?: number[];
     };
@@ -410,10 +423,129 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
   subtext?: string;
 };
 
+/**
+ * Video-prompt LANGUAGE options (episode-level language plan) — two
+ * independent axes:
+ *  - `promptLanguage`: the language the video-clip PROMPT TEXT ITSELF is
+ *    written in (the acting/motion direction the video model reads).
+ *    Defaults to `"en"` when absent (English is the best-supported prompt
+ *    language across video model providers) — never inferred from
+ *    `dialogueLanguage`.
+ *  - `dialogueLanguage`: the language the characters SPEAK in the video
+ *    (embedded verbatim for native-audio models, or routed to TTS
+ *    otherwise). Defaults to the series' own locale (`"th"`) when absent —
+ *    existing episodes with no explicit selection keep behaving exactly as
+ *    before (Thai dialogue), this is purely additive.
+ *  Set via `setEpisodeVideoPromptLanguage` (free, same JSONB-patch
+ *  convention as `setEpisodeModelSelection`) and threaded into
+ *  `generateVideoMotionPromptPack` / `generateVerticalDramaShotVideoPrompt` /
+ *  `formatVideoClipRequest`.
+ */
+export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
+
+/**
+ * See `VerticalDramaPromptLanguage`'s doc comment — the SPEECH language the
+ * characters speak in the video. Broader than `promptLanguage`'s set since
+ * this drives the actual dialogue/TTS content, not just prompt prose: Thai
+ * (default, the series' own locale), English, and the other popular
+ * languages product wants covered from day one.
+ */
+export type VerticalDramaDialogueLanguage =
+  | "th"
+  | "en"
+  | "zh"
+  | "ja"
+  | "ko"
+  | "es"
+  | "pt"
+  | "id"
+  | "vi"
+  | "hi"
+  | "ar";
+
+/** Runtime value list for `VerticalDramaPromptLanguage` — single source of truth for the server's Zod enum and any client validation. */
+export const VERTICAL_DRAMA_PROMPT_LANGUAGES = ["en", "th", "zh", "ja", "ko"] as const;
+
+/** Runtime value list for `VerticalDramaDialogueLanguage` — single source of truth for the server's Zod enum and the client's language select options. */
+export const VERTICAL_DRAMA_DIALOGUE_LANGUAGES = [
+  "th",
+  "en",
+  "zh",
+  "ja",
+  "ko",
+  "es",
+  "pt",
+  "id",
+  "vi",
+  "hi",
+  "ar",
+] as const;
+
+/** English display name per `VerticalDramaPromptLanguage` code — drives the "write ... entirely in X" clause in the skills' instructions. */
+export const VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES: Record<
+  VerticalDramaPromptLanguage,
+  string
+> = {
+  en: "English",
+  th: "Thai",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+};
+
+/**
+ * English display name per `VerticalDramaDialogueLanguage` code — drives the
+ * "spoken in X"/"speak in X" clauses in the skills' instructions and
+ * `verticalDramaVideoPromptFormatter.ts`'s provider prompt, so every language
+ * is named in English regardless of what language it refers to.
+ */
+export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES: Record<
+  VerticalDramaDialogueLanguage,
+  string
+> = {
+  th: "Thai",
+  en: "English",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  es: "Spanish",
+  pt: "Portuguese",
+  id: "Indonesian",
+  vi: "Vietnamese",
+  hi: "Hindi",
+  ar: "Arabic",
+};
+
+/**
+ * Native-script display name per `VerticalDramaDialogueLanguage` code — for
+ * the UI's "ภาษาเสียงพูด" select (each option shown in its own language's
+ * native name, per product decision).
+ */
+export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES: Record<
+  VerticalDramaDialogueLanguage,
+  string
+> = {
+  th: "ไทย",
+  en: "English",
+  zh: "中文",
+  ja: "日本語",
+  ko: "한국어",
+  es: "Español",
+  pt: "Português",
+  id: "Bahasa Indonesia",
+  vi: "Tiếng Việt",
+  hi: "हिन्दी",
+  ar: "العربية",
+};
+
 /** Typed projection of the `video_motion_prompt_pack` output (spec §6.5, §6.9). */
 export type VerticalDramaMotionPromptPack = {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** The language the video-clip prompt TEXT is written in — see `VerticalDramaPromptLanguage`. Defaults to `"en"` when absent. */
+  promptLanguage?: VerticalDramaPromptLanguage;
+  /** The language the characters SPEAK in the video — see `VerticalDramaDialogueLanguage`. Defaults to `"th"` when absent. */
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
   motionMode:
     | "first_last_frame_bridge"
     | "first_frame_to_video"

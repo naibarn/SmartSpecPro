@@ -292,6 +292,71 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     expect(textPart.text).toContain("NO native lip-sync");
   });
 
+  it("defaults to English prompt language + Thai speech language when the caller supplies neither (episode-level language plan)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera pushes in.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(baseParams());
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).toContain("write the \"prompt\" and \"negative_motion_prompt\" fields entirely in English");
+    expect(textPart.text).toContain("speak in Thai in this video");
+  });
+
+  it("threads a caller-supplied promptLanguage/dialogueLanguage into the LLM user prompt", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "Camera pushes in as she speaks.",
+        dialogue: [{ lineTh: "Let's go.", characterKey: "aria" }],
+      }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        promptLanguage: "zh",
+        dialogueLanguage: "en",
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "Let's go.", characterKey: "aria" }],
+        },
+      }),
+    );
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).toContain("write the \"prompt\" and \"negative_motion_prompt\" fields entirely in Chinese");
+    expect(textPart.text).toContain("speak in English in this video");
+  });
+
+  it("supports the wider dialogueLanguage set (e.g. Vietnamese, Arabic) beyond just th/en", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera pushes in as she speaks.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(baseParams({ dialogueLanguage: "vi" }));
+    let call = mockExecute.mock.calls[0][0];
+    let textPart = (call.messages[1].content as any[]).find((p: any) => p.type === "text");
+    expect(textPart.text).toContain("speak in Vietnamese in this video");
+
+    mockExecute.mockClear();
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera pushes in as she speaks.", dialogue: [] }),
+    );
+    await generateVerticalDramaShotVideoPrompt(baseParams({ dialogueLanguage: "ar" }));
+    call = mockExecute.mock.calls[0][0];
+    textPart = (call.messages[1].content as any[]).find((p: any) => p.type === "text");
+    expect(textPart.text).toContain("speak in Arabic in this video");
+  });
+
   it("throws RateLimitExceededError before checking credits or calling the LLM", async () => {
     mockIsAllowed.mockReturnValue(false);
     mockGetResetTime.mockReturnValue(15_000);

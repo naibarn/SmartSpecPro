@@ -320,6 +320,16 @@ export const VD_COPY = {
     generateShotVideoPromptFailed: "Failed to generate the video prompt.",
     usedVisionNote: "Analyzed from the actual image",
     generateVideoPromptPackWholeEpisode: "Generate video prompts for the whole episode",
+
+    /* ---- Video-prompt language options (episode-level language plan) ---- */
+    promptLanguageLabel: "Prompt language",
+    promptLanguageEn: "English (recommended)",
+    promptLanguageTh: "Thai",
+    promptLanguageZh: "Chinese",
+    promptLanguageJa: "Japanese",
+    promptLanguageKo: "Korean",
+    dialogueLanguageLabel: "Speech language",
+    videoPromptLanguageSaved: "Language settings saved.",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -498,6 +508,16 @@ export const VD_COPY = {
     generateShotVideoPromptFailed: "สร้างพรอมต์วิดีโอไม่สำเร็จ",
     usedVisionNote: "วิเคราะห์จากภาพจริง",
     generateVideoPromptPackWholeEpisode: "สร้างพรอมต์วิดีโอทั้งตอน",
+
+    /* ---- Video-prompt language options (episode-level language plan) ---- */
+    promptLanguageLabel: "ภาษา prompt",
+    promptLanguageEn: "อังกฤษ (แนะนำ)",
+    promptLanguageTh: "ไทย",
+    promptLanguageZh: "中文",
+    promptLanguageJa: "日本語",
+    promptLanguageKo: "한국어",
+    dialogueLanguageLabel: "ภาษาเสียงพูด",
+    videoPromptLanguageSaved: "บันทึกการตั้งค่าภาษาแล้ว",
   },
 } as const;
 

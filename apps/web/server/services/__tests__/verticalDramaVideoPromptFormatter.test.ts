@@ -88,6 +88,48 @@ describe("formatVideoClipRequest — Veo 3.1 (native audio)", () => {
     expect(result.generateAudio).toBe(false);
     expect(result.ttsFallback).toBe(false);
   });
+
+  it("states the speech language explicitly as 'spoken Thai' by default (no dialogueLanguage supplied)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine()],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    expect(result.prompt).toContain("in natural spoken Thai, exactly:");
+  });
+
+  it("states the speech language explicitly as 'spoken English' when dialogueLanguage is 'en'", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine({ lineTh: "We are not done here." })],
+      modelId: veoModel.id,
+      model: veoModel,
+      dialogueLanguage: "en",
+    });
+    expect(result.prompt).toContain("in natural spoken English, exactly:");
+    expect(result.prompt).toContain("We are not done here.");
+  });
+
+  it("supports the wider dialogueLanguage set (e.g. Vietnamese, Arabic) beyond just th/en", () => {
+    const viResult = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine({ lineTh: "Chúng ta chưa xong đâu." })],
+      modelId: veoModel.id,
+      model: veoModel,
+      dialogueLanguage: "vi",
+    });
+    expect(viResult.prompt).toContain("in natural spoken Vietnamese, exactly:");
+
+    const arResult = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine({ lineTh: "لم ننته بعد." })],
+      modelId: veoModel.id,
+      model: veoModel,
+      dialogueLanguage: "ar",
+    });
+    expect(arResult.prompt).toContain("in natural spoken Arabic, exactly:");
+  });
 });
 
 describe("formatVideoClipRequest — Grok Imagine 1.5 (no native audio)", () => {
@@ -116,7 +158,20 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (no native audio)", () => 
     // No literal transcript embedded in the prompt.
     expect(result.prompt).not.toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
     expect(result.prompt).toContain("mouth moves naturally");
+    expect(result.prompt).toContain("spoken in Thai");
     expect(result.maxReferenceImages).toBe(1);
+  });
+
+  it("states 'spoken in English' when dialogueLanguage is 'en' (still no literal transcript)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine()],
+      modelId: grokModel.id,
+      model: grokModel,
+      dialogueLanguage: "en",
+    });
+    expect(result.prompt).toContain("spoken in English");
+    expect(result.prompt).not.toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
   });
 });
 

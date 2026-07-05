@@ -155,6 +155,12 @@ export interface VerticalDramaStoryboardPanelData {
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
 
+  /* ---- Video-prompt language options (episode-level language plan) ---- */
+  selectedPromptLanguage?: string;
+  selectedDialogueLanguage?: string;
+  onSelectPromptLanguage?: (language: string) => void;
+  onSelectDialogueLanguage?: (language: string) => void;
+
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
   onAddShotReference?: (
@@ -620,6 +626,10 @@ export function VerticalDramaEpisodeWorkspace({
           selectedVideoResolution={storyboardPanel?.selectedVideoResolution}
           onSelectImageResolution={storyboardPanel?.onSelectImageResolution}
           onSelectVideoResolution={storyboardPanel?.onSelectVideoResolution}
+          selectedPromptLanguage={storyboardPanel?.selectedPromptLanguage}
+          selectedDialogueLanguage={storyboardPanel?.selectedDialogueLanguage}
+          onSelectPromptLanguage={storyboardPanel?.onSelectPromptLanguage}
+          onSelectDialogueLanguage={storyboardPanel?.onSelectDialogueLanguage}
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
