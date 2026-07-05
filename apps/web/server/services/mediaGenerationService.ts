@@ -1255,6 +1255,13 @@ const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   "__unit_role",
   "__repair_attempt",
   "__resolved_audio_strategy",
+  // Vertical Drama Series provenance tags (2026-07-05, project-scoped media
+  // panel filter) — additive, read back by `media.listTasks`'s optional
+  // `seriesId` filter and by `mediaLibraryService`'s trace helpers. Never
+  // used for anything provider-facing; purely app-side bookkeeping.
+  "__vd_series_id",
+  "__vd_episode_id",
+  "__vd_character_id",
 ]);
 
 function stripClientOnlyExtraParams(extraParams: Record<string, any>): Record<string, any> {

@@ -195,6 +195,52 @@ function dateToIso(value: unknown): string {
   return value instanceof Date ? value.toISOString() : new Date().toISOString();
 }
 
+/**
+ * Recursively search a task's `parameters`/`resultData` payload for the
+ * Vertical Drama series provenance tag (`__vd_series_id`, persisted verbatim
+ * inside `parameters.extra_params` — see `PERSISTED_INTERNAL_EXTRA_PARAM_KEYS`
+ * in mediaGenerationService.ts). Key lookup is case/separator-insensitive
+ * (mirrors `mediaLibraryService.ts`'s own `normalizeTraceKey` helper) since
+ * the tag can appear as `__vd_series_id` (as written) at any nesting depth
+ * inside the JSON blob returned by the Python backend.
+ */
+function normalizeVdTraceKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const VD_SERIES_ID_KEY_CANDIDATES = new Set(
+  ["__vd_series_id", "vdSeriesId", "vd_series_id"].map(normalizeVdTraceKey)
+);
+
+function findVerticalDramaSeriesTag(value: unknown, depth = 0): string | null {
+  if (depth > 6 || value == null) return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findVerticalDramaSeriesTag(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (VD_SERIES_ID_KEY_CANDIDATES.has(normalizeVdTraceKey(key))) {
+      if (typeof raw === "string" && raw.trim()) return raw.trim();
+      if (typeof raw === "number") return String(raw);
+    }
+    const nested = findVerticalDramaSeriesTag(raw, depth + 1);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/** True when a merged media task carries a `__vd_series_id` tag matching `seriesId`. */
+export function taskMatchesVerticalDramaSeries(task: MediaTask, seriesId: string): boolean {
+  const tag =
+    findVerticalDramaSeriesTag(task.parameters ?? null) ??
+    findVerticalDramaSeriesTag(task.resultData ?? null);
+  return tag === seriesId;
+}
+
 function hyperframesJobToMediaTask(job: typeof marketplaceAutoReviewOutboxJobs.$inferSelect): MediaTask | null {
   const payload = job.payloadJson && typeof job.payloadJson === "object"
     ? job.payloadJson as Record<string, unknown>
@@ -3614,24 +3660,47 @@ export const mediaRouter = router({
         limit: z.number().min(1).max(100).optional(),
         offset: z.number().min(0).optional(),
         daysAgo: z.number().min(1).max(365).optional(),
+        /**
+         * Optional Vertical Drama Series scope (2026-07-05, project-scoped
+         * media panel filter). When set, only tasks tagged with this series
+         * id (via `__vd_series_id` in `parameters.extra_params` — see
+         * `PERSISTED_INTERNAL_EXTRA_PARAM_KEYS` in mediaGenerationService.ts)
+         * are returned. Backward compatible: omitted entirely, existing
+         * callers are unaffected. Since the tag lives inside a JSON blob
+         * (no DB-level filter available without a Python-backend change),
+         * filtering happens here in Node after over-fetching a larger page
+         * from every source so the requested `limit` is still honored
+         * post-filter.
+         */
+        seriesId: z.string().min(1).optional(),
       }).optional()
     )
     .query(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
+        const requestedLimit = input?.limit ?? 50;
+        // Over-fetch when scoping by series — tagged tasks are a subset of
+        // all tasks, so asking every source for more candidates up front
+        // keeps the post-filter result close to `requestedLimit` instead of
+        // silently truncating before the series filter even runs. Capped at
+        // the provider's own max (100) so this never becomes an actual
+        // unbounded/admin-wide fetch.
+        const fetchLimit = input?.seriesId
+          ? Math.min(100, Math.max(requestedLimit * 4, 50))
+          : requestedLimit;
         const result = await mediaGenerationService.listTasks(userToken, {
           mediaType: input?.mediaType as MediaType,
           status: input?.status as TaskStatus,
-          limit: input?.limit,
-          offset: input?.offset,
+          limit: fetchLimit,
+          offset: input?.seriesId ? undefined : input?.offset,
           daysAgo: input?.daysAgo,
         });
-        const deferredTasks = await listDeferredMediaTasks(ctx.user.id, input?.limit ?? 50);
+        const deferredTasks = await listDeferredMediaTasks(ctx.user.id, fetchLimit);
         const hyperframesTasks = await listHyperframesRenderHistoryTasks({
           userId: ctx.user.id,
           mediaType: input?.mediaType as MediaType | undefined,
           status: input?.status as TaskStatus | undefined,
-          limit: input?.limit ?? 50,
+          limit: fetchLimit,
           daysAgo: input?.daysAgo,
         });
         const filteredDeferredTasks = deferredTasks.filter((task) => {
@@ -3684,15 +3753,20 @@ export const mediaRouter = router({
           userId: ctx.user.id,
           mediaType: input?.mediaType as MediaType | undefined,
           status: input?.status,
-          limit: input?.limit ?? 50,
+          limit: fetchLimit,
         });
-        const mergedTasks = [...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
-          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-          .slice(0, input?.limit ?? 50);
+        const allMergedTasks = [...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+        const seriesFilteredTasks = input?.seriesId
+          ? allMergedTasks.filter((task) => taskMatchesVerticalDramaSeries(task, input.seriesId as string))
+          : allMergedTasks;
+        const mergedTasks = seriesFilteredTasks.slice(0, requestedLimit);
         return {
           ...result,
           tasks: mergedTasks,
-          total: (result.total ?? result.tasks?.length ?? 0) + mcpTasks.length + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
+          total: input?.seriesId
+            ? seriesFilteredTasks.length
+            : (result.total ?? result.tasks?.length ?? 0) + mcpTasks.length + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
           limit: input?.limit ?? result.limit,
           offset: input?.offset ?? result.offset,
         };

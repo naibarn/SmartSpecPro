@@ -68,6 +68,19 @@ import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalD
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 
+/** History/Library scope toggle (2026-07-05, project-scoped media panel
+ *  filter) — "this project" (default, when a seriesId is available) shows
+ *  only images tagged with / linked to this series; "all" shows every
+ *  history item, same as before this feature. */
+type HistoryScope = "series" | "all";
+const HISTORY_SCOPE_STORAGE_KEY = "vd-reference-panel-history-scope";
+
+function readStoredHistoryScope(): HistoryScope | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(HISTORY_SCOPE_STORAGE_KEY);
+  return raw === "series" || raw === "all" ? raw : null;
+}
+
 /**
  * Reads a dropped image URL using the codebase-standard drag contract (see
  * `ImageSourcePicker.tsx`'s exported `getDraggedImageUrl`). Exported so
@@ -256,12 +269,61 @@ export function VerticalDramaCharacterReferencePanel({
   const libraryResults = (librarySearchQuery.data?.results ??
     []) as LibrarySearchResultItem[];
 
-  /* ---- Media History sub-panel ---- */
+  /* ---- Media History sub-panel ----
+   * "โปรเจกต์นี้ / ทั้งหมด" scope toggle (2026-07-05) — defaults to
+   * "series" (this project) whenever a seriesId is available (always true
+   * here — the prop is required), remembers the caller's last choice in
+   * localStorage. "series" merges two sources, deduped by URL:
+   *  1. `media.listTasks({seriesId})` — NEW generations tagged with
+   *     `__vd_series_id` at submit time.
+   *  2. `verticalDramaSeries.listSeriesLinkedImageUrls` — a fallback for
+   *     images generated BEFORE this feature shipped (no tag), sourced from
+   *     the durable character-asset / shot-reference / start-frame-plan
+   *     link tables instead.
+   * "all" bypasses both and shows every completed image task, unfiltered —
+   * the exact behavior this panel had before this feature.
+   */
+  const [historyScope, setHistoryScope] = useState<HistoryScope>(
+    () => readStoredHistoryScope() ?? "series"
+  );
+  useEffect(() => {
+    window.localStorage.setItem(HISTORY_SCOPE_STORAGE_KEY, historyScope);
+  }, [historyScope]);
+
   const historyQuery = trpc.media.listTasks.useQuery(
-    { mediaType: "image", status: "completed", limit: 24, daysAgo: 12 },
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 24,
+      daysAgo: 12,
+      ...(historyScope === "series" ? { seriesId } : {}),
+    },
     { enabled: activeTab === "history" }
   );
+  const linkedSeriesAssetsQuery =
+    trpc.verticalDramaSeries.listSeriesLinkedImageUrls.useQuery(
+      { seriesId },
+      { enabled: activeTab === "history" && historyScope === "series" }
+    );
+
   const historyTasks = historyQuery.data?.tasks ?? [];
+  /** Linked-asset URLs not already covered by a tagged history task — merged
+   *  in as lightweight synthetic "tasks" (drag/click both only ever need
+   *  `resultUrl`) so the grid below can render one unified list. */
+  const linkedOnlyHistoryTasks =
+    historyScope === "series"
+      ? (linkedSeriesAssetsQuery.data?.imageUrls ?? [])
+          .filter((url) => !historyTasks.some((task) => task.resultUrl === url))
+          .map((url, index) => ({
+            id: `vd-linked-asset-${index}-${url}`,
+            resultUrl: url,
+            prompt: t(lang, "ภาพที่เชื่อมกับซีรีส์นี้", "Image linked to this series"),
+          }))
+      : [];
+  const mergedHistoryTasks = [...historyTasks, ...linkedOnlyHistoryTasks];
+  const isHistoryLoading =
+    historyQuery.isLoading ||
+    (historyScope === "series" && linkedSeriesAssetsQuery.isLoading);
 
   /* ---- 3x3 / grid cutter sub-panel ----
    * Delegates all upload/grid-size/preview/detected-grid/split logic to the
@@ -501,19 +563,56 @@ export function VerticalDramaCharacterReferencePanel({
 
           <TabsContent value="history" className="mt-2">
             <div className="space-y-2 rounded-lg border bg-white/70 p-2.5 backdrop-blur">
-              {historyQuery.isLoading && (
+              <div
+                className="grid grid-cols-2 gap-1 rounded-md bg-muted p-0.5 text-xs"
+                data-testid="vd-history-scope-toggle"
+              >
+                <button
+                  type="button"
+                  onClick={() => setHistoryScope("series")}
+                  className={cn(
+                    "rounded px-2 py-1 font-medium transition-colors",
+                    historyScope === "series"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  data-testid="vd-history-scope-series"
+                >
+                  {t(lang, "โปรเจกต์นี้", "This project")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryScope("all")}
+                  className={cn(
+                    "rounded px-2 py-1 font-medium transition-colors",
+                    historyScope === "all"
+                      ? "bg-white text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  data-testid="vd-history-scope-all"
+                >
+                  {t(lang, "ทั้งหมด", "All")}
+                </button>
+              </div>
+              {isHistoryLoading && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t(lang, "กำลังโหลดประวัติ…", "Loading history…")}
                 </div>
               )}
-              {!historyQuery.isLoading && historyTasks.length === 0 && (
+              {!isHistoryLoading && mergedHistoryTasks.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  {t(lang, "ไม่พบรายการในประวัติ", "No history items found")}
+                  {historyScope === "series"
+                    ? t(
+                        lang,
+                        "ยังไม่พบภาพของโปรเจกต์นี้ — ลองสลับไปที่ \"ทั้งหมด\"",
+                        'No images found for this project yet — try "All"'
+                      )
+                    : t(lang, "ไม่พบรายการในประวัติ", "No history items found")}
                 </p>
               )}
               <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2">
-                {historyTasks
+                {mergedHistoryTasks
                   .filter(task => Boolean(task.resultUrl))
                   .map(task => {
                     const cuttingThis = cuttingUrl === task.resultUrl;

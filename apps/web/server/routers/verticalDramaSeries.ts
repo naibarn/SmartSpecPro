@@ -29,9 +29,11 @@ import {
   verticalDramaMemoryEvents,
   verticalDramaMemorySnapshots,
   verticalDramaQcReports,
+  mediaAssets,
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
 } from "../../drizzle/schema";
+import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries";
 import {
   generateStoryBible,
   InsufficientCreditsError,
@@ -543,6 +545,120 @@ export const verticalDramaSeriesRouter = router({
           createdAt: row.createdAt.toISOString(),
         })),
       };
+    }),
+
+  /**
+   * Fallback "images linked to this series" source (2026-07-05, project-scoped
+   * media panel filter). New generations are tagged with `__vd_series_id` in
+   * their media task's `parameters.extra_params` (see `media.listTasks`'s
+   * `seriesId` filter), but images generated BEFORE this change carry no such
+   * tag — this procedure instead reads the durable link tables that already
+   * point at this series' images regardless of when they were generated:
+   *  - `verticalDramaCharacterAssets` (character portraits/turnarounds/sheets)
+   *  - `verticalDramaShotReferences` (per-shot reference strip)
+   *  - every episode's `startFramePlan.frames[].approvedMediaAssetId` /
+   *    `.angleGrid.imageUrl` (the start-frame plan JSONB, not a link table)
+   *
+   * The panel's "โปรเจกต์นี้" (this project) view is the UNION of this result
+   * and the tagged `media.listTasks({seriesId})` result, deduped by URL on
+   * the client. Returns plain URLs (already resolved via `mediaAssets`'s
+   * `originalUrl`) rather than task/asset ids — the panel only needs
+   * something to render + drag, not a specific row type.
+   */
+  listSeriesLinkedImageUrls: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      // Ensure the caller owns it (throws NOT_FOUND otherwise).
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const [characterAssetUrlRows, shotReferenceUrlRows, episodeRows] = await Promise.all([
+        db
+          .select({ url: mediaAssets.originalUrl })
+          .from(verticalDramaCharacterAssets)
+          .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+          .where(
+            and(
+              eq(verticalDramaCharacterAssets.tenantId, tenantId),
+              eq(verticalDramaCharacterAssets.userId, userId),
+              eq(verticalDramaCharacterAssets.seriesId, seriesId),
+            ),
+          ),
+        db
+          .select({ url: mediaAssets.originalUrl })
+          .from(verticalDramaShotReferences)
+          .innerJoin(mediaAssets, eq(verticalDramaShotReferences.mediaAssetId, mediaAssets.id))
+          .where(
+            and(
+              eq(verticalDramaShotReferences.tenantId, tenantId),
+              eq(verticalDramaShotReferences.userId, userId),
+              eq(verticalDramaShotReferences.seriesId, seriesId),
+            ),
+          ),
+        db
+          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          ),
+      ]);
+
+      const urls = new Set<string>();
+      for (const row of characterAssetUrlRows) {
+        if (row.url) urls.add(row.url);
+      }
+      for (const row of shotReferenceUrlRows) {
+        if (row.url) urls.add(row.url);
+      }
+
+      // startFramePlan-approved / angle-grid assets aren't in a link table —
+      // approvedMediaAssetId needs a lookup against mediaAssets; angleGrid
+      // already carries a direct imageUrl.
+      const approvedAssetIds = new Set<number>();
+      const angleGridUrls = new Set<string>();
+      for (const row of episodeRows) {
+        const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+        for (const frame of plan?.frames ?? []) {
+          if (frame.approvedMediaAssetId) {
+            const parsed = Number(frame.approvedMediaAssetId);
+            if (Number.isFinite(parsed)) approvedAssetIds.add(parsed);
+          }
+          if (frame.angleGrid?.imageUrl) {
+            angleGridUrls.add(frame.angleGrid.imageUrl);
+          }
+        }
+      }
+      for (const url of angleGridUrls) {
+        urls.add(url);
+      }
+
+      if (approvedAssetIds.size > 0) {
+        const approvedAssetRows = await db
+          .select({ id: mediaAssets.id, url: mediaAssets.originalUrl })
+          .from(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.tenantId, tenantId),
+              eq(mediaAssets.userId, userId),
+              inArray(mediaAssets.id, Array.from(approvedAssetIds)),
+            ),
+          );
+        for (const row of approvedAssetRows) {
+          if (row.url) urls.add(row.url);
+        }
+      }
+
+      return { imageUrls: Array.from(urls) };
     }),
 
   /**

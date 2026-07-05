@@ -909,6 +909,11 @@ export const verticalDramaCharactersRouter = router({
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
+            // Series provenance tag (project-scoped media panel filter) —
+            // persisted verbatim into the media task's `parameters.extra_params`
+            // (see PERSISTED_INTERNAL_EXTRA_PARAM_KEYS in mediaGenerationService.ts);
+            // read back by `media.listTasks`'s optional `seriesId` filter.
+            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId,
@@ -1118,6 +1123,8 @@ export const verticalDramaCharactersRouter = router({
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
+            // Series provenance tag — see generateCharacterImage's comment.
+            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId,
@@ -1349,6 +1356,8 @@ export const verticalDramaCharactersRouter = router({
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
+            // Series provenance tag — see generateCharacterImage's comment.
+            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId,
