@@ -144,6 +144,10 @@ export interface VerticalDramaStoryboardPanelData {
   onSelectImageModel?: (modelId: string) => void;
   onSelectVideoModel?: (modelId: string) => void;
   modelsLoading?: boolean;
+  /** Currently-selected MCP connection id (MCP-transport models — Higgsfield/
+   *  Magnific etc., creditCost 0). Persisted by the caller (localStorage). */
+  mcpConnectionId?: string | null;
+  onSelectMcpConnection?: (connectionId: string | null) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
@@ -588,6 +592,8 @@ export function VerticalDramaEpisodeWorkspace({
           onSelectImageModel={storyboardPanel?.onSelectImageModel}
           onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
           modelsLoading={storyboardPanel?.modelsLoading}
+          mcpConnectionId={storyboardPanel?.mcpConnectionId}
+          onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
@@ -1034,6 +1040,8 @@ export function VerticalDramaEpisodeWorkspace({
                       onSelectImageModel={storyboardPanel?.onSelectImageModel}
                       onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
                       modelsLoading={storyboardPanel?.modelsLoading}
+                      mcpConnectionId={storyboardPanel?.mcpConnectionId}
+                      onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
                       qualityReview={storyboardPanel?.qualityReview}
                       onRunQualityReview={storyboardPanel?.onRunQualityReview}
                       runningQualityReview={storyboardPanel?.runningQualityReview}

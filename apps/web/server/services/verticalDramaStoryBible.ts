@@ -247,6 +247,7 @@ function buildPrompts(params: GenerateStoryBibleParams): { systemPrompt: string;
     params.tone ? `Tone: ${params.tone}` : null,
     `Target episode count: ${params.targetEpisodeCount}`,
     `Existing bible (from the creator's wizard input): ${JSON.stringify(params.bible)}`,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n");
@@ -272,37 +273,25 @@ export async function generateStoryBible(
   const model = await resolveStoryBibleModel();
   const { systemPrompt, userPrompt } = buildPrompts(params);
 
-  const result = await executeWithFallback({
+  // Base ceiling raised from 3500 to 6000 — `episodeBreakdown` grows with
+  // `targetEpisodeCount` (each entry has a workingTitle/logline/3-5
+  // keyBeats), so a series with a larger target episode count is a
+  // plausible truncation risk of the same class already hit in the sibling
+  // generators. Shares the same one-retry-on-truncated/invalid-JSON safety
+  // net (`executeJsonPlanningCallWithRetry`, defined just above in this
+  // file) as every other Vertical Drama planning call site.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 3500,
+    systemPrompt,
+    userPrompt,
     temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 6000,
+    schema: expandedStoryBibleSchema,
+    label: "Story bible",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = expandedStoryBibleSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Story bible response failed schema validation",
-      validation.error.issues,
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -325,5 +314,5 @@ export async function generateStoryBible(
     },
   });
 
-  return { expanded: validation.data, creditsUsed, model };
+  return { expanded: validatedData, creditsUsed, model };
 }

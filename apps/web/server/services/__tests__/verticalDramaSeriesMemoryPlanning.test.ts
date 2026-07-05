@@ -60,19 +60,15 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
-vi.mock("../verticalDramaStoryBible", () => ({
-  resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
-  extractJson: vi.fn((text: string) => JSON.parse(text)),
-  InsufficientCreditsError: class InsufficientCreditsError extends Error {},
-  VdSchemaValidationError: class VdSchemaValidationError extends Error {
-    constructor(
-      message: string,
-      public issues: unknown
-    ) {
-      super(message);
-    }
-  },
-}));
+vi.mock("../verticalDramaStoryBible", async () => {
+  const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
+    "../verticalDramaStoryBible",
+  );
+  return {
+    ...actual,
+    resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
+  };
+});
 
 const { mockDebugError } = vi.hoisted(() => ({ mockDebugError: vi.fn() }));
 vi.mock("../../_core/logger", () => ({

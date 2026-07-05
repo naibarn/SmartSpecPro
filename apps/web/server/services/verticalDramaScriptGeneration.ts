@@ -251,18 +251,23 @@ export async function generateEpisodeScript(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  // Same shared retry wrapper as the start-frame/motion-prompt generators —
-  // this stage produces a single script structure (lower truncation risk
-  // than a fixed 9-shot array), so the token ceiling is left unchanged, but
-  // it shares the same fragile executeWithFallback+extractJson pattern, so
-  // it gets the same one-retry-on-malformed-JSON safety net.
+  // Same shared retry wrapper as the start-frame/motion-prompt/storyboard
+  // generators. Base ceiling raised from 4000 to 12000 — a single script
+  // structure has no fixed shot count, but Phase 3B added per-beat
+  // power_shift/is_reversal/intensity plus per-character emotional-arc
+  // fields on top of the existing structure/scene_dialogue_summary/
+  // character_state_deltas/product_tie_in_plan/continuity_notes payload,
+  // which is large enough to risk the same truncation class already seen in
+  // the sibling storyboard/start-frame/motion-prompt generators. The retry's
+  // own doubling (`Math.max(maxTokens * 2, 16000)`) comfortably covers any
+  // remaining outlier.
   const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
     temperature: 0.8,
     userId: params.userId,
-    maxTokens: 4000,
+    maxTokens: 12000,
     schema: scriptBuilderOutputSchema,
     label: "Episode script",
   });

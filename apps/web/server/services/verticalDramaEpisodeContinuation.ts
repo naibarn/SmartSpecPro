@@ -12,13 +12,13 @@
  */
 
 import { z } from "zod";
-import { executeWithFallback } from "./llmRouter";
 import {
   resolveStoryBibleModel,
   episodeBreakdownItemSchema,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 
@@ -99,6 +99,7 @@ function buildContinuationPrompts(
     `Characters: ${JSON.stringify(characters)}`,
     `Existing episodes so far (for continuity — do not repeat these beats): ${JSON.stringify(params.existingEpisodes)}`,
     `Generate exactly ${params.count} new episodes starting at episode number ${params.nextEpisodeNumber}.`,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n");
@@ -127,48 +128,34 @@ export async function generateNextEpisodesViaLlm(
   const model = await resolveStoryBibleModel();
   const { systemPrompt, userPrompt } = buildContinuationPrompts(params);
 
-  const result = await executeWithFallback({
+  // Base ceiling raised from 3000 to 6000 — up to 5 new episodes (already
+  // capped by the router's Zod input), each with a workingTitle/logline/3-5
+  // keyBeats, is large enough to risk the same truncation class already hit
+  // in the sibling generators. Shares the same one-retry-on-truncated/
+  // invalid-JSON safety net.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 3000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 6000,
+    schema: continuationResponseSchema,
+    label: "Episode continuation",
   });
-
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = continuationResponseSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Episode continuation response failed schema validation",
-      validation.error.issues,
-    );
-  }
 
   // All-or-nothing: a batch that comes back short of `count` is a validation
   // failure, never a partial success — the router must not insert some
   // Mode-B episodes and silently drop the rest.
-  if (validation.data.episodes.length < params.count) {
+  if (validatedData.episodes.length < params.count) {
     throw new VdSchemaValidationError(
-      `Episode continuation response returned ${validation.data.episodes.length} episodes, expected ${params.count}`,
-      { episodes: validation.data.episodes },
+      `Episode continuation response returned ${validatedData.episodes.length} episodes, expected ${params.count}`,
+      { episodes: validatedData.episodes },
     );
   }
-  const generated = validation.data.episodes.slice(0, params.count);
+  const generated = validatedData.episodes.slice(0, params.count);
 
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,

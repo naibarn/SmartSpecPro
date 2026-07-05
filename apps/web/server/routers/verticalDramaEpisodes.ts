@@ -30,6 +30,11 @@ import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerat
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { getModelsByTypeAsync, resolveVerticalDramaCapabilities } from "../services/modelRegistry";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
+import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
+import { resolveMediaTransport } from "../services/mediaTransportResolver";
+import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
+import { resolveMcpRouteFromModelId, defaultMcpArgumentShape } from "../services/mcpModelRouteResolver";
+import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
@@ -494,6 +499,96 @@ export async function resolveEpisodeVideoModel(
     aliases: [],
     creditCost: 10,
   };
+}
+
+/**
+ * Resolve MCP transport metadata for a Vertical Drama generation call when
+ * the episode-selected model is MCP-transport (e.g. `higgsfield/*`,
+ * `magnific-mcp/*` — billed via the user's connected MCP provider account,
+ * not SmartSpec credits; see the zero-cost credit guard above). Returns
+ * `null` for ordinary gateway_api models, in which case the caller proceeds
+ * exactly as before (credit reserve + `generateImageAsync`/
+ * `generateVideoAsync` without `transportMetadata`).
+ *
+ * Mirrors `media.ts`'s `generateImageAsync`/`generateVideoAsync` MCP branch
+ * (~line 2977-3037) route-by-route:
+ *  - `resolveMediaModelTransportConfig` (shared) reads the model's
+ *    `configJson` to decide `transport: "mcp" | "gateway_api"`.
+ *  - `resolveMcpRouteFromModelId` (exported from `media.ts`) parses the
+ *    `provider/model` id shape (`higgsfield/nano_banana_2` ->
+ *    `{providerKey: "higgsfield", providerModelId: "nano_banana_2"}`) as a
+ *    fallback when the model's `configJson` doesn't already carry a route.
+ *  - `resolveMediaTransport` (shared service) validates the tenant's MCP
+ *    feature flags + share policy and resolves the caller's
+ *    `mcpConnectionId` into full `MediaTaskTransportMetadata` — the same
+ *    validation `media.ts` relies on, so an MCP-transport model without a
+ *    connected account fails closed with the same `BAD_REQUEST` message
+ *    instead of silently falling through to the non-MCP branch (which would
+ *    dispatch the `higgsfield`/`magnific` provider key to the Python
+ *    gateway_api backend, which has no adapter for it).
+ *
+ * NOTE: Vertical Drama does not yet have its own `MediaOriginSurface` value
+ * (`shared/mcpConnectTypes.ts` only defines `media_studio` /
+ * `auto_storyboard_review` / `marketplace_capture` / `storyboard_review`) —
+ * reuses `media_studio` for now so this stays gated by that surface's
+ * existing tenant feature flags rather than introducing a new surface/flag
+ * as part of this fix. A dedicated `vertical_drama_series` origin surface is
+ * a follow-up product/flag decision, not a blocking part of this fix.
+ */
+async function resolveVdMcpTransportMetadata(params: {
+  tenantId: string;
+  actorUserId: number;
+  assetType: "image" | "video";
+  modelId: string;
+  configJson: Record<string, unknown> | null;
+  mcpConnectionId?: string;
+  idempotencyKey?: string;
+}): Promise<MediaTaskTransportMetadata | null> {
+  const modelTransport = resolveMediaModelTransportConfig({
+    modelId: params.modelId,
+    configJson: params.configJson,
+  });
+  const modelRoute = resolveMcpRouteFromModelId(params.modelId);
+  const shouldUseMcpTransport = modelTransport.transport === "mcp" || Boolean(modelRoute.providerKey);
+  if (!shouldUseMcpTransport) return null;
+
+  const providerKey = modelTransport.providerKey ?? modelRoute.providerKey;
+  if (!providerKey) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `MCP provider route metadata is missing for model "${params.modelId}". Re-select an MCP media model and try again.`,
+    });
+  }
+  const rawProviderModelId = modelTransport.providerModelId ?? modelRoute.providerModelId;
+  const argumentShape = modelTransport.argumentShape ?? defaultMcpArgumentShape(providerKey, params.assetType);
+  const providerModelId = normalizeMcpProviderModelIdForProvider({
+    providerKey,
+    providerModelId: rawProviderModelId,
+    assetType: params.assetType,
+    argumentShape,
+  }) ?? rawProviderModelId;
+
+  if (!params.mcpConnectionId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `"${params.modelId}" requires a connected MCP provider account. Connect a ${providerKey} MCP account first, then re-select this model.`,
+    });
+  }
+
+  return resolveMediaTransport({
+    tenantId: params.tenantId,
+    actorUserId: params.actorUserId,
+    originSurface: "media_studio",
+    assetType: params.assetType,
+    requestedTransport: "mcp",
+    mcpConnectionId: params.mcpConnectionId,
+    providerKey,
+    providerModelId,
+    model: providerModelId ?? params.modelId,
+    toolName: modelTransport.toolName,
+    argumentShape,
+    idempotencyKey: params.idempotencyKey,
+  });
 }
 
 /**
@@ -2068,6 +2163,10 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        // Required only when the episode's selected image model is
+        // MCP-transport (e.g. `higgsfield/*`, `magnific-mcp/*`) — see
+        // `resolveVdMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
         idempotencyKey,
       })
     )
@@ -2125,33 +2224,55 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
-      const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for start-frame image render. Required: ${imageCreditCost}`,
+      // Zero-cost models (e.g. Higgsfield/Magnific MCP — billed via MCP
+      // subscription, not credits) must skip the reserve/refund cycle
+      // entirely: `deductCredits`/`refundCredits` throw on amount <= 0 by
+      // design (see creditService.ts). Same convention as the generic
+      // `media.generateImageAsync` MCP-transport branch, which never calls
+      // deductCredits at all for these models.
+      const shouldChargeImageCredits = imageCreditCost > 0;
+      if (shouldChargeImageCredits) {
+        const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for start-frame image render. Required: ${imageCreditCost}`,
+          });
+        }
+
+        // Reserve credits BEFORE starting the task — same convention as
+        // `media.ts`'s `generateImageAsync` (`media.getTask` reconciles the
+        // reservation against actual usage once the task completes/fails).
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — start frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
+          sourceType: "media_image",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
         });
       }
 
-      // Reserve credits BEFORE starting the task — same convention as
-      // `media.ts`'s `generateImageAsync` (`media.getTask` reconciles the
-      // reservation against actual usage once the task completes/fails).
-      await deductCredits({
-        userId,
+      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
+      // dispatched through the service's MCP branch, not the default
+      // gateway_api/Python-backend path — see `resolveVdMcpTransportMetadata`.
+      const transportMetadata = await resolveVdMcpTransportMetadata({
         tenantId,
-        amount: imageCreditCost,
-        description: `Vertical Drama — start frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
-        sourceType: "media_image",
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
         idempotencyKey: input.idempotencyKey,
-        metadata: {
-          feature: "vertical_drama_series",
-          seriesId,
-          episodeId,
-          shotNumber: input.shotNumber,
-          type: "reservation",
-          creditCost: imageCreditCost,
-          modelId: resolvedImageModelId,
-        },
       });
 
       const userToken = getStartFrameMediaUserToken(ctx);
@@ -2170,6 +2291,7 @@ export const verticalDramaEpisodesRouter = router({
             // `media.listTasks`'s optional `seriesId` filter.
             extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -2181,19 +2303,21 @@ export const verticalDramaEpisodesRouter = router({
         );
         return { taskId: task.id, modelId: resolvedImageModelId, creditCost: imageCreditCost };
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: imageCreditCost,
-          description: `Refund: start-frame render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
-          sourceType: "media_image",
-          metadata: {
-            feature: "vertical_drama_series",
-            seriesId,
-            episodeId,
-            shotNumber: input.shotNumber,
-            error: err instanceof Error ? err.message : "Unknown error",
-          },
-        });
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: start-frame render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Start-frame image generation failed to submit",
@@ -2220,6 +2344,9 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        // Required only when the episode's selected image model is
+        // MCP-transport — see `resolveVdMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
         idempotencyKey,
       })
     )
@@ -2276,31 +2403,36 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const gridCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
-      const hasCredits = await hasEnoughCredits(userId, gridCreditCost);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for multi-angle grid render. Required: ${gridCreditCost}`,
+      // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
+      // entirely — see the matching comment in `generateStartFrameImage`.
+      const shouldChargeGridCredits = gridCreditCost > 0;
+      if (shouldChargeGridCredits) {
+        const hasCredits = await hasEnoughCredits(userId, gridCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for multi-angle grid render. Required: ${gridCreditCost}`,
+          });
+        }
+
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: gridCreditCost,
+          description: `Vertical Drama — multi-angle grid render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
+          sourceType: "media_image",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            type: "reservation",
+            creditCost: gridCreditCost,
+            modelId: resolvedImageModelId,
+          },
         });
       }
-
-      await deductCredits({
-        userId,
-        tenantId,
-        amount: gridCreditCost,
-        description: `Vertical Drama — multi-angle grid render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
-        sourceType: "media_image",
-        idempotencyKey: input.idempotencyKey,
-        metadata: {
-          feature: "vertical_drama_series",
-          seriesId,
-          episodeId,
-          shotNumber: input.shotNumber,
-          type: "reservation",
-          creditCost: gridCreditCost,
-          modelId: resolvedImageModelId,
-        },
-      });
 
       const gridPrompt = [
         frame.imagePrompt,
@@ -2309,6 +2441,17 @@ export const verticalDramaEpisodesRouter = router({
         "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing — for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile.",
         "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
       ].join(" ");
+
+      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
+      const transportMetadata = await resolveVdMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
 
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
@@ -2323,6 +2466,7 @@ export const verticalDramaEpisodesRouter = router({
             // Series provenance tag — see generateStartFrameImage's comment.
             extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -2334,19 +2478,21 @@ export const verticalDramaEpisodesRouter = router({
         );
         return { taskId: task.id, modelId: resolvedImageModelId, creditCost: gridCreditCost };
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: gridCreditCost,
-          description: `Refund: multi-angle grid render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
-          sourceType: "media_image",
-          metadata: {
-            feature: "vertical_drama_series",
-            seriesId,
-            episodeId,
-            shotNumber: input.shotNumber,
-            error: err instanceof Error ? err.message : "Unknown error",
-          },
-        });
+        if (shouldChargeGridCredits) {
+          await refundCredits({
+            userId,
+            amount: gridCreditCost,
+            description: `Refund: multi-angle grid render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Multi-angle grid generation failed to submit",
@@ -2385,6 +2531,9 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         clipNumber: z.number().int().positive(),
+        // Required only when the episode's selected video model is
+        // MCP-transport — see `resolveVdMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
         idempotencyKey,
       }),
     )
@@ -2502,33 +2651,49 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(mediaModels.modelId, model.id))
         .limit(1);
       const videoCreditCost = pricingRow?.creditCost ?? model.creditCost ?? 10;
-      const hasCredits = await hasEnoughCredits(userId, videoCreditCost);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for video clip render. Required: ${videoCreditCost}`,
+      // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
+      // entirely — see the matching comment in `generateStartFrameImage`.
+      const shouldChargeVideoCredits = videoCreditCost > 0;
+      if (shouldChargeVideoCredits) {
+        const hasCredits = await hasEnoughCredits(userId, videoCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for video clip render. Required: ${videoCreditCost}`,
+          });
+        }
+
+        // Reserve credits BEFORE starting the task — same convention as
+        // `generateStartFrameImage` (`media.getTask` reconciles the
+        // reservation against actual usage once the task completes/fails).
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: videoCreditCost,
+          description: `Vertical Drama — video clip render (episode #${episodeId}, clip ${input.clipNumber}, reserved)`,
+          sourceType: "media_video",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            clipNumber: input.clipNumber,
+            type: "reservation",
+            creditCost: videoCreditCost,
+            modelId: model.id,
+          },
         });
       }
 
-      // Reserve credits BEFORE starting the task — same convention as
-      // `generateStartFrameImage` (`media.getTask` reconciles the
-      // reservation against actual usage once the task completes/fails).
-      await deductCredits({
-        userId,
+      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
+      const transportMetadata = await resolveVdMcpTransportMetadata({
         tenantId,
-        amount: videoCreditCost,
-        description: `Vertical Drama — video clip render (episode #${episodeId}, clip ${input.clipNumber}, reserved)`,
-        sourceType: "media_video",
+        actorUserId: userId,
+        assetType: "video",
+        modelId: model.id,
+        configJson: pricingRow?.configJson ?? model.configJson ?? null,
+        mcpConnectionId: input.mcpConnectionId,
         idempotencyKey: input.idempotencyKey,
-        metadata: {
-          feature: "vertical_drama_series",
-          seriesId,
-          episodeId,
-          clipNumber: input.clipNumber,
-          type: "reservation",
-          creditCost: videoCreditCost,
-          modelId: model.id,
-        },
       });
 
       const userToken = getStartFrameMediaUserToken(ctx);
@@ -2548,6 +2713,7 @@ export const verticalDramaEpisodesRouter = router({
               __vd_episode_id: String(episodeId),
             },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -2567,19 +2733,21 @@ export const verticalDramaEpisodesRouter = router({
           trimmedReferenceCount,
         };
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: videoCreditCost,
-          description: `Refund: video clip render failed to submit (episode #${episodeId}, clip ${input.clipNumber})`,
-          sourceType: "media_video",
-          metadata: {
-            feature: "vertical_drama_series",
-            seriesId,
-            episodeId,
-            clipNumber: input.clipNumber,
-            error: err instanceof Error ? err.message : "Unknown error",
-          },
-        });
+        if (shouldChargeVideoCredits) {
+          await refundCredits({
+            userId,
+            amount: videoCreditCost,
+            description: `Refund: video clip render failed to submit (episode #${episodeId}, clip ${input.clipNumber})`,
+            sourceType: "media_video",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              clipNumber: input.clipNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Video clip generation failed to submit",

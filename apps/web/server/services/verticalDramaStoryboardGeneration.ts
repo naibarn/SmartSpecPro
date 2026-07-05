@@ -20,7 +20,6 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -33,9 +32,10 @@ import {
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 
 // Re-exported so callers only need to import from this one module.
@@ -273,6 +273,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     sceneBeatInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n");
@@ -316,43 +317,29 @@ export async function generateStoryboardShotgrid(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Higher than sibling skills' 3500-4000 (see verticalDramaStoryBible.ts,
+  // verticalDramaStartFrameGeneration.ts) — this schema is the largest of
+  // the four imported skills: 9 fully-detailed shots (camera object,
+  // dialogue, image_prompt, negative_prompt, per-character
+  // facial_expression/body_language/gaze_direction, etc.) PLUS a second,
+  // near-duplicate `shots` array inside `storyboard_handoff_json`. Raised
+  // from 8000 to 16000 after a live failure post-Phase-3B (per-character
+  // acting-direction fields added ~22k+ chars of output): a 8000-token cap
+  // truncated the JSON mid-array (`LLM response was not valid JSON:
+  // Expected ',' or ']' after array element ... position 22166`). Shares the
+  // same one-retry-on-truncated/invalid-JSON safety net as the sibling
+  // start-frame/motion-prompt/script generators — see
+  // `executeJsonPlanningCallWithRetry`'s doc comment.
+  const { data: storyboardData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    // Higher than sibling skills' 3500-4000 (see verticalDramaStoryBible.ts,
-    // verticalDramaStartFrameGeneration.ts) — this schema is the largest of
-    // the four imported skills: 9 fully-detailed shots (camera object,
-    // dialogue, image_prompt, negative_prompt, etc.) PLUS a second, near-
-    // duplicate `shots` array inside `storyboard_handoff_json`. Confirmed via
-    // a live failure: a 4000-token cap truncated the JSON mid-array
-    // (`VD_SCHEMA_VALIDATION_FAILED: ... Expected ',' or ']' ... position
-    // 11168`), so the response literally did not fit.
-    maxTokens: 8000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 16000,
+    schema: storyboardShotgridOutputSchema,
+    label: "Storyboard shotgrid",
   });
-
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response"
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = storyboardShotgridOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Storyboard shotgrid response failed schema validation",
-      validation.error.issues
-    );
-  }
 
   // Normalize `characters` / `required_character_refs` per shot — the LLM is
   // told to reference the exact `characterId`s listed in the prompt (see
@@ -368,7 +355,7 @@ export async function generateStoryboardShotgrid(
   // shot's Thai/English narrative text, which the model reliably writes
   // even when it gets the id field wrong.
   const validCharacterIds = new Set(params.characters.map(c => c.characterId));
-  for (const shot of validation.data.shots) {
+  for (const shot of storyboardData.shots) {
     const shotRecord = shot as unknown as Record<string, unknown>;
     const narrativeText = [
       shotRecord.action,
@@ -401,9 +388,9 @@ export async function generateStoryboardShotgrid(
       Boolean(c.referenceImageUrl)
   );
   if (charactersWithRef.length > 0) {
-    const existingHandoff = (validation.data.storyboard_handoff_json ??
+    const existingHandoff = (storyboardData.storyboard_handoff_json ??
       {}) as Record<string, unknown>;
-    validation.data.storyboard_handoff_json = {
+    storyboardData.storyboard_handoff_json = {
       ...existingHandoff,
       character_attachment_manifest: charactersWithRef.map(c => ({
         character_id: c.characterId,
@@ -413,7 +400,7 @@ export async function generateStoryboardShotgrid(
     };
   }
 
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -437,5 +424,5 @@ export async function generateStoryboardShotgrid(
     },
   });
 
-  return { storyboard: validation.data, creditsUsed, model };
+  return { storyboard: storyboardData, creditsUsed, model };
 }

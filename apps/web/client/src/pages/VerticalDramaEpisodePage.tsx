@@ -65,6 +65,7 @@ import type {
   VerticalDramaStoryboardView,
 } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 
 // Persistent right-side reference panel (image swap) — collapsed/width state
 // persisted the same way `StoryboardReviewPage.tsx`'s own right panel does,
@@ -114,6 +115,28 @@ function storeSeriesModelDefault(
 ): void {
   if (typeof window === "undefined" || !seriesId) return;
   window.localStorage.setItem(vdModelStorageKey(seriesId, kind), modelId);
+}
+
+/** Last-picked MCP connection id (Higgsfield/Magnific etc. — creditCost 0
+ *  MCP-transport models). A single global key (not per-series) — this is
+ *  the same intent as Media Studio's own in-memory MCP connection choice,
+ *  just persisted, so whichever connection the user last picked (in Media
+ *  Studio or here) carries over automatically instead of resetting every
+ *  time the episode workspace reloads. */
+const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
+
+function readStoredMcpConnectionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+}
+
+function storeMcpConnectionId(connectionId: string | null): void {
+  if (typeof window === "undefined") return;
+  if (connectionId) {
+    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+  }
 }
 
 export default function VerticalDramaEpisodePage() {
@@ -886,6 +909,56 @@ function EpisodeWorkspaceShell({
     });
   };
 
+  // MCP connection selection (Phase — MCP-transport model wiring). A single
+  // connection id, shared across the image/video pickers here (mirrors
+  // Media Studio's own single-connection assumption) — persisted so a
+  // reload (or a connection picked earlier in Media Studio) carries over.
+  const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
+    readStoredMcpConnectionId
+  );
+  const handleSelectMcpConnection = (connectionId: string | null) => {
+    setMcpConnectionIdState(connectionId);
+    storeMcpConnectionId(connectionId);
+  };
+  const resolveModelTransport = (
+    model: VerticalDramaCapableModel | undefined,
+    modelId: string
+  ) =>
+    resolveMediaModelTransportConfig({
+      provider: model?.provider,
+      modelId: model?.modelId ?? modelId,
+      configJson: model?.configJson,
+    });
+  const selectedImageModelRecord = imageModels.find(
+    m => m.modelId === selectedImageModelId
+  );
+  const selectedVideoModelRecord = videoModels.find(
+    m => m.modelId === selectedVideoModelId
+  );
+  const imageModelUsesMcp =
+    Boolean(selectedImageModelId) &&
+    resolveModelTransport(selectedImageModelRecord, selectedImageModelId)
+      .transport === "mcp";
+  const videoModelUsesMcp =
+    Boolean(selectedVideoModelId) &&
+    resolveModelTransport(selectedVideoModelRecord, selectedVideoModelId)
+      .transport === "mcp";
+  /** Blocks the action client-side with a Thai/English toast instead of
+   *  letting the server throw BAD_REQUEST — returns true if the action
+   *  should proceed. */
+  function requireMcpConnectionOrToast(kind: "image" | "video"): boolean {
+    const usesMcp = kind === "image" ? imageModelUsesMcp : videoModelUsesMcp;
+    if (!usesMcp || mcpConnectionId) return true;
+    toast.error(
+      lang === "th"
+        ? "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้"
+        : kind === "image"
+          ? "Select an MCP connection before using this image model."
+          : "Select an MCP connection before using this video model."
+    );
+    return false;
+  }
+
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   const shotReferencesQuery = trpc.verticalDramaEpisodes.listShotReferences.useQuery(
     { seriesId, episodeId },
@@ -1136,6 +1209,7 @@ function EpisodeWorkspaceShell({
     shotNumber: number,
     mode: "single" | "angles"
   ) {
+    if (!requireMcpConnectionOrToast("image")) return;
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       let plan = episodeDetailQuery.data?.startFramePlan as
@@ -1235,6 +1309,7 @@ function EpisodeWorkspaceShell({
           episodeId,
           shotNumber,
           idempotencyKey: crypto.randomUUID(),
+          mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
         });
       } else {
         generateStartFrameImageMutation.mutate({
@@ -1242,6 +1317,7 @@ function EpisodeWorkspaceShell({
           episodeId,
           shotNumber,
           idempotencyKey: crypto.randomUUID(),
+          mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
         });
       }
     } catch (err) {
@@ -1712,15 +1788,19 @@ function EpisodeWorkspaceShell({
             ),
           onGenerateVideoPromptPack: handleGenerateVideoPromptPack,
           generatingVideoPromptPack,
-          onGenerateStartFrameImage: shotNumber =>
+          onGenerateStartFrameImage: shotNumber => {
+            if (!requireMcpConnectionOrToast("image")) return;
             generateStartFrameImageMutation.mutate({
               seriesId,
               episodeId,
               shotNumber,
               idempotencyKey: crypto.randomUUID(),
-            }),
+              mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+            });
+          },
           generatingStartFrameImageForShot: pollingStartFrameShots,
           onGenerateAllStartFrameImages: (shotNumbers: number[]) => {
+            if (!requireMcpConnectionOrToast("image")) return;
             setPollingStartFrameShots(prev => {
               const next = new Set(prev);
               shotNumbers.forEach(n => next.add(n));
@@ -1732,6 +1812,7 @@ function EpisodeWorkspaceShell({
                 episodeId,
                 shotNumber,
                 idempotencyKey: crypto.randomUUID(),
+                mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
               });
             });
           },
@@ -1742,13 +1823,16 @@ function EpisodeWorkspaceShell({
             setImageSwapTarget({ type: "characterPortrait", characterId }),
           onDropCharacterReference: handleDropCharacterReference,
           onDropStartFrame: handleDropStartFrame,
-          onGenerateAngleVariations: shotNumber =>
+          onGenerateAngleVariations: shotNumber => {
+            if (!requireMcpConnectionOrToast("image")) return;
             generateAngleVariationsMutation.mutate({
               seriesId,
               episodeId,
               shotNumber,
               idempotencyKey: crypto.randomUUID(),
-            }),
+              mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+            });
+          },
           generatingAngleVariationsForShot:
             pollingAngleVariationsShot ??
             (generateAngleVariationsMutation.isPending
@@ -1765,19 +1849,24 @@ function EpisodeWorkspaceShell({
           onSelectImageModel: handleSelectImageModel,
           onSelectVideoModel: handleSelectVideoModel,
           modelsLoading: imageModelsQuery.isLoading || videoModelsQuery.isLoading,
+          mcpConnectionId,
+          onSelectMcpConnection: handleSelectMcpConnection,
           shotReferencesByShot,
           onAddShotReference: handleAddShotReference,
           onRemoveShotReference: handleRemoveShotReference,
           addingShotReferenceForShot,
           onSaveClipDialogue: handleSaveClipDialogue,
           savingDialogueForClip,
-          onGenerateVideoClip: clipNumber =>
+          onGenerateVideoClip: clipNumber => {
+            if (!requireMcpConnectionOrToast("video")) return;
             generateVideoClipMutation.mutate({
               seriesId,
               episodeId,
               clipNumber,
               idempotencyKey: crypto.randomUUID(),
-            }),
+              mcpConnectionId: videoModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+            });
+          },
           generatingVideoClipForClip: pollingVideoClips,
           ttsFallbackByClip,
           trimmedReferenceCountByClip,

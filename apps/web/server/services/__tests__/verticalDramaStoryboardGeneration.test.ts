@@ -153,6 +153,29 @@ function successResponse(payload: unknown) {
   } as any;
 }
 
+/**
+ * Simulates a real truncated-mid-array LLM response (evidence: 2026-07-05
+ * evening, "สตอรีบอร์ด 9 ช็อต" stage — `LLM response was not valid JSON:
+ * Expected ',' or ']' after array element in JSON at position 22166`, caused
+ * by Phase 3B's per-character facial_expression/body_language/gaze_direction
+ * fields pushing 9-shot output past the old 8000-token ceiling).
+ */
+function truncatedResponse() {
+  const full = JSON.stringify(validOutput());
+  const cutIndex = full.indexOf('"shots"') + 60;
+  return {
+    type: "success" as const,
+    response: {
+      choices: [
+        { message: { content: full.slice(0, cutIndex) }, index: 0, finish_reason: "length" },
+      ],
+      usage: { prompt_tokens: 200, completion_tokens: 8000 },
+    },
+    providerName: "openai",
+    providerId: 1,
+  } as any;
+}
+
 describe("generateStoryboardShotgrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -286,5 +309,55 @@ describe("generateStoryboardShotgrid", () => {
       (result.storyboard.storyboard_handoff_json as any)
         .character_attachment_manifest
     ).toBeUndefined();
+  });
+
+  it("retries once with a higher token ceiling when the first response is truncated JSON, and succeeds on the retry (2026-07-05 evidence: one-click generation, สตอรีบอร์ด 9 ช็อต stage)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(successResponse(validOutput()));
+
+    const result = await generateStoryboardShotgrid(baseParams());
+
+    expect(result.storyboard.shots).toHaveLength(9);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Same model both times — never auto-switches models on retry.
+    expect(mockExecute.mock.calls[0][0].model).toBe(mockExecute.mock.calls[1][0].model);
+    // Retry uses a higher/no-lower token ceiling than the first attempt.
+    expect(mockExecute.mock.calls[1][0].maxTokens).toBeGreaterThanOrEqual(
+      mockExecute.mock.calls[0][0].maxTokens,
+    );
+    // First attempt already uses the raised 16000 base ceiling (not the old 8000).
+    expect(mockExecute.mock.calls[0][0].maxTokens).toBe(16000);
+    // Retry's user prompt carries the stricter no-truncation instruction.
+    const retryUserMessage = mockExecute.mock.calls[1][0].messages.find(
+      (m: { role: string }) => m.role === "user",
+    );
+    expect(retryUserMessage.content).toMatch(/complete, valid, compact JSON/i);
+    // Credits are only deducted once (for the successful retry), not twice.
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws VdSchemaValidationError (does not silently persist an empty storyboard) when BOTH the first attempt and the retry are truncated", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValueOnce(truncatedResponse()).mockResolvedValueOnce(truncatedResponse());
+
+    await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
+      VdSchemaValidationError,
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("does not retry on a non-JSON provider/network error (only retries malformed-JSON/schema failures)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue({ type: "error", error: "upstream 503", statusCode: 503 } as any);
+
+    await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
+      "LLM request failed: upstream 503",
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });

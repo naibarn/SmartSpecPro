@@ -219,6 +219,11 @@ export const VD_COPY = {
     capabilityCreditCost: "{n} credits",
     modelChangeNote: "Changing the model only affects future generations — images/clips already made are untouched.",
     modelSelectionSaved: "Model selection saved.",
+    capabilityMcpFree: "MCP (0 credits)",
+    mcpConnectionLabel: "MCP connection",
+    mcpConnectionNeededFor: "Needed for: {n}",
+    mcpConnectionMissingToastImage: "Select an MCP connection before using this image model.",
+    mcpConnectionMissingToastVideo: "Select an MCP connection before using this video model.",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
     references: "References",
@@ -361,6 +366,11 @@ export const VD_COPY = {
     capabilityCreditCost: "{n} เครดิต",
     modelChangeNote: "การเปลี่ยนโมเดลมีผลเฉพาะการสร้างครั้งถัดไป — ภาพ/คลิปที่ทำไปแล้วไม่ถูกแตะ",
     modelSelectionSaved: "บันทึกการเลือกโมเดลแล้ว",
+    capabilityMcpFree: "MCP (0 เครดิต)",
+    mcpConnectionLabel: "การเชื่อมต่อ MCP",
+    mcpConnectionNeededFor: "จำเป็นสำหรับ: {n}",
+    mcpConnectionMissingToastImage: "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลภาพนี้",
+    mcpConnectionMissingToastVideo: "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลวิดีโอนี้",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
     references: "ภาพอ้างอิง",

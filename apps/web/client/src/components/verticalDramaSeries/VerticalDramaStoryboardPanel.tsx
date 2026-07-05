@@ -46,6 +46,8 @@ import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
+import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspaceCopy";
 
 type Lang = "th" | "en";
@@ -279,6 +281,12 @@ interface VerticalDramaStoryboardPanelProps {
   onSelectImageModel?: (modelId: string) => void;
   onSelectVideoModel?: (modelId: string) => void;
   modelsLoading?: boolean;
+  /** Currently-selected MCP connection id (Higgsfield/Magnific etc. — any
+   *  model whose `configJson` transport resolves to `"mcp"`, creditCost 0).
+   *  Persisted by the caller (localStorage), shared with Media Studio's own
+   *  key where possible so a connection picked there carries over here. */
+  mcpConnectionId?: string | null;
+  onSelectMcpConnection?: (connectionId: string | null) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
@@ -386,6 +394,8 @@ export function VerticalDramaStoryboardPanel({
   onSelectImageModel,
   onSelectVideoModel,
   modelsLoading = false,
+  mcpConnectionId = null,
+  onSelectMcpConnection,
   shotReferencesByShot = {},
   onAddShotReference,
   onRemoveShotReference,
@@ -407,6 +417,32 @@ export function VerticalDramaStoryboardPanel({
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
+  const selectedImageModel = imageModels.find(m => m.modelId === selectedImageModelId);
+  const selectedVideoModel = videoModels.find(m => m.modelId === selectedVideoModelId);
+  const selectedImageModelTransport = resolveMediaModelTransportConfig({
+    provider: selectedImageModel?.provider,
+    modelId: selectedImageModel?.modelId ?? selectedImageModelId,
+    configJson: selectedImageModel?.configJson,
+  });
+  const selectedVideoModelTransport = resolveMediaModelTransportConfig({
+    provider: selectedVideoModel?.provider,
+    modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+    configJson: selectedVideoModel?.configJson,
+  });
+  const imageModelUsesMcp =
+    Boolean(selectedImageModelId) && selectedImageModelTransport.transport === "mcp";
+  const videoModelUsesMcp =
+    Boolean(selectedVideoModelId) && selectedVideoModelTransport.transport === "mcp";
+  const anyModelUsesMcp = imageModelUsesMcp || videoModelUsesMcp;
+  const mcpNeededForLabel = [
+    imageModelUsesMcp ? (selectedImageModel?.name ?? t2.imageModel) : null,
+    videoModelUsesMcp ? (selectedVideoModel?.name ?? t2.videoModel) : null,
+  ]
+    .filter((v): v is string => Boolean(v))
+    .join(" · ");
+  const mcpProviderKey =
+    (imageModelUsesMcp ? selectedImageModelTransport.providerKey : undefined) ??
+    (videoModelUsesMcp ? selectedVideoModelTransport.providerKey : undefined);
   const [confirming, setConfirming] = useState(false);
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] = useState(false);
   const [confirmingVideoPromptPack, setConfirmingVideoPromptPack] = useState(false);
@@ -724,7 +760,9 @@ export function VerticalDramaStoryboardPanel({
             {onSelectImageModel ? (
               <ModelPickerButton
                 label={t2.imageModel}
-                model={imageModels.find(m => m.modelId === selectedImageModelId)}
+                model={selectedImageModel}
+                mcpFree={imageModelUsesMcp}
+                mcpFreeLabel={t2.capabilityMcpFree}
                 onClick={() => setIsImageModelDialogOpen(true)}
                 locale={locale}
                 testId="vd-storyboard-select-image-model"
@@ -733,7 +771,9 @@ export function VerticalDramaStoryboardPanel({
             {onSelectVideoModel ? (
               <ModelPickerButton
                 label={t2.videoModel}
-                model={videoModels.find(m => m.modelId === selectedVideoModelId)}
+                model={selectedVideoModel}
+                mcpFree={videoModelUsesMcp}
+                mcpFreeLabel={t2.capabilityMcpFree}
                 onClick={() => setIsVideoModelDialogOpen(true)}
                 locale={locale}
                 testId="vd-storyboard-select-video-model"
@@ -741,6 +781,33 @@ export function VerticalDramaStoryboardPanel({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">{t2.modelChangeNote}</p>
+
+          {/* MCP connection row (Higgsfield/Magnific etc. — creditCost 0,
+              routed through the caller's own MCP provider account instead of
+              SmartSpec credits). Shown only when the currently-selected
+              image OR video model resolves to MCP transport
+              (`resolveMediaModelTransportConfig`, same detection Media
+              Studio uses). Persisted by the caller (localStorage). */}
+          {anyModelUsesMcp && onSelectMcpConnection ? (
+            <div className="space-y-1 border-t border-border/60 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {t2.mcpConnectionLabel}
+                </span>
+                {mcpNeededForLabel ? (
+                  <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                    {vdCopyWithCount(t2.mcpConnectionNeededFor, mcpNeededForLabel)}
+                  </Badge>
+                ) : null}
+              </div>
+              <McpConnectionPicker
+                value={mcpConnectionId}
+                onChange={onSelectMcpConnection}
+                assetType={imageModelUsesMcp ? "image" : "video"}
+                providerKey={mcpProviderKey}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1870,12 +1937,18 @@ export function VerticalDramaStoryboardPanel({
 function ModelPickerButton({
   label,
   model,
+  mcpFree = false,
+  mcpFreeLabel,
   onClick,
   locale,
   testId,
 }: {
   label: string;
   model?: VerticalDramaCapableModel;
+  /** True when this model resolves to MCP transport (creditCost 0 — routed
+   *  through the user's own provider account instead of SmartSpec credits). */
+  mcpFree?: boolean;
+  mcpFreeLabel?: string;
   onClick: () => void;
   locale: Lang;
   testId: string;
@@ -1910,7 +1983,14 @@ function ModelPickerButton({
               {vdCopyWithCount(t2.capabilityMaxRefs, model.maxReferenceImages)}
             </Badge>
           ) : null}
-          {model.creditCost != null ? (
+          {mcpFree ? (
+            <Badge
+              variant="secondary"
+              className="gap-0.5 border-indigo-200 bg-indigo-50 px-1 py-0 text-[9px] text-indigo-700"
+            >
+              {mcpFreeLabel}
+            </Badge>
+          ) : model.creditCost != null ? (
             <Badge variant="secondary" className="px-1 py-0 text-[9px]">
               {vdCopyWithCount(t2.capabilityCreditCost, model.creditCost)}
             </Badge>

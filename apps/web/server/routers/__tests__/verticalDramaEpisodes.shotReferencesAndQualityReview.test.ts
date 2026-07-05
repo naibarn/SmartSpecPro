@@ -98,6 +98,13 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
 
+const { mockResolveMediaTransport } = vi.hoisted(() => ({
+  mockResolveMediaTransport: vi.fn(),
+}));
+vi.mock("../../services/mediaTransportResolver", () => ({
+  resolveMediaTransport: mockResolveMediaTransport,
+}));
+
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
@@ -181,13 +188,16 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import { mediaGenerationService } from "../../services/mediaGenerationService";
-import { hasEnoughCredits, deductCredits } from "../../services/creditService";
+import { hasEnoughCredits, deductCredits, refundCredits } from "../../services/creditService";
+import { calculateCreditCost } from "../../services/pricingCalculator";
 import { formatVideoClipRequest } from "../../services/verticalDramaVideoPromptFormatter";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
 const mockGenerateVideoAsync = vi.mocked(mediaGenerationService.generateVideoAsync);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
+const mockRefundCredits = vi.mocked(refundCredits);
+const mockCalculateCreditCost = vi.mocked(calculateCreditCost);
 const mockFormatVideoClipRequest = vi.mocked(formatVideoClipRequest);
 
 function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
@@ -739,6 +749,57 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       expect.objectContaining({ idempotencyKey: "vc-key-1" }),
     );
   });
+
+  it("skips hasEnoughCredits/deductCredits for a zero-cost model (e.g. Higgsfield/Magnific MCP) and still submits generation", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "higgsfield/nano_banana_2", type: "video", isEnabled: true, creditCost: 0, aliases: [], configJson: {} },
+    ]);
+    mockShotReferencesService.listForShot.mockResolvedValue([]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithPack({ /* keep default clip shape */ })]),
+      ) // loadOwnedEpisode — uses the default "veo-3-1" selection from episodeRowWithPack
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+
+    const result = await router.generateVideoClip({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+    });
+
+    expect(result.creditCost).toBe(0);
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+  });
+
+  it("does not call refundCredits on submit failure for a zero-cost model", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+    mockGenerateVideoAsync.mockRejectedValueOnce(new Error("submit failed"));
+
+    await expect(
+      router.generateVideoClip({ ctx: ctx(), input: { seriesId: "10", episodeId: "100", clipNumber: 1 } }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockRefundCredits).not.toHaveBeenCalled();
+  });
 });
 
 describe("generateStartFrameImage / generateStartFrameAngleVariations — idempotencyKey passthrough (T2)", () => {
@@ -798,5 +859,143 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     expect(mockDeductCredits).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: "av-key-1" }),
     );
+  });
+
+  it("generateStartFrameImage skips hasEnoughCredits/deductCredits for a zero-cost model and still submits generation", async () => {
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+
+    const result = await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(result.creditCost).toBe(0);
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateStartFrameImage does not call refundCredits on submit failure for a zero-cost model", async () => {
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+    mediaGenerationService.generateImageAsync = vi.fn().mockRejectedValue(new Error("submit failed"));
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockRefundCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateStartFrameAngleVariations skips hasEnoughCredits/deductCredits for a zero-cost model and still submits generation", async () => {
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+
+    const result = await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(result.creditCost).toBe(0);
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateStartFrameImage builds transportMetadata.transport === \"mcp\" for an MCP-transport model (e.g. higgsfield/nano_banana_2) and forwards it to generateImageAsync", async () => {
+    mockCalculateCreditCost.mockReturnValueOnce(0); // MCP models are zero-cost (billed via MCP subscription)
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "higgsfield/nano_banana_2", type: "image", isEnabled: true, aliases: [], configJson: {} },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...episodeRowWithStartFramePlan(),
+            startFramePlan: {
+              selectedImageModelId: "higgsfield/nano_banana_2",
+              frames: [{ shotNumber: 1, imagePrompt: "a prompt", requiredCharacterRefs: [] }],
+            },
+          },
+        ]),
+      ) // loadOwnedEpisode — episode-level selection resolves to the MCP model
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: {} }])); // pricing lookup — zero-cost MCP model
+    const mcpMetadata = {
+      transport: "mcp",
+      originSurface: "media_studio",
+      assetType: "image",
+      providerKey: "higgsfield",
+      connectionId: "conn-1",
+      creditPolicy: "provider_credits_tracked",
+    };
+    mockResolveMediaTransport.mockResolvedValue(mcpMetadata);
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "mcp-task-1" });
+
+    const result = await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mcpConnectionId: "conn-1" },
+    });
+
+    expect(result.taskId).toBe("mcp-task-1");
+    expect(mockResolveMediaTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        actorUserId: 42,
+        assetType: "image",
+        requestedTransport: "mcp",
+        mcpConnectionId: "conn-1",
+        providerKey: "higgsfield",
+      }),
+    );
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportMetadata: expect.objectContaining({ transport: "mcp" }),
+      }),
+      expect.any(String),
+    );
+    // Zero-cost MCP model — credit reserve/refund cycle still skipped.
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateStartFrameImage throws BAD_REQUEST for an MCP-transport model when no mcpConnectionId is provided (fails closed instead of dispatching to the wrong provider)", async () => {
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "higgsfield/nano_banana_2", type: "image", isEnabled: true, aliases: [], configJson: {} },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...episodeRowWithStartFramePlan(),
+            startFramePlan: {
+              selectedImageModelId: "higgsfield/nano_banana_2",
+              frames: [{ shotNumber: 1, imagePrompt: "a prompt", requiredCharacterRefs: [] }],
+            },
+          },
+        ]),
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: {} }])); // pricing lookup
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
   });
 });

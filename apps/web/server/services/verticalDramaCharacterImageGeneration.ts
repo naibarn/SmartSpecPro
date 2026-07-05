@@ -22,13 +22,13 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
-  extractJson,
   InsufficientCreditsError,
   VdSchemaValidationError,
   resolveStoryBibleModel,
+  executeJsonPlanningCallWithRetry,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -173,6 +173,7 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
     "(matches this skill's schemas/input.schema.json shape):",
     JSON.stringify(inputPayload, null, 2),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
+    VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
 }
 
@@ -236,41 +237,27 @@ export async function generateCharacterVisualPrompts(
   const systemPrompt = loadCharacterVisualBibleSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Single-character payload (portrait/turnaround/full-body/expression/
+  // outfit prompts + attachment_package) — smaller than the multi-shot
+  // storyboard/start-frame planners, but shares the same fragile
+  // executeWithFallback+extractJson pattern, so it gets the same
+  // one-retry-on-truncated/invalid-JSON safety net.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.7,
     userId: params.userId,
     maxTokens: 3500,
-    temperature: 0.7,
+    schema: characterVisualBibleOutputSchema,
+    label: "Character visual bible",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = characterVisualBibleOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Character visual bible response failed schema validation",
-      validation.error.issues,
-    );
-  }
-
-  const characters = validation.data.characters;
+  const characters = validatedData.characters;
   const matched =
     characters.find((c) => c.character_id === params.characterKey) ?? characters[0];
 
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -314,7 +301,7 @@ export async function generateCharacterVisualPrompts(
     fullBodyPrompt,
     expressionSheetPrompt,
     outfitSheetPrompt,
-    raw: validation.data,
+    raw: validatedData,
     creditsUsed,
     model,
   };

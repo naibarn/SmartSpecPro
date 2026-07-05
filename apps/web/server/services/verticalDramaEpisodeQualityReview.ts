@@ -23,7 +23,6 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -36,9 +35,10 @@ import {
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { debugError } from "../_core/logger";
 
@@ -178,6 +178,7 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
     params.dialoguePlan
       ? `dialogue_plan:\n${JSON.stringify(params.dialoguePlan)}`
       : "dialogue_plan: (not provided — score dialogue_naturalness as null)",
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -222,37 +223,23 @@ export async function runVerticalDramaEpisodeQualityReview(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Small, bounded output (a fixed-shape scorecard + a handful of issues) —
+  // base ceiling raised only modestly (3000 -> 4000) versus the multi-shot
+  // generators, but still gets the same shared one-retry-on-truncated/
+  // invalid-JSON safety net for consistency across every Vertical Drama
+  // planning call site.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 3000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.4,
+    userId: params.userId,
+    maxTokens: 4000,
+    schema: episodeQualityReviewOutputSchema,
+    label: "Episode quality review",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response"
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = episodeQualityReviewOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Episode quality review response failed schema validation",
-      validation.error.issues
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -289,5 +276,5 @@ export async function runVerticalDramaEpisodeQualityReview(
     );
   }
 
-  return { review: validation.data, creditsUsed, model };
+  return { review: validatedData, creditsUsed, model };
 }

@@ -31,7 +31,6 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { executeWithFallback } from "./llmRouter";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -44,9 +43,10 @@ import {
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
   resolveStoryBibleModel,
-  extractJson,
+  executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { debugError } from "../_core/logger";
 
@@ -169,6 +169,7 @@ function buildUserPrompt(params: RunSeriesMemoryPlanningParams): string {
     params.priorMemoryBundle
       ? `prior_series_memory (canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue so far):\n${JSON.stringify(params.priorMemoryBundle)}`
       : "prior_series_memory: (none yet — this is treated as the earliest known state)",
+    VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -212,37 +213,26 @@ export async function runVerticalDramaSeriesMemoryPlanning(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const result = await executeWithFallback({
+  // Base ceiling raised from 3000 to 8000 — this skill's output has NINE
+  // separate arrays (canonical_facts, prior_episode_summaries,
+  // unresolved_hooks, resolved_hooks, relationship_state_changes,
+  // character_emotional_state, product_tie_in_history, continuity_risks)
+  // plus two prose fields, which grows with series length and is a
+  // plausible truncation risk of the same class already hit in the sibling
+  // storyboard/start-frame/script generators. Shares the same
+  // one-retry-on-truncated/invalid-JSON safety net.
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
     model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    maxTokens: 3000,
+    systemPrompt,
+    userPrompt,
     temperature: 0.3,
+    userId: params.userId,
+    maxTokens: 8000,
+    schema: seriesMemoryPlannerOutputSchema,
+    label: "Series memory planning",
   });
 
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response"
-    );
-  }
-
-  const content = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(content);
-  const validation = seriesMemoryPlannerOutputSchema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Series memory planning response failed schema validation",
-      validation.error.issues
-    );
-  }
-
-  const usage = result.response.usage;
+  const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
@@ -279,5 +269,5 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     );
   }
 
-  return { planned: validation.data, creditsUsed, model };
+  return { planned: validatedData, creditsUsed, model };
 }

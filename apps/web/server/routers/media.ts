@@ -91,6 +91,7 @@ import {
   submitMcpMediaGeneration,
 } from "../services/mcpMediaAdapter";
 import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
+import { resolveMcpRouteFromModelId, defaultMcpArgumentShape } from "../services/mcpModelRouteResolver";
 import type { MediaTransport, MediaOriginSurface } from "../../shared/mcpConnectTypes";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { assertMediaProviderAssetsUsable } from "../services/mediaProviderAssetService";
@@ -154,34 +155,6 @@ function compactText(value: unknown): string {
 function optionalTrimmedText(value: unknown): string | undefined {
   const trimmed = compactText(value);
   return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function resolveMcpRouteFromModelId(modelId: unknown): { providerKey?: string; providerModelId?: string } {
-  const value = compactText(modelId);
-  if (!value) return {};
-  const [providerPart, ...modelParts] = value.split("/");
-  const providerToken = providerPart?.trim().toLowerCase();
-  const providerKey =
-    providerToken === "higgsfield" || providerToken === "higgsfield-mcp"
-      ? "higgsfield"
-      : providerToken === "magnific" || providerToken === "magnific-mcp"
-        ? "magnific"
-        : undefined;
-  if (!providerKey) return {};
-  return {
-    providerKey,
-    providerModelId: modelParts.length > 0 ? modelParts.join("/").trim() || undefined : undefined,
-  };
-}
-
-function defaultMcpArgumentShape(providerKey: string | undefined, assetType: "image" | "video") {
-  if (providerKey === "higgsfield") {
-    return assetType === "image" ? "higgsfield.generate_image" : "higgsfield.generate_video";
-  }
-  if (providerKey === "magnific") {
-    return assetType === "image" ? "magnific.images_generate" : "magnific.video_generate";
-  }
-  return undefined;
 }
 
 function resolveReferenceUrlsForProvider(urls: string[] | undefined, publicUrl?: string | null): string[] | undefined {
