@@ -94,7 +94,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
       <img
         src={current?.src}
         alt={current?.alt || "Image"}
-        className="max-h-[90vh] max-w-[90vw] object-contain"
+        className="h-[90vh] max-h-[90vh] w-auto max-w-[95vw] object-contain sm:h-[85vh] sm:max-w-[92vw]"
         onClick={(e) => e.stopPropagation()}
       />
 

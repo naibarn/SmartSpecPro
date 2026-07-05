@@ -378,6 +378,18 @@ export type VerticalDramaStartFramePlan = {
     requiredCharacterRefs: string[];
     productReferenceAssetIds: string[];
     approvedMediaAssetId?: string;
+    /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
+     *  grid image is already a completed, durable media task; this just
+     *  remembers which grid to re-split client-side on reload and which of
+     *  its 9 tiles the user already deleted, so a page reload doesn't wipe
+     *  the remaining candidates. Written via the existing free
+     *  `updateEpisodeDraft` JSONB-patch flow (this whole column is an open
+     *  passthrough on that endpoint) — no schema/migration involved. */
+    angleGrid?: {
+      imageUrl: string;
+      mediaTaskId?: string;
+      dismissedIndexes?: number[];
+    };
   }>;
 };
 

@@ -230,6 +230,8 @@ export const VD_COPY = {
     dropReferenceHint: "Drop an image here to add it as a reference",
     useAsStartFrame: "Use as start frame",
     addAsReferences: "Add as references ({n})",
+    pickBestAngleTitle: "Pick the best angle",
+    angleTileCount: "{n} tiles",
 
     /* ---- Dialogue box (Phase 3.4) ---- */
     dialogueLines: "Dialogue",
@@ -370,6 +372,8 @@ export const VD_COPY = {
     dropReferenceHint: "ลากภาพมาวางที่นี่เพื่อเพิ่มเป็นภาพอ้างอิง",
     useAsStartFrame: "ใช้เป็นภาพเริ่มต้น",
     addAsReferences: "เพิ่มเป็นภาพอ้างอิง ({n})",
+    pickBestAngleTitle: "เลือกมุมกล้องที่ดีที่สุด",
+    angleTileCount: "{n} ภาพ",
 
     /* ---- Dialogue box (Phase 3.4) ---- */
     dialogueLines: "บทพูด",

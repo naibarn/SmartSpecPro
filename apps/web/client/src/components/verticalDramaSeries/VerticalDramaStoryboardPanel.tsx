@@ -18,7 +18,7 @@
  * color-only), the credit-confirm gate is keyboard reachable.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Award,
@@ -137,6 +137,22 @@ export interface VerticalDramaStoryboardView {
   shots?: StoryboardShotView[];
 }
 
+/** Persisted 3x3 multi-angle grid state for a shot (2026-07-05 persistence
+ *  fix) — the source grid image is already a completed, server-side media
+ *  task; this record just remembers which grid to re-split on reload and
+ *  which of its 9 tiles the user already deleted, so a reload doesn't wipe
+ *  the remaining candidates. Written onto `startFramePlan.frames[i]` via the
+ *  existing free `updateEpisodeDraft` JSONB-patch flow — no new server
+ *  procedure needed (that field is an open `z.record` passthrough). */
+export interface VerticalDramaAngleGridView {
+  imageUrl: string;
+  mediaTaskId?: string;
+  /** Original 0..8 tile indexes (row-major, matching `splitImage`'s output
+   *  order) the user has deleted from the picker — excluded on every
+   *  re-hydration from `imageUrl`. */
+  dismissedIndexes?: number[];
+}
+
 export interface VerticalDramaStartFramePlanFrame {
   shotNumber: number;
   imagePrompt: string;
@@ -144,6 +160,7 @@ export interface VerticalDramaStartFramePlanFrame {
   requiredCharacterRefs?: string[];
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
+  angleGrid?: VerticalDramaAngleGridView;
 }
 
 export interface VerticalDramaStartFramePlanView {
@@ -238,7 +255,16 @@ interface VerticalDramaStoryboardPanelProps {
   angleVariationGridUrlByShot?: Record<number, string>;
   /** User picked one of the 9 split candidates (as a data URL) for this shot. */
   onPickAngleVariationCandidate?: (shotNumber: number, candidateDataUrl: string) => void;
+  /** Dismisses (closes) the whole picker for this shot — clears the
+   *  persisted `angleGrid` on the frame (free `updateEpisodeDraft` patch) in
+   *  addition to the local candidate list, so the picker stays gone after a
+   *  reload too. */
   onDismissAngleVariations?: (shotNumber: number) => void;
+  /** A single tile was removed from the picker (per-tile "x") — persists the
+   *  tile's ORIGINAL 0..8 index into `angleGrid.dismissedIndexes` (free,
+   *  `updateEpisodeDraft`) so it stays removed across reloads, distinct from
+   *  `onDismissAngleVariations` which clears the entire picker. */
+  onDeleteAngleVariationCandidate?: (shotNumber: number, originalIndex: number) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   /** Vertical-drama-ready image models for the header's image-model selector. */
@@ -352,6 +378,7 @@ export function VerticalDramaStoryboardPanel({
   angleVariationGridUrlByShot = {},
   onPickAngleVariationCandidate,
   onDismissAngleVariations,
+  onDeleteAngleVariationCandidate,
   imageModels = [],
   videoModels = [],
   selectedImageModelId = "",
@@ -389,8 +416,25 @@ export function VerticalDramaStoryboardPanel({
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] = useState(false);
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(null);
-  const [angleCandidatesByShot, setAngleCandidatesByShot] = useState<Record<number, string[]>>({});
+  /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
+   *  3x3 grid (row-major, matching `splitImage`'s output order) — the
+   *  original index is what gets persisted into `angleGrid.dismissedIndexes`
+   *  on per-tile delete, so a later re-hydration (page reload) knows exactly
+   *  which of the 9 tiles to exclude, independent of how many tiles have
+   *  already been removed from THIS list. */
+  const [angleCandidatesByShot, setAngleCandidatesByShot] = useState<
+    Record<number, Array<{ dataUrl: string; originalIndex: number }>>
+  >({});
   const [splittingShot, setSplittingShot] = useState<number | null>(null);
+  /** Shot numbers already hydrated (or attempted) from a persisted
+   *  `angleGrid` on mount/reload — prevents re-splitting on every render and
+   *  prevents a freshly-dismissed-all shot (which clears `angleGrid` server
+   *  side) from being re-hydrated from stale query cache during the same
+   *  session. */
+  const hydratedAngleGridShotsRef = useRef<Set<number>>(new Set());
+  const [angleGridHydrationErrorShots, setAngleGridHydrationErrorShots] = useState<
+    ReadonlySet<number>
+  >(EMPTY_SHOT_NUMBER_SET);
   /** Checked candidates in the multi-angle picker, per shot — indexes into
    *  `angleCandidatesByShot[shotNumber]`. Lets the user add several of the
    *  9 split tiles as references in one action, distinct from clicking a
@@ -432,7 +476,7 @@ export function VerticalDramaStoryboardPanel({
         .then(results => {
           setAngleCandidatesByShot(prev => ({
             ...prev,
-            [shotNumber]: results.map(r => r.dataUrl),
+            [shotNumber]: results.map(r => ({ dataUrl: r.dataUrl, originalIndex: r.index })),
           }));
         })
         .catch(() => {
@@ -442,6 +486,46 @@ export function VerticalDramaStoryboardPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [angleVariationGridUrlByShot]);
+
+  // Restore the multi-angle picker from a PERSISTED grid (`frame.angleGrid`)
+  // on load/reload — fixes the "Ctrl+Shift+R wipes the 9 tiles" bug report.
+  // The source 3x3 image itself is already durable (a completed media task),
+  // so this just re-splits it client-side and excludes whatever tiles the
+  // user already deleted (`dismissedIndexes`), same as the live-generation
+  // effect above but reading from `startFramePlan` instead of the
+  // in-flight-generation prop. Skips any shot the live-generation effect (or
+  // this effect) has already produced/attempted, and skips shots the user
+  // has since dismissed entirely in this session (no `angleGrid` left).
+  useEffect(() => {
+    for (const frame of startFramePlan?.frames ?? []) {
+      const shotNumber = frame.shotNumber;
+      const angleGrid = frame.angleGrid;
+      if (!angleGrid?.imageUrl) continue;
+      if (hydratedAngleGridShotsRef.current.has(shotNumber)) continue;
+      if (angleCandidatesByShot[shotNumber] || splittingShot === shotNumber) continue;
+      if (angleVariationGridUrlByShot[shotNumber]) continue; // live-generation effect owns this one
+      hydratedAngleGridShotsRef.current.add(shotNumber);
+      const dismissed = new Set(angleGrid.dismissedIndexes ?? []);
+      setSplittingShot(shotNumber);
+      splitImage(angleGrid.imageUrl, 3, 3, "image/jpeg", 0.92)
+        .then(results => {
+          setAngleCandidatesByShot(prev => ({
+            ...prev,
+            [shotNumber]: results
+              .filter(r => !dismissed.has(r.index))
+              .map(r => ({ dataUrl: r.dataUrl, originalIndex: r.index })),
+          }));
+        })
+        .catch(() => {
+          // Failure here means the grid can't be re-split (e.g. transient
+          // network error) — do NOT crash or silently drop the shot; show a
+          // retry line in the picker's place instead (see render below).
+          setAngleGridHydrationErrorShots(prev => new Set(prev).add(shotNumber));
+        })
+        .finally(() => setSplittingShot(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startFramePlan?.frames]);
 
   if (loading) {
     return (
@@ -1422,17 +1506,30 @@ export function VerticalDramaStoryboardPanel({
               </div>
             </div>
 
-              {angleCandidatesByShot[shotNumber] ? (
-                <div className="flex w-full flex-col gap-2 rounded-md border border-border bg-muted/30 p-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">
-                      {t(locale, "เลือกมุมกล้องที่ดีที่สุด", "Pick the best angle")}
-                    </span>
+              {angleCandidatesByShot[shotNumber] || angleGridHydrationErrorShots.has(shotNumber) ? (
+                <div className="flex w-full flex-col gap-2.5 rounded-lg border border-border bg-gradient-to-b from-muted/40 to-muted/10 p-3 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-xs font-semibold">
+                          {t2.pickBestAngleTitle}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {t(locale, `ช็อต ${shotNumber}`, `Shot ${shotNumber}`)}
+                          {angleCandidatesByShot[shotNumber]
+                            ? ` · ${vdCopyWithCount(t2.angleTileCount, angleCandidatesByShot[shotNumber].length)}`
+                            : ""}
+                        </span>
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="h-6 px-2 text-xs"
+                      className="h-7 gap-1 px-2 text-xs"
                       onClick={() => {
                         setAngleCandidatesByShot(prev => {
                           const next = { ...prev };
@@ -1444,13 +1541,47 @@ export function VerticalDramaStoryboardPanel({
                           delete next[shotNumber];
                           return next;
                         });
+                        setAngleGridHydrationErrorShots(prev => {
+                          if (!prev.has(shotNumber)) return prev;
+                          const next = new Set(prev);
+                          next.delete(shotNumber);
+                          return next;
+                        });
+                        hydratedAngleGridShotsRef.current.delete(shotNumber);
                         onDismissAngleVariations?.(shotNumber);
                       }}
+                      data-testid={`vd-angle-candidates-dismiss-${shotNumber}`}
                     >
+                      <X aria-hidden="true" className="h-3.5 w-3.5" />
                       {t(locale, "ปิด", "Dismiss")}
                     </Button>
                   </div>
-                  {angleCandidatesByShot[shotNumber].length === 0 ? (
+
+                  {angleGridHydrationErrorShots.has(shotNumber) && !angleCandidatesByShot[shotNumber] ? (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-2.5 py-2 text-xs text-destructive">
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                        {t(locale, "โหลดภาพเดิมไม่สำเร็จ ลองใหม่อีกครั้ง", "Couldn't reload the saved grid — try again.")}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() => {
+                          setAngleGridHydrationErrorShots(prev => {
+                            const next = new Set(prev);
+                            next.delete(shotNumber);
+                            return next;
+                          });
+                          hydratedAngleGridShotsRef.current.delete(shotNumber);
+                        }}
+                        data-testid={`vd-angle-candidates-retry-hydrate-${shotNumber}`}
+                      >
+                        {t(locale, "ลองอีกครั้ง", "Retry")}
+                      </Button>
+                    </div>
+                  ) : angleCandidatesByShot[shotNumber]?.length === 0 ? (
                     <p className="text-xs text-destructive">
                       {t(locale, "ตัดภาพไม่สำเร็จ ลองใหม่อีกครั้ง", "Failed to split the image — try again.")}
                     </p>
@@ -1460,22 +1591,20 @@ export function VerticalDramaStoryboardPanel({
                           without scrolling past all 9 tiles (small-screen
                           feedback: tiles used to render near full-width,
                           forcing endless scrolling to reach these actions). */}
-                      <div className="sticky top-0 z-10 -mx-2 -mt-2 flex flex-wrap items-center gap-1.5 bg-muted/95 px-2 pb-1.5 pt-2 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
+                      <div className="sticky top-0 z-10 -mx-3 -mt-2 flex flex-wrap items-center gap-1.5 border-b border-border/60 bg-muted/95 px-3 pb-2 pt-2 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
-                          className="h-7 gap-1 px-2 text-xs"
+                          variant="default"
+                          className="h-7 gap-1 px-2.5 text-xs shadow-sm"
                           disabled={
                             (selectedAngleCandidateIndexesByShot[shotNumber]?.size ?? 0) !== 1
                           }
                           onClick={() => {
+                            const list = angleCandidatesByShot[shotNumber] ?? [];
                             const selected = selectedAngleCandidateIndexesByShot[shotNumber];
                             const onlyIndex = selected && selected.size === 1 ? [...selected][0] : undefined;
-                            const dataUrl =
-                              onlyIndex != null
-                                ? angleCandidatesByShot[shotNumber][onlyIndex]
-                                : undefined;
+                            const dataUrl = onlyIndex != null ? list[onlyIndex]?.dataUrl : undefined;
                             if (!dataUrl) return;
                             onPickAngleVariationCandidate?.(shotNumber, dataUrl);
                             setAngleCandidatesByShot(prev => {
@@ -1498,16 +1627,17 @@ export function VerticalDramaStoryboardPanel({
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="h-7 gap-1 px-2 text-xs"
+                          className="h-7 gap-1 px-2.5 text-xs"
                           disabled={
                             !onAddShotReference ||
                             (selectedAngleCandidateIndexesByShot[shotNumber]?.size ?? 0) === 0
                           }
                           onClick={() => {
+                            const list = angleCandidatesByShot[shotNumber] ?? [];
                             const selected = selectedAngleCandidateIndexesByShot[shotNumber];
                             if (!selected || selected.size === 0) return;
                             for (const idx of selected) {
-                              const dataUrl = angleCandidatesByShot[shotNumber][idx];
+                              const dataUrl = list[idx]?.dataUrl;
                               if (dataUrl) {
                                 onAddShotReference?.(shotNumber, { url: dataUrl, source: "grid_cut" });
                               }
@@ -1527,18 +1657,18 @@ export function VerticalDramaStoryboardPanel({
                           )}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {angleCandidatesByShot[shotNumber].map((dataUrl, idx) => {
+                      <div className="grid grid-cols-3 gap-2 pt-0.5">
+                        {(angleCandidatesByShot[shotNumber] ?? []).map(({ dataUrl, originalIndex }, idx) => {
                           const isSelected =
                             selectedAngleCandidateIndexesByShot[shotNumber]?.has(idx) ?? false;
                           return (
                             <div
-                              key={idx}
+                              key={originalIndex}
                               className={cn(
-                                "group relative mx-auto aspect-[9/16] w-full max-w-[6.5rem] overflow-hidden rounded border",
+                                "group relative mx-auto aspect-[9/16] w-full max-w-[6.5rem] overflow-hidden rounded-md border shadow-sm transition-shadow",
                                 isSelected
-                                  ? "border-primary ring-2 ring-primary"
-                                  : "border-border hover:ring-2 hover:ring-primary/50"
+                                  ? "border-primary ring-2 ring-primary ring-offset-1 ring-offset-background"
+                                  : "border-border hover:shadow-md hover:ring-2 hover:ring-primary/40"
                               )}
                             >
                               <button
@@ -1549,17 +1679,26 @@ export function VerticalDramaStoryboardPanel({
                                 }
                                 aria-label={t(
                                   locale,
-                                  `ดูมุมกล้อง ${idx + 1} แบบเต็มจอ`,
-                                  `View angle ${idx + 1} fullscreen`
+                                  `ดูมุมกล้อง ${originalIndex + 1} แบบเต็มจอ`,
+                                  `View angle ${originalIndex + 1} fullscreen`
                                 )}
-                                data-testid={`vd-angle-candidate-${shotNumber}-${idx}`}
+                                data-testid={`vd-angle-candidate-${shotNumber}-${originalIndex}`}
                               >
                                 <img
                                   src={dataUrl}
-                                  alt={`Angle ${idx + 1}`}
+                                  alt={`Angle ${originalIndex + 1}`}
                                   className="h-full w-full object-cover"
                                 />
                               </button>
+                              {/* Angle index chip — always visible (not
+                                  hover-only) so the user can reference "มุม 3"
+                                  etc. without hovering every tile. */}
+                              <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                                {t(locale, `มุม ${originalIndex + 1}`, `Angle ${originalIndex + 1}`)}
+                              </span>
+                              {isSelected ? (
+                                <span className="pointer-events-none absolute inset-0 bg-primary/10" />
+                              ) : null}
                               <button
                                 type="button"
                                 className={cn(
@@ -1581,11 +1720,11 @@ export function VerticalDramaStoryboardPanel({
                                 }
                                 aria-label={t(
                                   locale,
-                                  `เลือกมุมกล้อง ${idx + 1}`,
-                                  `Select angle ${idx + 1}`
+                                  `เลือกมุมกล้อง ${originalIndex + 1}`,
+                                  `Select angle ${originalIndex + 1}`
                                 )}
                                 aria-pressed={isSelected}
-                                data-testid={`vd-angle-candidate-select-${shotNumber}-${idx}`}
+                                data-testid={`vd-angle-candidate-select-${shotNumber}-${originalIndex}`}
                               >
                                 {isSelected ? <Check aria-hidden="true" className="h-2.5 w-2.5" /> : null}
                               </button>
@@ -1610,13 +1749,18 @@ export function VerticalDramaStoryboardPanel({
                                     }
                                     return { ...prev, [shotNumber]: next };
                                   });
+                                  // Persist the deletion so it survives a
+                                  // reload — keyed by the tile's ORIGINAL
+                                  // 0..8 grid position, not its position in
+                                  // this already-filtered list.
+                                  onDeleteAngleVariationCandidate?.(shotNumber, originalIndex);
                                 }}
                                 aria-label={t(
                                   locale,
-                                  `ลบมุมกล้อง ${idx + 1} ออกจากตัวเลือก`,
-                                  `Remove angle ${idx + 1} from candidates`
+                                  `ลบมุมกล้อง ${originalIndex + 1} ออกจากตัวเลือก`,
+                                  `Remove angle ${originalIndex + 1} from candidates`
                                 )}
-                                data-testid={`vd-angle-candidate-remove-${shotNumber}-${idx}`}
+                                data-testid={`vd-angle-candidate-remove-${shotNumber}-${originalIndex}`}
                               >
                                 <X aria-hidden="true" className="h-2.5 w-2.5" />
                               </button>
@@ -1659,7 +1803,7 @@ export function VerticalDramaStoryboardPanel({
       {lightboxAngleCandidate != null ? (
         <ImageLightbox
           images={(angleCandidatesByShot[lightboxAngleCandidate.shotNumber] ?? []).map(
-            (dataUrl, idx) => ({ src: dataUrl, alt: `Angle ${idx + 1}` })
+            ({ dataUrl, originalIndex }) => ({ src: dataUrl, alt: `Angle ${originalIndex + 1}` })
           )}
           initialIndex={lightboxAngleCandidate.index}
           open={lightboxAngleCandidate != null}

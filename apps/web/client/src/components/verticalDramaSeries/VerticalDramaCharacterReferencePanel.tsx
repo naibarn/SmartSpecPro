@@ -26,6 +26,15 @@
  * MIME type, so any drop target (this panel's own drop zone, or the
  * per-character cards in `VerticalDramaCharacterStockPanel.tsx`) can read
  * from any source via the shared `readDroppedImageUrl` helper below.
+ *
+ * "BROWSE ONLY" MODE (2026-07-05 fix): `characterId`/`onLinkMediaAssetId` are
+ * now optional. `VerticalDramaEpisodePage.tsx` mounts this panel WITHOUT a
+ * specific swap target so History/Library/Grid-cutter stay always available
+ * on the storyboard view (not gated behind opening the swap picker first) —
+ * dragging a tile out (already unconditional for every tile in this panel)
+ * remains the way to use an image without an explicit target; click-to-link
+ * shortcuts and the character-gallery tab are hidden/disabled in this mode
+ * since they need a resolved target to link onto.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -84,10 +93,25 @@ export function readDroppedImageUrl(event: React.DragEvent): string | null {
 
 export interface VerticalDramaCharacterReferencePanelProps {
   seriesId: string;
-  characterId: string;
-  /** Called with a resolved numeric media asset id — wire directly to `linkMutation`. */
-  onLinkMediaAssetId: (mediaAssetId: string) => void;
-  isLinking: boolean;
+  /** Omit for a "browse only" mount (no specific swap target selected yet) —
+   *  the History/Library/Cutter tabs still work fully (including dragging
+   *  tiles out to a shot or the reference strip); only the character-gallery
+   *  tab and click-to-link shortcut require a target. */
+  characterId?: string;
+  /** Called with a resolved numeric media asset id — wire directly to
+   *  `linkMutation`. Omit for a "browse only" mount: click-to-link affordances
+   *  are hidden (drag-and-drop out of this panel remains the way to use an
+   *  image without an explicit target). */
+  onLinkMediaAssetId?: (mediaAssetId: string) => void;
+  isLinking?: boolean;
+  /** Initial tab when no `characterId` is given (browse-only mode) —
+   *  defaults to "library" like the targeted mode, but callers doing pure
+   *  browsing/dragging (e.g. the episode page's always-on right panel) can
+   *  pass "history" instead since previously-generated images are usually
+   *  the more useful starting point there. Ignored once `characterId` is
+   *  set — that path already has its own auto-default logic (character
+   *  gallery first if it has assets). */
+  defaultTab?: "library" | "history" | "cutter";
   className?: string;
 }
 
@@ -95,13 +119,14 @@ export function VerticalDramaCharacterReferencePanel({
   seriesId,
   characterId,
   onLinkMediaAssetId,
-  isLinking,
+  isLinking = false,
+  defaultTab = "library",
   className,
 }: VerticalDramaCharacterReferencePanelProps) {
   const lang = useVerticalDramaLang();
   const [activeTab, setActiveTab] = useState<
     "characterGallery" | "library" | "history" | "cutter"
-  >("library");
+  >(characterId ? "library" : defaultTab);
 
   /* ---- "This character's images" sub-panel — the character's own existing
    * asset stock (all generated/imported/approved images), not a blank
@@ -109,10 +134,13 @@ export function VerticalDramaCharacterReferencePanel({
    * the character-portrait swap target; for the shot-start-frame swap target
    * the caller passes a `shot-<n>` placeholder (not parseable as a number),
    * in which case this tab naturally shows no results — the tab still
-   * renders, just empty, rather than needing conditional hiding logic. */
-  const manifestQuery = trpc.verticalDramaCharacters.listCharacters.useQuery({
-    seriesId,
-  });
+   * renders, just empty, rather than needing conditional hiding logic. Absent
+   * entirely in "browse only" mode (no `characterId` at all) — the tab is
+   * hidden rather than shown empty. */
+  const manifestQuery = trpc.verticalDramaCharacters.listCharacters.useQuery(
+    { seriesId },
+    { enabled: Boolean(characterId) }
+  );
   const numericCharacterId = Number(characterId);
   const characterAssets = (
     (manifestQuery.data?.manifest?.assets ?? []) as Array<{
@@ -135,8 +163,10 @@ export function VerticalDramaCharacterReferencePanel({
   // character) as the FIRST thing seen, not something to click into. Re-runs
   // whenever the swap target changes (new `characterId`) or the manifest
   // finishes loading, but never overrides a manual tab switch afterward.
+  // Skipped entirely in "browse only" mode (no `characterId`).
   const defaultedForCharacterRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!characterId) return;
     if (defaultedForCharacterRef.current === characterId) return;
     if (manifestQuery.isLoading) return;
     defaultedForCharacterRef.current = characterId;
@@ -159,6 +189,7 @@ export function VerticalDramaCharacterReferencePanel({
       | { source: "library"; libraryItemId: number }
       | { source: "url"; url: string; mimeType: string; fileName?: string }
   ) => {
+    if (!onLinkMediaAssetId) return; // "browse only" mode — dragging out is the supported action
     setIsResolving(true);
     try {
       const result = await resolveMutation.mutateAsync({ seriesId, ...input });
@@ -178,6 +209,7 @@ export function VerticalDramaCharacterReferencePanel({
     dataUrl: string,
     fileName: string
   ) => {
+    if (!onLinkMediaAssetId) return; // "browse only" mode — dragging out is the supported action
     setIsResolving(true);
     try {
       const uploadResult = await uploadMutation.mutateAsync({
@@ -311,39 +343,59 @@ export function VerticalDramaCharacterReferencePanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <div
-          onDragOver={e => {
-            e.preventDefault();
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
-          className={cn(
-            "flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center text-xs text-muted-foreground transition-colors",
-            isDragOver ? "border-purple-400 bg-purple-50/60" : "border-border"
-          )}
-        >
-          {busy ? (
-            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-          ) : (
-            <UploadCloud aria-hidden="true" className="h-4 w-4" />
-          )}
-          {t(
-            lang,
-            "ลากรูปจาก Library, ประวัติ หรือช่องตัดภาพมาวางที่นี่เพื่อใช้เป็นอ้างอิง",
-            "Drag an image from Library, History, or the grid cutter here to use as a reference"
-          )}
-        </div>
+        {onLinkMediaAssetId ? (
+          <div
+            onDragOver={e => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center text-xs text-muted-foreground transition-colors",
+              isDragOver ? "border-purple-400 bg-purple-50/60" : "border-border"
+            )}
+          >
+            {busy ? (
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            ) : (
+              <UploadCloud aria-hidden="true" className="h-4 w-4" />
+            )}
+            {t(
+              lang,
+              "ลากรูปจาก Library, ประวัติ หรือช่องตัดภาพมาวางที่นี่เพื่อใช้เป็นอ้างอิง",
+              "Drag an image from Library, History, or the grid cutter here to use as a reference"
+            )}
+          </div>
+        ) : (
+          // "Browse only" mode (no swap target picked yet) — this panel's
+          // own drop zone would have nothing to resolve onto, so the hint
+          // instead points at the real drop targets elsewhere on the page
+          // (a shot's image / the reference strip), matching how the tiles
+          // below are actually meant to be used.
+          <p className="flex items-center gap-2 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+            <UploadCloud aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t(
+              lang,
+              "ลากภาพจากที่นี่ไปวางบนภาพช็อต หรือช่องภาพอ้างอิงด้านซ้ายเพื่อใช้ทันที",
+              "Drag an image from here onto a shot's picture or its reference strip to use it right away"
+            )}
+          </p>
+        )}
 
         <Tabs
           value={activeTab}
           onValueChange={v => setActiveTab(v as typeof activeTab)}
         >
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="characterGallery" className="gap-1.5 text-xs">
-              <UserSquare2 aria-hidden="true" className="h-3.5 w-3.5" />
-              {t(lang, "ภาพตัวละครนี้", "This character")}
-            </TabsTrigger>
+          <TabsList
+            className={cn("grid w-full", characterId ? "grid-cols-4" : "grid-cols-3")}
+          >
+            {characterId ? (
+              <TabsTrigger value="characterGallery" className="gap-1.5 text-xs">
+                <UserSquare2 aria-hidden="true" className="h-3.5 w-3.5" />
+                {t(lang, "ภาพตัวละครนี้", "This character")}
+              </TabsTrigger>
+            ) : null}
             <TabsTrigger value="library" className="gap-1.5 text-xs">
               <LibraryIcon aria-hidden="true" className="h-3.5 w-3.5" />
               {t(lang, "คลัง", "Library")}
@@ -378,7 +430,7 @@ export function VerticalDramaCharacterReferencePanel({
                     key={asset.assetLinkId}
                     type="button"
                     disabled={busy}
-                    onClick={() => asset.mediaAssetId && onLinkMediaAssetId(asset.mediaAssetId)}
+                    onClick={() => asset.mediaAssetId && onLinkMediaAssetId?.(asset.mediaAssetId)}
                     className="group relative aspect-[9/16] overflow-hidden rounded-md border border-border hover:ring-2 hover:ring-primary disabled:opacity-60"
                     data-testid={`vd-character-gallery-asset-${asset.assetLinkId}`}
                   >
@@ -418,12 +470,16 @@ export function VerticalDramaCharacterReferencePanel({
                 "ใช้เป็นอ้างอิง",
                 "Use as reference"
               )}
-              onAddToReference={item => {
-                void resolveAndLink({
-                  source: "library",
-                  libraryItemId: item.item_id,
-                });
-              }}
+              onAddToReference={
+                onLinkMediaAssetId
+                  ? item => {
+                      void resolveAndLink({
+                        source: "library",
+                        libraryItemId: item.item_id,
+                      });
+                    }
+                  : undefined
+              }
               gridCutLabel={t(
                 lang,
                 "ตัดภาพนี้เป็นกริด",
@@ -473,8 +529,13 @@ export function VerticalDramaCharacterReferencePanel({
                       >
                         <button
                           type="button"
-                          className="block aspect-square w-full"
-                          disabled={busy}
+                          className="block aspect-square w-full disabled:cursor-grab"
+                          disabled={busy || !onLinkMediaAssetId}
+                          title={
+                            onLinkMediaAssetId
+                              ? undefined
+                              : t(lang, "ลากภาพนี้ไปวางเพื่อใช้งาน", "Drag this image to use it")
+                          }
                           onClick={() => {
                             if (task.resultUrl) {
                               void resolveAndLink({

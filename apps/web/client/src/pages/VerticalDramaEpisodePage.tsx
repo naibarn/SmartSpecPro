@@ -18,13 +18,14 @@
  * confirmation (see `VerticalDramaStoryboardPanel`).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { FileClock } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppPage } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResizableCollapsiblePanel } from "@/components/ui/resizable-collapsible-panel";
 import { trpc } from "@/lib/trpc";
@@ -655,6 +656,18 @@ function EpisodeWorkspaceShell({
         shotNumber,
         mediaAssetId: resolved.mediaAssetId,
       });
+      // Picking a candidate closes the picker (same as "dismiss") — clear
+      // the persisted grid too so a reload doesn't bring the picker back
+      // for a shot that already has its final start frame chosen.
+      setAngleVariationGridUrlByShot(prev => {
+        const next = { ...prev };
+        delete next[shotNumber];
+        return next;
+      });
+      delete persistedAngleGridUrlByShotRef.current[shotNumber];
+      const plan = episodeDetailQuery.data?.startFramePlan;
+      const frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+      if (frame?.angleGrid) persistAngleGrid(shotNumber, null);
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -1012,6 +1025,91 @@ function EpisodeWorkspaceShell({
       episodeId,
       motionPromptPack: { ...pack, clips: updatedClips },
     });
+  }
+
+  /* ---- Multi-angle (3x3) picker persistence (2026-07-05 fix) — the source
+   *  grid image is already durable (a completed media task with a
+   *  `resultUrl`); this just remembers that URL (plus which of the 9 tiles
+   *  the user has since deleted) on `startFramePlan.frames[shot].angleGrid`
+   *  via the same free `updateEpisodeDraft` JSONB-patch flow prompt edits
+   *  already use, so a reload restores the picker instead of silently
+   *  wiping it (bug report: Ctrl+Shift+R after deleting 2/9 tiles lost the
+   *  remaining 7). ---- */
+  function persistAngleGrid(
+    shotNumber: number,
+    angleGrid: { imageUrl: string; mediaTaskId?: string; dismissedIndexes: number[] } | null
+  ) {
+    const plan = episodeDetailQuery.data?.startFramePlan;
+    if (!plan) return;
+    const updatedFrames = (plan.frames ?? []).map(frame =>
+      frame.shotNumber === shotNumber
+        ? angleGrid
+          ? { ...frame, angleGrid }
+          : (() => {
+              // Clearing (dismiss-all) — drop the key entirely rather than
+              // setting it to null/undefined, keeping the persisted JSONB
+              // shape clean.
+              const { angleGrid: _drop, ...rest } = frame as typeof frame & {
+                angleGrid?: unknown;
+              };
+              return rest;
+            })()
+        : frame
+    );
+    updateEpisodeDraftMutation.mutate({
+      seriesId,
+      episodeId,
+      startFramePlan: { ...plan, frames: updatedFrames },
+    });
+  }
+
+  /** Tracks which shots' currently-showing grid URL has already been
+   *  persisted, so the effect below only ever fires the free save mutation
+   *  once per newly-completed grid (not on every render). */
+  const persistedAngleGridUrlByShotRef = useRef<Record<number, string>>({});
+
+  useEffect(() => {
+    for (const [shotKey, gridUrl] of Object.entries(angleVariationGridUrlByShot)) {
+      const shotNumber = Number(shotKey);
+      if (persistedAngleGridUrlByShotRef.current[shotNumber] === gridUrl) continue;
+      persistedAngleGridUrlByShotRef.current[shotNumber] = gridUrl;
+      persistAngleGrid(shotNumber, { imageUrl: gridUrl, dismissedIndexes: [] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [angleVariationGridUrlByShot]);
+
+  /** Per-tile delete in the picker — appends the tile's original 0..8 index
+   *  to `dismissedIndexes` and persists (free), so the deletion survives a
+   *  reload instead of only living in client state. */
+  function handleDeleteAngleVariationCandidate(shotNumber: number, originalIndex: number) {
+    const plan = episodeDetailQuery.data?.startFramePlan;
+    const frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+    const existing = frame?.angleGrid;
+    if (!existing?.imageUrl) return; // nothing persisted yet for this shot — local-only state is enough
+    const dismissedIndexes = Array.from(
+      new Set([...(existing.dismissedIndexes ?? []), originalIndex])
+    );
+    persistAngleGrid(shotNumber, {
+      imageUrl: existing.imageUrl,
+      mediaTaskId: existing.mediaTaskId,
+      dismissedIndexes,
+    });
+  }
+
+  /** "ปิด" (dismiss the whole picker) — clears the persisted `angleGrid` so
+   *  the picker doesn't come back on the next reload, in addition to
+   *  clearing local state (handled by the panel/`setAngleVariationGridUrlByShot`
+   *  below). */
+  function handleDismissAngleVariations(shotNumber: number) {
+    setAngleVariationGridUrlByShot(prev => {
+      const next = { ...prev };
+      delete next[shotNumber];
+      return next;
+    });
+    delete persistedAngleGridUrlByShotRef.current[shotNumber];
+    const plan = episodeDetailQuery.data?.startFramePlan;
+    const frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+    if (frame?.angleGrid) persistAngleGrid(shotNumber, null);
   }
 
   /**
@@ -1658,12 +1756,8 @@ function EpisodeWorkspaceShell({
               : null),
           angleVariationGridUrlByShot,
           onPickAngleVariationCandidate: handlePickAngleVariationCandidate,
-          onDismissAngleVariations: shotNumber =>
-            setAngleVariationGridUrlByShot(prev => {
-              const next = { ...prev };
-              delete next[shotNumber];
-              return next;
-            }),
+          onDismissAngleVariations: handleDismissAngleVariations,
+          onDeleteAngleVariationCandidate: handleDeleteAngleVariationCandidate,
           imageModels,
           videoModels,
           selectedImageModelId,
@@ -1748,17 +1842,22 @@ function EpisodeWorkspaceShell({
       />
     </div>
 
-    {/* Persistent right-side reference panel — pick an existing Media
-        History/Library/this-character image directly (no-cost, no LLM
-        regeneration), distinct from the repair dialog above. ALWAYS
-        mounted (not gated behind a popup) per explicit user request — an
-        idle empty state shows until a shot's "Change image" or a
-        character-reference chip sets `imageSwapTarget`. Reuses the
-        character-reference panel's Library/History/this-character
-        resolve-and-link flow for BOTH targets: a shot's start frame, or a
-        specific character's global portrait. Collapsible + resizable via
-        the shared `ResizableCollapsiblePanel` (same component/convention
-        already used by `StoryboardReviewPage.tsx`'s own right panel). */}
+    {/* Persistent right-side media panel — Media History/Library/Grid-cutter,
+        ALWAYS mounted and always usable (2026-07-05 fix: previously only
+        rendered content once a shot's "Change image" or a
+        character-reference chip set `imageSwapTarget` — this made the
+        History/Library tabs unreachable from the storyboard view except via
+        that click-through). Two modes, same underlying panel component:
+        - No `imageSwapTarget` ("browse" mode): History/Library/Cutter tabs
+          are usable via DRAG-AND-DROP onto a shot's image or its reference
+          strip (both existing drop targets already accept "history" /
+          "library" / "grid_cut" sources) — click-to-link affordances are
+          hidden since there's no explicit target to resolve onto.
+        - `imageSwapTarget` set (a shot's "Change image" / a character chip):
+          click-to-link works too, same as before.
+        Collapsible + resizable via the shared `ResizableCollapsiblePanel`
+        (same component/convention already used by `StoryboardReviewPage.tsx`'s
+        own right panel). */}
     <ResizableCollapsiblePanel
       side="right"
       collapsed={isRightPanelCollapsed}
@@ -1768,67 +1867,80 @@ function EpisodeWorkspaceShell({
       minWidth={EPISODE_RIGHT_PANEL_MIN_WIDTH}
       maxWidth={EPISODE_RIGHT_PANEL_MAX_WIDTH}
       className="max-h-[min(48rem,82dvh)] xl:h-full xl:max-h-none"
-      collapsedContent={lang === "th" ? "เปลี่ยนภาพ" : "Change image"}
-      collapseLabel={lang === "th" ? "ยุบ panel เปลี่ยนภาพ" : "Collapse image-swap panel"}
-      expandLabel={lang === "th" ? "เปิด panel เปลี่ยนภาพ" : "Open image-swap panel"}
-      resizeLabel={lang === "th" ? "ปรับขนาด panel เปลี่ยนภาพ" : "Resize image-swap panel"}
+      collapsedContent={lang === "th" ? "สื่อ" : "Media"}
+      collapseLabel={lang === "th" ? "ยุบ panel สื่อ" : "Collapse media panel"}
+      expandLabel={lang === "th" ? "เปิด panel สื่อ" : "Open media panel"}
+      resizeLabel={lang === "th" ? "ปรับขนาด panel สื่อ" : "Resize media panel"}
       testId="vd-episode-right-panel"
     >
       <div className="flex h-full min-h-0 flex-col p-2.5 sm:p-3">
-        <h2 className="mb-2 text-sm font-semibold">
-          {imageSwapTarget?.type === "startFrame"
-            ? lang === "th"
-              ? `เปลี่ยนภาพเฟรมเริ่มต้น — ช็อต ${imageSwapTarget.shotNumber}`
-              : `Change start frame — Shot ${imageSwapTarget.shotNumber}`
-            : imageSwapTarget?.type === "characterPortrait"
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">
+            {imageSwapTarget?.type === "startFrame"
               ? lang === "th"
-                ? "เปลี่ยนภาพอ้างอิงตัวละคร"
-                : "Change character reference image"
-              : lang === "th"
-                ? "เปลี่ยนภาพ"
-                : "Change image"}
-        </h2>
-        {imageSwapTarget != null ? (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <VerticalDramaCharacterReferencePanel
-              seriesId={seriesId}
-              characterId={
-                imageSwapTarget.type === "characterPortrait"
-                  ? imageSwapTarget.characterId
-                  : `shot-${imageSwapTarget.shotNumber}`
-              }
-              isLinking={
-                setApprovedStartFrameAssetMutation.isPending ||
-                linkCharacterPortraitMutation.isPending
-              }
-              onLinkMediaAssetId={mediaAssetId => {
-                if (imageSwapTarget.type === "startFrame") {
-                  setApprovedStartFrameAssetMutation.mutate({
-                    seriesId,
-                    episodeId,
-                    shotNumber: imageSwapTarget.shotNumber,
-                    mediaAssetId,
-                  });
-                } else {
-                  linkCharacterPortraitMutation.mutate({
-                    seriesId,
-                    characterId: imageSwapTarget.characterId,
-                    mediaAssetId,
-                    assetType: "character_reference",
-                    role: "primary_portrait",
-                    source: "imported",
-                  });
-                }
-              }}
-            />
-          </div>
-        ) : (
-          <p className="flex-1 text-sm text-muted-foreground">
-            {lang === "th"
-              ? "เลือกช็อตหรือตัวละครเพื่อเริ่มเปลี่ยนภาพ"
-              : "Pick a shot or character to start swapping images."}
-          </p>
-        )}
+                ? `เปลี่ยนภาพเฟรมเริ่มต้น — ช็อต ${imageSwapTarget.shotNumber}`
+                : `Change start frame — Shot ${imageSwapTarget.shotNumber}`
+              : imageSwapTarget?.type === "characterPortrait"
+                ? lang === "th"
+                  ? "เปลี่ยนภาพอ้างอิงตัวละคร"
+                  : "Change character reference image"
+                : lang === "th"
+                  ? "คลังภาพ / ประวัติ"
+                  : "Media History / Library"}
+          </h2>
+          {imageSwapTarget != null ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-xs"
+              onClick={() => setImageSwapTarget(null)}
+              data-testid="vd-episode-right-panel-clear-target"
+            >
+              {lang === "th" ? "ล้างเป้าหมาย" : "Clear target"}
+            </Button>
+          ) : null}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <VerticalDramaCharacterReferencePanel
+            seriesId={seriesId}
+            characterId={
+              imageSwapTarget?.type === "characterPortrait"
+                ? imageSwapTarget.characterId
+                : imageSwapTarget?.type === "startFrame"
+                  ? `shot-${imageSwapTarget.shotNumber}`
+                  : undefined
+            }
+            defaultTab="history"
+            isLinking={
+              setApprovedStartFrameAssetMutation.isPending ||
+              linkCharacterPortraitMutation.isPending
+            }
+            onLinkMediaAssetId={
+              imageSwapTarget != null
+                ? mediaAssetId => {
+                    if (imageSwapTarget.type === "startFrame") {
+                      setApprovedStartFrameAssetMutation.mutate({
+                        seriesId,
+                        episodeId,
+                        shotNumber: imageSwapTarget.shotNumber,
+                        mediaAssetId,
+                      });
+                    } else {
+                      linkCharacterPortraitMutation.mutate({
+                        seriesId,
+                        characterId: imageSwapTarget.characterId,
+                        mediaAssetId,
+                        assetType: "character_reference",
+                        role: "primary_portrait",
+                        source: "imported",
+                      });
+                    }
+                  }
+                : undefined
+            }
+          />
+        </div>
       </div>
     </ResizableCollapsiblePanel>
     </div>

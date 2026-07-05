@@ -43,6 +43,13 @@ plan. Specifically, each `prompt` must include:
    `canonical_style_bible` — e.g. a cold-triumph beat leans harder rim-lit
    contrast and cooler color; a panic beat may use a harsher, less flattering key
    light. Do not default every shot to the same generic "moody key light".
+   **Lighting must follow the scene's emotion, location, and time-of-day — do
+   NOT default to low-key/dark.** Prefer daylight, golden hour, bright neutral
+   interiors, or other lighter treatments for calm, neutral, or upbeat beats;
+   reserve low-key/rim-lit/dim treatments for beats that specifically call for
+   night, secrecy, or dread. Across the 9 shots the episode's start frames must
+   show real lighting variety (not one repeated "low-key rim light" line for
+   every shot) unless the script's setting genuinely keeps every shot dark.
 3. **Composition that expresses the beat's power dynamic** — who is framed higher
    or lower in the frame, camera height relative to each character, and the
    physical distance between characters (closer for intimacy/threat, more
@@ -68,7 +75,7 @@ Output skeleton:
       "shot_number": 1,
       "shot_title": "Shot 1",
       "timecode": "00:00-00:06",
-      "prompt": "vertical 9:16 start frame for shot 1, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 1, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: soft afternoon window light, neutral warm balance. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -101,7 +108,7 @@ Output skeleton:
       "shot_number": 2,
       "shot_title": "Shot 2",
       "timecode": "00:06-00:12",
-      "prompt": "vertical 9:16 start frame for shot 2, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 2, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: guarded suspicion. Lighting/color: bright practical office light overhead, even and clean. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -134,7 +141,7 @@ Output skeleton:
       "shot_number": 3,
       "shot_title": "Shot 3",
       "timecode": "00:12-00:18",
-      "prompt": "vertical 9:16 start frame for shot 3, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: cold, simmering anger. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 3, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: cold, simmering anger. Lighting/color: cool daylight through blinds, harder directional shadow as anger sharpens. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -167,7 +174,7 @@ Output skeleton:
       "shot_number": 4,
       "shot_title": "Shot 4",
       "timecode": "00:18-00:24",
-      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: smug certainty. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: smug certainty. Lighting/color: warm golden-hour light spilling across the table, deceptively pleasant. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -233,7 +240,7 @@ Output skeleton:
       "shot_number": 6,
       "shot_title": "Shot 6",
       "timecode": "00:30-00:36",
-      "prompt": "vertical 9:16 start frame for shot 6, Aria in boardroom. Expression: aria: eyes narrowed, jaw tight, the ghost of a smile; rival: brows drawn, mouth tightening, composure slipping. Emotion: exposed panic. Lighting/color: harder rim-lit contrast, cooler color grade to sharpen the emotional turn. Composition: camera looks slightly up at Aria, the rival pushed toward the frame edge and smaller in the composition — visually ceding power.",
+      "prompt": "vertical 9:16 start frame for shot 6, Aria in boardroom. Expression: aria: eyes narrowed, jaw tight, the ghost of a smile; rival: brows drawn, mouth tightening, composure slipping. Emotion: exposed panic. Lighting/color: harsh overhead light flattening the rival's expression, no flattering shadow. Composition: camera looks slightly up at Aria, the rival pushed toward the frame edge and smaller in the composition — visually ceding power.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -266,7 +273,7 @@ Output skeleton:
       "shot_number": 7,
       "shot_title": "Shot 7",
       "timecode": "00:36-00:42",
-      "prompt": "vertical 9:16 start frame for shot 7, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: brittle calm. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 7, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: brittle calm. Lighting/color: dim low-key rim light, brittle hush after the reversal. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -299,7 +306,7 @@ Output skeleton:
       "shot_number": 8,
       "shot_title": "Shot 8",
       "timecode": "00:42-00:48",
-      "prompt": "vertical 9:16 start frame for shot 8, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: quiet vindication. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 8, Aria in boardroom. Expression: aria: composed, watching closely. Emotion: quiet vindication. Lighting/color: soft morning light through tall windows, calm and open. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -332,7 +339,7 @@ Output skeleton:
       "shot_number": 9,
       "shot_title": "Shot 9",
       "timecode": "00:48-00:54",
-      "prompt": "vertical 9:16 start frame for shot 9, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: dawning dread. Lighting/color: low-key rim light, warm-cool boardroom teal/amber base. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 9, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: dawning dread. Lighting/color: cold blue dusk light easing toward shadow as dread creeps in. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {

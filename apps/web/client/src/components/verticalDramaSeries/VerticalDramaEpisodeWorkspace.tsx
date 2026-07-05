@@ -134,6 +134,7 @@ export interface VerticalDramaStoryboardPanelData {
   angleVariationGridUrlByShot?: Record<number, string>;
   onPickAngleVariationCandidate?: (shotNumber: number, candidateDataUrl: string) => void;
   onDismissAngleVariations?: (shotNumber: number) => void;
+  onDeleteAngleVariationCandidate?: (shotNumber: number, originalIndex: number) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   imageModels?: VerticalDramaCapableModel[];
@@ -579,6 +580,7 @@ export function VerticalDramaEpisodeWorkspace({
           angleVariationGridUrlByShot={storyboardPanel?.angleVariationGridUrlByShot}
           onPickAngleVariationCandidate={storyboardPanel?.onPickAngleVariationCandidate}
           onDismissAngleVariations={storyboardPanel?.onDismissAngleVariations}
+          onDeleteAngleVariationCandidate={storyboardPanel?.onDeleteAngleVariationCandidate}
           imageModels={storyboardPanel?.imageModels}
           videoModels={storyboardPanel?.videoModels}
           selectedImageModelId={storyboardPanel?.selectedImageModelId}
