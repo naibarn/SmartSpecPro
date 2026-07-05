@@ -52,6 +52,8 @@ import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
+  VD_IMAGE_PROMPT_MAX,
+  VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspaceCopy";
 
@@ -1669,6 +1671,7 @@ export function VerticalDramaStoryboardPanel({
                         : undefined
                     }
                     testIdPrefix={`vd-storyboard-image-prompt-${shotNumber}`}
+                    maxChars={VD_IMAGE_PROMPT_MAX}
                   />
                 ) : null}
 
@@ -1697,6 +1700,7 @@ export function VerticalDramaStoryboardPanel({
                       : undefined
                   }
                   testIdPrefix={`vd-storyboard-video-prompt-${shotNumber}`}
+                  maxChars={VD_VIDEO_PROMPT_MAX}
                 />
 
                 {/* Per-shot video prompt generation (Phase 6.6) — the LLM
@@ -2527,6 +2531,7 @@ function InlineEditablePromptBox({
   canSaveFree,
   onAiAdjust,
   testIdPrefix,
+  maxChars,
 }: {
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
@@ -2542,7 +2547,17 @@ function InlineEditablePromptBox({
   canSaveFree: boolean;
   onAiAdjust?: () => void;
   testIdPrefix: string;
+  /**
+   * Hard QC cap for this prompt kind (`VD_IMAGE_PROMPT_MAX` /
+   * `VD_VIDEO_PROMPT_MAX`) — shown as an `n / max` counter, warn-colored when
+   * over. This is a WARN-ONLY hint: saving free edits over the cap is still
+   * allowed (the server refines the prompt at generation time via
+   * `verticalDramaPromptQc.ts`), never blocked here.
+   */
+  maxChars: number;
 }) {
+  const liveLength = isEditing ? draft.length : prompt.length;
+  const isOverLimit = liveLength > maxChars;
   return (
     <div className="mt-1 flex flex-col gap-1 rounded-md bg-muted/50 p-2">
       <div className="flex items-center justify-between">
@@ -2586,24 +2601,51 @@ function InlineEditablePromptBox({
             autoFocus
             data-testid={`${testIdPrefix}-textarea`}
           />
-          <div className="flex justify-end gap-1.5">
-            <Button type="button" size="sm" variant="ghost" onClick={onCancelEdit}>
-              {t(locale, "ยกเลิก", "Cancel")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="gap-1"
-              onClick={onSave}
-              data-testid={`${testIdPrefix}-save`}
+          <div className="flex items-center justify-between gap-1.5">
+            <span
+              className={cn(
+                "text-[11px] tabular-nums",
+                isOverLimit ? "font-medium text-destructive" : "text-muted-foreground",
+              )}
+              data-testid={`${testIdPrefix}-char-counter`}
             >
-              <Check aria-hidden="true" className="h-3 w-3" />
-              {t2.savePromptFree}
-            </Button>
+              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+            </span>
+            <div className="flex justify-end gap-1.5">
+              <Button type="button" size="sm" variant="ghost" onClick={onCancelEdit}>
+                {t(locale, "ยกเลิก", "Cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1"
+                onClick={onSave}
+                data-testid={`${testIdPrefix}-save`}
+              >
+                <Check aria-hidden="true" className="h-3 w-3" />
+                {t2.savePromptFree}
+              </Button>
+            </div>
           </div>
+          {isOverLimit ? (
+            <p className="text-[11px] text-destructive">{t2.promptOverLimitHint}</p>
+          ) : null}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">{prompt || emptyLabel}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs text-muted-foreground">{prompt || emptyLabel}</p>
+          {prompt ? (
+            <span
+              className={cn(
+                "text-[11px] tabular-nums",
+                isOverLimit ? "font-medium text-destructive" : "text-muted-foreground",
+              )}
+              data-testid={`${testIdPrefix}-char-counter`}
+            >
+              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+            </span>
+          ) : null}
+        </div>
       )}
     </div>
   );

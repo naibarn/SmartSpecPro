@@ -255,6 +255,8 @@ export const VD_COPY = {
     savePromptFree: "Save (free)",
     aiAdjustPaid: "AI adjust (paid)",
     promptSaved: "Prompt saved.",
+    promptOverLimitHint:
+      "Over the limit — it will be auto-refined to fit when you generate.",
 
     /* ---- One-click generate mode choice + auto-prompt (2026-07-05 fix) ---- */
     chooseGenerateMode: "Choose how to generate",
@@ -443,6 +445,7 @@ export const VD_COPY = {
     savePromptFree: "บันทึก (ฟรี)",
     aiAdjustPaid: "ให้ AI ปรับ (มีค่าใช้จ่าย)",
     promptSaved: "บันทึก prompt แล้ว",
+    promptOverLimitHint: "เกินขีดจำกัด — ระบบจะปรับให้พอดีอัตโนมัติตอนสร้างภาพ/วิดีโอ",
 
     /* ---- One-click generate mode choice + auto-prompt (2026-07-05 fix) ---- */
     chooseGenerateMode: "เลือกวิธีสร้างภาพ",

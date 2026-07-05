@@ -83,6 +83,19 @@ string verbatim as a shortcut, even when you are unsure what changed between
 shots — invent the smallest plausible motion/performance delta instead of
 repeating text.
 
+## Prompt length limit — MANDATORY
+
+Every `video_clip_requests[].prompt` MUST be **2000 characters or fewer**,
+INCLUDING any embedded dialogue/delivery/acting direction text (the final
+prompt sent to the provider folds this content into the base motion prompt —
+write with that combined budget in mind, not just the camera-movement text
+alone). Prioritize (in order): camera movement + performance beat, delivery
+direction for embedded dialogue, facial/body continuity detail — compress or
+drop the least story-critical detail first if the full description would
+exceed the limit. A downstream quality-control pass will refine/compress any
+prompt that is still over the limit, but a well-written motion prompt should
+not rely on that fallback.
+
 ## Provider request variants
 
 `provider_request` MAY include additional named variant keys alongside

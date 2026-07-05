@@ -883,3 +883,25 @@ export type VerticalDramaEpisodeRun = {
   createdAt: string;
   updatedAt: string;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Final-prompt quality-control character caps (backend `verticalDramaPromptQc`) */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Hard character cap for any IMAGE prompt persisted/displayed/sent to a
+ * provider in the Vertical Drama flow. Enforced server-side by
+ * `server/services/verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`
+ * before the prompt is used for real generation or persisted/displayed —
+ * shared here so client-side inline prompt editors can render the same
+ * `n / VD_IMAGE_PROMPT_MAX` counter without duplicating the number.
+ */
+export const VD_IMAGE_PROMPT_MAX = 3500;
+
+/**
+ * Hard character cap for any VIDEO prompt (motion prompt, formatted
+ * provider-ready clip prompt including embedded dialogue/direction text)
+ * persisted/displayed/sent to a provider in the Vertical Drama flow. Same
+ * enforcement point as `VD_IMAGE_PROMPT_MAX` above.
+ */
+export const VD_VIDEO_PROMPT_MAX = 2000;

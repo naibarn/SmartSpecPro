@@ -83,6 +83,7 @@ import {
   VdSchemaValidationError as MemoryPlanningVdSchemaValidationError,
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
+import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -1730,6 +1731,26 @@ export class VerticalDramaEpisodePipeline {
     if (stage === "start_frame_render_plan" && paidModeAllowed) {
       try {
         const generated = await this.generateRealStartFramePlan(owner, episode);
+        // Final-prompt QC (hard length cap) — BEFORE this plan is persisted
+        // or used to render a paid image. Zero-cost no-op for prompts
+        // already within `VD_IMAGE_PROMPT_MAX` (see
+        // `verticalDramaPromptQc.ts`'s doc comment).
+        generated.plan = {
+          ...generated.plan,
+          frames: await Promise.all(
+            generated.plan.frames.map(async (frame) => {
+              const qc = await ensurePromptWithinLimit({
+                kind: "image",
+                prompt: frame.imagePrompt,
+                userId: owner.userId,
+                tenantId: owner.tenantId,
+                idempotencyKey: `${owner.episodeId}:start_frame_render_plan:${frame.shotNumber}`,
+                label: `start-frame prompt (shot ${frame.shotNumber})`,
+              });
+              return { ...frame, imagePrompt: qc.prompt };
+            }),
+          ),
+        };
         payload = { stage, ...generated.plan };
         // Persist to the episode's own `startFramePlan` jsonb column.
         await db
@@ -1804,6 +1825,25 @@ export class VerticalDramaEpisodePipeline {
           generated.pack,
           episode.dialogueAudioPlan
         );
+        // Final-prompt QC (hard length cap) — BEFORE this pack is persisted
+        // or used to render a paid video clip. Zero-cost no-op for clips
+        // already within `VD_VIDEO_PROMPT_MAX`.
+        generated.pack = {
+          ...generated.pack,
+          clips: await Promise.all(
+            generated.pack.clips.map(async (clip) => {
+              const qc = await ensurePromptWithinLimit({
+                kind: "video",
+                prompt: clip.prompt,
+                userId: owner.userId,
+                tenantId: owner.tenantId,
+                idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:${clip.clipNumber}`,
+                label: `motion prompt (clip ${clip.clipNumber})`,
+              });
+              return { ...clip, prompt: qc.prompt };
+            }),
+          ),
+        };
         payload = { stage, ...generated.pack, warnings: [] };
         if (subShotFlagOn && subShotPolicy.enabled) {
           const storyboard = buildStoryboard(

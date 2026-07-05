@@ -111,6 +111,15 @@ The caller tells you two independent language settings for this shot:
 6. `negative_motion_prompt` should list concrete artifacts to avoid (identity
    drift, warping, extra fingers, mouth desync when there is dialogue,
    unintended camera shake, text/labels/watermarks in frame).
+7. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
+   fewer**, INCLUDING any embedded dialogue/delivery text (this is the base
+   motion prompt the router formats into the final provider request, so write
+   with that combined budget in mind). Prioritize movement/camera continuation
+   and dialogue delivery direction first; compress or drop the least
+   story-critical detail if the full description would exceed the limit. A
+   downstream quality-control pass will refine/compress any prompt that is
+   still over the limit, but a well-written prompt should not rely on that
+   fallback.
 
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.

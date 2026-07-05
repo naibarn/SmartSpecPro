@@ -61,6 +61,7 @@ import {
   type VerticalDramaClipDialogueLine,
 } from "../services/verticalDramaVideoPromptFormatter";
 import { generateVerticalDramaShotVideoPrompt } from "../services/verticalDramaVideoMotionPromptGeneration";
+import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
 import {
   VERTICAL_DRAMA_MEMORY_KINDS,
   VERTICAL_DRAMA_PROMPT_LANGUAGES,
@@ -2403,11 +2404,25 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
+      // Final-prompt QC (hard length cap) — enforced right before the
+      // outgoing image render call. No-op (zero LLM calls / zero credits)
+      // when the stored prompt is already within `VD_IMAGE_PROMPT_MAX`.
+      const imagePromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: frame.imagePrompt,
+        userId,
+        tenantId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `start-frame image prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
         const task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: frame.imagePrompt,
+            prompt: imagePromptQc.prompt,
             negativePrompt: frame.negativePrompt,
             model: resolvedImageModelId,
             numImages: 1,
@@ -2594,6 +2609,19 @@ export const verticalDramaEpisodesRouter = router({
         "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
         "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
       ].join(" ");
+      // Final-prompt QC (hard length cap) — enforced on the FINAL grid
+      // prompt (base imagePrompt + fixed grid instructions), since that
+      // concatenated string is what actually gets sent to the provider.
+      const gridPromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: gridPrompt,
+        userId,
+        tenantId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `multi-angle grid prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
       const gridNegativePrompt = [
         frame.negativePrompt,
         "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
@@ -2616,7 +2644,7 @@ export const verticalDramaEpisodesRouter = router({
       try {
         const task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: gridPrompt,
+            prompt: gridPromptQc.prompt,
             negativePrompt: gridNegativePrompt || undefined,
             model: resolvedImageModelId,
             numImages: 1,
@@ -2836,11 +2864,27 @@ export const verticalDramaEpisodesRouter = router({
         "Keep the same character identity, wardrobe (unless the instruction explicitly changes it), pose, composition, and framing as the reference image — apply ONLY the requested change.",
       ].join(" ");
 
+      // Final-prompt QC (hard length cap) — enforced on the final repair
+      // prompt (`instruction` is already Zod-capped at 2000 chars, but the
+      // appended preservation directive can still push it over
+      // `VD_IMAGE_PROMPT_MAX` in edge cases; checked here for consistency
+      // with every other outgoing image prompt in this router).
+      const repairPromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: repairPrompt,
+        userId,
+        tenantId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `image repair prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
         const task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: repairPrompt,
+            prompt: repairPromptQc.prompt,
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
@@ -3037,6 +3081,24 @@ export const verticalDramaEpisodesRouter = router({
         model,
         aspectRatio: "9:16",
       });
+
+      // Final-prompt QC (hard length cap) — the formatter folds
+      // dialogue/delivery/acting direction text INTO `clip.prompt`, so the
+      // final string must be re-checked here (the base motion prompt alone
+      // may already be within cap, but the formatted result can exceed it).
+      // Zero-cost no-op when the formatted prompt is already within
+      // `VD_VIDEO_PROMPT_MAX`.
+      const videoPromptQc = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: formatted.prompt,
+        userId,
+        tenantId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `video clip prompt (episode #${episodeId}, clip ${input.clipNumber})`,
+      });
+      formatted.prompt = videoPromptQc.prompt;
 
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
@@ -3276,6 +3338,21 @@ export const verticalDramaEpisodesRouter = router({
         dialogueLanguage: pack?.dialogueLanguage,
         idempotencyKey: input.idempotencyKey,
       });
+
+      // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
+      // persisted onto `motionPromptPack.clips[]` below. Zero-cost no-op
+      // when the generated prompt is already within `VD_VIDEO_PROMPT_MAX`.
+      const shotVideoPromptQc = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: result.prompt,
+        userId,
+        tenantId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `shot video prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+      result.prompt = shotVideoPromptQc.prompt;
 
       // Persist onto the matching clip — create a minimal clip entry if the
       // pack exists but has no matching clip, or a minimal pack if the pack

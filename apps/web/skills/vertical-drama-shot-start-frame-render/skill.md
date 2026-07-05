@@ -58,6 +58,17 @@ plan. Specifically, each `prompt` must include:
    camera looks slightly up at them, or the other character is pushed to the
    frame edge / smaller in a wider shot).
 
+## Prompt length limit — MANDATORY
+
+Every `start_frame_requests[].prompt` MUST be **3500 characters or fewer**.
+Write vivid, specific cinematic language within that budget — do not pad with
+repeated adjectives or restate the same detail in multiple phrasings. If a
+shot's full description would exceed the limit, prioritize (in order):
+facial micro-expression, mood lighting/color, composition/power-dynamic —
+and compress or drop the least story-critical detail first. A downstream
+quality-control pass will refine/compress any prompt that is still over the
+limit, but a well-written render plan should not rely on that fallback.
+
 Output skeleton:
 
 ```json
