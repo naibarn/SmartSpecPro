@@ -7,12 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from typing import Dict, Any
 from datetime import datetime
+import structlog
 
 from app.core.database import get_db
 from app.monitoring.marketplace_metrics import get_metrics
 from app.models.user import User
 from app.core.auth import get_current_active_superuser
 
+logger = structlog.get_logger()
 router = APIRouter()
 
 
@@ -112,9 +114,12 @@ async def metrics_endpoint(
 
 
 @router.get("/health/database", tags=["monitoring"])
-async def database_health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+async def database_health(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_superuser),
+) -> Dict[str, Any]:
     """
-    Database-specific health check
+    Database-specific health check (admin only)
     Tests database connectivity and basic queries
     """
     checks = {}
@@ -124,7 +129,8 @@ async def database_health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         await db.execute(text("SELECT 1"))
         checks["connectivity"] = "healthy"
     except Exception as e:
-        checks["connectivity"] = {"status": "unhealthy", "error": str(e)}
+        logger.error("database_health_connectivity_failed", error=str(e))
+        checks["connectivity"] = {"status": "unhealthy", "error": "connectivity check failed"}
 
     try:
         # Check users table
@@ -132,7 +138,8 @@ async def database_health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         user_count = result.scalar()
         checks["users_table"] = {"status": "healthy", "count": user_count}
     except Exception as e:
-        checks["users_table"] = {"status": "unhealthy", "error": str(e)}
+        logger.error("database_health_users_table_failed", error=str(e))
+        checks["users_table"] = {"status": "unhealthy", "error": "users table check failed"}
 
     try:
         # Check marketplace tables
@@ -140,7 +147,11 @@ async def database_health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         template_count = result.scalar()
         checks["marketplace_templates"] = {"status": "healthy", "count": template_count}
     except Exception as e:
-        checks["marketplace_templates"] = {"status": "unhealthy", "error": str(e)}
+        logger.error("database_health_marketplace_templates_failed", error=str(e))
+        checks["marketplace_templates"] = {
+            "status": "unhealthy",
+            "error": "marketplace_templates check failed",
+        }
 
     try:
         # Check purchases table
@@ -148,7 +159,11 @@ async def database_health(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
         purchase_count = result.scalar()
         checks["template_purchases"] = {"status": "healthy", "count": purchase_count}
     except Exception as e:
-        checks["template_purchases"] = {"status": "unhealthy", "error": str(e)}
+        logger.error("database_health_template_purchases_failed", error=str(e))
+        checks["template_purchases"] = {
+            "status": "unhealthy",
+            "error": "template_purchases check failed",
+        }
 
     all_healthy = all(
         check == "healthy" or (isinstance(check, dict) and check.get("status") == "healthy")

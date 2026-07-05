@@ -15,8 +15,9 @@ def _localhost_only(request: Request):
         raise HTTPException(status_code=403, detail="localhost_only")
 
 def _require_api_key(request: Request):
+    # Fail closed: never allow requests through if the shared key is unset.
     if not settings.orchestrator_api_key:
-        return
+        raise HTTPException(status_code=503, detail="orchestrator_api_key_not_configured")
     key = request.headers.get("x-orchestrator-key", "")
     if not secrets.compare_digest(key, settings.orchestrator_api_key):
         raise HTTPException(status_code=401, detail="invalid_orchestrator_key")

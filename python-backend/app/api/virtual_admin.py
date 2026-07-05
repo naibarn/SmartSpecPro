@@ -2,17 +2,39 @@
 from __future__ import annotations
 
 import logging
+import secrets
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
+
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/internal/virtual-admin")
 logger = logging.getLogger(__name__)
 
 
+def _require_internal_access(request: Request) -> None:
+    """Defense-in-depth gate: localhost-only, plus a token check if configured.
+
+    Nginx already blocks `/api/internal/` from the internet, but this
+    app-layer check protects against nginx misconfiguration or the app
+    being reached via another path (e.g. direct port access).
+    """
+    host = (request.client.host if request.client else "") or ""
+    if host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(status_code=403, detail="Forbidden (localhost only)")
+
+    expected_key = settings.VIRTUAL_ADMIN_API_KEY
+    if expected_key:
+        provided_key = request.headers.get("x-virtual-admin-key", "")
+        if not secrets.compare_digest(provided_key, expected_key):
+            raise HTTPException(status_code=401, detail="Invalid virtual admin key")
+
+
 @router.get("/celery-health")
-async def celery_health() -> dict[str, Any]:
+async def celery_health(request: Request) -> dict[str, Any]:
     """Return Celery worker health status for the System Guardian sensor."""
+    _require_internal_access(request)
     try:
         from app.core.celery_app import celery_app
         import redis as redis_lib
@@ -58,6 +80,7 @@ async def celery_health() -> dict[str, Any]:
 @router.post("/restart-worker")
 async def restart_worker(request: Request) -> dict[str, Any]:
     """Send shutdown signal to a Celery worker (supervisor/systemd auto-restarts)."""
+    _require_internal_access(request)
     try:
         body = await request.json()
         worker_name = body.get("worker_name")
@@ -76,6 +99,7 @@ async def restart_worker(request: Request) -> dict[str, Any]:
 @router.post("/revoke-task")
 async def revoke_task(request: Request) -> dict[str, Any]:
     """Revoke/terminate a stuck Celery task."""
+    _require_internal_access(request)
     try:
         body = await request.json()
         task_id = body.get("task_id")

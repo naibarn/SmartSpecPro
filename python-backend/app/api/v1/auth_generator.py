@@ -4,7 +4,7 @@ Auth Generator API Router
 Provides endpoints for generating authentication systems through UI.
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from enum import Enum
@@ -14,6 +14,9 @@ import os
 import tempfile
 import shutil
 from pathlib import Path
+
+from app.core.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/auth-generator", tags=["Auth Generator"])
 
@@ -461,12 +464,17 @@ async def preview_code(request: PreviewRequest):
 
 
 @router.post("/generate", response_model=GenerationResult)
-async def generate_auth(config: AuthGeneratorConfig, background_tasks: BackgroundTasks):
+async def generate_auth(
+    config: AuthGeneratorConfig,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+):
     """Generate authentication system from configuration"""
     try:
-        # Create output directory
-        output_path = Path(config.output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+        # Ignore client-supplied output_dir — never write at a client-chosen
+        # filesystem path. Generate into a per-user sandbox directory created
+        # server-side instead.
+        output_path = Path(tempfile.mkdtemp(prefix=f"authgen_{current_user.id}_"))
         
         # Generate spec file
         spec_content = config_to_spec(config)

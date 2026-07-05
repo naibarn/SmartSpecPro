@@ -186,13 +186,25 @@ async def send_telegram_message(
     """
     Sends a message via Telegram Bot API using httpx.AsyncClient.
     Returns API response JSON.
+
+    NOTE: The bot token is embedded in the request URL (Telegram Bot API
+    convention). httpx.HTTPStatusError.__str__() includes the request URL,
+    so any failure here is re-raised with the token stripped to avoid
+    leaking it into logs or error messages upstream.
     """
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(url, json=payload)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise httpx.HTTPStatusError(
+                f"Telegram API request failed with status {exc.response.status_code}",
+                request=exc.request,
+                response=exc.response,
+            ) from None
         return response.json()
 
 
@@ -268,8 +280,13 @@ async def telegram_webhook(
             text="✅ Your Telegram account has been linked to SmartSpecPro!",
         )
     except Exception as e:
-        # Log error but don't fail (user is already linked)
-        print(f"[Telegram Webhook] Failed to send confirmation: {e}")
+        # Log error but don't fail (user is already linked). Never log the
+        # raw exception string — httpx HTTPStatusError embeds the request URL,
+        # which contains the bot token (https://api.telegram.org/bot{token}/...).
+        logger.error(
+            "telegram_webhook_confirmation_send_failed",
+            extra={"error_type": type(e).__name__},
+        )
 
     # 10. Delete verification code from Redis
     await redis.delete(f"telegram:verify:{code}")

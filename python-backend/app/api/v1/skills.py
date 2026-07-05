@@ -5,6 +5,7 @@ This module provides REST API endpoints for managing Kilo Code skills,
 including CRUD operations, template management, and skill injection.
 """
 
+import os
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query, Path
 from pydantic import BaseModel, Field
@@ -12,6 +13,9 @@ import structlog
 import json
 import yaml
 
+from app.core.auth import get_current_user
+from app.core.config import settings
+from app.models.user import User
 from app.services.kilo_skill_manager import (
     KiloSkillManager,
     Skill,
@@ -24,6 +28,29 @@ from app.services.manifest_validator import validate_and_raise, ManifestValidati
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/skills", tags=["skills"])
+
+
+def _resolve_workspace(workspace: str) -> str:
+    """Resolve a client-supplied workspace identifier against an allow-listed root.
+
+    Prevents arbitrary filesystem read/write/delete by rejecting any workspace
+    value that resolves outside of `settings.KILO_WORKSPACE_ROOT`. Mirrors the
+    sandboxing approach used by `validate_output_path` in
+    `app.core.media_job_validators`.
+    """
+    if not workspace or not workspace.strip():
+        raise HTTPException(status_code=400, detail="workspace is required")
+
+    root = os.path.abspath(settings.KILO_WORKSPACE_ROOT)
+    # Treat the client value as a relative sub-directory name under the root —
+    # never as an absolute filesystem path chosen by the client.
+    candidate = os.path.normpath(os.path.join(root, workspace.lstrip("/\\")))
+
+    if candidate != root and not candidate.startswith(root + os.sep):
+        raise HTTPException(status_code=400, detail="Invalid workspace")
+
+    os.makedirs(candidate, exist_ok=True)
+    return candidate
 
 
 # ============================================================================
@@ -186,9 +213,10 @@ class SkillInjectionResponse(BaseModel):
 
 @router.get("", response_model=SkillListResponse)
 async def list_skills(
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     mode: Optional[str] = Query(None, description="Filter by mode"),
     scope: Optional[str] = Query(None, description="Filter by scope"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     List all skills in a workspace.
@@ -197,11 +225,12 @@ async def list_skills(
     optionally filtered by mode or scope.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
 
         # Get skills directory
         mode_filter = SkillMode(mode) if mode else None
-        skills = manager.list_skills(workspace, mode=mode_filter)
+        skills = manager.list_skills(workspace_path, mode=mode_filter)
 
         # Filter by scope if specified
         if scope:
@@ -229,7 +258,7 @@ async def list_skills(
 
 
 @router.get("/templates", response_model=TemplateListResponse)
-async def list_templates():
+async def list_templates(current_user: User = Depends(get_current_user)):
     """
     List all available skill templates.
 
@@ -260,6 +289,7 @@ async def list_templates():
 @router.get("/templates/{template_name}")
 async def get_template(
     template_name: str = Path(..., description="Template name"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get a specific skill template.
@@ -282,8 +312,9 @@ async def get_template(
 @router.get("/{skill_name}", response_model=SkillResponse)
 async def get_skill(
     skill_name: str = Path(..., description="Skill name"),
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     mode: Optional[str] = Query(None, description="Kilo mode"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get a specific skill by name.
@@ -291,10 +322,11 @@ async def get_skill(
     Returns the skill content and metadata.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
         mode_enum = SkillMode(mode) if mode else None
 
-        skill = await manager.get_skill(workspace, skill_name, mode=mode_enum)
+        skill = await manager.get_skill(workspace_path, skill_name, mode=mode_enum)
 
         if not skill:
             raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
@@ -318,7 +350,8 @@ async def get_skill(
 @router.post("", response_model=SkillResponse)
 async def create_skill(
     skill: SkillCreate,
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Create a new skill.
@@ -326,6 +359,8 @@ async def create_skill(
     Creates a new SKILL.md file in the appropriate directory.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
+
         # Validate manifest if present in skill content
         _extract_and_validate_manifest(skill.content)
 
@@ -342,7 +377,7 @@ async def create_skill(
         )
 
         # Save skill
-        file_path = await manager.create_skill(workspace, new_skill)
+        file_path = await manager.create_skill(workspace_path, new_skill)
 
         logger.info(
             "Skill created",
@@ -369,8 +404,9 @@ async def create_skill(
 async def update_skill(
     skill_name: str = Path(..., description="Skill name"),
     skill_update: SkillUpdate = ...,
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     mode: Optional[str] = Query(None, description="Kilo mode"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update an existing skill.
@@ -378,11 +414,12 @@ async def update_skill(
     Updates the SKILL.md file with new content.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
         mode_enum = SkillMode(mode) if mode else None
 
         # Get existing skill
-        existing = await manager.get_skill(workspace, skill_name, mode=mode_enum)
+        existing = await manager.get_skill(workspace_path, skill_name, mode=mode_enum)
         if not existing:
             raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
 
@@ -401,7 +438,7 @@ async def update_skill(
             existing.tags = skill_update.tags
 
         # Save updated skill
-        file_path = await manager.update_skill(workspace, existing)
+        file_path = await manager.update_skill(workspace_path, existing)
 
         logger.info(
             "Skill updated",
@@ -428,8 +465,9 @@ async def update_skill(
 @router.delete("/{skill_name}")
 async def delete_skill(
     skill_name: str = Path(..., description="Skill name"),
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     mode: Optional[str] = Query(None, description="Kilo mode"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Delete a skill.
@@ -437,10 +475,11 @@ async def delete_skill(
     Removes the skill directory and SKILL.md file.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
         mode_enum = SkillMode(mode) if mode else None
 
-        success = await manager.delete_skill(workspace, skill_name, mode=mode_enum)
+        success = await manager.delete_skill(workspace_path, skill_name, mode=mode_enum)
 
         if not success:
             raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
@@ -462,7 +501,8 @@ async def delete_skill(
 @router.post("/inject/template", response_model=SkillInjectionResponse)
 async def inject_template(
     request: InjectTemplateRequest,
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Inject a skill template into the workspace.
@@ -470,6 +510,7 @@ async def inject_template(
     Creates a new skill from a template with optional variable substitution.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
 
         if request.template_name not in SKILL_TEMPLATES:
@@ -478,7 +519,7 @@ async def inject_template(
             )
 
         skill_path = await manager.inject_template(
-            workspace=workspace,
+            workspace=workspace_path,
             template_name=request.template_name,
             variables=request.variables,
         )
@@ -509,7 +550,8 @@ async def inject_template(
 @router.post("/inject/context", response_model=SkillInjectionResponse)
 async def inject_smartspec_context(
     request: InjectContextRequest,
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Inject SmartSpec context as a skill.
@@ -517,10 +559,11 @@ async def inject_smartspec_context(
     Creates a skill from user preferences, project facts, and memories.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
 
         skill_path = await manager.inject_smartspec_context(
-            workspace=workspace,
+            workspace=workspace_path,
             user_id=request.user_id,
             project_id=request.project_id,
             include_episodic=request.include_episodic,
@@ -548,11 +591,12 @@ async def inject_smartspec_context(
 
 @router.post("/setup-project")
 async def setup_project_skills(
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     templates: List[str] = Query(
         default=["project_conventions", "api_design", "security_practices"],
         description="List of templates to inject",
     ),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Setup default project skills.
@@ -560,6 +604,7 @@ async def setup_project_skills(
     Injects a set of recommended skill templates for a new project.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         manager = get_kilo_skill_manager()
 
         results = []
@@ -567,7 +612,7 @@ async def setup_project_skills(
             if template_name in SKILL_TEMPLATES:
                 try:
                     skill_path = await manager.inject_template(
-                        workspace=workspace,
+                        workspace=workspace_path,
                         template_name=template_name,
                     )
                     results.append(
@@ -648,7 +693,8 @@ class DiffResponse(BaseModel):
 @router.post("/sync", response_model=SyncResponse)
 async def sync_skills(
     request: SyncRequest,
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Sync skills between Kilo Code and Claude Code directories.
@@ -656,13 +702,14 @@ async def sync_skills(
     Converts and copies skills from one format to another.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         from app.services.kilo_skill_manager_v2 import SkillConverter, SkillFormat
 
         converter = SkillConverter()
         source_format = SkillFormat.KILO if request.source_format == "kilo" else SkillFormat.CLAUDE
 
         results = converter.sync_directory(
-            workspace,
+            workspace_path,
             source_format=source_format,
             bidirectional=request.bidirectional,
         )
@@ -691,7 +738,8 @@ async def sync_skills(
 
 @router.get("/diff", response_model=DiffResponse)
 async def diff_skills(
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Show differences between Kilo Code and Claude Code skill directories.
@@ -699,10 +747,11 @@ async def diff_skills(
     Returns lists of skills that exist in one directory but not the other.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         from pathlib import Path
 
-        kilo_dir = Path(workspace) / ".kilocode" / "skills"
-        claude_dir = Path(workspace) / ".claude" / "skills"
+        kilo_dir = Path(workspace_path) / ".kilocode" / "skills"
+        claude_dir = Path(workspace_path) / ".claude" / "skills"
 
         kilo_skills = set()
         claude_skills = set()
@@ -732,9 +781,10 @@ async def diff_skills(
 @router.post("/convert")
 async def convert_skill(
     skill_name: str = Query(..., description="Skill name to convert"),
-    workspace: str = Query(..., description="Path to workspace directory"),
+    workspace: str = Query(..., description="Workspace identifier"),
     source_format: str = Query(default="kilo", description="Source format"),
     target_format: str = Query(default="claude", description="Target format"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Convert a single skill from one format to another.
@@ -742,6 +792,7 @@ async def convert_skill(
     Creates a copy of the skill in the target format's directory.
     """
     try:
+        workspace_path = _resolve_workspace(workspace)
         from app.services.kilo_skill_manager_v2 import KiloSkillManager, SkillFormat
 
         manager = KiloSkillManager()
@@ -750,13 +801,13 @@ async def convert_skill(
         tgt_fmt = SkillFormat.KILO if target_format == "kilo" else SkillFormat.CLAUDE
 
         # Get skill from source
-        skill = manager.get_skill(workspace, skill_name, prefer_format=src_fmt)
+        skill = manager.get_skill(workspace_path, skill_name, prefer_format=src_fmt)
 
         if not skill:
             raise HTTPException(status_code=404, detail=f"Skill '{skill_name}' not found")
 
         # Create in target format
-        result = manager.create_skill(workspace, skill, formats=[tgt_fmt])
+        result = manager.create_skill(workspace_path, skill, formats=[tgt_fmt])
 
         if tgt_fmt in result:
             return {

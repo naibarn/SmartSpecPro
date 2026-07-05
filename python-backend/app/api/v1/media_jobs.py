@@ -26,14 +26,13 @@ async def execute_media_job_endpoint(
 
     Requires internal service token for authentication (node.js → python).
     """
-    # If token is configured, both sides must match.
-    # If not configured (dev mode), allow empty-to-empty.
-    if MEDIA_JOB_INTERNAL_TOKEN:
-        if not secrets.compare_digest(x_internal_token, MEDIA_JOB_INTERNAL_TOKEN):
-            raise HTTPException(status_code=401, detail="Unauthorized")
-    elif x_internal_token:
-        # Server has no token but client sent one — surface misconfiguration
-        raise HTTPException(status_code=401, detail="Unauthorized: token mismatch")
+    # Fail closed: this endpoint must never accept requests unless the shared
+    # token is actually configured on the server side.
+    if not MEDIA_JOB_INTERNAL_TOKEN:
+        raise HTTPException(status_code=503, detail="Service not configured")
+
+    if not secrets.compare_digest(x_internal_token, MEDIA_JOB_INTERNAL_TOKEN):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     try:
         from app.tasks.media_job_worker import execute_media_job

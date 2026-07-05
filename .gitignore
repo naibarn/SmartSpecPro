@@ -26,6 +26,15 @@ config.secret.*
 *.pfx
 *.ppk
 id_rsa*
+nginx/ssl/*.key
+nginx/ssl/*.pem
+
+# Database backups / dumps (contain tenant data — never commit)
+.db-backups/
+**/db-backups/
+tmp/
+*.sql.bak
+*.dump
 
 # Cloud provider credentials
 .aws/

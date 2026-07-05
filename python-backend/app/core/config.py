@@ -154,6 +154,16 @@ class Settings(BaseSettings):
     SMARTSPEC_REINDEX_LOCALHOST_ONLY: bool = True
     SMARTSPEC_INTERNAL_REINDEX_TOKEN: str = ""
 
+    # Allow-listed root directory for Kilo skill workspaces (server-side sandbox).
+    # Client-supplied `workspace` query params are resolved against this root and
+    # must not escape it (prevents arbitrary filesystem read/write/delete).
+    KILO_WORKSPACE_ROOT: str = "./data/kilo_workspaces"
+
+    # Defense-in-depth token for Virtual Admin (System Guardian) internal endpoints.
+    # These routes are also blocked at the nginx layer (`/api/internal/` deny),
+    # but this app-layer gate protects against nginx misconfiguration.
+    VIRTUAL_ADMIN_API_KEY: str = ""
+
     # LLM Proxy
     USE_OPENROUTER: bool = True  # Use OpenRouter by default
     DEFAULT_BUDGET_PRIORITY: Literal["quality", "cost", "speed", "balanced"] = "balanced"

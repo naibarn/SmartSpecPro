@@ -546,7 +546,7 @@ export const adminOpsRouter = router({
       if (!db) return { topModels: [], daily: [], totals: { requests: 0, cost: 0, inputTokens: 0, outputTokens: 0 } };
 
       const { providerUsageLog } = await import('../../drizzle/schema');
-      const { sql, gte } = await import('drizzle-orm');
+      const { sql, gte, inArray } = await import('drizzle-orm');
 
       const since = new Date();
       since.setDate(since.getDate() - days);
@@ -566,10 +566,9 @@ export const adminOpsRouter = router({
         const topModels = topModelsResult.map(r => r.model);
 
         // Step 2: Daily breakdown with top 5 models + "Other" bucket
-        // Build the IN list as raw SQL to avoid parameterized GROUP BY (PostgreSQL rejects params in GROUP BY)
-        const escapedModels = topModels.map(m => `'${m.replace(/'/g, "''")}'`).join(', ');
+        // Use drizzle's `inArray` for parameter binding (no manual escaping / sql.raw string interpolation).
         const modelCaseExpr = topModels.length > 0
-          ? sql<string>`CASE WHEN "modelUsed" IN (${sql.raw(escapedModels)}) THEN "modelUsed" ELSE 'Other' END`
+          ? sql<string>`CASE WHEN ${inArray(providerUsageLog.modelUsed, topModels)} THEN ${providerUsageLog.modelUsed} ELSE 'Other' END`
           : sql<string>`'Other'`;
 
         const dailyRows = await db.select({

@@ -950,31 +950,66 @@ export const usersRouter = router({
         throw new Error("Insufficient credits for transfer");
       }
 
-      // 5. Deduct from domain admin
+      // 5. Deduct from domain admin and add to target user atomically.
+      // deductCredits/addCredits each run their own internal db.transaction and do not
+      // accept an injected executor, so true single-transaction atomicity isn't available
+      // here. Instead we make the transfer retry-safe with a shared idempotency key
+      // (dedupes client retries against both legs) and add a compensating refund: if the
+      // credit step succeeds but the debit step fails, we re-credit the sender so credits
+      // are never destroyed.
+      const transferId = crypto.randomUUID();
+      const deductIdempotencyKey = `credit-transfer:${transferId}:deduct`;
+      const addIdempotencyKey = `credit-transfer:${transferId}:add`;
+
       const deductResult = await deductCredits({
         userId: ctx.user.id,
         amount: input.amount,
         description: `Transfer to ${targetUser.email || targetUser.name}: ${input.note || 'Credit transfer'}`,
         sourceType: "admin",
+        idempotencyKey: deductIdempotencyKey,
         metadata: {
           action: 'domain_admin_transfer',
           toUserId: input.toUserId,
           toUserEmail: targetUser.email,
+          transferId,
         },
       });
 
-      // 6. Add to target user
-      const addResult = await addCredits({
-        userId: input.toUserId,
-        amount: input.amount,
-        type: 'bonus' as TransactionType,
-        description: `Transfer from domain admin (${ctx.user.email || ctx.user.name}): ${input.note || 'Credit transfer'}`,
-        metadata: {
-          action: 'domain_admin_transfer',
-          fromUserId: ctx.user.id,
-          fromUserEmail: ctx.user.email,
-        },
-      });
+      let addResult;
+      try {
+        addResult = await addCredits({
+          userId: input.toUserId,
+          amount: input.amount,
+          type: 'bonus' as TransactionType,
+          description: `Transfer from domain admin (${ctx.user.email || ctx.user.name}): ${input.note || 'Credit transfer'}`,
+          idempotencyKey: addIdempotencyKey,
+          metadata: {
+            action: 'domain_admin_transfer',
+            fromUserId: ctx.user.id,
+            fromUserEmail: ctx.user.email,
+            transferId,
+          },
+        });
+      } catch (addError) {
+        // Compensating action: the sender's credits were already deducted, but the
+        // recipient never received them. Refund the sender so credits are not destroyed.
+        // Reuse the deduct idempotency key so a retried refund attempt is deduplicated too.
+        await addCredits({
+          userId: ctx.user.id,
+          amount: input.amount,
+          type: 'refund' as TransactionType,
+          description: `Refund: failed transfer to ${targetUser.email || targetUser.name} (${input.note || 'Credit transfer'})`,
+          idempotencyKey: `credit-transfer:${transferId}:refund`,
+          metadata: {
+            action: 'domain_admin_transfer_refund',
+            toUserId: input.toUserId,
+            toUserEmail: targetUser.email,
+            transferId,
+            originalTransactionId: deductResult.transactionId,
+          },
+        });
+        throw addError;
+      }
 
       return {
         success: true,
