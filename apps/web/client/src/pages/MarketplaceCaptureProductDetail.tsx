@@ -129,6 +129,7 @@ type ProductEditForm = {
   productCategory: ProductReferenceCategory;
   ratingScore: string;
   reviewCountText: string;
+  affiliateUrl: string;
 };
 type ProductMediaAsset = {
   url: string;
@@ -2347,6 +2348,7 @@ export default function MarketplaceCaptureProductDetail() {
     productCategory: "auto",
     ratingScore: "",
     reviewCountText: "",
+    affiliateUrl: "",
   });
   const [deletedLibraryItemIds, setDeletedLibraryItemIds] = useState<
     Set<number>
@@ -3186,9 +3188,11 @@ export default function MarketplaceCaptureProductDetail() {
         : "auto",
       ratingScore: compactDisplayValue(item.ratingScore),
       reviewCountText: compactText(item.reviewCountText),
+      affiliateUrl: compactText(item.affiliateUrl),
     }),
     [
       capturedCategoryText,
+      item.affiliateUrl,
       item.commissionRatePercent,
       item.descriptionText,
       item.priceCurrent,
@@ -5590,8 +5594,39 @@ export default function MarketplaceCaptureProductDetail() {
                 <dt className="text-sm font-medium text-slate-500">
                   Affiliate link
                 </dt>
-                <dd className="truncate">
-                  {compactText(item.affiliateUrl) || "-"}
+                <dd className={isEditingProduct ? undefined : "truncate"}>
+                  {isEditingProduct ? (
+                    <div className="mt-1 flex flex-col gap-1">
+                      <textarea
+                        className="min-h-16 w-full rounded-md border px-2 py-1 font-mono text-xs"
+                        value={productEditForm.affiliateUrl}
+                        onChange={event =>
+                          updateProductEditField(
+                            "affiliateUrl",
+                            event.target.value
+                          )
+                        }
+                      />
+                      <button
+                        className="inline-flex w-fit items-center rounded border bg-white px-2 py-1 text-xs"
+                        type="button"
+                        onClick={() => {
+                          const affiliateUrl = compactText(
+                            productEditForm.affiliateUrl
+                          );
+                          if (affiliateUrl && navigator.clipboard)
+                            void navigator.clipboard
+                              .writeText(affiliateUrl)
+                              .then(() => toast.success("Affiliate link copied"));
+                        }}
+                      >
+                        <Copy className="mr-1 h-3.5 w-3.5" />
+                        Copy
+                      </button>
+                    </div>
+                  ) : (
+                    compactText(item.affiliateUrl) || "-"
+                  )}
                 </dd>
               </div>
               <div>

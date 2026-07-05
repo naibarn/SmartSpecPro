@@ -11,6 +11,17 @@ interface CanvasShellProps {
   canvasStage: ReactNode;
   canvasFooter?: ReactNode;
   propertiesPanel: ReactNode;
+  /**
+   * Seed the left rail (tool rail + asset panel) as collapsed on first render.
+   * Useful for viewport tiers with limited width (e.g. tablet, 768-1023px)
+   * where showing every rail expanded at once would starve the canvas of
+   * space. Only affects the initial render — the user can still expand it
+   * via the existing collapse/expand toggle button. Defaults to `false` so
+   * desktop callers are unaffected.
+   */
+  defaultLeftCollapsed?: boolean;
+  /** Same as `defaultLeftCollapsed`, but for the right (properties) rail. */
+  defaultRightCollapsed?: boolean;
 }
 
 export function CanvasShell({
@@ -21,10 +32,12 @@ export function CanvasShell({
   canvasStage,
   canvasFooter,
   propertiesPanel,
+  defaultLeftCollapsed = false,
+  defaultRightCollapsed = false,
 }: CanvasShellProps) {
   const useStudioLayout = Boolean(toolRail || assetPanel);
-  const [leftCollapsed, setLeftCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(defaultLeftCollapsed);
+  const [rightCollapsed, setRightCollapsed] = useState(defaultRightCollapsed);
 
   if (useStudioLayout) {
     return (

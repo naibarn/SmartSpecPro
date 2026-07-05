@@ -7,6 +7,21 @@
  * `locale` prop; components default to the app's resolved locale.
  */
 
+import {
+  CheckCircle2,
+  Clapperboard,
+  Eye,
+  FileText,
+  Film,
+  ImageIcon,
+  ListChecks,
+  Music,
+  RefreshCw,
+  Sparkles,
+  UserSquare2,
+  type LucideIcon,
+} from "lucide-react";
+
 import type { VerticalDramaPipelineStage } from "@shared/verticalDramaSeries";
 
 export type VdLocale = "th" | "en";
@@ -99,6 +114,33 @@ export function vdStageLabel(stage: VerticalDramaPipelineStage, locale: VdLocale
   return locale === "th" ? l.th : l.en;
 }
 
+/**
+ * Icon that best represents each stage's output type (video, audio,
+ * manifest/document, review, images, etc.) — used by artifact/run listings so
+ * the media kind is recognizable at a glance instead of only reading text.
+ */
+export const VD_STAGE_ICONS: Record<VerticalDramaPipelineStage, LucideIcon> = {
+  normalize_series_input: ListChecks,
+  plan_episode_script: FileText,
+  update_character_visual_bible: UserSquare2,
+  generate_or_import_character_refs: ImageIcon,
+  storyboard_shotgrid: Clapperboard,
+  start_frame_render_plan: Sparkles,
+  render_or_import_start_frames: ImageIcon,
+  approve_start_frames: CheckCircle2,
+  dialogue_audio_plan: Music,
+  video_motion_prompt_pack: Film,
+  create_storyboard_review_project: Eye,
+  review_generate_repair_in_storyboard_review: RefreshCw,
+  render_or_import_video_clips: Film,
+  assemble_episode_manifest: FileText,
+  summarize_episode_to_series_memory: ListChecks,
+};
+
+export function vdStageIcon(stage: VerticalDramaPipelineStage): LucideIcon {
+  return VD_STAGE_ICONS[stage] ?? FileText;
+}
+
 /** Central bilingual UI string table for the section-04 surfaces. */
 export const VD_COPY = {
   en: {
@@ -106,6 +148,15 @@ export const VD_COPY = {
     runPlanOnly: "Plan only",
     generateImages: "Generate images (paid)",
     generateVideo: "Generate video (paid)",
+    generateRealScript: "Generate real script (paid)",
+    generatingRealScript: "Generating…",
+    generateRealScriptConfirmWarning: "This uses real AI generation and spends credits.",
+    generateRealScriptConfirmNote: "Continue only if you want the actual episode script, not the free placeholder.",
+    regenerateStage: "Regenerate (delete old)",
+    regenerateConfirm: "Deletes the current output and creates new — cannot be undone.",
+    regenerateConfirmButton: "Delete & regenerate",
+    regenerating: "Regenerating…",
+    syncCharacterData: "Sync character data",
     approve: "Approve",
     reject: "Reject",
     repair: "Repair",
@@ -123,6 +174,7 @@ export const VD_COPY = {
     runs: "Runs",
     noRuns: "No runs yet",
     openLedger: "Open artifact ledger",
+    openStoryboardReview: "Open Storyboard Review",
     memoryTimeline: "Memory timeline",
     currentSummary: "Current summary (derived view — pending updates not yet applied)",
     noMemory: "No memory events yet",
@@ -148,12 +200,22 @@ export const VD_COPY = {
     filterKind: "Filter by kind",
     filterEpisode: "Episode #",
     all: "All",
+    advancedPipelineDetail: "Advanced — view all pipeline stages & run history",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
     runPlanOnly: "วางแผนเท่านั้น",
     generateImages: "สร้างภาพ (มีค่าใช้จ่าย)",
     generateVideo: "สร้างวิดีโอ (มีค่าใช้จ่าย)",
+    generateRealScript: "สร้างบทจริง (มีค่าใช้จ่าย)",
+    generatingRealScript: "กำลังสร้าง…",
+    generateRealScriptConfirmWarning: "การทำงานนี้ใช้ AI จริงและใช้เครดิต",
+    generateRealScriptConfirmNote: "ดำเนินการต่อเฉพาะเมื่อต้องการบทตอนจริง ไม่ใช่ placeholder ฟรี",
+    regenerateStage: "สร้างใหม่ (ลบชุดเดิม)",
+    regenerateConfirm: "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
+    regenerateConfirmButton: "ลบและสร้างใหม่",
+    regenerating: "กำลังสร้างใหม่…",
+    syncCharacterData: "ซิงก์ข้อมูลตัวละคร",
     approve: "อนุมัติ",
     reject: "ปฏิเสธ",
     repair: "ซ่อม",
@@ -171,6 +233,7 @@ export const VD_COPY = {
     runs: "ประวัติการรัน",
     noRuns: "ยังไม่มีการรัน",
     openLedger: "เปิดบันทึกอาร์ติแฟกต์",
+    openStoryboardReview: "เปิด Storyboard Review",
     memoryTimeline: "ไทม์ไลน์ความจำ",
     currentSummary: "สรุปปัจจุบัน (มุมมองที่สืบทอด — อัปเดตที่รอยังไม่ถูกนำไปใช้)",
     noMemory: "ยังไม่มีเหตุการณ์ความจำ",
@@ -196,6 +259,7 @@ export const VD_COPY = {
     filterKind: "กรองตามชนิด",
     filterEpisode: "ตอนที่",
     all: "ทั้งหมด",
+    advancedPipelineDetail: "ขั้นสูง — ดูทุกขั้นตอนของ pipeline และประวัติการรัน",
   },
 } as const;
 

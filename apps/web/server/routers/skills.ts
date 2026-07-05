@@ -3824,6 +3824,81 @@ export const skillsRouter = router({
     }),
 
   /**
+   * Auto-shorten a single Storyboard Review video/motion prompt before a
+   * paid single-shot video generation, mirroring the batch planner's
+   * over-length handling above (`planStoryboardVideoPrompts`). Only calls the
+   * optimizer LLM (and only spends credits) when the prompt actually exceeds
+   * `STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS`; otherwise it is a no-op that
+   * returns the prompt unchanged.
+   */
+  optimizeStoryboardReviewVideoPrompt: protectedProcedure
+    .input(z.object({
+      prompt: z.string().trim().min(1).max(STORYBOARD_REVIEW_PLANNER_INPUT_TEXT_MAX_CHARS),
+      unitId: z.string().trim().max(255).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
+      }
+
+      const sourcePrompt = input.prompt.trim();
+      if (sourcePrompt.length <= STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
+        return {
+          prompt: sourcePrompt,
+          optimized: false,
+          sourceLength: sourcePrompt.length,
+          optimizedLength: sourcePrompt.length,
+          maxChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
+        };
+      }
+
+      const hasCredits = await hasEnoughCredits(userId, 1);
+      if (!hasCredits) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
+      }
+
+      const visionModel = resolveVisionModelId(await getVisionModelOptions(), null);
+      if (!visionModel) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No enabled vision model configured",
+        });
+      }
+
+      try {
+        const optimizerResult = await optimizeProductReferenceStoryboardPrompt({
+          tenantId: ctx.tenantId ?? "default",
+          userId,
+          sourcePrompt,
+          originSurface: "storyboard_review",
+          unitId: input.unitId,
+          model: visionModel,
+          maxOutputChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
+        });
+        const optimizedPrompt = normalizeStoryboardSlotLocalImageAliases(
+          optimizerResult.value.rawContent
+            .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .trim(),
+          0,
+        );
+        return {
+          prompt: optimizedPrompt || sourcePrompt,
+          optimized: Boolean(optimizedPrompt),
+          sourceLength: sourcePrompt.length,
+          optimizedLength: (optimizedPrompt || sourcePrompt).length,
+          maxChars: STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS,
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to optimize storyboard review video prompt",
+        });
+      }
+    }),
+
+  /**
    * Enhance prompt using CreateImagePrompt skill with LLM
    * This procedure:
    * 1. Builds the system and user prompts

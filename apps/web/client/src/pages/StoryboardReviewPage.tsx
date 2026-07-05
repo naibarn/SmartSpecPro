@@ -144,8 +144,13 @@ import {
   getArticleStoryboardReviewMetadata,
   updateArticleStoryboardCurrentPromptMetadata,
 } from "@shared/articleStoryboardVideo";
-import { VerticalDramaStoryboardReviewPanel } from "../components/verticalDramaSeries/VerticalDramaStoryboardReviewPanel";
+import { VerticalDramaStoryboardReviewPanel, type PanelRecommendedRepair } from "../components/verticalDramaSeries/VerticalDramaStoryboardReviewPanel";
 import { normalizeVerticalDramaStoryboardReviewMetadata } from "@/lib/verticalDramaStoryboardReviewMetadata";
+import {
+  VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE,
+  type VerticalDramaPipelineStage,
+  type VerticalDramaQcStage,
+} from "@shared/verticalDramaSeries";
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
   "Reference image mode: use the attached image(s) only as material, identity, style, product, object, or scene references.",
@@ -199,6 +204,52 @@ function frameRolesUseExactFirstLast(roles: StoryboardReferenceFrameRole[]): boo
 
 function generationTypeForFrameRoles(roles: StoryboardReferenceFrameRole[]): string {
   return frameRolesUseExactFirstLast(roles) ? "FIRST_AND_LAST_FRAMES_2_VIDEO" : "REFERENCE_2_VIDEO";
+}
+
+/**
+ * Legacy fallback ONLY — used when a persisted `recommendedRepairs[]` entry
+ * predates `qcStage` being forwarded (see `PanelRecommendedRepair.qcStage`
+ * and `buildRecommendedRepairs` in `verticalDramaStoryboardReviewMetadata.ts`).
+ * The primary resolution path is `repair.qcStage` -> the SHARED
+ * `VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE` map (`@shared/verticalDramaSeries`),
+ * which is the single source of truth also used server-side
+ * (`server/services/verticalDramaQc.ts`) — no client/server duplication.
+ * This action-keyed table is only an approximation (the same `action` can be
+ * recommended from more than one QC stage server-side), kept solely so an
+ * old repair entry without `qcStage` still resolves to SOMETHING reasonable
+ * rather than failing outright.
+ */
+const VERTICAL_DRAMA_REPAIR_ACTION_TO_PIPELINE_STAGE_FALLBACK: Record<string, VerticalDramaPipelineStage> = {
+  rewrite_script: "plan_episode_script",
+  regenerate_character: "update_character_visual_bible",
+  repair_storyboard_shot: "storyboard_shotgrid",
+  repair_start_frame_prompt: "start_frame_render_plan",
+  regenerate_start_frame: "render_or_import_start_frames",
+  repair_motion_prompt: "video_motion_prompt_pack",
+  reroute_provider: "render_or_import_video_clips",
+  regenerate_clip: "render_or_import_video_clips",
+  repair_sub_shot: "video_motion_prompt_pack",
+  adjust_sub_shot_timing: "video_motion_prompt_pack",
+  adjust_audio_subtitle: "dialogue_audio_plan",
+  remove_or_rewrite_tie_in: "video_motion_prompt_pack",
+  repair_assembly: "assemble_episode_manifest",
+};
+
+/**
+ * Resolve the pipeline stage a Vertical Drama recommended-repair targets, for
+ * `trpc.verticalDramaEpisodes.repairStageOutput`'s `stage` param. Prefers the
+ * repair's actual originating QC stage (accurate); falls back to an
+ * action-keyed approximation only when `qcStage` is missing (legacy data),
+ * and finally to `video_motion_prompt_pack` (this page's own stage) if even
+ * the action is unrecognized.
+ */
+function resolveVerticalDramaRepairPipelineStage(repair: PanelRecommendedRepair): VerticalDramaPipelineStage {
+  if (repair.qcStage && repair.qcStage in VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE) {
+    return VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE[repair.qcStage as VerticalDramaQcStage];
+  }
+  return (
+    VERTICAL_DRAMA_REPAIR_ACTION_TO_PIPELINE_STAGE_FALLBACK[repair.action] ?? "video_motion_prompt_pack"
+  );
 }
 
 function storyboardReferenceFrameRoleLabel(role: StoryboardReferenceFrameRole, locale: string, short = false): string {
@@ -4199,6 +4250,8 @@ export default function StoryboardReviewPage() {
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
   const planStoryboardVideoPromptsMutation = trpc.skills.planStoryboardVideoPrompts.useMutation();
+  const optimizeStoryboardReviewVideoPromptMutation = trpc.skills.optimizeStoryboardReviewVideoPrompt.useMutation();
+  const verticalDramaRepairStageOutputMutation = trpc.verticalDramaEpisodes.repairStageOutput.useMutation();
   const regenerateVideoSegmentPromptMutation = trpc.videoEditorProjects.regenerateVideoSegmentPrompt.useMutation();
   const { mutate: writeStoryboardReviewClientDebug } = trpc.videoEditorProjects.debugStoryboardReviewClient.useMutation();
   const {
@@ -9145,6 +9198,51 @@ export default function StoryboardReviewPage() {
     }));
   }, [locale, setAndSaveDraft]);
 
+  /**
+   * Vertical Drama Series review panel repair queue (spec §12 / section-06
+   * "Prompt Visibility, Editing, and Repair Rules"): submit a QC-recommended
+   * repair to the vertical-drama pipeline's own repair route, pre-filled with
+   * the entry's action/instruction/target. This is intentionally NOT the
+   * ordinary Marketplace repair path — it targets the owning
+   * series/episode's pipeline stage via `repairStageOutput`.
+   */
+  const handleVerticalDramaRepair = useCallback((repair: PanelRecommendedRepair) => {
+    const seriesId = verticalDramaReviewMetadata?.seriesId;
+    const episodeId = verticalDramaReviewMetadata?.episodeId;
+    if (!seriesId || !episodeId) {
+      toast.error(
+        locale === "th"
+          ? "ไม่พบ series/episode สำหรับซ่อมแซมรายการนี้"
+          : "Missing series/episode context for this repair.",
+      );
+      return;
+    }
+    const stage = resolveVerticalDramaRepairPipelineStage(repair);
+    verticalDramaRepairStageOutputMutation.mutate(
+      {
+        seriesId,
+        episodeId,
+        stage,
+        artifactId: repair.artifactId,
+        instruction: repair.instruction,
+        target: {
+          parentShotNumber: repair.shotNumber,
+          clipNumber: repair.clipNumber,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            locale === "th" ? "ส่งคำขอซ่อมแซมแล้ว" : "Repair request submitted.",
+          );
+        },
+        onError: (error) => {
+          toast.error(error.message || (locale === "th" ? "ซ่อมแซมไม่สำเร็จ" : "Repair failed."));
+        },
+      },
+    );
+  }, [locale, verticalDramaReviewMetadata, verticalDramaRepairStageOutputMutation]);
+
   const updateTaskDuration = useCallback((taskId: string, durationSeconds: number) => {
     const safeDuration = Number.isFinite(durationSeconds) && durationSeconds > 0
       ? durationSeconds
@@ -9737,7 +9835,7 @@ export default function StoryboardReviewPage() {
       );
       const startFrameUrl = context.referenceImages?.[0]?.url?.trim();
       const endFrameUrl = context.referenceImages?.[1]?.url?.trim();
-      const generationPrompt = startFrameUrl && endFrameUrl
+      let generationPrompt = startFrameUrl && endFrameUrl
         ? stripPromptCodeFence((await generateStoryboardVideoPromptMutation.mutateAsync({
           currentPrompt: normalizedPrompt,
           startFrameUrl,
@@ -9757,6 +9855,37 @@ export default function StoryboardReviewPage() {
           prompt: generationPrompt,
           statusDetail: t("mediaStudio.storyboardReviewRegeneratingClip"),
         }));
+      }
+      // Auto-shorten an over-length video prompt before the paid video-
+      // generation call, mirroring the batch planner's over-length handling
+      // (`planStoryboardVideoPrompts` in server/routers/skills.ts). The
+      // server-side per-model hard limit (`assertMediaPromptWithinModelLimit`
+      // in media.ts) still applies as the final safety net if this fails or
+      // the optimizer can't get under the limit.
+      if (generationPrompt.trim().length > STORYBOARD_REVIEW_VIDEO_PROMPT_MAX_CHARS) {
+        try {
+          const optimized = await optimizeStoryboardReviewVideoPromptMutation.mutateAsync({
+            prompt: generationPrompt,
+            unitId: taskId,
+          });
+          if (optimized.optimized && optimized.prompt.trim()) {
+            generationPrompt = optimized.prompt;
+            setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+              prompt: generationPrompt,
+              statusDetail: t("mediaStudio.storyboardReviewRegeneratingClip"),
+            }));
+            toast.info(
+              locale === "th"
+                ? `พรอมต์วิดีโอยาวเกินไป ระบบย่อให้อัตโนมัติ (${optimized.sourceLength} → ${optimized.optimizedLength} ตัวอักษร)`
+                : `Video prompt was too long; it was automatically shortened (${optimized.sourceLength} → ${optimized.optimizedLength} characters).`
+            );
+          }
+        } catch (optimizeError) {
+          // Non-fatal: fall through with the original (over-length) prompt.
+          // The server's assertMediaPromptWithinModelLimit hard-throw below
+          // remains the safety net if the model actually rejects it.
+          console.warn("[StoryboardReviewPage] Auto-shorten of video prompt failed; continuing with original prompt.", optimizeError);
+        }
       }
       const payload = buildMediaStudioCommonPayload({
         prompt: prepareVeoPromptForGenerationType(generationPrompt, generationType),
@@ -9849,7 +9978,7 @@ export default function StoryboardReviewPage() {
       setRegeneratingTaskId(null);
       setIsCancellingGeneration(false);
     }
-  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, locale, pollStoryboardGenerationTask, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft, t]);
+  }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, locale, optimizeStoryboardReviewVideoPromptMutation, pollStoryboardGenerationTask, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
     try {
@@ -10056,6 +10185,8 @@ export default function StoryboardReviewPage() {
             metadata={verticalDramaReviewMetadata}
             lang={locale === "th" ? "th" : "en"}
             completed={activeDraft?.compoundStatus === "completed"}
+            onEditVideoPrompt={updateTaskPrompt}
+            onRepair={handleVerticalDramaRepair}
           />
         </div>
       ) : null}

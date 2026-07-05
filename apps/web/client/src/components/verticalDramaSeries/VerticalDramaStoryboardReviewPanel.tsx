@@ -105,6 +105,12 @@ export interface PanelRecommendedRepair {
   shotNumber?: number;
   clipNumber?: number;
   artifactId?: string;
+  /** The originating QC stage (`QcRepair.stage`), when present in the
+   *  persisted repair-queue entry. Callers should resolve this to a pipeline
+   *  stage via the shared `VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE` map — do not
+   *  guess the pipeline stage from `action` alone, since the same action can
+   *  be recommended from more than one QC stage. */
+  qcStage?: string;
 }
 
 export interface PanelSubShotBreakdown {

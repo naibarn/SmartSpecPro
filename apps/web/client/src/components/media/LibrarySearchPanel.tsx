@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
-import { FileImage, FileText, Film, Loader2, Maximize2, Music, Plus, Search } from "lucide-react";
+import { FileImage, FileText, Film, Grid2X2, Loader2, Maximize2, Music, Plus, Search } from "lucide-react";
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
@@ -34,6 +34,14 @@ interface LibrarySearchPanelProps {
   getProductionAssetForItem?: (item: LibrarySearchResultItem) => ProductionReferenceInput | null;
   onPreview?: (item: LibrarySearchResultItem) => void;
   onSelect: (item: LibrarySearchResultItem) => void;
+  /**
+   * Optional per-item "grid cut" action (splits a 3x3/detected-grid image
+   * into individual tiles) — additive only; when omitted no button renders
+   * and existing importers (Media Studio, Storyboard review) are unaffected.
+   * Mirrors the `onAddToReference`/`onAttachToSelectedNode` pattern above.
+   */
+  onGridCutItem?: (item: LibrarySearchResultItem) => void;
+  gridCutLabel?: string;
 }
 
 export default function LibrarySearchPanel({
@@ -58,6 +66,8 @@ export default function LibrarySearchPanel({
   getProductionAssetForItem,
   onPreview,
   onSelect,
+  onGridCutItem,
+  gridCutLabel,
 }: LibrarySearchPanelProps) {
   const { t } = useScopedTranslation(["media", "common"]);
   const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
@@ -335,6 +345,20 @@ export default function LibrarySearchPanel({
                           title={attachToSelectedNodeLabel}
                         >
                           <span className="truncate">{attachToSelectedNodeLabel ?? "Attach to node"}</span>
+                        </Button>
+                      )}
+                      {onGridCutItem && itemType === "image" && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => onGridCutItem(item)}
+                          disabled={!dragUrl}
+                          title={gridCutLabel ?? "Cut grid"}
+                          aria-label={gridCutLabel ?? "Cut grid"}
+                        >
+                          <Grid2X2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>

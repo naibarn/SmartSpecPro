@@ -161,7 +161,7 @@ function readFirstMediaUrl(value: unknown, visited = new Set<unknown>()): string
   return null;
 }
 
-function getDraggedImageUrl(dataTransfer: DataTransfer): string | null {
+export function getDraggedImageUrl(dataTransfer: DataTransfer): string | null {
   const mediaType = (
     dataTransfer.getData("application/x-smartspec-media-type")
     || dataTransfer.getData("text/x-smartspec-media-type")

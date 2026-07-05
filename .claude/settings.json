@@ -14,5 +14,38 @@
     "backend-api-security@claude-code-workflows": true,
     "python-development@claude-code-workflows": true,
     "developer-essentials@claude-code-workflows": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/schema-single-writer.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/notify.sh notification 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/notify.sh subagent-stop 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
   }
 }

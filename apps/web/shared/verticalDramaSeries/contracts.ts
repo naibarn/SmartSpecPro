@@ -478,6 +478,30 @@ export type VerticalDramaQcStage =
   | "storyboard_review_handoff"
   | "episode_memory_update";
 
+/**
+ * Single source of truth for QC-stage -> pipeline-stage resolution. Lives
+ * here (not `server/services/verticalDramaQc.ts`) specifically so both the
+ * server (QC evaluation / stale-stage computation) and the client
+ * (Storyboard Review's repair-button wiring, which must resolve a
+ * `recommendedRepairs[]` entry's QC stage back to a pipeline stage to call
+ * `repairStageOutput`) import the exact same mapping — no duplicated,
+ * driftable copy on either side.
+ */
+export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<VerticalDramaQcStage, VerticalDramaPipelineStage> = {
+  script: "plan_episode_script",
+  character_visual: "update_character_visual_bible",
+  storyboard: "storyboard_shotgrid",
+  start_frame_prompt: "start_frame_render_plan",
+  start_frame_image: "render_or_import_start_frames",
+  video_prompt: "video_motion_prompt_pack",
+  provider_routing: "render_or_import_video_clips",
+  video_clip: "render_or_import_video_clips",
+  assembly: "assemble_episode_manifest",
+  product_tie_in: "video_motion_prompt_pack",
+  storyboard_review_handoff: "create_storyboard_review_project",
+  episode_memory_update: "summarize_episode_to_series_memory",
+};
+
 export type VerticalDramaQcResult = {
   qcReportId: string;
   seriesId: string;

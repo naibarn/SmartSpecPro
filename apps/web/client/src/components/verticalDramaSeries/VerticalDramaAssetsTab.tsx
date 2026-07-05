@@ -15,6 +15,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import type { VerticalDramaPipelineStage } from "@shared/verticalDramaSeries";
+import {
+  VD_PHASES,
+  vdPhaseForStage,
+  vdPhaseLabel,
+  vdStageIcon,
+  vdStageLabel,
+} from "./verticalDramaWorkspaceCopy";
 
 interface CharacterAssetRow {
   id: string;
@@ -35,6 +43,16 @@ interface RunArtifactRow {
   storageKey: string | null;
   mediaAssetIds: number[];
   createdAt: string;
+}
+
+/**
+ * Type guard: `stage` comes back from the API as a plain string, but every
+ * value the pipeline actually writes is one of the 15 canonical stages. Any
+ * unrecognized string (future stage, data drift) falls back to a plain label
+ * further down rather than crashing the lookup.
+ */
+function isKnownStage(stage: string): stage is VerticalDramaPipelineStage {
+  return VD_PHASES.some((phase) => (phase.stages as string[]).includes(stage));
 }
 
 export interface VerticalDramaAssetsTabProps {
@@ -133,27 +151,83 @@ export function VerticalDramaAssetsTab({ lang, seriesId }: VerticalDramaAssetsTa
               {lang === "th" ? "ยังไม่มีอาร์ติแฟกต์การรัน" : "No run artifacts yet."}
             </p>
           ) : (
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {runArtifacts.map((artifact) => (
-                <li key={artifact.id} className="rounded-md border p-2.5 text-sm">
-                  <p className="font-medium">{artifact.stage}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {lang === "th" ? "ตอน" : "Episode"} {artifact.episodeId}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(artifact.createdAt).toLocaleString(lang === "th" ? "th-TH" : "en-US")}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {artifact.mediaAssetIds.length}{" "}
-                    {lang === "th" ? "สื่อ" : artifact.mediaAssetIds.length === 1 ? "media item" : "media items"}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <RunArtifactsByPhase runArtifacts={runArtifacts} lang={lang} />
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function RunArtifactsByPhase({
+  runArtifacts,
+  lang,
+}: {
+  runArtifacts: RunArtifactRow[];
+  lang: "th" | "en";
+}) {
+  const grouped = VD_PHASES.map((phase) => ({
+    phase,
+    artifacts: runArtifacts.filter((artifact) =>
+      isKnownStage(artifact.stage) ? vdPhaseForStage(artifact.stage).id === phase.id : false,
+    ),
+  })).filter((group) => group.artifacts.length > 0);
+
+  const unknownArtifacts = runArtifacts.filter((artifact) => !isKnownStage(artifact.stage));
+
+  return (
+    <div className="grid gap-4">
+      {grouped.map(({ phase, artifacts }) => (
+        <div key={phase.id}>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {vdPhaseLabel(phase, lang)}
+          </h4>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {artifacts.map((artifact) => (
+              <RunArtifactCard key={artifact.id} artifact={artifact} lang={lang} />
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      {unknownArtifacts.length > 0 && (
+        <div>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {lang === "th" ? "อื่น ๆ" : "Other"}
+          </h4>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {unknownArtifacts.map((artifact) => (
+              <RunArtifactCard key={artifact.id} artifact={artifact} lang={lang} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RunArtifactCard({ artifact, lang }: { artifact: RunArtifactRow; lang: "th" | "en" }) {
+  const stage = artifact.stage;
+  const Icon = isKnownStage(stage) ? vdStageIcon(stage) : Film;
+  const label = isKnownStage(stage) ? vdStageLabel(stage, lang) : stage;
+
+  return (
+    <li className="rounded-md border p-2.5 text-sm">
+      <p className="flex items-center gap-1.5 font-medium">
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="truncate">{label}</span>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {lang === "th" ? "ตอน" : "Episode"} {artifact.episodeId}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {new Date(artifact.createdAt).toLocaleString(lang === "th" ? "th-TH" : "en-US")}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {artifact.mediaAssetIds.length}{" "}
+        {lang === "th" ? "สื่อ" : artifact.mediaAssetIds.length === 1 ? "media item" : "media items"}
+      </p>
+    </li>
   );
 }
 

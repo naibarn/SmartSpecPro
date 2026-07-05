@@ -40,6 +40,7 @@ import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDra
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
 import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
+import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import {
   pickCopy,
   seriesStatusCopy,
@@ -101,6 +102,12 @@ export default function VerticalDramaSeriesDetailPage() {
         status: string;
         bible?: unknown;
         memory?: unknown;
+        genre?: string | null;
+        tone?: string | null;
+        targetAudience?: string | null;
+        targetEpisodeCount?: number | null;
+        defaultEpisodeDurationSeconds?: number | null;
+        locale?: string | null;
         productTieIn?: {
           enabled?: boolean;
           productName?: string;
@@ -219,8 +226,12 @@ export default function VerticalDramaSeriesDetailPage() {
                   lang={lang}
                   seriesId={seriesId}
                   bible={series.bible}
+                  genre={series.genre}
+                  tone={series.tone}
+                  targetEpisodeCount={series.targetEpisodeCount}
                   readOnly={isArchived}
                   onViewEpisodes={() => setActiveTab("episodes")}
+                  onEpisodesGenerated={() => detailQuery.refetch()}
                 />
 
                 {!isArchived && (
@@ -236,12 +247,27 @@ export default function VerticalDramaSeriesDetailPage() {
                 <TabsContent key={tab} value={tab} className="pt-4">
                   {tab === "characters" ? (
                     <VerticalDramaCharacterStockPanel seriesId={seriesId} readOnly={isArchived} />
+                  ) : tab === "bible" ? (
+                    <StoryBibleTab lang={lang} bible={series.bible} readOnly={isArchived} />
+                  ) : tab === "memory" ? (
+                    <VerticalDramaSeriesMemoryTab
+                      lang={lang}
+                      seriesId={seriesId}
+                      readOnly={isArchived}
+                    />
                   ) : tab === "settings" ? (
                     <VerticalDramaSettingsTab
                       lang={lang}
                       seriesId={seriesId}
                       title={series.title}
                       status={series.status}
+                      genre={series.genre}
+                      tone={series.tone}
+                      targetAudience={series.targetAudience}
+                      targetEpisodeCount={series.targetEpisodeCount}
+                      defaultEpisodeDurationSeconds={series.defaultEpisodeDurationSeconds}
+                      locale={series.locale}
+                      bible={series.bible}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
                     />
@@ -413,6 +439,14 @@ function PlaceholderTab({
 }
 
 interface ExpandedStoryBible {
+  // Wizard-input fields, present before generation.
+  logline?: string;
+  mainPlot?: string;
+  seasonArc?: string;
+  visualStyle?: string;
+  cliffhangerStyle?: string;
+  charactersDraft?: Array<{ name: string; role: string; description: string }>;
+  // LLM-expanded fields, present after "Generate story".
   expandedSeasonArc?: string;
   refinedCharacters?: Array<{ name: string; role: string; description: string }>;
   episodeBreakdown?: Array<{
@@ -425,6 +459,99 @@ interface ExpandedStoryBible {
 }
 
 /**
+ * Bible tab (spec addendum) — read-only display of the series' `bible` jsonb
+ * column: wizard-input fields (logline/mainPlot/visualStyle/cliffhangerStyle)
+ * shown even before generation, plus the LLM-refined character list once
+ * "Generate story" has run. The expanded season arc + episode breakdown are
+ * already shown in the Overview tab's `StoryBibleOverviewCard`, so this tab
+ * focuses on the fields not surfaced anywhere else.
+ */
+function StoryBibleTab({
+  lang,
+  bible,
+  readOnly,
+}: {
+  lang: "th" | "en";
+  bible: unknown;
+  readOnly: boolean;
+}) {
+  const b = (bible ?? {}) as ExpandedStoryBible;
+  const hasRefinedCharacters = Boolean(b.refinedCharacters && b.refinedCharacters.length > 0);
+  const fields: Array<{ key: keyof ExpandedStoryBible; label: { th: string; en: string } }> = [
+    { key: "logline", label: { th: "โลจไลน์", en: "Logline" } },
+    { key: "mainPlot", label: { th: "โครงเรื่องหลัก", en: "Main plot" } },
+    { key: "visualStyle", label: { th: "สไตล์ภาพ", en: "Visual style" } },
+    { key: "cliffhangerStyle", label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" } },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {readOnly && (
+        <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.readOnly)}</Badge>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {lang === "th" ? "ไบเบิลเรื่อง (จากขั้นตอนสร้าง)" : "Story bible (from wizard)"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {fields.map(({ key, label }) => {
+            const value = b[key];
+            return (
+              <div key={key}>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {pickCopy(lang, label)}
+                </p>
+                {typeof value === "string" && value.trim().length > 0 ? (
+                  <p className="whitespace-pre-wrap">{value}</p>
+                ) : (
+                  <p className="italic text-muted-foreground">
+                    {lang === "th" ? "ยังไม่ได้ระบุ" : "Not set yet"}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {lang === "th" ? "ตัวละครที่ปรับปรุงแล้ว" : "Refined characters"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {hasRefinedCharacters ? (
+            <ul className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              {b.refinedCharacters!.map((c, i) => (
+                <li key={i} className="rounded-md border p-2.5">
+                  <p className="font-medium">
+                    {c.name}
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      · {c.role}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{c.description}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">
+              {lang === "th"
+                ? 'ตัวละครที่ปรับปรุงแล้วจะปรากฏที่นี่หลังจากกด "สร้างเนื้อเรื่องเต็ม" ในแท็บภาพรวม'
+                : 'Refined characters will appear here after clicking "Generate story" in the Overview tab.'}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/**
  * Overview card for the "Generate story" action (spec addendum) — the first
  * real, credit-consuming LLM call in this feature. Shows the expanded season
  * arc + episode breakdown once generated, or a Generate/retry CTA otherwise.
@@ -433,18 +560,54 @@ function StoryBibleOverviewCard({
   lang,
   seriesId,
   bible,
+  genre,
+  tone,
+  targetEpisodeCount,
   readOnly,
   onViewEpisodes,
+  onEpisodesGenerated,
 }: {
   lang: "th" | "en";
   seriesId: string;
   bible: unknown;
+  genre?: string | null;
+  tone?: string | null;
+  targetEpisodeCount?: number | null;
   readOnly: boolean;
   onViewEpisodes?: () => void;
+  onEpisodesGenerated?: () => void;
 }) {
   const utils = trpc.useUtils();
   const expanded = (bible ?? {}) as ExpandedStoryBible;
   const hasStory = Boolean(expanded.episodeBreakdown && expanded.episodeBreakdown.length > 0);
+
+  // After a full story is (re)generated, materialize the newly-planned
+  // episodes into real episode rows for free — this only ever hits Mode A
+  // ("materialize from plan", no LLM call, no credits) since the plan was
+  // just freshly written and can't be exhausted yet. Its failure is a
+  // convenience-add-on failure, not a Story Bible generation failure, so it
+  // gets its own toast and never blocks/overrides the success toast above.
+  const generateNextEpisodesMutation = trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
+    onSuccess: (data: { episodes: Array<{ id: string }> }) => {
+      if (data.episodes.length > 0) {
+        toast.success(
+          lang === "th"
+            ? `สร้างตอนจริง ${data.episodes.length} ตอนจากแผนแล้ว`
+            : `Created ${data.episodes.length} real episode(s) from the plan`,
+        );
+      }
+      void utils.verticalDramaSeries.get.invalidate();
+      onEpisodesGenerated?.();
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message ||
+          (lang === "th"
+            ? 'สร้างเนื้อเรื่องเต็มสำเร็จ แต่สร้างตอนจริงจากแผนไม่สำเร็จ — ลองกด "เพิ่มตอน" ในแท็บตอนได้'
+            : 'Story generated, but creating real episodes from the plan failed — try "Add episode" in the Episodes tab.'),
+      );
+    },
+  });
 
   const generateMutation = trpc.verticalDramaSeries.generateStoryBible.useMutation({
     onSuccess: (data: { creditsUsed: number }) => {
@@ -454,11 +617,22 @@ function StoryBibleOverviewCard({
           : `Full story generated (${data.creditsUsed} credits used)`,
       );
       void utils.verticalDramaSeries.get.invalidate();
+      // Materialize the plan into real episode rows (free Mode A path).
+      generateNextEpisodesMutation.mutate({ seriesId, count: 5 });
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || (lang === "th" ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ" : "Story generation failed"));
     },
   });
+
+  const contextParts: string[] = [];
+  if (genre) contextParts.push(`${lang === "th" ? "แนว" : "Genre"}: ${genre}`);
+  if (tone) contextParts.push(`${lang === "th" ? "โทน" : "Tone"}: ${tone}`);
+  if (targetEpisodeCount != null) {
+    contextParts.push(
+      `${lang === "th" ? "จำนวนตอนเป้าหมาย" : "Target episodes"}: ${targetEpisodeCount}`,
+    );
+  }
 
   return (
     <Card>
@@ -469,12 +643,15 @@ function StoryBibleOverviewCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
+        {contextParts.length > 0 && (
+          <p className="text-xs font-medium text-muted-foreground">{contextParts.join(" · ")}</p>
+        )}
         {!hasStory ? (
           <>
             <p className="text-muted-foreground">
               {lang === "th"
-                ? "ยังไม่ได้สร้างเนื้อเรื่องเต็ม — กดเพื่อขยายโครงเรื่อง/เรื่องย่อ/ตัวละครให้เป็นเนื้อเรื่องเต็มพร้อมแบ่งตอน (ใช้เครดิต)"
-                : "No full story yet — generate one to expand the plot/logline/characters into a full episode-by-episode story (uses credits)."}
+                ? "ยังไม่ได้สร้างเนื้อเรื่องเต็ม — กดเพื่อขยายโครงเรื่อง/เรื่องย่อ/ตัวละครให้เป็นเนื้อเรื่องเต็มพร้อมแบ่งตอน แล้วสร้างตอนจริงให้อัตโนมัติ (ใช้เครดิต)"
+                : "No full story yet — generate one to expand the plot/logline/characters into a full episode-by-episode story, and real episodes will be created automatically (uses credits)."}
             </p>
             {!readOnly && (
               <Button

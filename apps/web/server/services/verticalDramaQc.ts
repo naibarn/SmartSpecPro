@@ -31,12 +31,13 @@ import {
   verticalDramaQcReports,
   type VerticalDramaQcReportRow,
 } from "../../drizzle/schema";
-import type {
-  VerticalDramaQcResult,
-  VerticalDramaQcStage,
-  VerticalDramaPipelineStage,
-  VideoRoutingDecision,
-  VerticalDramaTieInUsage,
+import {
+  VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE,
+  type VerticalDramaQcResult,
+  type VerticalDramaQcStage,
+  type VerticalDramaPipelineStage,
+  type VideoRoutingDecision,
+  type VerticalDramaTieInUsage,
 } from "@shared/verticalDramaSeries";
 
 type QcIssue = VerticalDramaQcResult["issues"][number];
@@ -151,21 +152,10 @@ export function repairEntryPointSection(action: QcRepairAction): VerticalDramaRe
 /* QC stage → pipeline stage staleness (spec §11.2 immutable repair)           */
 /* -------------------------------------------------------------------------- */
 
-/** Map a QC stage to the pipeline stage a repair there invalidates. */
-export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<VerticalDramaQcStage, VerticalDramaPipelineStage> = {
-  script: "plan_episode_script",
-  character_visual: "update_character_visual_bible",
-  storyboard: "storyboard_shotgrid",
-  start_frame_prompt: "start_frame_render_plan",
-  start_frame_image: "render_or_import_start_frames",
-  video_prompt: "video_motion_prompt_pack",
-  provider_routing: "render_or_import_video_clips",
-  video_clip: "render_or_import_video_clips",
-  assembly: "assemble_episode_manifest",
-  product_tie_in: "video_motion_prompt_pack",
-  storyboard_review_handoff: "create_storyboard_review_project",
-  episode_memory_update: "summarize_episode_to_series_memory",
-};
+// `VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE` moved to
+// `@shared/verticalDramaSeries` (contracts.ts) so the client (Storyboard
+// Review's repair-button wiring) can import the exact same mapping instead
+// of duplicating it — re-imported above, not redefined here.
 
 const PIPELINE_ORDER: VerticalDramaPipelineStage[] = [
   "normalize_series_input",

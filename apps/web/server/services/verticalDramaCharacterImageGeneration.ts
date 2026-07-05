@@ -83,6 +83,20 @@ const characterVisualBibleCharacterSchema = z
     visual_identity_summary: z.string().min(1),
     primary_portrait_prompt: z.string().min(1),
     negative_prompt: z.string().optional(),
+    // Optional — read from the same LLM response as `primary_portrait_prompt`
+    // (see skill.md's own example output) but not present in every provider
+    // response, so it must not fail the whole call when omitted. Falls back
+    // to a portrait-derived turnaround instruction (see `generateCharacterVisualPrompts`).
+    turnaround_prompt: z.string().min(1).optional(),
+    // The skill's schema has always computed these three (see
+    // schemas/output.schema.json), but until now nothing in this module
+    // extracted them past `.passthrough()` — the LLM produced them and they
+    // were silently discarded. Surfaced now for the full-spec Character
+    // Sheet generation mode (combines portrait + turnaround + expressions +
+    // outfit into one multi-panel image).
+    full_body_prompt: z.string().min(1).optional(),
+    expression_sheet_prompt: z.string().min(1).optional(),
+    outfit_sheet_prompt: z.string().min(1).optional(),
     attachment_package: z.array(z.record(z.string(), z.unknown())).min(1),
   })
   .passthrough();
@@ -176,6 +190,22 @@ export const resolveCharacterVisualBibleModel = resolveStoryBibleModel;
 export interface GenerateCharacterVisualPromptsResult {
   portraitPrompt: string;
   negativePrompt: string | undefined;
+  /**
+   * 360/multi-angle "character sheet" turnaround prompt, for reference imagery
+   * that prevents likeness drift across scenes. Read from the same LLM
+   * response as `portraitPrompt` (`turnaround_prompt`, see skill.md's own
+   * example output). Falls back to a portrait-derived turnaround instruction
+   * when the LLM response omits the field, so this degrades gracefully
+   * instead of failing the whole call.
+   */
+  turnaroundPrompt: string;
+  /** Full-body pose prompt — for the full-spec Character Sheet. Falls back to
+   *  a portrait-derived instruction when the LLM omits it. */
+  fullBodyPrompt: string;
+  /** Facial-expression grid prompt — for the full-spec Character Sheet. */
+  expressionSheetPrompt: string;
+  /** Outfit-variation prompt — for the full-spec Character Sheet. */
+  outfitSheetPrompt: string;
   raw: CharacterVisualBibleOutput;
   creditsUsed: number;
   model: string;
@@ -264,9 +294,26 @@ export async function generateCharacterVisualPrompts(
     },
   });
 
+  const turnaroundPrompt =
+    matched.turnaround_prompt ??
+    `${matched.primary_portrait_prompt}, 360 degree turnaround, multiple angles, consistent identity`;
+  const fullBodyPrompt =
+    matched.full_body_prompt ??
+    `${matched.primary_portrait_prompt}, full body, standing pose, head to toe visible`;
+  const expressionSheetPrompt =
+    matched.expression_sheet_prompt ??
+    `${matched.primary_portrait_prompt}, grid of facial expressions: neutral, happy, surprised, sad, thinking`;
+  const outfitSheetPrompt =
+    matched.outfit_sheet_prompt ??
+    `${matched.primary_portrait_prompt}, wearing their signature outfit, full body`;
+
   return {
     portraitPrompt: matched.primary_portrait_prompt,
     negativePrompt: matched.negative_prompt,
+    turnaroundPrompt,
+    fullBodyPrompt,
+    expressionSheetPrompt,
+    outfitSheetPrompt,
     raw: validation.data,
     creditsUsed,
     model,

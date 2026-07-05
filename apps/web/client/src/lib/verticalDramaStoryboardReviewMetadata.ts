@@ -336,6 +336,11 @@ function buildRecommendedRepairs(reviewData: Record<string, unknown> | null): Pa
       shotNumber: asFiniteNumber(record.shotNumber),
       clipNumber: asFiniteNumber(record.clipNumber),
       artifactId: asString(record.artifactId),
+      // `QcRepair.stage` (the QC stage this repair was recommended from) —
+      // preserved so the caller can resolve the correct pipeline stage via
+      // `VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE` instead of guessing from
+      // `action` alone (the same action can occur under multiple QC stages).
+      qcStage: asString(record.stage),
     });
   }
   return repairs;

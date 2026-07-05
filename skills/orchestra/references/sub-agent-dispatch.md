@@ -358,3 +358,32 @@ When dispatching agents that do not need to block the conductor's main workflow,
 | ci-release | No | Workflow/release gate changes are serialized with git and deploy state |
 | debugger | No | Investigation must conclude before fix can proceed |
 | security-review | No | Verdict must be received before reporting completion |
+
+### Foreground Requirement — Never Promise "I'll Follow Up Automatically"
+
+Background dispatch relies on the host re-invoking the conductor when the task
+completes. In practice this notification is unreliable in some clients (e.g.
+observed stalls in the VSCode Claude Code extension, where background-task
+visibility is documented as limited compared to the CLI) — a promised
+follow-up can silently never arrive, leaving the user to ask "is this done
+yet?" instead of seeing the final summary.
+
+**Rule:** any agent whose result gates the next wave, a quality gate, the
+post-completion review, or the final summary — this includes every `No` row
+above, i.e. all file-writing agents, `database`, `e2e-playwright`,
+`performance`, `ci-release`, `debugger`, `security-review` — MUST be
+dispatched with `background: false` and awaited before the conductor's turn
+ends. Do not tell the user "I'll follow up as soon as it finishes" and then
+end the turn; if the result is needed this session, wait for it inline and
+report the outcome in the same turn.
+
+`background: true` is reserved strictly for the `Yes` rows above (read-only
+analysis/audits whose result is only consumed by a later wave, not by this
+turn's closing summary). Even then, do not defer the final summary on an
+unbounded background promise — collect the result before Step 7/8 finalizes,
+per the normal wave-integration sequence in `result-integration.md`.
+
+A `SubagentStop` hook (`.claude/hooks/notify.sh`) logs every sub-agent
+completion to `.claude/hooks/notify.log` as a diagnostic safety net, but it is
+not a substitute for this rule — it only helps confirm after the fact whether
+a background agent finished; it does not make the conductor resume.

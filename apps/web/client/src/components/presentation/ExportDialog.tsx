@@ -568,7 +568,7 @@ export function ExportDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="sm:max-w-lg"
+        className="max-h-[85vh] overflow-y-auto sm:max-w-lg"
         onInteractOutside={
           dialogPhase === "exporting"
             ? (e) => e.preventDefault()

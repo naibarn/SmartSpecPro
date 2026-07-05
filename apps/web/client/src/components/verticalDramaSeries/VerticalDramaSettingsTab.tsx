@@ -41,6 +41,18 @@ const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "archived",
 ];
 
+/**
+ * `bible` jsonb fields captured at series-creation time that we surface
+ * read-only in the "Series Origin" section below. Other (LLM-expanded)
+ * bible fields are shown by the Bible tab, not here.
+ */
+interface SeriesOriginBible {
+  logline?: string | null;
+  mainPlot?: string | null;
+  visualStyle?: string | null;
+  cliffhangerStyle?: string | null;
+}
+
 export interface VerticalDramaSettingsTabProps {
   lang: "th" | "en";
   seriesId: string;
@@ -48,6 +60,14 @@ export interface VerticalDramaSettingsTabProps {
   status: string;
   readOnly: boolean;
   onSaved?: () => void;
+  /** Creation-time fields — read-only "Series Origin" traceability section. */
+  genre?: string | null;
+  tone?: string | null;
+  targetAudience?: string | null;
+  targetEpisodeCount?: number | null;
+  defaultEpisodeDurationSeconds?: number | null;
+  locale?: string | null;
+  bible?: unknown;
 }
 
 export function VerticalDramaSettingsTab({
@@ -57,6 +77,13 @@ export function VerticalDramaSettingsTab({
   status,
   readOnly,
   onSaved,
+  genre,
+  tone,
+  targetAudience,
+  targetEpisodeCount,
+  defaultEpisodeDurationSeconds,
+  locale,
+  bible,
 }: VerticalDramaSettingsTabProps) {
   const [titleInput, setTitleInput] = useState(title);
   const [statusInput, setStatusInput] = useState<VerticalDramaSeriesStatus>(
@@ -86,81 +113,123 @@ export function VerticalDramaSettingsTab({
 
   const dirty = titleInput !== title || statusInput !== status;
 
+  const b = (bible ?? {}) as SeriesOriginBible;
+  const notSet = lang === "th" ? "ไม่ได้ระบุ" : "Not set";
+  const originFields: Array<{ label: { th: string; en: string }; value: string | number | null | undefined }> = [
+    { label: { th: "แนวเรื่อง", en: "Genre" }, value: genre },
+    { label: { th: "โทนเรื่อง", en: "Tone" }, value: tone },
+    { label: { th: "กลุ่มเป้าหมาย", en: "Target audience" }, value: targetAudience },
+    { label: { th: "จำนวนตอนเป้าหมาย", en: "Target episode count" }, value: targetEpisodeCount },
+    {
+      label: { th: "ความยาวต่อตอน (วินาที)", en: "Default episode duration (sec)" },
+      value: defaultEpisodeDurationSeconds,
+    },
+    { label: { th: "ภาษา", en: "Locale" }, value: locale },
+    { label: { th: "โลจไลน์", en: "Logline" }, value: b.logline },
+    { label: { th: "โครงเรื่องหลัก", en: "Main plot" }, value: b.mainPlot },
+    { label: { th: "สไตล์ภาพ", en: "Visual style" }, value: b.visualStyle },
+    { label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" }, value: b.cliffhangerStyle },
+  ];
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">
-          {lang === "th" ? "ตั้งค่าซีรีย์" : "Series settings"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="grid max-w-md gap-4">
-        {readOnly && (
-          <Badge variant="outline" className="w-fit">
-            {pickCopy(lang, verticalDramaCopy.readOnly)}
-          </Badge>
-        )}
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {lang === "th" ? "ที่มาของซีรีย์" : "Series origin"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid max-w-2xl gap-3 sm:grid-cols-2">
+          {originFields.map((field) => (
+            <div key={field.label.en} className="grid gap-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                {pickCopy(lang, field.label)}
+              </span>
+              <span className="text-sm">
+                {field.value === null || field.value === undefined || field.value === ""
+                  ? notSet
+                  : String(field.value)}
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="series-settings-title" className="text-xs font-medium text-muted-foreground">
-            {lang === "th" ? "ชื่อซีรีย์" : "Series title"}
-          </Label>
-          <Input
-            id="series-settings-title"
-            value={titleInput}
-            onChange={(e) => setTitleInput(e.target.value)}
-            disabled={readOnly || updateMutation.isPending}
-          />
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {lang === "th" ? "ตั้งค่าซีรีย์" : "Series settings"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid max-w-md gap-4">
+          {readOnly && (
+            <Badge variant="outline" className="w-fit">
+              {pickCopy(lang, verticalDramaCopy.readOnly)}
+            </Badge>
+          )}
 
-        <div className="grid gap-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">
-            {lang === "th" ? "สถานะ" : "Status"}
-          </Label>
-          <Select
-            value={statusInput}
-            onValueChange={(v) => setStatusInput(v as VerticalDramaSeriesStatus)}
-            disabled={readOnly || updateMutation.isPending}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt} value={opt}>
-                  {pickCopy(lang, seriesStatusCopy[opt])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="series-settings-title" className="text-xs font-medium text-muted-foreground">
+              {lang === "th" ? "ชื่อซีรีย์" : "Series title"}
+            </Label>
+            <Input
+              id="series-settings-title"
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              disabled={readOnly || updateMutation.isPending}
+            />
+          </div>
 
-        {!readOnly && (
-          <Button
-            onClick={() =>
-              updateMutation.mutate({
-                seriesId,
-                title: titleInput.trim() || undefined,
-                status: statusInput,
-              })
-            }
-            disabled={updateMutation.isPending || !dirty || titleInput.trim().length === 0}
-            className="w-fit gap-2"
-          >
-            {updateMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Save className="h-4 w-4" aria-hidden="true" />
-            )}
-            {updateMutation.isPending
-              ? lang === "th"
-                ? "กำลังบันทึก…"
-                : "Saving…"
-              : lang === "th"
-                ? "บันทึก"
-                : "Save"}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {lang === "th" ? "สถานะ" : "Status"}
+            </Label>
+            <Select
+              value={statusInput}
+              onValueChange={(v) => setStatusInput(v as VerticalDramaSeriesStatus)}
+              disabled={readOnly || updateMutation.isPending}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {pickCopy(lang, seriesStatusCopy[opt])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {!readOnly && (
+            <Button
+              onClick={() =>
+                updateMutation.mutate({
+                  seriesId,
+                  title: titleInput.trim() || undefined,
+                  status: statusInput,
+                })
+              }
+              disabled={updateMutation.isPending || !dirty || titleInput.trim().length === 0}
+              className="w-fit gap-2"
+            >
+              {updateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="h-4 w-4" aria-hidden="true" />
+              )}
+              {updateMutation.isPending
+                ? lang === "th"
+                  ? "กำลังบันทึก…"
+                  : "Saving…"
+                : lang === "th"
+                  ? "บันทึก"
+                  : "Save"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

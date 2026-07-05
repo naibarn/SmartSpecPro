@@ -50,6 +50,8 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/task-packet-format.md` | Only for `medium` scope and above — Step 4 |
 | `references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
 | `references/model-routing.md` | Always before dispatching a sub-agent, building Task Packets, or selecting inline fallback model behavior |
+| `references/schema-single-writer.md` | Whenever a task may change any DB schema or migration (Prisma / Drizzle / Alembic) |
+| `references/rate-limit-safety.md` | Before every multi-wave dispatch, and whenever an agent returns a throttling/overload error |
 | `references/result-integration.md` | Only for `medium` scope and above — Step 5 |
 | `references/quality-gates.md` | Always — Step 6 |
 | `references/ui-ux-planning-contract.md` | When UI/UX, visual polish, responsive, accessibility, or user-facing workflow work is in scope |
@@ -259,6 +261,7 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 | Quality gate fails after 3 retry attempts (Step 6) | Report full failure details, STOP |
 | CRITICAL security findings found (Step 6) | Present each finding, STOP — cannot auto-proceed |
 | Circular dependency detected in wave plan (Step 3) | Report cycle with affected task names, STOP until resolved |
+| A wave returns rate-limit / 429 / overload errors, or agents stall | Halt dispatch, preserve partials, report per `references/rate-limit-safety.md`, STOP - do not blind-retry |
 | Conflict unresolvable between two agents or two valid product-direction options | Present both options with a direct user prompt, STOP |
 
 ---
@@ -512,6 +515,12 @@ Before dispatching, read `../sub-agents/references/shared-operational-discipline
 
 Do NOT dump raw conversation history. Include only file paths, change descriptions, status, and contract notes.
 
+**Schema single-writer lock (REQUIRED before dispatch):** If this wave will run
+parallel agents, `touch orchestra/.wave-active` before the first Task call. This marks
+the wave active so the `schema-single-writer` hook blocks any concurrent DB
+schema/migration edit. Never place a schema/migration edit inside a wave - do schema
+changes serially from the conductor between waves (see `references/schema-single-writer.md`).
+
 **Dispatch by platform:**
 
 | Platform | Method |
@@ -542,6 +551,11 @@ call fails and the failure is recorded in `orchestra/progress.md`.
 ---
 
 ## Step 5: Result Integration
+
+**Release the schema lock:** once the wave's agents have all returned and their results
+are collected, `rm -f orchestra/.wave-active`. Any DB schema/migration change required by
+this wave's results (including `NEEDS_SCHEMA_CHANGE` escalations) is applied here,
+serially, by the conductor - before the next wave is dispatched.
 
 Read `references/result-integration.md`.
 

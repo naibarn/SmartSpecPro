@@ -47,6 +47,11 @@ Notes:
   unless local API mode is explicitly requested.
 - `web-video-presentation` can run package installs and optional TTS generation;
   its scripts require explicit `--yes` confirmation for those side effects.
+- `claude-hooks/` holds Claude Code-only project hook installers (things wired
+  through `.claude/settings.json`'s `hooks` key). It is intentionally **not**
+  listed in `mirrored-skills.txt`, so it is never copied to Codex and never
+  symlinked into `.claude/skills/` — see `claude-hooks/README.md` for the install
+  flow and why it lives outside any single skill's folder.
 
 Install on a new machine or project:
 

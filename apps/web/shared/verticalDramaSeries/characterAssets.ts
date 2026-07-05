@@ -42,6 +42,12 @@ export type VerticalDramaCharacterAssetRole =
 /**
  * A durable character-stock asset link. `mediaAssetId` is the tenant-scoped
  * canonical asset id; browser-facing projections never carry provider URLs.
+ *
+ * Scoped exception: `thumbnailUrl` is a read-only, derived-at-read-time
+ * projection of the linked `media_assets.originalUrl` (via a LEFT JOIN in
+ * `verticalDramaCharacterStock.ts#listRows`), included solely so the roster
+ * card grid can render a thumbnail. It is never persisted on this contract
+ * and is not a general-purpose provider-URL field — do not widen its scope.
  */
 export type VerticalDramaCharacterAsset = {
   assetLinkId: string;
@@ -60,6 +66,7 @@ export type VerticalDramaCharacterAsset = {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  thumbnailUrl?: string;
 };
 
 /** The per-series character-asset manifest projection (spec §7.3 §03 artifact). */

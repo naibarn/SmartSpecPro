@@ -5,11 +5,10 @@ Handles async media generation task management
 
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID
-from datetime import timedelta
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -17,12 +16,8 @@ from sqlalchemy import select, and_
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
 
-MARKDOWN_FENCED_BLOCK_PATTERN = re.compile(
-    r"^\s*```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```\s*$"
-)
-MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN = re.compile(
-    r"```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```"
-)
+MARKDOWN_FENCED_BLOCK_PATTERN = re.compile(r"^\s*```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```\s*$")
+MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN = re.compile(r"```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```")
 MARKDOWN_FENCE_LINE_PATTERN = re.compile(r"^\s*```[A-Za-z0-9_-]*\s*$", re.MULTILINE)
 LEADING_JSON_LABEL_PATTERN = re.compile(r"^json\s*\n([\s\S]*)$", re.IGNORECASE)
 
@@ -113,11 +108,13 @@ class MediaTaskService:
         media_type: MediaType,
         model: str,
         prompt: str,
-        parameters: Optional[dict] = None
+        parameters: Optional[dict] = None,
     ) -> MediaTask:
         """Create a new media generation task"""
         # Convert enum to string value for database storage
-        media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+        media_type_value = (
+            media_type.value if isinstance(media_type, MediaType) else str(media_type)
+        )
         normalized_prompt = normalize_media_prompt(prompt) or str(prompt).strip()
 
         task = MediaTask(
@@ -136,9 +133,7 @@ class MediaTaskService:
 
     @staticmethod
     async def get_task(
-        db: AsyncSession,
-        task_id: str,
-        user_id: Optional[str] = None
+        db: AsyncSession, task_id: str, user_id: Optional[str] = None
     ) -> Optional[MediaTask]:
         """Get a task by ID, optionally filtered by user"""
         query = select(MediaTask).where(MediaTask.id == task_id)
@@ -158,7 +153,7 @@ class MediaTaskService:
         error_message: Optional[str] = None,
         credits_used: Optional[int] = None,
         credits_balance: Optional[int] = None,
-        external_task_id: Optional[str] = None
+        external_task_id: Optional[str] = None,
     ) -> Optional[MediaTask]:
         """Update task status and results"""
         task = await MediaTaskService.get_task(db, task_id)
@@ -175,6 +170,11 @@ class MediaTaskService:
             task.result_data = _make_json_safe(result_data)
         if error_message:
             task.error_message = error_message
+        elif status_value == TaskStatus.COMPLETED.value:
+            # Clear any stale error message (e.g. from an earlier race with the
+            # stuck-task recovery job) when the task legitimately completes
+            # without the caller explicitly supplying an error message.
+            task.error_message = None
         if credits_used is not None:
             task.credits_used = credits_used
         if credits_balance is not None:
@@ -184,20 +184,20 @@ class MediaTaskService:
 
         # Update timestamps - compare with string values
         if status_value == TaskStatus.PROCESSING.value and not task.started_at:
-            task.started_at = datetime.utcnow()
-        if status_value in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
-            task.completed_at = datetime.utcnow()
+            task.started_at = datetime.now(timezone.utc)
+        if status_value in [
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        ]:
+            task.completed_at = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(task)
         return task
 
     @staticmethod
-    async def cancel_task(
-        db: AsyncSession,
-        task_id: str,
-        user_id: str
-    ) -> Optional[MediaTask]:
+    async def cancel_task(db: AsyncSession, task_id: str, user_id: str) -> Optional[MediaTask]:
         """Cancel a pending or processing task"""
         task = await MediaTaskService.get_task(db, task_id, user_id)
         if not task:
@@ -207,18 +207,10 @@ class MediaTaskService:
         if task.status not in [TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]:
             return None
 
-        return await MediaTaskService.update_task_status(
-            db,
-            task_id,
-            TaskStatus.CANCELLED
-        )
+        return await MediaTaskService.update_task_status(db, task_id, TaskStatus.CANCELLED)
 
     @staticmethod
-    async def delete_task(
-        db: AsyncSession,
-        task_id: str,
-        user_id: str
-    ) -> bool:
+    async def delete_task(db: AsyncSession, task_id: str, user_id: str) -> bool:
         """Delete a task from the database"""
         task = await MediaTaskService.get_task(db, task_id, user_id)
         if not task:
@@ -240,14 +232,16 @@ class MediaTaskService:
         status: Optional[TaskStatus] = None,
         limit: int = 50,
         offset: int = 0,
-        days_ago: Optional[int] = None
+        days_ago: Optional[int] = None,
     ) -> List[MediaTask]:
         """List tasks for a user with optional filters"""
         query = select(MediaTask).where(MediaTask.user_id == user_id)
 
         if media_type:
             # Convert enum to string value for comparison
-            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            media_type_value = (
+                media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            )
             query = query.where(MediaTask.media_type == media_type_value)
         if status:
             # Convert enum to string value for comparison
@@ -256,7 +250,7 @@ class MediaTaskService:
 
         # Filter by days ago if specified
         if days_ago is not None and days_ago > 0:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_ago)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
             query = query.where(MediaTask.created_at >= cutoff_date)
 
         query = query.order_by(MediaTask.created_at.desc())
@@ -271,7 +265,7 @@ class MediaTaskService:
         user_id: str,
         media_type: Optional[MediaType] = None,
         status: Optional[TaskStatus] = None,
-        days_ago: Optional[int] = None
+        days_ago: Optional[int] = None,
     ) -> int:
         """Get count of tasks for a user"""
         from sqlalchemy import func
@@ -280,7 +274,9 @@ class MediaTaskService:
 
         if media_type:
             # Convert enum to string value for comparison
-            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            media_type_value = (
+                media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            )
             query = query.where(MediaTask.media_type == media_type_value)
         if status:
             # Convert enum to string value for comparison
@@ -289,7 +285,7 @@ class MediaTaskService:
 
         # Filter by days ago if specified
         if days_ago is not None and days_ago > 0:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_ago)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
             query = query.where(MediaTask.created_at >= cutoff_date)
 
         result = await db.execute(query)
@@ -307,7 +303,9 @@ class MediaTaskService:
         query = select(MediaTask)
 
         if media_type:
-            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            media_type_value = (
+                media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            )
             query = query.where(MediaTask.media_type == media_type_value)
         if status:
             status_value = status.value if isinstance(status, TaskStatus) else str(status)
@@ -331,7 +329,9 @@ class MediaTaskService:
         query = select(func.count(MediaTask.id))
 
         if media_type:
-            media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            media_type_value = (
+                media_type.value if isinstance(media_type, MediaType) else str(media_type)
+            )
             query = query.where(MediaTask.media_type == media_type_value)
         if status:
             status_value = status.value if isinstance(status, TaskStatus) else str(status)
@@ -342,8 +342,7 @@ class MediaTaskService:
 
     @staticmethod
     async def get_task_by_external_id(
-        db: AsyncSession,
-        external_task_id: str
+        db: AsyncSession, external_task_id: str
     ) -> Optional[MediaTask]:
         """Get a task by external provider task ID (e.g., Kie.ai task ID)"""
         query = select(MediaTask).where(MediaTask.task_id == external_task_id)
@@ -359,7 +358,7 @@ class MediaTaskService:
         result_data: Optional[dict] = None,
         error_message: Optional[str] = None,
         credits_used: Optional[int] = None,
-        credits_balance: Optional[int] = None
+        credits_balance: Optional[int] = None,
     ) -> Optional[MediaTask]:
         """Update task by external provider task ID (e.g., Kie.ai callback)"""
         if not external_task_id:
@@ -373,7 +372,11 @@ class MediaTaskService:
         status_value = status.value if isinstance(status, TaskStatus) else str(status)
 
         # Idempotency guard: don't overwrite terminal states with another terminal update.
-        if task.status in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
+        if task.status in [
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        ]:
             if task.status == status_value:
                 return task
             # Preserve first terminal transition as source of truth.
@@ -387,6 +390,11 @@ class MediaTaskService:
             task.result_data = _make_json_safe(result_data)
         if error_message:
             task.error_message = error_message
+        elif status_value == TaskStatus.COMPLETED.value:
+            # Clear any stale error message (e.g. from an earlier race with the
+            # stuck-task recovery job) when the task legitimately completes
+            # without the caller explicitly supplying an error message.
+            task.error_message = None
         if credits_used is not None:
             task.credits_used = credits_used
         if credits_balance is not None:
@@ -394,26 +402,27 @@ class MediaTaskService:
 
         # Update timestamps - compare with string values
         if status_value == TaskStatus.PROCESSING.value and not task.started_at:
-            task.started_at = datetime.utcnow()
-        if status_value in [TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value]:
-            task.completed_at = datetime.utcnow()
+            task.started_at = datetime.now(timezone.utc)
+        if status_value in [
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        ]:
+            task.completed_at = datetime.now(timezone.utc)
 
         await db.commit()
         await db.refresh(task)
         return task
 
     @staticmethod
-    async def cleanup_old_tasks(
-        db: AsyncSession,
-        days: int = 12
-    ) -> int:
+    async def cleanup_old_tasks(db: AsyncSession, days: int = 12) -> int:
         """
         Delete tasks older than specified days (default: 12 days).
         Returns the number of deleted tasks.
         """
         from sqlalchemy import delete
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Delete old tasks
         stmt = delete(MediaTask).where(MediaTask.created_at < cutoff_date)
@@ -421,5 +430,7 @@ class MediaTaskService:
         await db.commit()
 
         return result.rowcount
+
+
 # mypy: ignore-errors
 # mypy: ignore-errors

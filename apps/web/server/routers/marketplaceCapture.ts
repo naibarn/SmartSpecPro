@@ -197,12 +197,12 @@ const editableProductDetailsSchema = z.object({
   productCategory: productReferenceCategorySchema.optional().nullable(),
   ratingScore: z.union([z.string().max(64), z.number()]).optional().nullable(),
   reviewCountText: z.string().trim().max(128).optional().nullable(),
+  affiliateUrl: z.string().trim().max(4096).optional().nullable(),
 });
 
 const manualProductSchema = editableProductDetailsSchema.extend({
   platform: z.enum(["shopee", "tiktok_shop"]).default("shopee"),
   sourceUrl: z.string().trim().max(4096).optional().nullable(),
-  affiliateUrl: z.string().trim().max(4096).optional().nullable(),
 });
 
 const visualProductSearchSchema = z.object({

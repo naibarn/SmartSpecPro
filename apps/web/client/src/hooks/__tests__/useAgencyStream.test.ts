@@ -596,4 +596,59 @@ describe("useAgencyStream", () => {
 
     expect(result.current.isStreaming).toBe(false);
   });
+
+  it("parses browser_session events and forwards the artifact", async () => {
+    const onBrowserSession = vi.fn();
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      makeSSEResponse(
+        `event: browser_session\ndata: {"sessionId":"lbs_agency_1","summary":{"sessionId":"lbs_agency_1","state":"review_required","badgeLabel":"Review Required","statusLine":"Review Required before AI can continue.","primaryActionLabel":"Continue in Browser","pageTitle":"Checkout","url":"https://example.com/checkout","compactNotice":null,"sourceLabel":"Agency"},"updatedAt":"2026-03-12T10:05:00.000Z"}\n\n` +
+        `event: run_finished\ndata: {"creditsUsed":0}\n\n`,
+      ),
+    );
+
+    const { result } = renderHook(() =>
+      useAgencyStream({ onBrowserSession }),
+    );
+
+    await act(async () => {
+      result.current.connect({ agencyId: "ag-1", message: "test" });
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(onBrowserSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "lbs_agency_1",
+        summary: expect.objectContaining({
+          state: "review_required",
+          primaryActionLabel: "Continue in Browser",
+        }),
+      }),
+    );
+  });
+
+  it("parses preview_ready events and forwards normalized preview metadata", async () => {
+    const onPreviewReady = vi.fn();
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      makeSSEResponse(
+        `event: preview_ready\ndata: {"run_id":"run-42","preview_artifact_ids":["artifact-1"],"intent":"hotel_comparison","summary":"Comparison ready"}\n\n` +
+        `event: run_finished\ndata: {"creditsUsed":0}\n\n`,
+      ),
+    );
+
+    const { result } = renderHook(() =>
+      useAgencyStream({ onPreviewReady }),
+    );
+
+    await act(async () => {
+      result.current.connect({ agencyId: "ag-1", message: "compare hotels" });
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(onPreviewReady).toHaveBeenCalledWith({
+      runId: "run-42",
+      previewArtifactIds: ["artifact-1"],
+      intent: "hotel_comparison",
+      summary: "Comparison ready",
+    });
+  });
 });

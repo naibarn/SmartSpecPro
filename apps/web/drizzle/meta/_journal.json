@@ -1373,6 +1373,13 @@
       "when": 1780000019000,
       "tag": "0209_marketplace_intelligence_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1780000020000,
+      "tag": "0210_marketplace_product_affiliate_links",
+      "breakpoints": true
     }
   ]
 }

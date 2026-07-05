@@ -16,7 +16,7 @@
  * `VerticalDramaCharacterStockService`.
  */
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaCharacterAssets,
@@ -114,6 +114,7 @@ function isCharacterAssetState(v: string): v is VerticalDramaCharacterAssetState
 
 export function characterAssetRowToContract(
   row: VerticalDramaCharacterAssetRow,
+  thumbnailUrl?: string | null,
 ): VerticalDramaCharacterAsset {
   const meta = (row.metadata as Record<string, unknown> | null) ?? {};
   const state = deriveCharacterAssetState(row);
@@ -136,6 +137,7 @@ export function characterAssetRowToContract(
     rejectionReason: typeof meta.rejectionReason === "string" ? meta.rejectionReason : undefined,
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
+    thumbnailUrl: thumbnailUrl ?? undefined,
   };
 }
 
@@ -231,11 +233,22 @@ export class VerticalDramaCharacterStockService {
     }
   }
 
-  /** Load the durable stock rows for a series (tenant + user scoped). */
-  async listRows(owner: VerticalDramaCharacterStockOwner): Promise<VerticalDramaCharacterAssetRow[]> {
-    return db
-      .select()
+  /**
+   * Load the durable stock rows for a series (tenant + user scoped), left-joined
+   * against `media_assets` so callers can surface a read-only thumbnail URL
+   * without persisting one on the character-asset row itself (derived at read
+   * time from the existing canonical `mediaAssetId` link).
+   */
+  async listRows(
+    owner: VerticalDramaCharacterStockOwner,
+  ): Promise<Array<VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }>> {
+    const rows = await db
+      .select({
+        ...getTableColumns(verticalDramaCharacterAssets),
+        thumbnailUrl: mediaAssets.originalUrl,
+      })
       .from(verticalDramaCharacterAssets)
+      .leftJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
@@ -243,6 +256,7 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
         ),
       );
+    return rows as Array<VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }>;
   }
 
   /** Build the browser-safe per-series character-asset manifest. */
@@ -252,23 +266,60 @@ export class VerticalDramaCharacterStockService {
     const rows = await this.listRows(owner);
     return buildCharacterAssetManifest(
       owner.seriesId,
-      rows.map(characterAssetRowToContract),
+      rows.map((row) => characterAssetRowToContract(row, row.thumbnailUrl)),
     );
+  }
+
+  /**
+   * The character's current identity-lock reference — the `primary_portrait`
+   * asset to feed back into the model (as `referenceImageUrls`) whenever
+   * generating another image of the same character, so the render is
+   * conditioned on the actual face/likeness instead of relying on the text
+   * prompt's "no identity drift" instruction alone. Prefers the newest
+   * `approved` portrait; falls back to the newest portrait of any state (a
+   * just-generated one is auto-approved already, but this stays defensive
+   * for pre-auto-approve rows or a rejected-then-not-yet-replaced case).
+   */
+  async getPrimaryPortraitUrl(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+  ): Promise<string | null> {
+    const [row] = await db
+      .select({ url: mediaAssets.originalUrl })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          eq(verticalDramaCharacterAssets.role, "primary_portrait"),
+        ),
+      )
+      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
+      .limit(1);
+    return row?.url ?? null;
   }
 
   /**
    * Link a new character/product reference asset into the durable stock. The
    * `media_assets` row (when provided) is validated for tenant+user ownership
    * and non-deleted status before insert (cross-tenant/deleted are rejected).
-   * The new link starts in `draft` (generated/imported settle its initial
-   * lifecycle via a subsequent transition) — approval is never implicit.
+   *
+   * Auto-approved on entry (product decision, 2026-07-04): a manual
+   * approve-before-use step turned out to have no downstream consumer (no
+   * other service checked `approved` before this), so every new link — from
+   * either the generate or the import/drag-drop path — starts directly in
+   * `approved`. `reject` is still available immediately after for
+   * corrections, and assets can still cycle back through `stale` ->
+   * `approved` later (e.g. after the character's identity anchors change),
+   * so the approve action itself is kept in the state machine and UI.
    */
   async linkAsset(params: LinkCharacterAssetParams): Promise<VerticalDramaCharacterAsset> {
     if (params.mediaAssetId != null) {
       await this.assertMediaAssetAttachable(params, params.mediaAssetId);
     }
-    const initialState: VerticalDramaCharacterAssetState =
-      params.source === "generated" ? "generated" : "imported";
     const [row] = await db
       .insert(verticalDramaCharacterAssets)
       .values({
@@ -279,13 +330,13 @@ export class VerticalDramaCharacterStockService {
         mediaAssetId: params.mediaAssetId ?? null,
         assetType: params.assetType,
         role: params.role ?? null,
-        approved: false,
+        approved: true,
         containsHumanFace: params.containsHumanFace ?? null,
         qcStatus: "pending",
         checksumSha256: params.checksumSha256 ?? null,
         metadata: {
           ...(params.metadata ?? {}),
-          state: initialState,
+          state: "approved" satisfies VerticalDramaCharacterAssetState,
           source: params.source,
         },
       } as typeof verticalDramaCharacterAssets.$inferInsert)
@@ -383,6 +434,33 @@ export class VerticalDramaCharacterStockService {
       count += 1;
     }
     return count;
+  }
+
+  /**
+   * Permanently unlink a reference asset from a character's stock (product
+   * decision, 2026-07-05: character references are a personal library, not
+   * narrative content — "generate/import = add, unwanted = delete" is the
+   * expected model, replacing the approve/reject/stale QC workflow that
+   * carried over from the episode-shot review system but didn't fit here).
+   * Only removes the `verticalDramaCharacterAssets` link row — the
+   * underlying `media_assets` row is left untouched (it may still be
+   * referenced from Media History/Library independent of this character).
+   */
+  async deleteAsset(
+    owner: VerticalDramaCharacterStockOwner,
+    assetLinkId: number,
+  ): Promise<void> {
+    await this.loadOwnedRow(owner, assetLinkId);
+    await db
+      .delete(verticalDramaCharacterAssets)
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.id, assetLinkId),
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+        ),
+      );
   }
 }
 

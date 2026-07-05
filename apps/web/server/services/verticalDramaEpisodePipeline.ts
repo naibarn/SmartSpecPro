@@ -45,36 +45,64 @@ import {
   type VerticalDramaSeriesMemoryService,
 } from "./verticalDramaSeriesMemory";
 import {
+  generateEpisodeScript,
+  InsufficientCreditsError as ScriptInsufficientCreditsError,
+  VdSchemaValidationError as ScriptVdSchemaValidationError,
+  type ScriptBuilderOutput,
+} from "./verticalDramaScriptGeneration";
+import {
   generateStoryboardShotgrid,
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
 } from "./verticalDramaStoryboardGeneration";
+import {
+  generateStartFrameRenderPlan,
+  InsufficientCreditsError as StartFrameInsufficientCreditsError,
+  VdSchemaValidationError as StartFrameVdSchemaValidationError,
+  type StartFrameRenderPlanProjection,
+} from "./verticalDramaStartFrameGeneration";
+import {
+  generateVideoMotionPromptPack,
+  InsufficientCreditsError as MotionPromptInsufficientCreditsError,
+  VdSchemaValidationError as MotionPromptVdSchemaValidationError,
+  type VideoMotionPromptPackProjection,
+} from "./verticalDramaVideoMotionPromptGeneration";
+import { verticalDramaCharacterStockService } from "./verticalDramaCharacterStock";
+import {
+  createVerticalDramaStoryboardHandoff,
+  type HandoffResult as VerticalDramaHandoffResult,
+} from "./verticalDramaStoryboardHandoff";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
 /* -------------------------------------------------------------------------- */
 
 /** The canonical, ordered 15-stage sequence — the single source of truth. */
-export const VERTICAL_DRAMA_PIPELINE_STAGES: readonly VerticalDramaPipelineStage[] = [
-  "normalize_series_input",
-  "plan_episode_script",
-  "update_character_visual_bible",
-  "generate_or_import_character_refs",
-  "storyboard_shotgrid",
-  "start_frame_render_plan",
-  "render_or_import_start_frames",
-  "approve_start_frames",
-  "dialogue_audio_plan",
-  "video_motion_prompt_pack",
-  "create_storyboard_review_project",
-  "review_generate_repair_in_storyboard_review",
-  "render_or_import_video_clips",
-  "assemble_episode_manifest",
-  "summarize_episode_to_series_memory",
-] as const;
+export const VERTICAL_DRAMA_PIPELINE_STAGES: readonly VerticalDramaPipelineStage[] =
+  [
+    "normalize_series_input",
+    "plan_episode_script",
+    "update_character_visual_bible",
+    "generate_or_import_character_refs",
+    "storyboard_shotgrid",
+    "start_frame_render_plan",
+    "render_or_import_start_frames",
+    "approve_start_frames",
+    "dialogue_audio_plan",
+    "video_motion_prompt_pack",
+    "create_storyboard_review_project",
+    "review_generate_repair_in_storyboard_review",
+    "render_or_import_video_clips",
+    "assemble_episode_manifest",
+    "summarize_episode_to_series_memory",
+  ] as const;
 
-export type VerticalDramaPhaseId = "plan" | "frames" | "prompt_handoff" | "generate_assemble";
+export type VerticalDramaPhaseId =
+  | "plan"
+  | "frames"
+  | "prompt_handoff"
+  | "generate_assemble";
 
 export interface VerticalDramaPhase {
   id: VerticalDramaPhaseId;
@@ -134,8 +162,10 @@ export const VERTICAL_DRAMA_PHASES: readonly VerticalDramaPhase[] = [
 ] as const;
 
 /** Return the phase a stage belongs to (spec §16). */
-export function phaseForStage(stage: VerticalDramaPipelineStage): VerticalDramaPhase {
-  const phase = VERTICAL_DRAMA_PHASES.find((p) => p.stages.includes(stage));
+export function phaseForStage(
+  stage: VerticalDramaPipelineStage
+): VerticalDramaPhase {
+  const phase = VERTICAL_DRAMA_PHASES.find(p => p.stages.includes(stage));
   // Every canonical stage belongs to exactly one phase.
   return phase ?? VERTICAL_DRAMA_PHASES[0];
 }
@@ -153,38 +183,66 @@ export const VERTICAL_DRAMA_RUNNER_MODES = [
   "full",
   "repair",
 ] as const;
-export type VerticalDramaRunnerMode = (typeof VERTICAL_DRAMA_RUNNER_MODES)[number];
+export type VerticalDramaRunnerMode =
+  (typeof VERTICAL_DRAMA_RUNNER_MODES)[number];
 
 /**
  * Stages that persist an approval checkpoint and MUST be approved before the
  * sequence advances past them (spec §11.2 — the 12 approval checkpoints).
  */
-export const VERTICAL_DRAMA_APPROVAL_STAGES: ReadonlySet<VerticalDramaPipelineStage> = new Set([
-  "plan_episode_script",
-  "update_character_visual_bible",
-  "generate_or_import_character_refs",
-  "storyboard_shotgrid",
-  "start_frame_render_plan",
-  "render_or_import_start_frames",
-  "dialogue_audio_plan",
-  "video_motion_prompt_pack",
-  "create_storyboard_review_project",
-  "render_or_import_video_clips",
-  "assemble_episode_manifest",
-  "summarize_episode_to_series_memory",
-]);
+export const VERTICAL_DRAMA_APPROVAL_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
+  new Set([
+    "plan_episode_script",
+    "update_character_visual_bible",
+    "generate_or_import_character_refs",
+    "storyboard_shotgrid",
+    "start_frame_render_plan",
+    "render_or_import_start_frames",
+    "dialogue_audio_plan",
+    "video_motion_prompt_pack",
+    "create_storyboard_review_project",
+    "render_or_import_video_clips",
+    "assemble_episode_manifest",
+    "summarize_episode_to_series_memory",
+  ]);
 
 /**
  * Paid stages that call an external provider. They NEVER run in
  * `dry_run`/`plan_only` and never before their approval checkpoint clears.
  */
-export const VERTICAL_DRAMA_PAID_STAGES: ReadonlySet<VerticalDramaPipelineStage> = new Set([
-  "render_or_import_start_frames",
-  "render_or_import_video_clips",
-]);
+export const VERTICAL_DRAMA_PAID_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
+  new Set(["render_or_import_start_frames", "render_or_import_video_clips"]);
 
 /** Stable machine-readable error code for a schema-validation failure (spec §11.5). */
 export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
+
+/**
+ * Map a `generateEpisodeScript` failure to a `RunResult` error — mirrors
+ * `mapStoryboardGenerationError` exactly. Never throws.
+ */
+function mapScriptGenerationError(
+  error: unknown
+): RunResult["errors"][number] {
+  if (error instanceof ScriptInsufficientCreditsError) {
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
+  }
+  if (error instanceof ScriptVdSchemaValidationError) {
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
+  }
+  return {
+    code: "VD_SCRIPT_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
 
 /**
  * Map a `generateStoryboardShotgrid` failure to a `RunResult` error, reusing
@@ -192,15 +250,97 @@ export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
  * output. Never throws — real-generation failures must produce a normal
  * `failed`/`repair` `RunResult`, not an unhandled rejection out of `runStage`.
  */
-function mapStoryboardGenerationError(error: unknown): RunResult["errors"][number] {
+function mapStoryboardGenerationError(
+  error: unknown
+): RunResult["errors"][number] {
   if (error instanceof StoryboardInsufficientCreditsError) {
-    return { code: "VD_INSUFFICIENT_CREDITS", message: error.message, repairable: false };
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
   }
   if (error instanceof StoryboardVdSchemaValidationError) {
-    return { code: VD_SCHEMA_VALIDATION_FAILED, message: error.message, repairable: true };
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
   }
   return {
     code: "VD_STORYBOARD_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
+
+/**
+ * Map a `generateStartFrameRenderPlan` failure to a `RunResult` error —
+ * mirrors `mapStoryboardGenerationError` exactly. Never throws.
+ */
+function mapStartFrameGenerationError(
+  error: unknown
+): RunResult["errors"][number] {
+  if (error instanceof StartFrameInsufficientCreditsError) {
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
+  }
+  if (error instanceof StartFrameVdSchemaValidationError) {
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
+  }
+  return {
+    code: "VD_START_FRAME_PLAN_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
+
+/**
+ * Map a `generateVideoMotionPromptPack` failure to a `RunResult` error —
+ * mirrors `mapStoryboardGenerationError` exactly. Never throws.
+ */
+function mapMotionPromptGenerationError(
+  error: unknown
+): RunResult["errors"][number] {
+  if (error instanceof MotionPromptInsufficientCreditsError) {
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
+  }
+  if (error instanceof MotionPromptVdSchemaValidationError) {
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
+  }
+  return {
+    code: "VD_MOTION_PROMPT_PACK_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
+
+/**
+ * Map a `createVerticalDramaStoryboardHandoff` failure to a `RunResult`
+ * error — mirrors `mapMotionPromptGenerationError` exactly. Never throws.
+ * This is a pure DB operation (no provider call), so there is no
+ * insufficient-credits variant to special-case.
+ */
+function mapStoryboardReviewHandoffError(
+  error: unknown
+): RunResult["errors"][number] {
+  return {
+    code: "VD_STORYBOARD_REVIEW_HANDOFF_FAILED",
     message: error instanceof Error ? error.message : String(error),
     repairable: true,
   };
@@ -240,9 +380,13 @@ export interface ProviderRoutingStageResult {
  */
 export interface ProviderRoutingPort {
   /** Route + (optionally) render a paid stage. Stub renders nothing. */
-  routeAndRenderStage(req: ProviderRoutingStageRequest): Promise<ProviderRoutingStageResult>;
+  routeAndRenderStage(
+    req: ProviderRoutingStageRequest
+  ): Promise<ProviderRoutingStageResult>;
   /** Optional QC pass over a stage's artifact. Stub returns undefined. */
-  runQc?(req: ProviderRoutingStageRequest): Promise<VerticalDramaQcResult | undefined>;
+  runQc?(
+    req: ProviderRoutingStageRequest
+  ): Promise<VerticalDramaQcResult | undefined>;
 }
 
 /** Dry-run-safe port: never renders, never spends, never fails the pipeline. */
@@ -276,7 +420,11 @@ export function createStubProviderRoutingPort(): ProviderRoutingPort {
 /* -------------------------------------------------------------------------- */
 
 /** Even-split `total` seconds into `count` parts, each >= `floor`, summing exactly. */
-export function splitDurations(total: number, count: number, floor: number): number[] {
+export function splitDurations(
+  total: number,
+  count: number,
+  floor: number
+): number[] {
   const n = Math.max(1, count);
   if (n === 1) return [round2(total)];
   const base = Math.max(floor, round2(total / n));
@@ -331,7 +479,7 @@ export interface SubShotPlan {
  */
 export function planSubShots(
   shots: Array<{ shotNumber: number; durationSeconds: number }>,
-  policy: VerticalDramaSubShotPolicy,
+  policy: VerticalDramaSubShotPolicy
 ): SubShotPlan {
   const plannedShots: SubShotPlan["shots"] = [];
   const validationErrors: string[] = [];
@@ -342,18 +490,28 @@ export function planSubShots(
       policy.mode === "fixed"
         ? Math.max(1, Math.min(policy.targetPerShot, policy.maxPerShot))
         : computeAutoSubShotCount(shot.durationSeconds, policy);
-    const durations = splitDurations(shot.durationSeconds, count, policy.minSubShotSeconds);
-    const subShots: VerticalDramaSubShot[] = durations.map((durationSeconds, idx) => ({
-      subShotNumber: idx + 1,
-      parentShotNumber: shot.shotNumber,
-      durationSeconds,
-      cameraSetup: `sub-cut ${idx + 1}: reframe within shot ${shot.shotNumber}`,
-      prompt: `Sub-shot ${idx + 1} of shot ${shot.shotNumber} (dry-run placeholder)`,
-      transitionIn: idx === 0 ? "cut" : "match_cut",
-      status: "planned",
-    }));
+    const durations = splitDurations(
+      shot.durationSeconds,
+      count,
+      policy.minSubShotSeconds
+    );
+    const subShots: VerticalDramaSubShot[] = durations.map(
+      (durationSeconds, idx) => ({
+        subShotNumber: idx + 1,
+        parentShotNumber: shot.shotNumber,
+        durationSeconds,
+        cameraSetup: `sub-cut ${idx + 1}: reframe within shot ${shot.shotNumber}`,
+        prompt: `Sub-shot ${idx + 1} of shot ${shot.shotNumber} (dry-run placeholder)`,
+        transitionIn: idx === 0 ? "cut" : "match_cut",
+        status: "planned",
+      })
+    );
 
-    const validation = validateSubShotsForParent(shot.durationSeconds, subShots, policy);
+    const validation = validateSubShotsForParent(
+      shot.durationSeconds,
+      subShots,
+      policy
+    );
     if (!validation.valid) validationErrors.push(...validation.errors);
 
     plannedShots.push({
@@ -392,22 +550,36 @@ export interface StageBuildContext {
  */
 export function buildStagePayload(
   stage: VerticalDramaPipelineStage,
-  ctx: StageBuildContext,
+  ctx: StageBuildContext
 ): Record<string, unknown> {
   const dur = ctx.episode.targetDurationSeconds ?? 60;
   switch (stage) {
     case "normalize_series_input":
-      return { stage, seriesId: String(ctx.episode.seriesId), memoryBundle: ctx.memoryBundle ?? null };
-    case "plan_episode_script":
       return {
         stage,
-        episodeTitle: ctx.episode.title ?? `Episode ${ctx.episode.episodeNumber}`,
+        seriesId: String(ctx.episode.seriesId),
+        memoryBundle: ctx.memoryBundle ?? null,
+      };
+    case "plan_episode_script":
+      // Field names match `vertical-drama-script-builder`'s real output
+      // shape (snake_case) exactly, not an invented camelCase shape — so
+      // `validateStagePayload`'s `episode_title` check and any downstream
+      // reader work identically whether this is the dry-run placeholder or
+      // `generateRealScript`'s real LLM output overriding it below.
+      return {
+        stage,
+        contract_version: 1,
+        episode_title:
+          ctx.episode.title ?? `Episode ${ctx.episode.episodeNumber}`,
         hook: "Dry-run hook",
-        structure: [{ beat: "setup", description: "placeholder" }],
-        sceneDialogueSummary: "placeholder",
-        characterStateDeltas: [],
-        continuityNotes: [],
+        structure: { mode: "beat", acts: [], beats: [{ beat: "setup", description: "placeholder" }] },
+        scene_dialogue_summary: [],
+        cliffhanger: "",
+        character_state_deltas: [],
+        product_tie_in_plan: { tie_ins: [] },
+        continuity_notes: [],
         warnings: [],
+        repair_queue: [],
       };
     case "update_character_visual_bible":
       return { stage, characters: [], changed: false };
@@ -420,7 +592,7 @@ export function buildStagePayload(
         stage,
         mode: "single_frame_per_shot",
         selectedImageModelId: "dry-run-image-model",
-        frames: buildStoryboard(dur).shots.map((s) => ({
+        frames: buildStoryboard(dur).shots.map(s => ({
           shotNumber: s.shotNumber,
           imagePrompt: `Frame for shot ${s.shotNumber}`,
           negativePrompt: "",
@@ -439,7 +611,11 @@ export function buildStagePayload(
         language: "th-TH",
         voiceContinuityMap: [],
         shotLines: [],
-        subtitleSafeArea: { position: "bottom_safe", maxLines: 2, avoidFaceArea: true },
+        subtitleSafeArea: {
+          position: "bottom_safe",
+          maxLines: 2,
+          avoidFaceArea: true,
+        },
         warnings: [],
       };
     case "video_motion_prompt_pack": {
@@ -447,9 +623,11 @@ export function buildStagePayload(
       const base: Record<string, unknown> = {
         stage,
         selectedVideoModelId: "dry-run-video-model",
-        durationProfileId: ctx.episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+        durationProfileId:
+          ctx.episode.durationProfileId ??
+          "vertical_drama_60s_9_frames_8_clips",
         motionMode: "first_frame_to_video",
-        clips: storyboard.shots.map((s) => ({
+        clips: storyboard.shots.map(s => ({
           clipNumber: s.shotNumber,
           sourceShotNumbers: [s.shotNumber],
           prompt: `Motion for shot ${s.shotNumber}`,
@@ -461,15 +639,15 @@ export function buildStagePayload(
         const plan = planSubShots(storyboard.shots, ctx.subShotPolicy);
         base.sub_shot_plan = plan;
         // Expand clips into per-sub-shot clip requests carrying parent+sub numbers.
-        base.clips = plan.shots.flatMap((ps) =>
-          ps.subShots.map((ss) => ({
+        base.clips = plan.shots.flatMap(ps =>
+          ps.subShots.map(ss => ({
             clipNumber: ps.parentShotNumber * 100 + ss.subShotNumber,
             sourceShotNumbers: [ps.parentShotNumber],
             prompt: ss.prompt,
             durationSeconds: ss.durationSeconds,
             parentShotNumber: ps.parentShotNumber,
             subShotNumber: ss.subShotNumber,
-          })),
+          }))
         );
       }
       return base;
@@ -481,7 +659,12 @@ export function buildStagePayload(
     case "render_or_import_video_clips":
       return { stage, clips: [], mediaAssetIds: [], rendered: false };
     case "assemble_episode_manifest":
-      return { stage, durationProfileId: ctx.episode.durationProfileId, totalDurationSeconds: dur, clips: [] };
+      return {
+        stage,
+        durationProfileId: ctx.episode.durationProfileId,
+        totalDurationSeconds: dur,
+        clips: [],
+      };
     case "summarize_episode_to_series_memory":
       return {
         stage,
@@ -502,22 +685,28 @@ export interface StageValidationResult {
 /** Schema-shape validation gate (spec §11.5 failed-validation rule). */
 export function validateStagePayload(
   stage: VerticalDramaPipelineStage,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): StageValidationResult {
   const errors: RunResult["errors"] = [];
   const fail = (message: string) =>
-    errors.push({ code: VD_SCHEMA_VALIDATION_FAILED, message, repairable: true });
+    errors.push({
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message,
+      repairable: true,
+    });
 
   if (stage === "storyboard_shotgrid") {
     const shots = (payload.shots as unknown[]) ?? [];
-    if (shots.length !== 9) fail(`storyboard must have exactly 9 shots, got ${shots.length}`);
+    if (shots.length !== 9)
+      fail(`storyboard must have exactly 9 shots, got ${shots.length}`);
   }
   if (stage === "plan_episode_script") {
-    if (!payload.episodeTitle) fail("script is missing episodeTitle");
+    if (!payload.episode_title) fail("script is missing episode_title");
   }
   if (stage === "video_motion_prompt_pack" && payload.sub_shot_plan) {
     const plan = payload.sub_shot_plan as SubShotPlan;
-    if (!plan.valid) fail(`sub_shot_plan invalid: ${plan.validationErrors.join("; ")}`);
+    if (!plan.valid)
+      fail(`sub_shot_plan invalid: ${plan.validationErrors.join("; ")}`);
   }
   return { valid: errors.length === 0, errors };
 }
@@ -536,7 +725,7 @@ export interface EpisodeRunOwner {
 /** Was this stage's approval checkpoint approved for this episode? */
 async function isStageApproved(
   owner: EpisodeRunOwner,
-  stage: VerticalDramaPipelineStage,
+  stage: VerticalDramaPipelineStage
 ): Promise<boolean> {
   const rows = await db
     .select({ state: verticalDramaApprovalCheckpoints.state })
@@ -546,8 +735,8 @@ async function isStageApproved(
         eq(verticalDramaApprovalCheckpoints.tenantId, owner.tenantId),
         eq(verticalDramaApprovalCheckpoints.seriesId, owner.seriesId),
         eq(verticalDramaApprovalCheckpoints.episodeId, owner.episodeId),
-        eq(verticalDramaApprovalCheckpoints.stage, stage),
-      ),
+        eq(verticalDramaApprovalCheckpoints.stage, stage)
+      )
     )
     .orderBy(desc(verticalDramaApprovalCheckpoints.updatedAt))
     .limit(1);
@@ -575,16 +764,20 @@ export interface RunStageOutcome {
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
-    private readonly memoryService: VerticalDramaSeriesMemoryService = verticalDramaSeriesMemoryService,
+    private readonly memoryService: VerticalDramaSeriesMemoryService = verticalDramaSeriesMemoryService
   ) {}
 
   /** Downstream stages after `stage` in the canonical sequence. */
-  static downstreamStages(stage: VerticalDramaPipelineStage): VerticalDramaPipelineStage[] {
+  static downstreamStages(
+    stage: VerticalDramaPipelineStage
+  ): VerticalDramaPipelineStage[] {
     const i = VERTICAL_DRAMA_PIPELINE_STAGES.indexOf(stage);
     return i < 0 ? [] : VERTICAL_DRAMA_PIPELINE_STAGES.slice(i + 1);
   }
 
-  private async loadEpisode(owner: EpisodeRunOwner): Promise<VerticalDramaEpisodeRow> {
+  private async loadEpisode(
+    owner: EpisodeRunOwner
+  ): Promise<VerticalDramaEpisodeRow> {
     const [row] = await db
       .select()
       .from(verticalDramaEpisodes)
@@ -593,8 +786,8 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaEpisodes.id, owner.episodeId),
           eq(verticalDramaEpisodes.tenantId, owner.tenantId),
           eq(verticalDramaEpisodes.userId, owner.userId),
-          eq(verticalDramaEpisodes.seriesId, owner.seriesId),
-        ),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
       )
       .limit(1);
     if (!row) throw new Error("vertical_drama_episode_not_found");
@@ -607,7 +800,7 @@ export class VerticalDramaEpisodePipeline {
     runId: number,
     stage: VerticalDramaPipelineStage,
     payload: Record<string, unknown>,
-    mediaAssetIds: number[],
+    mediaAssetIds: number[]
   ): Promise<VerticalDramaRunArtifactRow> {
     const [row] = await db
       .insert(verticalDramaRunArtifacts)
@@ -630,7 +823,10 @@ export class VerticalDramaEpisodePipeline {
     owner: EpisodeRunOwner,
     stage: VerticalDramaPipelineStage,
     mode: VerticalDramaRunnerMode,
-    result: Pick<RunResult, "status" | "next_action" | "artifactIds" | "warnings" | "errors">,
+    result: Pick<
+      RunResult,
+      "status" | "next_action" | "artifactIds" | "warnings" | "errors"
+    >
   ): Promise<number> {
     const [row] = await db
       .insert(verticalDramaEpisodeRuns)
@@ -652,15 +848,21 @@ export class VerticalDramaEpisodePipeline {
   }
 
   /**
-   * Build the `generateStoryboardShotgrid` params from real DB context
-   * (series bible/locale/tone + the character roster) and invoke it. Only
-   * called from `runStage` for `storyboard_shotgrid` when the mode is not
-   * dry_run/plan_only.
+   * Build the `generateEpisodeScript` params from real DB context (series
+   * bible/locale/tone + the character roster — same lookups as
+   * `generateRealStoryboard` below, minus the reference-image identity-lock
+   * plumbing, which the script builder skill has no use for) and invoke it.
+   * Only called from `runStage` for `plan_episode_script` when the mode is
+   * not dry_run/plan_only.
    */
-  private async generateRealStoryboard(
+  private async generateRealScript(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow,
-  ): Promise<{ storyboard: StoryboardShotgridOutput; creditsUsed: number; model: string }> {
+    episode: VerticalDramaEpisodeRow
+  ): Promise<{
+    script: ScriptBuilderOutput;
+    creditsUsed: number;
+    model: string;
+  }> {
     const [seriesRow] = await db
       .select()
       .from(verticalDramaSeries)
@@ -668,8 +870,8 @@ export class VerticalDramaEpisodePipeline {
         and(
           eq(verticalDramaSeries.id, owner.seriesId),
           eq(verticalDramaSeries.tenantId, owner.tenantId),
-          eq(verticalDramaSeries.userId, owner.userId),
-        ),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
       )
       .limit(1);
 
@@ -683,8 +885,8 @@ export class VerticalDramaEpisodePipeline {
       .where(
         and(
           eq(verticalDramaCharacters.tenantId, owner.tenantId),
-          eq(verticalDramaCharacters.seriesId, owner.seriesId),
-        ),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId)
+        )
       );
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
@@ -692,8 +894,199 @@ export class VerticalDramaEpisodePipeline {
       ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
       : [];
     const matchingBreakdown = episodeBreakdown.find(
-      (item) => Number(item.episodeNumber) === episode.episodeNumber,
+      item => Number(item.episodeNumber) === episode.episodeNumber
     );
+
+    return generateEpisodeScript({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      episodeNumber: episode.episodeNumber,
+      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      durationSeconds: episode.targetDurationSeconds ?? 60,
+      storySource: {
+        logline:
+          typeof matchingBreakdown?.logline === "string"
+            ? (matchingBreakdown.logline as string)
+            : undefined,
+        keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
+          ? (matchingBreakdown.keyBeats as string[])
+          : undefined,
+        mainPlot:
+          typeof bible?.mainPlot === "string"
+            ? (bible.mainPlot as string)
+            : undefined,
+        seasonArc:
+          typeof bible?.expandedSeasonArc === "string"
+            ? (bible.expandedSeasonArc as string)
+            : typeof bible?.seasonArc === "string"
+              ? (bible.seasonArc as string)
+              : undefined,
+        tone: seriesRow?.tone ?? undefined,
+      },
+      characters: characterRows.map(
+        (c: { characterKey: string; name: string; role: string | null }) => ({
+          characterId: c.characterKey,
+          name: c.name,
+          role: c.role,
+        })
+      ),
+    });
+  }
+
+  /**
+   * `update_character_visual_bible`'s real implementation is a data SYNC,
+   * not a fresh LLM call — the actual visual-bible prompt generation already
+   * happens via the separate character-management flow
+   * (`verticalDramaCharacters.ts`'s `generateCharacterImage`/
+   * `generateCharacterVisualPrompts`, which invokes the
+   * `vertical-drama-character-visual-bible` skill directly and is the single
+   * source of truth for each character's prompts). Re-invoking that skill
+   * here would just burn credits on a duplicate LLM call. Instead this reads
+   * the current character roster + whether each has an approved primary
+   * portrait (reusing `getPrimaryPortraitUrl`, the same lookup
+   * `generateRealStoryboard` below uses for identity-lock) and reports it as
+   * this stage's real (non-placeholder) output. No credits, no rate limit,
+   * no schema validation gate exists for this stage.
+   */
+  private async syncCharacterVisualBible(
+    owner: EpisodeRunOwner
+  ): Promise<{
+    characters: Array<{
+      character_id: string;
+      name: string;
+      role: string | null;
+      has_approved_portrait: boolean;
+    }>;
+    changed: boolean;
+  }> {
+    const characterRows = await db
+      .select({
+        id: verticalDramaCharacters.id,
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+        role: verticalDramaCharacters.role,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId)
+        )
+      );
+
+    const portraitUrls = await Promise.all(
+      characterRows.map((c: { id: number }) =>
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, c.id)
+      )
+    );
+
+    return {
+      characters: characterRows.map(
+        (
+          c: { characterKey: string; name: string; role: string | null },
+          i: number
+        ) => ({
+          character_id: c.characterKey,
+          name: c.name,
+          role: c.role,
+          has_approved_portrait: Boolean(portraitUrls[i]),
+        })
+      ),
+      changed: characterRows.length > 0,
+    };
+  }
+
+  /**
+   * Build the `generateStoryboardShotgrid` params from real DB context
+   * (series bible/locale/tone + the character roster) and invoke it. Only
+   * called from `runStage` for `storyboard_shotgrid` when the mode is not
+   * dry_run/plan_only.
+   */
+  private async generateRealStoryboard(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow
+  ): Promise<{
+    storyboard: StoryboardShotgridOutput;
+    creditsUsed: number;
+    model: string;
+  }> {
+    const [seriesRow] = await db
+      .select()
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
+
+    const characterRows = await db
+      .select({
+        id: verticalDramaCharacters.id,
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+        role: verticalDramaCharacters.role,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId)
+        )
+      );
+
+    // Identity-lock (upstream parity, see `referenceImageUrl` doc comment on
+    // `GenerateStoryboardShotgridParams`) — reuses the same
+    // `getPrimaryPortraitUrl` lookup already wired into character
+    // portrait/turnaround generation this session, so the storyboard prompt
+    // and its `character_attachment_manifest` carry a real reference per
+    // character instead of a name-only text description.
+    const referenceImageUrls = await Promise.all(
+      characterRows.map((c: { id: number }) =>
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, c.id)
+      )
+    );
+
+    const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
+    const episodeBreakdown = Array.isArray(bible?.episodeBreakdown)
+      ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
+      : [];
+    const matchingBreakdown = episodeBreakdown.find(
+      item => Number(item.episodeNumber) === episode.episodeNumber
+    );
+
+    // Ground the 9 shots in the episode's own scene-by-scene script (the
+    // `plan_episode_script` stage's `scene_dialogue_summary`), not just the
+    // thin series-bible logline/keyBeats used above. Without this, the
+    // shotgrid LLM has nothing concrete to anchor shots to beyond a one-line
+    // logline, and produces generic mood shots (e.g. "hands and a ring
+    // symbol") disconnected from what the episode's own script says actually
+    // happens scene-by-scene. `scene_dialogue_summary` items are LLM
+    // freeform JSON (schema is `additionalProperties: true`) — real output
+    // observed using both `key_line` and `dialogue_line` for the spoken-line
+    // field, so read both.
+    const script = (episode.script as Record<string, unknown> | null) ?? null;
+    const sceneDialogueSummary = Array.isArray(script?.scene_dialogue_summary)
+      ? (script!.scene_dialogue_summary as Array<Record<string, unknown>>)
+      : [];
+    const sceneBeats = sceneDialogueSummary
+      .map(s => ({
+        scene: typeof s.scene === "number" ? s.scene : undefined,
+        location: typeof s.location === "string" ? s.location : undefined,
+        summary: typeof s.summary === "string" ? s.summary : undefined,
+        keyLine:
+          typeof s.key_line === "string"
+            ? s.key_line
+            : typeof s.dialogue_line === "string"
+              ? s.dialogue_line
+              : undefined,
+      }))
+      .filter(s => s.summary);
 
     return generateStoryboardShotgrid({
       userId: owner.userId,
@@ -705,11 +1098,17 @@ export class VerticalDramaEpisodePipeline {
       locale: (seriesRow?.locale as "th" | "en") ?? "th",
       durationSeconds: episode.targetDurationSeconds ?? 60,
       storySource: {
-        logline: typeof matchingBreakdown?.logline === "string" ? (matchingBreakdown.logline as string) : undefined,
+        logline:
+          typeof matchingBreakdown?.logline === "string"
+            ? (matchingBreakdown.logline as string)
+            : undefined,
         keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
           ? (matchingBreakdown.keyBeats as string[])
           : undefined,
-        mainPlot: typeof bible?.mainPlot === "string" ? (bible.mainPlot as string) : undefined,
+        mainPlot:
+          typeof bible?.mainPlot === "string"
+            ? (bible.mainPlot as string)
+            : undefined,
         seasonArc:
           typeof bible?.expandedSeasonArc === "string"
             ? (bible.expandedSeasonArc as string)
@@ -718,11 +1117,156 @@ export class VerticalDramaEpisodePipeline {
               : undefined,
         tone: seriesRow?.tone ?? undefined,
       },
-      characters: characterRows.map((c: { characterKey: string; name: string; role: string | null }) => ({
-        characterId: c.characterKey,
-        name: c.name,
-        role: c.role,
+      sceneBeats: sceneBeats.length > 0 ? sceneBeats : undefined,
+      characters: characterRows.map(
+        (
+          c: { characterKey: string; name: string; role: string | null },
+          i: number
+        ) => ({
+          characterId: c.characterKey,
+          name: c.name,
+          role: c.role,
+          referenceImageUrl: referenceImageUrls[i],
+        })
+      ),
+    });
+  }
+
+  /**
+   * Build the `generateStartFrameRenderPlan` params from the episode's own
+   * `storyboard` jsonb column (populated by the `storyboard_shotgrid` stage)
+   * and invoke it. Only called from `runStage` for `start_frame_render_plan`
+   * when the mode is not dry_run/plan_only.
+   */
+  private async generateRealStartFramePlan(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow
+  ): Promise<{
+    plan: StartFrameRenderPlanProjection;
+    creditsUsed: number;
+    model: string;
+  }> {
+    const storyboard =
+      (episode.storyboard as Record<string, unknown> | null) ?? null;
+    const shots: Array<Record<string, unknown>> = Array.isArray(
+      storyboard?.shots
+    )
+      ? (storyboard!.shots as Array<Record<string, unknown>>)
+      : (buildStoryboard(episode.targetDurationSeconds ?? 60)
+          .shots as unknown as Array<Record<string, unknown>>);
+
+    return generateStartFrameRenderPlan({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      durationSeconds: episode.targetDurationSeconds ?? 60,
+      storyboardShots: shots.map(s => {
+        // The real `storyboard_shotgrid` LLM output uses snake_case fields
+        // (`shot_number`, `visual_description`, `camera` object, `characters`
+        // / `required_character_refs`) — only the dry-run placeholder from
+        // `buildStoryboard()` above uses the camelCase shape this mapping
+        // originally assumed (`shotNumber`, `cameraSetup`, `characterIds`).
+        // Reading only the camelCase names meant every REAL episode's shots
+        // resolved to an empty character list here, so the next stage's
+        // `requiredCharacterRefs` was always `[]` regardless of what the
+        // storyboard actually contained. Read both shapes, preferring the
+        // real one; `required_character_refs` is the identity-lock key list
+        // (see the same preference in `VerticalDramaStoryboardPanel.tsx`).
+        const camera = s.camera as Record<string, unknown> | undefined;
+        const cameraSetup =
+          typeof s.cameraSetup === "string" && s.cameraSetup
+            ? s.cameraSetup
+            : [camera?.shot_type, camera?.angle, camera?.movement]
+                .filter(Boolean)
+                .join(", ");
+        const characterIds = Array.isArray(s.required_character_refs) && s.required_character_refs.length
+          ? (s.required_character_refs as string[])
+          : Array.isArray(s.characters) && s.characters.length
+            ? (s.characters as string[])
+            : Array.isArray(s.characterIds)
+              ? (s.characterIds as string[])
+              : [];
+        return {
+          shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
+          description: String(s.description ?? s.visual_description ?? ""),
+          cameraSetup,
+          characterIds,
+          durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+        };
+      }),
+    });
+  }
+
+  /**
+   * Build the `generateVideoMotionPromptPack` params from the episode's own
+   * `storyboard` jsonb column and invoke it. Only called from `runStage` for
+   * `video_motion_prompt_pack` when the mode is not dry_run/plan_only.
+   */
+  private async generateRealMotionPromptPack(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow
+  ): Promise<{
+    pack: VideoMotionPromptPackProjection;
+    creditsUsed: number;
+    model: string;
+  }> {
+    const storyboard =
+      (episode.storyboard as Record<string, unknown> | null) ?? null;
+    const shots: Array<Record<string, unknown>> = Array.isArray(
+      storyboard?.shots
+    )
+      ? (storyboard!.shots as Array<Record<string, unknown>>)
+      : (buildStoryboard(episode.targetDurationSeconds ?? 60)
+          .shots as unknown as Array<Record<string, unknown>>);
+
+    return generateVideoMotionPromptPack({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      durationSeconds: episode.targetDurationSeconds ?? 60,
+      durationProfileId:
+        episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+      storyboardShots: shots.map(s => ({
+        shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
+        description: String(s.description ?? s.visual_description ?? ""),
+        durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+        dialogueExcerpt:
+          typeof s.dialogue_excerpt === "string" && s.dialogue_excerpt
+            ? s.dialogue_excerpt
+            : typeof s.subtitle_text === "string"
+              ? s.subtitle_text
+              : undefined,
       })),
+    });
+  }
+
+  /**
+   * Idempotently create (or reopen) the Storyboard Review project for this
+   * episode via the existing, tested `createVerticalDramaStoryboardHandoff`
+   * service — same idempotency-key + reopen-on-unchanged-plan behavior used
+   * by the `createHandoff` tRPC mutation. This is a pure DB operation (no
+   * paid provider call); `subShotsEnabled` is threaded through from the same
+   * tenant `verticalDramaSeriesSubShots` flag value already resolved for this
+   * run (`subShotFlagOn`), so it matches the sub-shot expansion the episode
+   * was actually planned with. Only called from `runStage` for
+   * `create_storyboard_review_project` when the mode is not
+   * dry_run/plan_only.
+   */
+  private async createRealStoryboardReviewProject(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow,
+    subShotsEnabled: boolean
+  ): Promise<VerticalDramaHandoffResult> {
+    return createVerticalDramaStoryboardHandoff({
+      db: db.instance,
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      episode,
+      subShotsEnabled,
     });
   }
 
@@ -730,7 +1274,7 @@ export class VerticalDramaEpisodePipeline {
     owner: EpisodeRunOwner,
     runId: number,
     stage: VerticalDramaPipelineStage,
-    sourceArtifactIds: string[],
+    sourceArtifactIds: string[]
   ): Promise<void> {
     await db.insert(verticalDramaApprovalCheckpoints).values({
       tenantId: owner.tenantId,
@@ -752,11 +1296,12 @@ export class VerticalDramaEpisodePipeline {
   async runStage(
     owner: EpisodeRunOwner,
     stage: VerticalDramaPipelineStage,
-    opts: RunStageOptions,
+    opts: RunStageOptions
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
     const mode = opts.mode;
-    const subShotPolicy = opts.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
+    const subShotPolicy =
+      opts.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
     const subShotFlagOn = opts.subShotFlagOn ?? false;
     // Hoisted so both the storyboard-generation override below and the paid
     // gate further down share the exact same condition (mode-only, no async
@@ -771,8 +1316,12 @@ export class VerticalDramaEpisodePipeline {
     let memoryBundle: unknown;
     if (stage === "normalize_series_input") {
       memoryBundle = await this.memoryService.buildEpisodeMemoryBundle(
-        { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
-        episode.episodeNumber,
+        {
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+        },
+        episode.episodeNumber
       );
     }
 
@@ -783,6 +1332,74 @@ export class VerticalDramaEpisodePipeline {
       subShotPolicy,
       memoryBundle,
     });
+
+    // Same override convention as `storyboard_shotgrid` below, for
+    // `plan_episode_script`: only when the mode is not dry_run/plan_only do
+    // we replace the deterministic placeholder script with a real
+    // LLM-generated one (via the `vertical-drama-script-builder` skill).
+    // This stage previously had NO real-generation path at all. A generation
+    // failure never throws out of `runStage` — it is recorded as a normal
+    // `failed`/`repair` `RunResult`, same as every other real-generation
+    // override in this file.
+    if (stage === "plan_episode_script" && paidModeAllowed) {
+      try {
+        const generated = await this.generateRealScript(owner, episode);
+        payload = { stage, ...generated.script };
+        // Persist to the episode's own `script` jsonb column.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ script: generated.script, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+      } catch (error) {
+        const genError = mapScriptGenerationError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // `update_character_visual_bible` override — a free DB sync (no
+    // credits, no LLM call, so no try/catch-to-failed-run needed; see
+    // `syncCharacterVisualBible`'s doc comment for why this isn't a fresh
+    // generation call).
+    if (stage === "update_character_visual_bible" && paidModeAllowed) {
+      const synced = await this.syncCharacterVisualBible(owner);
+      payload = { stage, ...synced };
+    }
 
     // `buildStagePayload` above is ALWAYS the deterministic, no-provider-call
     // placeholder — that call is unconditional and unchanged for every mode,
@@ -809,8 +1426,8 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaEpisodes.id, owner.episodeId),
               eq(verticalDramaEpisodes.tenantId, owner.tenantId),
               eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId),
-            ),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
           );
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
@@ -821,7 +1438,224 @@ export class VerticalDramaEpisodePipeline {
           warnings: [],
           errors: [genError],
         });
-        const artifact = await this.writeArtifact(owner, runId, stage, payload, []);
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // Same override convention as `storyboard_shotgrid` above, for
+    // `start_frame_render_plan`: only when the mode is not
+    // dry_run/plan_only do we replace the deterministic placeholder frames
+    // with a real LLM-generated render plan (via the
+    // `vertical-drama-shot-start-frame-render` skill). This is a credit-gated
+    // *planning* call only — `start_frame_render_plan` is NOT in
+    // `VERTICAL_DRAMA_PAID_STAGES` (the paid image render happens later, in
+    // `render_or_import_start_frames`). A generation failure never throws out
+    // of `runStage` — it is recorded as a normal `failed`/`repair`
+    // `RunResult`, same as the storyboard override.
+    if (stage === "start_frame_render_plan" && paidModeAllowed) {
+      try {
+        const generated = await this.generateRealStartFramePlan(owner, episode);
+        payload = { stage, ...generated.plan };
+        // Persist to the episode's own `startFramePlan` jsonb column.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: generated.plan, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+      } catch (error) {
+        const genError = mapStartFrameGenerationError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // Same override convention, for `video_motion_prompt_pack`: only when the
+    // mode is not dry_run/plan_only do we replace the deterministic
+    // placeholder clips with real LLM-generated motion prompts (via the
+    // `vertical-drama-video-motion-prompt-pack` skill). Credit-gated
+    // *planning* call only — `video_motion_prompt_pack` is NOT in
+    // `VERTICAL_DRAMA_PAID_STAGES` (the paid video render happens later, in
+    // `render_or_import_video_clips`). The existing sub-shot expansion
+    // (`planSubShots`) below is left untouched: when the sub-shot flag is on,
+    // it still re-derives `clips` from the (now real) base storyboard shots,
+    // so this override only replaces the base clips/model/mode fields before
+    // that expansion runs. A generation failure never throws out of
+    // `runStage` — same failed/repair convention as above.
+    if (stage === "video_motion_prompt_pack" && paidModeAllowed) {
+      try {
+        const generated = await this.generateRealMotionPromptPack(
+          owner,
+          episode
+        );
+        payload = { stage, ...generated.pack, warnings: [] };
+        if (subShotFlagOn && subShotPolicy.enabled) {
+          const storyboard = buildStoryboard(
+            episode.targetDurationSeconds ?? 60
+          );
+          const plan = planSubShots(storyboard.shots, subShotPolicy);
+          payload.sub_shot_plan = plan;
+          payload.clips = plan.shots.flatMap(ps =>
+            ps.subShots.map(ss => ({
+              clipNumber: ps.parentShotNumber * 100 + ss.subShotNumber,
+              sourceShotNumbers: [ps.parentShotNumber],
+              prompt: ss.prompt,
+              durationSeconds: ss.durationSeconds,
+              parentShotNumber: ps.parentShotNumber,
+              subShotNumber: ss.subShotNumber,
+            }))
+          );
+        }
+        // Persist to the episode's own `motionPromptPack` jsonb column.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ motionPromptPack: generated.pack, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+      } catch (error) {
+        const genError = mapMotionPromptGenerationError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // Same override convention as the three generation stages above, for
+    // `create_storyboard_review_project`: only when the mode is not
+    // dry_run/plan_only do we replace the deterministic
+    // `{ storyboardReviewId: null, created: false }` placeholder with a real
+    // Storyboard Review project row via the existing, tested
+    // `createVerticalDramaStoryboardHandoff` service. Unlike the three stages
+    // above, this is NOT a paid-provider call — it is a pure DB
+    // insert/reopen — so it is gated by `paidModeAllowed` only (never a
+    // credit check) purely to keep dry_run/plan_only free of real DB side
+    // effects, matching the existing convention for every other
+    // paidModeAllowed-gated override in this file. A failure never throws out
+    // of `runStage` — it is recorded as a normal `failed`/`repair`
+    // `RunResult`, same as the three overrides above.
+    if (stage === "create_storyboard_review_project" && paidModeAllowed) {
+      try {
+        const handoff = await this.createRealStoryboardReviewProject(
+          owner,
+          episode,
+          subShotFlagOn
+        );
+        payload = {
+          stage,
+          storyboardReviewId: String(handoff.reviewId),
+          created: !handoff.reused,
+          reused: handoff.reused,
+          idempotencyKey: handoff.idempotencyKey,
+          episodePlanHash: handoff.episodePlanHash,
+          taskCount: handoff.taskCount,
+        };
+        // `createVerticalDramaStoryboardHandoff` already repoints the
+        // episode's `storyboardReviewId` backlink itself (on both the
+        // create and reopen paths) — no additional persistence needed here.
+      } catch (error) {
+        const genError = mapStoryboardReviewHandoffError(error);
+        const runId = await this.writeRun(owner, stage, mode, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          []
+        );
         await db
           .update(verticalDramaEpisodeRuns)
           .set({ artifactIds: [String(artifact.id)] })
@@ -852,7 +1686,13 @@ export class VerticalDramaEpisodePipeline {
         warnings: [],
         errors: validation.errors,
       });
-      const artifact = await this.writeArtifact(owner, runId, stage, payload, []);
+      const artifact = await this.writeArtifact(
+        owner,
+        runId,
+        stage,
+        payload,
+        []
+      );
       await db
         .update(verticalDramaEpisodeRuns)
         .set({ artifactIds: [String(artifact.id)] })
@@ -880,7 +1720,9 @@ export class VerticalDramaEpisodePipeline {
 
     // 2) Approval gate — approval stages block advancement until approved.
     const requiresApproval = VERTICAL_DRAMA_APPROVAL_STAGES.has(stage);
-    const approved = requiresApproval ? await isStageApproved(owner, stage) : true;
+    const approved = requiresApproval
+      ? await isStageApproved(owner, stage)
+      : true;
 
     // 3) Paid gate — paid stages never run in dry-run/plan-only or before approval.
     const isPaid = VERTICAL_DRAMA_PAID_STAGES.has(stage);
@@ -936,7 +1778,13 @@ export class VerticalDramaEpisodePipeline {
 
     // 4) Optional QC pass (section 08 seam).
     if (!qc && this.providerPort.runQc) {
-      qc = await this.providerPort.runQc({ ...owner, runId: 0, stage, mode, payload });
+      qc = await this.providerPort.runQc({
+        ...owner,
+        runId: 0,
+        stage,
+        mode,
+        payload,
+      });
     }
 
     // Create the run row FIRST so the artifact FK (runId) is satisfiable.
@@ -947,7 +1795,13 @@ export class VerticalDramaEpisodePipeline {
       warnings,
       errors,
     });
-    const artifact = await this.writeArtifact(owner, runId, stage, payload, mediaAssetIds);
+    const artifact = await this.writeArtifact(
+      owner,
+      runId,
+      stage,
+      payload,
+      mediaAssetIds
+    );
     const artifactIds = [String(artifact.id)];
     await db
       .update(verticalDramaEpisodeRuns)
@@ -979,7 +1833,7 @@ export class VerticalDramaEpisodePipeline {
    */
   async runEpisode(
     owner: EpisodeRunOwner,
-    opts: RunStageOptions & { fromStage?: VerticalDramaPipelineStage },
+    opts: RunStageOptions & { fromStage?: VerticalDramaPipelineStage }
   ): Promise<{ results: RunResult[]; stoppedAt?: VerticalDramaPipelineStage }> {
     const startIdx = opts.fromStage
       ? Math.max(0, VERTICAL_DRAMA_PIPELINE_STAGES.indexOf(opts.fromStage))
@@ -1006,14 +1860,19 @@ export class VerticalDramaEpisodePipeline {
     stage: VerticalDramaPipelineStage,
     args: {
       sourceArtifactId?: string;
-      target?: { parentShotNumber?: number; subShotNumber?: number; clipNumber?: number };
+      target?: {
+        parentShotNumber?: number;
+        subShotNumber?: number;
+        clipNumber?: number;
+      };
       instruction: string;
       subShotFlagOn?: boolean;
       subShotPolicy?: VerticalDramaSubShotPolicy;
-    },
+    }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
-    const subShotPolicy = args.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
+    const subShotPolicy =
+      args.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
 
     const payload = buildStagePayload(stage, {
       episode,
@@ -1032,8 +1891,12 @@ export class VerticalDramaEpisodePipeline {
 
     const validation = validateStagePayload(stage, payload);
     const errors = validation.errors;
-    const status: RunResult["status"] = validation.valid ? "succeeded" : "failed";
-    const nextAction: RunResult["next_action"] = validation.valid ? "approve" : "repair";
+    const status: RunResult["status"] = validation.valid
+      ? "succeeded"
+      : "failed";
+    const nextAction: RunResult["next_action"] = validation.valid
+      ? "approve"
+      : "repair";
 
     const warnings: VerticalDramaWarning[] = [
       {
@@ -1079,8 +1942,8 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaApprovalCheckpoints.tenantId, owner.tenantId),
           eq(verticalDramaApprovalCheckpoints.seriesId, owner.seriesId),
           eq(verticalDramaApprovalCheckpoints.episodeId, owner.episodeId),
-          eq(verticalDramaApprovalCheckpoints.stage, stage),
-        ),
+          eq(verticalDramaApprovalCheckpoints.stage, stage)
+        )
       )
       .orderBy(desc(verticalDramaApprovalCheckpoints.updatedAt))
       .limit(1);
@@ -1103,7 +1966,7 @@ export class VerticalDramaEpisodePipeline {
   /** Read the ordered run history for an episode (most recent first). */
   async listEpisodeRuns(
     owner: EpisodeRunOwner,
-    limit = 200,
+    limit = 200
   ): Promise<VerticalDramaEpisodeRunRow[]> {
     return db
       .select()
@@ -1112,10 +1975,13 @@ export class VerticalDramaEpisodePipeline {
         and(
           eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
           eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
-          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
-        ),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId)
+        )
       )
-      .orderBy(desc(verticalDramaEpisodeRuns.updatedAt), desc(verticalDramaEpisodeRuns.id))
+      .orderBy(
+        desc(verticalDramaEpisodeRuns.updatedAt),
+        desc(verticalDramaEpisodeRuns.id)
+      )
       .limit(limit);
   }
 
@@ -1128,10 +1994,13 @@ export class VerticalDramaEpisodePipeline {
         and(
           eq(verticalDramaRunArtifacts.tenantId, owner.tenantId),
           eq(verticalDramaRunArtifacts.seriesId, owner.seriesId),
-          eq(verticalDramaRunArtifacts.episodeId, owner.episodeId),
-        ),
+          eq(verticalDramaRunArtifacts.episodeId, owner.episodeId)
+        )
       )
-      .orderBy(asc(verticalDramaRunArtifacts.createdAt), asc(verticalDramaRunArtifacts.id));
+      .orderBy(
+        asc(verticalDramaRunArtifacts.createdAt),
+        asc(verticalDramaRunArtifacts.id)
+      );
   }
 }
 

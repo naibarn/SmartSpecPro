@@ -591,7 +591,10 @@
       "Bash(sed -n '1135,1200p' /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/Dashboard.tsx)",
       "Bash(1 npm:*)",
       "Bash(sed -n '1440,1450p' /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/WorkflowEditor.tsx)",
-      "Bash(sed -n '2610,2650p' /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/WorkflowEditor.tsx)"
+      "Bash(sed -n '2610,2650p' /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/WorkflowEditor.tsx)",
+      "Bash(NODE_OPTIONS='--max-old-space-size=8192' ../../node_modules/.bin/tsc --noEmit)",
+      "Bash(npx vitest *)",
+      "Bash(pnpm check *)"
     ],
     "deny": [
       "Bash(rm *)",
@@ -617,5 +620,6 @@
       "Bash(shred *)",
       "Bash(dd *)"
     ]
-  }
+  },
+  "model": "sonnet"
 }

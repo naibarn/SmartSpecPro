@@ -12192,6 +12192,19 @@ export const marketplaceProductGroupShares = pgTable("marketplace_product_group_
   index("idx_marketplace_product_group_shares_product").on(t.productId),
 ]);
 
+export const marketplaceProductAffiliateLinks = pgTable("marketplace_product_affiliate_links", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  productId: varchar("productId", { length: 64 }).notNull().references(() => marketplaceProducts.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  affiliateUrl: text("affiliateUrl"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("idx_marketplace_product_affiliate_links_unique").on(t.productId, t.userId),
+  index("idx_marketplace_product_affiliate_links_user").on(t.userId, t.updatedAt),
+]);
+
 export const marketplaceCaptureInsights = pgTable("marketplace_capture_insights", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),

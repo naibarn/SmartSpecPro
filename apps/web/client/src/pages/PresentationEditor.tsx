@@ -157,6 +157,7 @@ import {
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
+import { useIsMobile, useIsTablet } from "@/hooks/useViewportTier";
 import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
 import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
@@ -3136,12 +3137,21 @@ export default function PresentationEditor() {
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
+  // `isMobileViewport` (width < 1024) intentionally conflates phones and tablets.
+  // It still gates touch/gesture-specific behavior (pinch/pan canvas viewport,
+  // drag-resize suppression, minimum touch target checks) where tablets should
+  // behave like touch devices. For *layout tier* decisions (which chrome/shell
+  // to render — header buttons, side rails, properties panel, toolbar), use
+  // `isMobileLayoutTier` instead, which is true only for the true "mobile" tier
+  // (<768px) per the canonical `useViewportTier` hook. See CanvasShell/tablet
+  // responsive fix notes.
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 1024);
-  const [isTabletViewport, setIsTabletViewport] = useState<boolean>(() => window.innerWidth >= 768 && window.innerWidth < 1024);
+  const isMobileLayoutTier = useIsMobile();
+  const isTabletLayoutTier = useIsTablet();
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isMobileHeaderMenuOpen, setIsMobileHeaderMenuOpen] = useState(false);
   const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>(() => readStoredMobileSheetTab() ?? "Properties");
-  const [isMobileSheetExpanded, setIsMobileSheetExpanded] = useState<boolean>(() => readStoredMobileSheetExpanded(window.innerWidth >= 768 && window.innerWidth < 1024));
+  const [isMobileSheetExpanded, setIsMobileSheetExpanded] = useState<boolean>(() => readStoredMobileSheetExpanded(false));
   const [mobilePropertiesSection, setMobilePropertiesSection] = useState<MobilePropertiesSection>("canvas");
   const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -3931,7 +3941,10 @@ export default function PresentationEditor() {
     setSelectedComponentSlotId(null);
   }, [selectedComponent, selectedComponentSlotId]);
   useEffect(() => {
-    if (!isMobileViewport) {
+    // This drives the mobile-only tabbed properties switcher (mobilePropertiesSectionSwitcher),
+    // so it should track the same layout-tier boundary as that switcher, not the
+    // touch/gesture-oriented `isMobileViewport`.
+    if (!isMobileLayoutTier) {
       previousMobileSelectedElementIdRef.current = selectedElementId;
       return;
     }
@@ -3946,7 +3959,7 @@ export default function PresentationEditor() {
       setMobilePropertiesSection("slide");
     }
     previousMobileSelectedElementIdRef.current = selectedElementId;
-  }, [isMobileViewport, mobilePropertiesSection, selectedElementId]);
+  }, [isMobileLayoutTier, mobilePropertiesSection, selectedElementId]);
   const autoLayoutApplyDisabled = !deck
     || !selectedSlide
     || autoLayoutBusy
@@ -4377,7 +4390,6 @@ export default function PresentationEditor() {
   useEffect(() => {
     const onResize = () => {
       setIsMobileViewport(window.innerWidth < 1024);
-      setIsTabletViewport(window.innerWidth >= 768 && window.innerWidth < 1024);
     };
 
     window.addEventListener("resize", onResize);
@@ -4387,10 +4399,10 @@ export default function PresentationEditor() {
   }, []);
 
   useEffect(() => {
-    if (!isMobileViewport) {
+    if (!isMobileLayoutTier) {
       setIsMobileHeaderMenuOpen(false);
     }
-  }, [isMobileViewport]);
+  }, [isMobileLayoutTier]);
 
   useEffect(() => {
     try {
@@ -4407,12 +4419,6 @@ export default function PresentationEditor() {
       // Ignore storage failures in restricted environments.
     }
   }, [isMobileSheetExpanded]);
-
-  useEffect(() => {
-    if (isTabletViewport) {
-      setIsMobileSheetExpanded(true);
-    }
-  }, [isTabletViewport]);
 
   useEffect(() => {
     if (!isMobileHeaderMenuOpen) {
@@ -9394,7 +9400,7 @@ export default function PresentationEditor() {
       onDragAssetStart={handleDragAssetStart}
     />
   );
-  const canvasToolbar = isMobileViewport ? (
+  const canvasToolbar = isMobileLayoutTier ? (
     <MobileQuickActions
       mode={mobileGestures.state.mode}
       viewportScale={mobileGestures.state.viewport.scale}
@@ -9678,9 +9684,9 @@ export default function PresentationEditor() {
     String(draftContent.transition ?? "fade"),
   );
   const canvasPropertiesPanel = (
-    <label className={`rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 ${isMobileViewport ? "block space-y-2" : "flex items-center justify-between gap-2"}`}>
+    <label className={`rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 ${isMobileLayoutTier ? "block space-y-2" : "flex items-center justify-between gap-2"}`}>
       <span className="font-medium">{t("panel.canvasSize")}</span>
-      <div className={`flex items-center gap-1.5 ${isMobileViewport ? "pt-1" : ""}`}>
+      <div className={`flex items-center gap-1.5 ${isMobileLayoutTier ? "pt-1" : ""}`}>
         <select
           aria-label={t("panel.canvasAspectRatio")}
           className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
@@ -9715,7 +9721,7 @@ export default function PresentationEditor() {
           <p className="mt-1 text-[11px] text-amber-700">{t("slidePanel.visualOnlyDesc")}</p>
         </div>
       ) : null}
-      {isMobileViewport ? (
+      {isMobileLayoutTier ? (
         <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t("slidePanel.slideControls")}</p>
           <p className="mt-1 text-[11px] text-slate-500">{t("slidePanel.slideControlsDesc")}</p>
@@ -10120,7 +10126,7 @@ export default function PresentationEditor() {
           </Button>
         </div>
       </div>
-      {isMobileViewport ? (
+      {isMobileLayoutTier ? (
         <PropertyPanel
           selectedElement={null}
           selectedElementCount={0}
@@ -10200,7 +10206,7 @@ export default function PresentationEditor() {
       </div>
     </div>
   );
-  const mobilePropertiesSectionSwitcher = isMobileViewport ? (
+  const mobilePropertiesSectionSwitcher = isMobileLayoutTier ? (
     <div
       className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-100/90 p-1"
       role="tablist"
@@ -10234,14 +10240,25 @@ export default function PresentationEditor() {
   const propertyEditorPanel = (
     <div className="space-y-3">
       {mobilePropertiesSectionSwitcher}
-      {isMobileViewport
+      {isMobileLayoutTier
         ? mobilePropertiesSection === "canvas"
           ? canvasPropertiesPanel
           : mobilePropertiesSection === "slide"
             ? slidePropertiesPanel
             : elementPropertiesPanel
         : canvasPropertiesPanel}
-      {!isMobileViewport ? slidePropertiesPanel : null}
+      {!isMobileLayoutTier ? slidePropertiesPanel : null}
+      {/*
+        NOTE: TransformHandles intentionally stays gated on `isMobileViewport`
+        (width < 1024, i.e. mobile OR tablet) rather than `isMobileLayoutTier`.
+        Its onResize/onRotate/onArrange handlers (handleResizeSelection,
+        handleRotateSelection, handleArrangeSelection, handleAutoFitSelection)
+        unconditionally no-op whenever `isMobileViewport` is true — they defer
+        to the touch-gesture system instead. If this were shown on tablets
+        (which still have isMobileViewport === true) the buttons would render
+        but silently do nothing. Keep this panel desktop-only (>=1024) until/unless
+        those handlers are updated to distinguish tablet from phone.
+      */}
       {!isMobileViewport ? (
         <div
           className="rounded-md border border-slate-300 bg-slate-200/70 p-2"
@@ -10261,7 +10278,7 @@ export default function PresentationEditor() {
           />
         </div>
       ) : null}
-      {!isMobileViewport ? elementPropertiesPanel : null}
+      {!isMobileLayoutTier ? elementPropertiesPanel : null}
     </div>
   );
   const hasProjectAudio = Boolean((deck as any)?.projectAudioTrack);
@@ -10417,12 +10434,11 @@ export default function PresentationEditor() {
                 ? audioPanel
                 : null;
 
-  const propertiesPanel = isMobileViewport ? (
+  const propertiesPanel = isMobileLayoutTier ? (
     <MobileBottomSheet
       activeTab={mobileSheetTab}
       onTabChange={setMobileSheetTab}
       body={mobileBottomSheetBody}
-      defaultExpanded={isTabletViewport}
       expanded={isMobileSheetExpanded}
       onExpandedChange={setIsMobileSheetExpanded}
     />
@@ -10486,7 +10502,7 @@ export default function PresentationEditor() {
         onChange={(event) => handleLocalUploadInputChange("video", event)}
       />
       <header className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-3 py-1.5 text-slate-100 scrollbar-none" style={{ scrollbarWidth: "none" }}>
-        {isMobileViewport ? (
+        {isMobileLayoutTier ? (
           <Button
             size="icon"
             variant="ghost"
@@ -10551,7 +10567,7 @@ export default function PresentationEditor() {
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
-        ) : isMobileViewport ? (
+        ) : isMobileLayoutTier ? (
           <div className="flex min-w-0 items-center gap-1">
             <Button
               variant="ghost"
@@ -10604,7 +10620,7 @@ export default function PresentationEditor() {
             aria-label={t("header.openPresentationNote")}
             variant="secondary"
             size="sm"
-            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
+            className={`${isMobileLayoutTier ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
             disabled={!deck || isDeckNoteSaving}
           >
             <BookMarked className="h-3.5 w-3.5" />
@@ -10615,7 +10631,7 @@ export default function PresentationEditor() {
             aria-label={t("header.openSlideNote")}
             variant="secondary"
             size="sm"
-            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
+            className={`${isMobileLayoutTier ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
             disabled={!selectedSlide}
           >
             <Pencil className="h-3.5 w-3.5" />
@@ -10625,7 +10641,7 @@ export default function PresentationEditor() {
             onClick={() => void handleSaveSlide()}
             aria-label={t("header.saveSlide")}
             size="sm"
-            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-sky-600 text-white hover:bg-sky-500`}
+            className={`${isMobileLayoutTier ? "h-8 w-8 px-0" : "gap-1"} bg-sky-600 text-white hover:bg-sky-500`}
             disabled={!deck || !selectedSlide || saveState === "pending"}
           >
             <Save className="h-3.5 w-3.5" />
@@ -10636,12 +10652,12 @@ export default function PresentationEditor() {
             aria-label={t("header.playSlideshow")}
             variant="secondary"
             size="sm"
-            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
+            className={`${isMobileLayoutTier ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
           >
             <Play className="h-3.5 w-3.5" />
             <span className="hidden lg:inline">{t("header.play")}</span>
           </Button>
-          {isMobileViewport ? (
+          {isMobileLayoutTier ? (
             <div className="relative" ref={mobileHeaderMenuRef}>
               <Button
                 variant="ghost"
@@ -10810,9 +10826,11 @@ export default function PresentationEditor() {
 
       <div className="min-h-0 flex-1 overflow-hidden p-2">
         <CanvasShell
-          slidesPanel={isMobileViewport ? null : slidesPanel}
-          toolRail={isMobileViewport ? undefined : editorToolRail}
-          assetPanel={isMobileViewport ? undefined : assetPanel}
+          slidesPanel={isMobileLayoutTier ? null : slidesPanel}
+          toolRail={isMobileLayoutTier ? undefined : editorToolRail}
+          assetPanel={isMobileLayoutTier ? undefined : assetPanel}
+          defaultLeftCollapsed={isTabletLayoutTier}
+          defaultRightCollapsed={isTabletLayoutTier}
           canvasToolbar={canvasToolbar}
           canvasStage={(
             <CanvasStage
@@ -12097,7 +12115,7 @@ export default function PresentationEditor() {
           onInsertSlotVideos={handleInsertGeneratedSlotVideos}
         />
       )}
-      {isMobileViewport && (
+      {isMobileLayoutTier && (
         <MobileDrawerPanel
           isOpen={isMobileDrawerOpen}
           onClose={() => setIsMobileDrawerOpen(false)}
