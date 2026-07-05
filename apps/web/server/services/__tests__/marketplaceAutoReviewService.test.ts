@@ -93,6 +93,7 @@ import {
   splitMarketplaceAutoReviewVoiceoverSkillOutputForTest,
   storyboardGridFrameStorageKeyForTest,
   splitStoryboardGridRectsForTest,
+  effectiveQualityModePolicyForTest,
   validateMarketplaceAutoReviewImagePromptPreflightForTest,
 } from "../marketplaceAutoReviewService";
 import {
@@ -100,6 +101,10 @@ import {
   MarketplaceAutoReviewStageCompletionEvidenceSchema,
 } from "../../../shared/marketplaceAutoReview/contracts";
 import { getDb } from "../../db";
+import {
+  detectStoryboardGridRects,
+  DEFAULT_GRID_MIN_CONFIDENCE,
+} from "../storyboardGridGeometry";
 
 vi.mock("../../db", () => ({
   getDb: vi.fn(async () => null),
@@ -5786,6 +5791,90 @@ describe("marketplace auto review audio/video planning", () => {
     expect(first.height).toBeLessThan(Math.floor(1800 / 3));
   });
 
+  describe("detectStoryboardGridRects", () => {
+    it("detects the real 3x3 divider boundaries of an evenly divided synthetic grid", async () => {
+      const sharpModule = await import("sharp");
+      const sharp = sharpModule.default;
+      const cellSize = 100;
+      const gridSize = cellSize * 3;
+      // Distinct luma values per panel so every internal boundary has a
+      // strong, unambiguous brightness edge to detect.
+      const panelValues = [20, 200, 50, 180, 30, 220, 60, 210, 10];
+      const composites = await Promise.all(
+        panelValues.map(async (value, index) => {
+          const row = Math.floor(index / 3);
+          const col = index % 3;
+          const input = await sharp({
+            create: {
+              width: cellSize,
+              height: cellSize,
+              channels: 3,
+              background: { r: value, g: value, b: value },
+            },
+          })
+            .png()
+            .toBuffer();
+          return { input, left: col * cellSize, top: row * cellSize };
+        })
+      );
+      const gridBuffer = await sharp({
+        create: {
+          width: gridSize,
+          height: gridSize,
+          channels: 3,
+          background: { r: 0, g: 0, b: 0 },
+        },
+      })
+        .composite(composites)
+        .png()
+        .toBuffer();
+
+      const result = await detectStoryboardGridRects(gridBuffer);
+
+      expect(result.usedFallback).toBe(false);
+      expect(result.confidence).toBeGreaterThanOrEqual(
+        DEFAULT_GRID_MIN_CONFIDENCE
+      );
+      expect(result.rects).toHaveLength(9);
+      const shotNumbers = result.rects.map(rect => rect.shotNumber).sort(
+        (a, b) => a - b
+      );
+      expect(shotNumbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+      const shot1 = result.rects.find(rect => rect.shotNumber === 1)!;
+      const shot2 = result.rects.find(rect => rect.shotNumber === 2)!;
+      const shot4 = result.rects.find(rect => rect.shotNumber === 4)!;
+      expect(shot1.left).toBe(0);
+      expect(shot1.top).toBe(0);
+      // Divider near x=100: shot2's left edge should land close to it.
+      expect(shot2.left).toBeGreaterThanOrEqual(90);
+      expect(shot2.left).toBeLessThanOrEqual(110);
+      // Divider near y=100: shot4's top edge should land close to it.
+      expect(shot4.top).toBeGreaterThanOrEqual(90);
+      expect(shot4.top).toBeLessThanOrEqual(110);
+    });
+
+    it("falls back when the image has no detectable grid structure", async () => {
+      const sharpModule = await import("sharp");
+      const sharp = sharpModule.default;
+      const flatBuffer = await sharp({
+        create: {
+          width: 300,
+          height: 300,
+          channels: 3,
+          background: { r: 128, g: 128, b: 128 },
+        },
+      })
+        .png()
+        .toBuffer();
+
+      const result = await detectStoryboardGridRects(flatBuffer);
+
+      expect(result.usedFallback).toBe(true);
+      expect(result.rects).toHaveLength(0);
+    });
+  });
+
   it("versions split 3x3 frame storage by source grid URL", () => {
     const first = storyboardGridFrameStorageKeyForTest({
       tenantId: "tenant-1",
@@ -8516,6 +8605,41 @@ describe("marketplace auto review audio/video planning", () => {
         "audio_continuity_probe_present",
       ])
     );
+  });
+
+  it("reads maxRepairAttemptsPerUnit and visionQaModel back from the stored quality mode policy", () => {
+    const premiumMetadata = {
+      qualityModePolicy: buildMarketplaceAutoReviewQualityModePolicyForTest({
+        qualityMode: "premium_strict_qa",
+      } as any),
+    } as any;
+    const balancedMetadata = {
+      qualityModePolicy: buildMarketplaceAutoReviewQualityModePolicyForTest({
+        qualityMode: "balanced",
+      } as any),
+    } as any;
+    const fastDraftMetadata = {
+      qualityModePolicy: buildMarketplaceAutoReviewQualityModePolicyForTest({
+        qualityMode: "fast_draft",
+      } as any),
+    } as any;
+    const legacyMetadata = {} as any;
+
+    const premiumPolicy = effectiveQualityModePolicyForTest(premiumMetadata);
+    const balancedPolicy = effectiveQualityModePolicyForTest(balancedMetadata);
+    const fastDraftPolicy = effectiveQualityModePolicyForTest(fastDraftMetadata);
+    const legacyPolicy = effectiveQualityModePolicyForTest(legacyMetadata);
+
+    expect(premiumPolicy.maxRepairAttemptsPerUnit).toBe(4);
+    expect(premiumPolicy.visionQaModel).toBe("gpt-4o");
+    expect(balancedPolicy.maxRepairAttemptsPerUnit).toBe(3);
+    expect(balancedPolicy.visionQaModel).toBe("gpt-4o-mini");
+    expect(fastDraftPolicy.maxRepairAttemptsPerUnit).toBe(1);
+    expect(fastDraftPolicy.visionQaModel).toBe("gpt-4o-mini");
+    // Legacy/missing qualityModePolicy metadata falls back to the historical
+    // hardcoded module defaults so old runs keep their existing behavior.
+    expect(legacyPolicy.maxRepairAttemptsPerUnit).toBe(3);
+    expect(legacyPolicy.visionQaModel).toBe("gpt-4o-mini");
   });
 
   it("links final QA artifact manifests into publishable package and Library metadata", () => {

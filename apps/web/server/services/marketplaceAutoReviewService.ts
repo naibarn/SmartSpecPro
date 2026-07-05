@@ -114,6 +114,7 @@ import {
   type MediaModelTransportConfig,
 } from "../../shared/mediaModelTransport";
 import type { MediaAssetType } from "../../shared/mcpConnectTypes";
+import { detectStoryboardGridRects } from "./storyboardGridGeometry";
 
 export type MarketplaceAutoReviewOutputMode =
   | "storyboard_images"
@@ -2430,6 +2431,7 @@ function buildMarketplaceAutoReviewQualityModePolicy(
       providerParallelismBias: "speed",
       estimatedTimeMultiplier: 0.7,
       estimatedCreditMultiplier: 0.85,
+      visionQaModel: DEFAULT_VISION_QA_MODEL,
     },
     balanced: {
       maxRepairAttemptsPerUnit: MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1,
@@ -2437,6 +2439,7 @@ function buildMarketplaceAutoReviewQualityModePolicy(
       providerParallelismBias: "balanced",
       estimatedTimeMultiplier: 1,
       estimatedCreditMultiplier: 1,
+      visionQaModel: DEFAULT_VISION_QA_MODEL,
     },
     premium_strict_qa: {
       maxRepairAttemptsPerUnit: MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 2,
@@ -2444,6 +2447,7 @@ function buildMarketplaceAutoReviewQualityModePolicy(
       providerParallelismBias: "quality",
       estimatedTimeMultiplier: 1.45,
       estimatedCreditMultiplier: 1.25,
+      visionQaModel: "gpt-4o",
     },
   };
   return {
@@ -2456,6 +2460,19 @@ function buildMarketplaceAutoReviewQualityModePolicy(
     llmGatewayOnly: true,
     updatedAt: nowIso(),
   };
+}
+
+function effectiveQualityModePolicy(
+  metadata: RunMetadata
+): { maxRepairAttemptsPerUnit: number; visionQaModel: string } {
+  const stored = asRecord(metadata?.qualityModePolicy);
+  const storedMaxAttempts = toNumber(stored.maxRepairAttemptsPerUnit, 0);
+  const maxRepairAttemptsPerUnit =
+    storedMaxAttempts > 0
+      ? Math.floor(storedMaxAttempts)
+      : MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1;
+  const visionQaModel = cleanText(stored.visionQaModel) || DEFAULT_VISION_QA_MODEL;
+  return { maxRepairAttemptsPerUnit, visionQaModel };
 }
 
 function buildMarketplaceAutoReviewCreativePerformanceMemory(params: {
@@ -8164,10 +8181,11 @@ function imageRepairUnitsForFrameStrategy(
 }
 
 function maxImageProviderSubmissionsForFrameStrategy(
-  frameStrategy: MarketplaceAutoReviewFrameStrategy
+  frameStrategy: MarketplaceAutoReviewFrameStrategy,
+  metadata?: RunMetadata
 ): number {
   return frameStrategy === "storyboard_3x3_split"
-    ? MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1
+    ? effectiveQualityModePolicy(metadata ?? {}).maxRepairAttemptsPerUnit
     : Number.POSITIVE_INFINITY;
 }
 
@@ -9825,12 +9843,15 @@ function imageVisionQaEnvelopeRefsFromMetadata(
 function imageRepairBudgetExhaustedForUnits(params: {
   repairUnits: DirectImageUnit[];
   refs: DirectMediaTaskRef[];
+  metadata?: RunMetadata;
 }): boolean {
   if (params.repairUnits.length === 0) return false;
+  const maxRepairAttemptsPerUnit = effectiveQualityModePolicy(
+    params.metadata ?? {}
+  ).maxRepairAttemptsPerUnit;
   return params.repairUnits.every(
     unit =>
-      nextDirectAttempt(params.refs, unit.unitId) >
-      MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1
+      nextDirectAttempt(params.refs, unit.unitId) > maxRepairAttemptsPerUnit
   );
 }
 
@@ -10095,9 +10116,10 @@ export function countMarketplaceAutoReviewImageProviderSubmissionsForTest(input:
 }
 
 export function maxMarketplaceAutoReviewImageProviderSubmissionsForTest(
-  frameStrategy: MarketplaceAutoReviewFrameStrategy
+  frameStrategy: MarketplaceAutoReviewFrameStrategy,
+  metadata?: RunMetadata
 ): number {
-  return maxImageProviderSubmissionsForFrameStrategy(frameStrategy);
+  return maxImageProviderSubmissionsForFrameStrategy(frameStrategy, metadata);
 }
 
 export function buildMarketplaceAutoReviewStoryboardGridRepairUnitForTest(input: {
@@ -10171,6 +10193,7 @@ export function imageReasonCodesContainStoryboardGridLayoutBlockerForTest(
 export function isMarketplaceAutoReviewImageRepairBudgetExhaustedForTest(input: {
   repairUnits: DirectImageUnit[];
   refs: DirectMediaTaskRef[];
+  metadata?: RunMetadata;
 }): boolean {
   return imageRepairBudgetExhaustedForUnits(input);
 }
@@ -17748,7 +17771,7 @@ async function scheduleImageAttempt(params: {
         ? buildInitialImageUnits(plan, frameStrategy)
         : [];
   const maxImageProviderSubmissions =
-    maxImageProviderSubmissionsForFrameStrategy(frameStrategy);
+    maxImageProviderSubmissionsForFrameStrategy(frameStrategy, params.metadata);
   const providerSubmissionCount = imageProviderSubmissionCountForFrameStrategy(
     existingRefs,
     frameStrategy
@@ -17778,9 +17801,12 @@ async function scheduleImageAttempt(params: {
     cleanText(params.metadata.imageAttemptId) || `direct-image-${nanoid(12)}`;
   const submittedRefs: DirectMediaTaskRef[] = [];
   let skippedExhaustedRepairUnits = 0;
+  const effectiveMaxRepairAttemptsPerUnit = effectiveQualityModePolicy(
+    params.metadata
+  ).maxRepairAttemptsPerUnit;
   for (const unit of cappedUnits) {
     const attempt = nextDirectAttempt(existingRefs, unit.unitId);
-    if (attempt > MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1) {
+    if (attempt > effectiveMaxRepairAttemptsPerUnit) {
       console.warn("[marketplaceAutoReview] image_repair_max_attempts", {
         runId: params.run.id,
         productionRunId: params.run.productionRunId,
@@ -17789,7 +17815,7 @@ async function scheduleImageAttempt(params: {
         unitId: unit.unitId,
         unitRole: unit.role,
         attempted: attempt - 1,
-        maxRepairAttempts: MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS,
+        maxRepairAttempts: effectiveMaxRepairAttemptsPerUnit - 1,
         repairReasonCodes: unit.repairReasonCodes ?? [],
         repairInstruction: cleanText(unit.repairInstruction),
         latestRefs: latestTaskRefsByUnit(existingRefs)
@@ -18374,7 +18400,7 @@ async function runStoryboardGridLayoutVisionQa(params: {
 }): Promise<Record<string, unknown>> {
   const model =
     cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    DEFAULT_VISION_QA_MODEL;
+    effectiveQualityModePolicy(params.metadata).visionQaModel;
   const imagePromptHashes = directImagePromptFingerprints(params.metadata);
   const absoluteGridUrl = absoluteVisionUrl(
     params.gridUrl,
@@ -18572,6 +18598,28 @@ async function runStoryboardGridLayoutVisionQa(params: {
     plan: params.plan,
     reasonCodes: parsedReasonCodes,
   });
+  let storyboardGridGeometryUncertain = false;
+  try {
+    const gridBufferForGeometry = await fetchBufferFromUrl(
+      params.gridUrl,
+      params.runtime.publicUrl
+    );
+    const geometry = await detectStoryboardGridRects(gridBufferForGeometry);
+    storyboardGridGeometryUncertain =
+      geometry.usedFallback || geometry.rects.length !== 9;
+  } catch (geometryError) {
+    console.warn(
+      "[marketplaceAutoReview] storyboard_grid_geometry_detection_failed",
+      {
+        runId: params.run.id,
+        errorMessage:
+          geometryError instanceof Error
+            ? geometryError.message
+            : String(geometryError),
+      }
+    );
+    storyboardGridGeometryUncertain = false;
+  }
   const reasonCodes = uniqueCleanTexts([
     ...qaDecision.reasonCodes,
     ...(parsed.isStrict3x3 === true ? [] : ["storyboard_grid_layout_mismatch"]),
@@ -18585,9 +18633,13 @@ async function runStoryboardGridLayoutVisionQa(params: {
     (gridColumns <= 0 || gridRows <= 0 || frameCount <= 0)
       ? ["storyboard_grid_layout_qa_contract_invalid"]
       : []),
+    ...(storyboardGridGeometryUncertain
+      ? ["storyboard_grid_geometry_uncertain"]
+      : []),
   ]);
   const verdict =
     cleanText(parsed.verdict) === "pass" &&
+    !storyboardGridGeometryUncertain &&
     parsed.isStrict3x3 === true &&
     gridColumns === 3 &&
     gridRows === 3 &&
@@ -18668,7 +18720,7 @@ async function runShotFrameVisionQa(params: {
 }): Promise<Record<string, unknown>> {
   const model =
     cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    DEFAULT_VISION_QA_MODEL;
+    effectiveQualityModePolicy(params.metadata).visionQaModel;
   const productReferenceImageGroups =
     normalizeProductReferenceStoryboardReferenceImageGroups(
       productReferenceStoryboardReferenceImageGroups(
@@ -19532,6 +19584,7 @@ async function reconcileDirectImageAttempt(params: {
     const repairBudgetExhausted = imageRepairBudgetExhaustedForUnits({
       repairUnits: qa.repairUnits,
       refs: nextRefs,
+      metadata,
     });
     const repairReasonCodes = Array.from(
       new Set(
@@ -20623,7 +20676,11 @@ async function splitStoryboardGrid(params: {
   if (width < 30 || height < 30) {
     throw new Error("Storyboard grid image is too small to split");
   }
-  const frameRects = splitStoryboardGridRects({ width, height });
+  const detectedGrid = await detectStoryboardGridRects(buffer);
+  const frameRects =
+    !detectedGrid.usedFallback && detectedGrid.rects.length === 9
+      ? detectedGrid.rects
+      : splitStoryboardGridRects({ width, height });
   const urls: string[] = [];
   for (const rect of frameRects) {
     const cell = await sharp(buffer)
@@ -22963,6 +23020,12 @@ export function buildMarketplaceAutoReviewQualityModePolicyForTest(
   metadata: RunMetadata
 ) {
   return buildMarketplaceAutoReviewQualityModePolicy(metadata);
+}
+
+export function effectiveQualityModePolicyForTest(
+  metadata: RunMetadata
+): { maxRepairAttemptsPerUnit: number; visionQaModel: string } {
+  return effectiveQualityModePolicy(metadata);
 }
 
 export function buildMarketplaceAutoReviewCreativePerformanceMemoryForTest(input: {
